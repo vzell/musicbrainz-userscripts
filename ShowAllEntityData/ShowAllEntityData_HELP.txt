@@ -938,6 +938,81 @@ Two details worth knowing:
 Turning the feature off in ⚙️ Settings removes the toggle entirely and
 leaves the column exactly as MusicBrainz renders it.
 
+PICARD TAGGER COLUMN  (🎵 PICARD TAGGER in ⚙️ Settings)
+---------------------------------------------------------
+A "Picard" column is added as the rightmost column of any table that lists
+releases, with a ♪ button per release that loads it straight into MusicBrainz
+Picard.  Picard has to be running locally with its browser-integration plugin
+enabled (Picard → Preferences → Plugins → Browser Integration); the ♪ turns
+green on a successful hand-off and red when Picard cannot be reached.
+
+Which tables get the column is decided from the DATA, not from the page: a
+table gets it when its body contains at least one link to a /release/<mbid>
+page.  On a page whose sections list different kinds of thing — an artist's
+relationships, say, with "Composed release" beside "Composed work" — only the
+sections that actually list releases get a Picard column, and no page type
+has to be taught about it.
+
+The one case that surprises people: a release's OWN tracklist gets no Picard
+column, because its rows link recordings rather than releases.  Use the ♪
+button on a listing that contains the release — a release group's releases, a
+series, a collection, an artist's releases — or the recording search results,
+which link both.
+
+The column is COLLAPSED by default: the column and its cells are always
+there, but the ♪ buttons are built only when you ask for them.  Each table's
+own header carries the toggle:
+
+    ▶♪ Picard        collapsed — no ♪ buttons built (the default)
+    ▼♪ Picard        expanded — buttons built, toggle tinted
+
+Working out what each row can tag means walking the whole row for entity
+links, and that happens again on every filter keystroke and every sort — so
+on a large listing you are not tagging, leaving the column collapsed is
+noticeably cheaper.  Nothing is hidden from you: an empty Picard cell in a
+collapsed column looks exactly like the empty cell a row with no taggable
+release gets anyway.
+
+Scope is ONE TABLE per toggle.  On a multi-section page you can open the ♪
+buttons for the one section you are tagging and leave the other sections
+empty.  Those pages also get a page-wide button in the action bar at the top,
+alongside the existing collapse-all and CAA/EAA all-buttons:
+
+    ▶♪ Show all Picard      at least one section is collapsed
+    ▼♪ Hide all Picard      every section is expanded
+
+A single-table page has no such button — its one column header already is the
+page-wide control.
+
+The state is per table and survives filtering and sorting, including sorting
+one section of a multi-section page.  It resets to the setting's default on a
+fresh fetch, which is when the tables themselves are rebuilt.  It does NOT
+travel to a sub-table opened in its own tab via "Show single-table": that
+snapshot deliberately leaves the whole Picard column out, so the new tab
+rebuilds it from scratch and applies its own default.
+
+Where a row can tag more than one release — the recording search results,
+where one recording's row folds in all of its releases — the Picard cell is
+itself a multi-row cell, one ♪ per release on the line of the release it
+sends, and it gains the same ▶ N ▤ per-cell toggle the other multi-row
+columns have.  That toggle appears when you uncollapse the column, since
+until then there is nothing in the cell to collapse.
+
+Settings:
+
+  • "Enable Picard Tagger column" (default: ON) is the master switch.  Off
+    means no column, no cells and no toggle at all.
+  • "Start the Picard column collapsed" (default: ON) chooses the STARTING
+    state only.  Turning it off builds every ♪ button during the render, as
+    earlier versions did, and keeps the header toggle available either way.
+  • "Picard host" (default 127.0.0.1), "Picard default port" (default 8000)
+    and "Picard max probe port" (default 8010) say where to look for Picard.
+    Ports are probed from the default up to the max on the first click and
+    the answer is remembered; set the two equal to try one port only.  Change
+    the host if Picard runs on another machine on your network.
+
+Based on the "MusicBrainz Magic Tagger Button" userscript by Philipp Wolfer.
+
 MULTI-ROW CELLS FROM REPEATED-SUBJECT ROWS
 --------------------------------------------
 Some MusicBrainz listings paginate by one entity but render one table row per
@@ -957,11 +1032,12 @@ as ordinary multi-row cells:
     like Catalog#/Label do elsewhere.
   • The four columns stay row-aligned with each other: entry 3 of "Track"
     always belongs to entry 3 of "Release".
-  • Every release keeps its own inline cover-art thumbnail, its own ▶
-    entity-page toggle, and its own ♪ Picard button. The Picard column is
-    itself a multi-row cell — one ♪ per release, on the line of the release
-    it sends, collapsing and expanding in step with the others — and each
-    button names its release in the tooltip.
+  • Every release keeps its own inline cover-art thumbnail and its own ▶
+    entity-page toggle, and — once the Picard column is uncollapsed (see
+    PICARD TAGGER COLUMN above; it ships collapsed) — its own ♪ Picard
+    button. The Picard column is itself a multi-row cell — one ♪ per release,
+    on the line of the release it sends, collapsing and expanding in step
+    with the others — and each button names its release in the tooltip.
   • "Track" is split-aligned on its "/" (like "Length" on its ":"), so
     "5/13" and "23/39" line up on the separator rather than merely ending
     flush right; "Medium" is right-aligned against a common edge. Both line
@@ -1219,8 +1295,11 @@ button instead of the usual "Show all N rows" overflow expander.
 • On the resulting snapshot tab every h1 action button is disabled (with a
   tooltip explaining why — using one would trigger a real fetch and replace
   the frozen snapshot); the heading shows the actual captured category name;
-  CAA/EAA thumbnails, sticky columns, the Relationships column, Picard
-  tagger-column icons, and filtering all work identically to the live page.
+  CAA/EAA thumbnails, sticky columns, the Relationships column and filtering
+  all work identically to the live page.  The Picard column is the exception:
+  the snapshot deliberately omits it, so the new tab rebuilds the column from
+  scratch and applies its own default collapsed/expanded state rather than
+  the one the page you came from was showing (see PICARD TAGGER COLUMN).
 
 EDIT-LISTING PAGES  (🎨 EDITS PAGE in ⚙️ Settings)
 ----------------------------------------------------
@@ -1562,6 +1641,13 @@ labels and descriptions.  Major setting groups:
 • 🗄️ ART ARCHIVE INDEXEDDB CACHE
     — Enable / disable the three-tier IDB artwork image cache
     — Cache TTL, max entries, store sizes
+
+• 🎵 PICARD TAGGER
+    — Enable Picard Tagger column (default: ON) — the ♪ send-to-Picard column
+    — Start the Picard column collapsed (default: ON) — build the ♪ buttons
+      only when the ▶♪ column-header toggle is pressed
+    — Picard host (default: 127.0.0.1)
+    — Picard default port (default: 8000) and max probe port (default: 8010)
 
 • ⏱️ TRACK LENGTH PRECISION
     — Enable millisecond track lengths (default: ON) — adds the ⏱ toggle to

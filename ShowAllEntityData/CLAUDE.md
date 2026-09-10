@@ -438,7 +438,10 @@ here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
 - `sa_enable_barcode_highlight` — gates `initBarcodeHighlight()`
 - `sa_enable_caa_pics` — shared CAA/EAA master toggle (there is no separate
   `sa_enable_eaa_pics` — EAA reuses this same key)
-- `sa_enable_picard_tagger` — gates the Picard-tagger column feature
+- `sa_enable_picard_tagger` — gates the Picard-tagger column feature;
+  `sa_picard_tagger_initially_collapsed` (default **true**) decides only the
+  STARTING state of the per-table ▶♪/▼♪ header toggle, never whether the
+  column exists — see the Picard section below
 - `sa_enable_expand_rgs` — gates `initExpandRGsFeature()` (note the plural)
 - `sa_enable_ms_track_length` — master toggle for the ⏱ millisecond Length
   feature; `sa_ms_idb_enable`/`sa_ms_idb_ttl_days` gate its per-recording
@@ -1299,6 +1302,98 @@ come back identical to the browse endpoint's.
   round-trip discard check are both meaningful, and the check doubles as a
   guard against a mis-resolved column index.
 
+## Picard column: collapsed by default, and the four traps in that
+
+The `Picard` column (grep `initPicardTaggerColumn`) is added per TABLE, purely
+from the data — "does this tbody contain a `/release/<mbid>` link" — and is
+page-type-agnostic. Since 9.99.1057 it renders COLLAPSED by default: the `<th>`
+and every `<td class="mb-picard-cell">` always exist, and only the cell
+CONTENT is deferred behind a per-table `▶♪`/`▼♪` header toggle.
+`sa_picard_tagger_initially_collapsed` (default `true`) decides the STARTING
+state only; `sa_enable_picard_tagger` is still the master gate.
+
+**The `<td>` must never be removed.** Deferring content, not the column, is the
+whole reason this was buildable at all — `PERFORMANCE.org` Step 32 rejected
+runtime column insertion/removal because the column COUNT is what every index
+in the script churns off (`data-col-idx`, sort state, the sticky index, the
+per-`colIndex` `_uniqDropDataCache`/`_colHeaderCountsCache`, the
+colon-alignment descriptors, saved widths). With the cell always present none
+of them move and `addColumnFilterRow()`'s ghost-cell self-healing still runs
+exactly once. A cell also keeps `applyStickyColumn()`'s `data-mb-rest-bg`
+stamp, so uncollapsing needs no sticky re-run.
+
+**The state is stored explicitly on `<table>.dataset.mbPicardExpanded`, and
+must not be inferred from cell content.** `data-mb-ms-shown` /
+`_msLengthPrecisionShown()` look like the precedent to copy and are the wrong
+model here: for Picard "no content" is ambiguous, because a collapsed cell and
+an "expanded, nothing to tag" cell are byte-identical.
+`tests/snapshots/notes-received/rendered.html` is the counter-example, with
+**1688** `mb-picard-cell` behind only **8** `mb-picard-btn`. The `<table>` is
+the right host (`data-picard-th-injected` is the existing precedent on the same
+element) because `renderGroupedTable()`'s reuse branch replaces the `<tbody>`'s
+contents but never the `<table>`, its `dataset` or its `<thead>`.
+
+**The header glyph comes from CSS `::before`, never from text.** The Picard
+`<th>` is the one header in the file with no `.mb-col-hdr-flex`, no
+`dataset.colName`, no sort icons and no 📊 — `makeTableSortableUnified()`
+always runs BEFORE Picard injects, so it never sees this header (and now skips
+it explicitly, in case a second full render ever does). That means
+`_cleanColHeaderText()` resolves it through its step-3 clone-and-strip
+fallback, i.e. ultimately from `th.textContent`, and a text glyph would make
+that read `"▶♪Picard"` — silently breaking `initCollapsableColumns`' column
+lookup (the multi-row Picard cells would lose their per-cell toggles),
+`_exportCleanHeaderText`, `openUniqDrop`'s `isCollapsableCol` and
+`_updateAllColHeaderCounts`. Same argument as the length-mismatch flag being
+attributes-only. Two corollaries: do NOT set `th.dataset.colName = 'Picard'`
+to "fix" the lookup instead (it flips this `<th>` from original to extracted in
+three Statistics-panel heuristics), and do NOT name the toggle
+`.mb-col-collapse-hdr-btn` or `.mb-caa-col-hdr-btn` — `initCollapsableColumns`'
+idempotent cleanup removes both table-wide and `initPicardTaggerColumn` re-runs
+it, so the toggle would delete itself on the pass that built it.
+
+**The toggle mutates cells in place; it must not call `runFilter()`.** The ⏱
+millisecond toggle has to, because the Length column's rendered TEXT is what
+sorting, filtering, highlighting and the colon-alignment finalizers read. A
+Picard cell contributes to none of that — its content is a `<button>` plus an
+`<img alt="♪">`, so `getCleanColumnText()` was always `''` for the whole
+column, and it has no filter input and is never a sort key. `runFilter()` is
+also page-wide, which would defeat the per-table scope outright. Both toggle
+directions mirror onto the master rows via `_buildMasterRowIndex()` plus the
+owner-array sweep — not as a last line of defence (`_picardApplyToRow()`
+reconciles every clone against its table's state on the next pass regardless),
+but so masters and live rows never disagree and so a collapsed column's
+re-renders stop cloning `<ul><li><button><img>` subtrees only to discard them.
+
+Two smaller things worth knowing:
+
+- **Collapsable-column registration happens on EXPAND, not only during the
+  render pass.** While collapsed nothing is multi-row, so
+  `initPicardTaggerColumn()`'s own `_anyMultiRowPicardCell` never gets set;
+  `_picardToggleTable()` calls `_picardRegisterCollapsableColumn()` itself, or a
+  multi-button cell would come back with no per-cell `▶N▤` toggle.
+- **The uniq-dropdown cache drop is gated on a row having actually changed.**
+  `initPicardTaggerColumn` used to call
+  `_invalidateUniqDropDataCacheForTable(table)` unconditionally on every pass,
+  which also drops `_colHeaderCountsCache`. A collapsed column changes nothing,
+  so it no longer drops either. Do not retrofit that gate onto the expanded
+  path — there every pass really does rebuild every cell, which is the case the
+  helper's JSDoc exists for.
+
+**A release's own tracklist has no Picard column**, and that trips people up
+when picking a test page: `release-tracks` rows link `/recording/<mbid>`, and
+the guard asks for `/release/<mbid>`. `org/picard.org` named a release URL as
+the single-table verification target on that assumption and it was wrong —
+`series-releases` is the single-table pageType that carries the column
+(`tests/snapshots/series-releases/rendered.html`, 12 `mb-picard-btn` in one
+table), and it is what `tests/live/picard-header-toggle.spec.js` uses.
+
+**The toggle state does not travel to a sub-table opened in its own tab.**
+`captureSubtableSnapshot` strips both `mb-picard-th` and `mb-picard-cell`, so
+the destination rebuilds the column and applies its own default.
+`__saTest.picardEntityScans()` exposes how many times
+`_picardExtractRowEntities()` has run, because the gate's effect is otherwise
+invisible in the DOM.
+
 ## Common pitfalls
 
 - `str_replace` requires the `old_str` to be **unique** in the file — include
@@ -1324,7 +1419,11 @@ come back identical to the browse endpoint's.
   rationale, called from the same two places, plus
   `_applyDiscographyViewFilter()`'s tail — that function re-clones source rows
   into live tbodies twice without going through `renderGroupedTable()`, so
-  nothing else re-wires them). **Three more members belong to this family and
+  nothing else re-wires them; note it is *a per-row no-op while the Picard
+  column is collapsed*, which is the default — it still walks every row, but
+  per row it empties an already-empty `<td>` and stops, so nothing is scanned,
+  built or wired. Its own header toggle is the one part of Picard that is
+  already delegated, on the `<table>` element). **Three more members belong to this family and
   used to be missing from both this list and `PERFORMANCE.org` Step 23's:**
   `applyStickyColumn()` (per-row `mouseenter`/`mouseleave` plus the custom props
   `tr._mbStickyEnter`/`_mbStickyLeave` — the largest of them),

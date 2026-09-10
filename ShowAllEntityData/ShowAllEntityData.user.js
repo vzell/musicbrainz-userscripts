@@ -2584,11 +2584,28 @@
             default: true,
             description: 'Inject a "Picard" column into every rendered table that lets you send ' +
                          'individual releases or release-groups directly to MusicBrainz Picard with ' +
-                         'one click.  The column is only visible on pages whose URL matches the ' +
-                         'supported page types (releases, release-groups, recordings, series, ' +
-                         'collections, cdtoc, taglookup, search, artist/*/releases). ' +
+                         'one click.  The column is added per TABLE, purely from the data: a table ' +
+                         'whose body contains at least one /release/<mbid> link gets the column, ' +
+                         'whatever page it is on — so on a multi-section page only the sections ' +
+                         'that actually list releases get it. ' +
                          'Picard must be running locally with browser integration enabled. ' +
                          'Based on the "MusicBrainz Magic Tagger Button" userscript by Philipp Wolfer.'
+        },
+
+        sa_picard_tagger_initially_collapsed: {
+            label: 'Start the Picard column collapsed',
+            type: 'checkbox',
+            default: true,
+            description: 'Render the "Picard" column empty, and build its ♪ buttons only when you ' +
+                         'press the ▶♪ toggle in the column header.  Each table has its own ' +
+                         'toggle, and multi-section pages also get a "Show all Picard" button in ' +
+                         'the action bar.  Building the buttons means walking every row for ' +
+                         'taggable entities, so leaving this on keeps that cost off pages where ' +
+                         'you are not tagging.  Turning it OFF reproduces the old behaviour ' +
+                         'exactly — every ♪ button is built during the render — while the header ' +
+                         'toggle stays available either way.  This setting decides only the ' +
+                         'STARTING state; it does not add or remove the column (that is the ' +
+                         'master switch above).'
         },
 
         sa_picard_tagger_default_port: {
@@ -23909,8 +23926,29 @@
      *      first child of the `<th>` after `makeTableSortableUnified` runs; its
      *      first child is a text node containing the column name followed by a
      *      space.
-     *   3. Fallback: clone the `<th>`, remove all `[class^="mb-"]` children and
-     *      `.column-resizer`, return `textContent`.
+     *   3. Fallback: clone the `<th>`, remove the NAMED UI-child selectors
+     *      listed in the call below, return `textContent`. (It has never
+     *      removed "all `[class^="mb-"]` children", as this said for a long
+     *      time — it removes exactly those few selectors.)
+     *
+     * Step 3 is not a rare path: the `<th class="mb-picard-th">` injected by
+     * `initPicardTaggerColumn()` is the one header in the file with neither
+     * `dataset.colName` nor a `.mb-col-hdr-flex` (Picard injects after
+     * `makeTableSortableUnified()` has already run), so it always resolves
+     * here. Two of the selector's entries exist for that header alone:
+     *
+     *   - `.mb-picard-col-hdr-btn` — belt and braces. That toggle deliberately
+     *     carries its glyph in CSS `::before`, so it contributes no text to
+     *     strip; see its CSS block for the four consumers a text glyph in this
+     *     `<th>` would break.
+     *   - `.mb-col-collapse-hdr-btn` — NOT belt and braces. When the Picard
+     *     column has multi-row cells, `initCollapsableColumns()` reaches its
+     *     `th.appendChild(collapseHdrBtn)` fallback (that branch exists for a
+     *     header with no `.mb-col-hdr-flex`, and Picard's is the only one), so
+     *     `th.textContent` really does read `"Picard▶3▤"`. `initCollapsableColumns()`
+     *     itself is unaffected — its cleanup pass removes the button before its
+     *     own name lookup runs — which is why this stayed latent rather than
+     *     breaking the multi-row toggles outright.
      *
      * @param {HTMLElement} th  Live `<th>` element.
      * @returns {string}        Clean column name, whitespace-normalised.
@@ -23935,7 +23973,8 @@
         // 3. Clone fallback: strip known UI children, read remaining text
         const clone = th.cloneNode(true);
         clone.querySelectorAll(
-            '.mb-col-uniq-wrap, .sort-icon-btn, .column-resizer, .mb-col-hdr-flex'
+            '.mb-col-uniq-wrap, .sort-icon-btn, .column-resizer, .mb-col-hdr-flex, ' +
+            '.mb-picard-col-hdr-btn, .mb-col-collapse-hdr-btn'
         ).forEach(el => el.remove());
         const fallback = clone.textContent.trim().replace(/\s+/g, ' ');
         if (fallback) return fallback;
@@ -24065,7 +24104,8 @@
         }
         clone.querySelectorAll(
             '.sort-icon-btn, .mb-col-uniq-wrap, .column-resizer, ' +
-            '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, .mb-col-hdr-flex'
+            '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, .mb-col-hdr-flex, ' +
+            '.mb-picard-col-hdr-btn'
         ).forEach(el => el.remove());
         let text = clone.textContent
             .replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim().replace(/\s+/g, ' ');
@@ -34512,6 +34552,66 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
             background: rgba(255, 193, 7, 0.65);
             border-color: #b98900;
+        }
+
+        /* Per-table Picard-column expand/collapse toggle, prepended to the
+           <th class="mb-picard-th">. Same box metrics and the same
+           hover/:focus-visible/engaged-tint idiom as .mb-ms-col-hdr-btn above.
+
+           THE GLYPH COMES FROM ::before, NOT FROM THE ELEMENT'S TEXT, and that
+           is load-bearing rather than stylistic. The Picard <th> is the one
+           header in this file with no .mb-col-hdr-flex and no
+           dataset.colName (makeTableSortableUnified always runs BEFORE Picard
+           injects, so it never sees this header), which means
+           _cleanColHeaderText() resolves it through its clone-and-strip
+           fallback and ultimately from th.textContent. A text glyph here
+           would make that read "▶♪Picard" and silently break four consumers
+           that match the name 'Picard' exactly — initCollapsableColumns'
+           column lookup (so the multi-row Picard cells would lose their
+           per-cell ▶/▼ toggles), _exportCleanHeaderText (CSV/JSON/Org/HTML
+           header text), openUniqDrop's isCollapsableCol, and
+           _updateAllColHeaderCounts. Keeping the glyph in CSS leaves
+           th.textContent exactly "Picard". Same argument the
+           length-mismatch flag makes for being attributes-only.
+
+           These are the first .mb-picard-* rules in the file — every other
+           Picard element is inline-styled. */
+        .mb-picard-col-hdr-btn {
+            cursor: pointer;
+            font-size: 0.80em;
+            line-height: 1;
+            opacity: 0.60;
+            user-select: none;
+            padding: 1px 3px;
+            margin-right: 3px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+        .mb-picard-col-hdr-btn::before {
+            content: '▶♪';   /* collapsed: press to build the buttons */
+        }
+        .mb-picard-col-hdr-btn[aria-pressed="true"]::before {
+            content: '▼♪';   /* expanded: press to empty the column */
+        }
+        .mb-picard-col-hdr-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.07);
+            border-color: #bbb;
+        }
+        .mb-picard-col-hdr-btn:focus-visible {
+            outline: 2px solid rgba(0, 100, 255, 0.55);
+            outline-offset: 1px;
+        }
+        .mb-picard-col-hdr-btn[aria-pressed="true"] {
+            opacity: 1;
+            background: rgba(0, 100, 255, 0.13);
+            border-color: #9bb8e8;
         }
 
         #mb-col-uniq-dropdown {
@@ -58683,6 +58783,15 @@ a { color: #1565c0; }`;
         // -----------------------------------------------------------------------
         headers.forEach((th, index) => {
             if (th.querySelector('input[type="checkbox"]')) return;
+            // The Picard header is deliberately not a sortable/filterable
+            // column: it has no dataset.colName, no sort icons and no 📊, and
+            // addColumnFilterRow() gives it a bare <th> with no input. Normally
+            // this function simply never sees it — initPicardTaggerColumn()
+            // always runs later — but a SECOND full render on a page that
+            // already injected Picard would otherwise wipe th.innerHTML,
+            // destroying the ▶♪ toggle and handing this column a sort/uniq UI
+            // that nothing else in the pipeline supports.
+            if (th.classList.contains('mb-picard-th')) return;
             th.style.cursor = 'default';
 
             // th.textContent is always raw/undecorated here — this is the ONE
@@ -74032,6 +74141,22 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * How many times `_picardExtractRowEntities()` has run this session.
+     *
+     * The whole point of the collapsed-by-default column is that this per-row
+     * subtree walk does NOT happen on every render, and that is invisible in
+     * the DOM: a collapsed cell and an "expanded, nothing to tag" cell are
+     * byte-identical. So the counter is the only way a test can pin the
+     * guarantee, and `__saTest.picardEntityScans()` reads it — the same reason
+     * `msPendingLengthLookups()` exists for the millisecond feature. One
+     * integer increment in front of a `querySelectorAll` over a whole row is
+     * not measurable, so it is not gated on test mode.
+     *
+     * @type {number}
+     */
+    let _picardEntityScans = 0;
+
+    /**
      * Extracts every taggable MusicBrainz entity from a table row's primary
      * entity cell.
      *
@@ -74061,6 +74186,7 @@ a { color: #1565c0; }`;
      * @returns {Array<{ guid: string, entityType: string, name: string }>}
      */
     function _picardExtractRowEntities(tr) {
+        _picardEntityScans++;
         const _GUID_RE = /\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/;
         const _TYPES   = ['release-group', 'release', 'recording'];
 
@@ -74220,6 +74346,141 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Builds one row's Picard cell content: a `<ul>` with one `<li><button>`
+     * per taggable entity the row yields.
+     *
+     * Does NOT clear the cell first and does NOT consult the column's
+     * collapsed/expanded state — both are `_picardApplyCellState()`'s job, and
+     * every caller goes through it. Does NOT touch `_mbPicardWired` either:
+     * that flag means "filled in place on a LIVE row", so only
+     * `initPicardTaggerColumn()`'s own live-row pass may set it.
+     *
+     * Module-level rather than nested inside `initPicardTaggerColumn()`
+     * (where it lived until the header toggle landed) because the toggle has
+     * to build exactly these cells on demand, long after that function
+     * returned. The multi-row bookkeeping that used to be a closure variable
+     * is the return value instead, so each caller can decide for itself
+     * whether to register the column as collapsable.
+     *
+     * @param   {HTMLTableRowElement}  tr
+     * @param   {HTMLTableCellElement} td
+     * @returns {number}  How many taggable entities the row yielded, i.e. how
+     *                    many `<li><button>` pairs were appended. `0` leaves
+     *                    the cell empty, which is a real and common outcome —
+     *                    `tests/snapshots/notes-received/rendered.html` has
+     *                    1688 Picard cells behind only 8 buttons.
+     */
+    function _picardFillCell(tr, td) {
+        const _entities = _picardExtractRowEntities(tr);
+        if (!_entities.length) return 0;
+        // One <li> per entity, so a row whose source cell is multi-row gets a
+        // Picard cell of the same shape — each ♪ on the line of the release it
+        // sends. Always a <ul>, even for one entity, so the column has one
+        // uniform cell structure (the same rule applyRenderMultiRowCells
+        // documents for its own always-wrap behaviour); with the list reset
+        // below, a single-item cell renders exactly as the bare button did.
+        const ul = document.createElement('ul');
+        ul.style.cssText = 'list-style:none;margin:0;padding:0;';
+        _entities.forEach(e => {
+            const li = document.createElement('li');
+            li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
+            ul.appendChild(li);
+        });
+        td.appendChild(ul);
+        return _entities.length;
+    }
+
+    /**
+     * Brings one Picard `<td>` into the requested state: empty when collapsed,
+     * one `<li><button>` per taggable entity when expanded.
+     *
+     * This is the single point where "is the column collapsed?" gates the
+     * expensive half of the feature, and the gate sits in FRONT of
+     * `_picardFillCell()` rather than inside it on purpose. What a collapsed
+     * cell skips, per row, is a full
+     * `tr.querySelectorAll('td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]')`
+     * subtree walk plus a regex per anchor (`_picardExtractRowEntities()`), and
+     * then the construction of a `<ul>`, N `<li>`, N `<button>`, N `<img>` and
+     * N `addEventListener` calls. That work used to happen for every row of
+     * every table on every filter keystroke and every sort.
+     *
+     * The `<td>` itself is always kept — never removed and never re-inserted.
+     * Removing it would change the table's column COUNT, which is what every
+     * column index in the script churns off (see `PERFORMANCE.org` Step 32 for
+     * why runtime column insertion was rejected); with the cell always present
+     * only its CONTENT is deferred, so no index moves,
+     * `addColumnFilterRow()`'s ghost-cell path still runs exactly once, and
+     * `applyStickyColumn()`'s per-cell rest-background stamp is already on the
+     * cell, so uncollapsing needs no sticky re-run and cannot desynchronise
+     * the hover colour map.
+     *
+     * @param   {HTMLTableRowElement}  tr
+     * @param   {HTMLTableCellElement} td
+     * @param   {boolean}              expanded
+     * @returns {number}  Entities rendered (`0` when collapsed).
+     */
+    function _picardApplyCellState(tr, td, expanded) {
+        // textContent = '' also removes any `.mb-cell-collapse-toggle` the
+        // collapse pass had put in this cell, which is correct: a collapsed
+        // cell has nothing to collapse. The two classes that reserve room for
+        // that toggle have to go with it, or an empty cell keeps its 22px of
+        // padding-right. `initCollapsableColumns()`'s own cleanup pass would
+        // drop them on its next run anyway; this just does not wait for it.
+        if (td.firstChild) td.textContent = '';
+        if (!expanded) {
+            td.classList.remove('mb-has-collapse-toggle', 'mb-collapse-col-pad');
+            return 0;
+        }
+        return _picardFillCell(tr, td);
+    }
+
+    /**
+     * Whether the Picard column of `table` is currently expanded, stamping the
+     * table's own default from `sa_picard_tagger_initially_collapsed` the first
+     * time it is asked.
+     *
+     * ── Why the state lives on `<table>.dataset` ─────────────────────────────
+     *
+     * It is read-and-stamped rather than merely defaulted so the value is
+     * explicit from first sight onward, and it is stored EXPLICITLY rather than
+     * inferred from cell content because for this column "no content" is
+     * ambiguous: a collapsed cell and an expanded cell on a row with no
+     * taggable release are byte-identical. That is not a corner case —
+     * `tests/snapshots/notes-received/rendered.html` carries 1688
+     * `mb-picard-cell` against only 8 `mb-picard-btn`. So the
+     * `data-mb-ms-shown` model (`_msLengthPrecisionShown()`, which infers the
+     * millisecond toggle's state from a stamped cell) cannot be copied here.
+     *
+     * The `<table>` element is the right host, and `data-picard-th-injected`
+     * on the same element is the existing precedent. `renderGroupedTable()`'s
+     * reuse branch is `table = existingTables[index]` followed by
+     * `tbody.innerHTML = ''` — the `<table>`, its `dataset` and its `<thead>`
+     * are never replaced — and `runFilter()`'s multi branch always passes a
+     * truthy query (`globalQuery || 're-run'`), so every keystroke, sort and
+     * discography-view switch takes that branch and the flag survives.
+     * `tests/live/caa-icon-survives-sort-multi.spec.js`'s `tagSubTables()`
+     * measures exactly this survival independently, via its own
+     * `data-probeTag`, and records it as always N/N.
+     *
+     * State is lost only where a table element is newly created — an initial
+     * render or a fresh fetch — which IS the "initially collapsed" contract.
+     * A load-from-disk that REUSES an existing `table.tbl` keeps the user's
+     * choice, deliberately: the cells are rebuilt in full mode either way, and
+     * silently re-collapsing a column the user had just opened would be the
+     * surprising behaviour.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {boolean}
+     */
+    function _picardTableExpanded(table) {
+        if (table.dataset.mbPicardExpanded === undefined) {
+            table.dataset.mbPicardExpanded =
+                (Lib.settings.sa_picard_tagger_initially_collapsed === false) ? '1' : '0';
+        }
+        return table.dataset.mbPicardExpanded === '1';
+    }
+
+    /**
      * Injects or re-wires the "Picard" column in every `table.tbl`.
      *
      * Idempotency: the `<th>Picard</th>` header is only injected once per table
@@ -74308,38 +74569,10 @@ a { color: #1565c0; }`;
 
         // Set by _picardApplyToRow when any row yields more than one entity —
         // see the collapsable-column registration at the end of this function.
+        // Stays false for the whole pass while the column is collapsed, since
+        // nothing is built: registration then happens on expand instead, from
+        // _picardToggleTable().
         let _anyMultiRowPicardCell = false;
-
-        /**
-         * Builds one row's picard cell content: `<ul>` with one `<li><button>`
-         * per taggable entity. Shared by both entry points below.
-         *
-         * Does NOT touch `_mbPicardWired` — that flag means "filled in place on
-         * a LIVE row", so only `_picardApplyToRow()` may set it. See its JSDoc.
-         *
-         * @param {HTMLTableRowElement}   tr
-         * @param {HTMLTableCellElement}  td
-         * @returns {void}
-         */
-        function _picardFillCell(tr, td) {
-            const _entities = _picardExtractRowEntities(tr);
-            if (_entities.length > 1) _anyMultiRowPicardCell = true;
-            if (!_entities.length) return;
-            // One <li> per entity, so a row whose source cell is multi-row gets a
-            // Picard cell of the same shape — each ♪ on the line of the release it
-            // sends. Always a <ul>, even for one entity, so the column has one
-            // uniform cell structure (the same rule applyRenderMultiRowCells
-            // documents for its own always-wrap behaviour); with the list reset
-            // below, a single-item cell renders exactly as the bare button did.
-            const ul = document.createElement('ul');
-            ul.style.cssText = 'list-style:none;margin:0;padding:0;';
-            _entities.forEach(e => {
-                const li = document.createElement('li');
-                li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
-                ul.appendChild(li);
-            });
-            td.appendChild(ul);
-        }
 
         /**
          * LIVE-row entry point: create-or-rewire, the historical semantics.
@@ -74368,23 +74601,36 @@ a { color: #1565c0; }`;
          * could never have served as the test.
          *
          * @param {HTMLTableRowElement} tr
-         * @returns {void}
+         * @param {boolean} expanded  This table's Picard state — see
+         *   `_picardTableExpanded()`. While collapsed, the cell is still
+         *   resolved/created and still marked wired, but is left empty.
+         * @returns {boolean}  Whether this row's cell content actually changed,
+         *   which is what decides the uniq-dropdown cache drop at the end of
+         *   the per-table loop. A collapsed re-wire pass answers `false` for
+         *   every row: the clone arrived empty (its master is empty too) and it
+         *   stays empty, so there is nothing for the cache to have missed.
          */
-        function _picardApplyToRow(tr) {
+        function _picardApplyToRow(tr, expanded) {
             let _td = tr.querySelector('td.mb-picard-cell');
             if (_td) {
-                if (_td._mbPicardWired) return;   // filled in place, never cloned — still live
-                _td.innerHTML = '';
-                _picardFillCell(tr, _td);
+                if (_td._mbPicardWired) return false;   // filled in place, never cloned — still live
+                const _had = !!_td.firstChild;
+                const _n = _picardApplyCellState(tr, _td, expanded);
+                if (_n > 1) _anyMultiRowPicardCell = true;
                 _td._mbPicardWired = true;
-            } else if (!rewireOnly) {
-                _td = document.createElement('td');
-                _td.className = 'mb-picard-cell';
-                _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
-                _picardFillCell(tr, _td);
-                _td._mbPicardWired = true;
-                tr.appendChild(_td);
+                return _had || _n > 0;
             }
+            if (rewireOnly) return false;
+            _td = document.createElement('td');
+            _td.className = 'mb-picard-cell';
+            _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
+            if (_picardApplyCellState(tr, _td, expanded) > 1) _anyMultiRowPicardCell = true;
+            _td._mbPicardWired = true;
+            tr.appendChild(_td);
+            // A brand-new cell changes the row's column COUNT, which the
+            // uniq-dropdown's per-table bundle keys off, so this counts as a
+            // change even when the cell itself is empty.
+            return true;
         }
 
         /**
@@ -74427,9 +74673,12 @@ a { color: #1565c0; }`;
          *
          * @param {HTMLTableRowElement}        tr
          * @param {HTMLTableCellElement|null} [liveTd]
+         * @param {boolean} [expanded=false]  This table's Picard state. Only
+         *   consulted on the no-`liveTd` fallback — cloning `liveTd` copies the
+         *   live cell, which is already in the right state by construction.
          * @returns {void}
          */
-        function _picardEnsureRow(tr, liveTd) {
+        function _picardEnsureRow(tr, liveTd, expanded) {
             if (tr.querySelector('td.mb-picard-cell')) return;
             let _td;
             if (liveTd) {
@@ -74438,7 +74687,7 @@ a { color: #1565c0; }`;
                 _td = document.createElement('td');
                 _td.className = 'mb-picard-cell';
                 _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
-                _picardFillCell(tr, _td);
+                _picardApplyCellState(tr, _td, !!expanded);
             }
             // Deliberately does not set `_mbPicardWired`: a source row is
             // detached, so its buttons were never wired to anything. Leaving the
@@ -74525,6 +74774,11 @@ a { color: #1565c0; }`;
                 });
             }
 
+            // Read-and-stamp this table's own collapsed/expanded state before
+            // any cell work, so both the row pass below and the header toggle
+            // read one explicit value. See _picardTableExpanded()'s JSDoc.
+            const _expanded = _picardTableExpanded(table);
+
             // ── Wire live rows, and make their SOURCE rows own the cell ──────
             //
             // The source rows are what every render clones from, so a cell that
@@ -74567,8 +74821,9 @@ a { color: #1565c0; }`;
             // Same reason `_artMirrorInlineThumbToSourceRow()` clones its node
             // instead of copying a value.
             const _ownerArrays = new Set();
+            let _cellsChanged = false;
             table.querySelectorAll('tbody tr').forEach(tr => {
-                _picardApplyToRow(tr);
+                if (_picardApplyToRow(tr, _expanded)) _cellsChanged = true;
                 if (rewireOnly || !_masterIdx) return;
                 const _entry = _masterIdx.get(tr.dataset ? tr.dataset.mbRowIdx : undefined);
                 if (!_entry) return;
@@ -74576,7 +74831,7 @@ a { color: #1565c0; }`;
                 // (renderFinalTable appends what it is handed), so master and
                 // live are the same node and there is nothing to mirror.
                 if (_entry.row !== tr) {
-                    _picardEnsureRow(_entry.row, tr.querySelector('td.mb-picard-cell'));
+                    _picardEnsureRow(_entry.row, tr.querySelector('td.mb-picard-cell'), _expanded);
                 }
                 _ownerArrays.add(_entry.owner);
             });
@@ -74592,18 +74847,37 @@ a { color: #1565c0; }`;
             // throws. It would only ever fire on a row with no live counterpart
             // (an unrendered one), which is exactly the case a fully-rendered
             // test page never reaches.
-            _ownerArrays.forEach(arr => arr.forEach(row => _picardEnsureRow(row)));
+            _ownerArrays.forEach(arr => arr.forEach(row => _picardEnsureRow(row, null, _expanded)));
 
             // Picard cells were just (re)built in place, with no row show/hide —
             // invisible to the uniq-dropdown cache's visible-row-set signature,
             // so drop this table's cached bundles. See
-            // _invalidateUniqDropDataCacheForTable()'s own JSDoc.
-            _invalidateUniqDropDataCacheForTable(table);
+            // _invalidateUniqDropDataCacheForTable()'s own JSDoc, which frames
+            // the helper as being for populators that FILL previously-empty
+            // cells — hence the gate: while the column is collapsed nothing is
+            // filled, every row answers "unchanged", and the cache (whose drop
+            // also drops `_colHeaderCountsCache`) is left alone. That gate is
+            // deliberately NOT retrofitted onto the pre-toggle behaviour, where
+            // every pass really does rebuild every cell.
+            if (_cellsChanged) _invalidateUniqDropDataCacheForTable(table);
+
+            // Create-or-refresh this table's own ▶♪/▼♪ header toggle. Runs on
+            // EVERY pass and in both modes — not from the <th>-creation block
+            // above, which runs once and in full mode only, and whose <thead>
+            // is rebuilt from a clone by renderGroupedTable() on every
+            // multi-table render.
+            _initPicardColHeaderToggle(table);
 
             Lib.debug('picard',
                 `initPicardTaggerColumn: ${rewireOnly ? 'rewired' : 'injected'} Picard column ` +
-                `(th-injected=${table.dataset.picardThInjected})`);
+                `(th-injected=${table.dataset.picardThInjected}, ` +
+                `expanded=${_expanded}, cells-changed=${_cellsChanged})`);
         });
+
+        // Page-wide "Show/Hide all Picard" companion, multi-table pages only.
+        // After the per-table loop, so it can aggregate the state of the
+        // per-table toggles it controls.
+        _picardInitGlobalColHdrToggle();
 
         // Register "Picard" as a collapsable column and re-run the collapse
         // pass, but only when some row actually produced more than one button.
@@ -74654,6 +74928,368 @@ a { color: #1565c0; }`;
         Array.from(tables).forEach(table => initCollapsableColumns(table));
     }
 
+
+    /**
+     * Paints one `.mb-picard-col-hdr-btn` for the given state.
+     *
+     * The GLYPH IS NOT SET HERE — it comes from the CSS `::before` rule keyed
+     * on `[aria-pressed]`, so `th.textContent` stays exactly `"Picard"`. See
+     * the `.mb-picard-col-hdr-btn` CSS block for the four consumers that a text
+     * glyph in this `<th>` would silently break. `aria-pressed` is therefore
+     * doing double duty: it is both the accessibility state and the selector
+     * the glyph and the engaged tint hang off, which is also why every
+     * "is this table expanded" read on the BUTTON side goes through it.
+     *
+     * @param   {HTMLElement} btn
+     * @param   {boolean}     expanded
+     * @returns {void}
+     */
+    function _picardUpdateColHdrBtn(btn, expanded) {
+        btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        btn.title = expanded
+            ? 'Hide the ♪ Picard buttons in this table'
+            : 'Show the ♪ Picard buttons in this table';
+        btn.setAttribute('aria-label', expanded
+            ? 'Hide the Picard buttons in this table'
+            : 'Show the Picard buttons in this table');
+    }
+
+    /**
+     * Flips one table's Picard column between collapsed and expanded, mutating
+     * the cells in place.
+     *
+     * ── Why in place, and not via `runFilter()` ──────────────────────────────
+     *
+     * `_msApplyLengthPrecision()` (the ⏱ toggle) HAS to go through
+     * `runFilter()`, because the Length column's rendered TEXT is what sorting,
+     * filtering, highlighting and the colon-alignment finalizers all read. A
+     * Picard cell contributes to none of that: its content is a `<button>` plus
+     * an `<img alt="♪">`, so `getCleanColumnText()` has always been `''` for the
+     * whole column; the `<th>` has no `dataset.colName`, `addColumnFilterRow()`
+     * gives it a bare `<th class="mb-picard-th"></th>` with no input and no
+     * `data-col-idx`, and it is never a sort key. In-place mutation is also
+     * exactly what the existing re-wire path already does on every keystroke.
+     * And `runFilter()` is page-wide, which would defeat the per-table scope
+     * outright.
+     *
+     * ── Both directions mirror onto the master rows ──────────────────────────
+     *
+     * Live rows are clones (`renderGroupedTable()` always clones; so does every
+     * `runFilter()` re-render), so the masters are what the NEXT render starts
+     * from and both directions update them: collapsing empties them, expanding
+     * fills them. Both reuse Part 1's `_buildMasterRowIndex()` + owner-array
+     * sweep, which were extracted for exactly this.
+     *
+     * Be precise about what this buys, because it is easy to over-claim (and a
+     * mutation test that skipped this mirror stayed green on every visible
+     * assertion): it is NOT the last line of defence for correctness.
+     * `_picardApplyToRow()` reconciles every freshly-cloned cell against its
+     * table's state on every pass — a clone never carries `_mbPicardWired`, so
+     * it is always rebuilt — which means the live DOM would end up right either
+     * way. What the mirror buys is that masters and live rows never disagree,
+     * and that a collapsed column's re-renders stop cloning `<ul><li><button>
+     * <img>` subtrees only to discard them a moment later. On a four-thousand-row
+     * table that discarded clone work is a large part of the cost this whole
+     * feature exists to remove, so the mirror is load-bearing for the FEATURE
+     * even though it is not load-bearing for the rendered result.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _picardToggleTable(table) {
+        const _next = !_picardTableExpanded(table);
+        table.dataset.mbPicardExpanded = _next ? '1' : '0';
+
+        const _masterIdx   = _buildMasterRowIndex();
+        const _ownerArrays = new Set();
+        const _seen        = new Set();
+        let _anyMultiRow = false;
+        let _cells = 0;
+
+        /**
+         * Applies the new state to one cell, at most once per cell.
+         *
+         * The dedup is not cosmetic: the owner-array sweep below re-visits every
+         * master row of every array this table feeds, INCLUDING the ones the
+         * loop above already reached through `_masterIdx`, and on a
+         * single-table page's initial render the master row IS the live row
+         * (`renderFinalTable` moves rather than clones), so it would be reached
+         * twice again from the other direction. `_picardApplyCellState()` is
+         * idempotent, so a repeat is harmless but would rebuild the same
+         * `<ul><li><button><img>` a second time — and `_cells` would stop being
+         * a count of cells.
+         *
+         * @param {HTMLTableRowElement}  tr
+         * @param {HTMLTableCellElement} td
+         * @returns {void}
+         */
+        const _apply = (tr, td) => {
+            if (_seen.has(td)) return;
+            _seen.add(td);
+            if (_picardApplyCellState(tr, td, _next) > 1) _anyMultiRow = true;
+            _cells++;
+        };
+
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const _liveTd = tr.querySelector('td.mb-picard-cell');
+            if (_liveTd) {
+                _apply(tr, _liveTd);
+                // Filled (or emptied) in place on a live row, so it is NOT a
+                // stale clone — same contract as `_picardApplyToRow()`'s flag,
+                // and setting it here is what stops the next re-wire pass from
+                // rebuilding every cell this toggle just built.
+                _liveTd._mbPicardWired = true;
+            }
+            const _entry = _masterIdx.get(tr.dataset ? tr.dataset.mbRowIdx : undefined);
+            if (!_entry) return;
+            if (_entry.row !== tr) {
+                const _masterTd = _entry.row.querySelector('td.mb-picard-cell');
+                if (_masterTd) _apply(_entry.row, _masterTd);
+            }
+            _ownerArrays.add(_entry.owner);
+        });
+
+        // The rows the active filter left UNRENDERED have no live counterpart,
+        // so sweep whichever source arrays this table feeds — otherwise
+        // clearing the filter brings back rows in the OLD state. Resolved from
+        // rows actually present, so no group-index assumption is made (merged
+        // discography view breaks that correspondence).
+        _ownerArrays.forEach(arr => arr.forEach(row => {
+            const _td = row.querySelector('td.mb-picard-cell');
+            if (_td) _apply(row, _td);
+        }));
+
+        // While collapsed, `_anyMultiRowPicardCell` is never set by
+        // `initPicardTaggerColumn()` — nothing is built, so nothing can be
+        // multi-row — which means a multi-button cell would arrive with no
+        // per-cell ▶/▼ toggle. Registering on expand is what gives it one.
+        if (_next && _anyMultiRow) _picardRegisterCollapsableColumn([table]);
+
+        // Cell content changed with no row show/hide, which the uniq-dropdown
+        // cache's visible-row-set signature cannot see.
+        _invalidateUniqDropDataCacheForTable(table);
+
+        const _btn = table.querySelector('thead .mb-picard-col-hdr-btn');
+        if (_btn) _picardUpdateColHdrBtn(_btn, _next);
+        _picardSyncGlobalColHdrBtn();
+
+        Lib.debug('picard',
+            `_picardToggleTable: ${_next ? 'expanded' : 'collapsed'} — ` +
+            `${_cells} cell(s) rewritten, multi-row=${_anyMultiRow}`);
+    }
+
+    /**
+     * Handles a click or an Enter/Space keydown anywhere inside a `table.tbl`,
+     * acting only when it originated on a `.mb-picard-col-hdr-btn`.
+     *
+     * Installed once per table by `_picardEnsureHdrDelegate()`. Module-
+     * level (rather than a closure) so both listeners share one reference and
+     * the target table is resolved from the event, never captured.
+     *
+     * @param   {Event} ev
+     * @returns {void}
+     */
+    function _picardHdrDelegateHandler(ev) {
+        const _btn = ev.target.closest ? ev.target.closest('.mb-picard-col-hdr-btn') : null;
+        if (!_btn) return;
+        if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;
+        // preventDefault: Space would otherwise scroll the page.
+        // stopPropagation: the <th> and the document both carry handlers.
+        ev.preventDefault();
+        ev.stopPropagation();
+        const _table = _btn.closest('table.tbl');
+        if (_table) _picardToggleTable(_table);
+    }
+
+    /**
+     * Installs the header-toggle click/keydown delegation on `table`, once.
+     *
+     * ── Why the `<table>` and not the span or the `<thead>` ──────────────────
+     *
+     * `renderGroupedTable()` rebuilds each group's `<thead>` from
+     * `templateHead.cloneNode(true)`, so a span wired with `addEventListener`
+     * can arrive as a live-LOOKING dead clone — and a "wired" MARKER on the
+     * span would be copied by `cloneNode` and would lie. The `<thead>` is not a
+     * safe host either: unlike the `<tbody>`, it IS replaced. The `<table>`
+     * element and this guard have identical lifetimes, so the guard cannot lie.
+     *
+     * Follows `ensureCollapseDelegate()` but deliberately does NOT copy its
+     * latent bug: that function sets `table.dataset.mbCollapseDelegate` BEFORE
+     * its `tbody` null-check, so a table with no tbody is permanently marked
+     * and never gets a listener. Here the guard is set only after
+     * `addEventListener()` has actually run. (Fixing it in
+     * `ensureCollapseDelegate()` itself is a separate change, not folded in
+     * here.)
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _picardEnsureHdrDelegate(table) {
+        if (table.dataset.mbPicardHdrDelegate) return;
+        table.addEventListener('click', _picardHdrDelegateHandler);
+        table.addEventListener('keydown', _picardHdrDelegateHandler);
+        table.dataset.mbPicardHdrDelegate = '1';
+        Lib.debug('picard', '_picardEnsureHdrDelegate: header delegate installed on <table>.');
+    }
+
+    /**
+     * Creates or refreshes the `▶♪`/`▼♪` toggle inside one table's
+     * `<th class="mb-picard-th">`, and makes sure that table carries the
+     * delegation listener the toggle depends on.
+     *
+     * Called from `initPicardTaggerColumn()`'s per-table loop on EVERY pass and
+     * in BOTH modes, following `_artInitCaaColHeaderToggle()`'s "reuse the
+     * existing button if present" shape. It cannot live in the `<th>`-creation
+     * block, which runs once per table and in full mode only, because
+     * `renderGroupedTable()` replaces the `<thead>` on every multi-table
+     * render.
+     *
+     * A bare `<span role="button">`, not a `<button>`: the navigation guard's
+     * merge-form branch already has to exempt `.mb-picard-btn` from an
+     * `e.target.closest('button')` check, and a span sidesteps that entirely.
+     * It is inserted as the `<th>`'s FIRST child, ahead of the `"Picard"` text
+     * node — this header has no `.mb-col-hdr-flex` to prepend into (see
+     * `_cleanColHeaderText()`).
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _initPicardColHeaderToggle(table) {
+        const _th = table.querySelector('thead tr:first-child th.mb-picard-th');
+        if (!_th) return;
+        let _btn = _th.querySelector('.mb-picard-col-hdr-btn');
+        if (!_btn) {
+            _btn = document.createElement('span');
+            _btn.className = 'mb-picard-col-hdr-btn';
+            _btn.setAttribute('role', 'button');
+            _btn.tabIndex = 0;
+            _th.insertBefore(_btn, _th.firstChild);
+        }
+        _picardEnsureHdrDelegate(table);
+        _picardUpdateColHdrBtn(_btn, _picardTableExpanded(table));
+    }
+
+    /** Fixed id of the page-wide Picard column toggle — its own idempotency key. */
+    const _PICARD_COL_ALL_BTN_ID = 'mb-picard-col-hdr-toggle-all-btn';
+
+    /**
+     * All per-table Picard header toggles currently in the document.
+     *
+     * @returns {HTMLElement[]}
+     */
+    function _picardColHdrBtns() {
+        return Array.from(document.querySelectorAll('thead .mb-picard-col-hdr-btn'));
+    }
+
+    /**
+     * Refreshes the page-wide "Show/Hide all Picard" button's label, tooltip
+     * and visibility from the aggregate state of the per-table toggles.
+     *
+     * Safe to call when the button does not exist (single-table pages, or
+     * before the first render) — it simply returns.
+     *
+     * @returns {void}
+     */
+    function _picardSyncGlobalColHdrBtn() {
+        const _b = document.getElementById(_PICARD_COL_ALL_BTN_ID);
+        if (!_b) return;
+        const _all = _picardColHdrBtns();
+        if (!_all.length) { _b.style.display = 'none'; return; }
+        const _anyCollapsed = _all.some(x => x.getAttribute('aria-pressed') !== 'true');
+        _b.dataset.mbPicardColAllExpanded = _anyCollapsed ? 'false' : 'true';
+        const _label = _b.querySelector('.mb-picard-col-hdr-all-label');
+        if (_label) {
+            _label.textContent = _anyCollapsed
+                ? '▶♪ Show all Picard'
+                : '▼♪ Hide all Picard';
+        }
+        _b.title = _anyCollapsed
+            ? 'Build the ♪ Picard buttons in every sub-table section'
+            : 'Empty the Picard column in every sub-table section';
+        _b.style.display = 'inline-flex';
+    }
+
+    /**
+     * Creates or updates the page-wide "Show/Hide all Picard" button in the
+     * h2 filter bar's `.mb-global-actions-container`, modelled on
+     * `_artInitGlobalCaaColHdrToggle()`.
+     *
+     * MULTI-TABLE ONLY, exactly as the CAA/EAA globals are: a single-table page
+     * has one Picard header, so its own toggle already IS the page-wide
+     * control.
+     *
+     * ── Placement ────────────────────────────────────────────────────────────
+     *
+     * The CAA/EAA globals insert with `globalCollapseBtn.after(btn)`, i.e.
+     * immediately after `#mb-col-collapse-all-btn`. Because
+     * `initPicardTaggerColumn()` runs AFTER `renderGroupedTable()`'s artwork
+     * tail, a naive `.after()` here would wedge this button BETWEEN
+     * collapse-all and the CAA one. So it anchors on the LAST existing
+     * `[data-mb-caa-col-all-ctx]` button when there is one, giving a
+     * deterministic reading order — collapse-all, CAA-all, EAA-all, Picard-all
+     * — whichever pass happened to run first.
+     *
+     * Idempotent via the fixed `_PICARD_COL_ALL_BTN_ID`.
+     *
+     * @returns {void}
+     */
+    function _picardInitGlobalColHdrToggle() {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return;
+
+        if (_picardColHdrBtns().length === 0) {
+            // No Picard column anywhere — hide any stale button and bail.
+            const _stale = document.getElementById(_PICARD_COL_ALL_BTN_ID);
+            if (_stale) _stale.style.display = 'none';
+            return;
+        }
+
+        const _globalCollapseBtn = document.getElementById('mb-col-collapse-all-btn');
+        if (!_globalCollapseBtn) return;
+
+        let _btn = document.getElementById(_PICARD_COL_ALL_BTN_ID);
+        if (!_btn) {
+            _btn = document.createElement('button');
+            _btn.id   = _PICARD_COL_ALL_BTN_ID;
+            _btn.type = 'button';
+            _btn.style.cssText =
+                'font-size:0.8em; padding:2px 4px 2px 3px; border-radius:4px;' +
+                ' background:rgb(240,240,240); border:1px solid rgb(204,204,204);' +
+                ' cursor:pointer; vertical-align:middle; display:none;' +
+                ' align-items:center; gap:4px;' +
+                ' transition:background-color 0.2s, color 0.2s;';
+
+            const _labelSpan = document.createElement('span');
+            _labelSpan.className = 'mb-picard-col-hdr-all-label';
+            _btn.appendChild(_labelSpan);
+
+            _btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const _hdrBtns = _picardColHdrBtns();
+                if (!_hdrBtns.length) return;
+                // Expand if any is currently collapsed, else collapse all.
+                const _nowExpanding = _hdrBtns.some(b => b.getAttribute('aria-pressed') !== 'true');
+                _hdrBtns.forEach(b => {
+                    const _isExpanded = b.getAttribute('aria-pressed') === 'true';
+                    // .click() on a <span> dispatches a bubbling click, which is
+                    // what the per-table delegate on the <table> is listening
+                    // for — so this drives the real toggle rather than a copy of
+                    // it, exactly as the CAA global does.
+                    if (_isExpanded !== _nowExpanding) b.click();
+                });
+                _picardSyncGlobalColHdrBtn();
+                Lib.debug('picard',
+                    `_picardInitGlobalColHdrToggle: ${_nowExpanding ? 'expanded' : 'collapsed'} ` +
+                    `all ${_hdrBtns.length} Picard column(s)`);
+            });
+
+            const _caaAllBtns = document.querySelectorAll('[data-mb-caa-col-all-ctx]');
+            const _anchor = _caaAllBtns.length ? _caaAllBtns[_caaAllBtns.length - 1] : _globalCollapseBtn;
+            _anchor.after(_btn);
+            Lib.debug('picard', '_picardInitGlobalColHdrToggle: created page-wide Picard toggle btn');
+        }
+
+        _picardSyncGlobalColHdrBtn();
+    }
     // ── end Picard Tagger feature ─────────────────────────────────────────────
 
     /**
@@ -74843,6 +75479,25 @@ a { color: #1565c0; }`;
              */
             msPendingLengthLookups() {
                 return _msCollectRecordingMbids().length;
+            },
+
+            /**
+             * How many times `_picardExtractRowEntities()` has run since the
+             * page loaded — i.e. how many per-row "what can this row tag"
+             * subtree walks the Picard column has paid for.
+             *
+             * Exposed because the collapsed column's whole purpose is to NOT
+             * do that work, and nothing in the DOM can show it: an empty
+             * Picard cell is byte-identical whether it was skipped or whether
+             * the row simply has no taggable release (1680 of the 1688 cells
+             * in `tests/snapshots/notes-received/rendered.html` are the
+             * latter). A test reads this before and after a filter keystroke
+             * to prove the difference.
+             *
+             * @returns {number}
+             */
+            picardEntityScans() {
+                return _picardEntityScans;
             },
 
             /**

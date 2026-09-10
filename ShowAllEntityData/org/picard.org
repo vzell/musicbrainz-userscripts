@@ -1,7 +1,8 @@
 * picard
 
-Session notes for the Picard-column work. Part 1 shipped in *9.99.1056*; Part 2
-is the open item and its full plan is below.
+Session notes for the Picard-column work. Part 1 shipped in *9.99.1056* and
+Part 2 in *9.99.1057*; both are done, and Part 2's full plan is kept below as
+the design record — see the deltas under its own heading before following it.
 
 The three questions this started from:
 
@@ -21,9 +22,10 @@ The three questions this started from:
 
 Not implemented, and no work planned. The findings are recorded where they
 belong rather than here: ~PERFORMANCE.org~ Step 32 has the ordering decision
-against Step 23, and Step 32's own "A NARROWER design was accepted" subsection
-plus Step 23's "Three corrections found while fixing the Picard multi-table
-clone bug" carry the rest — the roster is 7 functions not 4,
+against Step 23, and Step 32's own "What was accepted and built" subsection
+(it was titled "A NARROWER design was accepted" while it was still an
+addendum) plus Step 23's "Three corrections found while fixing the Picard
+multi-table clone bug" carry the rest — the roster is 7 functions not 4,
 ~initAnnotationCompareRadios()~ cannot be fixed by delegation at all,
 ~_cdtocInitTracklistToggles()~ yields nothing, and the real prize is the
 ~_colHeaderCountsCache~ drop that the current perf harness structurally cannot
@@ -41,7 +43,64 @@ The one-line version: ~renderFinalTable~ MOVES the rows it is handed while
 received it. That asymmetry is now written up in ~CLAUDE.md~'s "Common
 pitfalls".
 
-** TODO — question 3: per-sub-table ▶♪/▼♪ header toggle
+** DONE — question 3: per-sub-table ▶♪/▼♪ header toggle
+
+Built on branch ~picard-column-collapse-toggle~, shipping as *9.99.1057*.
+The plan below is kept as the design record; read it with the following
+deltas, and read ~DEBUG-NOTES.md~'s *## 2026-09-10 — Picard column: on-demand
+▶♪/▼♪ header toggle* entry for the full account.
+
+*Where the plan was wrong.* The master-row mirroring is NOT load-bearing for
+correctness. "If collapse only emptied the live cells, the next re-render would
+clone still-populated masters and the column would silently re-appear while the
+header read collapsed" — measured by mutation, and it does not happen:
+~_picardApplyToRow()~ reconciles every freshly-cloned cell against its table's
+state on every pass, so the live DOM ends up right either way. The mirror is
+kept for what it does buy (masters and live rows never disagree; a collapsed
+column stops cloning subtrees it will discard, which on a large table is a
+large part of the cost this feature removes), and its JSDoc now says that
+instead.
+
+*What the plan did not anticipate.* ~_cleanColHeaderText()~'s step-3 strip
+selector was missing ~.mb-col-collapse-hdr-btn~, so once the Picard column had
+multi-row cells that header resolved as ~"Picard▶3▤"~ —
+~initCollapsableColumns()~ appends its own button DIRECTLY to this ~<th>~ (the
+no-flex fallback branch, and Picard's is the only such header). Latent, not
+live, and fixed in the same pass. Found by the mutation run, from a completely
+unrelated direction.
+
+*Two plan items deliberately not done, with reasons.* The three snapshot
+baselines were NOT re-captured — it needs a logged-in session
+(~npm run auth:login~) and the saved one had expired; the exact expected
+numbers are recorded in ~tests/snapshots/registry.org~'s "Expected drift"
+instead. And nothing was added to ~tests/MEASUREMENTS.org~, because nothing was
+timed: the perf harness's only instrumented page is ~artist-events~, which has
+no ~/release/~ links and therefore no Picard column at all, so the measurement
+~PERFORMANCE.org~ Step 32 keeps prescribing still cannot be taken without an
+instrumented release-listing page.
+
+*One plan URL was simply wrong.* The "Verification" section names
+https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f as the
+single-table page to check. It *has no Picard column at all* — verified against
+the live page — because the guard asks whether a table's tbody links a
+~/release/<mbid>~ and a release TRACKLIST's rows link RECORDINGS. Correct and
+pre-existing; the plan's mention of that URL was about the ⏱ Length toggle's
+precedent, not about Picard. ~series-releases~
+(https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908) is the
+single-table pageType that does carry the column, and it is what
+~tests/live/picard-header-toggle.spec.js~ uses.
+
+*One thing the plan did not ask for and got anyway.* That live spec —
+~@extended~, 2 tests, one per table mode, registered in
+~tests/live/registry.org~. The plan's verification step said "then manually
+on …", and a live spec is the reviewable, re-runnable form of exactly that.
+Both tests pass.
+
+*Everything else in the plan below was implemented as written*, including the
+~__saTest~ hook it only suggested considering (~picardEntityScans()~), which
+turned out to be the only way to pin the gate at all.
+
+---
 
 Own branch, started fresh after 9.99.1056. Own
 ~ShowAllEntityData_CHANGELOG.wip.json~ at ~WIP.1~; do NOT touch ~// @version~
@@ -86,8 +145,11 @@ unchanged: off means no column, no cells, no button.
 
 *** Why this is NOT what PERFORMANCE.org Step 32 deferred
 
-Read Step 32's "A NARROWER design was accepted" subsection first — it is the
-authority and it already carries the argument. Short form: Step 32 rejected
+Read Step 32's "What was accepted and built: defer the CELL CONTENT, never
+the column" subsection first — it is the authority and it already carries the
+argument. (It was titled "A NARROWER design was accepted" while it was still
+an addendum; folding it into the body was itself one of this plan's own docs
+items.) Short form: Step 32 rejected
 inserting/removing a COLUMN at runtime because the column count is what every
 index churns off. Here the ~<th>~ and every ~<td>~ always exist and only the
 cell CONTENT is deferred, so no index moves and
@@ -378,7 +440,7 @@ a user actually sees.
   ~/release/<mbid>~ link") and is explicitly page-type-agnostic.
 - ~PERFORMANCE.org~: flip Step 32's keyword when this lands, and fold its
   "A NARROWER design was accepted" subsection into the body rather than leaving
-  it as an addendum. Step 23's ~initPicardTaggerColumn(true)~ row and its "on a
+  it as an addendum (done — it is now "What was accepted and built"). Step 23's ~initPicardTaggerColumn(true)~ row and its "on a
   release-listing page the first two both fire on every keystroke" claim both
   need "…unless the column is collapsed, which is now the default". Record
   whether the cache-invalidation gate above was taken.
@@ -416,3 +478,36 @@ backed out rather than encoding the bug into a test. Likely shape:
 ~mergeContinuationRows~ runs during row assembly against the ~DOMParser~
 document while ~allRows~ keeps the unmerged rows. Deserves its own session —
 see ~DEBUG-NOTES.md~'s 2026-09-10 entry for the measurement.
+
+
+* What shipped
+
+The feature. sa_picard_tagger_initially_collapsed (default on), a per-table ▶♪/▼♪ toggle in each th.mb-picard-th, and a page-wide #mb-picard-col-hdr-toggle-all-btn on multi-table pages. Collapsed, the <th> and every <td> still exist — only the content defers, so no column index moves. _picardApplyCellState() is the single gate, in front of _picardExtractRowEntities(). State on <table>.dataset.mbPicardExpanded; listener delegated on the <table> with the guard set after addEventListener (not copying ensureCollapseDelegate's latent bug — that fix is still open, not folded in). The uniq-dropdown cache drop is now gated on a row having actually changed.
+
+Where the plan was wrong, and where I went beyond it
+
+Three findings I want to flag rather than bury:
+
+1. The master-row mirroring is not load-bearing for correctness. The plan said collapse-without-mirroring would make the column silently re-appear. Mutation-tested it — it doesn't: _picardApplyToRow() reconciles every clone against the table's state each pass, and every visible assertion stayed green. I kept the mirror (it stops a collapsed column cloning subtrees it discards, which is a real part of the cost) but rewrote its JSDoc to claim only that.
+2. A real latent defect fell out of the mutation run. _cleanColHeaderText()'s step-3 strip was missing .mb-col-collapse-hdr-btn, so once the Picard column had multi-row cells that header resolved as "Picard▶3▤" — initCollapsableColumns() appends its button directly to that <th> (the no-flex fallback; Picard's is the only such header). Latent, not live. Fixed, with a changelog entry.
+3. The plan's single-table verification URL has no Picard column at all. release/3ec14d03-… is a release tracklist; its rows link recordings, and the guard asks for /release/<mbid>. Verified against the live page. I used series-releases instead, and documented the tracklist case in HELP — it was never written down.
+
+I also added tests/live/picard-header-toggle.spec.js (@extended, 2 tests, one per table mode, registered in tests/live/registry.org) as the reviewable form of the plan's "then verify manually". Both pass against real pages.
+
+Verification
+
+- node --check clean; 155/155 fixture tests, three consecutive clean runs.
+- Mutation-checked: expanded = true in _picardApplyCellState() fails the new default-state test on the zero-buttons assertion.
+- Live spec: 2/2 against real musicbrainz.org.
+- One spec flake I introduced and fixed in the writing (a filter-clear settle that timed out 1 run in 3); 5 clean runs after. The same pattern still stands pre-existing at line ~164 of that file — noted, not touched.
+- release-tracks-ms-length-overflow.spec.js:174 flakes ~1 full-suite run in 3. Pre-existing — confirmed in a clean main worktree, 1 failure across 6 runs there.
+
+Two things I did not do
+
+- Snapshot baselines not re-captured. All three carrying Picard markup will change (releasegroup-releases 7→0 buttons, series-releases 12→0, notes-received 8→0, plus toggle spans and a narrower column). It needs npm run auth:login — the saved session expired 2026-09-07 and notes-received is user-scoped. I deliberately didn't dodge it by seeding the setting off in tests/pagetypes.json. Exact expected numbers are in tests/snapshots/registry.org's "Expected drift"; nothing in npm test reads those files.
+- Nothing timed. PERFORMANCE.org Step 32's prescribed measurement still can't be taken: the perf harness's only instrumented page is artist-events, which has no /release/ links and so no Picard column. The scan counts in the specs are correctness assertions about the gate, not a measure of its worth. Nothing added to MEASUREMENTS.org.
+
+Step 32 stays TODO in PERFORMANCE.org per that file's own rule (the keyword tracks main) — the flip belongs with the version bump at merge, along with folding ShowAllEntityData_CHANGELOG.wip.json into 9.99.1057.
+
+Want me to commit the branch and push it, then take the merge (fold WIP → 9.99.1057, flip Step 32, delete the branch)?
+
