@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse`: the duplicate-row fix from the previous release could leak a skipped duplicate's \"Added N years ago...\" text onto an unrelated, earlier row's Title cell (via unbounded appendChild), instead of dropping it along with the duplicate row it belonged to — on a real fetch, one row accumulated over 44,000 characters this way, making its column render artificially wide."
+        ]
+      }
+    ]
+  }
+]

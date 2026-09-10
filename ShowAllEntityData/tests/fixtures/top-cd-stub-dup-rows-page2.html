@@ -18,25 +18,38 @@
                     constantly-changing lookup count with no stable secondary
                     sort key, so a page=2 fetch a few seconds after page=1
                     can re-return entries page=1 already returned (measured:
-                    ~90% overlap on a real 2-page fetch). Row B and Row C
-                    here are the SAME hrefs as page1's, deliberately.
+                    ~90% overlap on a real 2-page fetch). Row A, Row B and
+                    Row C here are the SAME hrefs as page1's, deliberately —
+                    THREE consecutive duplicates, so a lastupdate-merge bug
+                    that targets "whichever row is currently last in
+                    allRows" cannot self-heal by accidentally landing back on
+                    the right row (a 1-duplicate run could).
                 -->
                 <tr class="odd">
+                    <td><a href="/cdstub/AAAA1111"><bdi>Row A</bdi></a></td>
+                    <td>Artist A</td>
+                    <td>30</td>
+                    <td>0</td>
+                </tr>
+                <tr class="odd">
+                    <td class="lastupdate" colspan="4">Added 1 year ago, last modified 1 year ago</td>
+                </tr>
+                <tr class="even">
                     <td><a href="/cdstub/BBBB2222"><bdi>Row B</bdi></a></td>
                     <td>Artist B</td>
                     <td>20</td>
                     <td>0</td>
                 </tr>
-                <tr class="odd">
+                <tr class="even">
                     <td class="lastupdate" colspan="4">Added 2 years ago, last modified 2 years ago</td>
                 </tr>
-                <tr class="even">
+                <tr class="odd">
                     <td><a href="/cdstub/CCCC3333"><bdi>Row C</bdi></a></td>
                     <td>Artist C</td>
                     <td>10</td>
                     <td>0</td>
                 </tr>
-                <tr class="even">
+                <tr class="odd">
                     <td class="lastupdate" colspan="4">Added 3 years ago, last modified 3 years ago</td>
                 </tr>
                 <tr class="odd">
