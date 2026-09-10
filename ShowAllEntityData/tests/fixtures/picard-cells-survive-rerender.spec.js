@@ -40,7 +40,8 @@
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadFromDiskFixture } = require('../support/diskFixture');
-const { waitForFilterSettled, waitForSortSettled } = require('../support/filterSortAssertions');
+const { waitForFilterSettled, waitForSortSettled, waitForActualRowCount } =
+    require('../support/filterSortAssertions');
 const { clickMasterToggleAndExpandAll, collectPageErrors } = require('../support/liveAssertions');
 
 // "Tougher Than the Rest" — 7 releases across 2 groups (Official 6, Promotion 1).
@@ -49,6 +50,11 @@ const { clickMasterToggleAndExpandAll, collectPageErrors } = require('../support
 const RG_URL = 'https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c';
 const PAGE_SHELL = path.join(__dirname, '..', 'snapshots', 'releasegroup-releases', 'raw.html');
 const DISK_FIXTURE = path.join(__dirname, 'saved-data', 'releasegroup-releases.json.gz');
+
+// Rows across both sub-tables (6 + 1). Every action in this spec is chosen to
+// keep all of them, so this doubles as the "the render has actually finished"
+// signal — see waitForActualRowCount()'s own JSDoc for why one is needed.
+const TOTAL_ROWS = 7;
 
 /**
  * Per-table Picard structure, read straight from the rendered DOM.
@@ -137,12 +143,19 @@ test.describe('Picard column survives multi-table re-renders', () => {
         // not the filtering.
         const input = page.locator('#mb-global-filter-input');
         await waitForFilterSettled(page, () => input.pressSequentially('e'));
+        // Second completion signal, and it is not optional: filterSortAssertions.js
+        // documents that #mb-filter-status-display reaches its final text BEFORE
+        // the tbody insertion loop has caught up, so a single snapshot read here
+        // intermittently sees a partly-repopulated table. Observed as exactly that
+        // flake — green in isolation, one failure under full-suite parallel load.
+        await waitForActualRowCount(page, TOTAL_ROWS);
 
         const filtered = await readPicardShape(page);
         expect(filtered.map((t) => t.rows), 'filter kept every row').toEqual([6, 1]);
         expectPicardIntact(filtered, 'after global filter');
 
         await waitForFilterSettled(page, () => input.fill(''));
+        await waitForActualRowCount(page, TOTAL_ROWS);
         expectPicardIntact(await readPicardShape(page), 'after clearing the filter');
         expect(pageErrors).toEqual([]);
     });
@@ -176,6 +189,8 @@ test.describe('Picard column survives multi-table re-renders', () => {
             subTableHeading: before[0].heading,
             timeout: 60000,
         });
+
+        await waitForActualRowCount(page, TOTAL_ROWS);
 
         const after = await readPicardShape(page);
         // Compared against each sub-table's OWN pre-sort numbers: the scoped

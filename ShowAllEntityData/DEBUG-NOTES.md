@@ -8531,6 +8531,20 @@ musicbrainz.org's own CSS, so it is taller than the live page
 renders its sub-sections COLLAPSED, so the sort icon is a 0×0 element until
 `clickMasterToggleAndExpandAll()` has run.
 
+A third one showed up only at merge time, and it is the already-documented
+one: `waitForFilterSettled()`/`waitForSortSettled()` watch a status-text
+element that reaches its final value BEFORE the tbody insertion loop has
+caught up (see `waitForActualRowCount()`'s own JSDoc, which records real
+`tbody tr` counts of 2500-3500 immediately after the filter settle resolved on
+a 4174-row page). A single snapshot read straight after the settle therefore
+sees a partly-repopulated table. It passed in isolation every time and failed
+once in a full-suite parallel run — the worst shape of flake. Fixed by adding
+`waitForActualRowCount(page, 7)` as the second completion signal after every
+filter and sort, which is the established idiom rather than a new mechanism.
+Re-verified against the mutation afterwards, so the extra wait did not weaken
+the assertion: both tests still fail with `Expected: 6, Received: 0`. Three
+consecutive clean full-suite runs after the fix.
+
 **Separately found, NOT fixed, not in scope.** On `search?type=recording` the
 continuation-row merge does **not** survive a filter re-render: the table
 renders 3 merged rows and a global-filter keystroke brings back all 6 source
