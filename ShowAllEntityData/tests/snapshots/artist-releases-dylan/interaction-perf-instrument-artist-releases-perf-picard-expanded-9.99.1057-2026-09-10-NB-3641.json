@@ -1,0 +1,62 @@
+{
+  "pageType": "artist-releases-dylan",
+  "url": "https://musicbrainz.org/artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0",
+  "picardArm": "expanded",
+  "seedGmValues": {
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false,
+    "sa_enable_picard_tagger": true,
+    "sa_picard_tagger_initially_collapsed": false
+  },
+  "branch": "instrument-artist-releases-perf-picard-expanded",
+  "gitBranch": "instrument-artist-releases-perf",
+  "capturedAt": "2026-09-10",
+  "startedAt": "2026-09-10T11:22:47.232Z",
+  "finishedAt": "2026-09-10T11:31:40.952Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 32.7,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 13.7
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1057+2026-09-10",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1382,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 1462,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 3376,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 40928,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 514,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 3229,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 4440,
+      "samples": 5
+    }
+  }
+}

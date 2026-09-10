@@ -42,6 +42,25 @@ const FILTER_VALUE_COUNT = 158;
 
 const SORT_COLUMN = 'Date';
 
+/**
+ * Five DISTINCT filter values, one per sample, for the global- and
+ * column-filter metrics.
+ *
+ * Moved here from `capture-interaction-perf.js`, which used to inline them,
+ * when a second instrumented pageType arrived — the harness now builds its arm
+ * config from whichever descriptor `--pageType=` selects, so a perf-only
+ * constant has to live in the descriptor like every other one. The values are
+ * unchanged, so arms captured before and after that refactor remain comparable.
+ *
+ * A different, never-before-typed value each sample is what stops
+ * `_filterResultCache` hits from skewing the comparison. That cache is the
+ * filter pipeline's own row-match memo — unrelated to, and untouched by, any
+ * PERFORMANCE.org step — so it has to be defeated identically on every arm.
+ * Five real country values from this fixture's own data, the first matching the
+ * correctness spec's canonical FILTER_VALUE.
+ */
+const PERF_FILTER_VALUES = [FILTER_VALUE, 'Germany', 'Canada', 'Spain', 'Italy'];
+
 const UNIQ_DROP_COLUMN = 'Location';
 // Total multi-row (>=2 list items) Location cells across the whole table —
 // used by the cache-invalidation correctness test.
@@ -87,6 +106,7 @@ module.exports = {
     FILTER_VALUE,
     FILTER_VALUE_COUNT,
     SORT_COLUMN,
+    PERF_FILTER_VALUES,
     UNIQ_DROP_COLUMN,
     UNIQ_DROP_COLLAPSABLE_CELL_COUNT,
     UNIQ_COUNT_COLUMN,

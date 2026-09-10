@@ -355,6 +355,116 @@ and does not show:
   workday), not a substitute for arm E, which stays specifically about
   =petri='s own 18-day history.
 
+* Interaction latency — =artist-releases-dylan= (the Picard arms)
+
+| pageType              | tableMode | page title | URL                                                          |
+|-----------------------+-----------+------------+--------------------------------------------------------------|
+| artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0    |
+
+2301 rows x 21 columns, loaded from the committed
+=tests/fixtures/saved-data/artist-releases-dylan.json.gz= disk fixture. Median
+of 5, fresh page per sample. Produced by =node
+tests/support/capture-interaction-perf.js --pageType=artist-releases-dylan
+--arm=<absent|collapsed|expanded>=.
+
+*Why a second instrumented pageType exists at all.* =artist-events= contains no
+=/release/<mbid>= link anywhere, so =initPicardTaggerColumn()= skips every one
+of its tables and the Picard column does not exist there. PERFORMANCE.org Steps
+23 and 32 are both about that column, so neither was measurable on the only
+instrumented page — a fact those steps had recorded as an obstacle for weeks.
+This page is 55% of =artist-events='s row count with a comparable column count,
+and at 2301 rows it stays under =sa_render_threshold= (5000), so it never pops
+=showRenderDecisionDialog()= — the one blocking dialog
+=tests/support/customDialog.js= cannot clear.
+
+*The three arms differ ONLY in Picard settings*, verified from each JSON's own
+recorded =seedGmValues=:
+
+| Arm         | Seeds beyond CAA/Relationships off                                                | What it is                                          |
+|-------------+-----------------------------------------------------------------------------------+-----------------------------------------------------|
+| =absent=    | =sa_enable_picard_tagger: false=                                                  | no column at all — not even a =<td>= in the walks   |
+| =collapsed= | =..._tagger: true=, =..._initially_collapsed: true=                               | the shipped 9.99.1057 default: column walked, cells empty |
+| =expanded=  | =..._tagger: true=, =..._initially_collapsed: false=                              | the pre-9.99.1057 behaviour: every ♪ built at render |
+
+** Results
+
+All times in ms. Times are UTC and mark when the run STARTED.
+
+| Date       | Time (UTC) | Host      |    Script | Arm         | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+-----------+-----------+-------------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-09-10 |      11:05 | =NB-3641= | 9.99.1057 | =absent=    |   1106 |   1353 | 2785 |     35587 |       446 |     3002 |        3497 |
+| 2026-09-10 |      11:14 | =NB-3641= | 9.99.1057 | =collapsed= |   1115 |   1355 | 2925 |     38381 |       489 |     3027 |        3518 |
+| 2026-09-10 |      11:22 | =NB-3641= | 9.99.1057 | =expanded=  |   1382 |   1462 | 3376 |     40928 |       514 |     3229 |        4440 |
+
+One session, one host, ~9 minutes apart, host conditions identical across all
+three (=uptimeHours= 32.4/32.5/32.7, =claudeResident= =count: 1= with
+=oldestSessionHours= 13.5/13.6/13.7). So the RATIOS below are sound; the
+absolutes are not comparable to anything in the =artist-events= section above —
+different page, different rows, and =NB-3641= runs roughly 1.5-1.9x faster than
+=petri= on identical scripts (see "Bisect" below).
+
+** Ratios, and what each one answers
+
+| Metric                | coll/abs | exp/coll | saved by collapsing |
+|-----------------------+----------+----------+---------------------|
+| =globalFilter=        |    1.01x |    1.24x |                 19% |
+| =columnFilter=        |    1.00x |    1.08x |                  7% |
+| =sort=                |    1.05x |    1.15x |                 13% |
+| =uniqDropCold=        |    1.08x |    1.07x |                  6% |
+| =uniqDropWarm=        |    1.10x |    1.05x |                  5% |
+| =headerCountsInitial= |    1.01x |    1.07x |                  6% |
+| =headerCountsRestore= |    1.01x |    1.26x |                 21% |
+
+*=collapsed= vs =absent= is Step 32's stated, deliberately-unfixed RESIDUE* —
+"one extra column in five O(rows x columns) walks, ~5% on a 21-column page". It
+measures 1.00-1.10x, and the two filter metrics are a dead heat at 1.00-1.01x.
+That is the number that would only move by removing the COLUMN, which Step 32's
+first half rejects because the column count is what every index churns off.
+
+*=expanded= vs =collapsed= is exactly what Step 32 BANKED*, and it is the answer
+to the question that section had prescribed and never run: collapsing the column
+saves *19% of a global-filter keystroke*, *13% of a sort*, and *21% of a
+header-count restore* on this page.
+
+*=headerCountsRestore= at 1.26x is Step 23's own prediction, arriving from the
+other side.* That step expected fixing the Picard rewire to "restore Step 3's
+measured -27 to -30% on =headerCountsRestore= for every release-listing
+pageType, where today it never applies at all". Measured here as its mirror
+image: the =expanded= arm, which still drops =_colHeaderCountsCache= on every
+pass, pays 4440 ms against =collapsed='s 3518 — and =collapsed= is within 1.01x
+of =absent=, i.e. the cache survives entirely. The gate added in 9.99.1057
+(=initPicardTaggerColumn= invalidating only when a row actually changed) is what
+banks it, for the default configuration. Step 23's remaining share is the
+=expanded= column, which delegation would remove.
+
+*=uniqDropCold= is the largest absolute (35-41 s) and the least Picard-sensitive*
+— 1.07x between the two arms that differ in cell content. It is dominated by
+Step 4's own five full =tbody.rows= passes, so Picard is a small part of it and
+this metric is not where the Picard work should be judged.
+
+*These are SINGLE-PASS filter numbers*, per the standing note in the
+=artist-events= section: =pressSequentially= with no per-character delay lands
+inside one 300 ms debounce, so exactly one filter pass is timed. The
+repeated-pass behaviour PERFORMANCE.org's "Findings: the per-keystroke filter
+cost" section is about is not what these rows observe.
+
+** The harness was broken for this whole period, which is the other reason nothing was measured
+
+=capture-interaction-perf.js= referenced =sanitizeForFilename= without importing
+it. The symbol moved into =runMetadata.js= in =fcae7a2= (2026-09-09) and this
+file's import list missed it. It is used on the LAST line of the run — building
+the output filename — so from that commit until 9.99.1057 *every run measured
+all seven metrics and then died with a =ReferenceError=, writing nothing.* Three
+arms of this very comparison were lost to it before it was spotted.
+
+So PERFORMANCE.org Step 32's standing "still not measured" had two causes, not
+one: the structural one it recorded (=artist-events= has no Picard column) and
+this, which it did not. Fixed in the same change, along with a =--samples=N=
+flag whose only purpose is to exercise the whole path — file write included — in
+about a minute before committing to a 3x8-minute run.
+
+Committed as =tests/snapshots/artist-releases-dylan/interaction-perf-*.json=.
+
 * Bisect: the 9.99.1045 -> 9.99.1048 gap
 
 *Question*: is =main= genuinely ~1.5-2x slower at 9.99.1048 than at 9.99.1045,

@@ -113,6 +113,42 @@ const FIXTURES = [
         seedGmValues: { sa_enable_caa_pics: false },
         renderTimeout: 300000,
     },
+    {
+        // Bob Dylan's own releases tab — 2301 rows across 24 native MB pages,
+        // 22 columns, single-table. The SECOND interaction-perf arm, and the
+        // first one that HAS a Picard column: `artist-events` has no
+        // /release/<mbid> links anywhere, so PERFORMANCE.org Steps 23 and 32
+        // are both structurally invisible to the harness without a page like
+        // this one. See tests/support/dylanArtistReleasesFixture.js.
+        //
+        // Why Dylan and not Springsteen, whose own releases tab is already in
+        // the local-only list below: 8125 rows / 82 pages overshoots — it
+        // would commit a multi-MB blob (the very thing `local: true` exists to
+        // avoid) and, more importantly, crosses `sa_render_threshold` (5000),
+        // popping showRenderDecisionDialog() — the one blocking dialog
+        // tests/support/customDialog.js CANNOT clear, since its buttons are
+        // Save/Render/Cancel rather than OK/Cancel. At 2301 rows this page
+        // never reaches that gate. Full sizing in
+        // scripts/probe-pagetype-row-count.js's commit message.
+        //
+        // Why not a Springsteen-connected artist, which
+        // PAGETYPES-TESTING-REFERENCE.org's identifier criteria would prefer:
+        // measured, none of them is remotely big enough — Patti Scialfa 6,
+        // Clarence Clemons 15, Little Steven 50, Southside Johnny 71, Nils
+        // Lofgren 163. The 1500-4000 band is only reachable via an unconnected
+        // peer, so this is a deliberate, recorded deviation from that plan.
+        //
+        // CAA and Relationships forced off for the same reason every other
+        // multi-thousand-row capture here does it: a real, unstubbed CAA queue
+        // or a WS/2 relationships fetch across 2301 rows does not finish in a
+        // practical capture window. Note this ALSO has to hold at measurement
+        // time, not just capture time — see the descriptor's SEED_GM_VALUES.
+        pageType: 'artist-releases-dylan',
+        url: 'https://musicbrainz.org/artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0',
+        showAllButtonSelector: 'button[data-label="🧮 Artist releases"]',
+        seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
+        renderTimeout: 1800000, // 30 min — 24 pages
+    },
     // ── Large dogfooding captures (local: true — see this file's own JSDoc) ──
     // All anchored on Bruce Springsteen's own artist page. CAA/relationships
     // forced off wherever the pageType's features carry addCAA/injectedColumns

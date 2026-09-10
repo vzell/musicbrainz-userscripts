@@ -8719,3 +8719,125 @@ no Picard column at all. Sizing this needs an instrumented release-listing page
 first. Nothing was added to `tests/MEASUREMENTS.org` because nothing was
 timed; the scan COUNTS in the two specs are correctness assertions about the
 gate, not a measurement of what the gate is worth.
+
+## 2026-09-10 — instrumented a release-listing perf arm; found the perf harness had been dead for a day (branch instrument-artist-releases-perf)
+
+Follow-up to the Picard Part 2 entry above. `PERFORMANCE.org` Steps 23 and 32
+were both about the Picard column, and the interaction-perf harness had exactly
+one instrumented page — `artist-events` — which contains no `/release/<mbid>`
+link anywhere and therefore never gets that column. So neither step was
+measurable, which both of them recorded as an obstacle without acting on it.
+
+**The harness was also simply broken, and that is the more embarrassing half.**
+`capture-interaction-perf.js` referenced `sanitizeForFilename` without
+importing it. The symbol moved into `runMetadata.js` in `fcae7a2` (2026-09-09)
+and this file's import list missed it. Because it is used on the LAST line of
+the run — building the output filename — **every run from that commit until
+today measured all seven metrics and then died with a `ReferenceError`, writing
+nothing.** Three arms of the comparison below were lost to it before I looked
+at the output file rather than at the process list. One line to fix.
+
+Two things came out of that beyond the fix. A `--samples=N` flag, whose only
+purpose is to exercise the entire path including the file write in about a
+minute before committing to a 3×8-minute run; it warns that it is not
+publishable, so it cannot be mistaken for an arm. And the ordering lesson worth
+keeping: validate the END of a long measurement pipeline first, because
+everything cheap to get wrong there is only reached after all the expensive
+work is already done.
+
+**Choosing the page.** Bob Dylan's releases tab, 2301 rows × 21 columns,
+24 native pages, committed fixture **618 KB** (smaller than `artist-events`'
+700 KB). Two things decided it against Springsteen's own releases tab, which
+was already in `capture-fixture.js` as a `local: true` dogfooding capture:
+8125 rows would commit a multi-MB blob, and it crosses `sa_render_threshold`
+(5000), popping `showRenderDecisionDialog()` — the one blocking dialog
+`tests/support/customDialog.js` cannot clear, since its buttons are
+Save/Render/Cancel rather than OK/Cancel. At 2301 rows the page never reaches
+that gate.
+
+`PAGETYPES-TESTING-REFERENCE.org`'s "Springsteen-connected first" criterion
+**could not be met**, and that is measured rather than assumed:
+`scripts/probe-artist-release-counts.py` puts Patti Scialfa at 6 releases,
+Clarence Clemons 15, Joe Grushecky 24, Little Steven 50 (MusicBrainz has no
+"Steven Van Zandt" artist at all), Southside Johnny 71, Nils Lofgren 163 —
+and Springsteen himself 8125. Nothing connected lands anywhere near a usable
+size, so an unconnected peer was the only option. Recorded as a deliberate
+deviation in the fixture entry's own comment.
+
+**Every descriptor constant was measured, and two of them cannot be derived.**
+`scripts/probe-fixture-columns.js` loads the fixture through the real
+Load-from-disk pipeline and reports them:
+
+- `UNIQ_COUNT_TOTAL` must come from the rendered `.mb-col-uniq-count` **badge**,
+  not a distinct-textContent tally. The two disagree on most columns of this
+  page — Country reads 68 against a naive 58, Label 257 against 240 — because
+  the badge comes from the real uniq-drop machinery. It happens to agree on
+  `Release` (1433), the column used here, but that is luck.
+- `UNIQ_COUNT_FILTER_VALUE` is a **substring**, because that is what a column
+  filter is. "Nashville Skyline" keeps 27 rows across 5 distinct Release
+  values; the probe reports both numbers per candidate so a value that drags in
+  unrelated rows is rejected before a run rather than after.
+
+**A smoke check caught one of my own numbers wrong**, which is exactly why it
+ran before the arms. I had derived `FILTER_VALUE_COUNT = 167` by adding the
+probe's per-value tallies (164 cells reading "United Kingdom (GB)" plus 3
+reading "United Kingdom (GB)▶2▤"). The real answer is **181**: a column filter
+matches `getCleanColumnText()`, which concatenates ALL items of a multi-row
+cell, so every Country cell that merely LISTS the UK among several countries
+matches too — and those appear in the probe under their own combined text, not
+under "United Kingdom". Only the running filter knows that number. The same
+mistake is available for any multi-row column.
+
+The check also confirmed the feature itself on a real 2301-row page: Picard
+column present with 2301 cells, 2 `<th>`, 1 header toggle, **0 buttons and 0
+`_picardExtractRowEntities()` calls** while collapsed.
+
+**The measurement.** Three arms — `absent` (no column), `collapsed` (the
+shipped 9.99.1057 default), `expanded` (pre-9.99.1057) — one session, one host
+(`NB-3641`, 28 cores), ~9 minutes apart, host conditions identical, median of
+5. Differing only in Picard settings, verified from each JSON's own recorded
+`seedGmValues`. Full table in `tests/MEASUREMENTS.org`; the ratios:
+
+| metric              | coll/abs | exp/coll | saved by collapsing |
+|---------------------|----------|----------|---------------------|
+| globalFilter        | 1.01×    | 1.24×    | 19% |
+| columnFilter        | 1.00×    | 1.08×    | 7% |
+| sort                | 1.05×    | 1.15×    | 13% |
+| uniqDropCold        | 1.08×    | 1.07×    | 6% |
+| uniqDropWarm        | 1.10×    | 1.05×    | 5% |
+| headerCountsInitial | 1.01×    | 1.07×    | 6% |
+| headerCountsRestore | 1.01×    | 1.26×    | 21% |
+
+Both of Step 32's predictions hold. `collapsed` vs `absent` — the column merely
+existing in the five O(rows × columns) walks — is 1.00-1.10× against that
+step's own "~5% on a 21-column page" estimate, with the filter metrics a dead
+heat. And `headerCountsRestore` at 1.26× is **Step 23's prediction arriving
+from the other side**: that step expected fixing the Picard rewire to restore
+"Step 3's measured -27 to -30% on `headerCountsRestore` for every
+release-listing pageType, where today it never applies at all". Measured, the
+`expanded` arm still drops `_colHeaderCountsCache` every pass and pays 4440 ms
+against `collapsed`'s 3518 — and `collapsed` is within 1.01× of having no
+Picard column at all, i.e. the cache survives entirely. The 9.99.1057 gate is
+what banks that.
+
+`uniqDropCold` is the largest absolute (35-41 s) and the least Picard-sensitive
+(1.07×) — it is dominated by Step 4's own five full `tbody.rows` passes, so it
+is not where this column should be judged.
+
+**Two caveats that must travel with these numbers.** The host is `NB-3641`, not
+`petri`, and `MEASUREMENTS.org` already records `NB-3641` running roughly
+1.5-1.9× faster on identical scripts — so the ratios are sound and the
+absolutes are not comparable to the `petri` reference points in `CLAUDE.md`.
+And these are single-pass filter numbers: the harness types inside one 300 ms
+debounce, so nothing here observes the repeated-pass, progressive-typing
+behaviour `PERFORMANCE.org`'s "Findings: the per-keystroke filter cost" section
+is about. That arm stays deliberately unbuilt.
+
+**Docs reconciled rather than appended to.** Step 32's "Still not measured"
+subsection was replaced, not supplemented — it was the thing that became false.
+Step 23's "those numbers were never captured anyway" and Tier 1's "Before
+writing any of it, flip `sa_enable_picard_tagger` off" were both discharged.
+`PERFORMANCE.org`'s "the interaction-perf harness cannot see any of this,
+before or after" and `org/picard.org`'s matching claim were corrected. No
+`// @version` bump or changelog entry: everything here is under `tests/` or
+`scripts/`.

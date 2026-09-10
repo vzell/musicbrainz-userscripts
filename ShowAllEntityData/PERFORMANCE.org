@@ -228,9 +228,12 @@ now survives a keystroke on exactly those pageTypes. It is still dropped every
 pass on a page where the user has UNCOLLAPSED the column, which is correct
 (every cell really is rebuilt there) and is what Step 23 removes.
 
-*The interaction-perf harness cannot see any of this, before or after*:
+*The interaction-perf harness could not see any of this until 2026-09-10*:
 ~artist-events~ has no release links, so the Picard column is skipped there and
-every committed number was captured with this cost absent.
+every committed number on that page was captured with this cost absent. That is
+why ~artist-releases-dylan~ was instrumented — see Step 32's "MEASURED"
+subsection. The ~artist-events~ baselines are unaffected and remain the
+reference for everything that is not about this column.
 
 *~_countLiveDateFlags()~ tallies the live tbody, not the source rows.* Its own
 JSDoc claims the totals "stay a stable page-wide summary independent of
@@ -357,12 +360,15 @@ have to be the biggest item to be worth fixing early.
 
 - *23* removes a per-row teardown-and-rebuild of ~5 elements per row per pass,
   and restores Step 3's measured -27 to -30% on ~headerCountsRestore~ for every
-  release-listing pageType, where today it never applies at all. /Narrowed
-  2026-09-10 by Step 32:/ with the Picard column collapsed — the default since
-  9.99.1057 — the cache half is already restored, because a collapsed column no
-  longer reports a change and so no longer drops it. What is left for Step 23
-  is the teardown-and-rebuild, plus both halves on a page where the user has
-  UNCOLLAPSED the column.
+  release-listing pageType, where today it never applies at all. /Narrowed and
+  MEASURED 2026-09-10 by Step 32:/ with the Picard column collapsed — the
+  default since 9.99.1057 — the cache half is already restored, measured at
+  1.01x of a page with no Picard column at all, i.e. the cache survives
+  entirely. The prediction itself checks out on the ~expanded~ arm, which still
+  drops the cache every pass and pays *1.26x* on ~headerCountsRestore~. So what
+  is left for this step is the teardown-and-rebuild, plus both halves on a page
+  where the user has UNCOLLAPSED the column — worth, on ~artist-releases-dylan~,
+  19% of a global-filter keystroke and 21% of a header-count restore.
 - *34* removes ~1.05 million ~querySelectorAll~ per filter clear — 97.5% of
   that phase's total, twelve per cell, against ~27 000 for everything else in
   the phase combined.
@@ -377,14 +383,15 @@ have to be the biggest item to be worth fixing early.
   matters most on a *narrow* filter, which is the case Steps 1/2 measured
   worst on: ~M~ shrinks, these three tallies stay at 4174.
 
-*Before writing any of it*, flip ~sa_enable_picard_tagger~ off and re-run the
-same filter on a real release-listing page. That sizes the whole Picard prize —
-Steps 23 and 32 together — for free, using a setting that already exists.
-Since 9.99.1057 there is a second, finer knob worth measuring in the same
-sitting: ~sa_picard_tagger_initially_collapsed~ (default on) separates "the
-column is not there at all" from "the column is there but its cells are
-empty", which is the difference between the whole prize and the part Step 32
-already banked. Neither has been run.
+*This tier's own "measure the Picard prize first" instruction is DISCHARGED*,
+2026-09-10. Both knobs were run as three arms on ~artist-releases-dylan~ —
+~sa_enable_picard_tagger~ off, and ~sa_picard_tagger_initially_collapsed~ on
+and off — separating "no column at all" from "column present, cells empty" from
+"column present, cells built". Numbers and caveats in Step 32's "MEASURED"
+subsection; the short version is that the column's mere existence costs
+1.00-1.10x, and building its cells costs another 1.08-1.26x on top, of which
+the 9.99.1057 default already banks most. Nothing in Tier 1's ordering changes:
+Step 34 still leads by an order of magnitude.
 
 Together Tier 1 removes three of the per-cell walks outright and restores the
 cache on a fourth. With Step 34 measured rather than estimated the headline is
@@ -2077,8 +2084,16 @@ skips re-wiring any cell that was filled in place. A scoped sub-table sort
 therefore no longer rebuilds the interactive cells of every untouched
 sub-table. A global-filter keystroke re-renders every group and still pays in
 full, so the delegation win remains real — just smaller than the pre-fix
-numbers would suggest, and *those numbers were never captured anyway* (see the
-harness note above: ~artist-events~ has no ~/release/~ links).
+numbers would suggest.
+
+/Those numbers now EXIST, as of 2026-09-10./ The claim that they "were never
+captured anyway" was true for as long as ~artist-events~ was the only
+instrumented page, and is no longer: ~--pageType=artist-releases-dylan~ carries
+a Picard column, and its ~expanded~ arm is what this step would act on. See
+Step 32's "MEASURED" subsection for the table and
+~tests/MEASUREMENTS.org~ for the run itself. Read the ~expanded~ column of it
+as this step's remaining budget, not the whole Picard prize — the ~collapsed~
+default already banked the rest.
 
 *** TODO Step 24: Snapshot ~applyStickyColumn~'s hover backgrounds lazily
 
@@ -2332,31 +2347,63 @@ does rebuild every cell, which is exactly the case the helper's own JSDoc
 exists for. So the win is conditional on the column being collapsed, which is
 now the default.
 
-***** Residue, and what is still not measured
+***** MEASURED 2026-09-10 — three arms on a page that HAS a Picard column
 
-After Step 23 the residue is one extra column in five O(rows x columns) walks —
-~5% on a 21-column page, proportionally more on a narrow table — plus its own
-cloned DOM. Real, but well behind Steps 24-26, and the built design does not
-touch it: only not having the COLUMN would, and that is what the first half of
-this step rejects.
+/Full numbers, host, times and caveats in/ ~tests/MEASUREMENTS.org~'s
+"Interaction latency — ~artist-releases-dylan~ (the Picard arms)" /section.
+This section carries the conclusions only./
 
-*Still not measured, and the built feature does not change that.* The free
-measurement this section has always prescribed — flip
-~sa_enable_picard_tagger~ off and re-run the same filter on a real
-release-listing page — has still never been run, and it remains the number that
-sizes Step 23, this design, and the residue together. The reason it keeps not
-happening is structural and worth naming: the perf harness's only instrumented
-page is ~artist-events~, which has no ~/release/~ links and therefore no Picard
-column at all, so none of this is visible to ~capture-interaction-perf.js~ as
-it stands. Sizing it needs an instrumented release-listing page first.
+The measurement this step had prescribed since it was written finally ran, and
+it needed a second instrumented pageType to be possible at all: ~artist-events~
+has no ~/release/<mbid>~ link anywhere, so it never gets a Picard column, and
+every committed baseline was captured with this cost absent. The new arm is
+~artist-releases-dylan~ (Bob Dylan's releases tab, 2301 rows x 21 columns,
+single-table), driven by ~--pageType=artist-releases-dylan --arm=~.
 
-What the branch DOES have is a count rather than a timing:
-~__saTest.picardEntityScans()~ exposes how many times
-~_picardExtractRowEntities()~ has run, and
-~tests/fixtures/picard-cells-survive-rerender.spec.js~ pins that a re-render
-scans the expanded sub-table's 6 rows and none of the collapsed one's. That is
-a correctness assertion about the gate, not a measurement of what the gate is
-worth.
+Three arms, one session, one host (~NB-3641~), differing ONLY in the Picard
+settings — ~absent~ (no column), ~collapsed~ (the shipped default), ~expanded~
+(pre-9.99.1057). Median of 5.
+
+| Metric                | coll/abs | exp/coll | saved by collapsing |
+|-----------------------+----------+----------+---------------------|
+| ~globalFilter~        |    1.01x |    1.24x |                 19% |
+| ~columnFilter~        |    1.00x |    1.08x |                  7% |
+| ~sort~                |    1.05x |    1.15x |                 13% |
+| ~uniqDropCold~        |    1.08x |    1.07x |                  6% |
+| ~uniqDropWarm~        |    1.10x |    1.05x |                  5% |
+| ~headerCountsInitial~ |    1.01x |    1.07x |                  6% |
+| ~headerCountsRestore~ |    1.01x |    1.26x |                 21% |
+
+Three conclusions, and the first two were this step's own predictions:
+
+1. *The residue is real and is what was predicted.* ~collapsed~ vs ~absent~ —
+   the cost of the column merely EXISTING in the five O(rows x columns) walks —
+   is 1.00-1.10x, against this step's estimate of "~5% on a 21-column page".
+   Both filter metrics are a dead heat at 1.00-1.01x. That number moves only by
+   removing the COLUMN, which the first half of this step rejects.
+2. *What the design banked is the rest, and it is not small.* Collapsing saves
+   *19% of a global-filter keystroke*, *13% of a sort* and *21% of a
+   header-count restore* on this page.
+3. *~headerCountsRestore~ at 1.26x is Step 23's own prediction arriving from the
+   other side* — see that step, whose text is now corrected against this.
+
+*What is still not measured*, and should not be quoted as if it were: the
+repeated-pass, progressive-typing behaviour that "Findings: the per-keystroke
+filter cost" is about. Every number above is a SINGLE filter pass (the harness
+types inside one 300 ms debounce), so these ratios describe one pass and say
+nothing about a user typing and backspacing. That arm remains deliberately
+unbuilt.
+
+*A second, unglamorous reason nothing had been measured for weeks*, which this
+step did not know and which is worth recording so it is not re-diagnosed as
+something deeper: ~capture-interaction-perf.js~ had been *broken* since
+~fcae7a2~ (2026-09-09). ~sanitizeForFilename~ moved into ~runMetadata.js~ and
+this file's import list missed it; because it is used on the LAST line — the
+output filename — every run since then measured all seven metrics and then died
+with a ~ReferenceError~, writing nothing. Three arms of the comparison above
+were lost to it before it was noticed. Fixed, together with a ~--samples=N~
+flag that exists purely to exercise the whole path in about a minute before
+committing to a long run.
 
 ***** Ordering against Step 23
 

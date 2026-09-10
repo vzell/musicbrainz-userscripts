@@ -225,9 +225,27 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
   =.org= + =.html= filter/sort report under =debug/=, with a row per assertion
   case.
 - Committed performance baselines live at
-  =tests/snapshots/artist-events/interaction-perf-*.json= and
+  =tests/snapshots/<pageType>/interaction-perf-*.json= and
   =tests/snapshots/artist-releasegroups/perf-baseline*.json= — medians of 5
-  samples, kept per branch.
+  samples, kept per arm (branch/label + version + capture date + hostname).
+- *Two pageTypes are instrumented for interaction latency, and they answer
+  different questions.* =--pageType=artist-events= (4174 rows) is the original
+  arm and the one every pre-9.99.1057 baseline uses.
+  =--pageType=artist-releases-dylan= (2301 rows) exists because =artist-events=
+  has no =/release/<mbid>= link anywhere, so it never gets a Picard column and
+  PERFORMANCE.org Steps 23 and 32 are invisible to it. Pair the latter with
+  =--arm=absent|collapsed|expanded= to separate "no Picard column at all" from
+  "column present, cells empty" from "column present, cells built". Numbers
+  from the two pageTypes are NOT comparable to each other — different rows,
+  columns and data; compare arms of the same pageType from the same session.
+- A new instrumented pageType needs a descriptor module beside
+  =tests/support/artistEventsFixture.js=, and every constant in it must be
+  MEASURED from the committed disk fixture with
+  =node scripts/probe-fixture-columns.js=, not chosen. Two of them cannot be
+  derived at all: the uniq badge disagrees with a naive distinct-value tally on
+  most columns, and a column filter is a SUBSTRING match whose kept-row count
+  only the running filter knows. Both mistakes produce a plausible-looking
+  wrong number rather than a failure.
 
 * Where the maps are
 

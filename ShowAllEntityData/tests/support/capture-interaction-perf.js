@@ -5,14 +5,30 @@
  * Playwright test), run directly:
  *
  *   node tests/support/capture-interaction-perf.js --pageType=artist-events
+ *   node tests/support/capture-interaction-perf.js --pageType=artist-releases-dylan \
+ *        --arm=collapsed
  *
  * Unlike `capture-snapshots.js`'s `--perf` mode (which times the INITIAL
  * fetch+render of a "Show all" click), this times the *interactions*
  * PERFORMANCE.org's Steps 1-4 specifically target — global filter, column
- * filter, sort, and unique-values-dropdown open (cold vs cache-warm) — on
- * the `artist-events` pageType (4174 rows), which `tests/snapshots/
- * registry.org` earmarks as the dedicated performance-comparison target for
- * exactly these interactions.
+ * filter, sort, and unique-values-dropdown open (cold vs cache-warm).
+ *
+ * Two pageTypes are instrumented, and which one to use depends on the step:
+ *
+ *   - `artist-events` (4174 rows, 21 columns) — the original arm, which
+ *     `tests/snapshots/registry.org` earmarks as the dedicated
+ *     performance-comparison target. Every committed baseline before
+ *     9.99.1057 is this page.
+ *   - `artist-releases-dylan` (2301 rows, 21 columns) — added for Steps 23
+ *     and 32, which `artist-events` structurally CANNOT measure: it has no
+ *     `/release/<mbid>` link anywhere, so `initPicardTaggerColumn()` skips
+ *     every one of its tables and the Picard column those steps are about
+ *     never exists. Pair it with `--arm=` (see PICARD_ARMS).
+ *
+ * The two are not interchangeable and their numbers are not comparable to each
+ * other — different row counts, different columns, different data. Compare
+ * arms of the SAME pageType, captured in the same session, per CLAUDE.md's
+ * "quote only within-session A/B ratios".
  *
  * Loads via the committed disk fixture (`tests/support/capture-fixture.js`,
  * `tests/support/diskFixture.js`) rather than a live "Show all" click, so
@@ -52,9 +68,14 @@
  * reachable from `openUniqDrop()`, so it remains absent from the uniq-drop
  * numbers, which stay Step 4's.
  *
- * Currently only supports `--pageType=artist-events`; the interactions
- * (filter column/values, sort column, uniq-drop column) are specific to
- * that page's own data, not read from `tests/pagetypes.json`.
+ * A pageType is instrumented by adding a descriptor module (the ARMS registry
+ * below resolves `--pageType=` against it), not by adding an entry to
+ * `tests/pagetypes.json`: the interactions — which column to filter, which
+ * values to type, which column to sort, which column carries the header-count
+ * metric — are specific to that page's own data, and every one of those
+ * constants has to be MEASURED from the committed disk fixture rather than
+ * chosen. `scripts/probe-fixture-columns.js` is what measures them; see
+ * `dylanArtistReleasesFixture.js` for the two that cannot be guessed at all.
  *
  * Output: `tests/snapshots/<pageType>/interaction-perf-<branch>-<version>-
  * <capturedAt>[-<hostname>].json`, where `<branch>` is the current git
@@ -81,41 +102,110 @@ const {
     waitForFilterSettled, waitForSortSettled, waitForColHeaderUniqCount,
     waitForColHeaderCountsStable, columnIndex, columnFilterInput, columnFilterClear,
 } = require('./filterSortAssertions');
+const artistEvents = require('./artistEventsFixture');
+const dylanArtistReleases = require('./dylanArtistReleasesFixture');
 const {
-    URL, FIXTURE_PATH, SEED_GM_VALUES, FILTER_COLUMN, FILTER_VALUE, SORT_COLUMN, UNIQ_DROP_COLUMN,
-    UNIQ_COUNT_COLUMN, UNIQ_COUNT_TOTAL, UNIQ_COUNT_FILTER_VALUE, UNIQ_COUNT_FILTER_UNIQ,
-} = require('./artistEventsFixture');
-const {
-    readScriptVersion, machineInfo, hostnameForFilename, versionForFilename, readCurrentBranch,
+    readScriptVersion, machineInfo, sanitizeForFilename, hostnameForFilename, versionForFilename,
+    readCurrentBranch,
 } = require('./runMetadata');
 
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
-const SAMPLES = 5;
 
-const ARTIST_EVENTS = {
-    pageType: 'artist-events',
-    url: URL,
-    fixturePath: FIXTURE_PATH,
-    seedGmValues: SEED_GM_VALUES,
-    filterColumn: FILTER_COLUMN,
-    // A different, never-before-typed value each sample avoids
-    // `_filterResultCache` hits skewing the comparison. That is the filter
-    // pipeline's own row-match cache — unrelated to, and untouched by, any
-    // PERFORMANCE.org step, so it must be defeated identically on every
-    // branch being compared. Five real country values from the fixture's own
-    // data, the first matching the correctness spec's canonical FILTER_VALUE.
-    filterValues: [FILTER_VALUE, 'Germany', 'Canada', 'Spain', 'Italy'],
-    sortColumn: SORT_COLUMN,
-    uniqDropColumn: UNIQ_DROP_COLUMN,
-    // The header-count metrics assert an EXACT badge value rather than
-    // "stopped changing": a scan that is superseded and abandoned leaves the
-    // badges stable-but-wrong, which a stability heuristic would happily
-    // time as a fast result. Same reasoning as artist-events-interactions
-    // .spec.js's own preference for waitForColHeaderUniqCount().
-    headerCountColumn: UNIQ_COUNT_COLUMN,
-    headerCountTotal: UNIQ_COUNT_TOTAL,
-    headerCountFilterValue: UNIQ_COUNT_FILTER_VALUE,
-    headerCountFilterUniq: UNIQ_COUNT_FILTER_UNIQ,
+/**
+ * Samples per metric. 5 is the committed convention and what every baseline in
+ * `tests/MEASUREMENTS.org` is a median of — do not publish a number captured at
+ * anything else.
+ *
+ * `--samples=N` overrides it for one purpose only: proving the plumbing works
+ * before committing to a long run. A full arm is 30 fresh page loads and takes
+ * roughly 15-20 minutes, and everything that can go wrong at the END of it —
+ * the output path, the JSON shape, the filename — goes wrong after all of that
+ * work is already done. That is not hypothetical: `sanitizeForFilename` was
+ * left out of this file's import list when `runMetadata.js` was extracted
+ * (fcae7a2, 2026-09-09), so from then until 9.99.1057 EVERY run measured
+ * everything and then died on the last line with a ReferenceError, writing
+ * nothing. Three arms were lost to it before it was noticed. Pair
+ * `--samples=1` with `--label=` so the throwaway run cannot overwrite a real
+ * arm's file.
+ */
+const DEFAULT_SAMPLES = 5;
+
+/**
+ * Turns one descriptor module into the shape `runAll()` consumes.
+ *
+ * Descriptors are plain constant modules shared with the correctness specs
+ * (see `artistEventsFixture.js`'s own JSDoc on why those constants live in one
+ * place), so the perf-specific fields — the five distinct filter values, and
+ * the naming of which column carries the header-count metric — are derived
+ * here rather than duplicated into every descriptor.
+ *
+ * @param {string} pageType
+ * @param {Object} d - descriptor module
+ * @returns {Object}
+ */
+function toArm(pageType, d) {
+    return {
+        pageType,
+        url: d.URL,
+        fixturePath: d.FIXTURE_PATH,
+        seedGmValues: d.SEED_GM_VALUES,
+        filterColumn: d.FILTER_COLUMN,
+        // A different, never-before-typed value each sample avoids
+        // `_filterResultCache` hits skewing the comparison. That is the filter
+        // pipeline's own row-match cache — unrelated to, and untouched by, any
+        // PERFORMANCE.org step, so it must be defeated identically on every
+        // arm being compared. Real values from the fixture's own data, the
+        // first matching the correctness spec's canonical FILTER_VALUE.
+        filterValues: d.PERF_FILTER_VALUES,
+        sortColumn: d.SORT_COLUMN,
+        uniqDropColumn: d.UNIQ_DROP_COLUMN,
+        // The header-count metrics assert an EXACT badge value rather than
+        // "stopped changing": a scan that is superseded and abandoned leaves the
+        // badges stable-but-wrong, which a stability heuristic would happily
+        // time as a fast result. Same reasoning as artist-events-interactions
+        // .spec.js's own preference for waitForColHeaderUniqCount().
+        headerCountColumn: d.UNIQ_COUNT_COLUMN,
+        headerCountTotal: d.UNIQ_COUNT_TOTAL,
+        headerCountFilterValue: d.UNIQ_COUNT_FILTER_VALUE,
+        headerCountFilterUniq: d.UNIQ_COUNT_FILTER_UNIQ,
+    };
+}
+
+/** Every instrumented pageType, keyed by its `--pageType=` value. */
+const ARMS = {
+    'artist-events': toArm('artist-events', artistEvents),
+    'artist-releases-dylan': toArm('artist-releases-dylan', dylanArtistReleases),
+};
+
+/**
+ * Picard-column arms, selected with `--arm=`.
+ *
+ * The three of them separate two PERFORMANCE.org steps that have never been
+ * told apart, because the harness had no page carrying a Picard column at all:
+ *
+ *   absent    — `sa_enable_picard_tagger: false`. No column, so no <td> in any
+ *               of the five O(rows x columns) walks. The whole Picard prize,
+ *               Steps 23 and 32 together, is `collapsed - absent`... plus the
+ *               one extra column's own share of those walks, which is Step
+ *               32's stated, unfixable residue.
+ *   collapsed — the shipped default since 9.99.1057. The column exists and is
+ *               walked; its CELL CONTENT is not built.
+ *   expanded  — `sa_picard_tagger_initially_collapsed: false`, i.e. the
+ *               pre-9.99.1057 behaviour. `expanded - collapsed` is exactly
+ *               what Step 32 banked, and what Step 23 still has to win on a
+ *               page where the user opens the column.
+ *
+ * Meaningless on a pageType with no Picard column — `artist-events` has no
+ * /release/<mbid> links, so all three arms are identical there. That is not
+ * an error worth blocking on, but it IS worth saying out loud, since a run
+ * that silently reports three identical arms looks like a bug in the feature.
+ *
+ * @type {Object<string, Object<string, *>>}
+ */
+const PICARD_ARMS = {
+    absent:    { sa_enable_picard_tagger: false },
+    collapsed: { sa_enable_picard_tagger: true, sa_picard_tagger_initially_collapsed: true },
+    expanded:  { sa_enable_picard_tagger: true, sa_picard_tagger_initially_collapsed: false },
 };
 
 /**
@@ -128,17 +218,30 @@ const ARTIST_EVENTS = {
  * ShowAllEntityData.user.js stashed" note), which would otherwise write
  * `main`'s numbers under the branch's name.
  *
+ * `--arm=absent|collapsed|expanded` selects a PICARD_ARMS seed override and,
+ * unless `--label=` says otherwise, appends itself to the output filename — so
+ * three arms of the same branch land side by side instead of overwriting each
+ * other. See PICARD_ARMS for what the three separate.
+ *
  * @param {string[]} argv
- * @returns {{ pageType: string|null, label: string|null }}
+ * @returns {{ pageType: string|null, label: string|null, arm: string|null }}
  */
 function parseArgs(argv) {
     const arg = argv.find((a) => a.startsWith('--pageType='));
     const labelArg = argv.find((a) => a.startsWith('--label='));
+    const armArg = argv.find((a) => a.startsWith('--arm='));
+    const samplesArg = argv.find((a) => a.startsWith('--samples='));
+    const samples = samplesArg ? parseInt(samplesArg.slice('--samples='.length), 10) : DEFAULT_SAMPLES;
     return {
         pageType: arg ? arg.slice('--pageType='.length) : null,
         label: labelArg ? labelArg.slice('--label='.length) : null,
+        arm: armArg ? armArg.slice('--arm='.length) : null,
+        samples: Number.isFinite(samples) && samples > 0 ? samples : DEFAULT_SAMPLES,
     };
 }
+
+/** Samples per metric for the current run; set once in main() from --samples=. */
+let SAMPLES = DEFAULT_SAMPLES;
 
 /**
  * Runs one sample, retrying a few times before giving up.
@@ -183,7 +286,7 @@ function median(values) {
 
 /**
  * @param {import('playwright').Browser} browser
- * @param {typeof ARTIST_EVENTS} config
+ * @param {ReturnType<typeof toArm>} config
  * @returns {Promise<import('playwright').Page>}
  */
 async function loadPage(browser, config) {
@@ -202,7 +305,7 @@ async function loadPage(browser, config) {
     return page;
 }
 
-/** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @param {string} value @returns {Promise<number>} */
+/** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureGlobalFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
     const input = page.locator('#mb-global-filter-input');
@@ -214,7 +317,7 @@ async function measureGlobalFilterOnce(browser, config, value) {
     return ms;
 }
 
-/** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @param {string} value @returns {Promise<number>} */
+/** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureColumnFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
     const input = columnFilterInput(page, await columnIndex(page, config.filterColumn));
@@ -226,7 +329,7 @@ async function measureColumnFilterOnce(browser, config, value) {
     return ms;
 }
 
-/** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @param {boolean} ascending @returns {Promise<number>} */
+/** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {boolean} ascending @returns {Promise<number>} */
 async function measureSortOnce(browser, config, ascending) {
     const page = await loadPage(browser, config);
     const columnTh = page.locator('table.tbl thead th', { hasText: config.sortColumn }).first();
@@ -238,7 +341,7 @@ async function measureSortOnce(browser, config, ascending) {
     return ms;
 }
 
-/** @param {import('playwright').Browser} browser @param {typeof ARTIST_EVENTS} config @returns {Promise<{coldMs: number, warmMs: number}>} */
+/** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @returns {Promise<{coldMs: number, warmMs: number}>} */
 async function measureUniqDropColdWarmOnce(browser, config) {
     const page = await loadPage(browser, config);
     const wrap = page.locator('table.tbl thead th', { hasText: config.uniqDropColumn }).first().locator('.mb-col-uniq-wrap');
@@ -279,7 +382,7 @@ async function measureUniqDropColdWarmOnce(browser, config) {
  * through its per-column slices.
  *
  * @param {import('playwright').Browser} browser
- * @param {typeof ARTIST_EVENTS} config
+ * @param {ReturnType<typeof toArm>} config
  * @returns {Promise<number>}
  */
 async function measureHeaderCountsInitialOnce(browser, config) {
@@ -302,7 +405,7 @@ async function measureHeaderCountsInitialOnce(browser, config) {
  * would time two overlapping scans instead of one.
  *
  * @param {import('playwright').Browser} browser
- * @param {typeof ARTIST_EVENTS} config
+ * @param {ReturnType<typeof toArm>} config
  * @returns {Promise<number>}
  */
 async function measureHeaderCountsRestoreOnce(browser, config) {
@@ -334,7 +437,7 @@ async function measureHeaderCountsRestoreOnce(browser, config) {
 
 /**
  * @param {import('playwright').Browser} browser
- * @param {typeof ARTIST_EVENTS} config
+ * @param {ReturnType<typeof toArm>} config
  * @returns {Promise<Object>}
  */
 async function runAll(browser, config) {
@@ -375,21 +478,45 @@ async function runAll(browser, config) {
 }
 
 (async () => {
-    const { pageType, label } = parseArgs(process.argv.slice(2));
-    if (pageType !== 'artist-events') {
-        console.error('Only --pageType=artist-events is currently supported.');
+    const { pageType, label, arm, samples } = parseArgs(process.argv.slice(2));
+    SAMPLES = samples;
+    if (SAMPLES !== DEFAULT_SAMPLES) {
+        console.warn(`  NOTE: --samples=${SAMPLES} — a plumbing check, NOT a publishable arm. `
+            + `Every number in tests/MEASUREMENTS.org is a median of ${DEFAULT_SAMPLES}.`);
+    }
+    const base = ARMS[pageType];
+    if (!base) {
+        console.error(`Unknown --pageType=${pageType}. Supported: ${Object.keys(ARMS).join(', ')}`);
+        process.exit(1);
+    }
+    if (arm && !PICARD_ARMS[arm]) {
+        console.error(`Unknown --arm=${arm}. Supported: ${Object.keys(PICARD_ARMS).join(', ')}`);
         process.exit(1);
     }
 
+    // The arm's seeds are merged ON TOP of the descriptor's, so a descriptor
+    // keeps control of everything the arm does not name (CAA and Relationships
+    // stay off, which the arm must never be able to re-enable — that would put
+    // thousands of live requests inside a timing bracket).
+    const config = arm
+        ? { ...base, seedGmValues: { ...base.seedGmValues, ...PICARD_ARMS[arm] } }
+        : base;
+
+    if (arm && pageType === 'artist-events') {
+        console.warn(`  NOTE: --arm=${arm} has no effect on artist-events — that page has no `
+            + '/release/<mbid> links, so it never gets a Picard column and all three arms '
+            + 'measure the same thing.');
+    }
+
     const branch = readCurrentBranch();
-    const outName = label || branch;
+    const outName = label || (arm ? `${branch}-picard-${arm}` : branch);
     const startedAt = new Date();
     const capturedAt = startedAt.toISOString().slice(0, 10);
     const scriptVersion = readScriptVersion();
     const host = hostnameForFilename(machineInfo().hostname);
     const browser = await chromium.launch();
     try {
-        const interactions = await runAll(browser, ARTIST_EVENTS);
+        const interactions = await runAll(browser, config);
 
         const fileNameParts = [
             'interaction-perf',
@@ -398,11 +525,13 @@ async function runAll(browser, config) {
             capturedAt,
         ];
         if (host) fileNameParts.push(host);
-        const outPath = path.join(SNAPSHOTS_DIR, ARTIST_EVENTS.pageType, `${fileNameParts.join('-')}.json`);
+        const outPath = path.join(SNAPSHOTS_DIR, config.pageType, `${fileNameParts.join('-')}.json`);
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, JSON.stringify({
-            pageType: ARTIST_EVENTS.pageType,
-            url: ARTIST_EVENTS.url,
+            pageType: config.pageType,
+            url: config.url,
+            picardArm: arm || null,
+            seedGmValues: config.seedGmValues,
             branch: outName,
             gitBranch: branch,
             capturedAt,
@@ -420,7 +549,7 @@ async function runAll(browser, config) {
         }, null, 2) + '\n');
 
         const m = machineInfo();
-        console.log(`${ARTIST_EVENTS.pageType} [interaction-perf, ${outName}] `
+        console.log(`${config.pageType} [interaction-perf, ${outName}] `
             + `on ${m.hostname} (${m.cpus} cores, node ${m.node}, playwright ${m.playwright}):`);
         for (const [name, { medianMs }] of Object.entries(interactions)) {
             console.log(`  ${name}: ${medianMs.toFixed(1)}ms`);

@@ -28,8 +28,15 @@ addendum) plus Step 23's "Three corrections found while fixing the Picard
 multi-table clone bug" carry the rest — the roster is 7 functions not 4,
 ~initAnnotationCompareRadios()~ cannot be fixed by delegation at all,
 ~_cdtocInitTracklistToggles()~ yields nothing, and the real prize is the
-~_colHeaderCountsCache~ drop that the current perf harness structurally cannot
-see (~artist-events~ has no ~/release/~ links).
+~_colHeaderCountsCache~ drop.
+
+/Updated 2026-09-10:/ that last point said the drop was something "the current
+perf harness structurally cannot see (~artist-events~ has no ~/release/~
+links)". True at the time, no longer: ~artist-releases-dylan~ was instrumented
+for exactly this, and the drop is now measured — the ~expanded~ arm pays 1.26x
+on ~headerCountsRestore~ against a ~collapsed~ arm that is within 1.01x of
+having no Picard column at all. See ~PERFORMANCE.org~ Step 32's "MEASURED"
+subsection and ~tests/MEASUREMENTS.org~.
 
 ** DONE — question 2, shipped in 9.99.1056
 
