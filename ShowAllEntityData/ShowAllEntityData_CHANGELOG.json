@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1060",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's own quickfilter search box highlighted only the FIRST occurrence of the typed substring inside each entry's label (e.g. typing \"as\" against \"» alias: Southside Johnny & The Asbury Jukes at The Stone Pony\" highlighted \"as\" in \"alias\" but not \"As\" in \"Asbury\"), unlike the main table's global/column filter, which always highlights every occurrence. Fixed for all three affected entry shapes — synthetic entries (\"» alias:\", \"» comment:\", etc.), plain unique-value list entries, and flag-icon (Country/Area) entries — via one shared helper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1059",
     "date": "2026-09-10",
     "sections": [

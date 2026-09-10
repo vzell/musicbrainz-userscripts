@@ -9576,3 +9576,54 @@ under test.
   when 26 declare the column, and the Statistics panel's TTL-eviction prose says
   "7-day TTL" against a 30-day default. Both are pre-existing doc drift, left
   for a separate docs commit.
+
+## 2026-09-10 — uniq-dropdown quickfilter only highlighted the FIRST occurrence of a match (fixed, branch fix-uniq-quickfilter-highlight-all-matches)
+
+Reported: typing "as" into the 📊 unique-values dropdown's own quickfilter box
+(`.mb-uniq-qf-input`) against `» alias: Southside Johnny & The Asbury Jukes at
+The Stone Pony` highlighted only the "as" inside "alias", never the "As" inside
+"Asbury" — screenshot on `/user/vzell/ratings/event/`. The main table's own
+global/column filter inputs always highlight EVERY occurrence
+(`highlightText()` → `highlightCrossTag()`, a `RegExp` with the `g` flag driven
+through a `while ((m = regex.exec(fullText)))` loop).
+
+**Root cause: plain `String.prototype.indexOf()`, which only ever returns the
+first hit.** Three independent call sites inside `openUniqDrop()` built their
+own single-`<mark>` highlight this way, all with the identical bug:
+`_applySynBoxQuickFilter()` (synthetic "» alias:"/"» comment:"/etc. entries —
+the reported case), `renderItems()`'s plain-value branch (any unique-value
+entry with no flag icon), and `renderItems()`'s `flagSegments` branch
+(Country/Area-style entries with inline flag icons) — whose own comment
+explicitly documented "only the FIRST occurrence" as accepted behaviour.
+
+**Fix:** one shared helper, `_appendAllMatchesHighlighted(parentEl, text, lf)`
+(defined right after the `hlColor`/`hlBg` settings reads, so all three call
+sites — already in the same `openUniqDrop()` closure — can use it), scans with
+`indexOf(lf, pos)` in a loop instead of a single lookup, wrapping every
+case-insensitive occurrence in its own `<mark>`. `highlightCrossTag()` itself
+was deliberately NOT reused: its whole design is walking nested DOM inside real
+`<td>` cells while staying positionally aligned with `getCleanColumnText()`;
+these dropdown entries are one flat, already-known JS string with no nested
+tags, so only its core "regex/scan with `g`, loop" *technique* was needed, not
+the function.
+
+The `flagSegments` branch keeps one deliberate, documented limitation: a match
+straddling an icon boundary (split across two segments) still renders
+unhighlighted — a real cell never breaks a word around a flag, and inclusion in
+`matching` already guarantees the match exists somewhere in the value, so this
+is harmless. Every occurrence *within* a single segment is now highlighted,
+where before the `marked` guard stopped after the first segment that matched
+at all.
+
+**Regression test:** `tests/fixtures/uniq-drop-quickfilter-multi-occurrence.spec.js`,
+three cases, one per call site. Case 1 reuses `user-ratings-multigroup.html` —
+a REAL captured snapshot of the reported page — and asserts the exact reported
+labels `['as', 'As']`. Case 2 (plain-value branch) self-computes its expected
+occurrence count from the entry's own `title` text rather than hardcoding
+fixture content, so it stays valid if the fixture changes. Case 3 reuses
+`uniq-drop-area-name-flag-position.html`'s "Test Arena in Test City, Spain"
+Location value (two "Test"s in one pre-icon text segment). All three
+mutation-checked: fail on the pre-fix code (`git stash` of the userscript
+change alone, keeping the new test) with exactly the expected wrong output
+(`['as']` only, `1` mark instead of `3`, `['Test']` only), pass after
+`git stash pop`.
