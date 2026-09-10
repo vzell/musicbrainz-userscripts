@@ -1,5 +1,41 @@
 [
   {
+    "version": "9.99.1063",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse`: the duplicate-row fix from the previous release could leak a skipped duplicate's \"Added N years ago...\" text onto an unrelated, earlier row's Title cell (via unbounded appendChild), instead of dropping it along with the duplicate row it belonged to — on a real fetch, one row accumulated over 44,000 characters this way, making its column render artificially wide."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1062",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse`: the same CD stub could appear twice in the consolidated table. This listing ranks by a live, constantly-changing lookup count with no stable secondary sort key, so two page fetches a few seconds apart can return heavily overlapping results (measured ~90% overlap between page 1 and page 2) — an upstream ranking artifact, not something sorting introduced (sorting only made the pre-existing, scattered duplicates collate together and become visible). Rows are now deduplicated by their Title link as they're fetched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1061",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse` (\"Top CD stubs\"): the native \"Added N years ago, last modified M years ago\" info row's text was landing in the \"Primary alias\" column instead of \"Comment\" — extractMainColumn always appends MB-Name/Comment/Primary alias in that order, so Primary alias (not Comment) is the row's real last cell."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1060",
     "date": "2026-09-11",
     "sections": [

@@ -9627,3 +9627,116 @@ mutation-checked: fail on the pre-fix code (`git stash` of the userscript
 change alone, keeping the new test) with exactly the expected wrong output
 (`['as']` only, `1` mark instead of `3`, `['Test']` only), pass after
 `git stash pop`.
+
+## 2026-09-11 — `/cdstub/browse`: duplicate rows + lastupdate text misattributed to "Primary alias" (fixed, branch fix-cdstub-browse-dedup-and-comment-cell)
+
+Reported (`org/top-cd-stubs.org`, three debug captures:
+`debug/top-cd-stubs-initial.html` = native page 1 before the script touches
+anything, `debug/top-cd-stubs-final.html` = fully fetched/rendered before any
+sort, `debug/top-cd-stubs-final-sort.html` = after a column sort): (1)
+duplicate rows appearing "after sort" but not on the initial render, and (2)
+the native `<tr><td class="lastupdate" colspan="4">Added N years ago, last
+modified M years ago</td></tr>` info row's text landing in "Primary alias"
+instead of "Comment".
+
+**Bug 2 (misattributed cell) root-caused by reading the code, not guessing.**
+`_extractMainColumnParts()` always returns `{tdName, tdComment, tdAlias}`, and
+every one of its call sites appends them in that fixed order — MB-Name,
+Comment, Primary alias. So for `top-cd-stub` (no `injectedColumns`/`addCAA`/
+`addEAA`), the row's real last cell is Primary alias, not Comment. The
+`pageType === 'top-cd-stub'` lastupdate-merge branch wrote into
+`_lastRow.cells[_lastRow.cells.length - 1]` on the stated assumption "always
+the row's last cell for this page type" — true of the CELL COUNT, wrong about
+WHICH cell is last. Confirmed against the actual captured page before
+touching anything: the rendered `<thead>`'s "Comment" column had an empty
+unique-value badge (never populated) while "Primary alias" reported "16
+different unique values" — the plausible count of distinct "Added N
+years/months ago…" phrasings across ~2000 rows, not real alias data (this
+pageType's Title never carries a native alias). A sample row's raw HTML
+confirmed it cell-by-cell. Fix: `cells.length - 1` → `cells.length - 2`.
+
+**Bug 1 (duplicate rows) root-caused as upstream pagination drift, NOT a
+sort/render bug** — the DOM-debugging rule ("confirm root cause with
+evidence... do not ship a guess") mattered here specifically because the
+obvious guess (sort introduces duplicates) was wrong. Evidence:
+- `-final.html`'s own status text: "Loaded 2 pages (2000 rows)".
+- `-initial.html` (native page 1 ALONE) already has 2000 `<tr>` = 1000 real
+  rows + 1000 lastupdate rows — MusicBrainz's native page size here is 1000.
+- Only 1100 of the 2000 fetched rows have a unique `/cdstub/<id>` href — 900
+  are exact repeats of another already-fetched row.
+- Three sampled duplicate pairs are all EXACTLY 900 row-indices apart
+  (362/1262, 308/1208, 967/1867).
+- **This is bit-for-bit identical in `-final.html` and `-final-sort.html`**
+  (same 2000/1100 split, same duplicate hrefs) — sorting adds/removes nothing.
+
+Conclusion: this listing ranks by lookup count, a value that changes in real
+time with no stable secondary sort key, so page=1 and page=2 fetched a few
+seconds apart can return ~90%-overlapping results — a live-reranking artifact
+on MusicBrainz's own side. Sorting only made pre-existing, scattered
+duplicates (900 rows apart, invisible while scrolling a huge unsorted table)
+collate adjacently and become obvious — which is why the user only noticed it
+"after sort." Fix: `_seenTopCdStubHrefs`, a `Set` of Title hrefs already
+rendered (declared next to `allRows`/`groupedRows`, reset alongside them per
+fetch), checked at the top of `startFetchingProcess`'s "real data row" branch
+— `pageType === 'top-cd-stub'` only, skipping (not counting toward
+`rowsInThisPage`/`totalRowsAccumulated`) a row whose href was already seen.
+Scoped narrowly to this one pageType: no other browse-style listing in this
+script has evidenced the same live-reranking hazard.
+
+**Regression tests:**
+`tests/fixtures/top-cd-stub-lastupdate-and-dedup.spec.js`, two cases. The
+misattribution case is a single minimal page (`top-cd-stub-lastupdate.html`);
+the dedup case is a real two-fixture pagination pair
+(`top-cd-stub-dup-rows-page{1,2}.html`, page 2 deliberately repeating page 1's
+"Row B"/"Row C" hrefs), routed by inspecting the fetch URL's own `page` query
+param. Both mutation-checked: `git stash` of just the userscript change (kept
+the new tests) reproduced exactly the predicted wrong output — empty Comment
+cell for the first case, `['Row A','Row B','Row B','Row C','Row C','Row D']`
+for the second — then `git stash pop` restored the fix and both passed.
+
+## 2026-09-11 — `/cdstub/browse` dedup fix leaked a skipped duplicate's lastupdate text onto an unrelated kept row (fixed, branch fix-cdstub-dedup-lastupdate-leak)
+
+Reported live, right after merging the fix above: `debug/top-cd-stubs-bug.html`
+showed only the "Title" column rendering, each row cell artificially large.
+
+**Root-caused with evidence, not guessed** — the width itself
+(`min-width: 272902px` on the sticky Title `<th>`) looked exactly like a
+plausible browser `position: sticky` + nowrap-measurement quirk (this
+project's `toggleAutoResizeColumns()` measures via `th.offsetWidth` after
+applying a table-wide nowrap class), and a first attempt at a repro (a
+synthetic 1200-row table with random content) measured a perfectly sane
+709px, disproving that theory outright — worth recording since it would have
+been an easy, wrong story to believe from the symptom alone. Actually reading
+the CAPTURED page's own sticky-column cell text found the real cause: one
+row's Title `<td>` contained **44,015 characters** — dozens of
+`(Added N years ago, last modified N years ago)` comment spans concatenated
+onto ONE row.
+
+**The actual bug: the previous session's dedup fix (`_seenTopCdStubHrefs`)
+skips a duplicate DATA row, but MusicBrainz always renders that row's own
+lastupdate info row as the very next sibling `<tr>` — and the separate
+lastupdate-merge branch was untouched, still merging onto
+`allRows[allRows.length - 1]` unconditionally.** For a skipped duplicate, that
+is not the duplicate's own row (which was never pushed) — it's whichever row
+happened to be the last one ACTUALLY KEPT, e.g. several rows earlier if a long
+run of duplicates preceded it. Every duplicate in that run wrongly appended
+its own lastupdate `<span class="comment">` onto that one earlier row's Title
+cell (via `appendChild`, so unlike the Comment COLUMN's plain `textContent =`
+overwrite, these accumulate without bound) — hence one row absorbing 44,000+
+characters after a long duplicate run.
+
+**Fix:** `_skipNextTopCdStubLastupdate`, a boolean set when the dedup guard
+skips a data row and checked (then cleared) at the top of the lastupdate
+branch — when true, that lastupdate row is dropped too, instead of merging
+onto the wrong target.
+
+**Regression test:** extended `top-cd-stub-lastupdate-and-dedup.spec.js`'s
+dedup fixtures to dupe THREE consecutive rows (A/B/C) rather than one — a
+single-duplicate run can accidentally "self-heal" the Comment COLUMN's value
+(the last overwrite happens to be the correct one), which is exactly why the
+1-duplicate version of this fixture pair didn't catch this bug the first
+time. The new assertion counts each row's OWN `span.comment` inside its
+sticky Title cell (must be exactly 1 — the Comment column's overwrite
+semantics hide the leak that appendChild does not). Mutation-checked: fails
+with `[1, 1, 4, 1]` on the pre-fix code (Row C absorbed A's, B's, and its own
+lastupdate spans), passes after.

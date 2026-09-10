@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1060+2026-09-11
+// @version      9.99.1063+2026-09-11
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14013,6 +14013,13 @@
         // below. Named 'top-cd-stub' (not 'cd-stub') to leave that name free
         // for the individual CD stub detail page (/cdstub/<disc-id>).
         // See debug/top-cd-stub.html.
+        //
+        // This listing ranks by lookup count, a value that changes in real
+        // time with no stable secondary sort key, so successive page fetches
+        // can return heavily overlapping results (measured: page 1 and page
+        // 2 of a real 2-page fetch shared ~90% of their rows). The same
+        // startFetchingProcess row loop dedupes by Title href — see
+        // _seenTopCdStubHrefs — keeping the first occurrence of each disc.
         {
             type: 'top-cd-stub',
             match: (path) => path.match(/^\/cdstub\/browse\/?$/),
@@ -35459,6 +35466,14 @@ a { color: #1565c0; }`;
     let allRows = [];
     let originalAllRows = [];
     let groupedRows = [];
+    // top-cd-stub only: MusicBrainz's own "Top CD stubs" browse listing ranks
+    // by lookup count, a value that changes in real time, with no stable
+    // secondary sort key — fetching page 1 then page 2 a few seconds apart
+    // can return heavily overlapping results (measured: ~90% of a 2-page
+    // fetch duplicated). Tracks Title hrefs already rendered so a later
+    // repeat can be skipped — see the pageType === 'top-cd-stub' guard in
+    // startFetchingProcess's row loop.
+    let _seenTopCdStubHrefs = new Set();
     // Filter result cache: Map<string key → TR[]> for single-table,
     // Map<string key → TR[]> per-group for multi-table.
     // Keyed on normalised query + flags + column-filter state.
@@ -45217,6 +45232,7 @@ a { color: #1565c0; }`;
         allRows = [];
         originalAllRows = [];
         groupedRows = [];
+        _seenTopCdStubHrefs = new Set();
         expandedCells.clear();
         _areaFlagRegionCorrected.clear();
         _editsProseDefaultExpandedCols.clear();
@@ -46322,6 +46338,14 @@ a { color: #1565c0; }`;
                         // name (rawName + " " + entityType) when the first data row arrives.
                         let pendingGroupRawName = null; // rawName of the most-recent subh row
                         let pendingGroupResolved = false; // true once the first row has renamed it
+                        // top-cd-stub only: true when the data row just processed was
+                        // skipped as a duplicate (see _seenTopCdStubHrefs). Its own
+                        // lastupdate info row still follows immediately in the DOM —
+                        // without this flag, that row's text would merge onto
+                        // allRows[allRows.length - 1], i.e. some EARLIER, unrelated
+                        // row that happened to be the last one actually kept, instead
+                        // of being dropped along with the row it belongs to.
+                        let _skipNextTopCdStubLastupdate = false;
 
                         tableBody.childNodes.forEach(node => {
                             if (node.nodeName === 'TR') {
@@ -46400,6 +46424,19 @@ a { color: #1565c0; }`;
                                     // native MB "Name <span class="comment">(disambiguation)
                                     // </span>" convention, and mirror it into the row's synthetic
                                     // Comment cell (see 'top-cd-stub' features.extractMainColumn).
+                                    //
+                                    // This row's OWN data row may have just been skipped as a
+                                    // duplicate (see _seenTopCdStubHrefs) — in that case
+                                    // allRows[allRows.length - 1] is some EARLIER, unrelated row
+                                    // that happened to be the last one actually kept, and merging
+                                    // onto it would silently pile this text onto the wrong row
+                                    // (measured: one kept row accumulated 44,000+ characters this
+                                    // way once a long run of duplicates followed it).
+                                    if (_skipNextTopCdStubLastupdate) {
+                                        _skipNextTopCdStubLastupdate = false;
+                                        Lib.debug('parse', 'top-cd-stub: skipped lastupdate merge for a duplicate row\'s own info row');
+                                        return;
+                                    }
                                     const _lastRow = allRows.length > 0 ? allRows[allRows.length - 1] : null;
                                     const _infoText = node.cells[0].textContent.trim();
                                     if (_lastRow && _infoText) {
@@ -46420,11 +46457,17 @@ a { color: #1565c0; }`;
                                         // row is a later sibling in document order) and produced
                                         // an empty Comment cell, since the Title cell had no
                                         // native .comment span at extraction time — top-cd-stub's
-                                        // Comment column is populated exclusively from here. It
-                                        // is always the row's last cell for this page type (no
-                                        // injectedColumns/addCAA/addEAA configured on it).
+                                        // Comment column is populated exclusively from here.
+                                        // _extractMainColumnParts() always appends THREE cells, in
+                                        // this fixed order: MB-Name, Comment, Primary alias (see
+                                        // its own JSDoc and every one of its call sites) — so the
+                                        // row's actual last cell is Primary alias, and Comment is
+                                        // the SECOND-to-last (no injectedColumns/addCAA/addEAA
+                                        // configured on this page type to land after it). Landing
+                                        // on `length - 1` here previously wrote the lastupdate text
+                                        // into Primary alias instead of Comment.
                                         if (mainColIdx !== -1) {
-                                            const _commentCell = _lastRow.cells[_lastRow.cells.length - 1];
+                                            const _commentCell = _lastRow.cells[_lastRow.cells.length - 2];
                                             if (_commentCell) _commentCell.textContent = _infoText;
                                         }
 
@@ -46482,6 +46525,30 @@ a { color: #1565c0; }`;
                                      // legitimately have cells.length === 1.
                                      (node.cells.length === 1 && node.cells[0].colSpan <= 1)) &&
                                     !node.classList.contains('explanation')) {
+                                    // top-cd-stub: skip a row whose Title href was already
+                                    // rendered — see _seenTopCdStubHrefs' own comment for why
+                                    // this listing's live ranking makes successive page fetches
+                                    // overlap. Checked on the raw `node` (before the
+                                    // document.importNode clone below) so a duplicate costs
+                                    // nothing beyond this lookup, and skipped before
+                                    // rowsInThisPage/totalRowsAccumulated increment so the
+                                    // "Loaded N rows" summary reports the true deduplicated count.
+                                    if (pageType === 'top-cd-stub') {
+                                        const _titleHref = node.querySelector('a[href^="/cdstub/"]')?.getAttribute('href');
+                                        if (_titleHref) {
+                                            if (_seenTopCdStubHrefs.has(_titleHref)) {
+                                                Lib.debug('parse', `top-cd-stub: skipped duplicate row for "${_titleHref}" (already rendered)`);
+                                                // Its own lastupdate info row still follows in the
+                                                // DOM — that branch must skip too, or it would
+                                                // merge this dropped row's text onto whichever
+                                                // EARLIER row happens to be allRows' current last.
+                                                _skipNextTopCdStubLastupdate = true;
+                                                return;
+                                            }
+                                            _seenTopCdStubHrefs.add(_titleHref);
+                                        }
+                                        _skipNextTopCdStubLastupdate = false;
+                                    }
                                     // Remove artificial non-data rows on non-paginated pages which have a link "See all <number of rows> relationships" to the full dataset instead
                                     if (activeDefinition && activeDefinition.non_paginated) {
                                         const seeAllCell = node.querySelector('td[colspan]');
