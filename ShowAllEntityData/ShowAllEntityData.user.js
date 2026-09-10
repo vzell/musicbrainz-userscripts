@@ -40033,21 +40033,27 @@ a { color: #1565c0; }`;
         entityTagCount:           { label: 'Entity info - Tag count',          glyph: '🏷️' },
         // 'Entity info - Event cancelled' — area-events/place-events/
         // artist-events only (see MB_UNIQ_KIND_TO_SECTION's 'entitycancelled'
-        // key); a plain "Event info - Event cancelled" (below) is used
+        // key); a plain "Event info - Cancelled" (below) is used
         // instead when the surrounding page IS one of the "Event info"
         // family (tag-value/user-tag-value/user-ratings-type), since those
         // pages already have an "Event info" section for the event's own
         // date.
         entityEventCancelled:     { label: 'Entity info - Event cancelled',    glyph: '🚫' },
         // 'Entity info - Role' — the decomposed, OR-matching counterpart of
-        // the standalone 'Roles' section below (see MB_UNIQ_KIND_TO_SECTION's
-        // 'roletoken' key and `_splitArtistRoleTokens()`'s own JSDoc):
-        // atomic role words (e.g. "composer") rather than 'Roles'' whole
-        // combined-credit strings (e.g. "composer, lyricist").
+        // the 'Entity info - Role (combined)' section below (see
+        // MB_UNIQ_KIND_TO_SECTION's 'roletoken' key and
+        // `_splitArtistRoleTokens()`'s own JSDoc): atomic role words (e.g.
+        // "composer") rather than the combined section's whole combined-
+        // credit strings (e.g. "composer, lyricist").
         entityRole:    { label: 'Entity info - Role',  glyph: '🎭' },
         joinPhrase:    { label: 'Join phrases',        glyph: '🔀' },
         nameVariation: { label: 'Name variations',    glyph: '🪪' },
-        roles:         { label: 'Roles',              glyph: '🎭' },
+        // 'Entity info - Role (combined)' — the exact-combined-string
+        // sibling of 'Entity info - Role' above (same 🎭 glyph, deliberately
+        // reused). Matches an artist's whole credited-role text as one unit
+        // (e.g. selecting "composer, lyricist" only matches that exact
+        // combination) — see MB_UNIQ_KIND_TO_SECTION's 'role' key.
+        roles:         { label: 'Entity info - Role (combined)', glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
@@ -40130,8 +40136,8 @@ a { color: #1565c0; }`;
         partOfSeriesName:   { label: 'Part of series - Name',   glyph: '📚' },
         partOfSeriesDate:   { label: 'Part of series - Date',   glyph: '📅' },
         partOfSeriesNumber: { label: 'Part of series - Number', glyph: '🔢' },
-        eventInfo:     { label: 'Event info - Event date',       glyph: '📅' },
-        eventCancelled: { label: 'Event info - Event cancelled', glyph: '🚫' },
+        eventInfo:     { label: 'Event info - Date',       glyph: '📅' },
+        eventCancelled: { label: 'Event info - Cancelled', glyph: '🚫' },
         // "Editor info" — the annotations pageType's own family, one
         // sub-section per Editor-column facet (deleted-editor identity,
         // tooltip-recorded historical name, tooltip membership span, and
@@ -53661,7 +53667,7 @@ a { color: #1565c0; }`;
         // page type with a 'cancelledEvent' extractor (e.g. search/
         // collections-releases/series-releases/user-tag-value-entity also
         // have one but were not asked for). 'user-ratings-type' shares
-        // 'tag-value'/'user-tag-value''s own "Event info - Event cancelled"
+        // 'tag-value'/'user-tag-value''s own "Event info - Cancelled"
         // kind (not 'entitycancelled') — same shape: a multi-entity-kind
         // page with its own "Events" sub-table, not a single-entity-kind
         // *-events listing.
@@ -56668,7 +56674,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
         if (mode.startsWith('partofseriesnumber:')) return 'One "Part of series" item\'s own numeric series position (e.g. "27" from "(number: 27)").';
         if (mode.startsWith('role:')) return 'An artist\'s own credited event role (e.g. "main performer", "guest performer", "host").';
-        if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Roles", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
+        if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Entity info - Role (combined)", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';

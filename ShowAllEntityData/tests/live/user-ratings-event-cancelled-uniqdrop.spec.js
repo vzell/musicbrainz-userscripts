@@ -6,14 +6,14 @@ const { collectPageErrors } = require('../support/liveAssertions');
 
 // This user's Event ratings list (see debug/user-ratings-event.html) mixes
 // cancelled and non-cancelled events, enough to exercise the "Event info -
-// Event cancelled" section. This page is publicly viewable logged-out (no
+// Cancelled" section. This page is publicly viewable logged-out (no
 // auth needed). Real counts can drift as ratings are added/removed, hence
 // the >0 assertions below rather than hardcoded exact numbers.
 const RATINGS_URL = 'https://musicbrainz.org/user/vzell/ratings/event/';
 const SHOW_ALL_BUTTON = 'button[data-label="Show Ratings for Events"]';
 const COLUMN = 'Event';
 
-test('unique-values dropdown gets an "Event info - Event cancelled" section on the Event column', { tag: '@extended' }, async ({ page }) => {
+test('unique-values dropdown gets an "Event info - Cancelled" section on the Event column', { tag: '@extended' }, async ({ page }) => {
     const pageErrors = collectPageErrors(page);
 
     await loadUserscriptPage(page, { url: RATINGS_URL, testMode: true });
@@ -29,8 +29,8 @@ test('unique-values dropdown gets an "Event info - Event cancelled" section on t
     );
     expect(sections).toBeTruthy();
 
-    const section = sections.find((s) => s.label === 'Event info - Event cancelled');
-    expect(section, 'expected an "Event info - Event cancelled" section').toBeTruthy();
+    const section = sections.find((s) => s.label === 'Event info - Cancelled');
+    expect(section, 'expected an "Event info - Cancelled" section').toBeTruthy();
 
     const byLabel = Object.fromEntries(section.items.map((i) => [i.label, i]));
     expect(byLabel['» event cancelled: cancelled']).toBeTruthy();
@@ -40,7 +40,7 @@ test('unique-values dropdown gets an "Event info - Event cancelled" section on t
     // visibility wiring the uniq-dropdown-section skill documents.
     const datasetLabels = await page.evaluate(() => {
         const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
-            .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Event info - Event cancelled');
+            .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Event info - Cancelled');
         return Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item')).map((item) => item.dataset.mbUniqSynLabel);
     });
     expect(datasetLabels).toHaveLength(section.items.length);
@@ -53,7 +53,7 @@ test('unique-values dropdown gets an "Event info - Event cancelled" section on t
 
     await page.evaluate(() => {
         const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
-            .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Event info - Event cancelled');
+            .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Event info - Cancelled');
         const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item'))
             .find((el) => el.dataset.mbUniqSynLabel === '» event cancelled: cancelled');
         item.click();

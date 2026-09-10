@@ -291,8 +291,8 @@ every distinct non-empty value currently visible in that column.
                        entity-kind listing where "Event" IS the entity)
     — 📅/🚫 Event info — the Event column's own facets on a MULTI-entity-kind
                        page (tag/user-tag pages' "Events" sub-table, and a
-                       user's own /ratings/event/ page): "- Event date" (one
-                       entry per distinct event date) and "- Event cancelled"
+                       user's own /ratings/event/ page): "- Date" (one
+                       entry per distinct event date) and "- Cancelled"
                        (MusicBrainz's own native `(cancelled)` marker,
                        matching/highlighting just that word)
     — 📏/🔢/🧩/💿 Format info — one independently-collapsible sub-section per
@@ -438,16 +438,19 @@ itself the signal that something on the page is mid-edit.
 The toggle composes with every other filter (type a query and press ⏳, in
 either order).  It is held by no input, so "✗ Clear all filters" becomes
 visible while it is engaged and releases it, page-wide.
-    — 🎭 Roles         — "» role:" entries, one per distinct artist event-role
-                       found in a native artist-roles list or the plain-text
-                       "Role" column on an artist's own Events tab
+    — 🎭 Entity info - Role (combined) — "» role:" entries, one per distinct
+                       artist event-role found in a native artist-roles list
+                       or the plain-text "Role" column on an artist's own
+                       Events tab, matching a credit's exact combined role
+                       string (e.g. "composer, lyricist" as one unit)
     — 🎭 Entity info - Role — one entry per distinct ATOMIC role word
                        (composer, lyricist, writer, arranger, …), unlike the
-                       "Roles" section above which matches a credit's exact
-                       combined role string.  Selecting one atomic role
-                       matches any row where an artist has that role, alone
-                       or together with others — e.g. selecting "composer"
-                       also matches an artist credited as "composer, lyricist"
+                       "Entity info - Role (combined)" section above which
+                       matches a credit's exact combined role string.
+                       Selecting one atomic role matches any row where an
+                       artist has that role, alone or together with others —
+                       e.g. selecting "composer" also matches an artist
+                       credited as "composer, lyricist"
     — ⭐ Release info - Data quality — on any "Release" column: MusicBrainz's
                        own native data-quality marker as three fixed entries,
                        🟢 high / 🟠 low / ⚪ normal (normal = no explicit

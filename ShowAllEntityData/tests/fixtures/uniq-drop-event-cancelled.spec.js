@@ -25,8 +25,8 @@ test('unique-values dropdown: the "Event info - Event cancelled" entry renders r
     const sections = await page.evaluate(() => window.__saTest.getUniqDropSections('Event'));
     // artist-events uses the 'entitycancelled' kind (SYN_SECTION_META's
     // `entityEventCancelled` entry, "Entity info - Event cancelled") —
-    // distinct from the 'eventcancelled' kind's "Event info - Event
-    // cancelled" label used by tag-value/user-tag-value/user-ratings-type
+    // distinct from the 'eventcancelled' kind's "Event info - Cancelled"
+    // label used by tag-value/user-tag-value/user-ratings-type
     // (see _eventCancelledKind's own derivation comment). Both kinds hit
     // the same makeValueSynItem() `.cancelled`-class branch this test
     // covers; the label difference is expected, not a discrepancy.
@@ -42,7 +42,7 @@ test('unique-values dropdown: the "Event info - Event cancelled" entry renders r
 
     // A control from a different section confirms the `cancelled` flag is
     // scoped to this one entry family, not accidentally applied everywhere.
-    const otherSection = sections.find((s) => s.label !== 'Event info - Event cancelled');
+    const otherSection = sections.find((s) => s.label !== 'Event info - Cancelled');
     expect(otherSection).toBeTruthy();
     expect(otherSection.items.every((i) => i.cancelled === false)).toBe(true);
 });
