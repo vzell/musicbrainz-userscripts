@@ -8841,3 +8841,62 @@ writing any of it, flip `sa_enable_picard_tagger` off" were both discharged.
 before or after" and `org/picard.org`'s matching claim were corrected. No
 `// @version` bump or changelog entry: everything here is under `tests/` or
 `scripts/`.
+
+## 2026-09-10 — search?type=recording continuation-row merge "does not survive a filter": could not reproduce on 9.99.1058
+
+Follow-up to the "Separately found, NOT fixed, not in scope" note above (the
+one recorded during the Picard collapse-toggle session), which guessed that a
+global-filter keystroke un-merges continuation rows back to 6 source rows
+(3 base + 3 continuation) instead of the correct 3.
+
+**Live-page attempt first, and why it goes nowhere.**
+`https://musicbrainz.org/search?query=Roulette&type=recording&method=indexed`
+reports "Found 5,362 results" over 215 native pages. Clicking "Show all Search
+Results for Recordings" hits `sa_max_page`'s default of 50 immediately —
+215 > 50 pops the "⚠️ High Page Count" `Lib.showCustomConfirm` dialog before
+any fetching starts — so there is nothing to look at on that URL without first
+confirming past it and then waiting out a 215-page fetch. This alone explains
+"I cannot confirm this" without saying anything about whether the underlying
+bug exists.
+
+**So the reproduction used the same fixture and same trigger as the original
+investigation instead**, driven directly against current `main` (9.99.1058, no
+uncommitted changes) via a disposable Playwright script reusing
+`tests/support/loadPage.js`/`browser.js` exactly like
+`tests/fixtures/search-recordings-continuation.spec.js`: navigate to the
+`Roulette` search URL routed to the hand-trimmed 3-recording fixture, click
+"Show all", confirm 3 merged rows (3/2/1 `<li>` in Release/Track/Medium/Type),
+then trigger a re-render four different ways and re-check both the row count
+and the per-row `<li>` shape:
+
+| Trigger                                    | Rows before | Rows after | Merge survived?         |
+|---------------------------------------------|-------------|------------|--------------------------|
+| Global filter, real keystroke "e" (matches everything) | 3 | 3 | yes — 3/2/1 `<li>` intact |
+| Global filter, "Springsteen" (narrows to 1) | 3           | 1          | yes                      |
+| Column filter on "Release"                  | 3           | 3          | yes                      |
+| Click "Name" header to sort                 | 3           | 3          | yes                      |
+
+None of the four reproduced the "6 rows" symptom — row count and per-row
+`<li>` counts held in every case, checked out to 4 s after the triggering
+action, with the filter status line confirming each pass actually ran (e.g.
+`✓ Filtered 1 row in 53ms [GLOBAL:"springsteen"]`).
+
+**The original note's own guessed mechanism doesn't match the code, either.**
+It proposed "`mergeContinuationRows` runs during row assembly against the
+`DOMParser` document while `allRows` keeps the unmerged rows." Reading the
+merge call site (`_isContinuationRow`/`_mergeContinuationRowInto`, grep
+`mergeContinuationRows` in the row-import loop) shows the opposite: a
+continuation row is folded into the preceding row and explicitly never pushed
+onto `allRows`/`groupedRows` at all ("`// Skip — do not add to allRows /
+groupedRows`"). Both arrays only ever hold the already-merged row, which is
+consistent with the merge surviving a filter/sort rebuild exactly as measured
+above.
+
+**Not fixed, because nothing here shows it as currently broken.** This does
+not retroactively call the original observation false — only that it does not
+reproduce today via the global filter, a narrowing global filter, a column
+filter, or a sort, against a clean 9.99.1058 checkout and the exact fixture
+used originally. If it resurfaces, check first whether the reproduction
+differs from the four tried here (a different trigger entirely, a dirty
+working tree, or a live multi-page fetch's page-boundary timing that a
+single-native-page fixture cannot exercise).
