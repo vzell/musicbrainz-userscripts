@@ -1,5 +1,21 @@
 [
   {
+    "version": "9.99.1056",
+    "date": "2026-09-10",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Multi-table pages (release-group releases, series releases, tag/user-tag value listings, artist-relationships, …) no longer lose the whole \"Picard\" column the moment anything re-renders. The ♪ buttons appeared on the initial render and then vanished on the first global-filter keystroke or sub-table sort, while the \"Picard\" header stayed put — leaving the affected sub-table one column short of its own header. The Picard cell is now given to the captured SOURCE rows as well as the live ones, in BOTH table modes, so every re-render clones it along with the row.",
+          "Sorting one sub-table no longer needlessly rebuilds the ♪ buttons of every OTHER sub-table. Only cells that were actually re-cloned are re-wired, which is the scoped-render behaviour the rest of the table already had.",
+          "Switching discography view (Complete / Official / Non-Official / merged) now re-wires the ♪ buttons it re-renders. That code path re-populates sub-tables without going through the normal render, so its buttons were previously left inert.",
+          "The \"Release events\" and \"Relationships\" placeholder cells can no longer be inserted to the RIGHT of the Picard cell, which would have swapped those columns' data against their headers. Both now anchor on the Picard cell the same way the injected-column cells already did.",
+          "A Load-from-Disk after a live fetch in the same session no longer leaves the \"Picard\" header missing while every row still gets a Picard cell, and a second full render can no longer inject a duplicate \"Picard\" header. Either one desynced the header and body column counts, which in turn produced a stray column-filter input."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1055",
     "date": "2026-09-09",
     "sections": [

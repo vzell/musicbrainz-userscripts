@@ -1,0 +1,72 @@
+* picard
+** i
+
+1.)
+
+What exactly would happen when implementing "Step 23: Convert the re-wire-after-clone family to event delegation"
+
+2.)
+
+There is already a bug for multi-table pageTypes like e.g https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c
+
+Initially the picard column shows the right glyph "♪" in e.g the sub-table "Official release", but as soon as
+a sorting/filtering is done on that sub-table, the glpyh is not rendered anymore, see @debug/picard-missing.html
+
+3.)
+
+can we implement in the "Picard" column header kind of like in the "Lenght" column for e.g. https://musicbrainz.org/release/3ec14d03-2c03-4764-a69d-8155817a040f
+a collapse/uncollpase picard glyph which only renders the picard data cell "♪" when an end-user clicks it
+
+** f
+
+Done with Part 1. Here's where things stand.
+
+The bug is fixed and the fix is verified. Root cause was an asymmetry I hadn't expected to find documented elsewhere in the file: renderFinalTable moves the rows it's handed, so on single-table pages the Picard <td> lands on the source rows for free — but renderGroupedTable always clones, including on the first render. So groupedRows[i].rows never got the cell, and every re-render cloned blank rows. The code's own comment asserted the opposite, which is why it went unnoticed; the artwork code states the same fact correctly right next door.
+
+Two things worth flagging that changed my understanding of your report:
+
+- It wasn't sort-specific. runFilter's multi branch re-clones every group, so the column emptied page-wide on the first filter keystroke. Your snapshot showed one affected sub-table only because the scoped-sort path had narrowed that particular render.
+- The mirror had to clone the built cell, not rebuild it. _picardExtractRowEntities skips .mb-sticky-col, and only live rows carry that class. On your page td[0] (sticky) and td[18] both hold /release/76415396-…, so rebuilding on the master row would have harvested the other cell — same release, different tooltip text.
+
+Perf, per the gate you approved: restoring the cells means multi-table keystrokes rebuild them again. Smaller than the review claimed, though — _picardExtractRowEntities was already the unconditional first line, so the expensive per-row anchor walk was always being paid; only the DOM construction is new. The _mbPicardWired marker means a scoped sub-table sort now pays only for the group it sorted.
+
+I also fixed four adjacent defects the change would otherwise have made worse — most importantly the discography-view path, which re-clones rows without going through renderGroupedTable and would have started serving inert ♪ buttons instead of missing ones.
+
+Verification: new network-free spec, mutation-checked — reverting exactly the mirror gives Expected: 6, Received: 0 on both tests while the initial-render assertions still pass, so they pin the re-render specifically. 152 fixture tests green.
+
+Two notes:
+
+1. I found a separate pre-existing bug and left it alone: on search?type=recording the continuation-row merge doesn't
+   survive a filter re-render — 3 merged rows become 6 again. Confirmed identical on HEAD, so it's not from this
+   change. It's recorded in DEBUG-NOTES.md; it deserves its own session.
+2. I have not pushed. Your global instructions say never push without explicit instruction, while the project guide says
+   always push after a task — so I've committed to fix/picard-multi-table-source-rows and stopped there. Say the word
+   and I'll push, then fold the WIP changelog and version bump on main.
+
+Part 2 (the per-sub-table ▶♪ header toggle, collapsed by default) is untouched, as agreed — that's a fresh branch once this one lands.
+
+** f2
+
+Pushed. fix/picard-multi-table-source-rows is on origin at 2cf1d24, local and remote refs match, and the working tree is clean apart from your own untracked org/picard.org.
+
+GitHub offered a PR link if you want one:
+https://github.com/vzell/musicbrainz-userscripts/pull/new/fix/picard-multi-table-source-rows
+
+Next steps, whenever you want them:
+
+- Merge to main — that's where the version bump and changelog fold belong. The merge-push-remove skill covers exactly
+  this: fold ShowAllEntityData_CHANGELOG.wip.json's five WIP.1 items into the real changelog, bump // @version to
+  9.99.1056+<ship date>, delete the WIP file, and remove the branch. Note the WIP file's date is 2026-09-10; if the
+  merge lands on a different day, the folded entry's date must match the +YYYY-MM-DD stamp in the header, not the
+  authoring date.
+- Part 2 — the per-sub-table ▶♪ toggle, collapsed by default, on a fresh branch after this lands. The plan file already
+  has its design, including the two traps I verified: the header glyph has to come from CSS rather than text (or
+  initCollapsableColumns' _cleanColHeaderText lookup stops matching 'Picard' and silently kills the multi-row collapse
+  toggles), and the toggle state belongs on the <table> element, which the reuse branch preserves.
+- The search?type=recording continuation/filter bug I turned up is in DEBUG-NOTES.md awaiting its own session.
+
+* pre-existing bug and left it alone
+
+on search?type=recording the continuation-row merge doesn't survive a filter re-render — 3 merged rows become 6
+again. Confirmed identical on HEAD, so it's not from this change. It's recorded in DEBUG-NOTES.md; it deserves its own
+session.
