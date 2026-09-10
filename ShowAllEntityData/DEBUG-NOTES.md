@@ -8376,3 +8376,182 @@ distinct icon (via `flagLabel`, not just `hasFlag`). Verified failing
 against the pre-fix code first (`git stash` on `ShowAllEntityData.user.js`
 alone) — both new tests failed with `hasFlag: true` on the unflagged
 anchor, exactly reproducing the reported bug.
+
+## 2026-09-10 — Picard column emptied on every multi-table re-render (fixed)
+
+**Symptom as reported.** On `releasegroup-releases`
+(`https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c`)
+the Picard column's ♪ rendered correctly at first, then disappeared from the
+"Official release" sub-table as soon as that sub-table was sorted or filtered.
+Snapshot: `debug/picard-missing.html`.
+
+**What the snapshot actually shows.** Three `table.tbl`, all three carrying
+`data-picard-th-injected="true"` and 23 `<th>` per header row including
+`mb-picard-th`, and three `<colgroup>`s of 23 `<col>`. The sorted table
+(`.mb-sort-status` reads `✓ Sorted by: 'Primary alias'▼`, 119 rows) has **0**
+`td.mb-picard-cell` and **22** `<td>` per row. The untouched 4-row and 1-row
+tables still have 4 and 1 cells and 23 `<td>`. So the body of the sorted
+sub-table was one column short of its own header. (There is no 24-vs-23
+colgroup discrepancy — an earlier reading of this file said so and was wrong.)
+
+**Root cause: the two table modes render differently, and the Picard code was
+written for only one of them.**
+
+- Single-table's initial render **MOVES** the source rows into the DOM —
+  `await renderFinalTable(allRows)`, and `renderFinalTable` appends what it is
+  handed. So the live rows *are* `allRows`' rows and the Picard `<td>` lands on
+  the source rows for free.
+- `renderGroupedTable` **ALWAYS CLONES** — `group.rows.forEach(r =>
+  …r.cloneNode(true))`, on the first render too. `initPicardTaggerColumn()`'s
+  full-mode pass then walks `table.querySelectorAll('tbody tr')` and appends the
+  cell to those **clones**. `groupedRows[i].rows` never received it.
+
+The code asserted the opposite in a comment — *"Not needed in multi-table mode:
+… group.rows already carries the picard cell before any cloning happens"* —
+which is what made the gap invisible. `_artResolveSourceCell()`'s JSDoc states
+the same fact correctly for artwork (*"renderGroupedTable() ALWAYS inserts
+clones … while groupedRows[i].rows … stay blank forever"*), which is precisely
+why `_artMirrorIconToSourceRow()`/`_artMirrorInlineThumbToSourceRow()` exist.
+The Picard comment simply never got the memo.
+
+Every re-render then re-cloned blank rows and `initPicardTaggerColumn(/*
+rewireOnly */ true)` correctly declined to append a cell (appending there would
+land it before the Relationships cell on the load-from-disk path, where
+`runFilter()` fires first).
+
+**The bug was much bigger than "sorting".** `runFilter()`'s multi branch sets
+`_sourceRows = group.rows` and re-clones for *every* group it processes, so the
+column emptied page-wide on the **first global-filter keystroke**. The snapshot
+showed only one affected sub-table purely because `_renderDirtyGroupIdxs` had
+scoped that particular render to the sorted group. The cheapest reproduction is
+one keystroke, not a sort — and that is the first case the new spec covers.
+
+**Fix.** `initPicardTaggerColumn()` full mode now mirrors each built cell onto
+its master row, resolved through `data-mb-row-idx`, and then sweeps the owning
+source array so the rows the active filter left UNRENDERED get one too. Split
+into `_picardFillCell()` (shared body) plus two entry points: `_picardApplyToRow()`
+for live rows (create-or-rewire, unchanged semantics) and `_picardEnsureRow()`
+for source rows (fill-if-absent).
+
+Three details worth keeping:
+
+1. **The built cell is CLONED onto the master, never re-derived**, and that is
+   not a micro-optimisation. `_picardExtractRowEntities()` skips `.mb-sticky-col`
+   cells and `applyStickyColumn()` classes only the **live** rows. On this very
+   page the sticky column IS the release column: measured in the snapshot, a
+   row's `td[0]` is `.mb-sticky-col` holding `/release/76415396-…` and `td[18]`
+   (the synthetic MB-Name column) holds the *same* MBID. The marked live row
+   therefore harvests `td[18]`; an unmarked master row would harvest `td[0]` —
+   same release, but a different `<a>` text for the button tooltip and a
+   different `<li>` count wherever the two cells differ in arity. Same reasoning
+   `_artMirrorInlineThumbToSourceRow()` documents for cloning its node instead
+   of copying a value. The unrendered-rows fallback does extract on the master,
+   which is self-correcting: a clone never carries `_mbPicardWired`, so the live
+   pass rebuilds every cell it renders anyway.
+2. **A `_buildMasterRowIndex()` Map, not per-row `_findMasterRowByIdx()`.** That
+   function is a linear scan of `allRows` plus every group; calling it once per
+   row makes the pass O(N²) — order 10^7 string comparisons on a 4174-row page.
+   It is deliberately not used to reimplement `_findMasterRowByIdx()` itself,
+   whose callers resolve one row seconds after a render, where a cached map
+   would be stale.
+3. **The source-row work is driven from inside the per-table loop**, after the
+   release-link guard, rather than as a flat sweep of `groupedRows`. That guard
+   is per TABLE ("does this tbody contain a `/release/<mbid>` link") and the
+   column then exists for every row of a qualifying table, including rows that
+   themselves link only a release-group — no per-row predicate can reproduce it.
+   `initRelationshipsColumn()` can afford the flat shape only because its own
+   qualification (`_extractMbidFromRow`) is row-intrinsic. A flat Picard sweep
+   would be wrong twice: it would add a ghost cell to a non-qualifying
+   sub-table's rows on a heterogeneous page (`artist-relationships`' "Composed
+   work" beside "Composed release"), and it would assume a group-index ↔
+   table-index correspondence that merged discography view breaks.
+
+**Performance.** Restoring the cells means a multi-table keystroke genuinely
+rebuilds them again, where before it skipped the build. Flagged to the user
+before implementing, per CLAUDE.md's gate. The added cost is narrower than it
+first looks: `_picardExtractRowEntities()` is the *unconditional first line* of
+the old `_picardApplyToRow`, so the expensive per-row anchor subtree walk was
+already paid on every multi-table keystroke — what is new is only the `<ul>` /
+`<li>` / `<button>` / `<img>` construction. Mitigated by a `_mbPicardWired` JS
+**property** (not an attribute — `cloneNode(true)` copies attributes but never
+JS properties, making it an exact "was I cloned?" test, the same trick
+`applyStickyColumn` uses with `tr._mbStickyEnter`): a scoped sub-table sort now
+pays only for the group it sorted. A global-filter keystroke re-renders every
+group and still pays in full.
+
+**Four adjacent defects fixed in the same pass**, each of which this change
+would otherwise have made reachable or worse:
+
+- `_applyDiscographyViewFilter()` re-clones source rows into live tbodies twice
+  (the restore-from-merged pre-pass and the merged fill) without going through
+  `renderGroupedTable()`, and nothing re-wired them. Before, those clones simply
+  had no Picard cell; after, they would have arrived carrying an **inert** button
+  — a control that looks live and silently does nothing, which is worse than a
+  missing one. Now re-wired at that function's tail.
+- `_ensureRelCell()` appended with a bare `appendChild`, and `_ensureReCell()`
+  fell back to one when there was no rel cell to aim at. Both now anchor on
+  `td.mb-picard-cell`, like `_ensureIceCells()` already did, so "Picard is
+  rightmost" holds by construction rather than by call ordering. That invariant
+  is load-bearing: every index-based consumer indexes from the left, so a
+  trailing extra cell is inert but a misplaced one shifts five of them at once.
+- `table.dataset.picardThInjected` was never cleared, and the disk-load path
+  replaces the thead from `data.headers`, which excludes `mb-picard-th`. A
+  Load-from-Disk after a live fetch therefore left the table with no Picard
+  header while every row still got a cell. Now cleared alongside the thead.
+- `renderGroupedTable`'s thead templates are cloned from the first `table.tbl`
+  *before* the `!query` cleanup removes every table, so on a second full render
+  in one session they already carried a Picard `<th>` while the freshly created
+  `<table>` had no `picardThInjected` — the guard would then append a **second**.
+  `.mb-picard-th` is now stripped from both templates (`cleanupHeaders()` does
+  not remove it; its removal map targets MusicBrainz's own "Tagger" column).
+  A DOM-presence check was added to the header guard as well.
+
+**Tests.** `tests/fixtures/picard-cells-survive-rerender.spec.js`, network-free:
+the page shell comes from the committed `tests/snapshots/releasegroup-releases/raw.html`
+and the rows from the committed `tests/fixtures/saved-data/releasegroup-releases.json.gz`
+(same release group, "Tougher Than the Rest", 6 + 1 rows). `loadFromDiskFixture()`
+gained optional `pageFixtureFile`/`settingsOverride` pass-throughs to make that
+possible. Two cases — a global-filter keystroke (re-renders every group) and a
+scoped sub-table sort — each asserting per sub-table against that sub-table's
+own pre-action counts, never a page-wide tally.
+
+Verified failing first, by planting a mutation that reverts exactly the mirror
+and the owner sweep: both tests failed with `Expected: 6, Received: 0` picard
+cells, while the *initial render* assertion still passed — so the tests pin the
+re-render specifically rather than Picard in general. Full fixture suite: 152
+passed.
+
+Two spec mechanics that each cost a run and are worth remembering: the
+Load-from-disk dialog is a `position: fixed` overlay, so when it is taller than
+the viewport its confirm button sits where no page scrolling can reach it and
+Playwright retries "element is outside of the viewport" until the hook times out
+(fixed with a taller spec-local viewport — the raw shell has none of
+musicbrainz.org's own CSS, so it is taller than the live page
+`tests/live/disk-fixture-load.spec.js` uses); and `releasegroup-releases`
+renders its sub-sections COLLAPSED, so the sort icon is a 0×0 element until
+`clickMasterToggleAndExpandAll()` has run.
+
+**Separately found, NOT fixed, not in scope.** On `search?type=recording` the
+continuation-row merge does **not** survive a filter re-render: the table
+renders 3 merged rows and a global-filter keystroke brings back all 6 source
+rows (3 base + 3 continuation). Confirmed pre-existing by running the same
+assertion against `HEAD`'s userscript — identical `Expected: 3, Received: 6`.
+An attempt to extend `tests/fixtures/search-recordings-continuation.spec.js`
+with a single-table Picard-survives-a-filter case ran straight into it and was
+backed out rather than encoding the bug into a test. Worth its own session; the
+likely shape is that `mergeContinuationRows` runs during row assembly against
+the `DOMParser` document while `allRows` keeps the unmerged rows.
+
+**HELP reconciled, not skipped.** `ShowAllEntityData_HELP.txt` has no Picard
+section (a known gap); its only two mentions are the multi-row Picard paragraph
+under the recording-search section and the cross-tab sub-table note. Both were
+re-read against what shipped and neither is falsified — this restores the
+behaviour they already describe rather than changing it, so no HELP edit was
+needed. `tests/README.org` DID need one: it stated that `loadFromDiskFixture()`
+"calls `loadUserscriptPage()` with no `fixtureFile`, so no `page.route()` is
+registered and the page SHELL is still fetched from the live site", which the
+new `pageFixtureFile` pass-through makes conditional. No snapshot baseline
+re-capture, and that is evidenced rather than assumed: the mirror writes to
+detached source rows, and in the mutation run above the new spec's *initial
+render* assertions passed identically with and without the fix — the initial
+render is exactly what every `rendered.html` captures.

@@ -42947,13 +42947,18 @@ a { color: #1565c0; }`;
             updateH2CountFromSubtables();
 
             // Re-wire Picard tagger click handlers on the freshly rendered sub-table rows.
-            // Source rows carry picard_td (appended after rel_td during the initial render);
+            // Source rows carry picard_td — full mode gives it to groupedRows[*].rows as
+            // well as to the live rows, in both table modes. That was NOT always so:
+            // the source rows never received it in multi mode, so these clones arrived
+            // without the cell, this rewire-only call correctly declined to append one,
+            // and the whole ♪ column vanished from every re-rendered sub-table while
+            // its <th> stayed put. See DEBUG-NOTES.md's dated entry.
             // cloneNode(true) copies the td but strips its event listeners.  This call
             // only re-attaches them — it does NOT append new tds so column order is safe.
             // Called here (after updateH2CountFromSubtables) rather than right after
             // renderGroupedTable to avoid running during the load-from-disk sequence,
-            // where runFilter fires BEFORE initRelationshipsColumn — in that case source
-            // rows have no picard_td yet and inserting it here would create wrong order.
+            // where runFilter fires BEFORE initRelationshipsColumn — appending here
+            // would then land picard_td before rel_td and swap both columns' data.
             initPicardTaggerColumn(/* rewireOnly */ true);
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
@@ -43151,7 +43156,12 @@ a { color: #1565c0; }`;
                 // never append new tds.  During load-from-disk runFilter fires before
                 // initRelationshipsColumn — full injection there would append picard_td
                 // before rel_td, corrupting column order.  After the initial render,
-                // allRows source rows already carry picard_td so rewire-only is sufficient.
+                // allRows source rows already carry picard_td so rewire-only is
+                // sufficient — on this path they always did, because
+                // renderFinalTable() MOVES allRows into the tbody rather than cloning
+                // it, so the live rows the full-mode pass decorated ARE the source
+                // rows. That asymmetry with renderGroupedTable(), which always clones,
+                // is what made the multi-table variant of this bug possible.
                 initPicardTaggerColumn(/* rewireOnly */ true);
                 // Inline thumbnails first — _artInitQueue creates _caaQueue so they
                 // land ahead of small icons and the big strip in the fetch queue.
@@ -47997,6 +48007,48 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Builds a one-shot `data-mb-row-idx` → master-row index over every captured
+     * source row, together with the ARRAY that owns each row.
+     *
+     * This exists because `_findMasterRowByIdx()` is a linear scan of `allRows`
+     * plus every `groupedRows` entry. That is the right shape for its own
+     * callers, which resolve ONE row seconds after a render
+     * (`_maybeCorrectAreaFlagRegion`, the artwork mirrors), but calling it once
+     * per row turns a full-table pass into O(N²) — on the order of 10^7 string
+     * comparisons on a 4174-row page. A pass that has to resolve EVERY row
+     * builds this instead.
+     *
+     * Deliberately NOT used to reimplement `_findMasterRowByIdx()`: a cached
+     * map would be stale by the time its deferred callers run. Build per call,
+     * use per call, discard.
+     *
+     * The `owner` array is what lets a caller additionally reach a group's
+     * UNRENDERED rows — the ones the active filter left out of the live tbody —
+     * without ever mapping a group index to a table index, which merged
+     * discography view makes unsafe (see `_artResolveSourceCell()`'s JSDoc).
+     *
+     * @returns {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>}
+     */
+    function _buildMasterRowIndex() {
+        const idx = new Map();
+        if (typeof groupedRows !== 'undefined') {
+            groupedRows.forEach(g => {
+                g.rows.forEach(r => {
+                    const k = r.dataset ? r.dataset.mbRowIdx : undefined;
+                    if (k !== undefined) idx.set(k, { row: r, owner: g.rows });
+                });
+            });
+        }
+        if (typeof allRows !== 'undefined') {
+            allRows.forEach(r => {
+                const k = r.dataset ? r.dataset.mbRowIdx : undefined;
+                if (k !== undefined) idx.set(k, { row: r, owner: allRows });
+            });
+        }
+        return idx;
+    }
+
+    /**
      * Scans one live table's header row for Locality/Region/Country column
      * triplets produced by `splitLocation`/`splitArea` (via the shared
      * `_routeAreaLink` helper) — these are always injected as adjacent
@@ -49562,6 +49614,20 @@ a { color: #1565c0; }`;
             rawTemplateHead = firstTable.tHead.cloneNode(true);
             templateHead = rawTemplateHead.cloneNode(true);
             cleanupHeaders(templateHead);
+            // Strip any Picard header out of both templates. This clone is taken
+            // BEFORE the !query cleanup below removes every table.tbl, so on a
+            // second full render in one session (a live fetch followed by a
+            // Load-from-Disk, or a second "Show all" press) the first table
+            // already carries a <th class="mb-picard-th"> — every new group's
+            // thead would inherit one, while the freshly created <table> has no
+            // data-picard-th-injected, so initPicardTaggerColumn()'s guard would
+            // append a SECOND. Picard is re-injected per table anyway, so
+            // dropping it here costs nothing. cleanupHeaders() does not remove
+            // it (its removal map targets MusicBrainz's own "Tagger" column,
+            // not ours).
+            [rawTemplateHead, templateHead].forEach(_h => {
+                _h.querySelectorAll('th.mb-picard-th').forEach(_th => _th.remove());
+            });
         } else {
             Lib.error('render', 'No template table head found.');
         }
@@ -51966,6 +52032,18 @@ a { color: #1565c0; }`;
                 _statSpan.textContent = `(${_sectionRowTotal})`;
             }
         }
+
+        // Re-wire the Picard tagger buttons. This function re-populates live
+        // tbodies from `groupedRows` twice WITHOUT going through
+        // renderGroupedTable() — the restore-from-merged pre-pass and the
+        // merged fill, both `r.cloneNode(true)` — and both run AFTER
+        // _resetDiscographyViewState()'s own runFilter() call near the top, so
+        // nothing else re-attaches their listeners. Before the source rows
+        // owned the picard cell this was invisible (those clones simply had no
+        // cell); now they arrive carrying an inert button, which is worse than
+        // a missing one, so this call is load-bearing rather than tidy.
+        // rewireOnly: the cell is already there, only its listener is gone.
+        initPicardTaggerColumn(/* rewireOnly */ true);
 
         // Must run last, after the section-visibility loop above has already
         // shown/hidden every h3/table for the NEW section — see
@@ -62041,7 +62119,14 @@ a { color: #1565c0; }`;
             // order and swapping both columns' data. Insert before it instead —
             // mirrors _ensureIceCells()'s insertBefore(td, _picardTd) anchor below.
             // On a live-fetch row no mb-rel-cell exists yet, so this still appends.
-            const _relTd = row.querySelector('td.mb-rel-cell');
+            //
+            // Falls back to the Picard cell as the anchor when there is no rel
+            // cell to aim at: the SOURCE rows now carry td.mb-picard-cell in
+            // both table modes, so a bare appendChild() here would land this
+            // placeholder to the RIGHT of Picard and break the "Picard is always
+            // rightmost" invariant every index-based consumer relies on.
+            const _relTd = row.querySelector('td.mb-rel-cell') ||
+                           row.querySelector('td.mb-picard-cell');
             row.insertBefore(td, _relTd);
         }
         document.querySelectorAll('table.tbl tbody tr').forEach(_ensureReCell);
@@ -62902,7 +62987,15 @@ a { color: #1565c0; }`;
                 _tdInj.className = 'mb-rel-cell';
                 _tdInj.dataset.mbid = _mbid;
                 _tdInj.style.backgroundColor = _injBg;
-                row.appendChild(_tdInj);
+                // Insert before the Picard cell when present, so Picard stays
+                // rightmost — the same anchor _ensureIceCells() uses, and for
+                // the same reason. This is reachable because the SOURCE rows now
+                // carry td.mb-picard-cell in both table modes and this function
+                // is called over groupedRows/allRows directly, while
+                // initRelationshipsColumn() has three entry points that can run
+                // after Picard injection. On a live-fetch row no picard cell
+                // exists yet, so insertBefore(td, null) still appends.
+                row.insertBefore(_tdInj, row.querySelector('td.mb-picard-cell'));
             }
             document.querySelectorAll('table.tbl tbody tr').forEach(_ensureRelCell);
             if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_ensureRelCell));
@@ -63851,6 +63944,17 @@ a { color: #1565c0; }`;
                 }
                 if (firstTable) {
                     if (firstTable.tHead) firstTable.tHead.remove();
+                    // The thead about to be rebuilt from data.headers cannot
+                    // contain a Picard <th>: both header serializers strip
+                    // .mb-picard-th before saving. So the once-per-table guard
+                    // must be cleared with it, or a table left over from an
+                    // earlier live fetch keeps picardThInjected='true', never
+                    // gets its header back, and still receives a <td> on every
+                    // row — leaving body and header one column apart, which
+                    // addColumnFilterRow()'s self-healing then "fixes" against
+                    // the header, producing the ghost filter cell it exists to
+                    // prevent.
+                    delete firstTable.dataset.picardThInjected;
                     const thead = document.createElement('thead');
                     data.headers.forEach(headerRowCells => {
                         // Skip filter rows
@@ -74129,16 +74233,29 @@ a { color: #1565c0; }`;
      *                wired to the row's primary entity MBID, or empty when no
      *                matching MBID can be found in the row.
      *
+     * Full mode gives the cell to the LIVE rows AND to the captured SOURCE rows
+     * behind them (`groupedRows[*].rows` / `allRows`), in BOTH table modes —
+     * the source rows are what every render clones from, so a cell that lives
+     * only on a clone is destroyed by the next pass. See the long comment on
+     * the wiring loop for why this is driven per table rather than as a flat
+     * sweep of the source arrays, and why the built cell is mirrored rather
+     * than re-derived.
+     *
      * @param {boolean} [rewireOnly=false]
      *   When false (default): full mode — inject the <th> header (once, guarded
-     *   by data-picard-th-injected) and append a new <td class="mb-picard-cell">
-     *   to every row that does not already have one.
+     *   by data-picard-th-injected), append a new <td class="mb-picard-cell">
+     *   to every live row that does not already have one, and give the source
+     *   rows behind them the same cell.
      *
      *   When true: re-wire mode — only re-attach click handlers to existing
-     *   td.mb-picard-cell elements; never append new tds.  Used by runFilter()'s
-     *   multi-table path so that filter/sort re-renders refresh listeners without
-     *   accidentally inserting picard_td before rel_td (which would happen if
-     *   runFilter fires before initRelationshipsColumn, e.g. during load-from-disk).
+     *   td.mb-picard-cell elements; never append new tds. Used by runFilter()'s
+     *   two re-render paths so a filter/sort refreshes listeners without
+     *   accidentally inserting picard_td before rel_td, which WOULD happen on
+     *   the load-from-disk path, where runFilter() fires before
+     *   initRelationshipsColumn() and `_ensureRelCell()` appends. Since full
+     *   mode now leaves the cell on the source rows in both table modes, every
+     *   clone arrives carrying it and re-wire-only is sufficient by
+     *   construction rather than by luck.
      *
      * Per-table guard — universal data-driven release-link check:
      *   Before injecting the Picard column into a table, the tbody is queried for
@@ -74167,11 +74284,18 @@ a { color: #1565c0; }`;
      * Based on the "MusicBrainz Magic Tagger Button" userscript by
      * Philipp Wolfer (https://github.com/phw/musicbrainz-magic-tagger-button).
      *
-     * Called from:
-     *   - The main fetch pipeline after `initBarcodeHighlight()`.
-     *   - `runFilter()` single-table branch after `initBarcodeHighlight()`.
-     *   - `renderGroupedTable()` after `initBarcodeHighlight()` (multi-table re-renders).
-     *   - The load-from-disk pipeline after `initBarcodeHighlight()`.
+     * Called from (verified — `renderGroupedTable()` deliberately does NOT call
+     * this; see its own "intentionally NOT called here" note, which explains
+     * that every caller invokes it AFTER `initRelationshipsColumn()` so the
+     * Picard `<td>` stays rightmost):
+     *   - `startFetchingProcess()`, full mode, after `initRelationshipsColumn()`.
+     *   - `runFilter()`'s multi-table branch, re-wire mode.
+     *   - `runFilter()`'s single-table branch, re-wire mode.
+     *   - `_hydrateAndRenderFromSnapshotData()` (load-from-disk), full mode.
+     *   - `_applyDiscographyViewFilter()`'s tail, re-wire mode — that function
+     *     re-clones source rows into live tbodies twice (the restore-from-merged
+     *     pre-pass and the merged fill) without going through
+     *     `renderGroupedTable()`, so nothing else re-wires those clones.
      */
     function initPicardTaggerColumn(rewireOnly = false) {
         if (!Lib.settings.sa_enable_picard_tagger) return;
@@ -74187,52 +74311,148 @@ a { color: #1565c0; }`;
         let _anyMultiRowPicardCell = false;
 
         /**
-         * Applies (full mode) or re-wires (rewireOnly mode) one row's picard
-         * cell — shared by the live-DOM pass below and the `allRows`
-         * source-array pass, so a filter re-render (which clones from
-         * `allRows`, not the live DOM — see runFilter()'s single-table
-         * branch) never loses the injected cell. Mirrors
-         * initRelationshipsColumn()'s identical `_ensureRelCell()`/`allRows`
-         * fix, needed for the same root cause: on a hydrated "Show
-         * single-table" tab, this function's own full-mode call runs AFTER
-         * runFilter() has already cloned `allRows` into the live DOM once,
-         * so without also touching `allRows` itself here, the picard cell
-         * only ever lands on that one now-orphaned clone and is silently
-         * dropped by every subsequent filter re-render.
-         * @param {HTMLTableRowElement} tr
+         * Builds one row's picard cell content: `<ul>` with one `<li><button>`
+         * per taggable entity. Shared by both entry points below.
+         *
+         * Does NOT touch `_mbPicardWired` — that flag means "filled in place on
+         * a LIVE row", so only `_picardApplyToRow()` may set it. See its JSDoc.
+         *
+         * @param {HTMLTableRowElement}   tr
+         * @param {HTMLTableCellElement}  td
+         * @returns {void}
          */
-        function _picardApplyToRow(tr) {
+        function _picardFillCell(tr, td) {
             const _entities = _picardExtractRowEntities(tr);
             if (_entities.length > 1) _anyMultiRowPicardCell = true;
+            if (!_entities.length) return;
             // One <li> per entity, so a row whose source cell is multi-row gets a
             // Picard cell of the same shape — each ♪ on the line of the release it
             // sends. Always a <ul>, even for one entity, so the column has one
             // uniform cell structure (the same rule applyRenderMultiRowCells
             // documents for its own always-wrap behaviour); with the list reset
             // below, a single-item cell renders exactly as the bare button did.
-            const _fill = (td) => {
-                if (!_entities.length) return;
-                const ul = document.createElement('ul');
-                ul.style.cssText = 'list-style:none;margin:0;padding:0;';
-                _entities.forEach(e => {
-                    const li = document.createElement('li');
-                    li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
-                    ul.appendChild(li);
-                });
-                td.appendChild(ul);
-            };
+            const ul = document.createElement('ul');
+            ul.style.cssText = 'list-style:none;margin:0;padding:0;';
+            _entities.forEach(e => {
+                const li = document.createElement('li');
+                li.appendChild(_picardCreateButton(e.entityType, e.guid, e.name));
+                ul.appendChild(li);
+            });
+            td.appendChild(ul);
+        }
+
+        /**
+         * LIVE-row entry point: create-or-rewire, the historical semantics.
+         *
+         * A cell that is already present is rebuilt (`innerHTML = ''` + refill)
+         * because `cloneNode(true)` copied the `<button>` but stripped its
+         * click listener — the clone looks wired and is inert. A cell that is
+         * absent is created and appended, full mode only, so rewire mode can
+         * never disturb column order.
+         *
+         * Marks each cell it fills with a JS PROPERTY, `_mbPicardWired`,
+         * deliberately not an attribute: `cloneNode(true)` copies attributes but
+         * never JS properties, so the flag reads `true` only on a cell filled in
+         * place by THIS function and `undefined` on every fresh clone. That
+         * makes it an exact "was I cloned, and are my listeners therefore gone?"
+         * test, and skipping a flagged cell is what keeps a scoped sub-table
+         * sort from needlessly rebuilding the interactive cells of every
+         * UNTOUCHED sub-table — this function walks every `table.tbl` on every
+         * pass, while `_renderDirtyGroupIdxs` only re-clones the one group that
+         * was actually sorted. `applyStickyColumn()` uses the identical trick
+         * for the same reason (`tr._mbStickyEnter`/`_mbStickyLeave`).
+         *
+         * Note this is safe only because `_stripTransientCellState()` leaves a
+         * picard cell's `<ul><li><button>` intact on a clone: a clone really
+         * does arrive with a complete-looking, inert button, so "has content"
+         * could never have served as the test.
+         *
+         * @param {HTMLTableRowElement} tr
+         * @returns {void}
+         */
+        function _picardApplyToRow(tr) {
             let _td = tr.querySelector('td.mb-picard-cell');
             if (_td) {
+                if (_td._mbPicardWired) return;   // filled in place, never cloned — still live
                 _td.innerHTML = '';
-                _fill(_td);
+                _picardFillCell(tr, _td);
+                _td._mbPicardWired = true;
             } else if (!rewireOnly) {
                 _td = document.createElement('td');
                 _td.className = 'mb-picard-cell';
                 _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
-                _fill(_td);
+                _picardFillCell(tr, _td);
+                _td._mbPicardWired = true;
                 tr.appendChild(_td);
             }
         }
+
+        /**
+         * SOURCE-row entry point: fill-if-absent only.
+         *
+         * The captured source rows (`groupedRows[*].rows` / `allRows`) are what
+         * every render clones from, so they must OWN this cell or it is lost on
+         * the next pass — see this function's caller for the two different
+         * reasons that happens in each table mode.
+         *
+         * Deliberately never re-wires an existing cell. A detached master row
+         * is not in the document, so whether its buttons have live listeners is
+         * irrelevant; only the cell's STRUCTURE matters, because that is what
+         * gets cloned. Re-wiring it is pure waste — and it is exactly what the
+         * previous `allRows.forEach(_picardApplyToRow)` pass did on the
+         * single-table fetch path, where `renderFinalTable()` MOVES the rows
+         * into the tbody rather than cloning them, so the live pass had already
+         * built every one of those very cells moments earlier.
+         *
+         * `liveTd` is the cell the live pass just built for the SAME row, when
+         * there is one, and passing it is preferred over rebuilding: it is both
+         * cheaper (no second `_picardExtractRowEntities()` walk) and strictly
+         * more accurate. That extractor skips `.mb-sticky-col` cells, and
+         * `applyStickyColumn()` classes only the LIVE rows — so on a page whose
+         * sticky column IS the release column (releasegroup-releases, via
+         * `stickyColumn: 'Release'`) the same MBID is reachable from two
+         * different cells and an unmarked master row harvests the other one:
+         * same release, but a different `<a>` text for the button tooltip and a
+         * different `<li>` count wherever the two cells differ in arity. Same
+         * reason `_artMirrorInlineThumbToSourceRow()` clones its node instead of
+         * copying a value across.
+         *
+         * Without `liveTd` — the rows the active filter left UNRENDERED, which
+         * have no live counterpart to copy from — it falls back to extracting on
+         * the master. That is self-correcting rather than merely tolerable: a
+         * clone never carries `_mbPicardWired`, so `_picardApplyToRow()` rebuilds
+         * every cell it renders from the live row anyway. What the master must
+         * get right is that the cell EXISTS and sits rightmost; its contents are
+         * replaced the first time the row is actually shown.
+         *
+         * @param {HTMLTableRowElement}        tr
+         * @param {HTMLTableCellElement|null} [liveTd]
+         * @returns {void}
+         */
+        function _picardEnsureRow(tr, liveTd) {
+            if (tr.querySelector('td.mb-picard-cell')) return;
+            let _td;
+            if (liveTd) {
+                _td = liveTd.cloneNode(true);
+            } else {
+                _td = document.createElement('td');
+                _td.className = 'mb-picard-cell';
+                _td.style.cssText = 'text-align:center; vertical-align:middle; padding:2px 4px;';
+                _picardFillCell(tr, _td);
+            }
+            // Deliberately does not set `_mbPicardWired`: a source row is
+            // detached, so its buttons were never wired to anything. Leaving the
+            // flag unset is also what makes the first live row rendered from
+            // this master correctly treated as needing a re-wire — though a
+            // cloned cell could not carry the flag in any case, which is exactly
+            // why the flag is a JS property rather than an attribute.
+            tr.appendChild(_td);
+        }
+
+        // Resolved once per call, not once per row: _findMasterRowByIdx() is a
+        // linear scan, so per-row use would make this pass O(N²). Full mode
+        // only — rewire mode never appends, so it has nothing to mirror.
+        const _masterIdx = rewireOnly ? null : _buildMasterRowIndex();
 
         _tables.forEach(table => {
             // ── Universal data-driven release-link guard ──────────────────────
@@ -74270,7 +74490,15 @@ a { color: #1565c0; }`;
             }
 
             // ── Add header cell (once per table, full mode only) ─────────────
-            if (!rewireOnly && table.dataset.picardThInjected !== 'true') {
+            // Belt-and-braces on top of the dataset flag: also refuse when the
+            // thead ALREADY shows a Picard header. The flag lives on the
+            // <table> and a freshly created table starts without it, so a
+            // thead that arrived carrying the <th> from somewhere else would
+            // otherwise get a SECOND one. renderGroupedTable() now strips
+            // .mb-picard-th out of its thead templates, which removes the only
+            // known route to that; this makes it structurally impossible.
+            if (!rewireOnly && table.dataset.picardThInjected !== 'true' &&
+                !table.querySelector('thead tr:first-child th.mb-picard-th')) {
                 table.dataset.picardThInjected = 'true';
 
                 const _thead = table.querySelector('thead tr:first-child');
@@ -74297,27 +74525,74 @@ a { color: #1565c0; }`;
                 });
             }
 
-            // ── Wire tbody rows ──────────────────────────────────────────────
-            // For each tbody row:
-            //   • If it already has a .mb-picard-cell td, replace its button
-            //     (re-attaches event listeners stripped by cloneNode(true)).
-            //   • Otherwise, in full mode, append a new .mb-picard-cell td.
-            //     In rewire-only mode, skip rows that have no picard cell yet
-            //     so column order is not disturbed.
-            table.querySelectorAll('tbody tr').forEach(_picardApplyToRow);
-
-            // Also apply to the `allRows` SOURCE array — single-table mode
-            // only, since in that mode this table IS allRows' table (see
-            // _picardApplyToRow's own JSDoc for why). Not needed in
-            // multi-table mode: the live-fetch pipeline's own full-mode call
-            // to this function always runs before the FIRST runFilter() ever
-            // fires there, so group.rows already carries the picard cell
-            // before any cloning happens — this hydrated-single-table-tab
-            // ordering issue doesn't arise on that path.
-            if (!rewireOnly && activeDefinition && activeDefinition.tableMode !== 'multi' &&
-                typeof allRows !== 'undefined' && allRows.length) {
-                allRows.forEach(_picardApplyToRow);
-            }
+            // ── Wire live rows, and make their SOURCE rows own the cell ──────
+            //
+            // The source rows are what every render clones from, so a cell that
+            // exists only on the live clone is destroyed by the next pass. This
+            // used to be handled for `allRows` alone, guarded on
+            // `tableMode !== 'multi'`, on the stated grounds that in multi mode
+            // "group.rows already carries the picard cell before any cloning
+            // happens". That was FALSE, and it is the whole bug:
+            // renderGroupedTable() inserts `r.cloneNode(true)` on EVERY render
+            // including the very first, so `groupedRows[i].rows` never received
+            // the cell at all — every keystroke and every sub-table sort
+            // re-cloned blank rows, rewire mode correctly declined to append to
+            // them, and the sub-table was left one <td> short of its own <th>
+            // count with the whole ♪ column gone. `_artResolveSourceCell()`'s
+            // own JSDoc states the same fact for artwork, which is why the
+            // mirrors next to it exist.
+            //
+            // Driving the source-row work from HERE — inside the per-table loop,
+            // after the release-link guard — is what keeps it correct. That
+            // guard is per TABLE ("does this tbody contain a /release/<mbid>
+            // link"), and the column then exists for every row of a qualifying
+            // table, including rows that themselves link only a release-group.
+            // No per-row predicate can reproduce that, so the flat
+            // `groupedRows.forEach(...)` shape `initRelationshipsColumn()` can
+            // afford (its qualification IS row-intrinsic) would be wrong twice
+            // over: it would add a ghost cell to a non-qualifying sub-table's
+            // rows on a heterogeneous page (artist-relationships' "Composed
+            // work" beside "Composed release"), and it would rely on a group
+            // index ↔ table index correspondence that merged discography view
+            // breaks.
+            //
+            // Mirroring the BUILT cell rather than re-deriving it is also
+            // load-bearing. `_picardExtractRowEntities()` skips `.mb-sticky-col`
+            // cells, and `applyStickyColumn()` marks only the LIVE rows — so on
+            // a page whose sticky column IS the release column (e.g.
+            // releasegroup-releases) the same MBID is reachable from two
+            // different cells, and an unmarked master row would harvest the
+            // other one: same release, different `<a>` text for the tooltip and
+            // a different <li> count wherever the two cells differ in arity.
+            // Same reason `_artMirrorInlineThumbToSourceRow()` clones its node
+            // instead of copying a value.
+            const _ownerArrays = new Set();
+            table.querySelectorAll('tbody tr').forEach(tr => {
+                _picardApplyToRow(tr);
+                if (rewireOnly || !_masterIdx) return;
+                const _entry = _masterIdx.get(tr.dataset ? tr.dataset.mbRowIdx : undefined);
+                if (!_entry) return;
+                // Single-table's initial render MOVES allRows into the tbody
+                // (renderFinalTable appends what it is handed), so master and
+                // live are the same node and there is nothing to mirror.
+                if (_entry.row !== tr) {
+                    _picardEnsureRow(_entry.row, tr.querySelector('td.mb-picard-cell'));
+                }
+                _ownerArrays.add(_entry.owner);
+            });
+            // The rendered rows are only the ones the active filter kept. Sweep
+            // whichever source array this table feeds so its UNRENDERED rows
+            // carry the cell too — otherwise clearing the filter brings back
+            // rows that never got one. Resolved from rows actually present, so
+            // no group-index assumption is made anywhere.
+            // NB the explicit arrow: `Array.prototype.forEach` passes
+            // (element, index, array), so handing `_picardEnsureRow` straight to
+            // it would bind the INDEX to its `liveTd` parameter — truthy for
+            // every row after the first, and `liveTd.cloneNode` on a number
+            // throws. It would only ever fire on a row with no live counterpart
+            // (an unrendered one), which is exactly the case a fully-rendered
+            // test page never reaches.
+            _ownerArrays.forEach(arr => arr.forEach(row => _picardEnsureRow(row)));
 
             // Picard cells were just (re)built in place, with no row show/hide —
             // invisible to the uniq-dropdown cache's visible-row-set signature,
@@ -74330,35 +74605,53 @@ a { color: #1565c0; }`;
                 `(th-injected=${table.dataset.picardThInjected})`);
         });
 
-        // ── Register "Picard" as a collapsable column, and wire it ────────────
-        // Only when a row actually produced more than one button — on every
-        // other page the column is one button per row and there is nothing to
-        // collapse, so nothing here runs and no behaviour changes.
-        //
-        // Registering the name follows applyExtractTrackTitleData()'s precedent
-        // for a column whose existence isn't known at authoring time, but with
-        // one difference that forces the extra initCollapsableColumns() call
-        // below: that function runs during pre-processing, comfortably BEFORE
-        // the collapse pass, whereas this one runs at the very END of every
-        // render path (it has to — the Picard <td> must be appended after the
-        // Relationships cells to stay rightmost). Both the initial render and
-        // runFilter() therefore run their collapse pass before this column even
-        // exists, and rewire mode then rebuilds each cell's innerHTML — which
-        // would wipe a toggle the collapse pass had added. Re-running it here,
-        // after the cells are final, is what makes the column behave like every
-        // other multi-row one. initCollapsableColumns() is idempotent and never
-        // calls back into this function, so there is no loop.
-        //
-        // `concat` rather than `push`: activeDefinition.features is rebuilt per
-        // fetch but its collapsableColumns VALUE is the page definition's own
-        // array, and pushing would mutate that definition for the session.
-        if (_anyMultiRowPicardCell && activeDefinition && activeDefinition.features) {
-            const _feats = activeDefinition.features;
-            const _cols  = Array.isArray(_feats.collapsableColumns) ? _feats.collapsableColumns : [];
-            if (!_cols.includes('Picard')) _feats.collapsableColumns = _cols.concat('Picard');
-            Lib.debug('picard', 'initPicardTaggerColumn: multi-row Picard cells present — re-running initCollapsableColumns');
-            _tables.forEach(table => initCollapsableColumns(table));
-        }
+        // Register "Picard" as a collapsable column and re-run the collapse
+        // pass, but only when some row actually produced more than one button.
+        if (_anyMultiRowPicardCell) _picardRegisterCollapsableColumn(_tables);
+    }
+
+    /**
+     * Registers `'Picard'` on `activeDefinition.features.collapsableColumns` and
+     * re-runs `initCollapsableColumns()` over the given tables, so a multi-row
+     * Picard cell gets the same per-cell ▶/▼ toggle every other multi-row
+     * column has.
+     *
+     * Only ever called when a row actually produced more than one button — on
+     * every other page the column is one button per row, there is nothing to
+     * collapse, and nothing here runs, so no behaviour changes.
+     *
+     * Registering the name follows `applyExtractTrackTitleData()`'s precedent
+     * for a column whose existence isn't known at authoring time, but with one
+     * difference that forces the extra `initCollapsableColumns()` call: that
+     * function runs during pre-processing, comfortably BEFORE the collapse
+     * pass, whereas `initPicardTaggerColumn()` runs at the very END of every
+     * render path (it has to — the Picard `<td>` must be appended after the
+     * Relationships cells to stay rightmost). Both the initial render and
+     * `runFilter()` therefore run their collapse pass before this column even
+     * exists, and a re-wire then rebuilds each cell's `innerHTML` — which would
+     * wipe a toggle the collapse pass had added. Re-running it here, after the
+     * cells are final, is what makes the column behave like every other
+     * multi-row one. `initCollapsableColumns()` is idempotent and never calls
+     * back into the Picard code, so there is no loop.
+     *
+     * `concat` rather than `push`: `activeDefinition.features` is rebuilt per
+     * fetch but its `collapsableColumns` VALUE is the page definition's own
+     * array, and pushing would mutate that definition for the session.
+     *
+     * Extracted from `initPicardTaggerColumn()`'s tail so it has one named home
+     * with this rationale attached, rather than being re-derived by a second
+     * caller.
+     *
+     * @param {ArrayLike<HTMLTableElement>} tables
+     * @returns {void}
+     */
+    function _picardRegisterCollapsableColumn(tables) {
+        if (!activeDefinition || !activeDefinition.features) return;
+        const _feats = activeDefinition.features;
+        const _cols  = Array.isArray(_feats.collapsableColumns) ? _feats.collapsableColumns : [];
+        if (!_cols.includes('Picard')) _feats.collapsableColumns = _cols.concat('Picard');
+        Lib.debug('picard', 'initPicardTaggerColumn: multi-row Picard cells present — re-running initCollapsableColumns');
+        Array.from(tables).forEach(table => initCollapsableColumns(table));
     }
 
     // ── end Picard Tagger feature ─────────────────────────────────────────────

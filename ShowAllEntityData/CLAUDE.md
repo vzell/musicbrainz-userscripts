@@ -1321,9 +1321,41 @@ come back identical to the browse endpoint's.
   `makeH2sCollapsible()` for the page-level h2 mechanism this mirrors at a smaller
   scale), and `initPicardTaggerColumn(/* rewireOnly */ true)` (identical
   "cloneNode(true) strips listeners, this call only re-attaches them"
-  rationale, called from the same two places). A new interactive element
+  rationale, called from the same two places, plus
+  `_applyDiscographyViewFilter()`'s tail — that function re-clones source rows
+  into live tbodies twice without going through `renderGroupedTable()`, so
+  nothing else re-wires them). **Three more members belong to this family and
+  used to be missing from both this list and `PERFORMANCE.org` Step 23's:**
+  `applyStickyColumn()` (per-row `mouseenter`/`mouseleave` plus the custom props
+  `tr._mbStickyEnter`/`_mbStickyLeave` — the largest of them),
+  `barcodeProcessTable()` (per-cell `click`), and
+  `initAnnotationCompareRadios()` — which is *not* a listener at all:
+  `cloneNode(true)` re-applies MusicBrainz's pristine `disabled` attribute, so
+  event delegation could never fix it. A new interactive element
   injected into table cells needs the same treatment if it uses
   `addEventListener` directly instead of event delegation.
+- **The two table modes render differently, and assuming otherwise is how a
+  column silently loses its cells.** `renderFinalTable` **MOVES** the rows it is
+  handed (`rows.forEach(r => tbody.appendChild(r))`), so on a single-table
+  page's initial render the live rows *are* `allRows`' rows and anything
+  appended to a live row lands on the source row for free.
+  `renderGroupedTable` **ALWAYS CLONES** (`group.rows.forEach(r =>
+  …r.cloneNode(true))`), on the first render too — so in `tableMode: 'multi'`
+  nothing appended to a live row ever reaches `groupedRows[i].rows`, and the
+  next re-render clones a row that never had it. This is documented in
+  `_artResolveSourceCell()`'s JSDoc and is the reason
+  `_artMirrorIconToSourceRow()`/`_artMirrorInlineThumbToSourceRow()` exist. It
+  is also exactly how the Picard column came to empty out on every multi-table
+  re-render (see `DEBUG-NOTES.md`, 2026-09-10): its own comment asserted the
+  opposite. **Any feature that appends a cell or an element to a live row must
+  mirror it onto the master row** — resolve it with `_findMasterRowByIdx()`
+  (`data-mb-row-idx`, propagated by `cloneNode`), or with
+  `_buildMasterRowIndex()` when the pass touches every row, since
+  `_findMasterRowByIdx()` is a linear scan and per-row use makes the pass
+  O(N²). **Mirror the BUILT node, do not re-derive it on the master:** a master
+  row lacks the classes the live pass added (`.mb-sticky-col` above all, which
+  `_picardExtractRowEntities()` skips), so re-deriving can legitimately produce
+  *different* content than the live row.
 - **`release-tracks` AR finders: never `.find()`/take-first on a "does this track
   have this relationship" lookup.** MusicBrainz can render the SAME relationship
   phrase (or a closely related one, e.g. "recorded at:" and "additionally recorded

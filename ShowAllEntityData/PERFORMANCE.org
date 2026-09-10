@@ -2001,6 +2001,53 @@ commit* — it is the standing guidance for anyone adding a new interactive cell
 element, and leaving Picard and ERG on it afterwards would be actively
 misleading.
 
+**** Three corrections found while fixing the Picard multi-table clone bug
+
+/Added 2026-09-10. See ~DEBUG-NOTES.md~'s "Picard column emptied on every
+multi-table re-render" entry./
+
+1. *The four-row table above is not the whole family.* Three more functions
+   exist for the same reason and are on neither this list nor ~CLAUDE.md~'s:
+   ~applyStickyColumn()~ (per-row ~mouseenter~/~mouseleave~ plus the custom
+   props ~tr._mbStickyEnter~/~_mbStickyLeave~, removed and re-added every pass —
+   the *largest* unlisted member, and separately Step 24's target),
+   ~barcodeProcessTable()~ (per-cell ~removeEventListener~/~addEventListener~
+   every pass; named handler, module-level state, cleanly delegatable), and
+   ~initAnnotationCompareRadios()~ (NOT a listener — ~cloneNode(true)~
+   re-applies MusicBrainz's pristine ~disabled~ attribute, so *delegation
+   cannot fix it*; it belongs to the family but not to this step). Correct both
+   rosters as part of this step.
+
+2. *This step's payoff sentence had an unstated prerequisite, now met.* "Then
+   ~cloneNode(true)~ carries the cells through intact" is true only where the
+   SOURCE rows own the cells. In ~tableMode: 'multi'~ they did not — the Picard
+   cell was appended to the rendered clones only, which is the bug fixed on
+   2026-09-10. Delegation alone would not have fixed it: the listeners were
+   never the problem, the missing ~<td>~ was. That fix is landed, so the
+   sentence now holds; do not re-derive the premise.
+
+3. *~_cdtocInitTracklistToggles()~ yields nothing and should not be budgeted
+   for.* It early-returns unless ~pageType === 'cdtoc'~, and its injected
+   ~.mb-cdtoc-tracklist-row~ is not part of ~allRows~, so it must be rebuilt
+   regardless; only its ~<a class="toggle">~ listener is delegatable.
+
+Also note ~_rewireNestedTableH2Toggles()~ is the risky one for a different
+reason than ERG: ~h2._mbToggle~ is a *public contract* read by five other call
+sites, including ~ensureCollapseDelegate~'s Ctrl+Click prose branch — the
+behaviour ~CLAUDE.md~ documents as "Ctrl+Click … additionally calls
+~h2._mbToggle(true)~". Delegating it means keeping ~_mbToggle~ as a shim or
+touching all five.
+
+*Part of this step's Picard win is already banked.* The 2026-09-10 fix added a
+~_mbPicardWired~ JS *property* (not an attribute — ~cloneNode(true)~ copies
+attributes but never JS properties, so it is an exact "was I cloned?" test) and
+skips re-wiring any cell that was filled in place. A scoped sub-table sort
+therefore no longer rebuilds the interactive cells of every untouched
+sub-table. A global-filter keystroke re-renders every group and still pays in
+full, so the delegation win remains real — just smaller than the pre-fix
+numbers would suggest, and *those numbers were never captured anyway* (see the
+harness note above: ~artist-events~ has no ~/release/~ links).
+
 *** TODO Step 24: Snapshot ~applyStickyColumn~'s hover backgrounds lazily
 
 ~applyStickyColumn~ (~:19068~) runs from ~_applyPostRenderRowPasses()~
