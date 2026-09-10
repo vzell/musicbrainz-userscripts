@@ -44,11 +44,31 @@ Art Archive serves at roughly 1.2 requests/second), and some are login-gated.
 bites.* =loadFromDiskFixture()= (=tests/support/diskFixture.js=) restores a
 saved =*.json.gz= payload through the real Load-from-disk pipeline, which makes
 the TABLE DATA deterministic and free of MusicBrainz data drift. It does not
-make the run offline: it calls =loadUserscriptPage()= with no =fixtureFile=, so
-no =page.route()= is registered and the page SHELL is still fetched from the
-live site. Anything built on it — =tests/live/artist-events-interactions.spec.js=,
-=capture-interaction-perf.js= — therefore needs musicbrainz.org to be reachable,
-and belongs in =tests/live/= for exactly that reason. Two complete 20-minute
+make the run offline *by itself*: called without =pageFixtureFile= it passes no
+=fixtureFile= to =loadUserscriptPage()=, so no =page.route()= is registered and
+the page SHELL is still fetched from the live site. Anything built that way —
+=tests/live/artist-events-interactions.spec.js=, =capture-interaction-perf.js= —
+therefore needs musicbrainz.org to be reachable, and belongs in =tests/live/=
+for exactly that reason.
+
+Pass =pageFixtureFile= (a saved raw shell, e.g.
+=tests/snapshots/releasegroup-releases/raw.html=) to close that last gap and
+make the whole disk-load path genuinely offline — then the spec belongs in
+=tests/fixtures/=. =tests/fixtures/picard-cells-survive-rerender.spec.js= is
+the worked example. The shell must be the same entity the =*.json.gz= was
+captured from, or pageType detection and the hydrated rows disagree.
+
+Two things that cost a run each when writing that spec, both about the *page*
+rather than the data: the Load-from-disk dialog is a =position: fixed= overlay,
+so when it is taller than the viewport its confirm button sits where no page
+scrolling can reach it and Playwright retries "element is outside of the
+viewport" until the hook times out — a raw shell has none of musicbrainz.org's
+own CSS and so is taller than the live page, and the fix is a taller
+spec-local =test.use({ viewport })=. And =releasegroup-releases= renders its
+sub-sections COLLAPSED, so anything inside a sub-table is a 0×0 element until
+=clickMasterToggleAndExpandAll()= has run.
+
+Two complete 20-minute
 perf runs were lost to a single 30 s navigation timeout while roughly one probe
 in three to the host was timing out; =capture-interaction-perf.js= now retries a
 failed sample rather than abandoning the run.

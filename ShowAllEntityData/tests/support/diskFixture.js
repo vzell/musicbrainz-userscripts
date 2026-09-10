@@ -56,12 +56,23 @@ const { loadUserscriptPage } = require('./loadPage');
  *     still re-fetches). Re-capture a fixture (`capture-fixture.js`) to get
  *     1.1-format coverage of either fix.
  *
+ * `pageFixtureFile` and `settingsOverride` are passed straight through to
+ * `loadUserscriptPage()`. Give `pageFixtureFile` a saved raw page shell (e.g.
+ * `tests/snapshots/releasegroup-releases/raw.html`) and the navigation is
+ * served from disk via `page.route()` instead of musicbrainz.org — which makes
+ * the whole disk-load path genuinely network-free and lets a spec that uses it
+ * live under `tests/fixtures/` rather than `tests/live/`. Note the shell must
+ * be the same entity the `.json.gz` was captured from, or page-type detection
+ * and the hydrated data will disagree. Omit it to navigate to the live page,
+ * which is what every pre-existing caller does.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ url: string, fixturePath: string, testMode?: boolean }} opts
+ * @param {{ url: string, fixturePath: string, testMode?: boolean,
+ *           pageFixtureFile?: string, settingsOverride?: Object<string, *> }} opts
  * @returns {Promise<void>}
  */
-async function loadFromDiskFixture(page, { url, fixturePath, testMode } = {}) {
-    await loadUserscriptPage(page, { url, testMode });
+async function loadFromDiskFixture(page, { url, fixturePath, testMode, pageFixtureFile, settingsOverride } = {}) {
+    await loadUserscriptPage(page, { url, testMode, fixtureFile: pageFixtureFile, settingsOverride });
 
     await page.click('#mb-load-from-disk-btn');
 
