@@ -54142,6 +54142,36 @@ a { color: #1565c0; }`;
         const cntBg    = Lib.settings.sa_uniq_count_bg    || '#fffacd';
 
         /**
+         * Appends `text` to `parentEl`, wrapping EVERY case-insensitive
+         * occurrence of `lf` in a <mark> (not just the first) so quickfilter
+         * highlighting in this dropdown matches the main table's
+         * all-occurrence highlighting (see highlightCrossTag()). No-op
+         * highlighting (plain text only) when `lf` is empty.
+         *
+         * @param {HTMLElement} parentEl - Element to append text/mark nodes to.
+         * @param {string} text - Original-case text to render.
+         * @param {string} lf - Lower-cased filter substring to highlight.
+         */
+        function _appendAllMatchesHighlighted(parentEl, text, lf) {
+            if (!lf) { parentEl.appendChild(document.createTextNode(text)); return; }
+            const lt = text.toLowerCase();
+            let pos = 0, idx;
+            while ((idx = lt.indexOf(lf, pos)) !== -1) {
+                if (idx > pos) parentEl.appendChild(document.createTextNode(text.slice(pos, idx)));
+                const mark = document.createElement('mark');
+                mark.textContent = text.slice(idx, idx + lf.length);
+                mark.style.color           = hlColor;
+                mark.style.backgroundColor = hlBg;
+                mark.style.fontWeight      = 'bold';
+                mark.style.borderRadius    = '2px';
+                mark.style.padding         = '0 1px';
+                parentEl.appendChild(mark);
+                pos = idx + lf.length;
+            }
+            if (pos < text.length) parentEl.appendChild(document.createTextNode(text.slice(pos)));
+        }
+
+        /**
          * (Re-)renders the item list, showing only values that match `filter`
          * (case-insensitive substring, matched against each entry's
          * `displayText`). Each entry is prefixed by a styled "(n)" badge
@@ -54267,13 +54297,12 @@ a { color: #1565c0; }`;
                 // get a flagIconMap entry).
                 const flagSegments = hasFlagIcons ? flagIconMap.get(v) : null;
                 if (flagSegments) {
-                    // The quickfilter highlights only the FIRST occurrence of
-                    // the match, found by scanning segments in order. A match
-                    // straddling an icon boundary (a real cell never breaks a
-                    // word around a flag) simply renders unhighlighted, which
-                    // is harmless: inclusion in `matching` above already
-                    // guarantees the match exists somewhere in `v`.
-                    let marked = !filter;
+                    // Every occurrence WITHIN a single segment is highlighted.
+                    // The one remaining limitation: a match straddling an icon
+                    // boundary (split across two segments) still renders
+                    // unhighlighted — a real cell never breaks a word around a
+                    // flag, so this is harmless: inclusion in `matching` above
+                    // already guarantees the match exists somewhere in `v`.
                     if (filter) item.classList.add('mb-uniq-qf-match');
                     for (const seg of flagSegments) {
                         if (seg.type === 'icon') {
@@ -54286,43 +54315,15 @@ a { color: #1565c0; }`;
                             item.appendChild(iconClone);
                             continue;
                         }
-                        if (!marked) {
-                            const lt = seg.text.toLowerCase();
-                            const start = lt.indexOf(lf);
-                            if (start !== -1) {
-                                const end = start + lf.length;
-                                item.appendChild(document.createTextNode(seg.text.slice(0, start)));
-                                const mark = document.createElement('mark');
-                                mark.textContent = seg.text.slice(start, end);
-                                mark.style.color           = hlColor;
-                                mark.style.backgroundColor = hlBg;
-                                mark.style.fontWeight      = 'bold';
-                                mark.style.borderRadius    = '2px';
-                                mark.style.padding         = '0 1px';
-                                item.appendChild(mark);
-                                item.appendChild(document.createTextNode(seg.text.slice(end)));
-                                marked = true;
-                                continue;
-                            }
+                        if (filter) {
+                            _appendAllMatchesHighlighted(item, seg.text, lf);
+                        } else {
+                            item.appendChild(document.createTextNode(seg.text));
                         }
-                        item.appendChild(document.createTextNode(seg.text));
                     }
                 } else if (filter) {
-                    // Build highlighted content with a <mark> around the match
-                    const dl = displayText.toLowerCase();
-                    const start = dl.indexOf(lf);
-                    const end   = start + lf.length;
                     item.classList.add('mb-uniq-qf-match');
-                    item.appendChild(document.createTextNode(displayText.slice(0, start)));
-                    const mark = document.createElement('mark');
-                    mark.textContent = displayText.slice(start, end);
-                    mark.style.color           = hlColor;
-                    mark.style.backgroundColor = hlBg;
-                    mark.style.fontWeight      = 'bold';
-                    mark.style.borderRadius    = '2px';
-                    mark.style.padding         = '0 1px';
-                    item.appendChild(mark);
-                    item.appendChild(document.createTextNode(displayText.slice(end)));
+                    _appendAllMatchesHighlighted(item, displayText, lf);
                 } else {
                     // Use appendChild (not textContent) to preserve the badge node
                     item.appendChild(document.createTextNode(displayText));
@@ -56294,23 +56295,12 @@ a { color: #1565c0; }`;
                         return;
                     }
 
-                    // Build highlighted content with a <mark> around the match —
-                    // same approach as renderItems()'s own quickfilter marking.
+                    // Build highlighted content with a <mark> around every
+                    // occurrence of the match — same approach as
+                    // renderItems()'s own quickfilter marking.
                     item.classList.add('mb-uniq-qf-match');
                     labelSpan.innerHTML = '';
-                    const ll = label.toLowerCase();
-                    const start = ll.indexOf(lf);
-                    const end   = start + lf.length;
-                    labelSpan.appendChild(document.createTextNode(label.slice(0, start)));
-                    const mark = document.createElement('mark');
-                    mark.textContent = label.slice(start, end);
-                    mark.style.color           = hlColor;
-                    mark.style.backgroundColor = hlBg;
-                    mark.style.fontWeight      = 'bold';
-                    mark.style.borderRadius    = '2px';
-                    mark.style.padding         = '0 1px';
-                    labelSpan.appendChild(mark);
-                    labelSpan.appendChild(document.createTextNode(label.slice(end)));
+                    _appendAllMatchesHighlighted(labelSpan, label, lf);
                 });
 
                 if (filter) {
