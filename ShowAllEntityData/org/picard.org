@@ -518,3 +518,25 @@ Step 32 stays TODO in PERFORMANCE.org per that file's own rule (the keyword trac
 
 Want me to commit the branch and push it, then take the merge (fold WIP → 9.99.1057, flip Step 32, delete the branch)?
 
+
+* Regarding ~search?type=recording~: continuation-row merge
+
+Regarding ~search?type=recording~: continuation-row merge what you recently found
+
+#+begin_example
+~search?type=recording~: the continuation-row merge does NOT survive a filter
+re-render — the table renders 3 merged rows and a global-filter keystroke
+brings back all 6 source rows (3 base + 3 continuation). Confirmed pre-existing
+against the pre-9.99.1056 code, so it is not from the Picard work. Found while
+trying to extend ~search-recordings-continuation.spec.js~; the attempt was
+backed out rather than encoding the bug into a test. Likely shape:
+~mergeContinuationRows~ runs during row assembly against the ~DOMParser~
+document while ~allRows~ keeps the unmerged rows. Deserves its own session —
+see ~DEBUG-NOTES.md~'s 2026-09-10 entry for the measurement.
+#+end_example
+
+1.)
+
+I cannot confirm this on the page https://musicbrainz.org/search?query=Roulette&type=recording&method=indexed
+
+What should I do to visually confirm it

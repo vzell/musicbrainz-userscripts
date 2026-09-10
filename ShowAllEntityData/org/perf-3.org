@@ -845,3 +845,197 @@ actually I think I shouldn't reboot after every morning/evening measurement at l
   3. After 18 days: pull measure/9.99.1049-arm-e, read arm-e-runs.log for the day-by-day trend, fold the real numbers into MEASUREMENTS.org (the section I added is a signpost, not data).
 
   Want me to also review/commit the tests/MEASUREMENTS.org change now, or leave both pending files for you to review together?
+
+* bug
+
+You setup
+
+#+begin_example
+  Built:
+  - Branch measure/9.99.1049-arm-e pinned at a56f1b1 (the 9.99.1049 commit), checked out in its own worktree at /home/vzell/git/saed-perf-9.99.1049-arm-e — isolated from your docs/filter-perf-plan work here and from whatever main does next.
+  - tests/support/run-perf-arm-e.sh in that worktree: refuses to run if any claude process is resident (verified live against this session's own PID — it correctly logged SKIPPED), otherwise runs capture-interaction-perf.js, records uptime, and self-commits the result.
+  - Cron entries at 07:00 and 19:00 daily, running under cron.service (enabled+active via systemd, survives a WSL restart — but not a Windows sleep/hibernate/wsl --shutdown, so avoid those on petri for the 18 days).
+  - Documented the whole setup as a new subsection in tests/MEASUREMENTS.org (uncommitted, along with your pre-existing org/perf-3.org change — I didn't commit either, per your commit-only-when-told convention).
+#+end_example
+
+but something is completely bogus with the nodejs/chromium/playwright setup when executed via the script run-perf-arm-e.sh
+
+Initially I got errors like the following
+
+#+begin_example
+capture-interaction-perf failed: browserType.launch: Executable doesn't exist at /home/vzell/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /home/vzell/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData/tests/support/capture-interaction-perf.js:425:36
+    at Object.<anonymous> (/home/vzell/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData/tests/support/capture-interaction-perf.js:449:3) {
+  log: [],
+  name: 'Error'
+}
+#+end_example
+
+Then I discussed this with Clode chat, see
+
+#+begin_example
+It looks like you pasted a Playwright/test error (chrome-headless-shell executable missing) from a script called capture-interaction-perf.js in a saed-perf project on your local machine. What would you like me to do with this?
+Explain the error
+This is Playwright's own browser-download check, and it's independent of the actual test bug.
+
+What happened: capture-interaction-perf.js calls playwright.chromium.launch() (or similar) to drive a headless browser for the interaction-perf capture. Playwright doesn't bundle browser binaries with the npm package — it downloads them separately (or expects them pre-installed) into a cache directory, normally ~/.cache/ms-playwright/. On your machine that's /home/vzell/.cache/ms-playwright/. Playwright looked for chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell there and it isn't present, so browserType.launch() throws immediately before your script does anything useful — hence the empty log: [] and generic Error in the object dump.
+
+Why it's missing, typically one of:
+
+Playwright (or a dependency that bundles it) was just installed or upgraded, and the post-install step that fetches browser binaries either didn't run or was skipped (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1, an offline/CI install, npm ci with scripts disabled, etc.).
+The cache directory got cleared, or PLAYWRIGHT_BROWSERS_PATH points somewhere the binaries were never placed.
+A version bump changed the expected build number — note the path says chromium_headless_shell-1243; if an older Playwright version had already downloaded a different build number, a newer package.json pin can leave the old cache "half stocked" for the new version.
+The fix Playwright itself suggests, and the normal one:
+
+npx playwright install
+run from the project directory (saed-perf-9.99.1049-arm-e/ShowAllEntityData or wherever the package.json with the playwright/@playwright/test dependency lives). That downloads exactly the browser build(s) that version of Playwright expects. If only Chromium is needed here, npx playwright install chromium is enough and a bit faster. If the machine has no internet access for the download, the alternative is npx playwright install --with-deps chromium on a machine that does, then copying the resulting ~/.cache/ms-playwright/chromium_headless_shell-* directory over — but that's only necessary in a locked-down/offline environment.
+
+One thing to double check afterward: since this script targets chrome-headless-shell specifically (not full Chromium), make sure the install step actually pulls that variant — some Playwright versions only fetch it when you run npx playwright install chromium rather than npx playwright install firefox etc., or need npx playwright install --only-shell depending on version. If npx playwright install doesn't resolve it, checking the exact Playwright version pinned in that project's package.json against what 1243 corresponds to would confirm whether it's a version-mismatch cache issue.
+
+The following works:
+
+npm test
+
+but this gives an error
+
+vzell@petri:~/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData$ node tests/support/capture-interaction-perf.js --pageType=artist-events --label="arm-e-4711"
+capture-interaction-perf failed: browserType.launch: Executable doesn't exist at /home/vzell/.cache/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     npx playwright install                                 ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    at /home/vzell/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData/tests/support/capture-interaction-perf.js:425:36
+    at Object.<anonymous> (/home/vzell/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData/tests/support/capture-interaction-perf.js:449:3) {
+  log: [],
+  name: 'Error'
+}
+
+That "npm test works" comparison is a bit of a red herring — it doesn't necessarily mean the same Playwright/browser resolution is being exercised. npm test almost certainly runs the Playwright test runner (playwright test, matching *.spec.js / *.test.js files), and tests/support/capture-interaction-perf.js sits under a support/ folder — that naming strongly suggests it's a standalone helper script, not a file the test runner picks up and executes. If that's the case, npm test passing tells us nothing about whether this particular script's browser resolution works; it may simply never be invoked by npm test at all.
+
+What actually matters is which playwright package this script resolves at the require/import line, since we already know there are two candidates installed with different expected browser builds:
+
+top-level playwright@1.63.0 → expects build 1234 (confirmed already downloaded)
+nested @playwright/test@1.62.1's own playwright@1.62.1 → expects build 1243 (confirmed missing)
+Since the direct-run error is for build 1243, capture-interaction-perf.js is resolving the nested one — meaning it's importing something that pulls in @playwright/test's bundled copy rather than the top-level playwright package.
+
+Could you check two things on the box:
+
+1. What npm test actually runs:
+
+node -e "console.log(require('./package.json').scripts)"
+2. How the script obtains its browser/launch call, around the import and near line 425 (where the error's stack trace points):
+
+grep -n "require(\|^import\|chromium\.launch\|browserType" tests/support/capture-interaction-perf.js | head -30
+If it shows something like const { chromium } = require('@playwright/test') (or imports a fixture from @playwright/test), that confirms it's pinned to the nested 1.62.1 copy — and the fix is simply installing browsers through that nested copy's CLI, as I mentioned:
+
+node node_modules/@playwright/test/node_modules/playwright/cli.js install chromium
+If instead it plainly does require('playwright') and yet still hits build 1243, then something else is overriding resolution (e.g. a NODE_PATH, a workspace/monorepo node_modules hoisting difference, or a local node_modules under tests/) and I'd want to see the exact import line to chase that down instead.
+
+vzell@petri:~/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData$ node -e "console.log(require('./package.json').scripts)"
+{
+  test: 'playwright test --project=chromium-fixtures',
+  'test:live': 'playwright test --project=chromium-live --grep @core',
+  'test:live:extended': 'playwright test --project=chromium-live --grep "@core|@extended"',
+  'test:live:perf': 'playwright test --project=chromium-live --grep @perf',
+  'test:all': 'playwright test',
+  'test:ui': 'playwright test --ui',
+  'test:headed': 'playwright test --headed',
+  'test:live:save-html': 'SAVE_HTML=1 playwright test --project=chromium-live',
+  'test:live:report:artist-releases': 'PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-report.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-report.json; exit $e',
+  'test:live:artist-releases:full': 'TEST_PREFILTER_LOAD=1 TEST_COLVIS=1 PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/artist-releases-full.json playwright test tests/live/artist-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-filtersort-report.js < test-results/artist-releases-full.json; exit $e',
+  'test:live:report:releasegroup-releases': 'PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/releasegroup-releases-report.json playwright test tests/live/releasegroup-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-releasegroup-releases-filtersort-report.js < test-results/releasegroup-releases-report.json; exit $e',
+  report: 'playwright show-report',
+  'auth:login': 'node tests/support/auth-setup.js',
+  'live-interop': 'node tests/support/run-live-interop.js'
+}
+vzell@petri:~/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData$ grep -n "require(\|^import\|chromium\.launch\|browserType" tests/support/capture-interaction-perf.js | head -30
+66:const fs = require('fs');
+67:const path = require('path');
+68:const { execSync } = require('child_process');
+69:const { chromium } = require('playwright');
+70:const { loadFromDiskFixture } = require('./diskFixture');
+71:const { seedGmValues } = require('./gmStubs');
+72:const { waitForRenderComplete } = require('./browser');
+76:} = require('./filterSortAssertions');
+80:} = require('./artistEventsFixture');
+425:    const browser = await chromium.launch();
+
+Good — this pins the resolution question exactly. Line 69 does a plain require('playwright'), so whatever require.resolve('playwright') returns from that directory is definitively the copy in play — no more guessing about hoisting order.
+
+But here's the puzzle: earlier, DEBUG=pw:install npx playwright install chromium confirmed build v1234 is fully downloaded and present. If require('playwright') here resolves to the same package version that npx playwright install used, the script shouldn't be looking for build 1243 at all. So either:
+
+require('playwright') from tests/support/ resolves to a different copy than npx playwright install used (e.g. npx picked the nested @playwright/test copy for its bin, while Node's plain require resolution picks the top-level one, or vice versa) — the two commands go through different resolution paths (npm bin symlink vs. Node's require algorithm) and can genuinely land on different copies when two conflicting versions are both installed.
+or something environmental differs between the two invocations (unlikely here since the cache path shown is the standard ~/.cache/ms-playwright, not a custom PLAYWRIGHT_BROWSERS_PATH).
+Rather than keep guessing, let's just check both installed copies' manifests directly and see which one actually declares build 1243:
+
+find node_modules -maxdepth 5 -name "browsers.json" -exec sh -c 'echo "=== {} ==="; grep -A3 "chromium-headless-shell" {}' \;
+And confirm exactly which file require('playwright') loads from that directory:
+
+node -e "console.log(require.resolve('playwright')); console.log(require('playwright/package.json').version)"
+Once we see which browsers.json lists revision 1243 for chromium-headless-shell, the fix is simple: run install chromium through that specific package's own cli.js (sitting next to that browsers.json's package.json), so the browser fetcher uses the matching manifest — e.g.:
+
+node node_modules/<that-path>/cli.js install chromium
+Paste the output of those two commands and I'll give you the exact install command to run.
+
+vzell@petri:~/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData$ find node_modules -maxdepth 5 -name "browsers.json" -exec sh -c 'echo "=== {} ==="; grep -A3 "chromium-headless-shell" {}' \;
+=== node_modules/playwright-core/browsers.json ===
+      "name": "chromium-headless-shell",
+      "revision": "1243",
+      "installByDefault": true,
+      "browserVersion": "153.0.8010.12",
+=== node_modules/@playwright/test/node_modules/playwright-core/browsers.json ===
+      "name": "chromium-headless-shell",
+      "revision": "1234",
+      "installByDefault": true,
+      "browserVersion": "151.0.7922.34",
+vzell@petri:~/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData$ node -e "console.log(require.resolve('playwright')); console.log(require('playwright/package.json').version)"
+/home/vzell/git/saed-perf-9.99.1049-arm-e/ShowAllEntityData/node_modules/playwright/index.js
+1.63.0
+
+That flips the story from what I assumed, but it's now completely unambiguous.
+
+require('playwright') from capture-interaction-perf.js resolves to the top-level playwright@1.63.0 (node_modules/playwright/index.js), which pulls in the top-level, hoisted playwright-core. That top-level playwright-core/browsers.json wants chromium-headless-shell revision 1243 (browser 153.0.8010.12) — exactly the missing one from the original error.
+
+The build you already downloaded (1234, browser 151.0.7922.34) belongs to the nested playwright-core under @playwright/test/node_modules/, which is what npx playwright install happened to resolve to (npx apparently followed the @playwright/test bin, not the plain playwright package). So you correctly filled the nested copy's cache, but the top-level copy — the one your script actually uses — was still empty.
+
+Fix — install through the top-level package specifically:
+
+node node_modules/playwright/cli.js install chromium
+That uses the top-level playwright-core's manifest, so it'll fetch revision 1243 into ~/.cache/ms-playwright/chromium_headless_shell-1243/... — exactly the path your script is looking for.
+
+Then verify:
+
+ls ~/.cache/ms-playwright/ | grep 1243
+node tests/support/capture-interaction-perf.js --pageType=artist-events --label="arm-e-4711"
+Worth doing afterward to stop this from recurring: the root cause is that package.json pins playwright@1.63.0 directly while @playwright/test@1.62.1 still depends on playwright@1.62.1 — since they don't match, npm can't dedupe them into one shared copy, so you end up maintaining two separate browser caches indefinitely (every future npm install/upgrade risks this same split again). Bumping one to match the other —
+
+npm install @playwright/test@1.63.0
+(or pin plain playwright back down to 1.62.1, whichever you'd rather standardize on) — collapses it to a single playwright-core, a single browsers.json, and a single browser cache to keep current.
+#+end_example
+
+I already manually installed chromimum via
+
+#+begin_src bash
+node node_modules/playwright/cli.js install chromium
+#+end_src
+
+1.)
+
+Please investigate what's going on here, as the latest test run this morning failef again
+
+2.)
+
+Also there seems to be a mismatch between system installed nodejs/chromium/playwright/npx etc. and local/repo specific
+ones. What should be done here to fix this once and for all

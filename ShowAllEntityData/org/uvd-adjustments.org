@@ -1,0 +1,18 @@
+* adjustments
+** i
+
+1.)
+
+On e.g. https://musicbrainz.org/place/e128bea4-8a2e-4977-92a3-fdb42b04cca8/events, see screenshot [Image #13] the
+"Roles" section in the unique value drop down menu in the "Artist" column is doubled, there should only be the "Entity info - Role" section
+
+2.)
+
+On e.g. https://musicbrainz.org/user/vzell/ratings/event/, in the unique value drop down menu in the "Event" column
+screenshot [Image #14] some section names should renamed
+
+#+begin_example
+"Event info - Event date" ==> "Event info - Date"
+"Event info - Event name" ==> "Event info - Name"
+"Event info - Event cancelled" ==> "Event info - Cancelled"
+#+end_example
