@@ -11,7 +11,7 @@ history of what was tried and why is the point of this file.
 is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
-keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21 and 22.
+keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21, 22 and 32.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -2247,10 +2247,11 @@ Cheap and mechanical, but genuinely lower value than it looks: the match scan is
 walk 1 of five, and the profiling trace in the Session-summary section below put
 it at 39.6 ms of a ~230 ms pass. Take it after the walks that dominate.
 
-*** TODO Step 32: On-demand Picard column — the narrow design, implemented
+*** DONE Step 32: On-demand Picard column — the narrow design, implemented
 
-/Implemented on branch/ ~picard-column-collapse-toggle~ /at 9.99.1057. The
-keyword tracks/ ~main~ /and flips at merge, per this file's own convention./
+/Landed on/ ~main~ /at *9.99.1057* (2026-09-10), branch
+~picard-column-collapse-toggle~. Only the CELL-CONTENT design below is done;
+the COLUMN-level one it is contrasted against was rejected and stays rejected./
 
 Raised as "should the Picard column only render when actually needed, e.g.
 behind a button?". Two different designs answer to that sentence and they have

@@ -1,5 +1,38 @@
 [
   {
+    "version": "9.99.1057",
+    "date": "2026-09-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Picard\" column now has a ▶♪/▼♪ toggle in its own column header, and ships COLLAPSED: the column and its cells are always there, but the ♪ buttons are built only when you press it. Each table has its own toggle and controls only its own cells, so on a multi-section page you can open the ♪ buttons for the one section you are tagging and leave the rest empty. Multi-section pages also get a page-wide \"▶♪ Show all Picard\" button in the action bar, next to the existing Collapse-all and CAA/EAA all-buttons.",
+          "New setting \"Start the Picard column collapsed\" (🎵 PICARD TAGGER, default ON). Building the ♪ buttons means walking every row for taggable entities, on the initial render and again on every filter keystroke and every sort; leaving this on keeps that cost off pages where you are not tagging. Turning it OFF reproduces the previous behaviour exactly — every button built during the render — while keeping the header toggle available. It decides the STARTING state only; the master \"Enable Picard Tagger column\" switch is still what adds or removes the column."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "While the Picard column is collapsed, a filter keystroke or a sort no longer drops the 📊 unique-values dropdown's cached per-table data (and with it the column-header count cache). That cache was being invalidated on every render pass on the grounds that the Picard cells had just been rebuilt; a collapsed column rebuilds nothing, so there is nothing for the cache to have missed.",
+          "The \"Enable Picard Tagger column\" setting's description no longer lists a set of supported page types. The guard became purely data-driven some time ago — a table gets the column when its body contains at least one /release/<mbid> link, whatever page it is on — and the old list said otherwise."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column-name resolution no longer reads the \"Picard\" header as \"Picard▶3▤\" once that column has multi-row cells. The per-column multi-row header button is appended directly to that <th> (it is the one header with no flex layout to insert into) and was not being stripped, so any consumer resolving the column name while the button was present got the glyphs with it. Latent until now — the collapse pass removes the button before its own name lookup — but it is what a text glyph in the new toggle would have turned into a real breakage, which is why that glyph comes from CSS instead."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "ShowAllEntityData_HELP.txt: new \"PICARD TAGGER COLUMN\" section — the release-link guard, the per-table and page-wide toggles, the new default, and the previously undocumented host/port settings. 🎵 PICARD TAGGER added to HELP's settings list. The cross-tab snapshot section no longer claims the Picard icons \"work identically to the live page\": the capture strips the whole column, so the destination tab applies its own default.",
+          "ShowAllEntityData_HELP.txt now says explicitly that a release's own tracklist gets NO Picard column: the guard asks whether a table's body links a /release/<mbid>, and a tracklist's rows link recordings. Nothing changed there — it was simply never written down, and the plan for this work had assumed otherwise."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1056",
     "date": "2026-09-10",
     "sections": [
