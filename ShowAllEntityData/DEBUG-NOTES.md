@@ -8569,3 +8569,153 @@ re-capture, and that is evidenced rather than assumed: the mirror writes to
 detached source rows, and in the mutation run above the new spec's *initial
 render* assertions passed identically with and without the fix — the initial
 render is exactly what every `rendered.html` captures.
+
+## 2026-09-10 — Picard column: on-demand ▶♪/▼♪ header toggle, collapsed by default (branch picard-column-collapse-toggle)
+
+Part 2 of the Picard work — question 3 of `org/picard.org`. Part 1 (9.99.1056,
+the multi-table clone bug) is the entry above; this depended on it, because a
+toggle that fills cells on demand is meaningless while the next sort destroys
+them.
+
+**What shipped.** `sa_picard_tagger_initially_collapsed` (default `true`), a
+per-table `▶♪`/`▼♪` toggle in each `th.mb-picard-th`, and a page-wide
+`#mb-picard-col-hdr-toggle-all-btn` on multi-table pages. Collapsed, the `<th>`
+and every `<td class="mb-picard-cell">` still exist and only the content is
+deferred; `_picardApplyCellState()` is the single gate, and it sits in FRONT of
+`_picardExtractRowEntities()` rather than inside it, so a collapsed row skips
+the whole `td:not(.mb-sticky-col):not(.mb-rel-cell) a[href]` subtree walk, a
+regex per anchor, and the construction of a `<ul>`, N `<li>`, N `<button>`, N
+`<img>` and N `addEventListener` calls. State lives on
+`<table>.dataset.mbPicardExpanded`; the listener is delegated on the `<table>`
+element, guarded by `data-mb-picard-hdr-delegate` set only AFTER
+`addEventListener` has run — deliberately not copying `ensureCollapseDelegate`'s
+latent bug of marking the table before its own `tbody` null-check (that fix is
+still open and was not folded in). Full rationale in `CLAUDE.md`'s new "Picard
+column: collapsed by default" section and `PERFORMANCE.org` Step 32.
+
+**Three things the plan predicted correctly and one it got wrong.**
+
+Correct: the CSS-only header glyph, the explicit `<table>.dataset` state (the
+`notes-received` counter-example is real — 1688 `mb-picard-cell` behind 8
+`mb-picard-btn`, so "empty" cannot distinguish collapsed from nothing-to-tag),
+and the `<td>` never being removed.
+
+Wrong: **the master-row mirroring is not load-bearing for correctness.** The
+plan's stated failure mode was "if collapse only emptied the live cells, the
+next re-render would clone still-populated masters and the column would
+silently re-appear while the header read collapsed". Measured by mutation — an
+`if (true) return;` in front of the mirror — and it does not happen:
+`_picardApplyToRow()` reconciles every freshly-cloned cell against its table's
+state on every pass (a clone never carries `_mbPicardWired`, so it is always
+rebuilt), so the live DOM ends up right either way. Every visible assertion in
+both specs stayed green under that mutation. The mirror is kept, and its JSDoc
+now says what it actually buys: masters and live rows never disagree, and a
+collapsed column's re-renders stop cloning `<ul><li><button><img>` subtrees
+only to discard them — which on a four-thousand-row table is a large part of
+the cost the feature exists to remove. Load-bearing for the FEATURE, not for
+the rendered result.
+
+**A real latent defect fell out of the mutation run**, from an unrelated
+direction. The first version of the new spec asserted
+`th.textContent === 'Picard'`, and under the "always expanded" mutation it
+failed reading `"Picard▶3▤"`. Cause: once the Picard column has multi-row
+cells, `initCollapsableColumns()` reaches its `th.appendChild(collapseHdrBtn)`
+FALLBACK branch — the one for a header with no `.mb-col-hdr-flex`, and Picard's
+is the only such header — and `_cleanColHeaderText()`'s step-3 strip selector
+did not list `.mb-col-collapse-hdr-btn`. So any consumer resolving that column
+name while the button was present got the glyphs with it. Latent rather than
+live only because `initCollapsableColumns()`'s own cleanup pass removes the
+button before its own name lookup runs, `_exportCleanHeaderText` already
+stripped it, and `_updateAllColHeaderCounts` strips `▶◀▤0-9` by regex.
+`.mb-col-collapse-hdr-btn` is now in that selector alongside the new
+`.mb-picard-col-hdr-btn`, and the spec asserts the `<th>`'s own TEXT NODES
+instead of its whole subtree, so it pins the invariant the CSS-glyph decision
+protects without fighting a legitimate contribution from another feature.
+
+**Tests.** `tests/fixtures/search-recordings-continuation.spec.js` gained a
+third test at the shipped default and both existing tests gained
+`settingsOverride: { sa_picard_tagger_initially_collapsed: false }` — they pin
+the Picard column AT INITIAL RENDER (three exact button titles, the
+`picardLiCount === releaseLiCount` invariant, the whole `▶3▤`/`▼3▤` premise of
+the second), so the setting keeps every assertion verbatim and is honest about
+which behaviour they describe. Same for
+`tests/fixtures/picard-cells-survive-rerender.spec.js`'s first describe block,
+which gained a second describe covering per-table scope across a filter and a
+scoped sort, and the page-wide button including its insertion ORDER
+(collapse-all → CAA/EAA all-buttons → Picard-all, since Picard injects after
+the artwork tail and a naive `.after(#mb-col-collapse-all-btn)` would wedge it
+in the middle). Mutation-verified: `expanded = true` in
+`_picardApplyCellState()` fails the new default-state test on
+`expect(button.mb-picard-btn).toHaveCount(0)`.
+
+`__saTest.picardEntityScans()` was added because the gate's effect is otherwise
+invisible: an empty Picard cell looks identical whether it was skipped or
+whether the row has nothing to tag. Both new tests use it — the single-table
+one asserts a filter keystroke adds ZERO scans while collapsed, the multi-table
+one asserts exactly 6 (the expanded sub-table's rows, none of the collapsed
+one's).
+
+**One new spec flake found and fixed in the writing, not left in.** The
+per-table-scope test originally cleared the global filter with
+`waitForFilterSettled(page, () => input.fill(''))` before sorting, and timed
+out 1 run in 3: that helper needs `#mb-filter-status-display` to reach a value
+it has not shown before, and with a query that kept every row there is nothing
+in that text for the clear to change. Fixed by leaving the filter ACTIVE across
+the sort, which needs no such signal (the sub-table's own `.mb-sort-status`
+carries it), keeps the row count at 7 so `waitForActualRowCount` still works,
+and covers strictly more. 5 consecutive clean runs after. **Note the identical
+pattern still stands at line ~164 in that file's FIRST describe block** — it is
+pre-existing and has not been observed failing, but it is the same shape.
+
+**Pre-existing full-suite flake, measured so it is not mis-attributed.**
+`tests/fixtures/release-tracks-ms-length-overflow.spec.js:174` ("a row already
+stamped by the embedded payload is never re-sent to the network") fails roughly
+1 full-suite run in 3 and passes standalone every time. Confirmed on `main` in
+a clean worktree: 1 failure across 6 `npm test` runs there, same spec. Nothing
+to do with this change; recorded here so the next person does not spend the run
+this cost.
+
+**Snapshot baselines: re-capture is OWED, not done.** Three `rendered.html`
+carry Picard markup and all three will change —
+`releasegroup-releases` (7 `mb-picard-btn` → 0, +2 toggle spans, +1 page-wide
+button), `series-releases` (12 → 0, +1 span), `notes-received` (8 → 0, +1 span;
+its 1688 cells stay, they were already empty) — plus a narrower Picard column
+in each, since auto-resize measures content and there now is none. The
+re-capture needs a logged-in session (`npm run auth:login`;
+`notes-received` is `/edit/notes-received`) and the saved session had expired
+2026-09-07. Deliberately NOT dodged by seeding the setting off in
+`tests/pagetypes.json` — the baselines should record what a user actually sees.
+Nothing in `npm test` reads these files, so the suite cannot go red on it. The
+exact expected numbers are in `tests/snapshots/registry.org`'s "Expected
+drift" section.
+
+**A live spec was added, and it corrected the plan.**
+`tests/live/picard-header-toggle.spec.js` (`@extended`, 2 tests, registered in
+`tests/live/registry.org`) drives the toggle on real pages in both table modes,
+because the fixture suite covers curated markup only. Writing it found that
+`org/picard.org`'s named single-table verification target,
+`release/3ec14d03-…`, **has no Picard column at all** — verified against the
+live page, 0 Picard columns. That is correct and pre-existing: the guard is
+data-driven ("does this tbody link a `/release/<mbid>`") and a release
+TRACKLIST's rows link recordings. The plan's mention of that URL was about the
+⏱ Length toggle's precedent, not about Picard being present there.
+`series-releases` (`series/aa3694d3-…`) is the single-table pageType that does
+carry the column — its committed baseline has 12 `mb-picard-btn` in one table,
+which is how that was settled without guessing — and it is what the spec uses.
+HELP now states the tracklist case explicitly; it was never written down.
+
+Both live tests pass. Note the two `data-label` values were wrong on the first
+attempt (`"Show all Releases"` / `"Show all Tracks"` rather than
+`"…for ReleaseGroup"` / `"…for Release"`), which costs a full 180 s timeout
+each — copy the label from an existing spec or from the pageDefinition rather
+than inferring it.
+
+**Not measured, and the reason is structural.** `PERFORMANCE.org` Step 32 has
+prescribed the same free measurement for weeks — flip
+`sa_enable_picard_tagger` off and re-run one filter on a real release-listing
+page — and it still has not been run, because the perf harness's only
+instrumented page is `artist-events`, which has no `/release/` links and so has
+no Picard column at all. Sizing this needs an instrumented release-listing page
+first. Nothing was added to `tests/MEASUREMENTS.org` because nothing was
+timed; the scan COUNTS in the two specs are correctness assertions about the
+gate, not a measurement of what the gate is worth.

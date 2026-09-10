@@ -123,11 +123,18 @@ test.describe('Picard column survives multi-table re-renders', () => {
         // e.g. a source-row pass that throws only on a row the current filter
         // left UNRENDERED, which a fully-rendered assertion never reaches.
         pageErrors = collectPageErrors(page);
+        // sa_picard_tagger_initially_collapsed: false — this block pins that the
+        // Picard <td>s and their ♪ buttons SURVIVE a re-render, which needs them
+        // built in the first place. Since 9.99.1057 the column ships collapsed,
+        // and this setting still selects the "built during the render" behaviour
+        // these assertions were written against. The default-state behaviour and
+        // the header toggle are the second describe block's subject.
         await loadFromDiskFixture(page, {
             url: RG_URL,
             fixturePath: DISK_FIXTURE,
             pageFixtureFile: PAGE_SHELL,
             testMode: true,
+            settingsOverride: { sa_picard_tagger_initially_collapsed: false },
         });
         await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 30000 });
         await expect(page.locator('table.tbl')).toHaveCount(2);
@@ -198,6 +205,198 @@ test.describe('Picard column survives multi-table re-renders', () => {
         // nothing on its own and must not be allowed to mask the sorted one.
         expect(after.map((t) => t.rows)).toEqual(before.map((t) => t.rows));
         expectPicardIntact(after, 'after sorting the first sub-table');
+        expect(pageErrors).toEqual([]);
+    });
+});
+
+// ── Part 2: the per-sub-table ▶♪/▼♪ header toggle ───────────────────────────
+//
+// Same fixture, and for the same reason it was chosen above: two sub-tables on
+// one page, so "per-table" is a claim that can actually fail. What is pinned
+// here and nowhere else:
+//
+//   - the toggle's scope is ONE table. Expanding sub-table 0 must leave
+//     sub-table 1 empty and its own header reading collapsed;
+//   - that scope SURVIVES a re-render, which is the whole reason the state
+//     lives on `<table>.dataset` rather than in a module variable or inferred
+//     from cell content. A global-filter keystroke re-renders both groups and a
+//     scoped sort re-renders one; either would reset a state stored anywhere
+//     that gets rebuilt;
+//   - the page-wide companion exists here (it is multi-table only) and one
+//     click brings both tables to expanded.
+//
+// The re-render is also what makes the master-row mirroring testable: the live
+// rows are clones, so a toggle that had filled only the live cells would show
+// correctly and then lose everything on the next keystroke.
+test.describe('Picard column header toggle (per sub-table)', () => {
+    test.use({ viewport: { width: 1440, height: 1400 } });
+
+    /** Populated per test by beforeEach; asserted empty at the end of each. */
+    let pageErrors;
+
+    test.beforeEach(async ({ page }) => {
+        pageErrors = collectPageErrors(page);
+        // No settingsOverride for the Picard key: the shipped default is
+        // collapsed, and that IS what this test is about.
+        await loadFromDiskFixture(page, {
+            url: RG_URL,
+            fixturePath: DISK_FIXTURE,
+            pageFixtureFile: PAGE_SHELL,
+            testMode: true,
+        });
+        await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 30000 });
+        await expect(page.locator('table.tbl')).toHaveCount(2);
+    });
+
+    /**
+     * Per-table toggle state and button count, in document order.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<Array<{expanded: boolean, buttons: number, cells: number, rows: number}>>}
+     */
+    const readToggleState = (page) => page.evaluate(() =>
+        Array.from(document.querySelectorAll('table.tbl')).map((table) => {
+            const btn = table.querySelector('thead .mb-picard-col-hdr-btn');
+            return {
+                expanded: !!btn && btn.getAttribute('aria-pressed') === 'true',
+                buttons: table.querySelectorAll('td.mb-picard-cell button.mb-picard-btn').length,
+                cells: table.querySelectorAll('tbody td.mb-picard-cell').length,
+                rows: table.querySelectorAll('tbody tr').length,
+            };
+        }));
+
+    test('expanding one sub-table leaves the other collapsed, across a filter and a sort', async ({ page }) => {
+        // Expanding every sub-section plus a sort settle does not fit the 30s
+        // default, and overrunning it reports "Target page has been closed"
+        // instead of whatever actually went wrong.
+        test.setTimeout(120000);
+
+        // Both tables ship collapsed: the cells exist, the buttons do not.
+        const initial = await readToggleState(page);
+        expect(initial.map((t) => t.rows)).toEqual([6, 1]);
+        expect(initial.map((t) => t.cells)).toEqual([6, 1]);
+        expect(initial.map((t) => t.expanded)).toEqual([false, false]);
+        expect(initial.map((t) => t.buttons)).toEqual([0, 0]);
+        // Nothing was scanned either — an empty cell cannot tell the two apart.
+        expect(await page.evaluate(() => window.__saTest.picardEntityScans())).toBe(0);
+
+        // `releasegroup-releases` renders its sub-sections COLLAPSED, so a
+        // header span inside a display:none table is a 0x0 element Playwright
+        // will never click. The helper asserts that collapsed starting state
+        // first, so it cannot silently do the opposite.
+        await clickMasterToggleAndExpandAll(page);
+
+        const tables = page.locator('table.tbl');
+        const toggle0 = tables.nth(0).locator('thead .mb-picard-col-hdr-btn');
+        const toggle1 = tables.nth(1).locator('thead .mb-picard-col-hdr-btn');
+        await expect(toggle0).toBeVisible({ timeout: 10000 });
+        await expect(toggle1).toBeVisible({ timeout: 10000 });
+
+        await toggle0.click();
+        await expect(toggle0).toHaveAttribute('aria-pressed', 'true');
+
+        const oneOpen = await readToggleState(page);
+        expect(oneOpen.map((t) => t.expanded), 'only table 0 expanded').toEqual([true, false]);
+        // Every row of this fixture links exactly one release, so one button each.
+        expect(oneOpen.map((t) => t.buttons), 'buttons are scoped to table 0').toEqual([6, 0]);
+        // The cells are all still there in BOTH tables — a collapsed column
+        // must never remove a <td>, or every column index after it moves.
+        expect(oneOpen.map((t) => t.cells)).toEqual([6, 1]);
+
+        // ── The state has to survive a re-render ────────────────────────────
+        // "e" matches every row, so the row set is unchanged and the counts stay
+        // directly comparable. waitForActualRowCount is the second, non-optional
+        // completion signal — see the first describe block for why.
+        const input = page.locator('#mb-global-filter-input');
+        const scansBefore = await page.evaluate(() => window.__saTest.picardEntityScans());
+        await waitForFilterSettled(page, () => input.pressSequentially('e'));
+        await waitForActualRowCount(page, TOTAL_ROWS);
+
+        // The perf claim, and the only place it is observable: a re-render
+        // re-derives the entities of the EXPANDED table's 6 rows and of no
+        // others. Table 1 is collapsed, so its row is never scanned — which is
+        // invisible in the DOM, since its cell looks the same either way.
+        // Asserted exactly rather than as an upper bound: an off-by-a-table
+        // regression here is precisely the kind that would otherwise pass.
+        expect(await page.evaluate(() => window.__saTest.picardEntityScans()) - scansBefore,
+            'a re-render scans the expanded sub-table only').toBe(6);
+
+        const afterFilter = await readToggleState(page);
+        expect(afterFilter.map((t) => t.expanded), 'after filter: state survived').toEqual([true, false]);
+        expect(afterFilter.map((t) => t.buttons), 'after filter: buttons survived').toEqual([6, 0]);
+        expect(afterFilter.map((t) => t.cells)).toEqual([6, 1]);
+
+        // ── …and a scoped sort of the expanded table ────────────────────────
+        // The "e" filter is deliberately LEFT ACTIVE across the sort rather
+        // than cleared first. Clearing it is the one step that has to wait on
+        // #mb-filter-status-display changing to a value it has not shown
+        // before, and with a query that kept every row there is nothing in that
+        // text for the clear to change — measured as a 1-in-3 timeout. Sorting
+        // on top of the filter needs no such signal (the sub-table's own
+        // .mb-sort-status carries it), keeps the row count at TOTAL_ROWS so
+        // waitForActualRowCount still works, and covers strictly more: the
+        // toggle state now has to survive a filter re-render AND a scoped sort
+        // re-render in sequence.
+        const officialTable = tables.nth(0);
+        const ascending = officialTable.locator('thead .sort-icon-btn', { hasText: '▲' }).first();
+        await expect(ascending).toBeVisible({ timeout: 10000 });
+
+        let heading = await page.evaluate(() => {
+            let h3 = document.querySelector('table.tbl').previousElementSibling;
+            while (h3 && h3.tagName !== 'H3') h3 = h3.previousElementSibling;
+            return h3 ? (h3.textContent.match(/^[^(]+/) || [''])[0].replace(/^[▶▼▲◀\s]+/, '').trim() : '';
+        });
+        await waitForSortSettled(page, () => ascending.click(), {
+            subTableHeading: heading,
+            timeout: 60000,
+        });
+        await waitForActualRowCount(page, TOTAL_ROWS);
+
+        const afterSort = await readToggleState(page);
+        expect(afterSort.map((t) => t.expanded), 'after sort: state survived').toEqual([true, false]);
+        expect(afterSort.map((t) => t.buttons), 'after sort: buttons survived').toEqual([6, 0]);
+        expect(pageErrors).toEqual([]);
+    });
+
+    test('the page-wide button brings every sub-table to expanded in one click', async ({ page }) => {
+        test.setTimeout(120000);
+        await clickMasterToggleAndExpandAll(page);
+
+        // Multi-table page, so the companion is rendered. A single-table page
+        // gets none — its one header toggle already IS the page-wide control
+        // (asserted in tests/fixtures/search-recordings-continuation.spec.js).
+        const globalBtn = page.locator('#mb-picard-col-hdr-toggle-all-btn');
+        await expect(globalBtn).toBeVisible();
+        await expect(globalBtn).toHaveAttribute('data-mb-picard-col-all-expanded', 'false');
+
+        // Reading order in the action bar: collapse-all, then any CAA/EAA
+        // all-buttons, then this one. Picard injects after the artwork tail, so
+        // a naive .after(#mb-col-collapse-all-btn) would wedge it in the middle.
+        const orderOk = await page.evaluate(() => {
+            const btn = document.getElementById('mb-picard-col-hdr-toggle-all-btn');
+            const collapseAll = document.getElementById('mb-col-collapse-all-btn');
+            if (!btn || !collapseAll) return false;
+            const caa = Array.from(document.querySelectorAll('[data-mb-caa-col-all-ctx]'));
+            const prev = caa.length ? caa[caa.length - 1] : collapseAll;
+            return prev.nextElementSibling === btn;
+        });
+        expect(orderOk, 'page-wide Picard button sits after collapse-all / the CAA all-buttons').toBe(true);
+
+        await globalBtn.click();
+        await expect(globalBtn).toHaveAttribute('data-mb-picard-col-all-expanded', 'true');
+
+        const expanded = await readToggleState(page);
+        expect(expanded.map((t) => t.expanded)).toEqual([true, true]);
+        expect(expanded.map((t) => t.buttons)).toEqual([6, 1]);
+
+        // And back again — the aggregate is "expand if any is collapsed",
+        // so from all-expanded a click collapses everything.
+        await globalBtn.click();
+        await expect(globalBtn).toHaveAttribute('data-mb-picard-col-all-expanded', 'false');
+        const collapsed = await readToggleState(page);
+        expect(collapsed.map((t) => t.expanded)).toEqual([false, false]);
+        expect(collapsed.map((t) => t.buttons)).toEqual([0, 0]);
+        expect(collapsed.map((t) => t.cells), 'the <td>s never go away').toEqual([6, 1]);
         expect(pageErrors).toEqual([]);
     });
 });

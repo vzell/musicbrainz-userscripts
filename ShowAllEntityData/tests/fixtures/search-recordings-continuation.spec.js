@@ -26,7 +26,20 @@ const FIXTURE_FILE = path.join(__dirname, 'search-recordings-continuation.html')
 const COL = { NAME: 0, LENGTH: 1, RELEASE: 4, TRACK: 5, MEDIUM: 6, TYPE: 7 };
 
 test('search?type=recording: continuation rows fold into the preceding row as multi-row Release/Track/Medium/Type cells', async ({ page }) => {
-    await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+    // Both tests below pin the Picard column AT INITIAL RENDER — the three
+    // exact button titles, the picardLiCount === releaseLiCount invariant, and
+    // the whole ▶3▤ / ▼3▤ premise of the second test. Since 9.99.1057 the
+    // column ships COLLAPSED by default (sa_picard_tagger_initially_collapsed),
+    // so those cells are empty until the header toggle is pressed. Seeding the
+    // setting off keeps every assertion here verbatim and is honest about what
+    // they pin: the pre-toggle "built during the render" behaviour, which the
+    // setting still selects. The default-state coverage is the third test below.
+    await loadUserscriptPage(page, {
+        url: SEARCH_URL,
+        fixtureFile: FIXTURE_FILE,
+        testMode: true,
+        settingsOverride: { sa_picard_tagger_initially_collapsed: false },
+    });
 
     // startFetchingProcess ALWAYS re-fetches a search page over the network
     // rather than reusing the live document (the _isSearchPage branch — the
@@ -130,7 +143,15 @@ test('search?type=recording: continuation rows fold into the preceding row as mu
 });
 
 test('search?type=recording: Track and Medium line up across the whole table, toggle or no toggle', async ({ page }) => {
-    await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+    // sa_picard_tagger_initially_collapsed: false — this test's whole ▶3▤ / ▼3▤
+    // premise is that the Picard cells are built during the render. See the
+    // first test for the full reasoning; the third test covers the default.
+    await loadUserscriptPage(page, {
+        url: SEARCH_URL,
+        fixtureFile: FIXTURE_FILE,
+        testMode: true,
+        settingsOverride: { sa_picard_tagger_initially_collapsed: false },
+    });
     await page.route('https://musicbrainz.org/search**', (route) =>
         route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
 
@@ -209,4 +230,133 @@ test('search?type=recording: Track and Medium line up across the whole table, to
     await expect(picardCell.locator('.mb-cell-collapse-toggle')).toHaveText('▼3▤');
     expect(await picardCell.locator('ul > li').evaluateAll(
         lis => lis.filter(li => li.offsetParent !== null).length)).toBe(3);
+});
+
+// The Picard column at its shipped default: present, empty, and built only when
+// the user asks. Hosted here rather than in a new file because this fixture is
+// already committed, is network-free, and its rows produce both a 1-entity and a
+// 3-entity Picard cell — the two shapes the toggle has to get right.
+//
+// The guarantee is deliberately three-part, and the middle part is the one that
+// distinguishes it from "the column is missing":
+//   1. the <th> and one <td> per row still exist, and the <td> is still
+//      rightmost with the row's cell count still equal to the header's — a
+//      collapsed column must not move a single index (PERFORMANCE.org Step 32);
+//   2. NO ♪ button and no <ul> exists anywhere, and _picardExtractRowEntities()
+//      is not called again on a re-render — the actual work is skipped, not
+//      merely hidden;
+//   3. one press builds exactly what test 1 asserts at initial render, and a
+//      second press returns the column to empty.
+test('search?type=recording: the Picard column ships collapsed and fills on demand', async ({ page }) => {
+    // No settingsOverride — this is the default the user gets.
+    await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+    await page.route('https://musicbrainz.org/search**', (route) =>
+        route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
+
+    await page.click('button[data-label="Show all Search Results for Recordings"]');
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+
+    const rows = page.locator('table.tbl tbody tr');
+    await expect(rows).toHaveCount(3);
+
+    // ── 1. The column exists in full, and displaces nothing ─────────────────
+    await expect(page.locator('table.tbl thead th.mb-picard-th').first()).toHaveCount(1);
+    await expect(page.locator('table.tbl tbody td.mb-picard-cell')).toHaveCount(3);
+
+    const shape = await page.evaluate(() => {
+        const table = document.querySelector('table.tbl');
+        const headerCells = table.querySelectorAll('thead tr:first-child th').length;
+        const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+        return {
+            headerCells,
+            rowsWithBadCellCount: bodyRows.filter(r => r.cells.length !== headerCells).length,
+            rowsWherePicardNotLast: bodyRows.filter(r => {
+                const cell = r.querySelector('td.mb-picard-cell');
+                return cell && cell !== r.cells[r.cells.length - 1];
+            }).length,
+            // The <th>'s OWN text — its direct text nodes, excluding element
+            // children — must be exactly "Picard". That is the invariant the
+            // CSS-::before glyph exists to protect: four consumers match this
+            // name exactly, and a text glyph in the toggle would make the
+            // header read "▶♪Picard". Read this way rather than as the whole
+            // subtree's textContent because initCollapsableColumns() legitimately
+            // appends its own ▶N▤ button to this <th> once the column is
+            // expanded and multi-row (Picard's header has no .mb-col-hdr-flex,
+            // so that button lands as a direct child) — a real contribution
+            // from a different feature, which _cleanColHeaderText() strips.
+            headerOwnText: Array.from(table.querySelector('thead th.mb-picard-th').childNodes)
+                .filter(n => n.nodeType === Node.TEXT_NODE)
+                .map(n => n.textContent).join(''),
+        };
+    });
+    expect(shape.rowsWithBadCellCount).toBe(0);
+    expect(shape.rowsWherePicardNotLast).toBe(0);
+    expect(shape.headerOwnText).toBe('Picard');
+
+    // ── 2. Nothing was built, and nothing was even scanned ──────────────────
+    await expect(page.locator('button.mb-picard-btn')).toHaveCount(0);
+    await expect(page.locator('td.mb-picard-cell ul')).toHaveCount(0);
+
+    const toggle = page.locator('table.tbl thead th.mb-picard-th .mb-picard-col-hdr-btn');
+    await expect(toggle).toHaveCount(1);
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+
+    // Single-table page: its own header toggle IS the page-wide control, so the
+    // multi-table companion must not be rendered at all.
+    await expect(page.locator('#mb-picard-col-hdr-toggle-all-btn')).toHaveCount(0);
+
+    // The entity scan is the expensive half, and it is invisible in the DOM —
+    // an empty cell looks the same whether it was skipped or whether the row
+    // has nothing to tag. A filter keystroke re-renders every row and re-runs
+    // the whole Picard pass; while collapsed it must not scan a single row.
+    const scansBeforeFilter = await page.evaluate(() => window.__saTest.picardEntityScans());
+    await page.locator('#mb-global-filter-input').pressSequentially('e');
+    await expect(rows).toHaveCount(3);
+    await expect(page.locator('button.mb-picard-btn')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__saTest.picardEntityScans()))
+        .toBe(scansBeforeFilter);
+    await page.locator('#mb-global-filter-input').fill('');
+    await expect(rows).toHaveCount(3);
+
+    // ── 3. One press builds exactly what test 1 pins ────────────────────────
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+
+    const springsteen = rows.filter({ hasText: 'Studio Collection 1972–1979' });
+    const picardCell = springsteen.locator('td.mb-picard-cell');
+    await expect(picardCell.locator('button.mb-picard-btn')).toHaveCount(3);
+    expect(await picardCell.locator('button.mb-picard-btn')
+        .evaluateAll(btns => btns.map(b => b.title))).toEqual([
+        'Send to Picard (Studio Collection 1972–1979 — release)',
+        'Send to Picard (The Ties That Bind: The River Collection — release)',
+        'Send to Picard (2001-12-06: Copper Dragon, Carbondale, IL, USA — release)',
+    ]);
+
+    // One <li> per release in every row, exactly as at initial render.
+    for (const row of await rows.all()) {
+        const releaseLiCount = await row.locator('td').nth(COL.RELEASE).locator('ul > li').count();
+        const picardLiCount = await row.locator('td.mb-picard-cell ul > li').count();
+        expect(picardLiCount).toBe(releaseLiCount);
+    }
+
+    // The per-cell ▶3▤ toggle proves the collapsable-column re-registration
+    // fired ON EXPAND. While collapsed nothing is multi-row, so
+    // initPicardTaggerColumn()'s own `_anyMultiRowPicardCell` never gets set and
+    // this toggle can only come from _picardToggleTable()'s own registration.
+    await expect(picardCell.locator('.mb-cell-collapse-toggle')).toHaveText('▶3▤');
+
+    // ── 3b. A second press returns the column to empty ──────────────────────
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('button.mb-picard-btn')).toHaveCount(0);
+    await expect(page.locator('td.mb-picard-cell ul')).toHaveCount(0);
+    // The cell is empty, so it must not keep the padding reserved for a toggle.
+    await expect(page.locator('td.mb-picard-cell.mb-has-collapse-toggle')).toHaveCount(0);
+    // …and the column still has not moved.
+    expect(await page.evaluate(() => {
+        const table = document.querySelector('table.tbl');
+        const headerCells = table.querySelectorAll('thead tr:first-child th').length;
+        return Array.from(table.querySelectorAll('tbody tr'))
+            .filter(r => r.cells.length !== headerCells).length;
+    })).toBe(0);
 });

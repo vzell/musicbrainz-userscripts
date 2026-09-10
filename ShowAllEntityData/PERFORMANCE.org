@@ -213,17 +213,24 @@ reflow (~:43011~).
 
 *** Two of these are defects, not merely inefficiencies
 
-*~initPicardTaggerColumn(true)~ defeats Step 3's cache on every keystroke.* Its
-rewire pass ends in ~_invalidateUniqDropDataCacheForTable(table)~ (~:74033~),
-which also drops ~_colHeaderCountsCache~ (~:52459~ → ~:52548~). ~runFilter~
-calls it every pass (~:42748~ multi, ~:42946~ single);
-~sa_enable_picard_tagger~ defaults *true* and the only guard is "does this
-tbody contain a ~/release/~ link". So on ~artist-releases~,
+*~initPicardTaggerColumn(true)~ defeated Step 3's cache on every keystroke —
+fixed at 9.99.1057 for the default configuration.* Its rewire pass used to end
+in an unconditional ~_invalidateUniqDropDataCacheForTable(table)~, which also
+drops ~_colHeaderCountsCache~. ~runFilter~ calls it every pass (~:42748~ multi,
+~:42946~ single); ~sa_enable_picard_tagger~ defaults *true* and the only guard
+is "does this tbody contain a ~/release/~ link". So on ~artist-releases~,
 ~artist-releasegroups~, ~releasegroup-releases~, ~series-releases~ and
-~collections-releases~, 9.99.1049's memoization never hits at all. *The
-interaction-perf harness cannot see this*: ~artist-events~ has no release
-links, so the Picard column is skipped there and every committed number was
-captured with this cost absent.
+~collections-releases~, 9.99.1049's memoization never hit at all.
+
+Step 32 gated that call on a row having actually changed. With the Picard
+column collapsed — the default since 9.99.1057 — no row changes, so the cache
+now survives a keystroke on exactly those pageTypes. It is still dropped every
+pass on a page where the user has UNCOLLAPSED the column, which is correct
+(every cell really is rebuilt there) and is what Step 23 removes.
+
+*The interaction-perf harness cannot see any of this, before or after*:
+~artist-events~ has no release links, so the Picard column is skipped there and
+every committed number was captured with this cost absent.
 
 *~_countLiveDateFlags()~ tallies the live tbody, not the source rows.* Its own
 JSDoc claims the totals "stay a stable page-wide summary independent of
@@ -350,7 +357,12 @@ have to be the biggest item to be worth fixing early.
 
 - *23* removes a per-row teardown-and-rebuild of ~5 elements per row per pass,
   and restores Step 3's measured -27 to -30% on ~headerCountsRestore~ for every
-  release-listing pageType, where today it never applies at all.
+  release-listing pageType, where today it never applies at all. /Narrowed
+  2026-09-10 by Step 32:/ with the Picard column collapsed — the default since
+  9.99.1057 — the cache half is already restored, because a collapsed column no
+  longer reports a change and so no longer drops it. What is left for Step 23
+  is the teardown-and-rebuild, plus both halves on a page where the user has
+  UNCOLLAPSED the column.
 - *34* removes ~1.05 million ~querySelectorAll~ per filter clear — 97.5% of
   that phase's total, twelve per cell, against ~27 000 for everything else in
   the phase combined.
@@ -368,6 +380,11 @@ have to be the biggest item to be worth fixing early.
 *Before writing any of it*, flip ~sa_enable_picard_tagger~ off and re-run the
 same filter on a real release-listing page. That sizes the whole Picard prize —
 Steps 23 and 32 together — for free, using a setting that already exists.
+Since 9.99.1057 there is a second, finer knob worth measuring in the same
+sitting: ~sa_picard_tagger_initially_collapsed~ (default on) separates "the
+column is not there at all" from "the column is there but its cells are
+empty", which is the difference between the whole prize and the part Step 32
+already banked. Neither has been run.
 
 Together Tier 1 removes three of the per-cell walks outright and restores the
 cache on a fourth. With Step 34 measured rather than estimated the headline is
@@ -1965,7 +1982,7 @@ full-table walk, and two of them rebuild DOM rather than merely re-attaching:
 
 | Function                        | What it does per pass                                                                          | Guard                                          |
 |---------------------------------+------------------------------------------------------------------------------------------------+------------------------------------------------|
-| ~initPicardTaggerColumn(true)~  | ~_picardExtractRowEntities~, then ~innerHTML=''~, then rebuild ~<ul><li><button><img>~ per row | ~sa_enable_picard_tagger~ + a ~/release/~ link |
+| ~initPicardTaggerColumn(true)~  | ~_picardExtractRowEntities~, then ~innerHTML=''~, then rebuild ~<ul><li><button><img>~ per row — *unless the column is collapsed, which is the default since 9.99.1057 (Step 32): then the cell is emptied and nothing is scanned or built* | ~sa_enable_picard_tagger~ + a ~/release/~ link |
 | ~initExpandRGsFeature()~        | strips every ~[data-erg-btn]~ and re-injects a fresh button per release link                   | ~isExpandRGsPage()~ + links exist              |
 | ~_rewireNestedTableH2Toggles()~ | ~document.querySelectorAll('table.tbl h2')~                                                    | cheap unless the page has nested ~<h2>~s       |
 | ~_cdtocInitTracklistToggles()~  | early-returns unless ~pageType === 'cdtoc'~                                                    | already effectively free                       |
@@ -1977,14 +1994,29 @@ Grep the names rather than trusting these positions:
 ~_rewireNestedTableH2Toggles~ ~:52102~, ~_cdtocInitTracklistToggles~ ~:58963~.
 
 *On a release-listing page the first two both fire on every keystroke*, so two
-columns' worth of interactive elements are destroyed and rebuilt per pass.
+columns' worth of interactive elements are destroyed and rebuilt per pass —
+*except while the Picard column is collapsed, which since 9.99.1057 (Step 32)
+is the default.* Collapsed, ~initPicardTaggerColumn(true)~ still walks every
+table and every row, but per row it empties an already-empty ~<td>~ and stops;
+the anchor subtree walk and the DOM construction are both skipped. So on a
+default-configured release listing it is ERG alone that rebuilds a column's
+worth of elements per pass, and this step's Picard share applies to the
+expanded state and to the first build.
 
-*Picard additionally defeats Steps 3 and 4.* Its rewire pass ends in
-~_invalidateUniqDropDataCacheForTable(table)~ (~:74033~), which also drops
-~_colHeaderCountsCache~ (~:52459~ → ~:52548~). That call is CORRECT for what
-the function currently does — it really has just rebuilt every cell — which is
-why the fix is to stop rebuilding, not to delete the invalidation. Deleting it
-alone would leave a stale cache behind a real mutation.
+*Picard additionally defeats Steps 3 and 4 — half fixed at 9.99.1057.* Its
+rewire pass used to end in an unconditional
+~_invalidateUniqDropDataCacheForTable(table)~, which also drops
+~_colHeaderCountsCache~. That call was CORRECT for what the function did — it
+really had just rebuilt every cell — which is why the fix was to stop
+rebuilding, not to delete the invalidation; deleting it alone would leave a
+stale cache behind a real mutation.
+
+Step 32 took the "stop rebuilding" half: each row now reports whether its
+cell's content actually changed, and the drop happens only when some row says
+yes. A COLLAPSED column answers no for every row, so a keystroke or a sort no
+longer drops that table's bundles. An EXPANDED one still rebuilds every cell
+and still drops them, correctly — so what remains for this step is the expanded
+case, and delegation is what removes the rebuild there.
 
 Fix: one delegated listener per table, with the state each handler needs moved
 from its closure onto ~data-*~ attributes on the element. ~ensureCollapseDelegate~
@@ -2215,68 +2247,115 @@ Cheap and mechanical, but genuinely lower value than it looks: the match scan is
 walk 1 of five, and the profiling trace in the Session-summary section below put
 it at 39.6 ms of a ~230 ms pass. Take it after the walks that dominate.
 
-*** TODO Step 32: On-demand Picard column — considered, deferred
+*** TODO Step 32: On-demand Picard column — the narrow design, implemented
+
+/Implemented on branch/ ~picard-column-collapse-toggle~ /at 9.99.1057. The
+keyword tracks/ ~main~ /and flips at merge, per this file's own convention./
 
 Raised as "should the Picard column only render when actually needed, e.g.
-behind a button?". The instinct is right — it is the most expensive column per
-filter pass — but recorded here as DEFERRED with the reasoning, so it is not
-re-proposed blind.
+behind a button?". Two different designs answer to that sentence and they have
+opposite verdicts, so both are recorded here: the COLUMN-level one was rejected
+and stays rejected, and the CELL-CONTENT-level one was accepted and built.
 
-- *Hiding it does not help.* ~toggleColumnInTable~ (~:19567~) sets
+**** What was rejected, and still is: inserting/removing the COLUMN at runtime
+
+- *Hiding it does not help.* ~toggleColumnInTable~ sets
   ~style.display = 'none'~; the cells stay in the DOM, and every one of the five
-  walks iterates ~row.cells~ or the header list. Only not BUILDING it helps.
+  O(rows x columns) walks iterates ~row.cells~ or the header list. Only not
+  BUILDING it helps.
 - *Inserting or removing a column at runtime shifts every column index*, and
   that is the expensive part: ~data-col-idx~ on every column-filter input, sort
   state, the sticky-column index, ~_uniqDropDataCache~ and
   ~_colHeaderCountsCache~ (both keyed per ~colIndex~), the colon-alignment
   descriptors, and saved column widths. ~injectColumnFilterRow~'s own JSDoc
   documents the "ghost filter cell" self-healing path that exists BECAUSE
-  ~initPicardTaggerColumn~ adds a column after the initial build; a toggle would
-  make that path run repeatedly instead of once. No removal path exists today,
-  only injection.
-- *"Build it or don't" is already a setting.* ~sa_enable_picard_tagger~
-  (default true) decides this at render time, which is the only point where the
-  decision is cheap. A button amounts to "change the setting and re-render".
+  ~initPicardTaggerColumn~ adds a column after the initial build; a
+  column-level toggle would make that path run repeatedly instead of once. No
+  removal path exists today, only injection.
 
-After Step 23 the residue is one extra column in five O(rows x columns) walks —
-~5% on a 21-column page, proportionally more on a narrow table — plus its own
-cloned DOM. Real, but well behind Steps 24-26. *Measure it first with the
-setting that already exists*, and only design a toggle if the number justifies
-the index churn.
+That argument is sound and nothing below weakens it. *Do not read this section
+as "Step 32 says no" to the built design* — it says no to changing the column
+COUNT.
 
-**** A NARROWER design was accepted 2026-09-10 — do not re-derive the deferral
+**** What was accepted and built: defer the CELL CONTENT, never the column
 
-/The deferral above stands for what it actually rejected, and rejects something
-this design does not do. Read this before concluding "Step 32 says no"./
-
-Everything above argues against *inserting or removing a COLUMN at runtime*,
-and that argument is sound: the column count is what every index churns off.
-The accepted design never changes it. **The ~<th>~ and every ~<td>~ always
-exist; only the CELL CONTENT is deferred** — a collapsed cell is an empty
-~<td>~ that is still rightmost and still counted. So:
+**The ~<th>~ and every ~<td>~ always exist; only the CELL CONTENT is
+deferred** — a collapsed cell is an empty ~<td>~ that is still rightmost and
+still counted. So:
 
 - ~data-col-idx~ on the column-filter inputs, sort state, the sticky index, the
   per-~colIndex~ ~_uniqDropDataCache~/~_colHeaderCountsCache~, the
   colon-alignment descriptors and the saved widths *all keep their meaning*.
 - ~addColumnFilterRow~'s ghost-filter-cell self-healing still runs *exactly
   once*, at injection: its check compares filter-row cells to HEADER cells, and
-  neither count moves. The bullet above predicting that path would "run
-  repeatedly" does not apply.
-- "'Build it or don't' is already a setting" is the one bullet this genuinely
-  falsifies. A press does not re-render: it fills or empties N cells in place,
-  which is what the existing rewire pass already does on every keystroke.
+  neither count moves.
+- "'Build it or don't' is already a setting" — the third bullet of the original
+  deferral — is the one claim this genuinely falsifies. A press does not
+  re-render: it fills or empties N cells in place, which is what the existing
+  rewire pass already does on every keystroke. ~sa_enable_picard_tagger~
+  remains the master switch and is unchanged.
 
 What it buys, and why it is worth having even though it is not a walk
-reduction: ~_picardExtractRowEntities()~ is the *unconditional first line* of
-the per-row work, so a collapsed column skips the whole per-row anchor subtree
-walk plus the ~<ul>~/~<li>~/~<button>~/~<img>~ construction and the
+reduction: ~_picardExtractRowEntities()~ was the *unconditional first line* of
+the per-row work, so a collapsed column now skips the whole per-row anchor
+subtree walk plus the ~<ul>~/~<li>~/~<button>~/~<img>~ construction and the
 ~addEventListener~ per button. The column stays in the five walks — the residue
-sentence above is unchanged.
+sentence below is unchanged.
 
-*Still not measured.* The free measurement this section already prescribes —
-flip ~sa_enable_picard_tagger~ off and re-run the same filter on a real
+- Scope is PER TABLE, following ~_artInitCaaColHeaderToggle~ rather than
+  ~_msRepaintColHdrBtns~'s page-wide repaint, plus a page-wide companion
+  (~_picardInitGlobalColHdrToggle~, multi-table only) following
+  ~_artInitGlobalCaaColHdrToggle~.
+- The initial state is a persisted setting, ~sa_picard_tagger_initially_collapsed~,
+  defaulting to *collapsed*; the per-table toggle is always present regardless.
+  Setting it false reproduces the pre-9.99.1057 behaviour exactly (cells built
+  at render) while keeping the toggle available. Per-table state lives on
+  ~<table>.dataset.mbPicardExpanded~ — see ~_picardTableExpanded()~'s JSDoc for
+  why it is stored explicitly rather than inferred from cell content
+  (~notes-received~ has 1688 Picard cells behind 8 buttons, so "empty" is
+  ambiguous) and for the survival proof.
+
+***** The cache-invalidation gate WAS taken
+
+Step 23's "Picard additionally defeats Steps 3 and 4" finding is now half
+fixed. ~initPicardTaggerColumn~'s per-table pass no longer calls
+~_invalidateUniqDropDataCacheForTable(table)~ unconditionally: each row's
+create-or-rewire reports whether its cell's CONTENT actually changed, and the
+drop happens only when some row said yes. A collapsed column answers no for
+every row — the clone arrived empty because its master is empty, and it stays
+empty — so a keystroke or a sort no longer drops that table's uniq bundles or,
+with them, ~_colHeaderCountsCache~.
+
+Deliberately NOT retrofitted onto the expanded path: there, every pass really
+does rebuild every cell, which is exactly the case the helper's own JSDoc
+exists for. So the win is conditional on the column being collapsed, which is
+now the default.
+
+***** Residue, and what is still not measured
+
+After Step 23 the residue is one extra column in five O(rows x columns) walks —
+~5% on a 21-column page, proportionally more on a narrow table — plus its own
+cloned DOM. Real, but well behind Steps 24-26, and the built design does not
+touch it: only not having the COLUMN would, and that is what the first half of
+this step rejects.
+
+*Still not measured, and the built feature does not change that.* The free
+measurement this section has always prescribed — flip
+~sa_enable_picard_tagger~ off and re-run the same filter on a real
 release-listing page — has still never been run, and it remains the number that
-sizes Step 23, this design, and the residue together.
+sizes Step 23, this design, and the residue together. The reason it keeps not
+happening is structural and worth naming: the perf harness's only instrumented
+page is ~artist-events~, which has no ~/release/~ links and therefore no Picard
+column at all, so none of this is visible to ~capture-interaction-perf.js~ as
+it stands. Sizing it needs an instrumented release-listing page first.
+
+What the branch DOES have is a count rather than a timing:
+~__saTest.picardEntityScans()~ exposes how many times
+~_picardExtractRowEntities()~ has run, and
+~tests/fixtures/picard-cells-survive-rerender.spec.js~ pins that a re-render
+scans the expanded sub-table's 6 rows and none of the collapsed one's. That is
+a correctness assertion about the gate, not a measurement of what the gate is
+worth.
 
 ***** Ordering against Step 23
 
@@ -2288,16 +2367,21 @@ first, does not block Step 23: it adds a per-table state flag Step 23's
 delegation must respect, nothing more. Part of Step 23's Picard win is in any
 case already banked by the ~_mbPicardWired~ marker (see that step).
 
-The usability argument is independent of both and is why this is being built:
-on a release listing the ♪ column is populated whether or not the user wants
-it, and there was no way to say no short of turning the whole feature off in
-settings.
+The header toggle's own listener is already delegated, on the ~<table>~ element
+and guarded by ~data-mb-picard-hdr-delegate~ — so it is the one piece of Picard
+that Step 23 will find already done, and it is worth reading as the worked
+example: ~renderGroupedTable()~ rebuilds each group's ~<thead>~ from
+~templateHead.cloneNode(true)~, so a span wired with ~addEventListener~ arrives
+as a live-looking dead clone and a "wired" marker on the span would be copied
+by ~cloneNode~ and would lie. It also does NOT copy ~ensureCollapseDelegate~'s
+latent bug of setting its guard before its own ~tbody~ null-check; fixing that
+in ~ensureCollapseDelegate~ itself is still open and was deliberately not
+folded in.
 
-*Design detail worth pinning here because it is not obvious from the outside:*
-the initial state is a persisted setting defaulting to *collapsed*, and the
-per-table toggle is always present regardless. Setting it false therefore
-reproduces today's behaviour exactly (cells built at render) while keeping the
-toggle available. Full design in ~org/picard.org~.
+The usability argument is independent of both and is why this was built: on a
+release listing the ♪ column is populated whether or not the user wants it, and
+there was no way to say no short of turning the whole feature off in settings.
+Full design and test plan in ~org/picard.org~.
 
 *** TODO Step 33: Lazy Relationships-column fetch
 

@@ -91,6 +91,54 @@ Expect unrelated drift in the same re-capture, already seen in this one: the
 on =main= long after the 9.99.953 baseline, and the Wikipedia extract flapped
 per the section below.
 
+** Picard column shipping collapsed — RE-CAPTURE STILL OWED
+
+Like the count badges above, this is OUR movement, not MusicBrainz's. As of
+9.99.1057 the "Picard" column renders COLLAPSED by default
+(=sa_picard_tagger_initially_collapsed=, default =true=): the =<th>= and every
+=<td class="mb-picard-cell">= are still there — a collapsed column must not
+change any column INDEX — but the ♪ buttons inside them are built only when the
+new ▶♪ column-header toggle is pressed.
+
+Three baselines carry Picard markup, and the diff in each is exactly this:
+
+| Baseline                            | mb-picard-btn | mb-picard-cell | new toggle spans | page-wide btn |
+|-------------------------------------+---------------+----------------+------------------+---------------|
+| releasegroup-releases/rendered.html | 7 → *0*       | 7 (unchanged)  | +2               | +1            |
+| series-releases/rendered.html       | 12 → *0*      | 12 (unchanged) | +1               | —             |
+| notes-received/rendered.html        | 8 → *0*       | 1688 (unchanged) | +1             | —             |
+
+  - "new toggle spans" is one empty =<span class="mb-picard-col-hdr-btn"
+    role="button" tabindex="0" aria-pressed="false" …>= prepended to each
+    table's FIRST header row's =th.mb-picard-th=. One per TABLE, not per
+    =mb-picard-th=: the filter row's Picard =<th>= stays bare, which is why
+    releasegroup-releases gains 2 spans against its 4 =mb-picard-th=. The span
+    is EMPTY on purpose — the ▶♪/▼♪ glyph comes from a CSS =::before= keyed on
+    =[aria-pressed]=, so =th.textContent= stays exactly ="Picard"=; see that CSS
+    block for the four column-name consumers a text glyph would break.
+  - "page-wide btn" is =#mb-picard-col-hdr-toggle-all-btn=, multi-table pages
+    only. Only releasegroup-releases is multi here (it is the one baseline with
+    a real =.mb-master-toggle= ELEMENT rather than just the CSS rule — grep
+    carefully, all three files contain the rule).
+  - notes-received's 1680 button-less cells were ALREADY empty and do not move.
+    That page is the reason this state is stored explicitly on
+    =<table>.dataset= rather than inferred from cell content: 1688 cells behind
+    8 buttons means "empty" cannot distinguish collapsed from "nothing to tag".
+  - Expect the Picard column's own WIDTH to shrink in the same diff. Auto-resize
+    measures rendered content, and the content is now nothing.
+
+*Buttons going the other way — a re-capture that brings the ♪ buttons back — is
+either a real regression or someone's local =sa_picard_tagger_initially_collapsed=
+turned off.* Check the setting before filing it.
+
+*The re-capture itself has not been done.* It needs a logged-in session
+(=npm run auth:login=; notes-received is =/edit/notes-received= and
+user-scoped), and the saved session had expired when 9.99.1057 was written.
+Deliberately NOT dodged by seeding the setting off in =tests/pagetypes.json= —
+the baselines should record what a user actually sees. Nothing in =npm test=
+reads these files, so the suite cannot go red on this; the three baselines are
+simply stale by exactly the table above until someone re-captures them.
+
 ** Wikipedia extract on the Springsteen pages
 
 artist-releasegroups/raw.html embeds MusicBrainz's own sidebar Wikipedia
