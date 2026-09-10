@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-10",
+    "sections": [
+      {
+        "label": "⚡ Performance",
+        "items": [
+          "Typing in a filter, clearing one, and sorting are all substantially less work per pass. The internal pass that resets each cell's transient state before it is re-rendered (`_stripTransientCellState`) used to make about a dozen separate searches of every cell — one per feature it might have to clean up (cover-art markers, expand buttons, collapse toggles, icon backgrounds, inline thumbnails, three kinds of cache-hint overlay, the ▶ release-expand buttons, and a link sweep) — and each of those searched the whole cell again, whether or not the page has that feature at all. It now searches each cell ONCE and sorts what it finds, and skips the search entirely for a cell that contains no elements, which most cells do. Measured on a 4174-row × 21-column page, one filter clear went from ~1.08 million element searches to a small fraction of that; the cell-by-cell behaviour is unchanged, which a new test pins family by family.",
+          "The measured page had cover art switched off entirely and still paid every cover-art search — the cost was not doing the work, it was asking a dozen times per cell whether there was any."
+        ]
+      }
+    ]
+  }
+]

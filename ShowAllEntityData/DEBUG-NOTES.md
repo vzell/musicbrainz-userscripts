@@ -9224,3 +9224,146 @@ descriptor constant), `tests/snapshots/registry.org` (why
 that a perf arm landing there is not a re-capture), `tests/MEASUREMENTS.org`
 (two new sections), and `PERFORMANCE.org` — where Tier 1's "two harness gaps"
 note became "closed", plus the third gap above, and Steps 23/34 took the numbers.
+
+## 2026-09-10 — PERFORMANCE.org Step 34: one bucketed pass instead of twelve per-cell scans (branch perf-step-34-strip-transient-one-pass)
+
+Tier 1's leading item, and the first Tier 1 step to land. `_stripTransientCellState()`
+made about a dozen unconditional `el.querySelectorAll()` calls per cell — one per
+marker family, each a full subtree walk of that cell, each returning nothing on
+any page lacking that feature. Tier 0 had measured it at **97.5% of a filter
+clear's 1 078 372 `querySelectorAll`** on `artist-events`, and the multi-table
+arm added a day earlier put it at **71%** of `artist-releasegroups`' 323 422. The
+measured page had cover art switched off entirely and still paid every CAA/EAA
+query: the cost was not doing work, it was asking a dozen times per cell whether
+there was any.
+
+**What landed.** One `el.querySelectorAll(_STRIP_TRANSIENT_UNION_SEL)` per cell,
+its hits collected into per-family buckets, then the buckets executed in the
+function's ORIGINAL step order.
+
+**Bucketing rather than dispatching inline is the whole safety argument.** A
+union selector returns DOCUMENT order; this function's correctness depends on
+STEP order in four places, three of which fail silently:
+
+- `_hadInlineArtPh` must be read BEFORE the inline placeholders are removed — it
+  gates the jesus2099 sweep at the end, and getting it wrong destroys a cell's
+  only artwork (WIP.91).
+- the CAA/EAA count badge must be lifted out of `.mb-art-cache-hint-col-wrap`
+  before that wrap is removed, or it goes with it.
+- the art-cell `.mb-cell-collapse-toggle` removal must precede the generic
+  toggle collapse. The original's second loop re-queried and so never saw what
+  the first had removed; a bucket still holds them, so the second sweep now
+  skips anything no longer `isConnected`.
+- the artwork-icon background clear precedes the jesus2099 anchor removal, and
+  one element can be in both families.
+
+**A first-match-wins dispatch was written first, and it was wrong.** The twelve
+loops each ran over every element matching their OWN selector, so an element in
+two families got both treatments — and that is reachable, not theoretical:
+`initExpandRGsFeature()` stamps `data-erg-injected` on a link's parent *before*
+it skips `/cover-art` hrefs, so an `li.mb-caa-art-li-image` inside an art cell
+carries both markers and needs both its `display:none` and its dataset delete. An
+`else if` chain silently gave it only the first. The dispatch now uses
+**independent `if`s**, and the spec has a test for exactly that cell shape.
+
+**Two additions the step had not planned.** A `firstElementChild` early-out —
+a cell with no element children has nothing for any bucket to match, and most
+cells on most pages are exactly that; it is why the measured result came in
+*below* one query per cell. And the jesus2099 sweep now starts from the ICON
+(`closest('a')`, `el.contains()`-guarded) instead of walking every `<a>` in the
+cell and asking each whether it contained one — that was the most expensive of
+the twelve on any cell with links, and it is where the `querySelector` drop
+comes from.
+
+**Fix 2 of the step — hoisting the CAA/EAA feature gates — was deliberately NOT
+taken**, and the reasoning is recorded in the step rather than left implicit:
+once twelve walks are one, its remaining win is a shorter arm list on a single
+traversal (Chromium buckets a selector list by its rightmost simple selector),
+while the risk is real — a "no artwork on this page" gate that is wrong once
+skips the strip entirely, and third-party markup can put artwork in a cell
+without this script's own artwork code ever having run. Filed for re-judging
+against the new counts, not the old framing.
+
+**Filed, not implemented:** hoisting the query to the ROW. `runFilter`'s two hot
+loops have the cloned `<tr>` in hand, so one union query per row bucketed by
+`closest('td')` would take `artist-events`' clear from ~54 000 to ~4174 — another
+order of magnitude on top of this. Three of the five call sites have no row
+context and would keep the per-cell form.
+
+### Measured, both table modes, same session, same host
+
+`main` arms captured minutes earlier at the SAME script version (9.99.1058,
+`NB-3641`) rather than against the three-versions-old committed file. Full
+tables in `tests/MEASUREMENTS.org`.
+
+| Arm | `filterClear` `querySelectorAll` | Change |
+|---|---|---|
+| `artist-events` (single, 87 654 cells) | 1 079 876 → 83 680 | **−92.3%** |
+| `artist-releasegroups` (multi, 19 287 cells) | 323 422 → 107 099 | **−66.9%** |
+
+`initialRender` −84.4% and −66.9%; `querySelector` on the clear −75.5% and
+−37.7%. This function's share of the phase went 97.5% → 65% (single) and 71% →
+13% (multi), ÷19.5 and ÷16, and on the multi-table arm **it is no longer the
+leader** — its successor is `normalizeCommentSpans` at ~36%, one of
+`_applyPostRenderRowPasses()`'s four page-wide sweeps, i.e. Step 27's target,
+which had no measurement of its own until now. On the single-table arm
+`_countLiveDateFlags` (Step 25) is now second at ~10 600, matching its own
+separately measured figure exactly.
+
+**The strongest evidence is what did NOT move.** Every non-query counter is
+bit-identical across the change, on both arms and in every phase —
+`getComputedStyle`, `cloneNodeDeepTr` and `addEventListener`, fourteen figures
+in all. That is precisely the signature a change to *how a cell is queried*
+should leave, and a restructure that had altered the rendered DOM, the clone
+count or the listener wiring would have had to do so while leaving all fourteen
+untouched to the digit.
+
+### Testing: an equivalence pin, verified in both directions
+
+`tests/fixtures/strip-transient-cell-equivalence.spec.js` (+ its `.html`), eight
+tests, network-free. Step 34 is a refactor with no intended behaviour change, so
+"fails before the fix, passes after" does not apply — there is no bug to
+reproduce. The equivalent guarantee is an equivalence pin, so:
+
+1. **It passes 8/8 against `main`'s userscript** (checked out alone into the
+   branch tree, the established technique), which is what makes it a pin on
+   pre-existing behaviour rather than a restatement of the new code.
+2. **It passes 8/8 after the change.**
+3. **Mutation-checked, twice.** Planting a first-match-wins dispatch fails "an
+   element in two marker families gets BOTH treatments" (`Expected: "none"`,
+   `Received: ""`); moving the `_hadInlineArtPh` read after the placeholder
+   removal fails "jesus2099's icon is removed when it duplicates our own inline
+   thumbnail". A first mutation attempt did NOT fail anything — it chained the
+   `else if` to the wrong neighbour and so changed no behaviour, which is worth
+   recording: an uncaught mutation is as likely to mean a bad mutation as a weak
+   test, and the way to tell is to read what the mutation actually did.
+
+Deliberately shaped as named properties rather than one golden serialised cell:
+a blob would also fail on a harmless attribute-order difference, and when it
+failed it would not say which of the twelve families broke. Four of the eight
+tests pin an ORDERING rather than an outcome.
+
+Full fixture suite: **164 passed, 0 failed.**
+
+**No snapshot re-capture, and the claim is scoped to the evidence.** Baselines
+are only comparable by re-capturing against the live site, which folds in
+unrelated upstream drift, so that was not run. What supports "nothing rendered
+differently" is the equivalence spec passing identically on both versions, the
+fourteen bit-identical non-query counters (including every `initialRender` one),
+and the full suite — several of whose specs (`caa-icon-preserve`,
+`jesus2099-artifact-purge`, `subtable-tab-handoff`,
+`picard-cells-survive-rerender`) assert on cell contents after a strip.
+
+**Test-framework impact: checked, nothing stale.** Twelve test-side references
+to `_stripTransientCellState` were read; all describe its *behaviour*
+(`preserveLiveArt`, blanking artwork, clearing `data-caa-enriched`), none its
+twelve-scan implementation, so none is falsified. The committed
+`saved-data/*.json.gz` fixtures run through this function on the Load-from-disk
+path and stay valid — equivalent output, and the disk-fixture specs pass.
+
+**HELP reconciled, not skipped.** `ShowAllEntityData_HELP.txt` needs no edit and
+that was checked rather than assumed: the sections that could plausibly be
+touched are "⚡ PERFORMANCE SETTINGS" (a list of settings, none added or changed),
+the Picard passage about walking every row on every keystroke (unchanged — that
+is `_picardExtractRowEntities`, not this), and the dropdown note about a section
+that scans every row (unrelated). No new setting, no new UI, no behaviour change.

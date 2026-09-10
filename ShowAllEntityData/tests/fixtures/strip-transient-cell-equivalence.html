@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <table class="tbl">
+            <thead>
+                <tr><th>Name</th><th>Length</th><th>Artist</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/ac413c4f-f270-4c32-8adc-a17e3bd7b60f"><bdi>Test Recording</bdi></a></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+
+        <!-- Hidden, isolated cells for
+             tests/fixtures/strip-transient-cell-equivalence.spec.js —
+             deliberately NOT part of the rendered table above. The page shape
+             is artist-recordings only so pageType detection resolves and the
+             userscript initialises far enough to define window.__saTest; each
+             cell below is driven directly through
+             __saTest.stripTransientCellState(). Same arrangement, and the same
+             reason, as caa-icon-preserve.html.
+
+             #kitchen-sink carries EVERY marker family the strip acts on, in one
+             cell, so one call exercises all of them and their ordering. The
+             remaining cells isolate the cases where two families overlap or
+             where the outcome is conditional. -->
+        <div style="display:none">
+            <table><tbody>
+                <tr>
+                    <td id="kitchen-sink"
+                        data-caa-multi-built="1" data-eaa-multi-built="1"
+                        data-caa-inline-done="1" data-eaa-inline-done="1"
+                        data-erg-injected="1">
+                        <a id="ks-enriched" href="/release/1" data-caa-enriched="1" data-eaa-enriched="1">enriched</a>
+                        <span id="ks-erg-btn" data-erg-btn="1">&#9660;</span>
+                        <span id="ks-inline-ph" class="mb-caa-inline-ph"><img alt=""></span>
+                        <span id="ks-eaa-inline-ph" class="mb-eaa-inline-ph"><img alt=""></span>
+                        <span id="ks-icon" class="caa-icon" style="background-image: url(https://coverartarchive.org/release/x/front-250); background-size: contain;"></span>
+                        <span id="ks-eaa-icon" class="eaa-icon" style="background-image: url(https://archive.org/x); background-size: cover;"></span>
+                        <span id="ks-sort-key" class="mb-inline-art-sort-key">caa-inline-yes</span>
+                        <span id="ks-hint-wrap" class="mb-art-cache-hint-col-wrap">
+                            <span id="ks-badge" class="mb-caa-count-badge">3</span>
+                            <span class="mb-art-cache-hint-col">&#128308;</span>
+                        </span>
+                        <span id="ks-hint-col" class="mb-art-cache-hint-col">&#128994;</span>
+                        <span id="ks-hint-big" class="mb-art-cache-hint-big">&#128994;</span>
+                        <span id="ks-hint-inline" class="mb-art-cache-hint-inline">&#128994;</span>
+                        <span id="ks-nested-erg-injected" data-erg-injected="1">nested</span>
+                        <ul class="mb-caa-art-ul">
+                            <li id="ks-art-li" class="mb-caa-art-li-image" style="display: ''"><img alt=""></li>
+                            <li id="ks-art-li-2" class="mb-eaa-art-li-image" style="display: ''"><img alt=""></li>
+                            <li class="mb-caa-art-li-summary">summary</li>
+                        </ul>
+                        <span id="ks-art-toggle" class="mb-cell-collapse-toggle" aria-expanded="true">&#9664;</span>
+                        <span id="ks-expand-btn" data-caa-expand-btn="expanded">&#9660;</span>
+                        <table id="ks-ghost-table"><tbody><tr><td>ghost</td></tr></tbody></table>
+                    </td>
+                </tr>
+                <!-- A list cell with a genuine multi-row list and NO art ul:
+                     its collapse toggle must be COLLAPSED, never removed. -->
+                <tr>
+                    <td id="list-cell">
+                        <ul>
+                            <li>one</li>
+                            <li>two</li>
+                            <li>three</li>
+                        </ul>
+                        <span id="list-toggle" class="mb-cell-collapse-toggle" aria-expanded="true"><span class="mb-cell-collapse-glyph">&#9660;</span>3&#9636;</span>
+                    </td>
+                </tr>
+                <!-- Double membership: initExpandRGsFeature() stamps
+                     data-erg-injected on a link's parent BEFORE it skips
+                     /cover-art hrefs, so an art <li> can carry both markers and
+                     needs BOTH treatments. -->
+                <tr>
+                    <td id="double-membership">
+                        <ul class="mb-caa-art-ul">
+                            <li id="dm-art-li" class="mb-caa-art-li-image" data-erg-injected="1" style="display: ''">
+                                <a href="/release/2/cover-art"><img alt=""></a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+                <!-- jesus2099's icon as the cell's ONLY art content: no inline
+                     placeholder, so the anchor must SURVIVE (WIP.91). -->
+                <tr>
+                    <td id="jesus-only">
+                        <a id="jesus-only-anchor" href="/release/3/cover-art"><span class="caa-icon jesus2099userjs154481"></span></a>
+                    </td>
+                </tr>
+                <!-- The same icon alongside this script's own inline
+                     placeholder: a genuine duplicate, so the anchor must GO. -->
+                <tr>
+                    <td id="jesus-duplicate">
+                        <span class="mb-caa-inline-ph"><img alt=""></span>
+                        <a id="jesus-duplicate-anchor" href="/release/4/cover-art"><span class="caa-icon jesus2099userjs154481"></span></a>
+                    </td>
+                </tr>
+                <!-- Text only: nothing to strip, and the cell-level dataset
+                     markers must still be cleared. -->
+                <tr>
+                    <td id="text-only" data-caa-multi-built="1" data-erg-injected="1">3:45</td>
+                </tr>
+            </tbody></table>
+        </div>
+    </div>
+</body>
+</html>

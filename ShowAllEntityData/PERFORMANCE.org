@@ -2698,19 +2698,95 @@ false~, seeded by the fixture) and still paid every CAA/EAA query. That is
 where most of the million calls go: not doing work, but asking twelve times per
 cell whether there is any.
 
-Two fixes, independent and both worth having:
+Two fixes, independent. *The first is IMPLEMENTED; the second was deliberately
+not taken* — see "What was built" below.
 
 - *One combined pass instead of twelve.* Query the union selector once per
-  cell and dispatch each hit with ~.matches()~, turning twelve subtree walks
-  into one. Unconditional, so it helps equally on a page that DOES have
-  artwork — which is the case a settings gate cannot help at all.
+  cell and dispatch each hit. Unconditional, so it helps equally on a page that
+  DOES have artwork — which is the case a settings gate cannot help at all.
 - *Hoist the feature gates.* Nine of the twelve are CAA/EAA-only. A page with
-  ~sa_enable_caa_pics~ off, or with no art column, can skip them outright. The
-  precedent is ~_updateAllColHeaderCounts~'s own lazy table-wide probe
-  (~:57119-57124~), added for exactly this reason and with exactly this
-  argument: "a page with no addCAA/addEAA inline thumbnails anywhere — which is
-  most of them — otherwise pays one querySelector per cell to keep answering
-  no".
+  ~sa_enable_caa_pics~ off, or with no art column, could skip them outright.
+  The precedent is ~_updateAllColHeaderCounts~'s own lazy table-wide probe,
+  added for exactly this reason and with exactly this argument: "a page with no
+  addCAA/addEAA inline thumbnails anywhere — which is most of them — otherwise
+  pays one querySelector per cell to keep answering no".
+
+**** What was built, and what was left
+
+/Implemented on branch/ ~perf-step-34-strip-transient-one-pass~. *Fix 1 only,
+plus one addition the step had not thought of.*
+
+*Taken: the single bucketed pass.* One ~el.querySelectorAll(_STRIP_TRANSIENT_UNION_SEL)~
+per cell, its hits collected into per-family buckets, then the buckets executed
+in the function's ORIGINAL step order. Bucketing rather than dispatching inline
+is the whole safety argument: a union selector returns DOCUMENT order, and this
+function's correctness depends on STEP order in four places, three of which fail
+silently — ~_hadInlineArtPh~ must be read before the inline placeholders are
+removed, the CAA/EAA count badge must be lifted out of
+~.mb-art-cache-hint-col-wrap~ before that wrap is removed, the art-cell
+~.mb-cell-collapse-toggle~ removal must precede the generic toggle collapse, and
+the artwork-icon background clear precedes the jesus2099 anchor removal on
+elements that are in both families.
+
+*Taken, and not in the original plan: the ~firstElementChild~ early-out.* A cell
+with no element children has nothing for any bucket to match, and most cells on
+most pages are exactly that. It is why the measured result came in BELOW one
+query per cell.
+
+*The dispatch uses INDEPENDENT ~if~s, never an ~else if~ chain*, and that is
+load-bearing rather than stylistic. The twelve loops this replaces each ran over
+every element matching their OWN selector, so an element in two families got
+both treatments — and that is reachable: ~initExpandRGsFeature()~ stamps
+~data-erg-injected~ on a link's parent BEFORE it skips ~/cover-art~ hrefs, so an
+~li.mb-caa-art-li-image~ inside an art cell carries both markers and needs both
+its ~display:none~ and its dataset delete. A first-match-wins dispatch was
+written first, and it silently dropped exactly that.
+
+*NOT taken: hoisting the feature gates*, and the reason is worth recording
+because the step originally called it "worth having" on its own. With twelve
+walks collapsed into one, its remaining win is only a shorter arm list on a
+single traversal — Chromium buckets a selector list by its rightmost simple
+selector, so a 17-arm list is close to free against a 3-arm one — while the risk
+is real: a "no artwork on this page" gate that is wrong once skips the strip
+entirely, and third-party markup (jesus2099's ~span.caa-icon~) can put artwork
+in a cell without this script's own artwork code ever having run. *Re-judge it
+against the counts below, not against this step's original framing.*
+
+*Filed, not implemented: hoist the query to the ROW.* ~runFilter~'s two hot
+loops have the cloned ~<tr>~ in hand, so one union query per ROW, bucketed by
+~closest('td')~, would take ~artist-events~' clear from ~54 000 queries to
+~4174 — a further order of magnitude on top of what landed. It needs a
+row-scoped entry point beside the per-cell one (three of the five call sites —
+~getCleanCellHtml~, ~loadTableDataFromDisk~, ~_hydrateAndRenderFromSnapshotData~
+— have no row context and keep the per-cell form) and per-cell
+~_hadInlineArtPh~ computed from the buckets. Worth its own step and its own
+measurement.
+
+**** MEASURED 2026-09-10 — both table modes, same session, same host
+
+Full tables in ~tests/MEASUREMENTS.org~. Each arm compared against a ~main~ arm
+captured minutes earlier at the SAME script version (9.99.1058, ~NB-3641~),
+rather than against the three-versions-old committed file.
+
+| Arm                             |   ~filterClear~ ~querySelectorAll~ |  Change |
+|---------------------------------+------------------------------------+---------|
+| ~artist-events~ (single, 87 654 cells)     |            1 079 876 -> 83 680 | *-92.3%* |
+| ~artist-releasegroups~ (multi, 19 287 cells) |              323 422 -> 107 099 | *-66.9%* |
+
+~initialRender~ moved -84.4% and -66.9%; ~querySelector~ on the clear -75.5%
+and -37.7%, since the jesus2099 sweep no longer walks every ~<a>~ in the cell.
+This function's own share of the phase went from 97.5% to 65% (single) and from
+71% to 13% (multi) — ÷19.5 and ÷16 — and on the multi-table arm it is no longer
+the leader at all. Its successor there is ~normalizeCommentSpans~ at ~36%, one of
+~_applyPostRenderRowPasses()~'s four page-wide sweeps, which is *Step 27's*
+target and had no measurement of its own until now.
+
+*The strongest evidence is what did not move.* Every non-query counter is
+bit-identical across the change, on both arms and in every phase —
+~getComputedStyle~, ~cloneNodeDeepTr~ and ~addEventListener~, fourteen figures
+in all. A restructure that had altered the rendered DOM, the clone count or the
+listener wiring would have had to do it while leaving all of those untouched to
+the digit.
 
 *Verify by count, not by timing*: ~node tests/support/capture-pass-cost.js~,
 comparing ~filterClear~'s ~querySelectorAll~. That counter is one of the 28

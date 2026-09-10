@@ -1,0 +1,231 @@
+{
+  "pageType": "artist-releasegroups",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0",
+  "tableMode": "multi",
+  "subTableIndex": 29,
+  "totalRows": 2143,
+  "picardArm": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false
+  },
+  "label": "step34",
+  "branch": "perf-step-34-strip-transient-one-pass",
+  "scriptVersion": "9.99.1058+2026-09-10",
+  "capturedAt": "2026-09-10",
+  "startedAt": "2026-09-10T14:47:35.694Z",
+  "finishedAt": "2026-09-10T14:47:47.820Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 35.6,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 16.7
+    },
+    "claudeSinceBoot": true
+  },
+  "instrument": {
+    "stackSampleRate": 200,
+    "topN": 12
+  },
+  "note": "DOM operation COUNTS, not timings. The instrument distorts timings; see tests/support/domCounters.js.",
+  "phases": {
+    "initialRender": {
+      "getComputedStyle": 77150,
+      "querySelector": 174012,
+      "querySelectorAll": 214002,
+      "cloneNode": 6909,
+      "cloneNodeDeep": 6909,
+      "cloneNodeDeepTr": 6429,
+      "createTreeWalker": 599,
+      "createElement": 60407,
+      "addEventListener": 51945,
+      "getBoundingClientRect": 6,
+      "layoutGetter": 8575,
+      "bySelector": {
+        "td[data-mb-ms]": 105007,
+        "span.comment": 57861,
+        ".mb-live-date-flag": 57861,
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 30002,
+        "[id]": 21248,
+        "[data-erg-btn]": 19287,
+        "a": 12858,
+        "td span.mp": 12858,
+        ".treleases": 12858,
+        "ul, ol": 8572,
+        ":scope > ul.mb-caa-art-ul": 8572,
+        ".barcode-cell": 8572
+      },
+      "byTagName": {
+        "td": 19287,
+        "span": 17091,
+        "table": 12905,
+        "div": 5955,
+        "tr": 2191,
+        "input": 1103,
+        "button": 748,
+        "label": 579,
+        "th": 432,
+        "h3": 47,
+        "tbody": 47,
+        "style": 11
+      },
+      "byEventType": {
+        "mousedown": 26907,
+        "mouseleave": 8862,
+        "mouseenter": 8718,
+        "click": 2230,
+        "focus": 1318,
+        "keydown": 1295,
+        "blur": 847,
+        "change": 582,
+        "input": 529,
+        "mouseup": 200,
+        "mousemove": 57,
+        "keypress": 10
+      },
+      "byStack": {
+        "querySelector <- _msAnyStamped": 526,
+        "getComputedStyle <- _apply": 382,
+        "querySelectorAll <- normalizeCommentSpans": 293,
+        "querySelectorAll <- _countLiveDateFlags": 291,
+        "querySelectorAll <- _stripTransientCellState": 148,
+        "addEventListener <- ergCreateButton": 127,
+        "createElement <- _hydrateAndRenderFromSnapshotData": 108,
+        "querySelectorAll <- _stripIfMatch": 107,
+        "querySelectorAll <- initExpandRGsFeature": 98,
+        "addEventListener <- _apply": 86,
+        "createElement <- ergCreateButton": 65,
+        "createElement <- ergInjectReleaseGroupButton": 64
+      }
+    },
+    "filterApply": {
+      "getComputedStyle": 24355,
+      "querySelector": 27809,
+      "querySelectorAll": 69183,
+      "cloneNode": 2748,
+      "cloneNodeDeep": 2748,
+      "cloneNodeDeepTr": 2706,
+      "createTreeWalker": 990,
+      "createElement": 6807,
+      "addEventListener": 10824,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 2706,
+      "bySelector": {
+        "span.comment": 24354,
+        ".mb-live-date-flag": 12177,
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 9471,
+        "[id]": 5414,
+        ".treleases": 5412,
+        "td span.mp": 4286,
+        "[data-erg-btn]": 4059,
+        "ul, ol": 2706,
+        ":scope > ul.mb-caa-art-ul": 2706,
+        "a": 2706,
+        ".barcode-cell": 2706,
+        "[class*=\"jesus2099\"], .treleases": 2190
+      },
+      "byTagName": {
+        "span": 2748,
+        "table": 2706,
+        "div": 1353
+      },
+      "byEventType": {
+        "mousedown": 5412,
+        "mouseenter": 2706,
+        "mouseleave": 2706
+      },
+      "byStack": {
+        "querySelectorAll <- normalizeCommentSpans": 123,
+        "getComputedStyle <- _apply": 122,
+        "querySelectorAll <- _countLiveDateFlags": 62,
+        "querySelectorAll <- _stripTransientCellState": 51,
+        "querySelector <- initCollapsableColumns": 31,
+        "addEventListener <- ergCreateButton": 27,
+        "addEventListener <- _apply": 27,
+        "querySelectorAll <- _stripIfMatch": 27,
+        "querySelectorAll <- unattributed": 27,
+        "querySelectorAll <- initExpandRGsFeature": 21,
+        "querySelector <- _rowHasPendingEdits": 21,
+        "createElement <- ergInjectReleaseGroupButton": 14
+      }
+    },
+    "filterClear": {
+      "getComputedStyle": 38575,
+      "querySelector": 30946,
+      "querySelectorAll": 107099,
+      "cloneNode": 4328,
+      "cloneNodeDeep": 4328,
+      "cloneNodeDeepTr": 4286,
+      "createTreeWalker": 160,
+      "createElement": 10717,
+      "addEventListener": 17145,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 4286,
+      "bySelector": {
+        "span.comment": 38574,
+        ".mb-live-date-flag": 19287,
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 15001,
+        "[id]": 8574,
+        ".treleases": 8572,
+        "[data-erg-btn]": 6429,
+        "ul, ol": 4286,
+        ":scope > ul.mb-caa-art-ul": 4286,
+        "a": 4286,
+        ".barcode-cell": 4286,
+        "td span.mp": 4286,
+        "[class*=\"jesus2099\"], .treleases": 2190
+      },
+      "byTagName": {
+        "span": 4288,
+        "table": 4286,
+        "div": 2143
+      },
+      "byEventType": {
+        "mousedown": 8572,
+        "mouseenter": 4286,
+        "mouseleave": 4286,
+        "selectionchange": 1
+      },
+      "byStack": {
+        "querySelectorAll <- normalizeCommentSpans": 195,
+        "getComputedStyle <- _apply": 194,
+        "querySelectorAll <- _countLiveDateFlags": 97,
+        "querySelectorAll <- _stripTransientCellState": 72,
+        "querySelector <- initCollapsableColumns": 50,
+        "addEventListener <- ergCreateButton": 43,
+        "querySelectorAll <- _stripIfMatch": 43,
+        "querySelectorAll <- unattributed": 43,
+        "addEventListener <- _apply": 42,
+        "querySelectorAll <- initExpandRGsFeature": 32,
+        "querySelectorAll <- testRowMatch": 23,
+        "createElement <- ergInjectReleaseGroupButton": 22
+      }
+    },
+    "postClearSettle": {
+      "getComputedStyle": 0,
+      "querySelector": 0,
+      "querySelectorAll": 5,
+      "cloneNode": 0,
+      "cloneNodeDeep": 0,
+      "cloneNodeDeepTr": 0,
+      "createTreeWalker": 0,
+      "createElement": 0,
+      "addEventListener": 0,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 0,
+      "bySelector": {
+        ".mb-col-uniq-count, .mb-col-collapse-count": 5
+      },
+      "byTagName": {},
+      "byEventType": {},
+      "byStack": {}
+    }
+  }
+}

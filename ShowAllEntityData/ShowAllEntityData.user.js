@@ -61016,6 +61016,54 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Every marker family `_stripTransientCellState()` acts on, as ONE
+     * selector list — the union of the twelve separate `querySelectorAll()`
+     * calls it used to make per cell (PERFORMANCE.org Step 34).
+     *
+     * Four things about this list are load-bearing:
+     *
+     * - *The tag qualifications are not decoration.* `span.caa-icon` and
+     *   `a[data-caa-enriched]` restrict the match exactly as the original
+     *   queries did; dropping the tag would widen the family, and the dispatch
+     *   loop's `classList` tests cannot narrow it back because they only ever
+     *   see what this selector already admitted.
+     * - *jesus2099's `span.caa-icon.jesus2099userjs154481` is deliberately
+     *   ABSENT.* It is a strict subset of `span.caa-icon`, so it needs no arm
+     *   of its own — the dispatch loop recognises it among the icon hits. That
+     *   also replaces the original's `el.querySelectorAll('a')` sweep plus one
+     *   `querySelector` per anchor, which was the most expensive of the twelve
+     *   on any cell containing links.
+     * - *`.mb-inline-art-sort-key` is deliberately ABSENT*, matching the
+     *   original's own "intentionally NOT removed here" note: stripping it from
+     *   a clone would make `getCleanColumnText()` see no synthetic value and
+     *   match nothing, silently hiding every row.
+     * - *Anything added here needs a bucket AND a step*, in the dispatch loop
+     *   and in the ordered execution below it. A new arm with no bucket is a
+     *   wasted match; a new bucket with no step is a silent no-op.
+     *
+     * @type {string}
+     */
+    const _STRIP_TRANSIENT_UNION_SEL = [
+        'a[data-caa-enriched]',
+        'a[data-eaa-enriched]',
+        'li.mb-caa-art-li-image',
+        'li.mb-eaa-art-li-image',
+        '[data-caa-expand-btn]',
+        '.mb-cell-collapse-toggle',
+        'span.caa-icon',
+        'span.eaa-icon',
+        'span.artwork-icon',
+        '.mb-caa-inline-ph',
+        '.mb-eaa-inline-ph',
+        '.mb-art-cache-hint-col-wrap',
+        '.mb-art-cache-hint-col',
+        '.mb-art-cache-hint-big',
+        '.mb-art-cache-hint-inline',
+        '[data-erg-btn]',
+        '[data-erg-injected]',
+    ].join(',');
+
+    /**
      * Strips all transient JS-only state from a `<td>` (or a clone of one)
      * so that it is safe to use as a source row after a disk-load restore.
      *
@@ -61081,23 +61129,132 @@ a { color: #1565c0; }`;
      *   re-fetch. Callers that serialise the cell must never set this.
      */
     function _stripTransientCellState(el, { preserveLiveArt = false } = {}) {
-        // CAA/EAA enrichment markers
-        el.querySelectorAll('a[data-caa-enriched], a[data-eaa-enriched]').forEach(a => {
-            delete a.dataset.caaEnriched;
-            delete a.dataset.eaaEnriched;
-        });
+        // ── Cell-level dataset markers ──────────────────────────────────────
+        // Free (no subtree walk), and they act on `el` itself rather than on
+        // any of the bucketed descendants below, so their position relative to
+        // the single pass is immaterial.
         delete el.dataset.caaMultiBuilt;
         delete el.dataset.eaaMultiBuilt;
         delete el.dataset.caaInlineDone;
         delete el.dataset.eaaInlineDone;
+        delete el.dataset.ergInjected;
+
+        // A text-only cell has nothing for any bucket below to match, and most
+        // cells on most pages are exactly that. Measured on `artist-events`
+        // this is the difference between one `querySelectorAll` per cell and
+        // one per cell that could possibly need it.
+        if (!el.firstElementChild) return;
+
+        // ── ONE pass, then dispatch (PERFORMANCE.org Step 34) ───────────────
+        //
+        // This used to be a dozen unconditional `el.querySelectorAll()` calls,
+        // one per marker family, each a full subtree walk of the cell and each
+        // returning nothing on any page lacking that feature. Measured by
+        // Tier 0: *97.5% of a filter clear's 1 078 372 `querySelectorAll`* on
+        // `artist-events` — roughly 1.05 million, twelve per cell across 87 654
+        // cells, against ~27 000 for everything else in the phase combined; and
+        // 71% of the 323 422 on the multi-table `artist-releasegroups` arm. It
+        // was the largest single cost on the filter path by an order of
+        // magnitude, and the measured page had artwork switched off entirely
+        // and still paid every CAA/EAA query — the cost was not doing work, it
+        // was asking twelve times per cell whether there was any.
+        //
+        // ── Why the hits are BUCKETED rather than dispatched inline ─────────
+        //
+        // A union `querySelectorAll` returns DOCUMENT order; this function's
+        // correctness depends on STEP order in at least four places, and three
+        // of them fail silently:
+        //
+        //   - `_hadInlineArtPh` must be read BEFORE the inline placeholders are
+        //     removed. It gates the jesus2099 sweep at the very end, and
+        //     getting it wrong destroys a cell's only artwork (WIP.91).
+        //   - the CAA/EAA count badge must be pulled out of
+        //     `.mb-art-cache-hint-col-wrap` before that wrap is removed, or the
+        //     badge goes with it.
+        //   - the art-cell `.mb-cell-collapse-toggle` removal must precede the
+        //     generic toggle collapse, since the second pass in the original
+        //     re-queried and therefore never saw the nodes the first had
+        //     removed. Here the bucket still holds them, so the second sweep
+        //     skips anything no longer connected.
+        //   - the artwork-icon background clear precedes the jesus2099 anchor
+        //     removal, and one element can be in both buckets.
+        //
+        // Buckets keep every one of those orderings exactly as it was, which is
+        // the whole safety argument for the change: the queries collapse, the
+        // semantics do not move.
+        //
+        // NOT taken, deliberately: hoisting the nine CAA/EAA-only families
+        // behind a settings/feature gate. With twelve walks collapsed into one
+        // its remaining win is a shorter arm list on a single traversal
+        // (Chromium buckets a selector list by its rightmost simple selector),
+        // while the risk is real — a "no artwork on this page" gate that is
+        // wrong once skips the strip entirely, and third-party markup
+        // (jesus2099's `span.caa-icon`) can put artwork in a cell without this
+        // script's own artwork code ever having run. Re-judge it against fresh
+        // counts, not against the pre-Step-34 framing.
+        const _enriched = [];
+        const _artLi = [];
+        const _caaExpandBtns = [];
+        const _collapseToggles = [];
+        const _artIcons = [];
+        const _inlinePhs = [];
+        const _hintWraps = [];
+        const _hintCols = [];
+        const _hintBigInline = [];
+        const _ergBtns = [];
+        const _ergInjected = [];
+        const _jesusIcons = [];
+
+        // INDEPENDENT `if`s, never an `else if` chain. The twelve loops this
+        // replaces each ran over EVERY element matching their own selector, so
+        // an element belonging to two families got both treatments — and that
+        // is reachable, not theoretical: `initExpandRGsFeature()` stamps
+        // `data-erg-injected` on a link's parent BEFORE it skips `/cover-art`
+        // hrefs, so an `li.mb-caa-art-li-image` inside an art cell can carry
+        // both markers and needs both its `display:none` and its dataset
+        // delete. An `else if` chain would silently give it only the first.
+        for (const node of el.querySelectorAll(_STRIP_TRANSIENT_UNION_SEL)) {
+            const cl = node.classList;
+            if (node.hasAttribute('data-caa-enriched') || node.hasAttribute('data-eaa-enriched')) {
+                _enriched.push(node);
+            }
+            if (cl.contains('mb-caa-art-li-image') || cl.contains('mb-eaa-art-li-image')) {
+                _artLi.push(node);
+            }
+            if (node.hasAttribute('data-caa-expand-btn')) _caaExpandBtns.push(node);
+            if (cl.contains('mb-cell-collapse-toggle')) _collapseToggles.push(node);
+            if (cl.contains('caa-icon') || cl.contains('eaa-icon') || cl.contains('artwork-icon')) {
+                _artIcons.push(node);
+                // A subset of the icon family, not a separate arm in the
+                // selector: jesus2099's marker class only ever rides on a
+                // `span.caa-icon`.
+                if (cl.contains('jesus2099userjs154481')) _jesusIcons.push(node);
+            }
+            if (cl.contains('mb-caa-inline-ph') || cl.contains('mb-eaa-inline-ph')) {
+                _inlinePhs.push(node);
+            }
+            if (cl.contains('mb-art-cache-hint-col-wrap')) _hintWraps.push(node);
+            if (cl.contains('mb-art-cache-hint-col')) _hintCols.push(node);
+            if (cl.contains('mb-art-cache-hint-big') || cl.contains('mb-art-cache-hint-inline')) {
+                _hintBigInline.push(node);
+            }
+            if (node.hasAttribute('data-erg-btn')) _ergBtns.push(node);
+            if (node.hasAttribute('data-erg-injected')) _ergInjected.push(node);
+        }
+
+        // CAA/EAA enrichment markers
+        _enriched.forEach(a => {
+            delete a.dataset.caaEnriched;
+            delete a.dataset.eaaEnriched;
+        });
 
         // Art li items → collapsed
-        el.querySelectorAll('li.mb-caa-art-li-image, li.mb-eaa-art-li-image').forEach(li => {
+        _artLi.forEach(li => {
             li.style.display = 'none';
         });
 
         // Collapse art-cell inline expand btn (data-caa-expand-btn) → ▶ (collapsed)
-        el.querySelectorAll('[data-caa-expand-btn]').forEach(btn => {
+        _caaExpandBtns.forEach(btn => {
             btn.dataset.caaExpandBtn = 'collapsed';
             btn.innerHTML = '&#9654;'; // ▶
             // Reset title to the collapsed tooltip.  Derive the image count and
@@ -61115,7 +61272,7 @@ a { color: #1565c0; }`;
         // cells in files saved before the inline-btn feature was introduced.
         // Non-art mb-cell-collapse-toggle spans (collapsable columns) are intentionally
         // preserved here — they are only cleaned up on fresh renders by initCollapsableColumns.
-        el.querySelectorAll('.mb-cell-collapse-toggle').forEach(toggle => {
+        _collapseToggles.forEach(toggle => {
             // Only strip if the host td contains an art ul (art-cell toggle)
             if (toggle.closest('td')?.querySelector(':scope > ul.mb-caa-art-ul')) {
                 toggle.remove();
@@ -61124,7 +61281,12 @@ a { color: #1565c0; }`;
 
         // Collapse toggle → collapsed state (◀/▼N▤ expanded → ▶N▤ collapsed) — non-art cells only
         // (art cells now use [data-caa-expand-btn], handled above)
-        el.querySelectorAll('.mb-cell-collapse-toggle').forEach(toggle => {
+        //
+        // `isConnected` stands in for the re-query the original second loop
+        // did: the art-cell toggles removed just above are still in this
+        // bucket, and must not be revived here.
+        _collapseToggles.forEach(toggle => {
+            if (!toggle.isConnected) return;
             if (toggle.getAttribute('aria-expanded') === 'true') {
                 const glyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
                 if (glyphEl) glyphEl.textContent = '▶';
@@ -61148,7 +61310,7 @@ a { color: #1565c0; }`;
         // the Tier-1 memory cache. Anything else — a dead blob from a previous
         // session, a plain http(s) URL, no background at all — still gets
         // cleared, so the normal re-fetch path is unchanged.
-        el.querySelectorAll('span.caa-icon, span.eaa-icon, span.artwork-icon').forEach(span => {
+        _artIcons.forEach(span => {
             if (preserveLiveArt && _artIconBackgroundIsLiveBlob(span)) return;
             span.style.removeProperty('background-image');
             span.style.removeProperty('background-size');
@@ -61159,7 +61321,10 @@ a { color: #1565c0; }`;
         // THIS cell is a genuine duplicate (this script's own separate inline
         // thumbnail is/was also present here) or the cell's only art content
         // (see that block's own comment for the full story — WIP.91).
-        const _hadInlineArtPh = !!el.querySelector('.mb-caa-inline-ph, .mb-eaa-inline-ph');
+        //
+        // Free now: it is the bucket's own emptiness, where it used to be a
+        // thirteenth `el.querySelector()` walk.
+        const _hadInlineArtPh = _inlinePhs.length > 0;
 
         // Inline-thumbnail placeholder spans (_artInitInlinePics re-injects them)
         //
@@ -61175,11 +61340,13 @@ a { color: #1565c0; }`;
         // (cloneNode(true) copies no listeners). Case C1 is the branch that
         // re-wires hover + bigbox tooltip, keeps the live image, and only then
         // stamps the marker — precisely the behaviour wanted here.
-        el.querySelectorAll('.mb-caa-inline-ph, .mb-eaa-inline-ph').forEach(ph => {
+        _inlinePhs.forEach(ph => {
             if (preserveLiveArt && _artInlinePhIsLiveBlob(ph)) return;
             ph.remove();
         });
-        // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here.
+        // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here,
+        // and are deliberately absent from _STRIP_TRANSIENT_UNION_SEL for the
+        // same reason.
         // In the multi-table (addCAA) path runFilter() clones rows and calls
         // _stripTransientCellState() before testRowMatch(); removing the sort-key span
         // from the clone would cause getCleanColumnText() to see no synthetic value and
@@ -61194,19 +61361,18 @@ a { color: #1565c0; }`;
         // silently take the badge down with it (confirmed via debug/CAA-missing-
         // doubled.org's captureSubtableSnapshot RAW-vs-STRIPPED fingerprint log,
         // WIP.91) — pull the badge back out as the wrap's own sibling first.
-        el.querySelectorAll('.mb-art-cache-hint-col-wrap').forEach(wrap => {
+        _hintWraps.forEach(wrap => {
             const badge = wrap.querySelector('.mb-caa-count-badge, .mb-eaa-count-badge');
             if (badge) wrap.before(badge);
             wrap.remove();
         });
-        el.querySelectorAll('.mb-art-cache-hint-col').forEach(hint => hint.remove());
-        el.querySelectorAll('.mb-art-cache-hint-big, .mb-art-cache-hint-inline').forEach(e => e.remove());
+        _hintCols.forEach(hint => hint.remove());
+        _hintBigInline.forEach(e => e.remove());
 
         // ERG: reset expanded button glyph and remove ghost sub-tables
-        el.querySelectorAll('[data-erg-btn]').forEach(btn => { btn.innerHTML = '&#9654;'; });
+        _ergBtns.forEach(btn => { btn.innerHTML = '&#9654;'; });
         Array.from(el.children).forEach(child => { if (child.tagName === 'TABLE') child.remove(); });
-        delete el.dataset.ergInjected;
-        el.querySelectorAll('[data-erg-injected]').forEach(child => delete child.dataset.ergInjected);
+        _ergInjected.forEach(child => delete child.dataset.ergInjected);
 
         // jesus2099 caa-icon anchor — mirrors applyColumnErasers()'s
         // Strategy 2 (the 'jesus2099' columnEraser sentinel), but applied
@@ -61241,11 +61407,21 @@ a { color: #1565c0; }`;
         // cell to have been the "real" copy — WIP.91). Mirrors the same
         // per-cell gate `_stripLateJesus2099CaaIcon()` already uses for the
         // reactive (live, post-hydration) case — see that function's JSDoc.
+        //
+        // Reached from the ICON rather than by walking every `<a>` in the
+        // cell: the original iterated `el.querySelectorAll('a')` and asked
+        // each anchor whether it contained such an icon, which is a walk plus
+        // one `querySelector` per anchor. `closest('a')` from the icon lands on
+        // the same anchor — jesus2099's markup never nests one anchor inside
+        // another — and the `el.contains()` guard keeps the removal inside this
+        // cell even though an `<a>` ancestor of a `<td>` is not valid HTML.
         if (_hadInlineArtPh) {
-            el.querySelectorAll('a').forEach(anchor => {
-                if (anchor.querySelector('span.caa-icon.jesus2099userjs154481')) {
-                    anchor.remove();
-                }
+            const _seen = new Set();
+            _jesusIcons.forEach(icon => {
+                const anchor = icon.closest('a');
+                if (!anchor || _seen.has(anchor) || !el.contains(anchor)) return;
+                _seen.add(anchor);
+                anchor.remove();
             });
         }
     }
