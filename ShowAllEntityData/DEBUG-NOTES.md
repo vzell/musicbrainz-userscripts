@@ -9484,3 +9484,50 @@ param. Both mutation-checked: `git stash` of just the userscript change (kept
 the new tests) reproduced exactly the predicted wrong output — empty Comment
 cell for the first case, `['Row A','Row B','Row B','Row C','Row C','Row D']`
 for the second — then `git stash pop` restored the fix and both passed.
+
+## 2026-09-11 — `/cdstub/browse` dedup fix leaked a skipped duplicate's lastupdate text onto an unrelated kept row (fixed, branch fix-cdstub-dedup-lastupdate-leak)
+
+Reported live, right after merging the fix above: `debug/top-cd-stubs-bug.html`
+showed only the "Title" column rendering, each row cell artificially large.
+
+**Root-caused with evidence, not guessed** — the width itself
+(`min-width: 272902px` on the sticky Title `<th>`) looked exactly like a
+plausible browser `position: sticky` + nowrap-measurement quirk (this
+project's `toggleAutoResizeColumns()` measures via `th.offsetWidth` after
+applying a table-wide nowrap class), and a first attempt at a repro (a
+synthetic 1200-row table with random content) measured a perfectly sane
+709px, disproving that theory outright — worth recording since it would have
+been an easy, wrong story to believe from the symptom alone. Actually reading
+the CAPTURED page's own sticky-column cell text found the real cause: one
+row's Title `<td>` contained **44,015 characters** — dozens of
+`(Added N years ago, last modified N years ago)` comment spans concatenated
+onto ONE row.
+
+**The actual bug: the previous session's dedup fix (`_seenTopCdStubHrefs`)
+skips a duplicate DATA row, but MusicBrainz always renders that row's own
+lastupdate info row as the very next sibling `<tr>` — and the separate
+lastupdate-merge branch was untouched, still merging onto
+`allRows[allRows.length - 1]` unconditionally.** For a skipped duplicate, that
+is not the duplicate's own row (which was never pushed) — it's whichever row
+happened to be the last one ACTUALLY KEPT, e.g. several rows earlier if a long
+run of duplicates preceded it. Every duplicate in that run wrongly appended
+its own lastupdate `<span class="comment">` onto that one earlier row's Title
+cell (via `appendChild`, so unlike the Comment COLUMN's plain `textContent =`
+overwrite, these accumulate without bound) — hence one row absorbing 44,000+
+characters after a long duplicate run.
+
+**Fix:** `_skipNextTopCdStubLastupdate`, a boolean set when the dedup guard
+skips a data row and checked (then cleared) at the top of the lastupdate
+branch — when true, that lastupdate row is dropped too, instead of merging
+onto the wrong target.
+
+**Regression test:** extended `top-cd-stub-lastupdate-and-dedup.spec.js`'s
+dedup fixtures to dupe THREE consecutive rows (A/B/C) rather than one — a
+single-duplicate run can accidentally "self-heal" the Comment COLUMN's value
+(the last overwrite happens to be the correct one), which is exactly why the
+1-duplicate version of this fixture pair didn't catch this bug the first
+time. The new assertion counts each row's OWN `span.comment` inside its
+sticky Title cell (must be exactly 1 — the Comment column's overwrite
+semantics hide the leak that appendChild does not). Mutation-checked: fails
+with `[1, 1, 4, 1]` on the pre-fix code (Row C absorbed A's, B's, and its own
+lastupdate spans), passes after.

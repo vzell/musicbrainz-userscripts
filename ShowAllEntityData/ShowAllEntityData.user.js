@@ -46228,6 +46228,14 @@ a { color: #1565c0; }`;
                         // name (rawName + " " + entityType) when the first data row arrives.
                         let pendingGroupRawName = null; // rawName of the most-recent subh row
                         let pendingGroupResolved = false; // true once the first row has renamed it
+                        // top-cd-stub only: true when the data row just processed was
+                        // skipped as a duplicate (see _seenTopCdStubHrefs). Its own
+                        // lastupdate info row still follows immediately in the DOM —
+                        // without this flag, that row's text would merge onto
+                        // allRows[allRows.length - 1], i.e. some EARLIER, unrelated
+                        // row that happened to be the last one actually kept, instead
+                        // of being dropped along with the row it belongs to.
+                        let _skipNextTopCdStubLastupdate = false;
 
                         tableBody.childNodes.forEach(node => {
                             if (node.nodeName === 'TR') {
@@ -46306,6 +46314,19 @@ a { color: #1565c0; }`;
                                     // native MB "Name <span class="comment">(disambiguation)
                                     // </span>" convention, and mirror it into the row's synthetic
                                     // Comment cell (see 'top-cd-stub' features.extractMainColumn).
+                                    //
+                                    // This row's OWN data row may have just been skipped as a
+                                    // duplicate (see _seenTopCdStubHrefs) — in that case
+                                    // allRows[allRows.length - 1] is some EARLIER, unrelated row
+                                    // that happened to be the last one actually kept, and merging
+                                    // onto it would silently pile this text onto the wrong row
+                                    // (measured: one kept row accumulated 44,000+ characters this
+                                    // way once a long run of duplicates followed it).
+                                    if (_skipNextTopCdStubLastupdate) {
+                                        _skipNextTopCdStubLastupdate = false;
+                                        Lib.debug('parse', 'top-cd-stub: skipped lastupdate merge for a duplicate row\'s own info row');
+                                        return;
+                                    }
                                     const _lastRow = allRows.length > 0 ? allRows[allRows.length - 1] : null;
                                     const _infoText = node.cells[0].textContent.trim();
                                     if (_lastRow && _infoText) {
@@ -46407,10 +46428,16 @@ a { color: #1565c0; }`;
                                         if (_titleHref) {
                                             if (_seenTopCdStubHrefs.has(_titleHref)) {
                                                 Lib.debug('parse', `top-cd-stub: skipped duplicate row for "${_titleHref}" (already rendered)`);
+                                                // Its own lastupdate info row still follows in the
+                                                // DOM — that branch must skip too, or it would
+                                                // merge this dropped row's text onto whichever
+                                                // EARLIER row happens to be allRows' current last.
+                                                _skipNextTopCdStubLastupdate = true;
                                                 return;
                                             }
                                             _seenTopCdStubHrefs.add(_titleHref);
                                         }
+                                        _skipNextTopCdStubLastupdate = false;
                                     }
                                     // Remove artificial non-data rows on non-paginated pages which have a link "See all <number of rows> relationships" to the full dataset instead
                                     if (activeDefinition && activeDefinition.non_paginated) {
