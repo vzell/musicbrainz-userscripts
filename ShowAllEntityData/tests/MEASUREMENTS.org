@@ -465,6 +465,88 @@ about a minute before committing to a 3x8-minute run.
 
 Committed as =tests/snapshots/artist-releases-dylan/interaction-perf-*.json=.
 
+* Instrumenting =artist-releasegroups= — the first multi-table arm (2026-09-10)
+
+| pageType             | tableMode | page title        | URL                                                            |
+|----------------------+-----------+-------------------+----------------------------------------------------------------|
+| artist-releasegroups | *multi*   | Bruce Springsteen | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0        |
+
+No timings are published here yet — this section records what was MEASURED
+while building the arm, because several of the numbers decided the descriptor
+and one of them was load-bearing enough that guessing it would have produced a
+silently meaningless arm. Host =NB-3641= (28 cores, node v24.19.0, playwright
+1.62.1), 2026-09-10 ~14:15-16:40 UTC.
+
+*Why a third instrumented pageType exists.* Both earlier arms are
+=tableMode: 'single'=, so every committed interaction number describes
+=renderFinalTable()=, which MOVES the rows it is handed.
+=renderGroupedTable()= ALWAYS CLONES, on the first render too, and that is where
+PERFORMANCE.org Tier 1's per-pass costs are largest — it had never been
+measured. This page is also the ERG-heaviest in the repo (4286
+=[data-erg-btn]=, 6429 =data-erg-injected= in its committed =rendered.html=)
+and has *no* Picard column, since its rows link =/release-group/<mbid>= while
+that guard asks for =/release/<mbid>=.
+
+** Page shape, from =scripts/probe-fixture-columns.js=
+
+| Quantity                              |                                Measured | Note                                                        |
+|---------------------------------------+-----------------------------------------+-------------------------------------------------------------|
+| committed disk fixture                |                                  166 KB | vs 700 KB (=artist-events=) and 618 KB (Dylan)              |
+| data rows, page-wide                  |                                *2143*   | =TOTAL_ROWS=. NOT the 2239 =<tr>= in =rendered.html=        |
+| =table.tbl=                           |                                      47 | =h3.mb-toggle-h3= is 47 too, and index-aligned              |
+| columns                               |                                       9 | all nine header names strip cleanly for =columnIndex()=     |
+| sub-table 0                           |                             21 rows     | "Album"                                                     |
+| sub-table 29                          |                            *830 rows*   | "Album + Live" — the largest, so =SUB_TABLE_INDEX = 29=     |
+| badges (sub-table 29)                 | Year 49, Title 824, Artist 45, Rel. 24  | read from =.mb-col-uniq-count=, not a distinct-text tally   |
+| =Year= substring "2005"               |                              40 rows    | 1 distinct value; 1988/1986/1999/2013 give 25/22/22/22      |
+| =Title= substring "Stockholm"         |                    17 rows, 16 distinct | =UNIQ_COUNT_FILTER_VALUE=; several distinct is the point    |
+
+*=SUB_TABLE_INDEX= is measured, not defaulted, and this is the number that
+would have wrecked the arm.* Sub-table 0 holds 21 of the page's 2143 rows. Every
+per-table metric — =columnFilter=, =sort=, =uniqDrop*= and both =headerCounts*=
+badge assertions — is scoped to one sub-table, so a descriptor written against
+the default index 0 would have measured 1% of the page and reported it as a fast
+result. Re-run the probe if the fixture is re-captured: the index is stable for a
+given payload, not across payloads.
+
+** The master toggle lies, quantified
+
+=scripts/probe-multitable-metric-targets.js=, written after the first smoke run
+died with =locator.click: Timeout 30000ms exceeded= on the column-filter input:
+
+| Element                          | Measured                                                     |
+|----------------------------------+--------------------------------------------------------------|
+| =.mb-master-toggle=              | =data-state="expanded"=, text "Hide all sub-sections"        |
+| =table.tbl= visibility           | *45 of 47 =display:none=*; 2 visible (indices 0 and one more) |
+| sub-table 29 =<table>=           | =display:none=                                               |
+| sub-table 29 =<h3>=              | visible 1570x31                                              |
+| its filter input / ✕ / sort / 📊 | *0x0* — targets Playwright will never click                  |
+| after a DOM-level =<h3>= click   | table visible 1570x26142; all four controls clickable        |
+
+This is CLAUDE.md's "do not trust =.mb-master-toggle='s =data-state=" warning
+with numbers on it. =clickMasterToggleAndExpandAll()= cannot drive this page —
+it asserts =data-state="collapsed"= first, and it needs Playwright's =expect=,
+which a standalone capture script does not have — so
+=filterSortAssertions.js='s =ensureSubTableVisible()= does it instead: check
+first (the toggle toggles), click the =<h3>= at the DOM level (a coordinate
+click can land on one of the many controls an =<h3>= contains), then assert rows
+are present rather than measuring a hidden table.
+
+** Plumbing check (NOT an arm)
+
+=--samples=1 --label=smoke=, one sample, on =NB-3641=: globalFilter 655,
+columnFilter 843, sort 965, uniqDropCold 327, uniqDropWarm 81,
+headerCountsInitial 1335, headerCountsRestore 1910 ms. Recorded only to say the
+seven brackets all resolve on a multi-table page; the file was deleted rather
+than committed. *Do not quote these* — one sample, and the =--samples== flag
+prints its own warning for this reason.
+
+Note how much smaller they are than either single-table arm. That is expected
+and is the scoping, not the page being fast: three of the metrics act on 830
+rows rather than the page's 2143, and =sort= additionally takes Step 18's
+scoped path, re-rendering only the group it sorted. *Numbers from this arm are
+not comparable to a single-table arm's* — compare arms of the same pageType.
+
 * Bisect: the 9.99.1045 -> 9.99.1048 gap
 
 *Question*: is =main= genuinely ~1.5-2x slower at 9.99.1048 than at 9.99.1045,
@@ -622,10 +704,27 @@ section); it does not move a count at all, which is a large part of the point.
 | 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterApply     |   3318 |   52892 |  45303 |       158 |   5596 |    316 |
 | 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterClear     |      0 | 1078372 | 113612 |      4174 |   4474 |      0 |
 | 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
+|------------+------------+-----------+-----------+------+-----------------+--------+---------+--------+-----------+--------+--------|
+| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
+| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | filterApply     |   3318 |   53051 |  44669 |       158 |   5438 |    316 |
+| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | filterClear     |      0 | 1079876 | 114246 |      4174 |   4632 |      0 |
+| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
 
 =gCS= =getComputedStyle=, =qsa= =querySelectorAll=, =qs= =querySelector=,
 =walker= =createTreeWalker=, =layout= the four layout-forcing getters
 (=offsetWidth=/=offsetHeight=/=scrollHeight=/=clientHeight= and their siblings).
+
+*The 9.99.1058 arm is a same-version baseline for Step 34, and on the way it
+confirmed the instrument across nine script versions and two hosts.* Captured
+because Step 34's verify step should not compare against a three-versions-old
+file, so a fresh =main= arm was taken first. It reproduces 9.99.1049 almost
+exactly: =initialRender= =querySelectorAll= is *bit-identical* at 2 364 742, as
+is =postClearSettle= =getComputedStyle= at 87 654 and every =initialRender=
+column; the movers are the same four counters the reproducibility subsection
+below already identifies (=filterApply=/=filterClear= =qs= and =walker=, plus
+=qsa= by 0.1%), on the same mechanism — a header-count slice straddling a phase
+boundary. Different host, three versions apart, and nothing in the instrument
+drifted. That is what makes a count usable as evidence where a timing is not.
 
 ** How reproducible a count is — measured, not assumed
 
@@ -668,6 +767,65 @@ those two counters with a few percent of slack and the other 28 as exact.
   APPLY it lands inside =filterApply= (3318 = 158 x 21) purely because 158 rows
   finish first. Compare an arm on the two phases together, never on
   =filterClear= alone.
+
+* DOM operation counts — =artist-releasegroups= (multi-table)
+
+| pageType             | tableMode | page title        | URL                                                     |
+|----------------------+-----------+-------------------+---------------------------------------------------------|
+| artist-releasegroups | *multi*   | Bruce Springsteen | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 |
+
+The first counts ever taken on =renderGroupedTable='s always-clone path.
+Produced by =node tests/support/capture-pass-cost.js
+--pageType=artist-releasegroups --label=main= — a flag that did not exist
+before 2026-09-10, which is why this table did not either. 2143 rows x 9
+columns = *19 287 cells*, against =artist-events='s 87 654.
+
+| Finished (UTC)   | Host     | Script    | Arm  | Phase             |   gCS |     qsa |     qs | clone(tr) | addEventListener |
+|------------------+----------+-----------+------+-------------------+-------+---------+--------+-----------+------------------|
+| 2026-09-10 15:12 | NB-3641  | 9.99.1058 | main | =initialRender=   | 77150 |  646889 | 212593 |      6429 |            51945 |
+|                  |          |           |      | =filterApply=     | 24355 |  205956 |  40878 |      2706 |            10824 |
+|                  |          |           |      | =filterClear=     | 38575 |  323422 |  49665 |      4286 |            17145 |
+|                  |          |           |      | =postClearSettle= |     0 |       5 |      0 |         0 |                0 |
+
+** Four things this establishes, none of them visible from the single-table arm
+
+*1. =_stripTransientCellState= leads in BOTH table modes.* Stack sampling
+(1-in-200) attributes *1152* of =filterClear='s samples to it — ~230 400 calls,
+*71%* of that phase's 323 422 =querySelectorAll=. On =artist-events= the same
+function is 97.5%. Lower share, same first place, so PERFORMANCE.org Step 34
+leads the tier on a multi-table page too and not only on the page it was found
+on.
+
+*2. ERG's per-pass listener cost, measured for the first time.*
+=byEventType= on =filterClear= reads =mousedown=8572=, which is exactly
+2 x 4286 =[data-erg-btn]= — =ergCreateButton= attaches two =mousedown=
+listeners per button (the glyph toggle and the one-shot lazy loader), and 43
+sampled stacks x 200 corroborates ~8600. Step 23's ERG half had never been
+given a number; this is it, per filter clear, on a default-configured page.
+=initialRender='s =mousedown=26907= is higher still because ERG injection runs
+more than once during a disk-load render.
+
+*3. The deferred-work phase boundary INVERTS on a multi-table page.*
+=postClearSettle= records essentially nothing (5 =querySelectorAll=, zero of
+everything else) where the single-table arm records all 87 654
+=getComputedStyle= there. That is not a faster page — it is
+=renderGroupedTable()= having no =await= and being complete when it returns, so
+the post-render passes land INSIDE =filterClear= instead of after it. The
+existing rule ("read =filterClear= together with =postClearSettle=, never
+=filterClear= alone") is what makes the two arms comparable at all; on this one
+the second phase is empty by construction.
+
+*4. A multi-table clear renders TWICE, and that is not diagnosed.*
+=clone(tr)= on =filterClear= is *4286 = 2 x 2143 rows*, and
+=getComputedStyle= is *38 575 = 2 x 19 287 cells* (essentially all of it
+attributed to =applyStickyColumn='s inner =_apply=, 195 samples x 200). So the
+whole clone -> render -> decorate sequence runs twice per clear on this page,
+where the single-table arm shows 4174 clones for 4174 rows — exactly once.
+=filterApply= shows the same doubling at 2706 for the 1353 rows it keeps.
+*Recorded as an observation, NOT a diagnosis*: nothing here says which second
+caller it is, and it is PERFORMANCE.org Step 27/31 territory (page-wide
+post-render passes, multi-table incremental narrowing) rather than Step 34's.
+Worth chasing before either of those is estimated, since it would halve them.
 
 * Third-party service limits
 

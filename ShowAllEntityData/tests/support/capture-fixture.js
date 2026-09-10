@@ -149,20 +149,50 @@ const FIXTURES = [
         seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
         renderTimeout: 1800000, // 30 min — 24 pages
     },
+    {
+        // Bruce Springsteen's own release-groups tab (?all=1&va=0) — 2239 rows
+        // across 47 sub-tables, one native MB page. The THIRD interaction-perf
+        // arm, and the first `tableMode: 'multi'` one: every metric committed
+        // before it was captured on a single-table page, so
+        // `renderGroupedTable()`'s ALWAYS-CLONE path — where the whole
+        // re-wire-after-clone family costs the most — had never been measured
+        // at all. See tests/support/springsteenArtistReleaseGroupsFixture.js
+        // and PERFORMANCE.org's Tier 1 "Two harness gaps" note.
+        //
+        // It is also the ERG-heaviest page in the repo: 4286 [data-erg-btn]
+        // and 6429 data-erg-injected in its committed rendered.html, against
+        // ~2301 on artist-releases-dylan and ZERO on artist-events (whose rows
+        // carry no /release link at all). It has no Picard column, though —
+        // its rows link /release-group/<mbid>, and that guard asks for
+        // /release/<mbid> — so `--arm=` is a no-op here.
+        //
+        // Was `local: true` under the name `artist-releasegroups-va0` (a
+        // dogfooding capture with no automated consumer). Committed now
+        // because it has one, and renamed to match tests/pagetypes.json's own
+        // `artist-releasegroups` entry, which carries this same URL and these
+        // same seeds. No pagination or threshold dialog applies: ?all=1 is one
+        // native page and 2239 < sa_render_threshold (5000). Note 2239 also
+        // exceeds sa_auto_resize_columns_threshold (2000), so the auto-resize
+        // pass is skipped entirely on this page — one fewer confound in a
+        // timing bracket, and worth knowing before comparing it to a smaller
+        // multi-table page.
+        //
+        // CAA and Relationships forced off for the same reason as every other
+        // multi-thousand-row capture here, and it has to hold at MEASUREMENT
+        // time too, not just capture time — see the descriptor's
+        // SEED_GM_VALUES.
+        pageType: 'artist-releasegroups',
+        url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0',
+        showAllButtonSelector: 'button[data-label="🧮 Artist RGs"]',
+        seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
+        renderTimeout: 300000,
+    },
     // ── Large dogfooding captures (local: true — see this file's own JSDoc) ──
     // All anchored on Bruce Springsteen's own artist page. CAA/relationships
     // forced off wherever the pageType's features carry addCAA/injectedColumns
     // ['Relationships'] — same reasoning as every other large capture in this
     // project: a real, unstubbed CAA queue or WS/2 relationships fetch across
     // thousands of rows doesn't finish in a practical capture window.
-    {
-        pageType: 'artist-releasegroups-va0',
-        url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0',
-        showAllButtonSelector: 'button[data-label="🧮 Artist RGs"]',
-        seedGmValues: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
-        renderTimeout: 300000,
-        local: true,
-    },
     {
         pageType: 'artist-releasegroups-va1',
         url: 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=1',

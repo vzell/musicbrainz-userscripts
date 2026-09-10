@@ -9086,3 +9086,141 @@ with grep anchors.
 
 No `// @version` bump and no changelog entry: `PERFORMANCE.org` and this file
 only.
+
+## 2026-09-10 — instrumented the first multi-table perf arm; three harness gaps closed, four findings (branch instrument-artist-releasegroups-perf)
+
+Prerequisite for measuring PERFORMANCE.org Tier 1 on both table modes, which is
+what the Step 34 work asked for. Everything here is under `tests/` and
+`scripts/` — no `// @version` bump, no changelog entry.
+
+**The gap.** Both instrumented interaction-perf arms were `tableMode: 'single'`,
+so every committed number described `renderFinalTable()`, which MOVES the rows
+it is handed. `renderGroupedTable()` ALWAYS CLONES, on the first render too, and
+that is where the per-pass costs Tier 1 is about are largest. Separately,
+`capture-pass-cost.js` — whose `addEventListener`/`byEventType` counters are the
+*only* instrument that can prove a listener count went to zero — was hardcoded
+to `artist-events` via a `const PAGE_TYPE` plus a direct `artistEventsFixture`
+require, with no `--pageType=` flag. So neither Step 23's nor Step 24's listener
+half was countable anywhere, on the one page that has neither feature.
+
+**Chose `artist-releasegroups`** (Springsteen `?all=1&va=0`): 2143 rows across
+47 sub-tables, 9 columns, and the ERG-heaviest page in the repo (4286
+`[data-erg-btn]`). Its `capture-fixture.js` entry already existed as a
+`local: true` dogfooding capture named `artist-releasegroups-va0`; promoted to a
+committed fixture and renamed to match `tests/pagetypes.json`'s own
+`artist-releasegroups` entry, which carries the same URL and seeds. **166 KB**,
+not the multi-MB blob `local: true` exists to avoid, because a release-group row
+has 9 columns against `artist-events`' 21.
+
+**A pageType took three registrations; now one.** `ARMS` in
+`capture-interaction-perf.js`, `DESCRIPTORS` in
+`scripts/probe-fixture-columns.js`, and that `const PAGE_TYPE` — the same drift
+`runMetadata.js` was extracted to prevent, one level up. All three now read
+`tests/support/perfDescriptors.js`, which also owns `PICARD_ARMS` and a
+`NO_PICARD_COLUMN` set so a run on a page with no Picard column says so instead
+of silently reporting three identical arms.
+
+### Three things measured that decided the descriptor
+
+**1. `TOTAL_ROWS` is 2143, not the 2239 `<tr>` in `rendered.html`** — that count
+includes header and filter rows. Measured, not derived.
+
+**2. `SUB_TABLE_INDEX` is 29, and defaulting it to 0 would have wrecked the
+arm.** Every per-table metric — `columnFilter`, `sort`, `uniqDrop*` and both
+`headerCounts*` badge assertions — is scoped to ONE sub-table, because the
+harness's helpers are page-wide-with-`.first()`: `columnIndex()` `findIndex`es
+across every sub-table's `<thead>`, `columnFilterInput()`/`columnFilterClear()`
+take `.first()` of one input per sub-table. Sub-table 0 here is "Album" with
+**21** of the page's 2143 rows; index 29 is "Album + Live" with **830**, the
+largest. A descriptor written against the default would have measured 1% of the
+page and reported it as a fast result. `columnIndex`, `columnFilterInput`,
+`columnFilterClear` and `waitForColHeaderUniqCount` all gained an optional
+`tableIndex` (no-op when omitted, so every existing spec is unaffected), and
+resolution is by INDEX rather than heading text — an `<h3>`'s `textContent`
+swallows its entire per-table filter bar, and `waitForSortSettled()`'s JSDoc
+separately warns that a `hasText` lookup on *this* page can land on a
+view-hidden section.
+
+**3. A multi-table sort writes only its own group's status.** Confirmed from
+that function's own JSDoc and honoured by handing it a `statusLocator` resolved
+by index — `#mb-sort-status-display` is never touched, so omitting it times out
+on a page that sorted perfectly well.
+
+### The trap that actually broke the first smoke run
+
+`locator.click: Timeout 30000ms exceeded` on sub-table 29's column-filter input.
+Diagnosed with a new `scripts/probe-multitable-metric-targets.js` rather than
+guessed:
+
+| Element | Measured |
+|---|---|
+| `.mb-master-toggle` | `data-state="expanded"`, "Hide all sub-sections" |
+| `table.tbl` visibility | **45 of 47 `display:none`** |
+| sub-table 29 `<table>` | `display:none` |
+| sub-table 29 `<h3>` | visible 1570x31 |
+| its filter input / ✕ / sort / 📊 | **0x0** |
+| after a DOM-level `<h3>` click | visible 1570x26142; all four clickable |
+
+This is CLAUDE.md's "do not trust `.mb-master-toggle`'s `data-state`" with
+numbers on it. `clickMasterToggleAndExpandAll()` cannot drive this page — it
+asserts `data-state="collapsed"` first, and needs Playwright's `expect`, which a
+standalone capture script does not have. So `filterSortAssertions.js` gained
+`ensureSubTableVisible(page, tableIndex)`: check before clicking (the toggle
+toggles), click the `<h3>` at the DOM level (a coordinate click can land on one
+of the many controls an `<h3>` contains, and a DOM-level click also keeps
+`makeH2sCollapsible`'s "ignore clicks on A/BUTTON/INPUT/…" guard from swallowing
+it), then assert rows are present rather than measure a hidden table. Called
+from both capture scripts — in `loadPage()` before every bracket for timings,
+and after `initialRender` for counts so the expansion is not counted as render.
+
+Only the TARGET section is expanded, not all 47: a hidden section's rows are
+still in the DOM, so `runFilter()`/`renderGroupedTable()` do the same work either
+way and the page-wide metrics are unaffected by how many are open.
+
+### Four findings from the first multi-table count arm
+
+Full tables in `tests/MEASUREMENTS.org`; `main` at 9.99.1058 on `NB-3641`.
+
+1. **`_stripTransientCellState` leads in BOTH table modes** — 71% of the
+   multi-table clear's 323 422 `querySelectorAll`, against 97.5% of
+   `artist-events`' 1 078 372. Step 34 is not an artefact of the page it was
+   found on.
+2. **Step 23's ERG cost has a number at last**: `byEventType` reads
+   `mousedown=8572` on a filter clear, exactly 2 × 4286 buttons, since
+   `ergCreateButton` attaches a glyph-toggle and a lazy-loader listener to each.
+3. **A multi-table clear renders TWICE** — `cloneNodeDeepTr` 4286 for 2143 rows,
+   `getComputedStyle` 38 575 for 19 287 cells, both exactly 2×, against the
+   single-table arm's exactly 1×. Recorded as an observation and **not
+   diagnosed**: it is Step 27/31 territory and it would halve both, so it should
+   be chased before either is estimated.
+4. **The deferred-work phase boundary inverts.** `postClearSettle` is empty on
+   the multi-table arm (5 `querySelectorAll`) because `renderGroupedTable()` has
+   no `await` and the post-render passes land inside `filterClear`. The existing
+   "read the two phases together" rule holds, for the opposite reason.
+
+Also captured a same-version `artist-events` `main` arm at 9.99.1058, so Step 34
+is not compared against a three-versions-old file. It reproduces 9.99.1049
+almost exactly across a different host: `initialRender` `querySelectorAll`
+**bit-identical** at 2 364 742, `postClearSettle` `getComputedStyle` identical
+at 87 654, and the only movers are the same four counters the reproducibility
+note already names.
+
+**Two mistakes of mine worth recording.** I ran `node -e "require(…)"` on
+`capture-fixture.js` as a "syntax check" — it has a top-level IIFE, so it
+executed and re-captured three committed fixtures against the live site. Restored
+byte-for-byte from git (`700565`/`617642`/`4253` bytes, confirmed). `node --check`
+is the parse-only check, and the project's own "never run inline `node -e`" rule
+exists for exactly this. Separately, the first full fixture suite reported 2
+failures in `picard-cells-survive-rerender.spec.js`, both at
+`waitForActualRowCount` — the flake shape that spec's own history documents.
+Attributed rather than assumed: it imports none of the four helpers I changed,
+passed 4/4 in isolation, and a second full run came back **156 passed, 0
+failed**. The trigger was CPU contention from the perf runs going on alongside.
+
+**Docs reconciled:** `tests/README.org` (three arms, the multi-table scoping
+rules, `capture-pass-cost.js`'s new flags, and the third un-guessable
+descriptor constant), `tests/snapshots/registry.org` (why
+`artist-releasegroups/` now holds both an HTML baseline pair AND perf JSONs, and
+that a perf arm landing there is not a re-capture), `tests/MEASUREMENTS.org`
+(two new sections), and `PERFORMANCE.org` — where Tier 1's "two harness gaps"
+note became "closed", plus the third gap above, and Steps 23/34 took the numbers.

@@ -276,24 +276,39 @@ async function waitForActualRowCount(page, expectedCount, { timeout = 30000 } = 
  * wrong value. `tests/snapshots/artist-events/post-sort.html` still carries
  * that era's numbers.
  *
+ * `tableIndex` scopes the lookup to one `table.tbl` by position. It matters
+ * only on a multi-table page, where the unscoped form searches every sub-table's
+ * `<thead>` and so resolves to whichever one comes first in document order —
+ * fine when that is what you meant, misleading when it is not. Resolution is by
+ * INDEX rather than by heading text on purpose: see `waitForSortSettled()`'s own
+ * note on `hasText` landing on a view-hidden section. On a single-table page
+ * `tableIndex: 0` and no `tableIndex` resolve the same element.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {string} colName - Column header text with sort arrows/counts/glyphs
  *   stripped (e.g. "Event"), matched the same way `__saTest.getUniqDropSections()`
  *   matches it.
  * @param {number} expected
- * @param {{ timeout?: number }} [opts]
+ * @param {{ timeout?: number, tableIndex?: number }} [opts]
  * @returns {Promise<void>}
  */
-async function waitForColHeaderUniqCount(page, colName, expected, { timeout = 90000 } = {}) {
+async function waitForColHeaderUniqCount(page, colName, expected, { timeout = 90000, tableIndex } = {}) {
     await page.waitForFunction(
-        ({ name, want }) => {
+        ({ name, want, idx }) => {
             const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-            const th = Array.from(document.querySelectorAll('table.tbl thead th'))
-                .find((t) => strip(t.textContent) === name);
+            let ths;
+            if (idx === null) {
+                ths = Array.from(document.querySelectorAll('table.tbl thead th'));
+            } else {
+                const table = document.querySelectorAll('table.tbl')[idx];
+                if (!table) return false;
+                ths = Array.from(table.querySelectorAll('thead th'));
+            }
+            const th = ths.find((t) => strip(t.textContent) === name);
             const badge = th && th.querySelector('.mb-col-uniq-count');
             return !!badge && badge.textContent.trim() === String(want);
         },
-        { name: colName, want: expected },
+        { name: colName, want: expected, idx: tableIndex === undefined ? null : tableIndex },
         { timeout }
     );
 }
@@ -572,30 +587,104 @@ async function getPrefilterButtonState(page) {
 }
 
 /**
+ * Makes the sub-table the per-table metrics act on actually reachable.
+ *
+ * *This is not a nicety — without it the arm cannot run at all.* Measured on
+ * `artist-releasegroups` (`scripts/probe-multitable-metric-targets.js`):
+ * `.mb-master-toggle` reports `data-state="expanded"` and reads "Hide all
+ * sub-sections", while **45 of the 47 sub-tables are `display:none`**. Only
+ * sub-table 0 (21 of the page's 2143 rows) and one other are shown. A hidden
+ * table's filter input, ✕, sort button and 📊 wrap all measure 0x0, which
+ * Playwright will never click — the first smoke run died on exactly that, with
+ * `locator.click: Timeout 30000ms exceeded`. CLAUDE.md's "do not trust
+ * `.mb-master-toggle`'s `data-state`" warning is this, quantified.
+ *
+ * Three deliberate choices:
+ *
+ * - *Expand only the TARGET section, not the whole page.* The rows of a hidden
+ *   section are still in the DOM, so `runFilter()` and `renderGroupedTable()`
+ *   do the same work either way and the page-wide metrics are unaffected by
+ *   how many sections are open. Expanding all 47 would instead make every arm
+ *   measure a state a user rarely has, and add a large one-off cost next to
+ *   the brackets. The one thing it does change is layout/paint for this
+ *   section's rows — identical on every arm being compared, so ratios hold.
+ * - *Check before clicking.* The `<h3>` toggle toggles: clicking a section
+ *   that is already open collapses it. CLAUDE.md's "never click the master
+ *   toggle unconditionally" applies to per-section toggles for the same reason.
+ * - *A DOM-level `el.click()`, not `Locator.click()`* — the same reason
+ *   `capture-interaction-perf.js` gives for the uniq wrap. An `<h3>` here
+ *   contains the whole per-table filter bar (search toggle, history dropdown,
+ *   pinned list, several buttons), so a mouse-simulated click at computed
+ *   coordinates can land on one of those; a DOM-level click targets the `<h3>`
+ *   itself, which is also what keeps `makeH2sCollapsible`'s "ignore clicks on
+ *   A/BUTTON/INPUT/…" guard from swallowing it.
+ *
+ * Verified rather than assumed afterwards: a failure here is thrown, not
+ * measured, because a silently hidden table produces clean, plausible,
+ * meaningless numbers.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} tableIndex - which `table.tbl` the caller will act on.
+ * @returns {Promise<number>} that sub-table's rendered row count.
+ */
+async function ensureSubTableVisible(page, tableIndex) {
+    const table = page.locator('table.tbl').nth(tableIndex);
+    if (!await table.isVisible()) {
+        await page.locator('h3.mb-toggle-h3').nth(tableIndex).evaluate((el) => el.click());
+        await table.waitFor({ state: 'visible', timeout: 30000 });
+    }
+    const rows = await table.locator('tbody tr').count();
+    if (!rows) throw new Error(`sub-table ${tableIndex} rendered no rows`);
+    return rows;
+}
+
+/**
  * Zero-based index of the column whose header reads `colName`, with the
  * sort/filter/collapse glyphs and the unique-value count stripped off.
  *
+ * Unscoped, this searches every `table.tbl`'s `<thead>` on the page and returns
+ * the index into that FLATTENED list — which happens to equal the column index
+ * for the first sub-table and is wrong for every other one. Pass `tableIndex`
+ * on a multi-table page to scope it to one sub-table and get that table's own
+ * column index. No-op on a single-table page.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {string} colName
+ * @param {{ tableIndex?: number }} [opts]
  * @returns {Promise<number>} the index, or -1 when no header matches.
  */
-function columnIndex(page, colName) {
-    return page.evaluate((name) => {
+function columnIndex(page, colName, { tableIndex } = {}) {
+    return page.evaluate(({ name, idx }) => {
         const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
-        return Array.from(document.querySelectorAll('table.tbl thead th'))
-            .findIndex((t) => strip(t.textContent) === name);
-    }, colName);
+        let ths;
+        if (idx === null) {
+            ths = Array.from(document.querySelectorAll('table.tbl thead th'));
+        } else {
+            const table = document.querySelectorAll('table.tbl')[idx];
+            if (!table) return -1;
+            ths = Array.from(table.querySelectorAll('thead th'));
+        }
+        return ths.findIndex((t) => strip(t.textContent) === name);
+    }, { name: colName, idx: tableIndex === undefined ? null : tableIndex });
 }
 
 /**
  * One column's filter `<input>`.
  *
+ * `tableIndex` scopes it to one sub-table. Without it the `.first()` picks
+ * whichever sub-table comes first in document order, since every sub-table
+ * carries its own input for the same `data-col-idx`.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {number} colIdx
+ * @param {{ tableIndex?: number }} [opts]
  * @returns {import('@playwright/test').Locator}
  */
-function columnFilterInput(page, colIdx) {
-    return page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+function columnFilterInput(page, colIdx, { tableIndex } = {}) {
+    const sel = `thead .mb-col-filter-input[data-col-idx="${colIdx}"]`;
+    return tableIndex === undefined
+        ? page.locator(`table.tbl ${sel}`).first()
+        : page.locator('table.tbl').nth(tableIndex).locator(sel).first();
 }
 
 /**
@@ -613,17 +702,25 @@ function columnFilterInput(page, colIdx) {
  * filled-then-emptied field silently never re-runs the filter. The ✕ calls
  * `runFilter()` directly and undebounced.
  *
+ * `tableIndex` scopes it to one sub-table, for the same reason as
+ * {@link columnFilterInput} — and it must be given whenever that one was, or a
+ * test types into sub-table N's filter and then clears sub-table 0's.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {number} colIdx
+ * @param {{ tableIndex?: number }} [opts]
  * @returns {import('@playwright/test').Locator}
  */
-function columnFilterClear(page, colIdx) {
-    return page.locator(
-        `table.tbl thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"]) .mb-col-filter-clear`
-    ).first();
+function columnFilterClear(page, colIdx, { tableIndex } = {}) {
+    const sel = `thead .mb-col-filter-wrapper:has(.mb-col-filter-input[data-col-idx="${colIdx}"])`
+        + ' .mb-col-filter-clear';
+    return tableIndex === undefined
+        ? page.locator(`table.tbl ${sel}`).first()
+        : page.locator('table.tbl').nth(tableIndex).locator(sel).first();
 }
 
 module.exports = {
+    ensureSubTableVisible,
     waitForFilterSettled,
     waitForSortSettled,
     waitForSubTableFilterSettled,

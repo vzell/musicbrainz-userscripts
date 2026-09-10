@@ -28,10 +28,9 @@ const { loadFromDiskFixture } = require('../tests/support/diskFixture');
 const { waitForRenderComplete } = require('../tests/support/browser');
 const { waitForColHeaderCountsStable } = require('../tests/support/filterSortAssertions');
 
-const DESCRIPTORS = {
-    'artist-events': '../tests/support/artistEventsFixture',
-    'artist-releases-dylan': '../tests/support/dylanArtistReleasesFixture',
-};
+// Registered pageTypes live in ONE place — see that module's header for what
+// the three-copy version cost.
+const { DESCRIPTORS, pageTypeList } = require('../tests/support/perfDescriptors');
 
 /** @param {string[]} argv @returns {Object<string, string>} */
 function parseArgs(argv) {
@@ -52,16 +51,29 @@ function parseArgs(argv) {
     let fixturePath = args.fixture;
     let seeds = { sa_enable_caa_pics: false, sa_enable_relationships_column: false };
     if (!url && DESCRIPTORS[pageType]) {
-        const d = require(DESCRIPTORS[pageType]);
+        const d = DESCRIPTORS[pageType];
         url = d.URL;
         fixturePath = d.FIXTURE_PATH;
         seeds = d.SEED_GM_VALUES;
+        // A registered multi-table descriptor already knows which sub-table it
+        // means; only override it when --tableIndex= says otherwise.
+        if (d.SUB_TABLE_INDEX !== undefined && !args.tableIndex) {
+            args.tableIndex = String(d.SUB_TABLE_INDEX);
+        }
     }
     if (!url || !fixturePath) {
         console.error('need --pageType with a descriptor, or --url= and --fixture=');
+        console.error(`registered pageTypes: ${pageTypeList().join(', ')}`);
         process.exit(2);
     }
     fixturePath = path.resolve(fixturePath);
+    // Which sub-table the column report describes. Only meaningful on a
+    // multi-table page, and NOT safely defaulted to 0 there: on
+    // artist-releasegroups sub-table 0 is "Album" with 21 of the page's 2143
+    // rows, so a descriptor written from it would have every per-table metric
+    // measuring 1% of the page. Read the "largest sub-tables" list this script
+    // prints, then re-run with --tableIndex=<that index>.
+    const subTableIndex = Number(args.tableIndex || 0);
 
     const browser = await chromium.launch();
     const page = await browser.newPage();
@@ -75,14 +87,56 @@ function parseArgs(argv) {
         // cells, sort-key sentinels, getCleanColumnText's own normalisation).
         // UNIQ_COUNT_TOTAL is asserted against a badge by
         // waitForColHeaderUniqCount(), so it has to be read from one.
-        await waitForColHeaderCountsStable(page);
+        // 300 s, not the 90 s default: a multi-table page runs the
+        // column-header scan per sub-table, and 47 of them do not settle
+        // inside the single-table budget.
+        await waitForColHeaderCountsStable(page, { timeout: 300000 });
 
-        const report = await page.evaluate(({ filterColumn, countColumn, countSubstrings }) => {
-            const table = document.querySelector('table.tbl');
+        // ── Page shape, for a `tableMode: 'multi'` descriptor ────────────────
+        // The column report below is deliberately scoped to the FIRST
+        // `table.tbl`, which is what every per-table metric in
+        // `capture-interaction-perf.js` also resolves to (see
+        // `perfDescriptors.js`'s multi-table contract). On a multi-table page
+        // that makes its `rows:` line a SUB-TABLE row count, not the page's —
+        // so the page-wide numbers have to be reported separately, or
+        // TOTAL_ROWS gets written from the wrong one.
+        const shape = await page.evaluate(() => {
+            const tables = Array.from(document.querySelectorAll('table.tbl'));
+            // An h3's textContent swallows its whole per-table filter-bar UI
+            // (history dropdown, pinned list, toggle labels — hundreds of
+            // characters), so keep only the leading label up to its own
+            // "(N)" row-count marker. Enough to recognise the section;
+            // never enough to match on, which is the point.
+            const headings = Array.from(document.querySelectorAll('h3.mb-toggle-h3'))
+                .map((h) => {
+                    const t = (h.textContent || '').replace(/\s+/g, ' ').trim();
+                    const m = t.match(/^([^(]*\([0-9 ]+\))/);
+                    return m ? m[1].trim() : t.slice(0, 60);
+                });
+            return {
+                tableCount: tables.length,
+                pageRows: document.querySelectorAll('table.tbl tbody tr').length,
+                perTableRows: tables.map((t) => t.querySelectorAll('tbody tr').length),
+                headings,
+            };
+        });
+
+        const report = await page.evaluate(({ filterColumn, countColumn, countSubstrings, tableIndex }) => {
+            const table = document.querySelectorAll('table.tbl')[tableIndex];
+            if (!table) throw new Error(`no table.tbl at index ${tableIndex}`);
             const ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
             const names = ths.map((th, i) => th.dataset.colName
                 || (th.textContent || '').replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim()
                 || `(col ${i})`);
+            // What `columnIndex()`/`waitForColHeaderUniqCount()` will actually
+            // match on: the STRIPPED textContent alone, with no
+            // `dataset.colName` fallback. A column whose header carries a
+            // dynamically-injected glyph embeds a zero-width space those
+            // helpers do not strip, so the two can disagree — and a descriptor
+            // written from the `names` above would then name a column the
+            // harness can never resolve.
+            const strippedNames = ths.map((th) => (th.textContent || '')
+                .replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
             const rows = Array.from(table.querySelectorAll('tbody tr'));
 
             const cellText = (tr, i) => {
@@ -162,21 +216,49 @@ function parseArgs(argv) {
                 });
             }
             return {
-                rowCount: rows.length, names, cardinality, filterIndex: fi, values,
-                countCandidates, substringResults,
+                rowCount: rows.length, names, strippedNames, cardinality,
+                filterIndex: fi, values, countCandidates, substringResults,
             };
         }, {
             filterColumn: args.filterColumn || '',
             countColumn: args.countColumn || '',
             countSubstrings: (args.countSubstrings || '').split('|').filter(Boolean),
+            tableIndex: subTableIndex,
         });
 
-        console.log(`rows: ${report.rowCount}`);
+        if (shape.tableCount > 1) {
+            console.log(`page shape: MULTI-table — ${shape.tableCount} table.tbl, `
+                + `${shape.pageRows} rows page-wide  <-- TOTAL_ROWS`);
+            const top = shape.perTableRows
+                .map((n, i) => ({ i, n, h: shape.headings[i] || '(no h3)' }))
+                .sort((a, b) => b.n - a.n)
+                .slice(0, 8);
+            console.log('  largest sub-tables (index, rows, h3):');
+            for (const t of top) console.log(`    ${String(t.i).padStart(2)}  ${String(t.n).padStart(5)}  ${t.h}`);
+            console.log(`  h3 headings: ${shape.headings.length} (index-aligned with the tables `
+                + 'when equal — the ONLY safe way to name a sub-table, since an h3\'s textContent '
+                + 'swallows the whole per-table filter-bar UI)');
+        } else {
+            console.log(`page shape: SINGLE-table — ${shape.pageRows} rows  <-- TOTAL_ROWS`);
+        }
+        console.log(`rows (sub-table ${subTableIndex}): ${report.rowCount}`
+            + '  <-- SUB_TABLE_INDEX, and the row set every per-table metric acts on');
         console.log(`columns (${report.names.length}):`);
         for (const c of report.cardinality) {
             const flag = (c.badge !== null && c.badge !== c.distinct) ? '  <-- badge != naive tally' : '';
             console.log(`  ${String(c.i).padStart(2)}  ${c.name.padEnd(22)} `
                 + `badge=${String(c.badge).padStart(5)}  naive=${String(c.distinct).padStart(5)}${flag}`);
+        }
+        const mismatch = report.names
+            .map((n, i) => ({ n, s: report.strippedNames[i], i }))
+            .filter((x) => x.n !== x.s);
+        if (mismatch.length) {
+            console.log('  NOTE: header name != stripped textContent for '
+                + `${mismatch.length} column(s) — a descriptor MUST use the stripped form, `
+                + 'since that is what columnIndex()/waitForColHeaderUniqCount() match on:');
+            for (const x of mismatch) {
+                console.log(`    ${String(x.i).padStart(2)}  dataset="${x.n}"  stripped="${x.s}"`);
+            }
         }
         const byCard = [...report.cardinality].sort((a, b) => b.distinct - a.distinct);
         console.log(`highest cardinality: ${byCard[0].name} (${byCard[0].distinct})`);

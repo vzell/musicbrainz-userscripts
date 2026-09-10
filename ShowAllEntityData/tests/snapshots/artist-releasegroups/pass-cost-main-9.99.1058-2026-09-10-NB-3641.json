@@ -1,0 +1,231 @@
+{
+  "pageType": "artist-releasegroups",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0",
+  "tableMode": "multi",
+  "subTableIndex": 29,
+  "totalRows": 2143,
+  "picardArm": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false
+  },
+  "label": "main",
+  "branch": "instrument-artist-releasegroups-perf",
+  "scriptVersion": "9.99.1058+2026-09-10",
+  "capturedAt": "2026-09-10",
+  "startedAt": "2026-09-10T14:34:41.814Z",
+  "finishedAt": "2026-09-10T14:34:50.115Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 35.4,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 16.5
+    },
+    "claudeSinceBoot": true
+  },
+  "instrument": {
+    "stackSampleRate": 200,
+    "topN": 12
+  },
+  "note": "DOM operation COUNTS, not timings. The instrument distorts timings; see tests/support/domCounters.js.",
+  "phases": {
+    "initialRender": {
+      "getComputedStyle": 77150,
+      "querySelector": 212593,
+      "querySelectorAll": 646889,
+      "cloneNode": 6909,
+      "cloneNodeDeep": 6909,
+      "cloneNodeDeepTr": 6429,
+      "createTreeWalker": 600,
+      "createElement": 60407,
+      "addEventListener": 51945,
+      "getBoundingClientRect": 6,
+      "layoutGetter": 8575,
+      "bySelector": {
+        "td[data-mb-ms]": 105007,
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 77258,
+        ".mb-cell-collapse-toggle": 77148,
+        "[data-erg-btn]": 57861,
+        "span.comment": 57861,
+        ".mb-live-date-flag": 57861,
+        "[data-caa-expand-btn]": 40717,
+        "a[data-caa-enriched], a[data-eaa-enriched]": 38574,
+        "li.mb-caa-art-li-image, li.mb-eaa-art-li-image": 38574,
+        "span.caa-icon, span.eaa-icon, span.artwork-icon": 38574,
+        ".mb-art-cache-hint-col-wrap": 38574,
+        ".mb-art-cache-hint-col": 38574
+      },
+      "byTagName": {
+        "td": 19287,
+        "span": 17091,
+        "table": 12905,
+        "div": 5955,
+        "tr": 2191,
+        "input": 1103,
+        "button": 748,
+        "label": 579,
+        "th": 432,
+        "h3": 47,
+        "tbody": 47,
+        "style": 11
+      },
+      "byEventType": {
+        "mousedown": 26907,
+        "mouseleave": 8862,
+        "mouseenter": 8718,
+        "click": 2230,
+        "focus": 1318,
+        "keydown": 1295,
+        "blur": 847,
+        "change": 582,
+        "input": 529,
+        "mouseup": 200,
+        "mousemove": 57,
+        "keypress": 10
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 2317,
+        "querySelector <- _msAnyStamped": 526,
+        "getComputedStyle <- _apply": 383,
+        "querySelectorAll <- _countLiveDateFlags": 291,
+        "querySelectorAll <- normalizeCommentSpans": 290,
+        "querySelector <- _stripTransientCellState": 191,
+        "addEventListener <- ergCreateButton": 128,
+        "createElement <- _hydrateAndRenderFromSnapshotData": 107,
+        "querySelectorAll <- _stripIfMatch": 107,
+        "querySelectorAll <- initExpandRGsFeature": 96,
+        "addEventListener <- _apply": 89,
+        "querySelector <- _rowHasPendingEdits": 66
+      }
+    },
+    "filterApply": {
+      "getComputedStyle": 24355,
+      "querySelector": 40878,
+      "querySelectorAll": 205956,
+      "cloneNode": 2788,
+      "cloneNodeDeep": 2788,
+      "cloneNodeDeepTr": 2706,
+      "createTreeWalker": 1230,
+      "createElement": 6807,
+      "addEventListener": 10824,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 2706,
+      "bySelector": {
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 24402,
+        ".mb-cell-collapse-toggle": 24354,
+        "span.comment": 24354,
+        "[data-erg-btn]": 16236,
+        "[data-caa-expand-btn]": 13530,
+        "a[data-caa-enriched], a[data-eaa-enriched]": 12177,
+        "li.mb-caa-art-li-image, li.mb-eaa-art-li-image": 12177,
+        "span.caa-icon, span.eaa-icon, span.artwork-icon": 12177,
+        ".mb-art-cache-hint-col-wrap": 12177,
+        ".mb-art-cache-hint-col": 12177,
+        ".mb-art-cache-hint-big, .mb-art-cache-hint-inline": 12177,
+        "[data-erg-injected]": 12177
+      },
+      "byTagName": {
+        "span": 2748,
+        "table": 2706,
+        "div": 1353
+      },
+      "byEventType": {
+        "mousedown": 5412,
+        "mouseenter": 2706,
+        "mouseleave": 2706
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 728,
+        "getComputedStyle <- _apply": 126,
+        "querySelectorAll <- normalizeCommentSpans": 124,
+        "querySelector <- _stripTransientCellState": 63,
+        "querySelectorAll <- _countLiveDateFlags": 61,
+        "addEventListener <- ergCreateButton": 27,
+        "querySelectorAll <- _stripIfMatch": 27,
+        "querySelectorAll <- unattributed": 27,
+        "querySelector <- initCollapsableColumns": 24,
+        "addEventListener <- _apply": 23,
+        "querySelectorAll <- initExpandRGsFeature": 21,
+        "querySelector <- _rowHasPendingEdits": 21
+      }
+    },
+    "filterClear": {
+      "getComputedStyle": 38575,
+      "querySelector": 49665,
+      "querySelectorAll": 323422,
+      "cloneNode": 4288,
+      "cloneNodeDeep": 4288,
+      "cloneNodeDeepTr": 4286,
+      "createTreeWalker": 0,
+      "createElement": 10717,
+      "addEventListener": 17145,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 4286,
+      "bySelector": {
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 38621,
+        ".mb-cell-collapse-toggle": 38574,
+        "span.comment": 38574,
+        "[data-erg-btn]": 25716,
+        "[data-caa-expand-btn]": 21430,
+        "a[data-caa-enriched], a[data-eaa-enriched]": 19287,
+        "li.mb-caa-art-li-image, li.mb-eaa-art-li-image": 19287,
+        "span.caa-icon, span.eaa-icon, span.artwork-icon": 19287,
+        ".mb-art-cache-hint-col-wrap": 19287,
+        ".mb-art-cache-hint-col": 19287,
+        ".mb-art-cache-hint-big, .mb-art-cache-hint-inline": 19287,
+        "[data-erg-injected]": 19287
+      },
+      "byTagName": {
+        "span": 4288,
+        "table": 4286,
+        "div": 2143
+      },
+      "byEventType": {
+        "mousedown": 8572,
+        "mouseenter": 4286,
+        "mouseleave": 4286,
+        "selectionchange": 1
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 1152,
+        "getComputedStyle <- _apply": 195,
+        "querySelectorAll <- normalizeCommentSpans": 194,
+        "querySelector <- _stripTransientCellState": 103,
+        "querySelectorAll <- _countLiveDateFlags": 97,
+        "querySelector <- initCollapsableColumns": 50,
+        "addEventListener <- ergCreateButton": 43,
+        "querySelectorAll <- _stripIfMatch": 43,
+        "querySelectorAll <- unattributed": 43,
+        "addEventListener <- _apply": 41,
+        "querySelectorAll <- initExpandRGsFeature": 32,
+        "createElement <- ergInjectReleaseGroupButton": 22
+      }
+    },
+    "postClearSettle": {
+      "getComputedStyle": 0,
+      "querySelector": 0,
+      "querySelectorAll": 5,
+      "cloneNode": 0,
+      "cloneNodeDeep": 0,
+      "cloneNodeDeepTr": 0,
+      "createTreeWalker": 0,
+      "createElement": 0,
+      "addEventListener": 0,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 0,
+      "bySelector": {
+        ".mb-col-uniq-count, .mb-col-collapse-count": 5
+      },
+      "byTagName": {},
+      "byEventType": {},
+      "byStack": {}
+    }
+  }
+}

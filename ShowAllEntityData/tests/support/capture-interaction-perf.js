@@ -13,22 +13,33 @@
  * PERFORMANCE.org's Steps 1-4 specifically target — global filter, column
  * filter, sort, and unique-values-dropdown open (cold vs cache-warm).
  *
- * Two pageTypes are instrumented, and which one to use depends on the step:
+ * Three pageTypes are instrumented, and which one to use depends on the step.
+ * They are registered in `perfDescriptors.js` — one place, not the three this
+ * used to take:
  *
- *   - `artist-events` (4174 rows, 21 columns) — the original arm, which
- *     `tests/snapshots/registry.org` earmarks as the dedicated
+ *   - `artist-events` (4174 rows, 21 columns, SINGLE-table) — the original
+ *     arm, which `tests/snapshots/registry.org` earmarks as the dedicated
  *     performance-comparison target. Every committed baseline before
  *     9.99.1057 is this page.
- *   - `artist-releases-dylan` (2301 rows, 21 columns) — added for Steps 23
- *     and 32, which `artist-events` structurally CANNOT measure: it has no
- *     `/release/<mbid>` link anywhere, so `initPicardTaggerColumn()` skips
- *     every one of its tables and the Picard column those steps are about
- *     never exists. Pair it with `--arm=` (see PICARD_ARMS).
+ *   - `artist-releases-dylan` (2301 rows, 21 columns, SINGLE-table) — added
+ *     for Steps 23 and 32, which `artist-events` structurally CANNOT measure:
+ *     it has no `/release/<mbid>` link anywhere, so `initPicardTaggerColumn()`
+ *     skips every one of its tables and the Picard column those steps are
+ *     about never exists. Pair it with `--arm=` (see PICARD_ARMS).
+ *   - `artist-releasegroups` (2143 rows across 47 sub-tables, 9 columns,
+ *     MULTI-table) — the first multi-table arm. Every metric committed before
+ *     it describes `renderFinalTable()`, which MOVES its rows;
+ *     `renderGroupedTable()` ALWAYS CLONES, on the first render too, and that
+ *     is where Tier 1's per-pass costs are largest. Also the ERG-heaviest page
+ *     in the repo (4286 `[data-erg-btn]`), and it has no Picard column at all,
+ *     so `--arm=` is a no-op there.
  *
- * The two are not interchangeable and their numbers are not comparable to each
- * other — different row counts, different columns, different data. Compare
- * arms of the SAME pageType, captured in the same session, per CLAUDE.md's
- * "quote only within-session A/B ratios".
+ * The three are not interchangeable and their numbers are not comparable to
+ * each other — different row counts, different columns, different data, and on
+ * the multi-table one a different SCOPE (see `scope()`/`metricTable()` below
+ * and `perfDescriptors.js`'s multi-table contract). Compare arms of the SAME
+ * pageType, captured in the same session, per CLAUDE.md's "quote only
+ * within-session A/B ratios".
  *
  * Loads via the committed disk fixture (`tests/support/capture-fixture.js`,
  * `tests/support/diskFixture.js`) rather than a live "Show all" click, so
@@ -101,12 +112,13 @@ const { waitForRenderComplete } = require('./browser');
 const {
     waitForFilterSettled, waitForSortSettled, waitForColHeaderUniqCount,
     waitForColHeaderCountsStable, columnIndex, columnFilterInput, columnFilterClear,
+    ensureSubTableVisible,
 } = require('./filterSortAssertions');
-const artistEvents = require('./artistEventsFixture');
-const dylanArtistReleases = require('./dylanArtistReleasesFixture');
 const {
-    readScriptVersion, machineInfo, sanitizeForFilename, hostnameForFilename, versionForFilename,
-    readCurrentBranch,
+    toArm, pageTypeList, applyPicardArm, PICARD_ARMS,
+} = require('./perfDescriptors');
+const {
+    readScriptVersion, machineInfo, readCurrentBranch, archiveFileStem,
 } = require('./runMetadata');
 
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
@@ -131,82 +143,62 @@ const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
 const DEFAULT_SAMPLES = 5;
 
 /**
- * Turns one descriptor module into the shape `runAll()` consumes.
+ * The root every PER-TABLE metric resolves against.
  *
- * Descriptors are plain constant modules shared with the correctness specs
- * (see `artistEventsFixture.js`'s own JSDoc on why those constants live in one
- * place), so the perf-specific fields — the five distinct filter values, and
- * the naming of which column carries the header-count metric — are derived
- * here rather than duplicated into every descriptor.
+ * On a multi-table page the harness's helpers are otherwise silently
+ * sub-table-0-scoped — `columnIndex()` searches every sub-table's `<thead>`,
+ * `columnFilterInput()`/`columnFilterClear()` take `.first()` of one input per
+ * sub-table — and sub-table 0 is routinely tiny (21 of `artist-releasegroups`'
+ * 2143 rows), so an unscoped metric there measures 1% of the page and reports
+ * it as a fast result. `perfDescriptors.js` documents the whole contract; this
+ * is the one place that applies it.
  *
- * @param {string} pageType
- * @param {Object} d - descriptor module
- * @returns {Object}
+ * On a single-table page there is exactly one `table.tbl`, so index 0 and the
+ * unscoped form resolve the identical element and the two committed
+ * single-table arms stay directly comparable to their predecessors.
+ *
+ * @param {ReturnType<typeof toArm>} config
+ * @returns {{tableIndex: number}} option bag for the scoped helpers
  */
-function toArm(pageType, d) {
-    return {
-        pageType,
-        url: d.URL,
-        fixturePath: d.FIXTURE_PATH,
-        seedGmValues: d.SEED_GM_VALUES,
-        filterColumn: d.FILTER_COLUMN,
-        // A different, never-before-typed value each sample avoids
-        // `_filterResultCache` hits skewing the comparison. That is the filter
-        // pipeline's own row-match cache — unrelated to, and untouched by, any
-        // PERFORMANCE.org step, so it must be defeated identically on every
-        // arm being compared. Real values from the fixture's own data, the
-        // first matching the correctness spec's canonical FILTER_VALUE.
-        filterValues: d.PERF_FILTER_VALUES,
-        sortColumn: d.SORT_COLUMN,
-        uniqDropColumn: d.UNIQ_DROP_COLUMN,
-        // The header-count metrics assert an EXACT badge value rather than
-        // "stopped changing": a scan that is superseded and abandoned leaves the
-        // badges stable-but-wrong, which a stability heuristic would happily
-        // time as a fast result. Same reasoning as artist-events-interactions
-        // .spec.js's own preference for waitForColHeaderUniqCount().
-        headerCountColumn: d.UNIQ_COUNT_COLUMN,
-        headerCountTotal: d.UNIQ_COUNT_TOTAL,
-        headerCountFilterValue: d.UNIQ_COUNT_FILTER_VALUE,
-        headerCountFilterUniq: d.UNIQ_COUNT_FILTER_UNIQ,
-    };
+function scope(config) {
+    return { tableIndex: config.subTableIndex };
 }
 
-/** Every instrumented pageType, keyed by its `--pageType=` value. */
-const ARMS = {
-    'artist-events': toArm('artist-events', artistEvents),
-    'artist-releases-dylan': toArm('artist-releases-dylan', dylanArtistReleases),
-};
+/**
+ * The `<table>` a per-table metric acts on, for the locators that take an
+ * element rather than an option bag.
+ *
+ * @param {import('playwright').Page} page
+ * @param {ReturnType<typeof toArm>} config
+ * @returns {import('playwright').Locator}
+ */
+function metricTable(page, config) {
+    return page.locator('table.tbl').nth(config.subTableIndex);
+}
 
 /**
- * Picard-column arms, selected with `--arm=`.
+ * Where a sort writes its completion status.
  *
- * The three of them separate two PERFORMANCE.org steps that have never been
- * told apart, because the harness had no page carrying a Picard column at all:
+ * A multi-table sort writes ONLY its own group's `h3 .mb-sort-status` and never
+ * touches `#mb-sort-status-display` — confirmed empirically, and
+ * `waitForSortSettled()`'s own JSDoc records that omitting the group makes the
+ * wait time out on a page that sorted perfectly well. It is resolved here by
+ * INDEX and handed over as `statusLocator`, which is that function's documented
+ * escape hatch: a `hasText` lookup on this very page can land on a view-hidden
+ * section whose heading merely contains the wanted one.
  *
- *   absent    — `sa_enable_picard_tagger: false`. No column, so no <td> in any
- *               of the five O(rows x columns) walks. The whole Picard prize,
- *               Steps 23 and 32 together, is `collapsed - absent`... plus the
- *               one extra column's own share of those walks, which is Step
- *               32's stated, unfixable residue.
- *   collapsed — the shipped default since 9.99.1057. The column exists and is
- *               walked; its CELL CONTENT is not built.
- *   expanded  — `sa_picard_tagger_initially_collapsed: false`, i.e. the
- *               pre-9.99.1057 behaviour. `expanded - collapsed` is exactly
- *               what Step 32 banked, and what Step 23 still has to win on a
- *               page where the user opens the column.
+ * `h3.mb-toggle-h3` is index-aligned with `table.tbl` (measured: 47 of each on
+ * `artist-releasegroups`, and every heading's own `(N)` matches its table's row
+ * count). `null` on a single-table page, where the page-wide display is right.
  *
- * Meaningless on a pageType with no Picard column — `artist-events` has no
- * /release/<mbid> links, so all three arms are identical there. That is not
- * an error worth blocking on, but it IS worth saying out loud, since a run
- * that silently reports three identical arms looks like a bug in the feature.
- *
- * @type {Object<string, Object<string, *>>}
+ * @param {import('playwright').Page} page
+ * @param {ReturnType<typeof toArm>} config
+ * @returns {import('playwright').Locator|undefined}
  */
-const PICARD_ARMS = {
-    absent:    { sa_enable_picard_tagger: false },
-    collapsed: { sa_enable_picard_tagger: true, sa_picard_tagger_initially_collapsed: true },
-    expanded:  { sa_enable_picard_tagger: true, sa_picard_tagger_initially_collapsed: false },
-};
+function sortStatusLocator(page, config) {
+    if (config.tableMode !== 'multi') return undefined;
+    return page.locator('h3.mb-toggle-h3').nth(config.subTableIndex).locator('.mb-sort-status');
+}
 
 /**
  * `--label=<name>` overrides the branch-derived PREFIX of the output
@@ -218,13 +210,18 @@ const PICARD_ARMS = {
  * ShowAllEntityData.user.js stashed" note), which would otherwise write
  * `main`'s numbers under the branch's name.
  *
- * `--arm=absent|collapsed|expanded` selects a PICARD_ARMS seed override and,
- * unless `--label=` says otherwise, appends itself to the output filename — so
- * three arms of the same branch land side by side instead of overwriting each
- * other. See PICARD_ARMS for what the three separate.
+ * `--arm=absent|collapsed|expanded` selects a seed override and, unless
+ * `--label=` says otherwise, appends itself to the output filename — so three
+ * arms of the same branch land side by side instead of overwriting each other.
+ * See `perfDescriptors.js`'s `PICARD_ARMS` for what the three separate, and its
+ * `NO_PICARD_COLUMN` for the two pageTypes where they are all the same thing.
+ *
+ * `--samples=N` overrides `DEFAULT_SAMPLES` for plumbing checks only; see that
+ * constant's own JSDoc.
  *
  * @param {string[]} argv
- * @returns {{ pageType: string|null, label: string|null, arm: string|null }}
+ * @returns {{ pageType: string|null, label: string|null, arm: string|null,
+ *   samples: number }}
  */
 function parseArgs(argv) {
     const arg = argv.find((a) => a.startsWith('--pageType='));
@@ -301,9 +298,21 @@ async function loadPage(browser, config) {
     // startFetchingProcess() (the live "Show all" fetch pipeline only) and
     // is never triggered by loadFromDiskFixture()'s hydration path; see
     // artist-events-interactions.spec.js's identical note.
-    await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
+    // 120 s on a multi-table arm: renderGroupedTable() builds 47 <h3>/<table>
+    // pairs and clones every row into them, where the single-table path moves
+    // its rows. The probe needed the same allowance.
+    await waitForRenderComplete(page, {
+        waitForAutoResize: false,
+        timeout: config.tableMode === 'multi' ? 120000 : 60000,
+    });
+    // Multi-table only, and BEFORE every measurement bracket: 45 of
+    // artist-releasegroups' 47 sub-tables render display:none despite the
+    // master toggle reading "expanded", so a per-table metric's target is a
+    // 0x0 element Playwright will never click. See that helper's own JSDoc.
+    if (config.tableMode === 'multi') await ensureSubTableVisible(page, config.subTableIndex);
     return page;
 }
+
 
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureGlobalFilterOnce(browser, config, value) {
@@ -320,7 +329,9 @@ async function measureGlobalFilterOnce(browser, config, value) {
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {string} value @returns {Promise<number>} */
 async function measureColumnFilterOnce(browser, config, value) {
     const page = await loadPage(browser, config);
-    const input = columnFilterInput(page, await columnIndex(page, config.filterColumn));
+    const colIdx = await columnIndex(page, config.filterColumn, scope(config));
+    if (colIdx < 0) throw new Error(`column "${config.filterColumn}" not found in sub-table ${config.subTableIndex}`);
+    const input = columnFilterInput(page, colIdx, scope(config));
     await input.click();
     const start = Date.now();
     await waitForFilterSettled(page, () => input.pressSequentially(value));
@@ -332,10 +343,10 @@ async function measureColumnFilterOnce(browser, config, value) {
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @param {boolean} ascending @returns {Promise<number>} */
 async function measureSortOnce(browser, config, ascending) {
     const page = await loadPage(browser, config);
-    const columnTh = page.locator('table.tbl thead th', { hasText: config.sortColumn }).first();
+    const columnTh = metricTable(page, config).locator('thead th', { hasText: config.sortColumn }).first();
     const btn = columnTh.locator('.sort-icon-btn', { hasText: ascending ? '▲' : '▼' }).first();
     const start = Date.now();
-    await waitForSortSettled(page, () => btn.click());
+    await waitForSortSettled(page, () => btn.click(), { statusLocator: sortStatusLocator(page, config) });
     const ms = Date.now() - start;
     await page.close();
     return ms;
@@ -344,7 +355,9 @@ async function measureSortOnce(browser, config, ascending) {
 /** @param {import('playwright').Browser} browser @param {ReturnType<typeof toArm>} config @returns {Promise<{coldMs: number, warmMs: number}>} */
 async function measureUniqDropColdWarmOnce(browser, config) {
     const page = await loadPage(browser, config);
-    const wrap = page.locator('table.tbl thead th', { hasText: config.uniqDropColumn }).first().locator('.mb-col-uniq-wrap');
+    const wrap = metricTable(page, config)
+        .locator('thead th', { hasText: config.uniqDropColumn }).first()
+        .locator('.mb-col-uniq-wrap');
     const dropdown = page.locator('#mb-col-uniq-dropdown');
 
     // el.click() (a plain DOM click dispatched in-page), NOT Playwright's
@@ -388,8 +401,9 @@ async function measureUniqDropColdWarmOnce(browser, config) {
 async function measureHeaderCountsInitialOnce(browser, config) {
     const page = await loadPage(browser, config);
     const start = Date.now();
-    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
-    await waitForColHeaderCountsStable(page);
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal,
+        { timeout: 120000, ...scope(config) });
+    await waitForColHeaderCountsStable(page, { timeout: config.tableMode === 'multi' ? 300000 : 90000 });
     const ms = Date.now() - start;
     await page.close();
     return ms;
@@ -410,26 +424,31 @@ async function measureHeaderCountsInitialOnce(browser, config) {
  */
 async function measureHeaderCountsRestoreOnce(browser, config) {
     const page = await loadPage(browser, config);
-    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
-    await waitForColHeaderCountsStable(page);
+    const stableTimeout = config.tableMode === 'multi' ? 300000 : 90000;
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal,
+        { timeout: 120000, ...scope(config) });
+    await waitForColHeaderCountsStable(page, { timeout: stableTimeout });
 
-    const colIdx = await columnIndex(page, config.headerCountColumn);
+    const colIdx = await columnIndex(page, config.headerCountColumn, scope(config));
+    if (colIdx < 0) throw new Error(`column "${config.headerCountColumn}" not found in sub-table ${config.subTableIndex}`);
 
     // .click() then .pressSequentially() — column filter inputs are
     // readonly-until-a-genuine-trusted-interaction (anti-autofill hardening),
     // and .fill() is rejected by _isGenuineFilterInputEvent().
-    const colInput = columnFilterInput(page, colIdx);
+    const colInput = columnFilterInput(page, colIdx, scope(config));
     await colInput.click();
     await waitForFilterSettled(page, () => colInput.pressSequentially(config.headerCountFilterValue));
-    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountFilterUniq, { timeout: 120000 });
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountFilterUniq,
+        { timeout: 120000, ...scope(config) });
 
     // The per-column ✕ clears the value, re-focuses the input and calls
     // runFilter() immediately — undebounced, unlike typing, so the bracket
     // below is the re-render plus the header-count scan and nothing else.
     const start = Date.now();
-    await columnFilterClear(page, colIdx).click();
-    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal, { timeout: 120000 });
-    await waitForColHeaderCountsStable(page);
+    await columnFilterClear(page, colIdx, scope(config)).click();
+    await waitForColHeaderUniqCount(page, config.headerCountColumn, config.headerCountTotal,
+        { timeout: 120000, ...scope(config) });
+    await waitForColHeaderCountsStable(page, { timeout: stableTimeout });
     const ms = Date.now() - start;
     await page.close();
     return ms;
@@ -484,28 +503,17 @@ async function runAll(browser, config) {
         console.warn(`  NOTE: --samples=${SAMPLES} — a plumbing check, NOT a publishable arm. `
             + `Every number in tests/MEASUREMENTS.org is a median of ${DEFAULT_SAMPLES}.`);
     }
-    const base = ARMS[pageType];
-    if (!base) {
-        console.error(`Unknown --pageType=${pageType}. Supported: ${Object.keys(ARMS).join(', ')}`);
+    // toArm()/applyPicardArm() throw with the supported list rather than
+    // returning undefined, and both live in perfDescriptors.js so that adding
+    // a pageType is one edit rather than three (see that module's header).
+    let config;
+    try {
+        config = applyPicardArm(toArm(pageType), arm);
+    } catch (err) {
+        console.error(err.message);
+        console.error(`Supported --pageType=: ${pageTypeList().join(', ')}`);
+        console.error(`Supported --arm=: ${Object.keys(PICARD_ARMS).join(', ')}`);
         process.exit(1);
-    }
-    if (arm && !PICARD_ARMS[arm]) {
-        console.error(`Unknown --arm=${arm}. Supported: ${Object.keys(PICARD_ARMS).join(', ')}`);
-        process.exit(1);
-    }
-
-    // The arm's seeds are merged ON TOP of the descriptor's, so a descriptor
-    // keeps control of everything the arm does not name (CAA and Relationships
-    // stay off, which the arm must never be able to re-enable — that would put
-    // thousands of live requests inside a timing bracket).
-    const config = arm
-        ? { ...base, seedGmValues: { ...base.seedGmValues, ...PICARD_ARMS[arm] } }
-        : base;
-
-    if (arm && pageType === 'artist-events') {
-        console.warn(`  NOTE: --arm=${arm} has no effect on artist-events — that page has no `
-            + '/release/<mbid> links, so it never gets a Picard column and all three arms '
-            + 'measure the same thing.');
     }
 
     const branch = readCurrentBranch();
@@ -513,23 +521,36 @@ async function runAll(browser, config) {
     const startedAt = new Date();
     const capturedAt = startedAt.toISOString().slice(0, 10);
     const scriptVersion = readScriptVersion();
-    const host = hostnameForFilename(machineInfo().hostname);
     const browser = await chromium.launch();
     try {
         const interactions = await runAll(browser, config);
 
-        const fileNameParts = [
-            'interaction-perf',
-            sanitizeForFilename(outName),
-            versionForFilename(scriptVersion),
+        // archiveFileStem(), not a hand-rolled parts array. runMetadata.js's
+        // own header says this script "requires them from here", and it did —
+        // for the pieces, while still assembling the stem itself, so the two
+        // capture scripts could have drifted on the convention at any time
+        // without anything failing. They agree; nothing enforced it.
+        const stem = archiveFileStem({
+            prefix: 'interaction-perf',
+            label: outName,
+            version: scriptVersion,
             capturedAt,
-        ];
-        if (host) fileNameParts.push(host);
-        const outPath = path.join(SNAPSHOTS_DIR, config.pageType, `${fileNameParts.join('-')}.json`);
+        });
+        const outPath = path.join(SNAPSHOTS_DIR, config.pageType, `${stem}.json`);
         fs.mkdirSync(path.dirname(outPath), { recursive: true });
         fs.writeFileSync(outPath, JSON.stringify({
             pageType: config.pageType,
             url: config.url,
+            // Recorded because it decides how the numbers may be read: on a
+            // 'multi' arm the columnFilter/sort/uniqDrop* metrics and both
+            // headerCounts* BADGE assertions act on sub-table
+            // `subTableIndex` alone, while globalFilter and the
+            // header-count SETTLE are page-wide, and `sort` additionally
+            // takes Step 18's scoped re-render path. See
+            // perfDescriptors.js's multi-table contract.
+            tableMode: config.tableMode,
+            subTableIndex: config.tableMode === 'multi' ? config.subTableIndex : null,
+            totalRows: config.totalRows,
             picardArm: arm || null,
             seedGmValues: config.seedGmValues,
             branch: outName,

@@ -1,15 +1,37 @@
 'use strict';
 
 /**
- * Counts the DOM work each interaction performs on the `artist-events`
+ * Counts the DOM work each interaction performs on an instrumented perf
  * fixture, and writes it to
- * `tests/snapshots/artist-events/pass-cost-<label>-<version>-<capturedAt>[-<hostname>].json`.
+ * `tests/snapshots/<pageType>/pass-cost-<label>-<version>-<capturedAt>[-<hostname>].json`.
  *
  * Usage:
  *   node tests/support/capture-pass-cost.js
  *   node tests/support/capture-pass-cost.js --label=main
+ *   node tests/support/capture-pass-cost.js --pageType=artist-releasegroups
+ *   node tests/support/capture-pass-cost.js --pageType=artist-releases-dylan --arm=expanded
  *   node tests/support/capture-pass-cost.js --stack-rate=1     (slow, exact attribution)
  *   node tests/support/capture-pass-cost.js --top=25
+ *
+ * `--pageType=` defaults to `artist-events` — every committed arm before
+ * 2026-09-10 is that page, and it stays the default so those remain the
+ * comparison target. It was also, until that date, the ONLY page this script
+ * could measure: the pageType was a hardcoded `const` plus a direct
+ * `artistEventsFixture` require, which made the one instrument that can prove
+ * a listener count went to zero (`addEventListener`, with a `byEventType`
+ * breakdown) unusable on the two features whose listeners PERFORMANCE.org
+ * Steps 23 and 24 are about — `artist-events` has neither a Picard column nor
+ * an ERG button. Registered pageTypes now live in `perfDescriptors.js`.
+ *
+ * `--arm=absent|collapsed|expanded` seeds the Picard settings, same three arms
+ * and same filename suffix as `capture-interaction-perf.js`. A no-op on a
+ * pageType whose rows carry no `/release/<mbid>` link, which the registry warns
+ * about rather than silently reporting three identical arms.
+ *
+ * On a MULTI-table pageType the two filter phases act on ONE sub-table (the
+ * descriptor's `SUB_TABLE_INDEX`) while `initialRender` and `postClearSettle`
+ * are page-wide — see `perfDescriptors.js`'s multi-table contract before
+ * comparing such an arm to a single-table one.
  *
  * This is the counting sibling of `capture-interaction-perf.js`, and the two
  * must stay separate: the instrument this one installs wraps hot DOM APIs, so
@@ -64,22 +86,23 @@ const { seedGmValues } = require('./gmStubs');
 const { waitForRenderComplete } = require('./browser');
 const {
     waitForFilterSettled, waitForColHeaderCountsStable,
-    columnIndex, columnFilterInput, columnFilterClear,
+    columnIndex, columnFilterInput, columnFilterClear, ensureSubTableVisible,
 } = require('./filterSortAssertions');
 const { installDomCounters, measureDomCost } = require('./domCounters');
 const {
     readScriptVersion, machineInfo, readCurrentBranch, archiveFileStem,
 } = require('./runMetadata');
 const {
-    URL, FIXTURE_PATH, SEED_GM_VALUES, FILTER_COLUMN, FILTER_VALUE, TOTAL_ROWS,
-} = require('./artistEventsFixture');
+    toArm, pageTypeList, applyPicardArm, PICARD_ARMS,
+} = require('./perfDescriptors');
 
 const SNAPSHOTS_DIR = path.join(__dirname, '..', 'snapshots');
-const PAGE_TYPE = 'artist-events';
+const DEFAULT_PAGE_TYPE = 'artist-events';
 
 /**
  * @param {string[]} argv
- * @returns {{label: string|null, stackRate: number, top: number}}
+ * @returns {{pageType: string, arm: string|null, label: string|null,
+ *   stackRate: number, top: number}}
  */
 function parseArgs(argv) {
     const val = (name, dflt) => {
@@ -87,6 +110,8 @@ function parseArgs(argv) {
         return hit ? hit.slice(name.length + 3) : dflt;
     };
     return {
+        pageType: val('pageType', DEFAULT_PAGE_TYPE),
+        arm: val('arm', null),
         label: val('label', null),
         stackRate: Number(val('stack-rate', '200')),
         top: Number(val('top', '12')),
@@ -111,7 +136,22 @@ function summarize(name, c) {
 }
 
 async function run() {
-    const { label, stackRate, top } = parseArgs(process.argv.slice(2));
+    const { pageType, arm, label, stackRate, top } = parseArgs(process.argv.slice(2));
+    let config;
+    try {
+        config = applyPicardArm(toArm(pageType), arm);
+    } catch (err) {
+        console.error(err.message);
+        console.error(`Supported --pageType=: ${pageTypeList().join(', ')}`);
+        console.error(`Supported --arm=: ${Object.keys(PICARD_ARMS).join(', ')}`);
+        process.exit(1);
+    }
+    // On a multi-table page every per-table locator has to be scoped, or the
+    // column filter lands in whichever sub-table comes first in document
+    // order — 21 of artist-releasegroups' 2143 rows. See
+    // perfDescriptors.js's multi-table contract.
+    const tableScope = { tableIndex: config.subTableIndex };
+    const stableTimeout = config.tableMode === 'multi' ? 300000 : 90000;
     const startedAt = new Date();
     const capturedAt = startedAt.toISOString().slice(0, 10);
     const scriptVersion = readScriptVersion();
@@ -125,23 +165,38 @@ async function run() {
         // and the userscript is injected after navigation, so registering
         // here is what guarantees the wrappers see its very first call.
         await installDomCounters(page, { stackSampleRate: stackRate });
-        await seedGmValues(page, SEED_GM_VALUES);
+        await seedGmValues(page, config.seedGmValues);
 
         phases.initialRender = await measureDomCost(page, async () => {
-            await loadFromDiskFixture(page, { url: URL, fixturePath: FIXTURE_PATH, testMode: true });
+            await loadFromDiskFixture(page, {
+                url: config.url, fixturePath: config.fixturePath, testMode: true,
+            });
             // waitForAutoResize: false — the auto-resize-on-load pass lives in
             // startFetchingProcess(), which the disk-load path never enters.
-            await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
+            await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 120000 });
         }, { top });
 
         // Let the deferred header-count scan finish before the first filter,
         // so its cost lands in initialRender rather than leaking into
         // filterApply and making that phase look worse than a pass really is.
-        await waitForColHeaderCountsStable(page);
+        await waitForColHeaderCountsStable(page, { timeout: stableTimeout });
 
-        const colIdx = await columnIndex(page, FILTER_COLUMN);
-        if (colIdx < 0) throw new Error(`column "${FILTER_COLUMN}" not found in the rendered header`);
-        const input = columnFilterInput(page, colIdx);
+        // Multi-table only: most sub-tables render display:none despite the
+        // master toggle reading "expanded", so the column-filter input the two
+        // filter phases below type into is otherwise a 0x0 element. Done AFTER
+        // initialRender is measured, so the expansion is not counted as part
+        // of the render, and BEFORE either filter phase. See that helper's
+        // JSDoc for the measured numbers.
+        if (config.tableMode === 'multi') {
+            await ensureSubTableVisible(page, config.subTableIndex);
+        }
+
+        const colIdx = await columnIndex(page, config.filterColumn, tableScope);
+        if (colIdx < 0) {
+            throw new Error(`column "${config.filterColumn}" not found in `
+                + `${config.pageType}'s sub-table ${config.subTableIndex}`);
+        }
+        const input = columnFilterInput(page, colIdx, tableScope);
 
         // .click() then .pressSequentially(): the column-filter inputs are
         // readonly until a genuine trusted interaction (anti-autofill
@@ -149,14 +204,14 @@ async function run() {
         await input.click();
 
         phases.filterApply = await measureDomCost(page, async () => {
-            await waitForFilterSettled(page, () => input.pressSequentially(FILTER_VALUE));
+            await waitForFilterSettled(page, () => input.pressSequentially(config.filterValue));
         }, { top });
 
         // The ✕ button, for the same reason — and it calls runFilter()
         // directly and UNDEBOUNCED, so this phase is one pass with no
         // debounce window folded into it.
         phases.filterClear = await measureDomCost(page, async () => {
-            await waitForFilterSettled(page, () => columnFilterClear(page, colIdx).click());
+            await waitForFilterSettled(page, () => columnFilterClear(page, colIdx, tableScope).click());
         }, { top });
 
         // Everything the clear DEFERRED: the post-render row passes plus the
@@ -164,15 +219,21 @@ async function run() {
         // full table. That is the expensive direction, and the one Step 3's
         // LRU exists for.
         phases.postClearSettle = await measureDomCost(page, async () => {
-            await waitForColHeaderCountsStable(page);
+            await waitForColHeaderCountsStable(page, { timeout: stableTimeout });
         }, { top });
 
+        // Page-wide, deliberately, on both table modes: a column filter in one
+        // sub-table narrows only that sub-table, so a page-wide tally still
+        // has to come back to the descriptor's TOTAL_ROWS once it is cleared.
+        // A short count here means the clear did not take, which would
+        // understate every counter above.
         const rows = await page.evaluate(
             () => document.querySelectorAll('table.tbl tbody tr').length
         );
-        if (rows !== TOTAL_ROWS) {
-            console.warn(`  WARNING: ${rows} rows rendered, fixture declares ${TOTAL_ROWS} —`
-                + ' the filter may not have cleared, which would understate every count.');
+        if (rows !== config.totalRows) {
+            console.warn(`  WARNING: ${rows} rows rendered, ${config.pageType}'s descriptor `
+                + `declares ${config.totalRows} — the filter may not have cleared, which would `
+                + 'understate every count.');
         }
 
         await page.close();
@@ -180,17 +241,30 @@ async function run() {
         await browser.close();
     }
 
+    // `--arm=` joins the label the same way capture-interaction-perf.js does
+    // it, so three arms of one branch land side by side instead of
+    // overwriting each other.
+    const armLabel = label || (arm ? `${readCurrentBranch()}-picard-${arm}` : readCurrentBranch());
     const stem = archiveFileStem({
         prefix: 'pass-cost',
-        label: label || readCurrentBranch(),
+        label: armLabel,
         version: scriptVersion,
         capturedAt,
     });
-    const outPath = path.join(SNAPSHOTS_DIR, PAGE_TYPE, `${stem}.json`);
+    const outPath = path.join(SNAPSHOTS_DIR, config.pageType, `${stem}.json`);
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
     fs.writeFileSync(outPath, JSON.stringify({
-        pageType: PAGE_TYPE,
-        url: URL,
-        label: label || readCurrentBranch(),
+        pageType: config.pageType,
+        url: config.url,
+        // See capture-interaction-perf.js's identical fields: on a 'multi' arm
+        // the filter phases below act on sub-table `subTableIndex`, so the
+        // counts are not comparable to a single-table arm's.
+        tableMode: config.tableMode,
+        subTableIndex: config.tableMode === 'multi' ? config.subTableIndex : null,
+        totalRows: config.totalRows,
+        picardArm: arm || null,
+        seedGmValues: config.seedGmValues,
+        label: armLabel,
         branch: readCurrentBranch(),
         scriptVersion,
         capturedAt,
@@ -203,7 +277,7 @@ async function run() {
         phases,
     }, null, 2) + '\n');
 
-    console.log(`${PAGE_TYPE} [pass-cost] -> ${path.relative(process.cwd(), outPath)}`);
+    console.log(`${config.pageType} [pass-cost, ${armLabel}] -> ${path.relative(process.cwd(), outPath)}`);
     for (const [name, c] of Object.entries(phases)) console.log(summarize(name, c));
 }
 

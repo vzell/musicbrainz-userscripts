@@ -411,12 +411,16 @@ the same code twice:
   matters most on a *narrow* filter, which is the case Steps 1/2 measured
   worst on: ~M~ shrinks, these three tallies stay at 4174.
 - *23* removes the remaining per-pass teardown-and-rebuild of interactive cell
-  elements. On a DEFAULT-configured page that is *ERG alone* — 4286
-  ~[data-erg-btn]~ on ~artist-releasegroups~, ~2301 on ~artist-releases-dylan~,
-  each one costing a ~document.getElementById~, a detached ~<table>~, a
-  ~<span>~ and two ~addEventListener~ per pass. The Picard share applies to a
-  page where the user has UNCOLLAPSED the column (19% of a global-filter
-  keystroke, 21% of a header-count restore there) and to the first build.
+  elements. On a DEFAULT-configured page that is *ERG alone*, and it is now
+  MEASURED rather than estimated: on ~artist-releasegroups~ a single filter
+  clear issues *8572 ~addEventListener~* from ~ergCreateButton~ — exactly
+  2 x 4286 ~[data-erg-btn]~, since each button gets a glyph-toggle and a
+  lazy-loader ~mousedown~ — alongside a ~document.getElementById~, a detached
+  ~<table>~ and a ~<span>~ per button. (~artist-releases-dylan~ carries ~2301
+  buttons; ~artist-events~ carries none, which is why no committed count on that
+  page has ever included this.) The Picard share applies to a page where the
+  user has UNCOLLAPSED the column (19% of a global-filter keystroke, 21% of a
+  header-count restore there) and to the first build.
 
 *This tier's own "measure the Picard prize first" instruction is DISCHARGED*,
 2026-09-10. Both knobs were run as three arms on ~artist-releases-dylan~ —
@@ -437,22 +441,56 @@ Step 34 measured rather than estimated the headline is sharper than the original
 of that. Confirm each by count as it lands, then take ONE A/B timing arm at the
 end of the tier.
 
-*Two harness gaps block the "by count" half of that for Steps 23 and 24*, and
-Tier 0 did not notice them because its one arm is a page with neither of the
-features in question:
+*Both harness gaps below are now CLOSED*, 2026-09-10 — ~capture-pass-cost.js~
+takes ~--pageType=~/~--arm=~, and ~artist-releasegroups~ is instrumented as the
+first ~tableMode: 'multi'~ arm. What they had been hiding, from the first
+multi-table count arm (full table in ~tests/MEASUREMENTS.org~):
 
-- ~capture-pass-cost.js~ is *hardcoded* to ~artist-events~ (a ~const
-  PAGE_TYPE~ plus a direct ~artistEventsFixture~ require; there is no
-  ~--pageType=~ flag). Its ~addEventListener~/~byEventType~ counters are the
-  only instrument that can prove a listener count went to zero, and its single
-  committed arm sits on the one instrumented page that has no Picard column and
-  no ERG button.
-- *No ~tableMode: 'multi'~ pageType is instrumented for interaction perf at
-  all* — both ~ARMS~ entries are single-table — yet ~renderGroupedTable~'s
-  always-clone path is where the whole re-wire-after-clone family costs the
-  most. A pageType also has to be registered in *three* places today (~ARMS~,
+- *Step 34 leads in BOTH table modes.* ~_stripTransientCellState~ takes *71%*
+  of a multi-table filter clear's 323 422 ~querySelectorAll~ (against 97.5% of
+  ~artist-events~' 1 078 372). Lower share, same first place.
+- *Step 23's ERG cost has a number* — 8572 ~addEventListener~ per clear, above.
+- *A multi-table clear renders TWICE*: ~cloneNodeDeepTr~ is 4286 for 2143 rows
+  and ~getComputedStyle~ is 38 575 for 19 287 cells, both exactly 2x, against
+  the single-table arm's exactly-1x. Recorded as an observation and NOT
+  diagnosed — it is Step 27/31 territory, and it would halve both of them, so
+  chase it before either is estimated.
+- *The deferred-work phase boundary inverts.* ~postClearSettle~ is empty on a
+  multi-table arm (5 ~querySelectorAll~, zero of everything else) because
+  ~renderGroupedTable()~ has no ~await~ and is complete when it returns, so the
+  post-render passes land inside ~filterClear~. Read the two phases together —
+  which the single-table arm needed for the opposite reason.
+
+The gaps, for the record, since Tier 0 did not notice them and the reason it
+did not is worth keeping — its one arm is a page with neither of the features
+in question:
+
+- ~capture-pass-cost.js~ *was hardcoded* to ~artist-events~ (a ~const
+  PAGE_TYPE~ plus a direct ~artistEventsFixture~ require, and no ~--pageType=~
+  flag). Its ~addEventListener~/~byEventType~ counters are the only instrument
+  that can prove a listener count went to zero, and its single committed arm
+  sat on the one instrumented page with neither a Picard column nor an ERG
+  button — so neither Step 23's nor Step 24's listener half was countable
+  anywhere.
+- *No ~tableMode: 'multi'~ pageType was instrumented at all*, for interaction
+  latency or for counts, yet ~renderGroupedTable~'s always-clone path is where
+  the whole re-wire-after-clone family costs the most. A pageType also had to
+  be registered in *three* places (the interaction script's ~ARMS~,
   ~scripts/probe-fixture-columns.js~'s ~DESCRIPTORS~, and that ~const
   PAGE_TYPE~), which is the drift ~runMetadata.js~ was extracted to prevent.
+  All three now read ~tests/support/perfDescriptors.js~.
+
+*And a third gap the fix ran straight into, worth knowing before writing any
+multi-table test:* on ~artist-releasegroups~, ~.mb-master-toggle~ reports
+~data-state="expanded"~ and reads "Hide all sub-sections" while *45 of the 47
+sub-tables are ~display:none~* — only sub-table 0 (21 of 2143 rows) and one
+other are shown. A hidden sub-table's filter input, ✕, sort button and 📊 wrap
+all measure 0x0, which Playwright will never click; the first smoke run died on
+exactly that. CLAUDE.md's "do not trust ~.mb-master-toggle~'s ~data-state~"
+warning is this, quantified. ~filterSortAssertions.js~'s
+~ensureSubTableVisible()~ is the shared answer, and
+~scripts/probe-multitable-metric-targets.js~ is how to ask the question again
+on some other page.
 
 *** Tier 2 — scope and defer
 
@@ -2689,11 +2727,15 @@ qualifications, both added 2026-09-10:
   that boundary: a clear records zero ~getComputedStyle~ while the phase after
   it records all 87 654.
 
-This step is also the reason ~capture-pass-cost.js~ needs a ~--pageType=~ flag
-(it is hardcoded to ~artist-events~) — the multi-table, always-clone path in
-~renderGroupedTable~ calls this function more often than any single-table page
-does, and no ~tableMode: 'multi'~ arm can be captured until that flag exists.
-See Tier 1's "Two harness gaps" note.
+*Confirmed to lead on a multi-table page too*, 2026-09-10, once
+~capture-pass-cost.js~ gained a ~--pageType=~ flag and ~artist-releasegroups~
+was instrumented: ~_stripTransientCellState~ takes *71%* of that page's
+323 422 ~querySelectorAll~ per filter clear (19 287 cells against
+~artist-events~' 87 654). Lower share than 97.5%, same first place — so this
+step is not an artefact of the one page it was found on. Note also that a
+multi-table arm's ~postClearSettle~ is EMPTY, since ~renderGroupedTable()~ has
+no ~await~ and the post-render passes land inside ~filterClear~; the "read the
+two phases together" rule holds for the opposite reason there.
 
 *It also shrinks Step 1.* Fix C stops cloning rows, and these calls are made
 on the clones — so Step 1 would remove this cost as a side effect, and landing

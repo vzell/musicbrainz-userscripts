@@ -1,0 +1,253 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 4174,
+  "picardArm": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false
+  },
+  "label": "main",
+  "branch": "instrument-artist-releasegroups-perf",
+  "scriptVersion": "9.99.1058+2026-09-10",
+  "capturedAt": "2026-09-10",
+  "startedAt": "2026-09-10T14:34:15.313Z",
+  "finishedAt": "2026-09-10T14:34:41.597Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 35.4,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 16.5
+    },
+    "claudeSinceBoot": true
+  },
+  "instrument": {
+    "stackSampleRate": 200,
+    "topN": 12
+  },
+  "note": "DOM operation COUNTS, not timings. The instrument distorts timings; see tests/support/domCounters.js.",
+  "phases": {
+    "initialRender": {
+      "getComputedStyle": 175309,
+      "querySelector": 322478,
+      "querySelectorAll": 2364742,
+      "cloneNode": 4201,
+      "cloneNodeDeep": 4201,
+      "cloneNodeDeepTr": 4174,
+      "createTreeWalker": 0,
+      "createElement": 92450,
+      "addEventListener": 17297,
+      "getBoundingClientRect": 6,
+      "layoutGetter": 8374,
+      "bySelector": {
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 350617,
+        ".mb-cell-collapse-toggle": 350616,
+        "[data-caa-expand-btn]": 179482,
+        "a[data-caa-enriched], a[data-eaa-enriched]": 175308,
+        "li.mb-caa-art-li-image, li.mb-eaa-art-li-image": 175308,
+        "span.caa-icon, span.eaa-icon, span.artwork-icon": 175308,
+        ".mb-art-cache-hint-col-wrap": 175308,
+        ".mb-art-cache-hint-col": 175308,
+        ".mb-art-cache-hint-big, .mb-art-cache-hint-inline": 175308,
+        "[data-erg-btn]": 175308,
+        "[data-erg-injected]": 175308,
+        ".mb-live-date-flag": 98154
+      },
+      "byTagName": {
+        "td": 87654,
+        "tr": 4176,
+        "span": 333,
+        "div": 106,
+        "input": 55,
+        "th": 42,
+        "button": 37,
+        "label": 27,
+        "style": 11,
+        "script": 4,
+        "nav": 1,
+        "select": 1
+      },
+      "byEventType": {
+        "mouseleave": 8356,
+        "mouseenter": 8353,
+        "click": 143,
+        "focus": 65,
+        "keydown": 64,
+        "mousedown": 54,
+        "blur": 43,
+        "input": 29,
+        "change": 26,
+        "mouseup": 8,
+        "mousemove": 6,
+        "keypress": 4
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 10481,
+        "querySelector <- _stripTransientCellState": 958,
+        "getComputedStyle <- _apply": 877,
+        "querySelectorAll <- _countLiveDateFlags": 490,
+        "querySelectorAll <- normalizeCommentSpans": 438,
+        "createElement <- _hydrateAndRenderFromSnapshotData": 417,
+        "querySelector <- _findCellListItems": 256,
+        "querySelector <- initCollapsableColumns": 245,
+        "querySelectorAll <- _findCellListItems": 229,
+        "addEventListener <- _apply": 83,
+        "querySelector <- _msAnyStamped": 62,
+        "querySelectorAll <- _stripIfMatch": 47
+      }
+    },
+    "filterApply": {
+      "getComputedStyle": 3318,
+      "querySelector": 44669,
+      "querySelectorAll": 53051,
+      "cloneNode": 163,
+      "cloneNodeDeep": 163,
+      "cloneNodeDeepTr": 158,
+      "createTreeWalker": 5438,
+      "createElement": 159,
+      "addEventListener": 316,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 316,
+      "bySelector": {
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 6638,
+        ".mb-cell-collapse-toggle": 6636,
+        ".mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,.mb-inline-art-sort-key,.mb-caa-sort-key,.mb-eaa-sort-key,.mb-cell-collapse-toggle": 5285,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight, .mb-pre-filter-highlight, .mb-subtable-filter-highlight": 5280,
+        ".mb-ic-wrap": 5280,
+        "ul.mb-caa-art-ul": 5280,
+        "[class*=\"jesus2099\"], .treleases": 4175,
+        "td[data-mb-ms]": 4174,
+        "td[data-mb-len-flag]": 4174,
+        "td span.mp": 4174,
+        ".mb-inline-art-sort-key": 4016,
+        "[data-caa-expand-btn]": 3476
+      },
+      "byTagName": {
+        "span": 159
+      },
+      "byEventType": {
+        "mouseenter": 158,
+        "mouseleave": 158
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 200,
+        "querySelector <- getCleanColumnText": 124,
+        "querySelectorAll <- _stripJesus2099InTable": 21,
+        "querySelector <- _msAnyStamped": 21,
+        "querySelector <- _countLengthMismatchRows": 21,
+        "querySelector <- _rowHasPendingEdits": 21,
+        "createTreeWalker <- getCleanColumnText": 18,
+        "querySelectorAll <- normalizeCommentSpans": 17,
+        "getComputedStyle <- _apply": 16,
+        "querySelectorAll <- _countLiveDateFlags": 16,
+        "querySelector <- _stripTransientCellState": 15,
+        "querySelectorAll <- _findCellListItems": 14
+      }
+    },
+    "filterClear": {
+      "getComputedStyle": 0,
+      "querySelector": 114246,
+      "querySelectorAll": 1079876,
+      "cloneNode": 4337,
+      "cloneNodeDeep": 4337,
+      "cloneNodeDeepTr": 4174,
+      "createTreeWalker": 4632,
+      "createElement": 2,
+      "addEventListener": 1,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 0,
+      "bySelector": {
+        ".mb-cell-collapse-toggle": 175308,
+        ".mb-caa-inline-ph, .mb-eaa-inline-ph": 175308,
+        "[data-caa-expand-btn]": 91828,
+        "a[data-caa-enriched], a[data-eaa-enriched]": 87654,
+        "li.mb-caa-art-li-image, li.mb-eaa-art-li-image": 87654,
+        "span.caa-icon, span.eaa-icon, span.artwork-icon": 87654,
+        ".mb-art-cache-hint-col-wrap": 87654,
+        ".mb-art-cache-hint-col": 87654,
+        ".mb-art-cache-hint-big, .mb-art-cache-hint-inline": 87654,
+        "[data-erg-btn]": 87654,
+        "[data-erg-injected]": 87654,
+        ".mb-live-date-flag": 10500
+      },
+      "byTagName": {
+        "span": 1,
+        "div": 1
+      },
+      "byEventType": {
+        "selectionchange": 1
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 5257,
+        "querySelector <- _stripTransientCellState": 440,
+        "querySelector <- getCleanColumnText": 99,
+        "querySelectorAll <- _countLiveDateFlags": 52,
+        "querySelectorAll <- testRowMatch": 42,
+        "cloneNode <- runFilter": 22,
+        "querySelector <- _countLengthMismatchRows": 21,
+        "querySelector <- _rowHasPendingEdits": 21,
+        "querySelectorAll <- _restoreArtExpandState": 20,
+        "createTreeWalker <- getCleanColumnText": 15,
+        "querySelectorAll <- unattributed": 14,
+        "querySelectorAll <- _stripIfMatch": 9
+      }
+    },
+    "postClearSettle": {
+      "getComputedStyle": 87654,
+      "querySelector": 134474,
+      "querySelectorAll": 134077,
+      "cloneNode": 0,
+      "cloneNodeDeep": 0,
+      "cloneNodeDeepTr": 0,
+      "createTreeWalker": 4174,
+      "createElement": 120,
+      "addEventListener": 8358,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 8373,
+      "bySelector": {
+        "span.comment": 87654,
+        ":scope > ul.mb-caa-art-ul": 50113,
+        "ul, ol": 50088,
+        ":scope > li": 41520,
+        ":scope > bdi": 4947,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight, .mb-pre-filter-highlight, .mb-subtable-filter-highlight": 4214,
+        "[class*=\"jesus2099\"], .treleases": 4175,
+        ".mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,.mb-inline-art-sort-key,.mb-caa-sort-key,.mb-eaa-sort-key,.mb-cell-collapse-toggle": 4174,
+        ".mb-ic-wrap": 4174,
+        "ul.mb-caa-art-ul": 4174,
+        "td[data-mb-ms]": 4174,
+        ":scope > .mb-text-clamp-marker": 4174
+      },
+      "byTagName": {
+        "span": 120
+      },
+      "byEventType": {
+        "mouseenter": 4174,
+        "mouseleave": 4174,
+        "click": 10
+      },
+      "byStack": {
+        "getComputedStyle <- _apply": 439,
+        "querySelectorAll <- normalizeCommentSpans": 438,
+        "querySelector <- _findCellListItems": 252,
+        "querySelector <- initCollapsableColumns": 245,
+        "querySelectorAll <- _findCellListItems": 233,
+        "querySelector <- getCleanColumnText": 105,
+        "layoutGetter <- initCollapsableColumns": 42,
+        "addEventListener <- _apply": 41,
+        "querySelector <- normalizeCommentSpans": 25,
+        "querySelector <- _msAnyStamped": 21,
+        "querySelector <- barcodeProcessTable": 21,
+        "querySelectorAll <- _stripJesus2099InTable": 20
+      }
+    }
+  }
+}

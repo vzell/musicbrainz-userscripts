@@ -248,23 +248,53 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
   =tests/snapshots/<pageType>/interaction-perf-*.json= and
   =tests/snapshots/artist-releasegroups/perf-baseline*.json= — medians of 5
   samples, kept per arm (branch/label + version + capture date + hostname).
-- *Two pageTypes are instrumented for interaction latency, and they answer
-  different questions.* =--pageType=artist-events= (4174 rows) is the original
-  arm and the one every pre-9.99.1057 baseline uses.
-  =--pageType=artist-releases-dylan= (2301 rows) exists because =artist-events=
-  has no =/release/<mbid>= link anywhere, so it never gets a Picard column and
-  PERFORMANCE.org Steps 23 and 32 are invisible to it. Pair the latter with
-  =--arm=absent|collapsed|expanded= to separate "no Picard column at all" from
-  "column present, cells empty" from "column present, cells built". Numbers
-  from the two pageTypes are NOT comparable to each other — different rows,
-  columns and data; compare arms of the same pageType from the same session.
+- *Three pageTypes are instrumented for interaction latency, and they answer
+  different questions.* =--pageType=artist-events= (4174 rows, single-table) is
+  the original arm and the one every pre-9.99.1057 baseline uses.
+  =--pageType=artist-releases-dylan= (2301 rows, single-table) exists because
+  =artist-events= has no =/release/<mbid>= link anywhere, so it never gets a
+  Picard column and PERFORMANCE.org Steps 23 and 32 are invisible to it — pair
+  that one with =--arm=absent|collapsed|expanded= to separate "no Picard column
+  at all" from "column present, cells empty" from "column present, cells
+  built". =--pageType=artist-releasegroups= (2143 rows across 47 sub-tables,
+  *multi-table*) exists because both others are single-table, so every
+  committed number describes =renderFinalTable()=, which MOVES its rows;
+  =renderGroupedTable()= ALWAYS CLONES, on the first render too, and that is
+  where Tier 1's per-pass costs are largest. It is also the ERG-heaviest page in
+  the repo (4286 =[data-erg-btn]=) and has no Picard column at all, so =--arm==
+  is a no-op there and the registry says so rather than reporting three
+  identical arms. Numbers from different pageTypes are NOT comparable to each
+  other — different rows, columns and data; compare arms of the same pageType
+  from the same session.
+- *On a multi-table arm, read which metrics are page-wide and which are one
+  sub-table's.* =columnFilter=, =sort=, =uniqDropCold=/=uniqDropWarm= and both
+  =headerCounts*= BADGE assertions act on the descriptor's =SUB_TABLE_INDEX=
+  alone; =globalFilter= and the header-count SETTLE are genuinely page-wide.
+  =sort= additionally takes PERFORMANCE.org Step 18's SCOPED path — a
+  multi-table sort re-renders only the group it sorted — so it is not the same
+  shape of work as a single-table =sort=, which re-renders everything. Each
+  arm's JSON records its own =tableMode=/=subTableIndex=. Full contract in
+  =tests/support/perfDescriptors.js=.
+- =node tests/support/capture-pass-cost.js= (DOM operation COUNTS, not timings)
+  takes the same =--pageType== and =--arm== flags. It used to be hardcoded to
+  =artist-events=, which made its =addEventListener= counter — the only
+  instrument that can prove a listener count went to zero — unusable on the two
+  features whose listeners Steps 23/24 are about, since that page has neither.
+  Never run it in the same session as =capture-interaction-perf.js=: it wraps
+  hot DOM APIs, so any timing taken alongside it is meaningless.
 - A new instrumented pageType needs a descriptor module beside
-  =tests/support/artistEventsFixture.js=, and every constant in it must be
-  MEASURED from the committed disk fixture with
-  =node scripts/probe-fixture-columns.js=, not chosen. Two of them cannot be
-  derived at all: the uniq badge disagrees with a naive distinct-value tally on
-  most columns, and a column filter is a SUBSTRING match whose kept-row count
-  only the running filter knows. Both mistakes produce a plausible-looking
+  =tests/support/artistEventsFixture.js= and one line in
+  =tests/support/perfDescriptors.js= — which is the single registry all three
+  capture/probe scripts read, replacing the three separate lists it used to
+  take. Every constant in a descriptor must be MEASURED from the committed disk
+  fixture with =node scripts/probe-fixture-columns.js=, not chosen. Three of
+  them cannot be derived at all: the uniq badge disagrees with a naive
+  distinct-value tally on most columns; a column filter is a SUBSTRING match
+  whose kept-row count only the running filter knows; and on a multi-table page
+  =SUB_TABLE_INDEX= must come from the probe's own "largest sub-tables" list —
+  =artist-releasegroups='s sub-table 0 holds 21 of its 2143 rows, so the
+  default of 0 would have every per-table metric measuring 1% of the page and
+  reporting it as a fast result. All three mistakes produce a plausible-looking
   wrong number rather than a failure.
 
 * Where the maps are
@@ -289,7 +319,8 @@ tests/
   README.org          <- this file
   pagetypes.json      snapshot-harness config, read as data
   fixtures/           31 network-free specs + their saved HTML
-    saved-data/       .json.gz Save-to-disk fixtures
+    saved-data/       .json.gz Save-to-disk fixtures (4 committed; the perf
+                      arms load their table data from here)
     idb-state/        captured IndexedDB artwork records
     thirdPartyScripts/  hand-built third-party simulators
     live-userscripts/   real third-party bodies (gitignored) + manifest
@@ -302,7 +333,8 @@ tests/
 helpers, the shared expected-value tables for the big filter/sort suites, and
 the standalone capture scripts (=capture-snapshots.js=, =capture-fixture.js=,
 =capture-interaction-perf.js=). Each has a JSDoc header explaining its own
-non-obvious constraints; read that before working around one.
+non-obvious constraints; read that before working around one. Which pages those
+scripts can measure at all is data, in =perfDescriptors.js=.
 
 * Not a test: =npm run live-interop=
 

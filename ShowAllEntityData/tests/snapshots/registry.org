@@ -29,6 +29,29 @@ Its data lives in =tests/fixtures/saved-data/artist-releases-dylan.json.gz=
 =PAGETYPES-TESTING-REFERENCE.org='s coverage plan is where it belongs — do not
 infer a gap from this directory.
 
+*=artist-releasegroups= is the opposite case and is easy to misread.* That
+directory DOES hold a committed =raw.html=/=rendered.html= pair (it has a row in
+the table above) *and*, since 2026-09-10, =interaction-perf-*.json= /
+=pass-cost-*.json= files as well, because the same pageType became the harness's
+first =tableMode: 'multi'= perf arm. The two kinds of file are unrelated: the
+HTML pair is captured from the LIVE page by =capture-snapshots.js=, while the
+perf JSONs are measured against
+=tests/fixtures/saved-data/artist-releasegroups.json.gz= (2143 rows, 47
+sub-tables, 166 KB) with its constants in
+=tests/support/springsteenArtistReleaseGroupsFixture.js=. A perf arm landing in
+the directory is NOT a snapshot re-capture and changes no baseline.
+
+That fixture was promoted from a =local: true= dogfooding capture (formerly
+named =artist-releasegroups-va0=) now that it has an automated consumer. It is
+166 KB rather than the multi-MB blob =local: true= exists to avoid, because a
+release-group row carries 9 columns against =artist-events='s 21.
+
+*If that fixture is ever re-captured, re-run the probe* — the descriptor's
+=SUB_TABLE_INDEX= is a positional index (29, "Album + Live", 830 rows), stable
+for a given payload but not across payloads, and every per-table metric on the
+arm depends on it pointing at a large sub-table rather than the 21-row one at
+index 0.
+
 * Expected drift — read this before treating a re-capture diff as a regression
 
 These baselines are captured against the LIVE musicbrainz.org, so some of what
