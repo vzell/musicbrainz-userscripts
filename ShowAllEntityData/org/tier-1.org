@@ -1,0 +1,395 @@
+* DONE tier 1 - actually 34
+** i
+
+/plan
+
+Start with "Step 23" from the "Tier 1" section in the @PERFORMANCE.org file
+
+Don't break anything, this should just be a filter performance fix right ? Also check against if the order in Tier 1 is
+still valid ==> Steps *34, 23, 24, 25, 26*
+
+Measure the performance gains on both single- and multi-table pageTypes if the implementation influences both.
+
+** a
+
+I have the code picture now. Before writing the plan, two findings change the shape of the work.
+
+"Is this just a filter performance fix?" — No. Step 23 converts six features' event wiring from per-element addEventListener to delegation. Four of them are user-visible controls (Picard ♪ buttons, ERG ▶ expanders, nested-<h2> collapse, cdtoc toggles) plus two unlisted members the step's own corrections add (sticky-column row hover, barcode cell clicks). The perf win is real, but the risk is "an interactive control silently stops working after a keystroke", not "a number moves". Specifics I verified:
+
+- ERG is the hard part. Its per-button state is a closure toggled flag plus a listener-set-encoded fetch lifecycle (loadOnce detaches itself; retrySetup re-arms it) — none of it on the DOM. initExpandRGsFeature() also injects into live rows only (link.parentNode, #content table.tbl > tbody > tr > td), so in tableMode: 'multi' the master rows never own the button — the same gap that caused the 2026-09-10 Picard bug. Delegation alone would delete the buttons there; it needs a source-row mirror first. I also found two latent bugs in that path (_stripTransientCellState's ghost-table strip is direct-children-only, so a table inserted via parent.after(table) inside a <ul><li> survives the clone; and _applyDiscographyViewFilter() re-wires Picard but not ERG).
+- Picard is the easy part. Its button closure holds exactly three data values (guid, entityType, name), host/port are already read at click time, and the visual state already lives in the DOM. A .mb-picard-btn arm added to the already-delegated _picardHdrDelegateHandler on <table> covers it.
+
+Tier 1's order is no longer valid as written, and Step 23 is the item that moved. Its headline justification — "restores Step 3's −27 to −30% on headerCountsRestore for every release-listing pageType" — was banked by Step 32 at 9.99.1057, measured at 1.01× of a page with no Picard column. Its defect half is gone too (the remaining cache drop on an expanded column is correct, not a defect). What is left is an inefficiency with the tier's smallest measured budget and its largest blast radius. Step 34 still leads by an order of magnitude (1.05M querySelectorAll vs ~30k DOM ops for the whole 23 family), and it rewrites the very code — _stripTransientCellState's ERG arm — that Step 23's ERG half must edit.
+
+One more constraint on your measurement request: both instrumented interaction-perf arms are single-table (artist-events 4174 rows, artist-releases-dylan 2301 rows). There is no multi-table arm. The natural candidate is artist-releasegroups — 2239 rows, 47 sub-tables, 4286 data-erg-btn in its baseline — but it has no committed disk fixture yet.
+
+** plan
+
+Context
+
+The ask was to start with Tier 1's Step 23 (convert the re-wire-after-clone
+family to event delegation), on the assumption it is a self-contained filter
+performance fix, and to re-check whether Tier 1's order (34, 23, 24, 25, 26)
+still holds. Reading the code answered both questions against that assumption:
+
+Step 23 is not just a filter performance fix. It re-wires six user-visible
+mechanisms. Two of them are cheap and safe (Picard, cdtoc); one is a public
+contract (h2._mbToggle, read by five call sites incl. ensureCollapseDelegate's
+Ctrl+Click prose branch); one cannot be delegated at all
+(initAnnotationCompareRadios — cloneNode(true) re-applies MusicBrainz's own
+disabled attribute, there is no listener); and ERG is a redesign, not a
+re-wire:
+
+- initExpandRGsFeature() queries :is(#content,#page) table.tbl > tbody > tr > td a[href^="/release"]
+  and injects into link.parentNode — i.e. live rows only. In
+  tableMode: 'multi' the master rows never own the button, exactly the gap that
+  caused the 2026-09-10 Picard bug. Delegation alone would make ERG buttons
+  vanish after the first re-render; it needs a source-row mirror first — and the
+  CAA-art-cell variant (li.mb-caa-art-li-summary) cannot be mirrored that way,
+  because [data-erg-btn] is itself the insertion anchor for inline CAA
+  thumbnails (grep ergBtn.after(ph)).
+- Its per-button state is a closure toggled flag plus a fetch lifecycle
+  encoded in the listener set (loadOnce detaches itself; retrySetup
+  re-arms it). None of it is on the DOM, so delegation needs a new explicit
+  data-erg-state machine.
+
+Tier 1's order is stale, and Step 23 is what moved. Its headline
+justification — restoring Step 3's −27…−30% on headerCountsRestore "for every
+release-listing pageType, where today it never applies at all" — was banked by
+Step 32 at 9.99.1057, measured at 1.01× of a page with no Picard column.
+Its defect half went with it (the cache drop that survives on an expanded
+column is correct, not a defect). What remains is an inefficiency with the
+tier's smallest measured budget and its largest blast radius, while Step 34
+is measured at ~1.05M querySelectorAll per filter clear (97.5% of the phase),
+is local to one function, and restructures the very code — that function's ERG
+reset arm — Step 23's ERG half would otherwise have to edit twice.
+
+The whole Step 23 family is invisible to the test suite. Nothing in tests/
+clicks .mb-picard-btn, [data-erg-btn], h2.mb-toggle-h2, a cdtoc toggle, a
+row hover, or a barcode cell. Every existing assertion is a count or a class
+check, all of which survive cloneNode(true) regardless of listener state — so
+every current test would stay green if Step 23 delegated the listeners and got
+it wrong.
+
+Decisions taken: do Step 34 first, instrument a multi-table perf arm so
+the measurement covers both table modes, and write the re-ordering into
+PERFORMANCE.org rather than leaving it for whichever step lands.
+
+Three commits, in order
+
+Part A — docs: correct Tier 1 (branch: main, no version bump)
+
+PERFORMANCE.org is written as prediction; landing 9.99.1057 falsified several
+statements nothing will flag. Per CLAUDE.md this is docs-only — no // @version
+bump, no ShowAllEntityData_CHANGELOG.json entry.
+
+1. Tier 1 heading — reorder to 34, 24, 25, 26, 23, with the reason:
+   Step 23's defect half is discharged; its remaining default-config budget is
+   the tier's smallest; Step 34 rewrites the code its ERG half must edit.
+   Also note Step 24 and Step 23 both edit applyStickyColumn — 23's sticky
+   member (per-row mouseenter/mouseleave + tr._mbStickyEnter/_mbStickyLeave,
+   ~4 listener ops/row/pass) should be folded into Step 24, which has to
+   touch that handler anyway, rather than written twice.
+2. Step 23's own text — record what exploration established: the ERG
+   live-rows-only injection and the mirror prerequisite; the art-cell ERG
+   carve-out; the listener-set-encoded fetch lifecycle; that its Picard half is
+   three data-* attributes plus a second closest() arm on the already
+   installed _picardEnsureHdrDelegate listener; and that its Tier-1 rank
+   dropped. Replace its stale :73883/:65681/:42748 line anchors with grep
+   anchors (they are ~700 lines off at 9.99.1058).
+3. Fold correction #1 into the step's own four-row table — it still omits
+   applyStickyColumn, barcodeProcessTable and initAnnotationCompareRadios,
+   which its own later subsection names. (CLAUDE.md's roster is already
+   correct; leave it.)
+4. File two latent ERG bugs found while reading (not fixed here — they are
+   Step 23's, and neither is currently reachable as a user report):
+   - _stripTransientCellState's ghost-table strip is Array.from(el.children),
+     i.e. direct children only, while ergInjectReleaseGroupButton's <li>
+     arm inserts with parent.after(table) and ergInjectReleaseButton's with
+     resolvedTableParent.appendChild — inside the <ul>, a grandchild of the
+     <td>. Those tables survive the clone, and their own /release/ anchors
+     then match initExpandRGsFeature's descendant selector and get their own
+     fresh buttons on the next pass.
+   - _applyDiscographyViewFilter() re-wires Picard at its tail but never ERG,
+     so a view switch leaves inert [data-erg-btn] clones behind.
+5. Record the test and harness gaps — the "no test clicks any of these"
+   finding above, with the named assertions Step 23 will need, plus:
+   capture-pass-cost.js is hardcoded to artist-events (const PAGE_TYPE,
+   no --pageType=), and no tableMode: 'multi' arm exists for interaction
+   perf. Part B closes both.
+6. Re-derive the DONE-set sentence from the keywords (line ~14) after the
+   edit, per CLAUDE.md — do not hand-maintain it.
+
+Part B — tests: a multi-table perf arm (branch: instrument-artist-releasegroups-perf, no version bump)
+
+Everything under tests/ and scripts/, so no // @version bump and no
+changelog entry. Follows the artist-releases-dylan precedent
+(DEBUG-NOTES.md 2026-09-10) step for step.
+
+Why artist-releasegroups. It is the ERG-heaviest and most sub-tabled page
+in the repo, and it is the complement of the two existing single-table arms.
+Measured from its committed rendered.html: 2239 rows, 47 table.tbl, 4286
+data-erg-btn, 6429 data-erg-injected, 19 287 data-mb-rest-bg (≈19.3k
+cells — Step 34's cost scales with cells). Already in tests/pagetypes.json
+with the right URL and seeds, and capture-fixture.js already carries the
+capture entry as artist-releasegroups-va0 with local: true.
+
+1. Commit the disk fixture. Drop local: true from that entry (or add a
+   committed sibling named artist-releasegroups) so it writes to
+   tests/fixtures/saved-data/. Check the .json.gz size before committing —
+   artist-events is 700 KB at 4174 rows and Dylan 618 KB at 2301; if this
+   overshoots ~1.5 MB, pick a smaller artist's release-groups page rather than
+   commit a multi-MB blob (the reason Springsteen's releases tab is
+   local: true). No pagination or threshold dialogs apply: ?all=1&va=0 is one
+   native page, and 2239 < sa_render_threshold 5000. Note 2239 > the
+   sa_auto_resize_columns_threshold of 2000, so the auto-resize pass is skipped
+   on this page — one fewer confound, worth recording.
+2. New descriptor tests/support/springsteenArtistReleaseGroupsFixture.js,
+   same export shape as dylanArtistReleasesFixture.js, plus a new
+   TABLE_MODE: 'multi'. Every constant MEASURED via
+   node scripts/probe-fixture-columns.js --pageType=… --filterColumn=…, never
+   chosen — and heed the two traps that file already documents:
+   UNIQ_COUNT_TOTAL must come from the rendered .mb-col-uniq-count badge, not
+   a distinct-text tally, and UNIQ_COUNT_FILTER_VALUE is a substring, so a
+   multi-row column's real match count is higher than the per-value tallies add
+   up to (167 vs the true 181 on Dylan).
+3. Teach the harness multi-table metric scoping. The existing helpers are
+   page-wide and quietly resolve to sub-table 0 on a 47-table page:
+   columnIndex() findIndexes across all table.tbl thead th;
+   columnFilterInput()/columnFilterClear() take .first() of 47 matching
+   inputs; waitForColHeaderUniqCount() finds the first matching <th>.
+   Rather than rewrite them, make the descriptor say so explicitly — the
+   columnFilter, sort and uniqDrop* metrics on this arm measure sub-table 0
+   (and sort should pass subTableHeading to waitForSortSettled, which
+   already supports it, so it watches the right status element and exercises
+   Step 18's scoped _renderDirtyGroupIdxs path). globalFilter and both
+   headerCounts* stay genuinely page-wide (waitForColHeaderCountsStable
+   already reads every badge on the page). Name this in the descriptor's JSDoc
+   and in MEASUREMENTS.org, or the numbers will later be read as comparable to
+   the single-table arms — they are not.
+4. One shared descriptor registry. A pageType currently has to be added in
+   three places: ARMS in capture-interaction-perf.js, DESCRIPTORS in
+   scripts/probe-fixture-columns.js, and const PAGE_TYPE in
+   capture-pass-cost.js. Extract one module (the runMetadata.js precedent,
+   which exists for exactly this reason) and give capture-pass-cost.js a
+   --pageType= flag — its addEventListener/byEventType counters are the
+   only instrument that can prove a listener count went away, and its single
+   committed arm sits on the one page with neither Picard nor ERG.
+5. Fix the drift runMetadata.js already warns about:
+   capture-interaction-perf.js rebuilds the archive filename stem by hand
+   (fileNameParts) instead of calling archiveFileStem(). They agree today
+   and nothing enforces it.
+6. Docs: tests/README.org (the new npm/CLI invocations and their wall
+   clock), tests/snapshots/registry.org (a note for the new arm's directory,
+   mirroring its existing "artist-releases-dylan has NO html baseline, and is not
+   missing one" entry), and PAGETYPES-TESTING-REFERENCE.org if the fixture
+   choice deviates from its identifier criteria.
+
+Part C — Step 34 (branch: perf-step-34-strip-transient-one-pass)
+
+Userscript change ⇒ ShowAllEntityData_CHANGELOG.wip.json with WIP.1 on the
+branch; // @version bump and the fold into ShowAllEntityData_CHANGELOG.json
+happen on main at merge, via scripts/fold-wip-changelog.py, with the
+ship date matching the +YYYY-MM-DD stamp.
+
+_stripTransientCellState(el, {preserveLiveArt}) (grep the name; JSDoc runs
+~130 lines above the body) currently makes 15 unconditional subtree walks per
+cell — measured at 12 that actually fire, ~1.05M per filter clear across
+87 654 cells on artist-events. runFilter calls it once per cell of every
+cloned row, in both branches.
+
+Fix A — one bucketed pass (this is what lands).
+
+1. Add a module-level union selector next to the function — the 15 arms it
+   already queries. Note span.caa-icon.jesus2099userjs154481 is a subset of
+   the existing span.caa-icon arm, so the jesus2099 sweep needs no extra arm
+   and no per-anchor querySelector: bucket the icon hit and walk up with
+   closest('a'), instead of today's el.querySelectorAll('a') + a
+   querySelector per anchor.
+2. One el.querySelectorAll(UNION), then collect hits into buckets and
+   execute the buckets in the function's existing order. Bucketing rather than
+   acting inline on each hit is deliberate: several steps are order-dependent
+   (_hadInlineArtPh must be read before the placeholders are removed; the
+   count badge must be pulled out of .mb-art-cache-hint-col-wrap before the
+   wrap is removed; the art-cell .mb-cell-collapse-toggle removal precedes the
+   generic toggle collapse), and a querySelectorAll union returns document
+   order, not step order. Buckets preserve today's semantics exactly, which is
+   the whole safety argument.
+3. Cheap early-out: after the el-level dataset deletes (which must still
+   run unconditionally), if (!el.firstElementChild) return; — a text-only cell
+   has nothing to strip and currently pays the full walk. Countable, zero risk.
+4. What must not change — CLAUDE.md's "CAA/EAA artwork — what must not
+   break" bears on this function specifically: the preserveLiveArt opt-in and
+   its two liveness checks (_artIconBackgroundIsLiveBlob,
+   _artInlinePhIsLiveBlob), the _hadInlineArtPh gate on the jesus2099
+   anchor removal, the deliberate non-removal of .mb-inline-art-sort-key,
+   and the fact that the caaInlineDone marker is still deleted so a preserved
+   cell lands in _artInitInlinePics()'s Case C1 rather than Case A.
+
+Fix B — hoisting the CAA/EAA feature gates — deliberately NOT taken now,
+and the reason should be recorded in the step: once Fix A collapses twelve
+walks into one, the marginal win is only a shorter arm list on a single
+traversal (Chromium buckets a selector list by its rightmost simple selector),
+while the risk is real — a "no artwork on this page" gate that is wrong once
+skips the strip entirely, and third-party markup (jesus2099's span.caa-icon)
+can put artwork in a cell without this script's artwork code ever running. It
+should be re-judged against Fix A's fresh counts, not implemented blind.
+
+Also file, do not implement: a row-level hoist. runFilter's two hot loops
+have the cloned <tr> in hand. One union query per row, bucketed by
+closest('td'), would take artist-events' filter clear from ~87 654 queries
+to ~4174 — a further ~21×, on top of Fix A's ~12×. It needs a row-scoped entry
+point beside the per-cell one (three of the five call sites —
+getCleanCellHtml, loadTableDataFromDisk, _hydrateAndRenderFromSnapshotData
+— have no row context and keep the per-cell form), and per-cell _hadInlineArtPh
+computed from the buckets. Worth its own step and its own measurement.
+
+Tests
+
+Step 34 is a refactor with no intended behaviour change, so CLAUDE.md's
+"fails before the fix, passes after" does not apply as written. The equivalent
+guarantee is an equivalence pin captured against main first:
+
+- New tests/fixtures/strip-transient-cell-equivalence.spec.js: build one
+  kitchen-sink <td> carrying all 15 marker families (CAA/EAA enrichment
+  markers, art <li>s, an expand button, an art-cell toggle, a generic
+  expanded toggle, icon spans with backgrounds, inline placeholders, all three
+  cache-hint families with an adopted count badge, an ERG button with a ▼ glyph,
+  a direct-child ghost <table>, an <li>-nested ghost table, a
+  data-erg-injected child, and a jesus2099 anchor both with and without a
+  sibling inline placeholder), drive the real function through the existing
+  __saTest.stripTransientCellState(selector, opts) hook, and assert the
+  resulting outerHTML. Capture the expectation on main, commit it, then
+  refactor. Run both preserveLiveArt values, using the existing
+  __saTest.artMintBlobUrl(register) hook for the live/dead blob cases.
+- Mutation-check it: drop one bucket from the dispatch and confirm the spec
+  fails. An equivalence pin that cannot see a missing arm is worthless.
+- The real behavioural guards already exist and must stay green:
+  caa-icon-preserve.spec.js, jesus2099-artifact-purge.spec.js,
+  picard-cells-survive-rerender.spec.js, subtable-tab-handoff.spec.js,
+  search-recordings-continuation.spec.js. Full fixture suite (npm test) is
+  the gate.
+- No rendered.html re-capture is expected — this function runs on detached
+  clones before insertion and produces byte-identical output. Verify that claim
+  rather than asserting it: run the snapshot comparison, and if anything drifts,
+  the refactor is wrong.
+
+Verification
+
+Counts are the primary evidence for Step 34, per its own instruction; timings
+are secondary and must be within-session A/B on one host.
+
+1. Counts, single-table — node tests/support/capture-pass-cost.js --pageType=artist-events --label=main on 9.99.1058 first (the only
+   committed arm is 9.99.1049 on petri), then the same with --label=step34
+   on the branch. Compare filterClear.querySelectorAll and read filterClear
+   together with postClearSettle — deferred work crosses that boundary.
+   Expected: ~1 078 000 → ~114 000 on filterClear, i.e. the
+   _stripTransientCellState share ~1 052 000 → ~87 700 (one per cell), less
+   whatever the firstElementChild early-out removes.
+2. Counts, multi-table — the same pair with
+   --pageType=artist-releasegroups. This is the arm that exercises
+   renderGroupedTable's always-clone path, where the function is called most.
+3. Timings — capture-interaction-perf.js on both pageTypes, main vs
+   branch, same session, same host, median of 5, using --label=main with
+   main's ShowAllEntityData.user.js checked out alone into the branch tree
+   (the established technique). Validate the pipeline with --samples=1 --label=throwaway first — this harness died silently on its last line for a
+   full day. Optionally add a Dylan arm: it is the one page carrying both Picard
+   and ERG.
+4. Never run capture-pass-cost.js alongside capture-interaction-perf.js —
+   domCounters.js wraps hot DOM APIs and makes any timing meaningless.
+5. Log every number in tests/MEASUREMENTS.org with host, UTC wall clock,
+   pageType, tableMode and human page title, and archive each JSON under the
+   …-<version>-<capturedAt>[-<hostname>] convention. scripts/compare-perf-arms.py
+   and scripts/emit-measurements-row.js already exist for this.
+6. At merge, re-read PERFORMANCE.org for what Step 34 made false — not
+   just its own keyword: Step 1's own text says landing 34 first "removes most of
+   what Step 1 still has to win", the Tier 1 summary quotes "a filter clear
+   currently issues ~1.08 million querySelectorAll", and the "Findings"
+   section's walk-1 row and its 97.5% figure all become historical. Fix the
+   prose, not just the TODO. Then reconcile ShowAllEntityData_HELP.txt
+   against what shipped and say explicitly that it needed no edit (this change
+   is internal), rather than skipping the step.
+
+Critical files
+
+- ShowAllEntityData.user.js — _stripTransientCellState (Part C, the only
+  runtime change); PERFORMANCE.org, CLAUDE.md rosters (Part A);
+  DEBUG-NOTES.md (dated entry per part).
+- tests/support/capture-pass-cost.js, capture-interaction-perf.js,
+  runMetadata.js, capture-fixture.js, new
+  springsteenArtistReleaseGroupsFixture.js,
+  scripts/probe-fixture-columns.js (Part B).
+- Reused as-is: __saTest.stripTransientCellState / artMintBlobUrl hooks,
+  tests/support/domCounters.js, diskFixture.js, gmStubs.js,
+  filterSortAssertions.js's waitForSortSettled({subTableHeading}).
+
+Out of scope, deliberately
+
+Step 23 itself, in every part — including the two latent ERG bugs, which are
+filed in Part A and belong to whoever takes that step. When it is taken, it
+should be split: Picard (clean, reuses the installed table delegate),
+ERG (source-row mirror + data-erg-state + the art-cell carve-out + a
+decision on whether an expansion should now survive a keystroke, which is a
+behaviour change), sticky hover folded into Step 24, nested <h2>
+(needs _mbToggle's five readers replaced with a DOM-reconstructing helper),
+and cdtoc/annotation-radios (no budget / not delegatable).
+
+** let's see
+
+Answers to your two questions
+
+"This should just be a filter performance fix, right?" — Not for Step 23, no. It re-wires six user-visible mechanisms, and ERG turned out to be a redesign rather than a re-wire: initExpandRGsFeature() injects into live rows only, so in tableMode: 'multi' the master rows never own the button — delegating without a source-row mirror first would make the ▶ buttons disappear, not go inert. Its fetch lifecycle also lives in the listener set (loadOnce detaches itself), not the DOM. And nothing in tests/ clicks .mb-picard-btn, [data-erg-btn], h2.mb-toggle-h2, a row hover or a barcode cell — every current test would stay green if the delegation were done and done wrong.
+
+"Is the Tier 1 order still valid?" — No, and Step 23 is what moved. Its headline argument (restoring Step 3's −27…−30% on headerCountsRestore) was already banked by Step 32 at 9.99.1057, measured at 1.01×; the drop that remains on an expanded column is correct behaviour, not a defect. New order: 34, 24, 25, 26, 23.
+
+What landed
+
+1. d4daa7b — Tier 1 re-ordered, with the two latent ERG bugs I found filed for whoever takes Step 23 (the ghost-table strip is direct-children-only while two of three insertion arms insert a grandchild; _applyDiscographyViewFilter() re-wires Picard but never ERG).
+2. fa4ea7c — the first multi-table perf arm (artist-releasegroups, 2143 rows / 47 sub-tables), --pageType= for capture-pass-cost.js, and one descriptor registry replacing three. SUB_TABLE_INDEX is 29, not 0 — sub-table 0 holds 21 of 2143 rows, so the default would have measured 1% of the page and called it fast.
+3. 09bd480 — Step 34, at 9.99.1059.
+
+Measured gains, both table modes
+
+┌────────────────────────────────────────────┬──────────────────────────────┬────────┐
+│                    Arm                     │ filterClear querySelectorAll │        │
+├────────────────────────────────────────────┼──────────────────────────────┼────────┤
+│ artist-events (single, 87 654 cells)       │ 1 079 876 → 83 680           │ −92.3% │
+├────────────────────────────────────────────┼──────────────────────────────┼────────┤
+│ artist-releasegroups (multi, 19 287 cells) │ 323 422 → 107 099            │ −66.9% │
+└────────────────────────────────────────────┴──────────────────────────────┴────────┘
+
+Each against a main arm captured minutes earlier at the same script version. The strongest evidence is what didn't move: fourteen non-query counters are bit-identical across the change — getComputedStyle, cloneNodeDeepTr, addEventListener, every phase, both arms.
+
+Two things worth flagging: on the multi-table arm the leader is now normalizeCommentSpans (~36%) — Step 27's target, previously unmeasured; and a multi-table filter clear renders twice (4286 clones for 2143 rows), which I recorded as an observation and did not diagnose — it would halve Steps 27/31, so it's worth chasing before either is estimated.
+
+These are counts, not wall-clock. That's what Step 34 itself prescribes ("Verify by count, not by timing"), and PERFORMANCE.org defers the timing arm to the end of the tier. If you want wall-clock A/B on both pageTypes, the harness is now ready for it — roughly 60-80 minutes for four arms.
+
+Two mistakes of mine, both recorded in DEBUG-NOTES.md: I ran node -e "require(…)" on capture-fixture.js as a syntax check, which executed it and re-captured three committed fixtures against the live site (restored byte-for-byte from git; node --check is the right tool). And my first bucket dispatch used an else if chain, which silently dropped one treatment for an element in two marker families — caught, fixed to independent ifs, and the equivalence spec now has a test for exactly that cell shape.
+
+✻ Sautéed for 1h 10m 57s · done 4:57 PM
+
+● Background command "Wait for the fixture suite to finish" was stopped because the system is running low on memory
+
+● Background command "Wait for the multi-table pass-cost run" was stopped because the system is running low on memory
+
+● Background command "Wait for the merged-tree suite to finish" was stopped because the system is running low on memory
+
+● Background command "Properly wait for the merged-tree suite" was stopped because the system is running low on memory
+
+Those four were idle polling loops I'd left dangling — each had already delivered its result before being killed, so nothing is lost:
+
+  Ran 1 shell command
+
+No leftover processes, and the repo is unchanged: main in sync with origin/main at 09bd480, version 9.99.1059+2026-09-10.
+
+All four killed tasks were until … sleep wait-loops, and each had already handed over its result before the memory pressure hit:
+
+- bce282w2h → the first fixture run (154 passed / 2 failed), which I then attributed to the documented flake and cleared with a clean 156-pass re-run.
+- bq40l5k9e → the multi-table pass-cost numbers, read from pc-rgs.log and committed as pass-cost-main-9.99.1058-2026-09-10-NB-3641.json.
+- b5p15as54 and b3fb81nuy → both waiting on the merged-tree suite, whose 164 passed, 0 failed I got from a later poll before pushing.
+
+So nothing needs re-running and no result is in doubt. The genuine fault was mine: I spawned four separate polling loops
+for the same two events instead of one, and left them idling. The cause was using pgrep -f "playwright test" as the wait
+condition when the actual process is sh -c playwright test — the pattern didn't match, the loop exited instantly, and I
+kept adding new ones. A single until grep -q "passed" <logfile> on the log itself would have done it, which is what
+finally worked.
