@@ -1,0 +1,253 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 4174,
+  "picardArm": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false
+  },
+  "label": "step34",
+  "branch": "perf-step-34-strip-transient-one-pass",
+  "scriptVersion": "9.99.1058+2026-09-10",
+  "capturedAt": "2026-09-10",
+  "startedAt": "2026-09-10T14:47:14.716Z",
+  "finishedAt": "2026-09-10T14:47:35.486Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 35.6,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 16.7
+    },
+    "claudeSinceBoot": true
+  },
+  "instrument": {
+    "stackSampleRate": 200,
+    "topN": 12
+  },
+  "note": "DOM operation COUNTS, not timings. The instrument distorts timings; see tests/support/domCounters.js.",
+  "phases": {
+    "initialRender": {
+      "getComputedStyle": 175309,
+      "querySelector": 147170,
+      "querySelectorAll": 369350,
+      "cloneNode": 4201,
+      "cloneNodeDeep": 4201,
+      "cloneNodeDeepTr": 4174,
+      "createTreeWalker": 0,
+      "createElement": 92450,
+      "addEventListener": 17297,
+      "getBoundingClientRect": 6,
+      "layoutGetter": 8374,
+      "bySelector": {
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 108304,
+        ".mb-live-date-flag": 98154,
+        "span.comment": 87654,
+        ":scope > ul.mb-caa-art-ul": 50163,
+        "ul, ol": 50088,
+        ":scope > li": 41520,
+        "td[data-mb-ms]": 12522,
+        "[id]": 8538,
+        "[class*=\"jesus2099\"], .treleases": 8350,
+        "td[data-mb-len-flag]": 8348,
+        "td span.mp": 8348,
+        ".barcode-cell": 8348
+      },
+      "byTagName": {
+        "td": 87654,
+        "tr": 4176,
+        "span": 333,
+        "div": 106,
+        "input": 55,
+        "th": 42,
+        "button": 37,
+        "label": 27,
+        "style": 11,
+        "script": 4,
+        "nav": 1,
+        "select": 1
+      },
+      "byEventType": {
+        "mouseleave": 8356,
+        "mouseenter": 8353,
+        "click": 143,
+        "focus": 65,
+        "keydown": 64,
+        "mousedown": 54,
+        "blur": 43,
+        "input": 29,
+        "change": 26,
+        "mouseup": 8,
+        "mousemove": 6,
+        "keypress": 4
+      },
+      "byStack": {
+        "getComputedStyle <- _apply": 876,
+        "querySelectorAll <- _stripTransientCellState": 543,
+        "querySelectorAll <- _countLiveDateFlags": 491,
+        "createElement <- _hydrateAndRenderFromSnapshotData": 456,
+        "querySelectorAll <- normalizeCommentSpans": 438,
+        "querySelector <- _findCellListItems": 260,
+        "querySelector <- initCollapsableColumns": 252,
+        "querySelectorAll <- _findCellListItems": 218,
+        "addEventListener <- _apply": 84,
+        "querySelector <- _msAnyStamped": 63,
+        "querySelectorAll <- testRowMatch": 43,
+        "querySelector <- _rowHasPendingEdits": 42
+      }
+    },
+    "filterApply": {
+      "getComputedStyle": 3318,
+      "querySelector": 41985,
+      "querySelectorAll": 15289,
+      "cloneNode": 163,
+      "cloneNodeDeep": 163,
+      "cloneNodeDeepTr": 158,
+      "createTreeWalker": 5596,
+      "createElement": 159,
+      "addEventListener": 316,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 316,
+      "bySelector": {
+        ".mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,.mb-inline-art-sort-key,.mb-caa-sort-key,.mb-eaa-sort-key,.mb-cell-collapse-toggle": 5443,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight, .mb-pre-filter-highlight, .mb-subtable-filter-highlight": 5438,
+        ".mb-ic-wrap": 5438,
+        "ul.mb-caa-art-ul": 5438,
+        "[class*=\"jesus2099\"], .treleases": 4175,
+        "td[data-mb-ms]": 4174,
+        "td[data-mb-len-flag]": 4174,
+        "td span.mp": 4174,
+        ".mb-inline-art-sort-key": 4016,
+        "span.comment": 3318,
+        ".mb-live-date-flag": 3318,
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 2054
+      },
+      "byTagName": {
+        "span": 159
+      },
+      "byEventType": {
+        "mouseenter": 158,
+        "mouseleave": 158
+      },
+      "byStack": {
+        "querySelector <- getCleanColumnText": 124,
+        "querySelectorAll <- _stripJesus2099InTable": 21,
+        "querySelector <- _msAnyStamped": 21,
+        "querySelector <- _countLengthMismatchRows": 21,
+        "querySelector <- _rowHasPendingEdits": 21,
+        "createTreeWalker <- getCleanColumnText": 20,
+        "querySelectorAll <- normalizeCommentSpans": 17,
+        "getComputedStyle <- _apply": 16,
+        "querySelectorAll <- _countLiveDateFlags": 16,
+        "querySelectorAll <- _findCellListItems": 11,
+        "querySelector <- testRowMatch": 7,
+        "querySelectorAll <- _stripTransientCellState": 7
+      }
+    },
+    "filterClear": {
+      "getComputedStyle": 0,
+      "querySelector": 27958,
+      "querySelectorAll": 83680,
+      "cloneNode": 4337,
+      "cloneNodeDeep": 4337,
+      "cloneNodeDeepTr": 4174,
+      "createTreeWalker": 4974,
+      "createElement": 2,
+      "addEventListener": 1,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 0,
+      "bySelector": {
+        "a[data-caa-enriched],a[data-eaa-enriched],li.mb-caa-art-li-image,li.mb-eaa-art-li-image,[data-caa-expand-btn],.mb-cell-collapse-toggle,span.caa-icon,span.eaa-icon,span.artwork-icon,.mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-art-cache-hint-big,.mb-art-cache-hint-inline,[data-erg-btn],[data-erg-injected]": 54152,
+        ".mb-live-date-flag": 10500,
+        ".mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,.mb-inline-art-sort-key,.mb-caa-sort-key,.mb-eaa-sort-key,.mb-cell-collapse-toggle": 5137,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight, .mb-pre-filter-highlight, .mb-subtable-filter-highlight": 4974,
+        ".mb-ic-wrap": 4974,
+        "ul.mb-caa-art-ul": 4974,
+        "[data-caa-expand-btn]": 4174,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight": 4174,
+        ".mb-rel-icon-match": 4174,
+        "td[data-mb-len-flag]": 4174,
+        "td span.mp": 4174,
+        "[id]": 3004
+      },
+      "byTagName": {
+        "span": 1,
+        "div": 1
+      },
+      "byEventType": {
+        "selectionchange": 1
+      },
+      "byStack": {
+        "querySelectorAll <- _stripTransientCellState": 270,
+        "querySelector <- getCleanColumnText": 108,
+        "querySelectorAll <- _countLiveDateFlags": 53,
+        "querySelectorAll <- testRowMatch": 36,
+        "querySelectorAll <- _restoreArtExpandState": 24,
+        "cloneNode <- runFilter": 24,
+        "querySelector <- _countLengthMismatchRows": 21,
+        "querySelector <- _rowHasPendingEdits": 21,
+        "querySelectorAll <- _stripIfMatch": 15,
+        "querySelectorAll <- unattributed": 15,
+        "createTreeWalker <- getCleanColumnText": 14,
+        "querySelectorAll <- getCleanColumnText": 3
+      }
+    },
+    "postClearSettle": {
+      "getComputedStyle": 87654,
+      "querySelector": 134464,
+      "querySelectorAll": 134766,
+      "cloneNode": 5,
+      "cloneNodeDeep": 5,
+      "cloneNodeDeepTr": 0,
+      "createTreeWalker": 4174,
+      "createElement": 120,
+      "addEventListener": 8358,
+      "getBoundingClientRect": 0,
+      "layoutGetter": 8373,
+      "bySelector": {
+        "span.comment": 87654,
+        ":scope > ul.mb-caa-art-ul": 50113,
+        "ul, ol": 50088,
+        ":scope > li": 41520,
+        ":scope > bdi": 4947,
+        ".mb-global-filter-highlight, .mb-column-filter-highlight, .mb-pre-filter-highlight, .mb-subtable-filter-highlight": 4214,
+        ".mb-caa-inline-ph,.mb-eaa-inline-ph,.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,.mb-inline-art-sort-key,.mb-caa-sort-key,.mb-eaa-sort-key,.mb-cell-collapse-toggle": 4179,
+        "[class*=\"jesus2099\"], .treleases": 4175,
+        ".mb-ic-wrap": 4174,
+        "ul.mb-caa-art-ul": 4174,
+        "td[data-mb-ms]": 4174,
+        ":scope > .mb-text-clamp-marker": 4174
+      },
+      "byTagName": {
+        "span": 120
+      },
+      "byEventType": {
+        "mouseenter": 4174,
+        "mouseleave": 4174,
+        "click": 10
+      },
+      "byStack": {
+        "querySelectorAll <- normalizeCommentSpans": 438,
+        "getComputedStyle <- _apply": 438,
+        "querySelector <- _findCellListItems": 259,
+        "querySelector <- initCollapsableColumns": 250,
+        "querySelectorAll <- _findCellListItems": 218,
+        "querySelector <- getCleanColumnText": 71,
+        "layoutGetter <- initCollapsableColumns": 42,
+        "addEventListener <- _apply": 42,
+        "createTreeWalker <- getCleanColumnText": 33,
+        "querySelector <- normalizeCommentSpans": 25,
+        "querySelectorAll <- _stripJesus2099InTable": 21,
+        "querySelector <- _msAnyStamped": 21
+      }
+    }
+  }
+}
