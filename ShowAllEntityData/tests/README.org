@@ -22,6 +22,26 @@ npm test             # the safe default: 140 fixture tests, ~66 s, no network
 there. Everything else in this file costs real time and real requests to
 musicbrainz.org.
 
+** Node version and the =playwright=/=@playwright/test= pin
+
+An =.nvmrc= pins the Node version this harness is developed against; run
+=nvm use= before =npm install= if you have nvm. Keep =playwright= and
+=@playwright/test= in =package.json= pinned to the *identical* version —
+if they drift (e.g. one gets bumped by an ad hoc =npm install
+playwright@…= without touching the other), npm can no longer dedupe them
+into one shared =playwright-core=, and you end up with two copies that
+each want a different =chromium-headless-shell= revision. Only one of
+those revisions is what =npx playwright install= actually fetches, so the
+other copy's =chromium.launch()= fails with "Executable doesn't exist" —
+confusing, because a plain =npm test= can still pass while a script that
+resolves the other copy fails. This exact split (plus cron silently
+falling back to the distro's old system Node instead of the pinned one)
+is what broke the unattended =tests/support/run-perf-arm-e.sh= cron job on
+2026-09-10 — see =DEBUG-NOTES.md= for the full writeup. Any unattended/cron
+entry point should resolve =node= via an explicit =PATH=/absolute path
+rather than relying on whatever an inherited shell environment happens to
+put first.
+
 * The two suites
 
 The harness is split into two Playwright projects, by directory.

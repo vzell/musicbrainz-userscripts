@@ -8900,3 +8900,69 @@ used originally. If it resurfaces, check first whether the reproduction
 differs from the four tried here (a different trigger entirely, a dirty
 working tree, or a live multi-page fetch's page-boundary timing that a
 single-native-page fixture cannot exercise).
+
+## 2026-09-10 — arm-E cron failures: playwright version split + unexplained zero-output run
+
+`org/arm.org` reported the unattended arm-E cron job (18-day WSL-uptime perf
+experiment, `tests/MEASUREMENTS.org`, worktree
+`/home/vzell/git/saed-perf-9.99.1049-arm-e`, branch
+`measure/9.99.1049-arm-e`, run by `tests/support/run-perf-arm-e.sh` via cron
+at 07:00/19:00) failing again on 2026-09-10 (`05:00:01Z FAILED
+slot=morning`) after a manual fix the previous evening. Two separate,
+confirmed causes, plus one failure left open.
+
+**Confirmed root cause of the original "Executable doesn't exist" error.**
+The worktree's *committed* `package.json` (at both the pinned base commit
+`a56f1b1` and the later "OK" commit `e58c5c8`) pins `@playwright/test` and
+`playwright` to the identical `^1.62.1`, deduping to one `playwright-core`
+— same as `main`. But the working tree had an **uncommitted** diff (left
+over from interactive troubleshooting logged in
+`~/.npm/_logs/2026-09-09T19_*`) bumping `playwright` to `^1.63.0`, which
+re-splits it into a top-level `playwright-core@1.63.0` (wants
+chromium-headless-shell rev 1243) and a nested
+`@playwright/test/node_modules/playwright-core@1.62.1` (wants rev 1234) —
+two browser caches instead of one, and a direct violation of the worktree's
+own "pinned, byte-identical" invariant. **Fix applied**: `git checkout --
+package.json package-lock.json` to drop the stray drift, `npm ci`, then
+`node node_modules/playwright/cli.js install chromium` through the now-
+single package (confirmed via `npm ls --all`: one `playwright-core@1.62.1`,
+no nested copy; binary at `chromium_headless_shell-1234` runs standalone).
+See `tests/README.org`'s new "Node version and the playwright/@playwright/test
+pin" section for the general-case writeup and prevention note.
+
+**Confirmed general tooling mismatch (system vs repo-local Node).** cron's
+minimal inherited `PATH` resolved `node` to the distro package
+`/usr/bin/node` v18.19.1, not the nvm-managed v24.16.0 used interactively —
+confirmed by simulating cron's PATH directly, and independently by the
+literal "Playwright requires Node.js 20 or higher" warning already present
+in the one committed sample's own captured output
+(`interaction-perf-arm-e-evening.json`'s companion log file). This is also a
+measurement-validity concern: that committed sample ran on Node 18 while
+manual/interactive runs use Node 24, and this capture path's JSON has no
+`machine`/node-version field (unlike the newer scripts `PERFORMANCE.org`
+describes) to catch that drift after the fact — worth a caveat in
+`tests/MEASUREMENTS.org`'s arm-E subsection if that Node-18 sample is ever
+compared against others. **Fix applied**: added a `PATH=` line
+(`/home/vzell/.nvm/versions/node/v24.16.0/bin:/usr/bin:/bin`) to the front of
+the user crontab, ahead of both arm-E entries — does not touch the pinned
+worktree's script at all. Added `ShowAllEntityData/.nvmrc` (`v24.16.0`) on
+`main` as the durable, discoverable pin for any future worktree/clone.
+
+**Left open: the 05:00:01 failure's zero-byte output.** Both chromium
+revisions were already cached since the previous night (rules out "missing
+executable" for this specific run). Empirically verified in this exact `if
+cmd >> file 2>&1; then` shape that both a `command not found` (exit 127) and
+a `kill -9` (SIGKILL) on the foreground command still produce visible text
+somewhere — the first inside the redirected file, the second as a "Killed"
+line from the parent shell, which cron would have captured into
+`arm-e-cron.log` — yet the actual failed run appended **zero new bytes** to
+both `arm-e-runs.log.capture-output` and `arm-e-cron.log`. `journalctl -k`
+and `dmesg` show no OOM-kill, no WSL suspend/resume, and no crash logged in
+the `2026-09-10 05:00–05:01 UTC` window. The one nearby, inconclusive lead:
+a WSL2 `dxgkrnl` GPU-passthrough kernel `WARNING` involving a `chrome`
+process at `21:55:57` the previous evening (~9h earlier — not a direct
+match, but suggestive of a flaky WSL2/GPU driver interacting with Chromium
+on this box, `petri`). Not fixed because no reproducible mechanism was
+found — if it recurs, check first whether `arm-e-cron.log`/`capture-output`
+are non-empty this time (narrows "died before producing any output" vs "died
+after").
