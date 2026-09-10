@@ -9367,3 +9367,212 @@ touched are "⚡ PERFORMANCE SETTINGS" (a list of settings, none added or change
 the Picard passage about walking every row on every keystroke (unchanged — that
 is `_picardExtractRowEntities`, not this), and the dropdown note about a section
 that scans every row (unrelated). No new setting, no new UI, no behaviour change.
+
+## 2026-09-10 — Relationships column: on-demand ▶🔗/▼🔗 header toggle, threshold-collapsed (branch relationships-column-collapse-toggle)
+
+Asked as "could we gain the same benefits with the Relationships column as
+commit `4814c70` gave the Picard column". Answer: yes, and the prize is far
+larger — because what defers here is the NETWORK, not DOM construction.
+
+### What shipped
+
+`sa_rel_collapse_threshold` (new, default **200** distinct entities, `0` =
+never). A table whose Relationships column would need more than that many
+distinct MBID lookups starts collapsed: the `<th>` and every
+`td.mb-rel-cell` exist as before, and nothing is fetched until the user
+presses `▶🔗` in that table's own column header. Per table, not per page.
+Multi-table pages also get `#mb-rel-col-hdr-toggle-all-btn`, anchored after
+the Picard all-button (else the last CAA/EAA one, else collapse-all), giving
+collapse-all → CAA-all → EAA-all → Picard-all → Rel-all whichever pass ran
+first.
+
+The arithmetic that motivates it: `_initRelationshipsColumnImpl()` issues one
+WS/2 request per distinct MBID, Phase 2 serialised with a hard-coded 1100 ms
+sleep. Unique-MBID count ≈ row count on these 26 pageTypes, so Bob Dylan's
+2301-release page cost **~42 minutes** of trickling requests, started from the
+render tail before the user had scrolled, plus one cross-origin
+`google.com/s2/favicons` `<img>` per icon. Measured result: **requests issued
+at render go from ~2301 to 0.**
+
+### Why a THRESHOLD and not Picard's flat "collapsed by default"
+
+This is the one real asymmetry with `4814c70` and it drove the whole design. A
+Picard cell contributed `''` to filtering, sorting and the 📊 dropdown, so
+hiding it cost the user nothing. A rel cell is a first-class filter
+participant: its `display:none` `.mb-rel-filter-key` spans feed
+`getCleanColumnText()` (they are deliberately IN `getCleanColumnText`'s input
+and OUT of `getCleanVisibleText`'s — that asymmetry is why `testRowMatch()` and
+`applySubFilter()` each carry a targeted `.mb-rel-cell` fallback),
+`_highlightRelCellIcons()`, `openUniqDrop()`'s `isRelCellCol`/`relIconCounts`,
+and the `rel:<domainKey>` structure modes. So collapsing removes searchable
+content — affordable at 2301 entities, pointless at 12. Sorting is unaffected
+either way: `_sortCellText()` already returned `''` for every rel cell.
+
+Hence also the affordances, and hence that none of them auto-fetches: a tinted
+filter input reading "collapsed — press ▶🔗" (originals stashed in
+`data-mb-rel-ph-saved`/`-title-saved` and restored verbatim, because the
+generic filter-row builder puts a real help `title` there), a
+`.mb-uniq-rel-collapsed-note` row in the 📊 dropdown instead of an empty
+"Relationship icons" section, and `🔗Rels: collapsed` in the status bar. A
+glance at a dropdown must not be able to queue a throttled multi-minute run.
+
+### Four mechanisms that had to change, none with a Picard analogue
+
+1. **The re-entrancy wrapper silently DROPPED work.**
+   `initRelationshipsColumn()` awaited `_relColumnActivePromise` and returned.
+   Correct only while every cell was a candidate from birth; a table expanded
+   mid-flight is not in the running pass's `allCells` snapshot, so it would sit
+   empty forever with no error. Now the wrapper coalesces: `do { … } while
+   (_relColumnRerunPending)`, one pending follow-up. That cannot revive the
+   doubled-icon bug the guard exists for (the one
+   `label-relationships-single-table-column-swap.spec.js` test 2 covers),
+   because the follow-up recomputes AFTER the previous pass finished marking
+   cells `relDone` — the two sets are disjoint by construction, which is exactly
+   what two OVERLAPPING passes could not guarantee.
+2. **Both `runFilter()` gates would have become a per-keystroke regression.**
+   `document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')` matches a
+   collapsed cell FOREVER, so every keystroke would re-read three GM tables
+   (`_initRelMappings()`) and sweep the live tbody + `groupedRows` + `allRows`
+   (`_ensureRelCell()`). Replaced with `_relAnyPendingInExpandedTable()`.
+   **That also fixes a pre-existing instance of the same defect**: the row-build
+   pass creates the `<td>` unconditionally but stamps `data-mbid` only when the
+   row links a release/release-group/work, so a page with any such row already
+   had a permanently unfillable cell keeping the old gate true. The new gate
+   requires `[data-mbid]`.
+3. **The completion signal lost its meaning.** The `!allCells.length` branch
+   counted `td.mb-rel-cell[data-mbid]` page-wide, ignoring `relDone`, so an
+   all-collapsed page reported a whole page of deliberately-empty cells as
+   "already populated from disk-load" — on `#mb-info-display-rel`, which
+   `waitForRelationshipsComplete()` reads as settled. Now counted per table over
+   expanded ones only.
+4. **The pipeline was page-wide.** `allCells`, `uniqueMbids` and the Phase-2
+   queue are one per page; candidate collection is now per table.
+   `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` already removes the
+   column outright from a sub-table whose rows link no release, so "fewer
+   Relationships headers than tables, possibly none" is a normal state the
+   page-wide button tolerates by design.
+
+### Three things found by measuring rather than reasoning
+
+- **The collapsed status message was published and then immediately wiped.**
+  First version set `#mb-info-display-rel` inline in the impl's collapsed
+  branch; the probe read it back empty and hidden.
+  `startFetchingProcess()`'s status block runs `globalStatusDisplay.innerHTML =
+  ''`, `_relGlobalStatusDone = false` and `_setInfoSub('mb-info-display-rel',
+  '')` **synchronously after** the render tail has already called us. The normal
+  completion toast survives only because it is genuinely async. Fixed by
+  extracting `_relPublishCollapsedStatus()` and calling it from BOTH the impl
+  and just after each status reset (fetch path and disk-load path) —
+  deliberately not by deferring with a microtask, which would work only until
+  someone adds an `await` between the tail and the reset.
+- **`_relTableExpanded()` was stamping every table on every page.** Most of its
+  callers run unconditionally, and `runFilter()`'s gate is one of them, so a
+  `data-mb-rel-expanded` attribute would have landed in every rendered table on
+  every pageType — including the eleven committed `tests/snapshots/*/rendered.html`
+  baselines that carry no rel cell at all. It now returns `true` without
+  stamping when the table has no `td.mb-rel-cell`. Caught before running the
+  snapshot harness, by asking what the attribute would do to a page with no such
+  column; that guard is the only reason **no baseline gains real markup** here.
+- **The CSS still drifts every baseline, and the first draft of this entry said
+  otherwise.** `snapshot.js`'s `_serializeWithoutScripts()` strips `<script>`
+  but KEEPS `<style>`, so the nine new selectors land in every `rendered.html`
+  on its next re-capture, on every pageType, column or no column. Found by
+  grepping a `SAVE_HTML=1` run for `data-mb-rel-*`: the only hits on a rel-OFF
+  page are the CSS rule text itself — the same "it is the stylesheet, not a
+  cell" trap `tests/snapshots/registry.org` already documents for
+  `mb-rel-cell`. Recorded there as expected drift, with the exact nine-selector
+  delta and the check that distinguishes it from real markup drift. Not
+  re-captured: that needs a logged-in session (`notes-received` is user-scoped)
+  and the delta is inert style text.
+- **The first mirror test proved nothing.** It collapsed a table that had never
+  been expanded, so its master rows were empty either way — removing the
+  master-row mirroring entirely left all nine tests green. Replaced with a test
+  that expands, collapses, then filters and clears, on the MULTI-table page
+  specifically (`renderFinalTable()` MOVES rows, so on a single-table initial
+  render the live row IS the master and emptying one empties both for free;
+  `renderGroupedTable()` always clones). That version does fail under the
+  mutation. This is CLAUDE.md's "name the guarantee precisely, or the test
+  proves something adjacent" arriving in practice.
+
+### Tests
+
+`tests/fixtures/rel-column-collapse-toggle.spec.js`, 9 tests, network-free.
+Deliberately NOT built on `loadFromDiskFixture()`: see the pre-existing flake
+below. It uses `loadUserscriptPage()` + a routed `page.route()` fetch + the
+"Show all" click, `search-recordings-continuation.spec.js`'s shape, with both
+table modes (`series-releases` single / `releasegroup-releases` multi, whose two
+sub-tables of 6 and 1 entities straddle a threshold of 3 and so make "decided
+per table" falsifiable rather than merely asserted).
+
+The headline assertion is a **request count**, intercepted and exact — "the
+icons are absent" would also pass if they were merely slow, and "the icons
+arrive" would also pass if the column had never been deferred.
+`__saTest.relInitRuns()` and `__saTest.relTableStates()` were added because
+neither is observable otherwise: a collapsed rel cell is byte-identical whether
+a full pass ran and found nothing or no pass ran at all.
+
+Mutation-verified, four mutations:
+
+| Mutation | Fails |
+|---|---|
+| `_expanded = true` (never collapse) | 6 of 9 |
+| restore the old page-wide `runFilter` gate | exactly the keystroke test |
+| drop the `_thr === 0` carve-out | exactly the threshold test |
+| remove the master-row mirroring | exactly the populated-collapse test |
+
+**One thing the threshold test does NOT cover, recorded so it is not mistaken
+for covered:** reading the setting as `Lib.settings.x || 200` — the falsy-zero
+defect `sa_render_threshold` and `sa_chunked_render_threshold` still carry. That
+mutant resolves `0` to `200` and, on a 12-entity page, still reports "expanded",
+so the two readings are indistinguishable there. They diverge only above the
+schema default, which no committed fixture reaches. The code reads it explicitly
+anyway.
+
+Full fixture suite: **173 passed**, no regressions.
+
+### A pre-existing harness flake, measured so it is not mis-attributed
+
+`loadFromDiskFixture()` can fail at `page.click('#sa-render-no-filter-confirm')`
+with "element is outside of the viewport". `#sa-load-dialog-overlay` is
+`position: fixed` with `max-height: calc(100vh - 40px)`, `overflow-y: auto` and
+**no `top`/`left`** — so it takes its static flow position, measured at viewport
+y≈382 on the `releasegroup-releases` shell, leaving its own bottom (and that
+button, at y≈1051) below a 1280×720 viewport. Playwright can scroll the
+overlay's own content but not the overlay itself.
+
+Confirmed pre-existing and independent of this change: it reproduces with an
+exact copy of `picard-cells-survive-rerender.spec.js`'s `beforeEach`, and that
+spec itself failed 1 of 4 on a standalone re-run of unmodified `main` code
+(passing 4 of 4 in the next run). Raising the viewport to 1400×1200 does **not**
+fix it, since the overlay's height tracks `100vh`. Not fixed here — the real fix
+is to give that dialog a `top` — but new specs should avoid the dialog, and a
+`loadFromDiskFixture` timeout should not be read as evidence about the code
+under test.
+
+### Not done, with reasons
+
+- **Interaction-latency arms.** `tests/support/perfDescriptors.js`'s
+  `applyPicardArm()` JSDoc forbids an arm re-enabling this column — *"that
+  would put thousands of live requests inside a measurement bracket"* — and it
+  is right. A `rel-absent|rel-collapsed|rel-expanded` arm needs the `rel-ws2`
+  store pre-seeded first (`tests/live/idb-cache-hit-bigbox.spec.js` is the
+  existing seed-IDB idiom). So nothing was added to `tests/MEASUREMENTS.org`:
+  the only number this change has is the request count, and it is in the spec.
+  Expect the DOM-side win to be well under Picard's 19%/13%/21% — a collapsed
+  rel cell saves cloning an `<a><img>` plus one span, where a collapsed Picard
+  cell saved a whole per-row anchor walk plus `<ul>/<li>/<button>/<img>`
+  construction and an `addEventListener`.
+- **No live spec.** The fixture spec covers both table modes and the guarantee
+  is "nothing is fetched", which a fixture pins exactly and a live page pins
+  only slowly. Worth adding if the toggle grows behaviour that depends on real
+  WS/2 payload shapes.
+- **`_relRetryMbids()`'s dead flag.** It sets and clears `_relRetryActive`
+  *synchronously around a fire-and-forget async call*, so the flag is already
+  `false` by the time Phase 2 reads it. Harmless only because the caches are
+  physically deleted first. Found while reading the retry path; deliberately not
+  folded in (one logical change per session).
+- **`sa_enable_relationships_column`'s own description names 4 pageTypes**
+  (`artist-releasegroups, artist-releases, label-releases, releasegroup-releases`)
+  when 26 declare the column, and the Statistics panel's TTL-eviction prose says
+  "7-day TTL" against a 30-day default. Both are pre-existing doc drift, left
+  for a separate docs commit.

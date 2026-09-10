@@ -102,6 +102,16 @@ async function captureRaw(page, url) {
  * snapshot taken mid-fetch with genuinely different DOM content (an empty
  * info-display vs. a populated one).
  *
+ * Since 9.99.1060 the Relationships half of that advice needs one caveat: a
+ * table needing more than `sa_rel_collapse_threshold` distinct lookups starts
+ * COLLAPSED and fetches nothing, so `waitForRelationshipsComplete()` resolves
+ * on the `🔗Rels: collapsed` status instead and there is no populated column
+ * to wait for. That is a deterministic, capturable state — but if a baseline
+ * is meant to record the POPULATED column, seed
+ * `sa_rel_collapse_threshold: 0` rather than waiting longer. Every rel-carrying
+ * entry in `tests/pagetypes.json` seeds `sa_enable_relationships_column: false`
+ * today, so no committed baseline is affected either way.
+ *
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<string>}
  */

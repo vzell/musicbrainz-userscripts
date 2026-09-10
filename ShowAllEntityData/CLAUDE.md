@@ -403,6 +403,7 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 | `.mb-eaa-sort-key`                          | Hidden sort/filter sentinel for EAA artwork presence                                                                                                                                            |
 | `.mb-inline-art-sort-key`                   | Hidden sort key for inline thumbnail presence                                                                                                                                                   |
 | `.mb-rel-cell`                              | Relationship icon cell                                                                                                                                                                          |
+| `.mb-rel-col-hdr-btn`                       | Per-table ▶🔗/▼🔗 Relationships load/empty toggle; glyph from CSS `::before` keyed on `aria-pressed`                                                                                            |
 | `.mb-sticky-col`                            | Sticky first column                                                                                                                                                                             |
 | `.mb-cell-collapse-toggle`                  | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`)                                                                                        |
 | `.mb-text-clamp-marker`                     | Unconditional marker on every prose-collapse column's wrapper — `_isProseCollapseColumn` keys off this, independent of the `.mb-text-clamp-inner` clamp itself (see `collapsableColumns` below) |
@@ -453,6 +454,12 @@ here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
 - `sa_enable_ars_collapse`, `sa_ars_column_max_width`,
   `sa_ars_column_max_height_em` — the "ARs" column's own independent
   collapse/clamp settings (release-tracks only, not shared with Annotation)
+- `sa_enable_relationships_column` — master gate for the injected
+  Relationships column (off ⇒ no `<th>`, no `<td>`, nothing);
+  `sa_rel_collapse_threshold` (default **200** distinct entities, `0` = never)
+  decides only which tables START collapsed — the `▶🔗` toggle is always
+  present. Its own description is stale and names 4 pageTypes; 26 declare the
+  column. See the Relationships section below
 
 ## Debug channels (`Lib.debug('channel', …)`)
 
@@ -1393,6 +1400,104 @@ the destination rebuilds the column and applies its own default.
 `__saTest.picardEntityScans()` exposes how many times
 `_picardExtractRowEntities()` has run, because the gate's effect is otherwise
 invisible in the DOM.
+
+## Relationships column: collapsed by THRESHOLD, and what that costs
+
+Since 9.99.1060 the injected `Relationships` column defers the same way Picard
+does — `<th>` and every `td.mb-rel-cell` always exist, only the CELL CONTENT
+waits, behind a per-table `▶🔗`/`▼🔗` toggle plus a multi-table-only
+`#mb-rel-col-hdr-toggle-all-btn`. Read the Picard section above first; this one
+records only what differs, and everything below is a difference that bit.
+
+**What defers is the NETWORK.** `_initRelationshipsColumnImpl()` issues one
+WS/2 request per distinct MBID with a hard-coded 1100 ms sleep between them, and
+unique-MBID count ≈ row count on all 26 pageTypes declaring
+`injectedColumns: ['Relationships']` — Bob Dylan's 2301-release page cost ~42
+minutes of trickling requests from the render tail. So the measurement for
+anything here is a REQUEST COUNT, not a latency ratio, and
+`tests/fixtures/rel-column-collapse-toggle.spec.js` intercepts `**/ws/2/**` to
+assert it exactly.
+
+**The default is a THRESHOLD (`sa_rel_collapse_threshold`, 200 distinct
+entities, `0` = never), not a flat "collapsed", and that is not a preference.**
+A Picard cell contributed `''` to filtering, sorting and 📊, so hiding it cost
+the user nothing. A rel cell is a first-class filter participant — its
+`display:none` `.mb-rel-filter-key` spans feed `getCleanColumnText()`,
+`_highlightRelCellIcons()`, `openUniqDrop()`'s `isRelCellCol`/`relIconCounts`
+and the `rel:<domainKey>` structure modes — so collapsing removes searchable
+content. Affordable at 2301 entities, pointless at 12. **Sorting is unaffected
+either way**: `_sortCellText()` already returned `''` for every rel cell, since
+`getCleanVisibleText()` FILTER_REJECTs that span and the icons are `<img>`.
+Read the setting explicitly (`typeof === 'number' && >= 0`), never `|| 200` —
+that is the `sa_render_threshold` falsy-zero defect this file documents.
+
+**Four things any change here must not undo.** Each was a real defect in the
+first version, and three were silent.
+
+- **`initRelationshipsColumn()` COALESCES; it must not go back to "await and
+  return".** A table expanded mid-flight is not in the running pass's
+  `allCells` snapshot, so the old wrapper would have stranded it empty forever.
+  The `do { … } while (_relColumnRerunPending)` loop cannot revive the
+  doubled-icon bug the guard exists for: the follow-up recomputes AFTER the
+  previous pass marked its cells `relDone`, so the sets are disjoint by
+  construction. One boolean, not a counter — N callers owe one follow-up.
+- **Both `runFilter()` gates go through `_relAnyPendingInExpandedTable()`.** The
+  old page-wide `td.mb-rel-cell:not([data-rel-done="1"])` matches a collapsed
+  cell forever, so every keystroke would re-read three GM tables and sweep the
+  live tbody + `groupedRows` + `allRows`. Its `[data-mbid]` qualifier also fixes
+  a pre-existing instance of the same bug — the row-build pass creates the
+  `<td>` unconditionally but stamps `data-mbid` only for a row that links a
+  release/release-group/work.
+- **`_relTableExpanded()` returns `true` WITHOUT stamping when the table has no
+  rel cell.** Its callers run on every page, so stamping would put
+  `data-mb-rel-expanded` into every rendered table on every pageType, including
+  the eleven `tests/snapshots/*/rendered.html` baselines that carry no rel cell.
+  That guard is the only reason no baseline gains real MARKUP from this
+  change — the nine new CSS selectors still land in every one's `<style>`
+  block, since `snapshot.js` strips `<script>` but keeps `<style>`. See
+  `tests/snapshots/registry.org`'s "Expected drift" for the exact delta.
+- **Collapsing MIRRORS onto the master rows, and here that IS load-bearing**
+  (unlike Picard's, which mutation-testing showed was not). Nothing reconciles a
+  cloned rel cell against its table's state on a later pass —
+  `_stripTransientCellState()` has no `.mb-rel-*` arm and never touches
+  `relDone` — so a collapse that left the masters populated has every icon
+  reappear on the next keystroke. Test it on a **multi**-table page:
+  `renderFinalTable()` MOVES rows, so on a single-table initial render the live
+  row IS the master and the mirror is untestable there.
+
+**Collapsing keeps both caches** (`_relWs2Cache` and the `rel-ws2` IDB store),
+which is what makes re-expanding cost zero requests. Only `_relRetryMbids()`
+evicts. **A table restored from a 1.1 snapshot starts EXPANDED** regardless of
+the threshold — its icons are already in the file. The converse matters when
+re-capturing: saving a collapsed page writes empty rel cells, and
+`tests/fixtures/saved-data/artist-releases-bodeans.json.gz` is the one committed
+fixture carrying real relationship data (56 populated cells that
+`tests/live/artist-releases-filter-sort.spec.js` counts on).
+
+**`#mb-info-display-rel` publishes `🔗Rels: collapsed`**, so
+`waitForRelationshipsComplete()` still resolves on the shipped default — read
+its TEXT, not just visibility, if you need to know which happened. Publishing it
+needs `_relPublishCollapsedStatus()` called from **both** the impl and just
+after each status reset: `startFetchingProcess()`'s status block clears that
+element synchronously AFTER the render tail already called us, so an inline
+publish is wiped (measured — the first version came back empty).
+
+**`_relInitColHeaderToggles()` must be called from every render path and NOT
+from inside the fetch impl.** The impl is gated on there being something to
+fetch, so on a settled page it does not run — which is exactly when
+`renderGroupedTable()` has just rebuilt every `<thead>` from a clone.
+
+**`__saTest.relInitRuns()` / `relTableStates()`** exist because none of this is
+visible in the DOM: a collapsed rel cell is byte-identical whether a pass ran
+and found nothing or never ran.
+
+Two smaller notes. Unlike Picard's, this `<th>` carries `dataset.colName` and
+gets a real `.mb-col-hdr-flex` from `makeTableSortableUnified()`, so the toggle
+prepends into that flex like `.mb-caa-col-hdr-btn`/`.mb-ms-col-hdr-btn` and the
+text-glyph hazard does not apply (CSS `::before` is used anyway, so
+`aria-pressed` stays the single state representation). And do NOT name the
+toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
+`initCollapsableColumns()` self-deletion trap as Picard's.
 
 ## Common pitfalls
 

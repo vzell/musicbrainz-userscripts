@@ -1,0 +1,31 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-10",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Relationships\" column is now loaded on demand on big listings, from a new ▶🔗/▼🔗 button in its own column header. Until you press it the column is there but empty, and — this is the point — NOTHING is fetched. That column asks MusicBrainz's Web Service about every distinct release, release group or work on the page, one request at a time with a mandatory one-second gap between them, so a 2 300-release artist page quietly spent about 42 minutes trickling requests in the background before you had even scrolled, whether or not you wanted the icons. Pressing ▶🔗 loads that one table; pressing ▼🔗 empties it again.",
+          "New setting \"Relationships auto-collapse threshold (unique entities)\" (`sa_rel_collapse_threshold`, default 200) decides which tables start collapsed. Small listings are unaffected and keep loading immediately, because at a dozen entities the whole thing costs a few seconds. Set it to 0 to never auto-collapse and get exactly the old behaviour back. The button is always available either way — the setting only chooses the starting state.",
+          "The decision is made per table, not per page, so on a multi-section page a small section can load itself while a large one waits for you. Multi-section pages also get a page-wide \"▶🔗 Load all Relationships\" / \"▼🔗 Empty all Relationships\" button next to the existing collapse-all, cover-art and Picard buttons.",
+          "Emptying a collapsed column keeps everything already fetched, in memory and in the browser cache, so pressing ▶🔗 again is instant and costs no requests at all. Only the \"🔗⟳ Retry\" buttons clear that data, which is what they are for.",
+          "A table restored from a saved snapshot always starts expanded, whatever the threshold says: its icons are already in the file, so there is nothing to save by hiding them."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A collapsed Relationships column now says so instead of quietly matching nothing. Its column-filter box is tinted and reads \"collapsed — press ▶🔗\", its 📊 unique-values dropdown shows a \"Collapsed — press ▶🔗 in the column header to load\" line rather than an empty section, and the status bar reports \"🔗Rels: collapsed\" instead of claiming a completed load. Neither the filter box nor the dropdown starts the fetch — a glance at a dropdown should not be able to queue a multi-minute run.",
+          "The ▶🔗 tooltip says what pressing it will actually cost, in requests and in expected time (e.g. \"12 distinct entities to look up, about 13 seconds\"), so \"load this\" is never a blind choice between two seconds and forty minutes."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Every keystroke in the filter box could kick off a redundant Relationships pass — re-reading three settings tables and walking every row of the page three times — on any page containing a row with no release, release group or work link at all. Such a row gets a Relationships cell that can never be filled, and the check for \"is anything still unloaded?\" counted it forever. The check now ignores cells that have nothing to look up, and skips collapsed tables entirely."
+        ]
+      }
+    ]
+  }
+]
