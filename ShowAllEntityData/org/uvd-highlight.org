@@ -1,0 +1,14 @@
+* DONE uvd highlight
+
+When filtering in the quickfilter field in the unique value drop down menu of a column e.g. in the "Event" column of the
+URL https://musicbrainz.org/user/vzell/ratings/event/ only the first occurence of the filter string e.g. "as" is highlighted per menu entry.
+
+For example in
+
+#+begin_example
+<span class="mb-uniq-syn-label-text">» alias: Southside Johnny &amp; The Asbury Jukes at The Stone Pony</span>
+#+end_example
+
+the "as" is only highlighted in the string "alias" but not "Asbury", see also [Image #1]
+
+Filtering via the table global or column filter always highlights all filter string occurences
