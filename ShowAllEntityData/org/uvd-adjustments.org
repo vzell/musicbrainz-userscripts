@@ -1,4 +1,4 @@
-* adjustments
+* DONE adjustments
 ** DONE i
 
 1.)
@@ -40,8 +40,7 @@ cover
 etc.
 #+end_example
 
-
-** TODO On e.g, the following URLs, in the unique value drop down menues, the entity name and comment sections are missing
+** DONE On e.g, the following URLs, in the unique value drop down menues, the entity name and comment sections are missing
 
 #+begin_example
 https://musicbrainz.org/cdstub/browse - @debug/top-cd-stubs-final.html - "Title" column

@@ -1,4 +1,5 @@
 * new additions
+** DONE i
 
 1.)
 
@@ -81,4 +82,47 @@ on the initial page
 4.)
 
 also add tooltips for explanation of the prefixes if possible
- 
+
+** DONE make "Date" column adjustments
+
+make the following adjustments to the unique value drop down menue for date and editor based columns:
+
+1.)
+
+add a new section for each unique year like e.g. "1984"
+
+2.)
+
+add a new section for each unique computed weekday like e.g "Monday"
+
+3.)
+
+Maybe reuse functions we already have in code for column extractors
+
+4.)
+
+also add the same date treatment to columns (which have a format which includes the time) in the following pagetypes
+
+#+begin_example
+https://musicbrainz.org/election/<id> - auto-editor-election-final.html - "Date" column
+https://musicbrainz.org/elections - elections-final.html - "Start date", "End date" columns
+https://musicbrainz.org/label/<MBID>/annotations - label-annotations-final.html - "Date" column
+#+end_example
+
+5.)
+
+On https://musicbrainz.org/label/<MBID>/annotations the "Revision date" column doesn't currently have any unique value drop down sections
+
+6.)
+
+All the editor related columns on https://musicbrainz.org/elections, e.g.
+
+#+begin_example
+Cadidate
+Proposer
+1st seconder
+2nd seconder
+#+end_example
+
+and on https://musicbrainz.org/election/473 the "Voter" column
+should get the same unique value drop down sections like the "editor" column in https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/annotations
