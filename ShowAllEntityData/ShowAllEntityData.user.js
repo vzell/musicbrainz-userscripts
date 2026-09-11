@@ -5068,10 +5068,22 @@
     }
 
     /**
-     * Column names fed by a `dateParts` extractor, from either the primary or
-     * synthetic extractor registry — see `openUniqDrop()`'s `isDateExprCol`
-     * for why both are checked (e.g. "Date" is a primary column on some
-     * pageTypes, a synthetic one produced by `splitCountryDate` on others).
+     * Column names eligible for the "Date info" unique-values-dropdown
+     * family, from either the primary or synthetic extractor registry — see
+     * `openUniqDrop()`'s `isDateExprCol` for why both are checked (e.g.
+     * "Date" is a primary column on some pageTypes, a synthetic one produced
+     * by `splitCountryDate` on others). Two independent sources:
+     *
+     * - A `dateParts`-fed column's own `sourceColumn` — its raw cell text is
+     *   already a clean "YYYY[-MM[-DD]]" date, so `_findCellDateExpressionParts()`
+     *   can read it directly.
+     * - A `dateTimeParts`-fed entry's pure-date OUTPUT column
+     *   (`syntheticColumns[0]`) — e.g. `annotations`' "Revision date", or
+     *   `auto-editor-election`'s "Vote date". The entry's own `sourceColumn`
+     *   (e.g. "Date") is deliberately EXCLUDED: it still carries trailing
+     *   " HH:MM GMT+N" text that `_findCellDateExpressionParts()`'s regex
+     *   does not match, so including it would silently produce zero entries
+     *   rather than the family working.
      *
      * Exists so `renderGroupedTable()`'s per-group extractor rebuild (user-
      * ratings / tag-value / user-tag-value / instrument-list) can snapshot
@@ -5083,14 +5095,18 @@
      * (a later, unrelated user click), not necessarily the group the open
      * column belongs to.
      *
-     * @param   {Array<{extractor: string, sourceColumn: string}>} columnExtractors
-     * @param   {Array<{extractor: string, sourceColumn: string}>} syntheticColumnExtractors
+     * @param   {Array<{extractor: string, sourceColumn: string, syntheticColumns?: string[]}>} columnExtractors
+     * @param   {Array<{extractor: string, sourceColumn: string, syntheticColumns?: string[]}>} syntheticColumnExtractors
      * @returns {string[]} Unique column names, in first-seen order.
      */
     function _dateExprColumnNames(columnExtractors, syntheticColumnExtractors) {
         const names = new Set();
-        (columnExtractors || []).forEach(e => { if (e.extractor === 'dateParts') names.add(e.sourceColumn); });
-        (syntheticColumnExtractors || []).forEach(e => { if (e.extractor === 'dateParts') names.add(e.sourceColumn); });
+        const _collect = (entries) => (entries || []).forEach(e => {
+            if (e.extractor === 'dateParts') names.add(e.sourceColumn);
+            else if (e.extractor === 'dateTimeParts' && e.syntheticColumns && e.syntheticColumns[0]) names.add(e.syntheticColumns[0]);
+        });
+        _collect(columnExtractors);
+        _collect(syntheticColumnExtractors);
         return Array.from(names);
     }
 
@@ -13952,6 +13968,10 @@
             buttons: [ { label: 'Show all Elections' } ],
             features: {
                 insertH2: 'Auto-editor elections',
+                columnExtractors: [
+                    { sourceColumn: 'Start date', extractor: 'dateTimeParts', syntheticColumns: ['Election start date', 'Election start time'] },
+                    { sourceColumn: 'End date',   extractor: 'dateTimeParts', syntheticColumns: ['Election end date', 'Election end time'] }
+                ],
                 integerColumns: [
                     { sourceColumn: 'Votes for', align: 'R' },
                     { sourceColumn: 'Votes against', align: 'R' }
@@ -14095,6 +14115,9 @@
             match: (path) => path.match(/^\/election\/\d+\/?$/),
             buttons: [ { label: 'Show all Votes cast' } ],
             features: {
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateTimeParts', syntheticColumns: ['Vote date', 'Vote time'] }
+                ],
                 stickyColumn: 'Voter'
             },
             tableMode: 'single',
@@ -21850,6 +21873,51 @@
     }
 
     /**
+     * Buckets one `_findCellDateExpressionParts()` atom into its own exact
+     * calendar YEAR, e.g. "1973-08-09" → "1973", "1974" → "1974". Always
+     * succeeds for any well-formed atom (a year is present in every
+     * precision shape), same as `_dateAtomDecade()`.
+     *
+     * @param {string} atom
+     * @returns {string}
+     */
+    function _dateAtomYear(atom) {
+        return atom.slice(0, 4);
+    }
+
+    /**
+     * Buckets one `_findCellDateExpressionParts()` atom into its own
+     * COMPUTED day-of-week name, e.g. "1973-08-09" → "Thursday". Returns
+     * `null` for a year-only or year-month 'partial' atom (e.g. "1974",
+     * "1974-08") — no day component to compute a weekday from, mirroring
+     * `_dateAtomMonth()`'s own null-guard idiom. Uses the same
+     * `new Date(year, month-1, day)` + round-trip validity guard already
+     * duplicated in `ColumnDataExtractor.dateParts` and
+     * `SyntheticColumnDataExtractor.dateParts` — genuinely computed, unlike
+     * "Release events - Weekday" (`revweekday`), which merely scrapes a
+     * third-party chaban-userscript-injected span and is a no-op without it.
+     *
+     * @param {string} atom
+     * @returns {?string}
+     */
+    function _dateAtomWeekday(atom) {
+        const m = atom.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return null;
+        const DAY_NAMES = [
+            'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        ];
+        const year = parseInt(m[1], 10), month = parseInt(m[2], 10), day = parseInt(m[3], 10);
+        const d = new Date(year, month - 1, day);
+        if (isNaN(d.getTime()) ||
+                d.getFullYear() !== year ||
+                d.getMonth()    !== month - 1 ||
+                d.getDate()     !== day) {
+            return null;
+        }
+        return DAY_NAMES[d.getDay()];
+    }
+
+    /**
      * Extracts the leading integer tag-vote count (e.g. "26" from "26 -
      * Johnny Cash") from a tag-value-entity cell — the same text-node walk
      * and regex as `ColumnDataExtractor.tagCount`, so both agree on the
@@ -22486,6 +22554,22 @@
             const want = mode.slice(10);
             const parts = cell && _findCellDateExpressionParts(cell);
             return !!parts && parts.atoms.some(atom => _dateAtomMonth(atom) === want);
+        }
+        if (mode.startsWith('dateyear:')) {
+            // Compound mode — matches when any atom's own exact calendar
+            // YEAR, from _dateAtomYear(), equals `want`.
+            const want = mode.slice(9);
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.atoms.some(atom => _dateAtomYear(atom) === want);
+        }
+        if (mode.startsWith('dateweekday:')) {
+            // Compound mode — matches when any atom's own COMPUTED
+            // day-of-week name, from _dateAtomWeekday(), equals `want`. A
+            // year-only or year-month 'partial' atom has no day and never
+            // matches.
+            const want = mode.slice(12);
+            const parts = cell && _findCellDateExpressionParts(cell);
+            return !!parts && parts.atoms.some(atom => _dateAtomWeekday(atom) === want);
         }
         if (mode.startsWith('tagcount:')) {
             // Compound mode — matches the leading integer tag-vote count of
@@ -40489,6 +40573,14 @@ a { color: #1565c0; }`;
         // (a calendar-based grouping), same reuse rationale as 📅 across
         // creditDate/releaseEventsDate/partOfSeriesDate/eventInfo.
         dateExprMonth:     { label: 'Date info - Month',     glyph: '📆' },
+        // Year/Weekday: the exact-year and COMPUTED-weekday siblings of
+        // Decade/Month above — see `_dateAtomYear()`/`_dateAtomWeekday()`.
+        // Weekday is deliberately NOT the same glyph as releaseEventsWeekday
+        // (🎂/🧭 both otherwise unused in this file) since the two are
+        // different facts: this one is computed from the date itself, the
+        // other is scraped from a third-party userscript's own markup.
+        dateExprYear:      { label: 'Date info - Year',      glyph: '🎂' },
+        dateExprWeekday:   { label: 'Date info - Weekday',   glyph: '🧭' },
         // "Pending edits" — MusicBrainz's own native `<span class="mp">`
         // open-edits marker (see `_findCellPendingEdits()`'s own JSDoc),
         // split into the binary presence FLAG pair ("- Presence") and the
@@ -40597,6 +40689,7 @@ a { color: #1565c0; }`;
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
         datedecade: 'dateExprDecade', datemonth: 'dateExprMonth',
+        dateyear: 'dateExprYear', dateweekday: 'dateExprWeekday',
         pendingedit: 'pendingEditsEntity',
         titleageadded: 'titleAgeAdded', titleagemodified: 'titleAgeModified',
     };
@@ -40617,6 +40710,21 @@ a { color: #1565c0; }`;
         'Wind instrument', 'String instrument', 'Percussion instrument',
         'Electronic instrument', 'Other instrument', 'Ensemble', 'Family',
         'Unclassified instrument'
+    ]);
+
+    /**
+     * Column names whose cells get the "Editor info" family (Deleted/
+     * Recorded name/Membership/Comment) — a `Set`, not a single fixed name,
+     * since the same `a[href^="/user/"]` cell shape (see
+     * `_findCellEditorInfo()`'s own JSDoc) appears under several different
+     * column headers: `annotations`' own "Editor", and `/elections`'/
+     * `/election/<id>`'s own editor-link columns (Candidate/Proposer/1st
+     * seconder/2nd seconder/Voter). None of the latter carry a `title`
+     * tooltip, so `recordedName`/`membership` simply stay empty for them —
+     * an already-handled fallback, not an error path.
+     */
+    const EDITOR_INFO_COLUMN_NAMES = new Set([
+        'Editor', 'Candidate', 'Proposer', '1st seconder', '2nd seconder', 'Voter'
     ]);
 
     /**
@@ -41538,53 +41646,71 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Highlights ONLY the specific YYYY (decade) or MM (month) component of
-     * the matching atom(s) for a `datedecade:`/`datemonth:` compound
-     * structure-mode filter — NOT the whole atom (e.g. checking decade
-     * "1970-1980" on "2008-07-15" would be wrong to highlight; checking it
-     * on the atom that actually matches, e.g. "1973-08-09", highlights only
-     * "1973", not "-08-09" too; checking month "August" on "2008-07-15"
-     * never matches at all, and on a matching atom highlights only "07" —
-     * the digit pair the raw cell text actually shows, not the month
-     * NAME). Re-derives from `_findCellDateExpressionParts()` directly. For
-     * a 'range' cell where only one side falls in the checked decade/
-     * month, the OTHER side is deliberately left unhighlighted (unlike
-     * `_highlightDatePrecisionMatch()` above, which always highlights the
-     * whole expression since Precision matches the row as a whole, not one
-     * specific atom).
+     * Highlights the evidence for a `datedecade:`/`datemonth:`/`dateyear:`/
+     * `dateweekday:` compound structure-mode filter — NOT the whole atom for
+     * Decade/Month/Year (e.g. checking decade "1970-1980" on "2008-07-15"
+     * would be wrong to highlight; checking it on the atom that actually
+     * matches, e.g. "1973-08-09", highlights only "1973", not "-08-09" too;
+     * checking month "August" on a matching atom highlights only "07" — the
+     * digit pair the raw cell text actually shows, not the month NAME; Year
+     * uses the exact same YYYY-substring mechanism as Decade). Weekday is
+     * different in kind: the weekday NAME is never literally present in the
+     * cell's visible text (only the YYYY-MM-DD date is), so it highlights
+     * the WHOLE matching atom instead — the visible date evidence the
+     * weekday was computed from — rather than skipping highlighting the way
+     * `_highlightEditorDeletedMatch()`'s sibling facets do for data that
+     * lives ONLY in a non-visible `title` attribute (not the case here).
+     * Re-derives from `_findCellDateExpressionParts()` directly. For a
+     * 'range' cell where only one side matches, the OTHER side is
+     * deliberately left unhighlighted (unlike `_highlightDatePrecisionMatch()`
+     * above, which always highlights the whole expression since Precision
+     * matches the row as a whole, not one specific atom).
      *
-     * Lookbehind/lookahead anchor each pattern to the EXACT position of the
-     * matching atom's own year/month substring (never a same-looking digit
-     * run elsewhere in the cell, e.g. a different atom sharing the same
-     * year) — the year/month digits themselves are the only thing inside
-     * the match (lookaround assertions are zero-width, so the surrounding
-     * "-MM-DD"/"YYYY-"/"-DD" context they require is never itself
-     * highlighted).
+     * Lookbehind/lookahead anchor each Decade/Month/Year pattern to the
+     * EXACT position of the matching atom's own substring (never a
+     * same-looking digit run elsewhere in the cell, e.g. a different atom
+     * sharing the same year) — the digits themselves are the only thing
+     * inside the match (lookaround assertions are zero-width, so the
+     * surrounding "-MM-DD"/"YYYY-"/"-DD" context they require is never
+     * itself highlighted). Weekday anchors similarly, but around the whole
+     * atom, so it can't bleed into an adjacent atom's own digits in a range
+     * cell.
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - The compound mode string, e.g.
-     *   `"datedecade:1970-1980"` or `"datemonth:August"`.
+     *   `"datedecade:1970-1980"`, `"datemonth:August"`, `"dateyear:1973"`,
+     *   or `"dateweekday:Thursday"`.
      */
     function _highlightDateAtomMatch(cell, mode) {
         if (!cell) return;
-        const isDecade = mode.startsWith('datedecade:');
+        const isDecade  = mode.startsWith('datedecade:');
+        const isMonth   = mode.startsWith('datemonth:');
+        const isYear    = mode.startsWith('dateyear:');
+        const isWeekday = mode.startsWith('dateweekday:');
         const want = mode.slice(mode.indexOf(':') + 1);
         if (!want) return;
         const parts = _findCellDateExpressionParts(cell);
         if (!parts) return;
-        const matching = parts.atoms.filter(atom => (isDecade ? _dateAtomDecade(atom) : _dateAtomMonth(atom)) === want);
+        const bucketFn = isDecade ? _dateAtomDecade : isMonth ? _dateAtomMonth : isYear ? _dateAtomYear : _dateAtomWeekday;
+        const matching = parts.atoms.filter(atom => bucketFn(atom) === want);
         if (matching.length === 0) return;
         const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const patterns = matching.map((atom) => {
-            if (isDecade) {
+            if (isDecade || isYear) {
                 const year = atom.slice(0, 4);
                 const rest = _esc(atom.slice(4));
                 return `\\b${year}(?=${rest}(?:\\D|$))`;
             }
-            const before = _esc(atom.slice(0, 5));  // "YYYY-"
-            const month  = atom.slice(5, 7);        // "MM"
-            const after  = _esc(atom.slice(7));     // "-DD" or ""
-            return `(?<=${before})${month}(?=${after}(?:\\D|$))`;
+            if (isMonth) {
+                const before = _esc(atom.slice(0, 5));  // "YYYY-"
+                const month  = atom.slice(5, 7);        // "MM"
+                const after  = _esc(atom.slice(7));     // "-DD" or ""
+                return `(?<=${before})${month}(?=${after}(?:\\D|$))`;
+            }
+            // Weekday: no literal weekday text exists in the cell —
+            // highlight the FULL matching atom (the visible YYYY-MM-DD
+            // evidence the weekday was computed from).
+            return `(?<![\\d-])${_esc(atom)}(?![\\d-])`;
         });
         cell.normalize();
         highlightCrossTag(cell, new RegExp(patterns.join('|'), 'g'), 'mb-column-filter-highlight');
@@ -42736,7 +42862,8 @@ a { color: #1565c0; }`;
                                     _highlightTitleAgeMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'date-complete' || mode === 'date-partial' || mode === 'date-range') {
                                     _highlightDatePrecisionMatch(row.cells[f.idx], mode);
-                                } else if (mode.startsWith('datedecade:') || mode.startsWith('datemonth:')) {
+                                } else if (mode.startsWith('datedecade:') || mode.startsWith('datemonth:') ||
+                                           mode.startsWith('dateyear:') || mode.startsWith('dateweekday:')) {
                                     _highlightDateAtomMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('tagcount:')) {
                                     _highlightTagCountMatch(row.cells[f.idx], mode);
@@ -53856,8 +53983,10 @@ a { color: #1565c0; }`;
         // (isDateExprCol below). "Date info - Precision" is a FIXED 3-flag
         // family (dateCompleteCount/datePartialCount/dateRangeCount, declared
         // alongside catalogHasPrefixCount et al. below), not an open list.
-        const dateDecadeValueCounts = _uniqCacheHit ? _uniqCacheHit.dateDecadeValueCounts : new Map();
-        const dateMonthValueCounts  = _uniqCacheHit ? _uniqCacheHit.dateMonthValueCounts  : new Map();
+        const dateDecadeValueCounts  = _uniqCacheHit ? _uniqCacheHit.dateDecadeValueCounts  : new Map();
+        const dateMonthValueCounts   = _uniqCacheHit ? _uniqCacheHit.dateMonthValueCounts   : new Map();
+        const dateYearValueCounts    = _uniqCacheHit ? _uniqCacheHit.dateYearValueCounts    : new Map();
+        const dateWeekdayValueCounts = _uniqCacheHit ? _uniqCacheHit.dateWeekdayValueCounts : new Map();
         // Distinct "Length info - Duration" bucket values (e.g. "5 to 6
         // minutes", "Unknown length") — see `_findCellLengthBucket()`'s
         // own JSDoc. Column-gated (isLengthCol below).
@@ -54064,19 +54193,17 @@ a { color: #1565c0; }`;
         // to the original, unstaled check unchanged.
         const isDateExprCol = table.dataset.mbEntityDateExprColumns
             ? JSON.parse(table.dataset.mbEntityDateExprColumns).includes(_colHeaderName)
-            : (activeColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName) ||
-               activeSyntheticColumnExtractors.some(e => e.extractor === 'dateParts' && e.sourceColumn === _colHeaderName));
+            : _dateExprColumnNames(activeColumnExtractors, activeSyntheticColumnExtractors).includes(_colHeaderName);
         // Column-name gate for release-tracks' dynamic-fallback "Part of
         // series" AR column — same convention as isFormatCol/isTracksCol/
         // isCatalogCol/isEventCol above (name-only, no page-type check).
         const isPartOfSeriesCol = _colHeaderName === 'Part of series';
-        // Column-name gate for the annotations pageType's "Editor"/
-        // "Version history" columns — same convention as isFormatCol/
-        // isTracksCol/isCatalogCol/isEventCol above (name-only, no
-        // page-type check), so this also harmlessly applies (with
-        // all-null facet fields) to any other "Editor" column, e.g.
+        // Column-name gate for the "Editor info" family — see
+        // `EDITOR_INFO_COLUMN_NAMES`'s own JSDoc. A Set-membership check
+        // (not a single fixed name), so this also harmlessly applies (with
+        // all-null facet fields) to any other matching column name, e.g.
         // Collections' synthetic 'Editor' column (Collection_Editor).
-        const isEditorCol         = _colHeaderName === 'Editor';
+        const isEditorCol         = EDITOR_INFO_COLUMN_NAMES.has(_colHeaderName);
         const isVersionHistoryCol = _colHeaderName === 'Version history';
         // Column-name gate for the "Release" column's own native
         // data-quality marker (see _findCellReleaseDataQuality()'s own
@@ -54382,16 +54509,24 @@ a { color: #1565c0; }`;
                         else                                   dateRangeCount++;
                         // Bucket every atom (one for complete/partial, two
                         // — start+end — for a range) into its own decade/
-                        // month, deduped per row via Set so a range whose
-                        // start/end share a decade or month counts once.
+                        // month/year/weekday, deduped per row via Set so a
+                        // range whose start/end share a bucket counts once
+                        // (a range CAN contribute two different weekdays,
+                        // e.g. a multi-day event — see the fixture test).
                         const _rowDecadeValues = new Set(), _rowMonthValues = new Set();
+                        const _rowYearValues = new Set(), _rowWeekdayValues = new Set();
                         _dateExpr.atoms.forEach(atom => {
                             _rowDecadeValues.add(_dateAtomDecade(atom));
                             const _month = _dateAtomMonth(atom);
                             if (_month) _rowMonthValues.add(_month);
+                            _rowYearValues.add(_dateAtomYear(atom));
+                            const _weekday = _dateAtomWeekday(atom);
+                            if (_weekday) _rowWeekdayValues.add(_weekday);
                         });
                         _rowDecadeValues.forEach(t => dateDecadeValueCounts.set(t, (dateDecadeValueCounts.get(t) || 0) + 1));
                         _rowMonthValues.forEach(t => dateMonthValueCounts.set(t, (dateMonthValueCounts.get(t) || 0) + 1));
+                        _rowYearValues.forEach(t => dateYearValueCounts.set(t, (dateYearValueCounts.get(t) || 0) + 1));
+                        _rowWeekdayValues.forEach(t => dateWeekdayValueCounts.set(t, (dateWeekdayValueCounts.get(t) || 0) + 1));
                     }
                 }
                 if (isTagEntityCol) {
@@ -55463,7 +55598,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
-                dateDecadeValueCounts, dateMonthValueCounts,
+                dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
@@ -55536,6 +55671,7 @@ a { color: #1565c0; }`;
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...lengthBucketValueCounts.values(),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
+            ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
             ...partOfSeriesNumberValueCounts.values(),
             ...localeLanguageValueCounts.values()
@@ -55912,7 +56048,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -56051,6 +56187,8 @@ a { color: #1565c0; }`;
                  : kind === 'localelanguage'     ? '» language: '
                  : kind === 'datedecade'         ? '» decade: '
                  : kind === 'datemonth'          ? '» month: '
+                 : kind === 'dateyear'           ? '» year: '
+                 : kind === 'dateweekday'        ? '» weekday: '
                  : kind === 'pendingedit'        ? '» pending edit: '
                  : '» ');
             if (kind === 'arttype') {
@@ -56334,6 +56472,15 @@ a { color: #1565c0; }`;
             'July',    'August',   'September', 'October', 'November', 'December'
         ];
         const _sortedDateMonthValues = Array.from(dateMonthValueCounts.keys()).sort((a, b) => _MONTH_SORT_ORDER.indexOf(a) - _MONTH_SORT_ORDER.indexOf(b));
+        // Numeric ascending (not lexicographic), same reasoning as Decade.
+        const _sortedDateYearValues = Array.from(dateYearValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        // Calendar order (Sunday..Saturday), matching DAY_NAMES'/getDay()'s
+        // own index order — NOT an ISO Monday-first convention, which would
+        // silently disagree with how _dateAtomWeekday() indexes DAY_NAMES.
+        const _WEEKDAY_SORT_ORDER = [
+            'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        ];
+        const _sortedDateWeekdayValues = Array.from(dateWeekdayValueCounts.keys()).sort((a, b) => _WEEKDAY_SORT_ORDER.indexOf(a) - _WEEKDAY_SORT_ORDER.indexOf(b));
         const _sortedPendingEditValues = Array.from(pendingEditValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _hasValueEntries = _sortedAttrValues.length > 0 || _sortedTaskValues.length > 0 ||
             _sortedDateValues.length > 0 || _sortedEventDateValues.length > 0 || _sortedInstrumentValues.length > 0 ||
@@ -56355,6 +56502,7 @@ a { color: #1565c0; }`;
             _sortedArtTypeValues.length > 0 || _sortedArtCommentValues.length > 0 ||
             _sortedLocaleLanguageValues.length > 0 ||
             _sortedDateDecadeValues.length > 0 || _sortedDateMonthValues.length > 0 ||
+            _sortedDateYearValues.length > 0 || _sortedDateWeekdayValues.length > 0 ||
             _sortedPendingEditValues.length > 0;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
@@ -56501,6 +56649,8 @@ a { color: #1565c0; }`;
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
             _sortedDateDecadeValues.forEach(v => makeValueSynItem('datedecade', v, dateDecadeValueCounts.get(v)));
             _sortedDateMonthValues.forEach(v => makeValueSynItem('datemonth', v, dateMonthValueCounts.get(v)));
+            _sortedDateYearValues.forEach(v => makeValueSynItem('dateyear', v, dateYearValueCounts.get(v)));
+            _sortedDateWeekdayValues.forEach(v => makeValueSynItem('dateweekday', v, dateWeekdayValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
@@ -56605,6 +56755,8 @@ a { color: #1565c0; }`;
             _sortedLocaleLanguageValues.forEach(v => makeValueSynItem('localelanguage', v, localeLanguageValueCounts.get(v)));
             _sortedDateDecadeValues.forEach(v => makeValueSynItem('datedecade', v, dateDecadeValueCounts.get(v)));
             _sortedDateMonthValues.forEach(v => makeValueSynItem('datemonth', v, dateMonthValueCounts.get(v)));
+            _sortedDateYearValues.forEach(v => makeValueSynItem('dateyear', v, dateYearValueCounts.get(v)));
+            _sortedDateWeekdayValues.forEach(v => makeValueSynItem('dateweekday', v, dateWeekdayValueCounts.get(v)));
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -57111,8 +57263,10 @@ a { color: #1565c0; }`;
         if (mode === 'date-complete') return '📅 complete dates';
         if (mode === 'date-partial')  return '🌓 partial dates';
         if (mode === 'date-range')    return '↔️ date ranges';
-        if (mode.startsWith('datedecade:')) return `» decade: ${mode.slice(11)}`;
-        if (mode.startsWith('datemonth:'))  return `» month: ${mode.slice(10)}`;
+        if (mode.startsWith('datedecade:'))  return `» decade: ${mode.slice(11)}`;
+        if (mode.startsWith('datemonth:'))   return `» month: ${mode.slice(10)}`;
+        if (mode.startsWith('dateyear:'))    return `» year: ${mode.slice(9)}`;
+        if (mode.startsWith('dateweekday:')) return `» weekday: ${mode.slice(12)}`;
         if (mode === 'locale-primary')     return '🥇 primary';
         if (mode === 'locale-not-primary') return '◦ not primary';
         if (mode === 'instrument-has-comment')     return '💬 has comment';
@@ -57209,6 +57363,8 @@ a { color: #1565c0; }`;
         if (mode === 'date-range')    return '↔️ = this row\'s date is two dates joined by a dash — each side may independently be complete or partial.';
         if (mode.startsWith('datedecade:')) return 'The decade (e.g. "1970-1980") one of this date\'s own YYYY[-MM[-DD]] components falls in — a range cell can match two different decades.';
         if (mode.startsWith('datemonth:'))  return 'The calendar month name (e.g. "August") one of this date\'s own YYYY-MM[-DD] components falls in — a year-only date has no month and never matches.';
+        if (mode.startsWith('dateyear:'))    return 'The exact calendar year one of this date\'s own YYYY[-MM[-DD]] components falls in — a range cell can match two different years.';
+        if (mode.startsWith('dateweekday:')) return 'The COMPUTED day-of-week (e.g. "Monday") for a full YYYY-MM-DD component of this date — a year-only or year-month-only date has no day and never matches. Computed directly from the date itself, not scraped from any third-party userscript (contrast with "Release events - Weekday").';
         if (mode === 'locale-primary') return '🥇 = this alias\'s "Locale" cell carries MusicBrainz\'s own `(primary)` marker for its locale.';
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';

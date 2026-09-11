@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Auto-editor elections - MusicBrainz</title>
+</head>
+<body>
+    <h1>Auto-editor elections</h1>
+    <!--
+        Regression fixture for wiring the "Date info" family onto
+        auto-elections' "Start date"/"End date" columns (via NEW
+        Start date/End date -> dateTimeParts -> synthetic date/time pairs)
+        and the "Editor info" family onto its Candidate/Proposer/1st
+        seconder/2nd seconder columns. Modeled on
+        debug/elections-final.html's real single native table.tbl shape
+        (Candidate / Status / Start date / End date / Proposer / 1st
+        seconder / 2nd seconder / Votes for / Votes against).
+
+        Each of the four editor-link columns carries its OWN
+        deleted-editor-placeholder row (rows 1-4 respectively) so each
+        column independently proves the widened EDITOR_INFO_COLUMN_NAMES
+        gate actually applies to it — a column of only plain /user/<name>
+        links with no title/.comment would report zero "Editor info"
+        entries whether or not it were actually gated, which would prove
+        nothing.
+
+        Start/End dates alternate between two real date pairs (rows 1+3:
+        2026-08-27/2026-09-01; rows 2+4: 2004-07-24/2004-07-31) so the
+        "Date info - Year"/"- Weekday" sections accumulate real counts
+        across multiple rows.
+    -->
+    <table class="tbl">
+        <thead>
+            <tr>
+                <th>Candidate</th>
+                <th>Status</th>
+                <th>Start date</th>
+                <th>End date</th>
+                <th>Proposer</th>
+                <th>1st seconder</th>
+                <th>2nd seconder</th>
+                <th>Votes for</th>
+                <th>Votes against</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="/user/Deleted Editor #11111"><bdi>Deleted Editor #11111</bdi></a></td>
+                <td>Accepted</td>
+                <td>2026-08-27 13:14 GMT+2</td>
+                <td>2026-09-01 10:29 GMT+2</td>
+                <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                <td><a href="/user/Freso"><bdi>Freso</bdi></a></td>
+                <td>12</td>
+                <td>0</td>
+            </tr>
+            <tr>
+                <td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td>
+                <td>Rejected</td>
+                <td>2004-07-24 22:01 GMT+2</td>
+                <td>2004-07-31 22:01 GMT+2</td>
+                <td><a href="/user/Deleted Editor #22222"><bdi>Deleted Editor #22222</bdi></a></td>
+                <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                <td><a href="/user/Freso"><bdi>Freso</bdi></a></td>
+                <td>3</td>
+                <td>9</td>
+            </tr>
+            <tr>
+                <td><a href="/user/yindesu"><bdi>yindesu</bdi></a></td>
+                <td>Accepted</td>
+                <td>2026-08-27 13:14 GMT+2</td>
+                <td>2026-09-01 10:29 GMT+2</td>
+                <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                <td><a href="/user/Deleted Editor #33333"><bdi>Deleted Editor #33333</bdi></a></td>
+                <td><a href="/user/Freso"><bdi>Freso</bdi></a></td>
+                <td>8</td>
+                <td>1</td>
+            </tr>
+            <tr>
+                <td><a href="/user/yindesu"><bdi>yindesu</bdi></a></td>
+                <td>Rejected</td>
+                <td>2004-07-24 22:01 GMT+2</td>
+                <td>2004-07-31 22:01 GMT+2</td>
+                <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                <td><a href="/user/Deleted Editor #44444"><bdi>Deleted Editor #44444</bdi></a></td>
+                <td>2</td>
+                <td>10</td>
+            </tr>
+        </tbody>
+    </table>
+    <ul class="pagination"></ul>
+</body>
+</html>
