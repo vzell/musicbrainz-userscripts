@@ -315,7 +315,15 @@ every distinct non-empty value currently visible in that column.
     — 🧾/🔍 Catalog info — "- Prefix" (distinct catalog-number prefixes, e.g.
                        "CBS") and "- Presence" (independent "has prefix" /
                        "no prefix" / "no catalog number" — MusicBrainz's own
-                       "[none]" placeholder — flags)
+                       "[none]" placeholder — flags). A multi-word prefix
+                       (e.g. "CBS S") is split on internal whitespace into
+                       independent TOKENS — "CBS" and "S" each get their own
+                       checkable entry, since a short token like "S" recurs
+                       across unrelated labels. Every prefix entry's tooltip
+                       carries a generic explanation of catalog-number
+                       anatomy (prefix/number/suffix, non-standardized
+                       separators) — never a claim about what any specific
+                       prefix means
     — ⏱️ Length info - Duration — on the "Length" column: recordings/tracks
                        bucketed into fixed "N to N+1 minutes" ranges (e.g.
                        "0 to 1 minutes", "5 to 6 minutes"), with
@@ -351,6 +359,15 @@ every distinct non-empty value currently visible in that column.
                        "partial", "demo"), decomposed from MusicBrainz's own
                        natural-language-joined cell text — checking "live"
                        also matches a cell reading "cover and live"
+    — 🔑 Attributes - Identifier type — a DIFFERENT "Attributes" column shape
+                       (artist's own Works listing): MusicBrainz's own
+                       identifier-badge cells (rights-society/tune-code IDs
+                       like "ACAM ID", "SUISA ID", "BUMA/STEMRA ID", "PRS
+                       tune code"). One entry per identifier TYPE — checking
+                       one narrows to works carrying that identifier and
+                       highlights it. Distinct from the plain "🏷️ Attributes"
+                       section above; the two never collide even on a column
+                       sharing the same header text
     — 📅/🌓/↔️ Date info — on any "Date"/"Begin"/"End"/"Release date"-style
                        column (any column MusicBrainz shows as a
                        YYYY[-MM[-DD]] date or a dash-joined range of two such
@@ -482,6 +499,14 @@ visible while it is engaged and releases it, page-wide.
                        ANNOTATION HISTORY PAGE only: a binary "has changelog
                        message" / "no changelog specified" flag pair (the
                        free-text messages themselves are never enumerated)
+    — 🆕/🔄 Title info - Added/Modified — "Title" column on the TOP CD STUBS
+                       page only: decomposes the row's own "(Added N ago,
+                       last modified M ago)" comment text into two
+                       independent facets, one entry per distinct age phrase
+                       (e.g. "9 years ago") in each of "- Added" and
+                       "- Modified". Checking a value under one facet
+                       highlights only that half of the comment text, even
+                       when the other facet reads an identical phrase
 • Entity-reference rows (standard section, not "Cell structure") — one
   checkbox per distinct MusicBrainz entity reference (work/place/area/
   country/artist/label/event/release/release-group/recording) found
