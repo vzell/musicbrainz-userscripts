@@ -9683,3 +9683,97 @@ requests for 12 distinct entities**, so the L1 promise cache is serving the
 repeats and nothing is re-fetched.
 
 Full fixture suite: 174 passed.
+
+## 2026-09-11 — column-header toggles were illegible on injected/sorted headers; four blocks folded into one family
+
+Reported with two screenshots: `▶🔗` on a `Relationships` header, plain and
+sorted, in both cases barely visible. Diagnosed, six options mocked against the
+real backgrounds for the user to choose from, and the pick applied to **all
+four** toggles rather than just the one that was reported.
+
+### Why it was invisible — four things compounding
+
+1. **`opacity: 0.60` at rest**, inherited from `.mb-ms-col-hdr-btn`, which was
+   designed for the plain `#e8e8e8` header where 40% washout still reads.
+2. **🔗 is a colour emoji and renders blue-grey. The injected-column header is
+   `#b8b8d0` — also blue-grey.** Same hue family at the same lightness, so
+   almost no figure/ground separation. This is the real culprit, and it is
+   exactly why `▶♪` on the Picard header never had the problem: **♪ (U+266A) is
+   a text-presentation character** that inherits `#333`.
+3. **Sorting made it worse, not better.** The first sort column blends
+   `rgba(255,200,80,.60)` over the header (`_MSCOL_HDR_TINT_RGBA`), giving
+   `rgb(227,194,131)` — a cool glyph on a warm ground, both mid-tone.
+4. **Transparent background and border at rest**, so it did not read as a
+   control at all.
+
+### What shipped
+
+The four blocks (`.mb-caa-`/`.mb-ms-`/`.mb-picard-`/`.mb-rel-col-hdr-btn`) were
+four near-identical copies of the same declarations. They are now **one rule**,
+so "these are the same kind of control" is structural rather than something four
+blocks have to keep agreeing on. Resting state is a light pill
+(`rgba(255,255,255,.72)` + a real border) at full opacity and `0.92em`, which
+fixes every header/sort combination at once — including a header the user
+recoloured via `sa_ui_thead_th_bg`/`sa_ui_thead_th_injected_bg`, which no
+hand-picked glyph colour could.
+
+Glyph presentation had to be handled per button, because the four differ more
+than they look:
+
+| Button | Glyph from | Treatment |
+|---|---|---|
+| `.mb-rel-col-hdr-btn` | CSS `::before` | 🔗 + U+FE0E |
+| `.mb-picard-col-hdr-btn` | CSS `::before` | none needed — ♪ is already text |
+| `.mb-ms-col-hdr-btn` | element text, `_msUpdateColHdrBtn()` | ⏱ + U+FE0E, in the JS strings |
+| `.mb-caa-col-hdr-btn` | child `<span>` + real 16px `<img>` | no emoji at all |
+
+The `.mb-caa-col-hdr-btn` comment claiming `▶🖼/▼🖼` was **wrong** and has been
+corrected: that button has never contained an emoji, it contains a thumbnail.
+
+U+FE0E degrades safely: where a font declines to honour it the glyph falls back
+to the colour emoji *on a white pill*, which is still the reported problem
+solved. `⏳` (loading) deliberately keeps its colour — transient and
+informative.
+
+### Two traps, both found by doing it rather than by reasoning
+
+- **Raising the resting opacity silently merged two ⏱ states.** The settled
+  "no sub-second data on record" state had **no CSS rule of its own** — `grep -c
+  '\[aria-disabled'` returned **0**. Its dimming was a side effect of the
+  family's `opacity: 0.60`, so lifting that to 1 would have made `unavailable`
+  look identical to a normal available button, collapsing it into the `retry`
+  state CLAUDE.md's millisecond section is explicit about keeping distinct ("one
+  is worth a second click, the other is not"). Now an explicit
+  `[aria-disabled="true"]` rule, and `work-recordings-ms-length.spec.js` pins
+  the dimming — mutation-verified: setting that rule's opacity back to 1 fails
+  the test. **Before changing any base declaration in a shared rule, check which
+  states were relying on inheriting it.**
+- **A state tint's alpha is relative to what is behind it.** The retry yellow
+  moved `0.45 → 0.55` (hover `0.65 → 0.75`) and the engaged blue `0.13 → 0.20`,
+  purely because they now sit over a white pill rather than over the header
+  itself. The existing spec caught the retry change immediately, which is the
+  system working: that tint is how `retry` is told apart from `unavailable`, so
+  it *should* be pinned exactly. Updated with the reason recorded beside it.
+
+### Two self-inflicted rounds worth not repeating
+
+Both are properties of the `GM_addStyle` template literal the CSS lives in:
+
+- **A backtick in a CSS comment terminates the literal** and breaks the entire
+  userscript. `node --check` reported the failure ~50 lines *before* the real
+  cause, at the start of the template, which makes it easy to misread.
+- **A CSS `\XXXX` escape is read as a JS escape first.** `content: '\25B6'`
+  does not survive. The file's own convention — literal glyph characters — is
+  the reason nothing had hit this before.
+
+### Tests
+
+Nothing new was written for the restyle itself beyond the `[aria-disabled]` pin;
+three existing specs already asserted the ⏱ glyph text and now assert it
+**exactly, U+FE0E included** (`GLYPH_SECONDS`/`GLYPH_MILLIS` named in
+`release-tracks-ms-length.spec.js`), so dropping the text-presentation selector
+is a test failure rather than a silent look regression. Full fixture suite: 174
+passed.
+
+The six-option comparison the pick was made from is an artifact, not a committed
+file: https://claude.ai/code/artifact/8e450e55-7d3e-4691-a5e8-ed65a42878e0

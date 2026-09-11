@@ -108,7 +108,11 @@ test.describe('place-performances: jesus2099 Length leak (RECORDING_LENGTH_COLUM
         await setup(page);
         const btn = page.locator('.mb-ms-col-hdr-btn').first();
         await expect(btn).toHaveAttribute('aria-pressed', 'false');
-        await expect(btn).toHaveText('▶⏱');
+        // The trailing U+FE0E is the text-presentation selector that keeps ⏱
+        // rendering as a monochrome outline rather than a colour emoji, which is
+        // what makes it legible on the column header. Asserted exactly, so
+        // dropping it is a test failure rather than a silent look regression.
+        await expect(btn).toHaveText('▶⏱︎');
     });
 
     test('pressing the toggle ONCE resolves both the adopted row and the untouched row', async ({ page }) => {

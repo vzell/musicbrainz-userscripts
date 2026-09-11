@@ -18492,7 +18492,12 @@
             return;
         }
         btn.removeAttribute('aria-busy');
-        btn.textContent = showing ? '▼⏱' : '▶⏱';
+        // U+FE0E after the stopwatch forces TEXT presentation, so it renders
+        // as an outline in the header's own colour rather than as a colour
+        // emoji — the legibility half of the column-header toggle family's
+        // restyling (see its CSS block). This one lives here rather than in
+        // CSS because, uniquely among the four, this glyph is element text.
+        btn.textContent = showing ? '▼⏱︎' : '▶⏱︎';
         btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
         delete btn.dataset.mbMsRetry;
 
@@ -34494,49 +34499,44 @@ a { color: #1565c0; }`;
             vertical-align: middle;
         }
 
-        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column header.
-           Prepended as the first child of .mb-col-hdr-flex; shows ▶ glyph then
-           thumbnail (▶🖼 collapsed / ▼🖼 expanded). */
-        .mb-caa-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .mb-caa-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
-        }
+        /* ============================================================
+           COLUMN-HEADER TOGGLE FAMILY — .mb-col-hdr-flex slot
+           ============================================================
+           Four controls share this slot and this box: the CAA/EAA thumbnail
+           expander, the millisecond-precision toggle, the Picard column
+           toggle and the Relationships load/empty toggle. They were four
+           near-identical copies of the same declarations; they are one rule
+           now, so "these are the same kind of control" is structural rather
+           than a coincidence four blocks have to keep agreeing on.
 
-        /* Per-column millisecond precision toggle in the "Length" column header.
-           Prepended as the first child of .mb-col-hdr-flex, in the same slot and
-           with the same box metrics as .mb-caa-col-hdr-btn above: ▶⏱ shows
-           seconds (more precision available), ▼⏱ shows milliseconds.
-           The engaged state is ALSO tinted, borrowing
-           .mb-col-uniq-wrap.mb-col-uniq-active's "this control is on" idiom, so
-           it stays scannable across a wide table without relying on telling ▶
-           from ▼ at a glance. */
-        .mb-ms-col-hdr-btn {
+           RESTING STATE IS A PILL, not bare text at 60% opacity. The old
+           resting style was opacity:0.60 on a transparent ground, inherited
+           from when these sat only on the plain #e8e8e8 header. It fails on
+           the injected-column header: that is #b8b8d0, and 🔗 renders as a
+           BLUE-GREY colour emoji, so glyph and ground were the same hue at
+           the same lightness. Sorting makes it worse rather than better —
+           the first sort column blends rgba(255,200,80,.60) over the header
+           (see _MSCOL_HDR_TINT_RGBA), giving rgb(227,194,131), i.e. a cool
+           glyph on a warm ground, both mid-tone. A light ground of the
+           control's own fixes every combination at once, including a header
+           the user has recoloured via sa_ui_thead_th_bg /
+           sa_ui_thead_th_injected_bg, which no hand-picked glyph colour
+           could. It also makes these read as pressable before they are
+           hovered, which bare text at 60% never did. */
+        .mb-caa-col-hdr-btn,
+        .mb-ms-col-hdr-btn,
+        .mb-picard-col-hdr-btn,
+        .mb-rel-col-hdr-btn {
             cursor: pointer;
-            font-size: 0.80em;
+            font-size: 0.92em;
             line-height: 1;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
-            padding: 1px 3px;
+            padding: 1px 4px;
             margin-right: 3px;
             border-radius: 3px;
-            border: 1px solid transparent;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(0, 0, 0, 0.30);
             transition: opacity 0.15s, background 0.15s, border-color 0.15s;
             vertical-align: middle;
             flex-shrink: 0;
@@ -34544,38 +34544,85 @@ a { color: #1565c0; }`;
             align-items: center;
             white-space: nowrap;
         }
-        .mb-ms-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
+        .mb-caa-col-hdr-btn:hover,
+        .mb-ms-col-hdr-btn:hover,
+        .mb-picard-col-hdr-btn:hover,
+        .mb-rel-col-hdr-btn:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(0, 0, 0, 0.55);
         }
-        .mb-ms-col-hdr-btn:focus-visible {
+        .mb-caa-col-hdr-btn:focus-visible,
+        .mb-ms-col-hdr-btn:focus-visible,
+        .mb-picard-col-hdr-btn:focus-visible,
+        .mb-rel-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
             outline-offset: 1px;
         }
-        .mb-ms-col-hdr-btn[aria-pressed="true"] {
-            opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
+        /* Engaged: the "this control is on" idiom borrowed from
+           .mb-col-uniq-wrap.mb-col-uniq-active, so a wide table stays
+           scannable without having to tell ▶ from ▼ at a glance. The CAA
+           button is absent here deliberately — it carries no aria-pressed,
+           its state is data-caa-expand-btn on the cells. */
+        .mb-ms-col-hdr-btn[aria-pressed="true"],
+        .mb-picard-col-hdr-btn[aria-pressed="true"],
+        .mb-rel-col-hdr-btn[aria-pressed="true"] {
+            background: rgba(0, 100, 255, 0.20);
+            border-color: #6f9ada;
         }
-        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
-           load): yellow warning tint, and the button stays fully clickable —
-           pressing it again retries. Distinct on purpose from the settled,
-           dimmed "MusicBrainz has no sub-second data here" state, which is a
+
+        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column
+           header. Prepended as the first child of .mb-col-hdr-flex; shows a ▶
+           glyph then a REAL 16px thumbnail <img> (not an emoji — the ▶🖼/▼🖼
+           this comment used to claim was never what the code built). The gap
+           separates the two; the fixed-px image is unaffected by the family's
+           font-size. */
+        .mb-caa-col-hdr-btn {
+            gap: 3px;
+            margin-right: 0;
+        }
+
+        /* Per-column millisecond precision toggle in the "Length" column
+           header: ▶⏱ shows seconds (more precision available), ▼⏱ shows
+           milliseconds. Unlike the other three the glyph is element TEXT, set
+           by _msUpdateColHdrBtn(), which is also why the U+FE0E that makes ⏱
+           render monochrome lives in that function's strings and not here. */
+
+        /* SETTLED "no sub-second data on record" — dimmed, and it needs its
+           own rule. It never had one: the dimming came from the family's old
+           opacity:0.60 resting state, so raising that to 1 for legibility
+           would have silently made "unavailable" look identical to a normal
+           available button — collapsing two states the ⏱ feature keeps
+           deliberately distinct (see the five button states in CLAUDE.md's
+           millisecond section: retry is worth a second click, unavailable is
+           not). aria-disabled is the honest hook: _msUpdateColHdrBtn() already
+           sets it for exactly this state and no other. */
+        .mb-ms-col-hdr-btn[aria-disabled="true"] {
+            opacity: 0.55;
+            background: rgba(255, 255, 255, 0.35);
+            border-color: rgba(0, 0, 0, 0.18);
+            cursor: default;
+        }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is
+           under load): yellow warning tint, and the button stays fully
+           clickable — pressing it again retries. Distinct on purpose from the
+           settled, dimmed "no sub-second data here" state above, which is a
            fact about the data rather than about reachability. */
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
-            opacity: 1;
-            background: rgba(255, 193, 7, 0.45);
+            background: rgba(255, 193, 7, 0.55);
             border-color: #d6a100;
         }
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
-            background: rgba(255, 193, 7, 0.65);
+            background: rgba(255, 193, 7, 0.75);
             border-color: #b98900;
+        }
+        /* Loading: aria-busy, ⏳ possibly carrying batch progress ("2/5"). */
+        .mb-ms-col-hdr-btn[aria-busy="true"] {
+            background: rgba(255, 255, 255, 0.55);
+            border-color: rgba(0, 0, 0, 0.22);
         }
 
         /* Per-table Picard-column expand/collapse toggle, prepended to the
-           <th class="mb-picard-th">. Same box metrics and the same
-           hover/:focus-visible/engaged-tint idiom as .mb-ms-col-hdr-btn above.
+           <th class="mb-picard-th">.
 
            THE GLYPH COMES FROM ::before, NOT FROM THE ELEMENT'S TEXT, and that
            is load-bearing rather than stylistic. The Picard <th> is the one
@@ -34593,96 +34640,40 @@ a { color: #1565c0; }`;
            th.textContent exactly "Picard". Same argument the
            length-mismatch flag makes for being attributes-only.
 
-           These are the first .mb-picard-* rules in the file — every other
-           Picard element is inline-styled. */
-        .mb-picard-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            margin-right: 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            white-space: nowrap;
-        }
+           ♪ (U+266A) needs no U+FE0E: it is a text-presentation character
+           already, which is exactly why this toggle stayed legible while the
+           emoji-glyph ones did not. */
         .mb-picard-col-hdr-btn::before {
             content: '▶♪';   /* collapsed: press to build the buttons */
         }
         .mb-picard-col-hdr-btn[aria-pressed="true"]::before {
             content: '▼♪';   /* expanded: press to empty the column */
         }
-        .mb-picard-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
-        }
-        .mb-picard-col-hdr-btn:focus-visible {
-            outline: 2px solid rgba(0, 100, 255, 0.55);
-            outline-offset: 1px;
-        }
-        .mb-picard-col-hdr-btn[aria-pressed="true"] {
-            opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
-        }
 
         /* Per-table Relationships-column load/empty toggle, prepended into the
-           "Relationships" <th>'s .mb-col-hdr-flex — the slot
-           .mb-caa-col-hdr-btn and .mb-ms-col-hdr-btn already use, with the
-           same box metrics and the same hover/:focus-visible/engaged-tint
-           idiom.
+           "Relationships" <th>'s .mb-col-hdr-flex.
 
-           The glyph comes from ::before rather than from text. Unlike the
-           Picard header this one would SURVIVE a text glyph — it carries
-           dataset.colName, which _cleanColHeaderText() returns at step 1, and
-           _exportCleanHeaderText() strips the whole .mb-col-hdr-flex and then
-           falls back to dataset.colName too. It is kept in CSS anyway so that
-           aria-pressed is the single representation of "expanded?" on the
-           button side, which is what the glyph, the tint and
-           _relSyncGlobalColHdrBtn()'s aggregate all read. */
-        .mb-rel-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            margin-right: 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            white-space: nowrap;
-        }
+           U+FE0E (VARIATION SELECTOR-15) after the chain forces TEXT
+           presentation, so it renders as an outline in the header's own
+           colour instead of as a blue-grey colour emoji. That is the half of
+           the legibility fix the pill cannot do: the pill separates the
+           control from the header, this separates the glyph from the pill —
+           and it is why ♪ above never had the problem. Where the font stack
+           declines to honour it the glyph falls back to the colour emoji on a
+           white pill, which is still the old problem solved.
+
+           The glyph is in CSS rather than in text for consistency with the
+           Picard toggle above, though this <th> would survive either: it
+           carries dataset.colName, which _cleanColHeaderText() returns at
+           step 1, and _exportCleanHeaderText() strips the whole
+           .mb-col-hdr-flex and falls back to dataset.colName too. Keeping it
+           here means aria-pressed stays the single representation of
+           "expanded?" on the button side. */
         .mb-rel-col-hdr-btn::before {
-            content: '▶🔗';   /* collapsed: press to fetch and build the icons */
+            content: '▶🔗︎';   /* collapsed: press to fetch and build */
         }
         .mb-rel-col-hdr-btn[aria-pressed="true"]::before {
-            content: '▼🔗';   /* expanded: press to empty the column */
-        }
-        .mb-rel-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
-        }
-        .mb-rel-col-hdr-btn:focus-visible {
-            outline: 2px solid rgba(0, 100, 255, 0.55);
-            outline-offset: 1px;
-        }
-        .mb-rel-col-hdr-btn[aria-pressed="true"] {
-            opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
+            content: '▼🔗︎';   /* expanded: press to empty the column */
         }
         /* A collapsed column's filter input matches nothing, because its
            .mb-rel-filter-key spans do not exist yet. Tint it so that is

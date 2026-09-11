@@ -1526,6 +1526,65 @@ text-glyph hazard does not apply (CSS `::before` is used anyway, so
 toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 `initCollapsableColumns()` self-deletion trap as Picard's.
 
+## Column-header toggle family (`.mb-col-hdr-flex` slot)
+
+Four controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
+`.mb-caa-col-hdr-btn` (▶🖼 + a real 16px thumbnail `<img>`, not an emoji),
+`.mb-ms-col-hdr-btn` (▶⏱), `.mb-picard-col-hdr-btn` (▶♪),
+`.mb-rel-col-hdr-btn` (▶🔗). They were four near-identical copies of the same
+declarations; grouping them means "these are the same kind of control" is
+structural rather than something four blocks have to keep agreeing on. Add a
+fifth by extending the selector list, not by copying a block.
+
+**The resting state is a light pill, not 60% opacity on a transparent ground.**
+The old style came from when these sat only on the plain `#e8e8e8` header. It
+fails on an injected column: that header is `#b8b8d0` and 🔗 renders as a
+*blue-grey colour emoji*, so glyph and ground were the same hue at the same
+lightness — and sorting made it worse, blending `rgba(255,200,80,.60)` over the
+header (`_MSCOL_HDR_TINT_RGBA`) to `rgb(227,194,131)`, i.e. a cool glyph on a
+warm ground. A ground of the control's own fixes every combination including a
+header the user recoloured via `sa_ui_thead_th_bg` /
+`sa_ui_thead_th_injected_bg`, which no hand-picked glyph colour could.
+
+**Two traps, both of which bit during that change.**
+
+- **Raising the resting opacity silently merged two ⏱ states.** The settled
+  "no sub-second data on record" look had *no CSS rule of its own* — it was
+  dimmed purely by the family's `opacity: 0.60`, so lifting that made
+  `unavailable` look identical to a normal available button, collapsing it into
+  the `retry` state the millisecond feature is at pains to keep distinct (one is
+  worth a second click, the other is not). It now has an explicit
+  `[aria-disabled="true"]` rule, and `work-recordings-ms-length.spec.js` pins
+  the dimming. **Before changing any base declaration here, check which states
+  were relying on inheriting it.**
+- **A state tint's alpha is relative to what is behind it.** The retry yellow
+  went `0.45 → 0.55` (hover `0.65 → 0.75`) and the engaged blue `0.13 → 0.20`
+  purely because they now sit over a white pill rather than over the header.
+  Those exact values are asserted, deliberately.
+
+**Glyph presentation differs per button, and the reason is per button:**
+
+| Button | Glyph comes from | Text presentation |
+|---|---|---|
+| `.mb-rel-col-hdr-btn` | CSS `::before` | 🔗 + **U+FE0E** |
+| `.mb-picard-col-hdr-btn` | CSS `::before` | ♪ is already a text char — no selector needed |
+| `.mb-ms-col-hdr-btn` | **element text**, `_msUpdateColHdrBtn()` | ⏱ + **U+FE0E**, in that function's strings |
+| `.mb-caa-col-hdr-btn` | child `<span>` + a real `<img>` | no emoji at all |
+
+U+FE0E (VARIATION SELECTOR-15) forces an emoji to render as a monochrome
+outline in the header's own colour. It is why ♪ never had the legibility
+problem and 🔗 did. Where a font declines to honour it the glyph falls back to
+the colour emoji *on a white pill*, which is still the old problem solved — so
+it degrades safely. The ⏱ one lives in JS because that glyph is element text;
+the `⏳` loading glyph deliberately keeps its colour, being transient and
+informative. Three fixture specs assert these glyph strings **exactly, U+FE0E
+included**, so dropping it fails a test rather than quietly regressing the look.
+
+**The CSS is inside a `GM_addStyle` template literal.** A backtick in a comment
+there terminates the literal and breaks the whole script (cost one debugging
+round); and a CSS `\\XXXX` escape is read as a *JS* escape first, which is why
+this file writes glyphs as literal characters.
+
 ## Common pitfalls
 
 - `str_replace` requires the `old_str` to be **unique** in the file — include
