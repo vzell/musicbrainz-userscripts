@@ -34453,31 +34453,15 @@ a { color: #1565c0; }`;
             user-select: none;
         }
 
-        /* Per-column ▶▤/▼▤ toggle button inserted into the .mb-col-hdr-flex row
-           with margin-left:auto, immediately before the 📊 unique-values button.
-           ▶▤ = all cells collapsed; ▼▤ = at least one cell expanded. */
-        .mb-col-collapse-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.55;
-            user-select: none;
-            padding: 0 2px;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
-        .mb-col-collapse-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.09);
-        }
-
         /* Inline count of multi-row cells inside the ▶N▤/▼N▤ collapse button.
-           Slightly smaller than the surrounding glyphs; inherits the button's
-           cursor / user-select so it behaves as part of the same clickable unit. */
+           Still slightly smaller than the surrounding glyphs, deliberately, but
+           no longer illegibly so: em compounds, and 0.82em inside a 0.80em
+           button was 0.66em of the header — the actual number, which is the one
+           piece of INFORMATION in this control, was the smallest thing in it.
+           Inherits the button's cursor / user-select so it behaves as part of
+           the same clickable unit. */
         .mb-col-collapse-count {
-            font-size: 0.82em;
+            font-size: 0.92em;
             font-weight: bold;
             vertical-align: baseline;
             margin: 0 1px;
@@ -34502,12 +34486,14 @@ a { color: #1565c0; }`;
         /* ============================================================
            COLUMN-HEADER TOGGLE FAMILY — .mb-col-hdr-flex slot
            ============================================================
-           Four controls share this slot and this box: the CAA/EAA thumbnail
+           Five controls share this slot and this box: the CAA/EAA thumbnail
            expander, the millisecond-precision toggle, the Picard column
-           toggle and the Relationships load/empty toggle. They were four
-           near-identical copies of the same declarations; they are one rule
-           now, so "these are the same kind of control" is structural rather
-           than a coincidence four blocks have to keep agreeing on.
+           toggle, the Relationships load/empty toggle and the multi-row
+           collapse toggle. They were five near-identical copies of the same
+           declarations; they are one rule now, so "these are the same kind of
+           control" is structural rather than a coincidence five blocks have to
+           keep agreeing on. Add a sixth by extending the selector lists, not by
+           copying a block.
 
            RESTING STATE IS A PILL, not bare text at 60% opacity. The old
            resting style was opacity:0.60 on a transparent ground, inherited
@@ -34526,7 +34512,8 @@ a { color: #1565c0; }`;
         .mb-caa-col-hdr-btn,
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
-        .mb-rel-col-hdr-btn {
+        .mb-rel-col-hdr-btn,
+        .mb-col-collapse-hdr-btn {
             cursor: pointer;
             font-size: 0.92em;
             line-height: 1;
@@ -34547,7 +34534,8 @@ a { color: #1565c0; }`;
         .mb-caa-col-hdr-btn:hover,
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
-        .mb-rel-col-hdr-btn:hover {
+        .mb-rel-col-hdr-btn:hover,
+        .mb-col-collapse-hdr-btn:hover {
             background: rgba(255, 255, 255, 0.95);
             border-color: rgba(0, 0, 0, 0.55);
         }
@@ -34565,9 +34553,33 @@ a { color: #1565c0; }`;
            its state is data-caa-expand-btn on the cells. */
         .mb-ms-col-hdr-btn[aria-pressed="true"],
         .mb-picard-col-hdr-btn[aria-pressed="true"],
-        .mb-rel-col-hdr-btn[aria-pressed="true"] {
+        .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: rgba(0, 100, 255, 0.20);
             border-color: #6f9ada;
+        }
+
+        /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
+           .mb-col-hdr-flex row immediately before the 📊 unique-values button.
+           ▶N▤ = all cells collapsed; ▼N▤ = at least one cell expanded.
+
+           margin-right: 0 because this control is NOT laid out by the family's
+           margin: it carries an inline margin-left:auto (set alongside clearing
+           .mb-col-uniq-wrap's own inline one — see initCollapsableColumns), so
+           BOTH it and the uniq wrap have margin-left:auto and the flex row
+           splits the free space between them. That split is what produces the
+           gap before 📊; a margin-right here would sit inside it and only make
+           the pair look misaligned.
+
+           Its focus ring comes from the page-wide :focus-visible group near the
+           end of this stylesheet (which already lists it, with !important) —
+           the family's own :focus-visible rule would be overridden by it, so
+           this control is deliberately absent from that group.
+
+           State lives on aria-expanded rather than aria-pressed, which is why
+           it has its own arm in the engaged rule above. */
+        .mb-col-collapse-hdr-btn {
+            margin-right: 0;
         }
 
         /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column

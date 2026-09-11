@@ -1528,13 +1528,25 @@ toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
-Four controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
+Five controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
 `.mb-caa-col-hdr-btn` (▶🖼 + a real 16px thumbnail `<img>`, not an emoji),
 `.mb-ms-col-hdr-btn` (▶⏱), `.mb-picard-col-hdr-btn` (▶♪),
-`.mb-rel-col-hdr-btn` (▶🔗). They were four near-identical copies of the same
-declarations; grouping them means "these are the same kind of control" is
-structural rather than something four blocks have to keep agreeing on. Add a
-fifth by extending the selector list, not by copying a block.
+`.mb-rel-col-hdr-btn` (▶🔗) and `.mb-col-collapse-hdr-btn` (▶N▤). They were five
+near-identical copies of the same declarations; grouping them means "these are
+the same kind of control" is structural rather than something five blocks have
+to keep agreeing on. Add a sixth by extending the selector lists, not by copying
+a block.
+
+Two per-control deltas are load-bearing and must not be "tidied" into the
+family: `.mb-caa-col-hdr-btn` keeps `gap: 3px` / `margin-right: 0` for its
+thumbnail, and `.mb-col-collapse-hdr-btn` keeps `margin-right: 0` because it is
+NOT laid out by the family's margin — it carries an inline `margin-left: auto`
+(set alongside clearing `.mb-col-uniq-wrap`'s own inline one), so both it and
+the uniq wrap have `margin-left: auto` and the flex row splits the free space
+between them. That split is the gap before 📊. Its state attribute is
+`aria-expanded`, not `aria-pressed`, so it has its own arm in the engaged rule;
+and its focus ring comes from the page-wide `:focus-visible` group (with
+`!important`), which is why it is deliberately absent from the family's own.
 
 **The resting state is a light pill, not 60% opacity on a transparent ground.**
 The old style came from when these sat only on the plain `#e8e8e8` header. It
@@ -1561,6 +1573,11 @@ header the user recoloured via `sa_ui_thead_th_bg` /
   went `0.45 → 0.55` (hover `0.65 → 0.75`) and the engaged blue `0.13 → 0.20`
   purely because they now sit over a white pill rather than over the header.
   Those exact values are asserted, deliberately.
+- **`em` compounds inside these controls, and it bit the one number a user
+  actually reads.** `.mb-col-collapse-count` was `0.82em` inside a `0.80em`
+  button — `0.66em` of the header, i.e. the multi-row COUNT was the smallest
+  thing in the header. Anything nested inside one of these buttons needs sizing
+  against the button's own `font-size`, not against the header's.
 
 **Glyph presentation differs per button, and the reason is per button:**
 

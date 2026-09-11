@@ -9777,3 +9777,47 @@ passed.
 
 The six-option comparison the pick was made from is an artifact, not a committed
 file: https://claude.ai/code/artifact/8e450e55-7d3e-4691-a5e8-ed65a42878e0
+
+## 2026-09-11 — multi-row ▶N▤ toggle joins the header-control family; its count was two-thirds header size
+
+Follow-up to the entry above, from a screenshot of a `Date` column header:
+`▶2▤` was as washed out as `▶🔗` had been, and its count was smaller still.
+
+`.mb-col-collapse-hdr-btn` is now the **fifth** member of the shared
+column-header control rule, so it gets the same resting pill, full opacity and
+`0.92em` as the other four, plus an engaged tint keyed on `aria-expanded` (its
+state attribute — the others use `aria-pressed`).
+
+**The count was the real finding: `em` compounds.** `.mb-col-collapse-count` was
+`0.82em` inside a `0.80em` button, i.e. **`0.66em` of the header** — so the one
+piece of actual INFORMATION in that control was the smallest thing in the entire
+header row. It is `0.92em` inside a `0.92em` button now: `0.85em` of the header,
+**up 29%**, and still deliberately a shade smaller than the ▶/▤ glyphs around
+it. Worth generalising: anything nested inside one of these buttons has to be
+sized against the button's own `font-size`, not against the header's.
+
+**Two per-control deltas that must not be tidied into the family**, both
+recorded in CLAUDE.md:
+
+- `margin-right: 0`, because this control is not laid out by the family's
+  margin at all. It carries an inline `margin-left: auto` (set alongside
+  clearing `.mb-col-uniq-wrap`'s own inline one, see `initCollapsableColumns`),
+  so BOTH it and the uniq wrap have `margin-left: auto` and the flex row splits
+  the free space between them. That split is what produces the gap before 📊; a
+  `margin-right` here would sit inside that gap and only make the pair look
+  misaligned.
+- No entry in the family's `:focus-visible` group: this control is already in
+  the page-wide `:focus-visible` list near the end of the stylesheet, which uses
+  `!important` and would override the family's rule anyway.
+
+**Not touched, and offered rather than assumed:** `.mb-col-uniq-wrap`'s own
+`35 📊` pair, whose count is `0.72em` at `opacity: 0.60` and is arguably the
+next-least-legible thing in the header. It is a different kind of control (always
+present, not a toggle), so it was left alone pending a decision rather than
+swept in.
+
+Nothing in `tests/` asserts on these controls' styling — the four specs that
+touch `.mb-col-collapse-count` all read its textContent — so no test changed.
+Full fixture suite: 174 passed. One run showed the known pre-existing
+`loadFromDiskFixture` viewport flake (documented 2026-09-10); the spec passes
+4/4 standalone and the suite passed clean on re-run.

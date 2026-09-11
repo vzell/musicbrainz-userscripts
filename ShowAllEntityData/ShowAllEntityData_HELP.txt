@@ -1156,9 +1156,9 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
     — Set the threshold to 0 to never auto-collapse.  The ▶🔗/▼🔗 button is
       always available either way — the setting chooses only the starting
       state.
-• The ▶🔗 button, like the ▶🖼 cover-art, ▶⏱ millisecond-length and ▶♪
-  Picard buttons beside it, is drawn on a small light pill so it stays
-  readable on any column-header colour — including the blue-grey one
+• The ▶🔗 button, like the ▶🖼 cover-art, ▶⏱ millisecond-length, ▶♪ Picard
+  and ▶N▤ multi-row buttons beside it, is drawn on a small light pill so it
+  stays readable on any column-header colour — including the blue-grey one
   injected columns use, and including while that column is sorted (which
   tints the header).
 • A COLLAPSED column says so rather than quietly matching nothing.  Its

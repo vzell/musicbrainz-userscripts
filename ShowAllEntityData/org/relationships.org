@@ -180,3 +180,22 @@ When uncollapsing it again, already fetched icons reappear, but the newly render
 
 from now on the same happens for every toggle, except that newly fetched icons get multiplied (it looks like they get
 rendered n times in the same data cell, where n equals the nummber of toggling)
+
+* visibility
+** i
+
+the relationships glyph is not very isible on either the standard rendered column header or when sorted, is there any
+background or other stuff we can apply.
+
+** bug
+
+Apply the same treatment to the multi-row counter and glyph, see  [Image #7]. Also increase the font of the counter a
+little bit. See attached image and the raw column header HTML @debug/multi-row-indicator.html
+
+** TODO outstanding
+
+Three commits on relationships-column-collapse-toggle, still unpushed. Two things outstanding from earlier that I'd still flag:
+
+- No interaction-latency measurement for the on-demand column — it needs a pre-seeded rel-ws2 IDB arm, since perfDescriptors.js rightly forbids live requests inside a measurement bracket.
+- Snapshot baselines will gain the new CSS in their <style> block on next re-capture (recorded in registry.org as expected drift).
+
