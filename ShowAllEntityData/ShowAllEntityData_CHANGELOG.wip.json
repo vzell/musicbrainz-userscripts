@@ -1,0 +1,38 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown: the \"Date info\" family gains two new sections, \"- Year\" (exact calendar year) and \"- Weekday\" (COMPUTED day-of-week, via `Date.prototype.getDay()` — contrast with the unrelated, third-party-scraped \"Release events - Weekday\"), via new `_dateAtomYear()`/`_dateAtomWeekday()` bucketers alongside the existing `_dateAtomDecade()`/`_dateAtomMonth()`. `_highlightDateAtomMatch()` extended to highlight the matching YYYY substring for Year (same mechanism as Decade) and the whole matching date atom for Weekday (since the weekday name is never literal cell text)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "\"Date info\" family (see WIP.1) now also applies to `dateTimeParts`-derived pure-date synthetic columns, not just `dateParts`-fed ones — `_dateExprColumnNames()` extended to recognize a `dateTimeParts` entry's own date-only output column. New `Date`/`Start date`/`End date` → `dateTimeParts` wiring on `/election/<n>` (\"Date\" → \"Vote date\"/\"Vote time\") and `/elections` (\"Start date\"/\"End date\" → \"Election start/end date\"/\"time\"). This also fixes `*/annotations`' existing \"Revision date\" column, which previously got NO \"Date info\" sections at all since the gate only recognized `dateParts`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Unique-values dropdown: the \"Editor info\" family (Deleted/Recorded name/Membership/Comment), previously scoped only to `*/annotations`' \"Editor\" column, now also applies to `/elections`' Candidate/Proposer/1st seconder/2nd seconder columns and `/election/<n>`'s Voter column, via a new `EDITOR_INFO_COLUMN_NAMES` Set (was a single fixed-name check)."
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Label - Annotation History - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <h1>Test Label</h1>
+        <!--
+            Regression fixture for item 5: `annotations`' existing
+            Date -> dateTimeParts -> ['Revision date', 'Revision time']
+            columnExtractor (unchanged) produces a synthetic "Revision date"
+            column whose OWN cell text is a clean "YYYY-MM-DD" string — but
+            before the isDateExprCol/_dateExprColumnNames() broadening (see
+            ShowAllEntityData.user.js's `_dateExprColumnNames()`), it got
+            NO "Date info" dropdown sections at all, since that gate only
+            recognized `dateParts`-fed columns, not `dateTimeParts`-fed
+            ones. This must FAIL on `main` (zero "Date info" sections) and
+            PASS after the fix.
+
+            Two rows share "2024-03-19" (both compute to Tuesday); the third
+            is "2023-11-02" (Thursday) — real data modeled on
+            debug/label-annotations-final.html's own Date cell shape
+            ("2024-03-19 23:11 GMT+1").
+        -->
+        <h2>Annotation history</h2>
+        <form>
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Old</th>
+                        <th>New</th>
+                        <th>Editor</th>
+                        <th>Date</th>
+                        <th>Version history</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="radio" name="old" value="1"></td>
+                        <td><input type="radio" name="new" value="1" checked></td>
+                        <td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td>
+                        <td>2024-03-19 23:11 GMT+1</td>
+                        <td>Added annotation</td>
+                    </tr>
+                    <tr>
+                        <td><input type="radio" name="old" value="2"></td>
+                        <td><input type="radio" name="new" value="2"></td>
+                        <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                        <td>2023-11-02 08:00 GMT+1</td>
+                        <td>Fixed typo</td>
+                    </tr>
+                    <tr>
+                        <td><input type="radio" name="old" value="3" checked></td>
+                        <td><input type="radio" name="new" value="3"></td>
+                        <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                        <td>2024-03-19 09:00 GMT+1</td>
+                        <td>Copy-edit</td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

@@ -368,26 +368,42 @@ every distinct non-empty value currently visible in that column.
                        highlights it. Distinct from the plain "🏷️ Attributes"
                        section above; the two never collide even on a column
                        sharing the same header text
-    — 📅/🌓/↔️ Date info — on any "Date"/"Begin"/"End"/"Release date"-style
+    — 📅/🌓/↔️/🎂/🧭 Date info — on any "Date"/"Begin"/"End"/"Release date"-style
                        column (any column MusicBrainz shows as a
                        YYYY[-MM[-DD]] date or a dash-joined range of two such
-                       dates), split into three facets: "- Precision" is a
-                       fixed 3-flag count of how many visible rows are a
-                       complete date ("📅"), a partial year/year-month date
-                       ("🌓"), or a date range ("↔️") — NOT one entry per
-                       distinct date text, since the plain value list below
-                       already offers that. "- Decade" and "- Month" bucket
-                       each date's own year (e.g. "1970-1980") and calendar
-                       month name (e.g. "August", sorted calendar order, not
-                       alphabetically) into their own open entry lists. A
-                       range contributes BOTH its start and end dates
-                       independently to Decade/Month, so e.g. "1973-08-09 –
-                       1973-09-23" counts toward both "August" and
-                       "September"; checking a Decade/Month entry highlights
-                       ONLY the matching side's own year (Decade) or "MM"
-                       digit pair (Month) — e.g. checking "August" on that
-                       same range highlights just the "08", not the "1973"
-                       or the "1973-09-23" side
+                       dates) — including a pure-date column split off a
+                       combined "date + time" cell, such as the elections
+                       pages' "Vote date"/"Election start/end date" or the
+                       annotation-history pages' "Revision date" — split
+                       into five facets: "- Precision" is a fixed 3-flag
+                       count of how many visible rows are a complete date
+                       ("📅"), a partial year/year-month date ("🌓"), or a
+                       date range ("↔️") — NOT one entry per distinct date
+                       text, since the plain value list below already offers
+                       that. "- Decade", "- Month" and "- Year" bucket each
+                       date's own year (e.g. "1970-1980" or, for Year, the
+                       exact "1973") and calendar month name (e.g. "August",
+                       sorted calendar order, not alphabetically) into their
+                       own open entry lists. "- Weekday" buckets each date's
+                       own COMPUTED day-of-week name (e.g. "Monday") — a
+                       year-only or year-month date has no day and never
+                       contributes one — genuinely computed from the date
+                       itself, unlike "Release events - Weekday" above,
+                       which merely scrapes a third-party companion
+                       script's own injected abbreviation and does nothing
+                       without it. A range contributes BOTH its start and
+                       end dates independently to Decade/Month/Year/Weekday,
+                       so e.g. "1973-08-09 – 1973-09-23" counts toward both
+                       "August" and "September" (and, for Weekday, its own
+                       two different computed weekdays); checking a Decade/
+                       Month/Year entry highlights ONLY the matching side's
+                       own year (Decade/Year) or "MM" digit pair (Month) —
+                       e.g. checking "August" on that same range highlights
+                       just the "08", not the "1973" or the "1973-09-23"
+                       side. Checking a Weekday entry highlights the WHOLE
+                       matching date instead, since the weekday name is
+                       never literal cell text the way a year or month digit
+                       pair is
     — 🗣️/🥇 Locale info — on an alias table's "Locale" column: "- Language"
                        (distinct locale languages, e.g. "English", "Chinese
                        (China)") and "- Primary" ("🥇 primary" / "◦ not
@@ -486,15 +502,22 @@ visible while it is engaged and releases it, page-wide.
                        as an actual pill matching the table's own style) and
                        "- Comment", one entry per distinct value found
                        across every image in the column
-    — 🗑️/🏷️/🕰️/💬 Editor info — "Editor" column on the ANNOTATION HISTORY
-                       PAGE only (see below): "- Deleted" (one entry per
-                       distinct deleted-editor placeholder identity, plus an
-                       "any deleted editor" aggregate flag), "- Recorded name"
-                       (the tooltip's own historically-recorded editor name,
-                       only offered when it differs from the row's current
-                       name), "- Membership" (the tooltip's own "active N
-                       years (start 〜 end)" span), and "- Comment" (the
-                       visible restatement of the same membership fact)
+    — 🗑️/🏷️/🕰️/💬 Editor info — any column carrying a plain MusicBrainz
+                       editor link: the "Editor" column on the ANNOTATION
+                       HISTORY PAGE, and the elections pages' own
+                       Candidate/Proposer/1st seconder/2nd seconder (the
+                       auto-editor elections list) and Voter (an individual
+                       election's own "Votes cast" table) columns. "- Deleted"
+                       (one entry per distinct deleted-editor placeholder
+                       identity, plus an "any deleted editor" aggregate
+                       flag), "- Recorded name" (the tooltip's own
+                       historically-recorded editor name, only offered when
+                       it differs from the row's current name), "- Membership"
+                       (the tooltip's own "active N years (start 〜 end)"
+                       span), and "- Comment" (the visible restatement of the
+                       same membership fact) — the last three facets never
+                       appear on the elections pages' plain vote/candidate
+                       links, which carry no such tooltip/comment
     — 📜 Version history - Changelog — "Version history" column on the
                        ANNOTATION HISTORY PAGE only: a binary "has changelog
                        message" / "no changelog specified" flag pair (the
@@ -1371,7 +1394,10 @@ single-table view.
   since" (the visible duration phrase and trailing year), and "Active start
   date"/"Active end date" (the two ISO dates parsed from the editor link's
   own tooltip membership line).
-• "Date" is split into "Revision date"/"Revision time".
+• "Date" is split into "Revision date"/"Revision time" — "Revision date"
+  (but not the raw combined "Date" column, which still carries a trailing
+  time/timezone) gets the "Date info" dropdown family (see UNIQUE-VALUES
+  COLUMN DROPDOWN above).
 • "Compare versions" button — relocated into the h2 header bar (next to the
   row-count, matching the other header buttons); clicking it navigates
   directly to the diff URL instead of relying on native form submission.
@@ -1379,8 +1405,22 @@ single-table view.
 • Every Old/New radio combination is always selectable, regardless of any
   active filter.
 • 📊 dropdown additions — see UNIQUE-VALUES COLUMN DROPDOWN above for the
-  "Editor info" (Editor column) and "Version history - Changelog" (Version
-  history column) sections specific to this page.
+  "Editor info" (Editor column — also offered, on the elections pages, for
+  their own editor-link columns), "Date info" (Revision date column), and
+  "Version history - Changelog" (Version history column) sections.
+
+AUTO-EDITOR ELECTIONS PAGES  (/elections and /election/<n>)
+-------------------------------------------------------------
+• The elections list (/elections) splits "Start date"/"End date" into their
+  own "Election start/end date"/"Election start/end time" synthetic column
+  pairs; an individual election's "Votes cast" table (/election/<n>) splits
+  "Date" into "Vote date"/"Vote time" the same way. Each raw combined column
+  is left in place alongside its split-off pair.
+• 📊 dropdown additions — see UNIQUE-VALUES COLUMN DROPDOWN above: the
+  synthetic date-only columns above get the "Date info" family; the
+  Candidate/Proposer/1st seconder/2nd seconder columns (elections list) and
+  the Voter column (individual election) get the "Editor info" family, the
+  same one the annotation-history page's "Editor" column offers.
 
 ACCOUNT APPLICATIONS PAGE  (/account/applications)
 -----------------------------------------------------

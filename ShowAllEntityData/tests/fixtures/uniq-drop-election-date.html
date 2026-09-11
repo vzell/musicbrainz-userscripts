@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Election 473 - MusicBrainz</title>
+</head>
+<body>
+    <h1>Election 473</h1>
+    <p><a href="/elections">Back to elections</a></p>
+    <h2>Details</h2>
+    <table class="properties">
+        <tr><th>Candidate:</th><td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td></tr>
+        <tr><th>Proposer:</th><td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td></tr>
+        <tr><th>Status:</th><td>Accepted</td></tr>
+    </table>
+    <h2>Voting</h2>
+    <p>Voting is closed.</p>
+    <h2>Votes cast</h2>
+    <!--
+        Regression fixture for wiring the "Date info" family onto
+        auto-editor-election's "Date" column (via a NEW Date -> dateTimeParts
+        -> ['Vote date', 'Vote time'] columnExtractor, reusing the same
+        extractor `annotations` already uses for "Revision date") and the
+        "Editor info" family onto its "Voter" column (via widening
+        EDITOR_INFO_COLUMN_NAMES). Modeled on debug/auto-editor-election-final.html's
+        real "Votes cast" table shape (Voter / Vote / Date, no listToTable/
+        insertH2 needed — already tbl-shaped).
+
+        Row D's Voter is a deleted-editor placeholder (matches
+        _findCellEditorInfo()'s DELETED_EDITOR_RE) so "Editor info -
+        Deleted"/"editor-any-deleted" have something real to report — the
+        same shape annotations' own "Editor" column fixture data would use,
+        proving the family isn't accidentally still gated to that one
+        column name.
+    -->
+    <table class="tbl">
+        <thead>
+            <tr>
+                <th>Voter</th>
+                <th>Vote</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td>
+                <td>For</td>
+                <td>2025-01-31 08:37 GMT+1</td>
+            </tr>
+            <tr>
+                <td><a href="/user/reosarevok"><bdi>reosarevok</bdi></a></td>
+                <td>Against</td>
+                <td>2024-06-15 10:00 GMT+2</td>
+            </tr>
+            <tr>
+                <td><a href="/user/zas"><bdi>zas</bdi></a></td>
+                <td>(private)</td>
+                <td>2024-06-15 09:12 GMT+2</td>
+            </tr>
+            <tr>
+                <td><a href="/user/Deleted Editor #12345"><bdi>Deleted Editor #12345</bdi></a></td>
+                <td>(private)</td>
+                <td>2023-03-10 09:15 GMT+1</td>
+            </tr>
+        </tbody>
+    </table>
+    <ul class="pagination"></ul>
+</body>
+</html>
