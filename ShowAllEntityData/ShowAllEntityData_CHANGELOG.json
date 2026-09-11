@@ -1,5 +1,40 @@
 [
   {
+    "version": "9.99.1072",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The \"Relationships\" column is now loaded on demand on big listings, from a new ▶🔗/▼🔗 button in its own column header. Until you press it the column is there but empty, and — this is the point — NOTHING is fetched. That column asks MusicBrainz's Web Service about every distinct release, release group or work on the page, one request at a time with a mandatory one-second gap between them, so a 2 300-release artist page quietly spent about 42 minutes trickling requests in the background before you had even scrolled, whether or not you wanted the icons. Pressing ▶🔗 loads that one table; pressing ▼🔗 empties it again.",
+          "New setting \"Relationships auto-collapse threshold (unique entities)\" (`sa_rel_collapse_threshold`, default 200) decides which tables start collapsed. Small listings are unaffected and keep loading immediately, because at a dozen entities the whole thing costs a few seconds. Set it to 0 to never auto-collapse and get exactly the old behaviour back. The button is always available either way — the setting only chooses the starting state.",
+          "The decision is made per table, not per page, so on a multi-section page a small section can load itself while a large one waits for you. Multi-section pages also get a page-wide \"▶🔗 Load all Relationships\" / \"▼🔗 Empty all Relationships\" button next to the existing collapse-all, cover-art and Picard buttons.",
+          "Emptying a collapsed column keeps everything already fetched, in memory and in the browser cache, so pressing ▶🔗 again is instant and costs no requests at all. Only the \"🔗⟳ Retry\" buttons clear that data, which is what they are for.",
+          "A table restored from a saved snapshot always starts expanded, whatever the threshold says: its icons are already in the file, so there is nothing to save by hiding them."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A collapsed Relationships column now says so instead of quietly matching nothing. Its column-filter box is tinted and reads \"collapsed — press ▶🔗\", its 📊 unique-values dropdown shows a \"Collapsed — press ▶🔗 in the column header to load\" line rather than an empty section, and the status bar reports \"🔗Rels: collapsed\" instead of claiming a completed load. Neither the filter box nor the dropdown starts the fetch — a glance at a dropdown should not be able to queue a multi-minute run.",
+          "The ▶🔗 tooltip says what pressing it will actually cost, in requests and in expected time (e.g. \"12 distinct entities to look up, about 13 seconds\"), so \"load this\" is never a blind choice between two seconds and forty minutes.",
+          "The six little controls that live in column headers — ▶🖼 cover art, ▶⏱ millisecond length, ▶♪ Picard, the new ▶🔗 Relationships, the ▶N▤ multi-row expander and the 📊 unique-values button — are now readable. They used to be drawn at 55-60% opacity directly on the header, which worked on the plain grey header they were designed for but not on the blue-grey one injected columns use: 🔗 renders as a blue-grey emoji, so the glyph and the header behind it were the same colour at the same lightness, and sorting the column made it worse rather than better by washing a warm tint over both. They now sit on a small light pill of their own, slightly larger, and the 🔗 and ⏱ glyphs are drawn as outlines instead of as colour emoji. That works on any header colour, including one you have changed yourself in the settings, and it makes them look pressable before you hover them.",
+          "The multi-row count in the ▶N▤ expander — the number telling you how many cells in that column have more than one row — is bigger. It was the smallest thing in the whole header: font sizes compound, so a count set to 0.82em inside a button set to 0.80em came out at two thirds the header's size. It is about 29% larger now, and still slightly smaller than the ▶ and ▤ around it. The 📊 button's own count went the same way — it was 0.72em at 60% opacity beside a 📊 glyph at 45%, which made the pair the faintest thing in the header; both are at full opacity now and the count is about 18% larger.",
+          "The ⇅ ▲ ▼ sort buttons in each column header are now drawn as ONE control instead of three loose glyphs: a single pill, divided into three segments by thin vertical rules, matching the other six header buttons. The currently-applied sort direction keeps exactly the green-on-yellow it always had — it just fills its whole segment now instead of sitting as a ragged patch behind the glyph, so a sorted column is easier to spot when scanning a wide table. Clicking, Ctrl+Click multi-sort, Alt+Click sort-by-length and the Ctrl+↑/↓/# shortcuts all behave exactly as before."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationship icons could be rendered SEVERAL TIMES in the same cell. The column fetches one entity per second in the background, and anything that asked it to load again while that was still running started a second background run over the rows the first had not reached yet — so both runs added their own copy of every icon. Two such overlaps gave two copies, three gave three. Typing in the filter box while the column was still loading was enough to trigger it. Each run now REPLACES a cell's icons instead of adding to them, so overlapping runs can no longer multiply anything, and a run whose rows are no longer waiting for it now stops instead of continuing to request data nobody is going to use.",
+          "Every keystroke in the filter box could kick off a redundant Relationships pass — re-reading three settings tables and walking every row of the page three times — on any page containing a row with no release, release group or work link at all. Such a row gets a Relationships cell that can never be filled, and the check for \"is anything still unloaded?\" counted it forever. The check now ignores cells that have nothing to look up, and skips collapsed tables entirely.",
+          "Dragging a column down to its minimum width could cut off the 📊 unique-values button at the right edge. The minimum was measured once, early in the page build — before the ▶🔗, ▶🖼 and ▶⏱ header buttons are added and before the unique-value counts have been computed — so it was smaller than the header actually needed and the column was allowed to become too narrow for its own contents. On a real page 20 of 21 columns were affected, the worst by 126 pixels. The minimum is now measured at the moment you start dragging, when everything in the header exists. This also fixes the opposite case: a column whose minimum had been recorded AFTER auto-resize widened it could not be narrowed at all (one measured at 765 pixels for a header needing 211).",
+          "The ⇅ ▲ ▼ sort control sat flush against the column name with no gap. The name is written with a trailing space, which used to provide it, but that space is trimmed by the browser because the name is an anonymous item inside a flex row — it went unnoticed while the glyphs were bare text sitting where the space had been, and showed up as soon as they gained a border. The gap is now a real margin."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1071",
     "date": "2026-09-11",
     "sections": [
