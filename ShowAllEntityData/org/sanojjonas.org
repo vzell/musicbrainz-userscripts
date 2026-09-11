@@ -1,0 +1,13 @@
+* DONE bug
+
+On e.g. the URL https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf the '<div id="sanojjonasRoot"'
+container again appears at the bottom of the page after a while on the final rendered page, although this problem should
+already be fixed right now, see @debug/event-series-final.html
+
+** fixed
+
+Root cause: `_shouldCleanupSanojjonas()`'s pageType whitelist (`EVENTS_PAGE_TYPES`)
+never included `series-releases` — the one constant pageType every `/series/<mbid>`
+page gets — so the late-injection MutationObserver never armed there. See
+DEBUG-NOTES.md's 2026-09-11 entry for the full root cause and fix (the whitelist
+was removed entirely; sanojjonas cleanup now runs unconditionally on every page).

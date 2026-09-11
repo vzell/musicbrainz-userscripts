@@ -9531,3 +9531,63 @@ sticky Title cell (must be exactly 1 — the Comment column's overwrite
 semantics hide the leak that appendChild does not). Mutation-checked: fails
 with `[1, 1, 4, 1]` on the pre-fix code (Row C absorbed A's, B's, and its own
 lastupdate spans), passes after.
+
+## 2026-09-11 — `#sanojjonasRoot` survived on a fully-rendered series page — second whitelist-gap recurrence, whitelist removed (fixed, branch fix/sanojjonas-unconditional-cleanup)
+
+Reported via `org/sanojjonas.org`: on
+`https://musicbrainz.org/series/f4818e95-a515-4821-ad6d-270703f72dcf`, the
+sanojjonas third-party container reappeared at the bottom of the page after a
+while on the final rendered page — confirmed via `debug/event-series-final.html`,
+a fully-rendered final page (`<h1>...Bruce Springsteen: From My Home to
+Yours...`, `mb-master-toggle`/`table.tbl` markers present) still carrying
+`<div id="sanojjonasRoot">` appended immediately after the rendered
+`</table>`, inside `#content`.
+
+**Root cause: the exact same bug shape as the 2026-09-09 entry below, for a
+different pageType.** `_shouldCleanupSanojjonas()` gated both
+`removeSanojjonasContainers()` and — critically —
+`_watchForLateSanojjonasInjections()`'s `MutationObserver` arming behind
+`EVENTS_PAGE_TYPES.includes(pageType) || _isReleaseGroupsMultiMode()`.
+`EVENTS_PAGE_TYPES` was `['area-events', 'place-events', 'artist-events']` —
+it never included `'series-releases'`, the one constant pageType every
+`/series/<mbid>` page gets regardless of which `<h2>` sub-view
+(Releases/Events/Works/Recordings/…) it resolves to. So on a series page the
+watcher never armed at all, and only `finalCleanup()`'s unconditional
+one-shot presence check ran — which found nothing, because sanojjonas' own
+script (`tests/fixtures/live-userscripts/Sanojjonas_Visualise_Stuff.user.js`)
+does 5 chained top-level `await getJsonFile(...)` calls to an external
+gitlab.io asset host before it ever calls `prepareDivs()` to build
+`#sanojjonasRoot` — confirming the container is injected well after this
+script's own render completes, exactly the race
+`_watchForLateSanojjonasInjections()` exists to catch, but couldn't on this
+pageType.
+
+**Fix: removed the pageType whitelist entirely, rather than adding
+`'series-releases'` as a sixth entry.** This is the second time a hardcoded
+sanojjonas pageType whitelist has gone stale (see 2026-09-09 below for the
+first), and we don't control which MB page types sanojjonas' upstream script
+decides to support next (its own `case "series":` branch shows it already
+outran our whitelist once). `removeSanojjonasContainers()`/
+`_findSanojjonasContainers()` are cheap `getElementById` presence checks, and
+`_watchForLateSanojjonasInjections()`'s `MutationObserver` cost was already
+being paid unconditionally on the largest committed fixture (`artist-events`,
+4174 rows) under the old whitelist with no known problem — confirmed
+explicitly with the user, including the detail that the observer is armed at
+the TOP of `startFetchingProcess()` (before fetch/render), so its 15s window
+overlaps the full fetch+render pass, not just a quiet post-render tail. Both
+`EVENTS_PAGE_TYPES` and `_shouldCleanupSanojjonas()` were deleted; the two
+previously-gated call sites (`performClutterCleanup()`,
+`startFetchingProcess()`) now call `removeSanojjonasContainers()`/
+`_watchForLateSanojjonasInjections()` unconditionally, same as the two
+call sites that were already unconditional (cross-tab snapshot bootstrap,
+"Load from Disk").
+
+**Regression test:** `tests/fixtures/sanojjonas-series-late-injection.spec.js`,
+mirroring `sanojjonas-events-late-injection.spec.js`'s pattern exactly
+(click the button, wait for render complete, inject a fresh
+`#sanojjonasRoot` via `page.evaluate`, assert it gets purged within the
+watch window) against the committed `series-releases` raw snapshot.
+Mutation-checked: `git stash` of just the userscript change (kept the new
+test) timed out waiting for the container to be removed — confirming the
+pre-fix code never purges it on this pageType — then `git stash pop`
+restored the fix and the test passed.
