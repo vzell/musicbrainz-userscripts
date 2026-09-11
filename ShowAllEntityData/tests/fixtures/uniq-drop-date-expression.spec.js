@@ -25,7 +25,7 @@ function findSectionItem(section, label) {
     return section.items.find((i) => i.label === label);
 }
 
-test.describe('unique-values dropdown: "Date info - Precision"/"- Decade"/"- Month" sections', () => {
+test.describe('unique-values dropdown: "Date info - Precision"/"- Decade"/"- Month"/"- Year"/"- Weekday" sections', () => {
     test('"Date info - Precision" is a fixed 3-flag count, NOT one entry per date value', async ({ page }) => {
         const sections = await openDateDrop(page);
         const precision = sections.find((s) => s.label === 'Date info - Precision');
@@ -89,6 +89,102 @@ test.describe('unique-values dropdown: "Date info - Precision"/"- Decade"/"- Mon
         });
         expect(datasetLabels).toHaveLength(3);
         expect(datasetLabels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
+    });
+
+    test('"Date info - Year" buckets by exact calendar year, sorted numerically', async ({ page }) => {
+        const sections = await openDateDrop(page);
+        const year = sections.find((s) => s.label === 'Date info - Year');
+        expect(year).toBeTruthy();
+
+        // 1973: D's two atoms share the same year, deduped to ONE row. 1974:
+        // B and C are two DIFFERENT rows. 1983: F. 2020: A.
+        expect(year.items.map((i) => i.label)).toEqual([
+            '» year: 1973',
+            '» year: 1974',
+            '» year: 1983',
+            '» year: 2020',
+        ]);
+        expect(findSectionItem(year, '» year: 1973').count).toBe(1);
+        expect(findSectionItem(year, '» year: 1974').count).toBe(2);
+        expect(findSectionItem(year, '» year: 1983').count).toBe(1);
+        expect(findSectionItem(year, '» year: 2020').count).toBe(1);
+    });
+
+    test('"Date info - Weekday" buckets by COMPUTED day-of-week, sorted calendar order (Sunday..Saturday), never from a year-only/year-month atom', async ({ page }) => {
+        const sections = await openDateDrop(page);
+        const weekday = sections.find((s) => s.label === 'Date info - Weekday');
+        expect(weekday).toBeTruthy();
+
+        // A=2020-04-08 -> Wednesday. B(1974-08)/C(1974) have no day component
+        // -> contribute nothing. D's range spans TWO different computed
+        // weekdays from its own two atoms (1973-08-09 -> Thursday,
+        // 1973-09-23 -> Sunday) — unlike Decade, where D's atoms happen to
+        // share one bucket, here the same row contributes to two different
+        // sections. F=1983-08-15 -> Monday.
+        expect(weekday.items.map((i) => i.label)).toEqual([
+            '» weekday: Sunday',
+            '» weekday: Monday',
+            '» weekday: Wednesday',
+            '» weekday: Thursday',
+        ]);
+        expect(findSectionItem(weekday, '» weekday: Sunday').count).toBe(1);
+        expect(findSectionItem(weekday, '» weekday: Monday').count).toBe(1);
+        expect(findSectionItem(weekday, '» weekday: Wednesday').count).toBe(1);
+        expect(findSectionItem(weekday, '» weekday: Thursday').count).toBe(1);
+
+        // Quickfilter-visibility wiring (dataset.mbUniqSynLabel) — same
+        // check as the Month test above.
+        const datasetLabels = await page.evaluate(() => {
+            const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+                .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Date info - Weekday');
+            return Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item')).map((item) => item.dataset.mbUniqSynLabel);
+        });
+        expect(datasetLabels).toHaveLength(4);
+        expect(datasetLabels.every((l) => typeof l === 'string' && l.length > 0)).toBe(true);
+    });
+
+    test('checking weekday "Thursday" narrows to Event D only, highlighting the WHOLE matching atom (not the weekday name, which is never in the cell text)', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_EVENTS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+        await page.click('button[data-label="Show all Events for Artist"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        const totalBefore = await page.evaluate(() => document.querySelectorAll('table.tbl tbody tr').length);
+
+        await page.evaluate(() => window.__saTest.getUniqDropSections('Date'));
+        await page.evaluate(() => {
+            const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+                .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Date info - Weekday');
+            const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item'))
+                .find((el) => el.dataset.mbUniqSynLabel === '» weekday: Thursday');
+            item.click();
+        });
+
+        await page.waitForFunction((expected) => {
+            const rows = Array.from(document.querySelectorAll('table.tbl tbody tr')).filter((r) => r.style.display !== 'none');
+            return rows.length > 0 && rows.length < expected;
+        }, totalBefore, { timeout: 15000 });
+
+        const visibleRows = await page.evaluate(() =>
+            Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .filter((r) => r.style.display !== 'none')
+                .map((r) => r.cells[0].textContent.trim())
+        );
+        expect(visibleRows).toEqual(['Event D']);
+
+        // Only D's START atom ("1973-08-09") is Thursday — its END atom
+        // ("1973-09-23") is Sunday and must stay unhighlighted. The FULL
+        // atom is highlighted, not just a substring, since "Thursday" never
+        // appears literally in the cell text.
+        const dCell = await page.evaluate(() => {
+            const row = Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .find((r) => r.cells[0].textContent.trim() === 'Event D');
+            return {
+                fullText: row.cells[1].textContent,
+                highlights: Array.from(row.cells[1].querySelectorAll('.mb-column-filter-highlight')).map((el) => el.textContent),
+            };
+        });
+        expect(dCell.fullText).toBe('1973-08-09 – 1973-09-23');
+        expect(dCell.highlights).toEqual(['1973-08-09']);
     });
 
     test('checking "date-range" narrows to Event D only, highlighting its whole Date cell', async ({ page }) => {
