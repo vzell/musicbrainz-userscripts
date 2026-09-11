@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>vzell - Series subscriptions - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the native /user/<name>/subscriptions/<type> shape closely
+        enough for pageType detection + row extraction — see
+        debug/user-subscriptions-artist.html (a post-render snapshot) for the
+        real "Series subscriptions" cell shapes this reproduces: a bare
+        <a><bdi>Name</bdi></a> cell (no comment) alongside a non-bare one
+        carrying a real disambiguation comment, e.g. "3CD (Sony Music)".
+    -->
+    <div id="content">
+        <h1><a href="/user/vzell"><bdi>vzell</bdi></a></h1>
+        <p>
+            <a href="/user/vzell/subscriptions/artist">Artist subscriptions</a> |
+            <a href="/user/vzell/subscriptions/collection">Collection subscriptions</a> |
+            <a href="/user/vzell/subscriptions/label">Label subscriptions</a> |
+            <a href="/user/vzell/subscriptions/series">Series subscriptions</a> |
+            <a href="/user/vzell/subscriptions/editor">Editor subscriptions</a>
+        </p>
+        <h2>Series subscriptions</h2>
+        <table class="tbl">
+            <thead><tr><th>Name</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><a href="/series/efa920b2-6eef-4281-b36d-b5cf52c2fb06"><bdi>3CD</bdi></a>&nbsp;<span class="comment"><bdi>(Sony Music)</bdi></span></td>
+                </tr>
+                <tr>
+                    <td><a href="/series/32878ea6-ae8d-4483-92ee-9ae438f5ab36"><bdi>Complete Recordings</bdi></a></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

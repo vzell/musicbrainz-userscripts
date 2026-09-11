@@ -21086,6 +21086,35 @@
     }
 
     /**
+     * Splits a native "Attributes" cell's natural-language-joined recording
+     * attribute words into one word per entry — e.g. `"cover and live"` →
+     * `['cover', 'live']`, `"live and partial"` → `['live', 'partial']`.
+     * Reuses `REC_OF_ATTRIBUTES` — already the source of truth for this
+     * exact vocabulary via `_parseRecOfAttributes()` on `release-tracks`'
+     * own "recording of:" `<dt>` prefix, just a differently-shaped rendering
+     * of the same underlying relationship attributes — so an unrecognised
+     * word can never silently produce a stray dropdown entry, same
+     * defensive filtering `_parseRecOfAttributes()` already applies.
+     *
+     * Deliberately only called for the "Attributes" column itself (gated by
+     * column name at the `openUniqDrop()` call site, same convention as
+     * `_findCellFormatParts()`/`isFormatCol` above) — this is plain
+     * free-text parsing with no CSS-class safety net. Applies automatically
+     * to every pageType with a native "Attributes" column (work-recordings,
+     * artist-relationships, place-performances, area-recordings, …), since
+     * MusicBrainz renders this column identically everywhere it appears.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]}
+     */
+    function _findCellRecordingAttributeWords(cell) {
+        if (!cell) return [];
+        const text = getCleanColumnText(cell).toLowerCase();
+        if (!text) return [];
+        return text.split(/\s*,\s*|\s+and\s+/).map(s => s.trim()).filter(s => REC_OF_ATTRIBUTES.includes(s));
+    }
+
+    /**
      * Extracts country/date/weekday parts from a "Country/Date" cell, one
      * entry per `.release-event` — mirrors `splitCountryDate()`'s own DOM
      * walk (`ColumnDataExtractor`) exactly, including its handling of a
@@ -22203,6 +22232,14 @@
             // in one click.
             const want = mode.slice(11);
             return !!cell && _findCellFormatParts(cell).some(p => p.type === want);
+        }
+        if (mode.startsWith('recattr:')) {
+            // Compound mode — matches one atomic recording-attribute word
+            // (e.g. "live") from a native "Attributes" cell's own
+            // natural-language-joined text, via
+            // _findCellRecordingAttributeWords()'s own extraction.
+            const want = mode.slice(8);
+            return !!cell && _findCellRecordingAttributeWords(cell).includes(want);
         }
         if (mode.startsWith('revcountry:')) {
             // Compound mode — matches one "Country/Date" release event's
@@ -40039,6 +40076,7 @@ a { color: #1565c0; }`;
         entity_event:             { label: 'Entity info - Event name',         markerClass: 'eventlink' },
         entity_place:             { label: 'Entity info - Place name',         markerClass: 'placelink' },
         entity_area:              { label: 'Entity info - Area name',          markerClass: 'arealink' },
+        entity_series:            { label: 'Entity info - Series name',       markerClass: 'serieslink' },
         // Fallback for a name entry whose entity type isn't one of
         // `_ENTITY_TYPE_GLYPH`'s known keys (mirrors makeValueSynItem's
         // own `entityType ? … : '» name: '` generic fallback).
@@ -40090,6 +40128,13 @@ a { color: #1565c0; }`;
         formatCount:   { label: 'Format info - Medium count', glyph: '🔢' },
         formatCombo:   { label: 'Format info - Combo',        glyph: '🧩' },
         formatType:    { label: 'Format info - Type',         glyph: '💿' },
+        // Native "Attributes" column (work-recordings, artist-relationships,
+        // place-performances, area-recordings, …): one entry per atomic
+        // recording-attribute word (e.g. "live", "cover", "partial"), from
+        // `_findCellRecordingAttributeWords()`. 🏷️ reused from
+        // entityTagCount/editorRecordedName — same "labelling a thing"
+        // facet.
+        recordingAttributes: { label: 'Attributes', glyph: '🏷️' },
         releaseEventsCountry: { label: 'Release events - Country', glyph: '🌐' },
         releaseEventsDate:    { label: 'Release events - Date',    glyph: '📅' },
         releaseEventsWeekday: { label: 'Release events - Weekday', glyph: '📆' },
@@ -40326,6 +40371,7 @@ a { color: #1565c0; }`;
         namevariation: 'nameVariation',
         role: 'roles', roletoken: 'entityRole',
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
+        recattr: 'recordingAttributes',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
@@ -40408,6 +40454,18 @@ a { color: #1565c0; }`;
      * available in that same stylesheet whenever a future task needs them —
      * check there (or a live page snapshot) before assuming "no verified
      * glyph class" for a type not yet listed here.
+     *
+     * `series` was added 2026-09-11 after a report that a user's "Series
+     * subscriptions" table's own "Name" column (a `/series/{mbid}` `<a>`,
+     * e.g. `<a href="/series/…"><bdi>3CD</bdi></a>&nbsp;<span
+     * class="comment"><bdi>(Sony Music)</bdi></span>` — see
+     * debug/user-subscriptions-artist.html) never surfaced an "Entity info
+     * - Series name"/"- Comment" section despite carrying real
+     * disambiguation comments — `series` was simply absent from this map,
+     * so `_findCellEntityRefs()` silently returned nothing for every
+     * `/series/` cell. Confirmed live (`curl .../icons-*.css | grep
+     * serieslink`) and already reused elsewhere in this file for the same
+     * marker class (see `KNOWN_ENTITY_LINK_KINDS`).
      */
     const _ENTITY_TYPE_GLYPH = {
         work:            'worklink',
@@ -40418,7 +40476,8 @@ a { color: #1565c0; }`;
         event:           'eventlink',
         release:         'releaselink',
         recording:       'recordinglink',
-        'release-group': 'rglink'
+        'release-group': 'rglink',
+        series:          'serieslink'
     };
 
     /**
@@ -41670,6 +41729,26 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched word for a `recattr:` compound
+     * structure-mode filter — a plain cell-wide, word-boundary regex match
+     * (same reasoning as `_highlightFormatMatch()`'s `formattype:` branch
+     * above), since a native "Attributes" cell has no per-word wrapper
+     * element to scope to (e.g. "cover and live" is one flat text node).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"recattr:live"`.
+     */
+    function _highlightRecAttrMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(8);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for a `role:` compound
      * structure-mode filter (see `openUniqDrop()`'s `makeValueSynItem` and
      * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
@@ -42386,6 +42465,8 @@ a { color: #1565c0; }`;
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
                                            mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
                                     _highlightFormatMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('recattr:')) {
+                                    _highlightRecAttrMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('roletoken:')) {
@@ -53619,6 +53700,14 @@ a { color: #1565c0; }`;
         // row-filter equality stays the untouched raw getCleanColumnText()
         // string, so clicking the entry keeps filtering exactly as before.
         const valueItemSequence = _uniqCacheHit ? _uniqCacheHit.valueItemSequence : new Map();
+        // "Attributes" column only (work-recordings, artist-relationships,
+        // place-performances, area-recordings, …): one entry per atomic
+        // recording-attribute word (e.g. "live", "cover", "partial"),
+        // decomposed from MusicBrainz's own natural-language-joined cell
+        // text (e.g. "cover and live") via
+        // `_findCellRecordingAttributeWords()`. Column-gated (isAttributesCol
+        // below).
+        const recAttrValueCounts = _uniqCacheHit ? _uniqCacheHit.recAttrValueCounts : new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -53645,6 +53734,12 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for the native "Attributes" column's own
+        // recording-attribute words (e.g. "live", "cover", "partial") — same
+        // convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
+        // above (name-only, no page-type check), so this applies
+        // automatically to every pageType with a native "Attributes" column.
+        const isAttributesCol = _colHeaderName === 'Attributes';
         // Column-name gate for "Length info - Duration" — same convention
         // as isFormatCol/isTracksCol/isCatalogCol above (name-only, no
         // page-type check), so this applies automatically to every
@@ -53832,6 +53927,10 @@ a { color: #1565c0; }`;
                     _rowCountValues.forEach(t => formatCountValueCounts.set(t, (formatCountValueCounts.get(t) || 0) + 1));
                     _rowComboValues.forEach(t => formatComboValueCounts.set(t, (formatComboValueCounts.get(t) || 0) + 1));
                     _rowTypeValues.forEach(t => formatTypeValueCounts.set(t, (formatTypeValueCounts.get(t) || 0) + 1));
+                }
+                if (isAttributesCol) {
+                    const _rowRecAttrValues = new Set(_findCellRecordingAttributeWords(cell));
+                    _rowRecAttrValues.forEach(t => recAttrValueCounts.set(t, (recAttrValueCounts.get(t) || 0) + 1));
                 }
                 {
                     const _rowRevCountryValues = new Set(), _rowRevDateValues = new Set(), _rowRevWeekdayValues = new Set();
@@ -55049,6 +55148,7 @@ a { color: #1565c0; }`;
                 entityHrefGlyphMap, entityHrefTypeMap, entityHrefFlagMap,
                 joinPhraseValueCounts, nameVariationValueCounts,
                 formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
+                recAttrValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
@@ -55118,6 +55218,7 @@ a { color: #1565c0; }`;
             ...joinPhraseValueCounts.values(), ...nameVariationValueCounts.values(),
             ...formatSizeValueCounts.values(), ...formatCountValueCounts.values(),
             ...formatComboValueCounts.values(), ...formatTypeValueCounts.values(),
+            ...recAttrValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
@@ -55499,7 +55600,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -55864,6 +55965,12 @@ a { color: #1565c0; }`;
         const _sortedFormatCountValues = Array.from(formatCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedFormatComboValues = Array.from(formatComboValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedFormatTypeValues  = Array.from(formatTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Fixed-vocabulary sort (REC_OF_ATTRIBUTES' own order), not
+        // alphabetical — mirrors the word order MusicBrainz itself uses when
+        // joining multiple attributes (e.g. "cover and live" lists "cover"
+        // before "live", matching REC_OF_ATTRIBUTES' declared order).
+        const _sortedRecAttrValues = Array.from(recAttrValueCounts.keys())
+            .sort((a, b) => REC_OF_ATTRIBUTES.indexOf(a) - REC_OF_ATTRIBUTES.indexOf(b));
         const _sortedRevCountryValues = Array.from(revCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevDateValues    = Array.from(revDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevWeekdayValues = Array.from(revWeekdayValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -56044,6 +56151,7 @@ a { color: #1565c0; }`;
             _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56144,6 +56252,7 @@ a { color: #1565c0; }`;
             _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56627,6 +56736,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcount:')) return `» mediums: ${mode.slice(12)}`;
         if (mode.startsWith('formatcombo:')) return `» ${mode.slice(12)}`;
         if (mode.startsWith('formattype:')) return `» type: ${mode.slice(11)}`;
+        if (mode.startsWith('recattr:')) return `» ${mode.slice(8)}`;
         if (mode.startsWith('revcountry:'))  return `» country: ${mode.slice(11)}`;
         if (mode.startsWith('revdate:'))     return `» date: ${mode.slice(8)}`;
         if (mode.startsWith('revweekday:'))  return `» weekday: ${mode.slice(11)}`;
@@ -56719,6 +56829,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcount:')) return 'One "Format" group\'s own medium count (the leading "N×"/"Nx" factor, defaulting to 1 when absent).';
         if (mode.startsWith('formatcombo:')) return 'One "Format" group\'s own "<count>x<type>" combination (e.g. "2xVinyl") — only offered for groups with more than one medium.';
         if (mode.startsWith('formattype:')) return 'One "Format" group\'s own type word alone (e.g. "Vinyl"), regardless of size — matches every group of that type even when different rows use different sizes (7"/10"/12").';
+        if (mode.startsWith('recattr:')) return 'One atomic recording-attribute word from this "Attributes" cell\'s own natural-language-joined text (e.g. "live" also matches a cell reading "cover and live").';
         if (mode.startsWith('revcountry:')) return 'One "Country/Date" release event\'s own 2-letter country code.';
         if (mode.startsWith('revdate:')) return 'One release event\'s own date text as displayed (weekday stripped out).';
         if (mode.startsWith('revweekday:')) return 'One release event\'s own chaban-injected weekday abbreviation (e.g. "Mon").';
