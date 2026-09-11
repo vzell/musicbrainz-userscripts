@@ -9821,3 +9821,53 @@ touch `.mb-col-collapse-count` all read its textContent — so no test changed.
 Full fixture suite: 174 passed. One run showed the known pre-existing
 `loadFromDiskFixture` viewport flake (documented 2026-09-10); the spec passes
 4/4 standalone and the suite passed clean on re-run.
+
+## 2026-09-11 — 📊 unique-values pair joins the header-control family (sixth member)
+
+Asked for after the multi-row entry above, which had flagged it as the
+next-least-legible thing in the header and left it pending a decision.
+
+`.mb-col-uniq-wrap` is now the **sixth** member of the shared rule. Its two
+children were the faintest things in the whole header:
+`.mb-col-uniq-btn` (📊) at **`opacity: 0.45`** and `.mb-col-uniq-count` at
+`0.72em` / `opacity: 0.60`. Both are at full opacity now — the pill provides the
+contrast the dimming was standing in for — and the count is `0.92em` of the
+wrapper, i.e. **0.85em of the header, up 18%**, still a shade smaller than the
+📊 beside it, which is the same relationship `.mb-col-collapse-count` has to its
+own glyphs.
+
+### The em-compounding trap, a second time
+
+`.mb-col-uniq-btn` was `0.80em` of the header. The wrapper had **no**
+`font-size`, so that was its absolute size. Joining the family gives the wrapper
+`0.92em` — at which point leaving `0.80em` on the child would have made the
+glyph **smaller** (0.80 × 0.92 = 0.74em) while looking untouched in the diff. It
+is `1em` now, i.e. the wrapper's 0.92em. Same trap as the multi-row count, hit
+from the opposite direction: there a literal was too small, here an unchanged
+literal would have *become* too small.
+
+### A cascade bug caught before it shipped
+
+`.mb-col-uniq-wrap`'s own block sits **earlier** in the stylesheet than the
+family rule, and both are single-class selectors — so source order decides, and
+the family's `margin-right: 3px` would have beaten the `margin-right: 0` this
+control needs as the flex row's last element. The layout deltas were moved to
+sit after the family, next to `.mb-col-collapse-hdr-btn`'s, with a pointer left
+behind at the descriptive comment. **Any per-control delta in this family has to
+be after the family rule**; that is now stated in CLAUDE.md.
+
+### Two states re-tuned for the pill beneath them
+
+- `.mb-col-uniq-active` (a filter from this column's dropdown is engaged):
+  `rgba(0,100,255,0.13) → 0.20` plus a border, matching the family's
+  `[aria-pressed]`/`[aria-expanded]` arm. Same reason the ⏱ retry yellow had to
+  move: the alpha is relative to what is behind it, and that is now white rather
+  than the header. It wins on specificity (two classes) regardless of order, so
+  no move was needed.
+- The two `:hover` rules that lifted the children from 0.45/0.60 to full opacity
+  are **deleted**, not kept — at full opacity they were dead CSS, and the pill's
+  own hover is what responds now.
+
+No test changed: every `tests/` reference to `.mb-col-uniq-wrap`/`-btn` is a
+click target or a textContent read, never a style assertion. Full fixture suite:
+174 passed.

@@ -34287,12 +34287,17 @@ a { color: #1565c0; }`;
         /* .mb-col-uniq-btn is now a purely visual glyph (📊) inside the wrapper.
            All cursor / hover / active / focus behaviour lives on the wrapper. */
         .mb-col-uniq-btn {
-            font-size: 0.80em;
+            /* 1em = the wrapper's own 0.92em, NOT the header's. It used to be
+               0.80em of the header; leaving that literal here after the wrapper
+               gained a font-size would have made the glyph SMALLER (0.80 x 0.92
+               = 0.74em) while nominally "unchanged" — the same em-compounding
+               trap that left .mb-col-collapse-count at two thirds header size. */
+            font-size: 1em;
             line-height: 1;
-            opacity: 0.45;
+            opacity: 1;
             user-select: none;
             pointer-events: none;   /* clicks pass through to the wrapper */
-            padding: 0 2px;
+            padding: 0 1px;
             flex-shrink: 0;
             transition: opacity 0.15s;
             vertical-align: middle;
@@ -34300,30 +34305,21 @@ a { color: #1565c0; }`;
         /* Wrapper that keeps the unique-value count and 📊 glued together as one
            interactive flex unit.  margin-left:auto (when no collapse button is
            present) or 0 (when the collapse button carries the auto margin) is set
-           inline by initCollapsableColumns. */
-        .mb-col-uniq-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 0;
-            flex-shrink: 0;
-            margin-left: auto;   /* default: push the pair to the right edge */
-            cursor: pointer;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-        }
-        .mb-col-uniq-wrap:hover .mb-col-uniq-btn,
-        .mb-col-uniq-wrap:hover .mb-col-uniq-count {
-            opacity: 1;
-        }
-        .mb-col-uniq-wrap:hover {
-            background: rgba(0,0,0,0.09);
-        }
-        .mb-col-uniq-wrap.mb-col-uniq-active,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-btn,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-count {
-            opacity: 1;
-            background: rgba(0,100,255,0.13);
-        }
+           inline by initCollapsableColumns.
+
+           The box itself comes from the column-header control family further
+           down this stylesheet — this block carries only what the family must
+           NOT own: the auto margin that right-aligns the pair, and gap:0 so the
+           count and 📊 read as one unit rather than two. It is the only member
+           of that family which is not a toggle; it opens the unique-values
+           dropdown. Its "on" state is .mb-col-uniq-active rather than
+           aria-pressed/aria-expanded, which is why that arm lives here.
+
+           The hover rules that used to lift the two children from 0.45/0.60 to
+           full opacity are gone: with the family's resting pill they are at
+           full opacity already, and the pill's own hover is what responds. */
+        /* (The rule itself lives after the family rule below — it has to, or
+           the family's later margin-right would win over this control's own.) */
         /* Flex row wrapper for every sortable column header.
            Element order (left → right):
              [.mb-caa-col-hdr-btn ▶🖼/▼🖼 — CAA/EAA columns only, prepended]
@@ -34474,9 +34470,13 @@ a { color: #1565c0; }`;
            pointer-events must NOT be none here — the browser suppresses title
            tooltips on pointer-events:none elements. */
         .mb-col-uniq-count {
-            font-size: 0.72em;
+            /* Relative to the wrapper's 0.92em, so 0.92em here is 0.85em of the
+               header — up from a flat 0.72em, and still a shade smaller than
+               the 📊 beside it, which is the same relationship
+               .mb-col-collapse-count has to its own glyphs. */
+            font-size: 0.92em;
             font-weight: bold;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
             cursor: default;
             flex-shrink: 0;
@@ -34486,14 +34486,18 @@ a { color: #1565c0; }`;
         /* ============================================================
            COLUMN-HEADER TOGGLE FAMILY — .mb-col-hdr-flex slot
            ============================================================
-           Five controls share this slot and this box: the CAA/EAA thumbnail
+           Six controls share this slot and this box: the CAA/EAA thumbnail
            expander, the millisecond-precision toggle, the Picard column
-           toggle, the Relationships load/empty toggle and the multi-row
-           collapse toggle. They were five near-identical copies of the same
-           declarations; they are one rule now, so "these are the same kind of
-           control" is structural rather than a coincidence five blocks have to
-           keep agreeing on. Add a sixth by extending the selector lists, not by
-           copying a block.
+           toggle, the Relationships load/empty toggle, the multi-row collapse
+           toggle and the 📊 unique-values wrapper. They were six near-identical
+           copies of the same declarations; they are one rule now, so "these are
+           the same kind of control" is structural rather than a coincidence six
+           blocks have to keep agreeing on. Add a seventh by extending the
+           selector lists, not by copying a block.
+
+           The 📊 wrapper is the one member that is not a toggle — it opens a
+           dropdown — so it has no aria-pressed/aria-expanded arm; its "on"
+           state is .mb-col-uniq-active, handled beside its own block above.
 
            RESTING STATE IS A PILL, not bare text at 60% opacity. The old
            resting style was opacity:0.60 on a transparent ground, inherited
@@ -34513,7 +34517,8 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
-        .mb-col-collapse-hdr-btn {
+        .mb-col-collapse-hdr-btn,
+        .mb-col-uniq-wrap {
             cursor: pointer;
             font-size: 0.92em;
             line-height: 1;
@@ -34535,7 +34540,8 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
-        .mb-col-collapse-hdr-btn:hover {
+        .mb-col-collapse-hdr-btn:hover,
+        .mb-col-uniq-wrap:hover {
             background: rgba(255, 255, 255, 0.95);
             border-color: rgba(0, 0, 0, 0.55);
         }
@@ -34580,6 +34586,26 @@ a { color: #1565c0; }`;
            it has its own arm in the engaged rule above. */
         .mb-col-collapse-hdr-btn {
             margin-right: 0;
+        }
+
+        /* 📊 unique-values wrapper — layout deltas the family must not own.
+           MUST sit after the family rule: same specificity, so source order
+           decides, and the family's margin-right:3px would otherwise win over
+           the 0 this control needs as the flex row's last element. The
+           descriptive comment is up with .mb-col-uniq-btn/-count. */
+        .mb-col-uniq-wrap {
+            gap: 0;
+            margin-left: auto;   /* default: push the pair to the right edge */
+            margin-right: 0;     /* last element in the flex row */
+        }
+        /* Engaged: a filter from this column's dropdown is active. Same values
+           as the family's [aria-pressed]/[aria-expanded] arm — the alpha is
+           0.20 rather than the old 0.13 because it now sits over a white pill
+           rather than over the header, exactly as the ⏱ retry tint had to move.
+           Wins on specificity (two classes) regardless of source order. */
+        .mb-col-uniq-wrap.mb-col-uniq-active {
+            background: rgba(0, 100, 255, 0.20);
+            border-color: #6f9ada;
         }
 
         /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column

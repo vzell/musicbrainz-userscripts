@@ -1528,18 +1528,29 @@ toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
-Five controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
+Six controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
 `.mb-caa-col-hdr-btn` (▶🖼 + a real 16px thumbnail `<img>`, not an emoji),
 `.mb-ms-col-hdr-btn` (▶⏱), `.mb-picard-col-hdr-btn` (▶♪),
-`.mb-rel-col-hdr-btn` (▶🔗) and `.mb-col-collapse-hdr-btn` (▶N▤). They were five
-near-identical copies of the same declarations; grouping them means "these are
-the same kind of control" is structural rather than something five blocks have
-to keep agreeing on. Add a sixth by extending the selector lists, not by copying
-a block.
+`.mb-rel-col-hdr-btn` (▶🔗), `.mb-col-collapse-hdr-btn` (▶N▤) and
+`.mb-col-uniq-wrap` (`N 📊`). They were six near-identical copies of the same
+declarations; grouping them means "these are the same kind of control" is
+structural rather than something six blocks have to keep agreeing on. Add a
+seventh by extending the selector lists, not by copying a block.
 
-Two per-control deltas are load-bearing and must not be "tidied" into the
+`.mb-col-uniq-wrap` is the one member that is **not a toggle** — it opens the
+unique-values dropdown — so it has no `aria-pressed`/`aria-expanded` arm; its
+"on" state is `.mb-col-uniq-active`, which wins on specificity (two classes)
+regardless of source order.
+
+**Per-control deltas MUST sit after the family rule.** Same specificity, so
+source order decides: `.mb-col-uniq-wrap`'s own block used to sit *before* it,
+where the family's `margin-right: 3px` would have silently beaten the `0` it
+needs as the flex row's last element.
+
+Three per-control deltas are load-bearing and must not be "tidied" into the
 family: `.mb-caa-col-hdr-btn` keeps `gap: 3px` / `margin-right: 0` for its
-thumbnail, and `.mb-col-collapse-hdr-btn` keeps `margin-right: 0` because it is
+thumbnail; `.mb-col-uniq-wrap` keeps `gap: 0` plus `margin-left: auto` /
+`margin-right: 0`; and `.mb-col-collapse-hdr-btn` keeps `margin-right: 0` because it is
 NOT laid out by the family's margin — it carries an inline `margin-left: auto`
 (set alongside clearing `.mb-col-uniq-wrap`'s own inline one), so both it and
 the uniq wrap have `margin-left: auto` and the flex row splits the free space
