@@ -319,8 +319,95 @@ alone*, because the baselines have not been re-captured since before any of it.
 So a re-capture will show this on every =<th>= of all 11 =rendered.html= files
 plus =artist-events='s =post-filter.html= / =post-sort.html=.
 
-It is layout-derived and expected. What would NOT be expected, and is worth
-looking at if a diff shows it: a =data-mb-resize-min= that went DOWN, or a
-=<th>= gaining/losing a class or a child element. Re-capture needs a logged-in
-session (=npm run auth:login=; the saved one expired 2026-09-10), so it is a
-merge-time decision.
+It is layout-derived and expected. What would NOT be expected is a =<th>=
+gaining or losing a class or a child element.
+
+*The re-capture has now happened, and the section below supersedes the two
+predictions in this one.* Both were wrong: the drift is not confined to
+"upward", and it does not reach every =<th>=.
+
+** Re-captured 2026-09-11 at 9.99.1072 — what the whole restyle series actually did
+
+All 10 capturable pageTypes were re-captured on the merge commit
+(=node tests/support/capture-snapshots.js=, fresh =npm run auth:login=,
+host =NB-3641=, 2026-09-11 ~14:30-15:05 UTC). This is the first re-capture since
+before ANY of the header-control restyles, so each baseline folds in the whole
+series at once.
+
+*** Markup: essentially nothing moved
+
+=summarize-snapshot-diff.py= reports *0 token kinds moved* for
+artist-events, artist-releasegroups, notes-received, series-releases,
+series-recordings and releasegroup-releases. The only movement anywhere:
+
+| Baseline                                | Token                            | Why                                     |
+|-----------------------------------------+----------------------------------+-----------------------------------------|
+| release-tracks, recording-fingerprints, release-discids | =-1 id="mb-caa-completion-toast"= | timing-dependent; already documented above as not a signal |
+| user-tags                               | =+4= =mb-global-*-container=, =+1= each =#mb-len-mismatch-{warn,severe}-btn=, =#mb-pending-edits-btn= | that baseline predates those features — the same "older baseline folds in unrelated drift" pattern as notes-received |
+
+So the =mb-rel-*= prediction held exactly: *no element in any baseline gained a
+Relationships class or attribute.* Every file grew ~16-33 KB, which is the
+=<style>= block gaining the new rules — =snapshot.js= strips =<script>= but
+keeps =<style>=.
+
+*** =data-mb-resize-min=: up on tight headers, DOWN on wide ones
+
+The previous section predicted uniform upward drift on every =<th>=. What
+actually happened splits three ways, and the split is the *fix* rather than a
+defect — =makeColumnsResizable()= now stamps =_measureHeaderMinWidth()=
+(=max-content=) instead of =scrollWidth + 8=:
+
+  1. *Up by +25..+40* on every header whose content is tighter than its column.
+     This is the cumulative cost of the whole restyle series (pill padding and
+     borders inside =.mb-col-hdr-flex=). The +54..+78 predicted from a fixture
+     render overstated it.
+  2. *DOWN, sometimes enormously*, on any column auto-resize had widened.
+     =scrollWidth= on an element that FITS returns =clientWidth=, so the old
+     stamp recorded the widened COLUMN, not the header — an un-narrowable floor.
+     This is the second half of the bug, and the baselines held worse cases than
+     the 765 px one the userscript's own comment cites:
+
+     | Baseline               | Column      | before | after | delta |
+     |------------------------+-------------+--------+-------+-------|
+     | recording-fingerprints | =AcoustID=  |    889 |   149 |  -740 |
+     | notes-received         | =Edit notes= |   616 |   204 |  -412 |
+     | artist-events          | =Location=  |    554 |   180 |  -374 |
+     | release-tracks         | =Instruments= |   460 |   221 |  -239 |
+     | release-discids        | =Disc ID=   |    280 |   138 |  -142 |
+
+     *So a DOWN value is now EXPECTED on a wide column, not a red flag.* The red
+     flag is the reverse: a floor that went UP on a column that was already
+     wider than its header.
+  3. *Unchanged* only where the value is degenerate. Every "unchanged" count in
+     the re-capture is exactly the file's count of =8= and =0=:
+
+     | Baseline              | total | =8= (hidden) | =0= (Picard) | real, all moved |
+     |-----------------------+-------+--------------+--------------+-----------------|
+     | artist-releasegroups  |   423 |          405 |            0 |              18 |
+     | releasegroup-releases |    44 |           42 |            2 |               0 |
+     | user-tags             |     4 |            4 |            0 |               0 |
+
+     =8= is =0 + 8=: the header had zero width when stamped, because its
+     sub-table renders COLLAPSED (=display:none=). =0= is the Picard =<th>=,
+     which by design has no =.mb-col-hdr-flex= to measure. *Neither is a
+     defect, and neither needs fixing* — the drag re-measures at mousedown,
+     when the table is visible, which is the whole point of measuring late.
+     It does mean a multi-table baseline's stamped floors say nothing about
+     that page, so don't read them as coverage.
+
+*** user-open-edits could NOT be re-captured, and that is upstream
+
+The run aborts on it with =locator('#mb-filter-container')= timing out after
+90 s. Cause, read off the captured raw HTML rather than guessed: the page now
+says *"Found 0 edits"* — =<title>Open edits by vzell</title>=, so the session
+was valid; the user simply has no open edits any more (the committed baseline
+was taken while several were still in their ~7-day voting window, same
+expiring-state mechanism as the =⏳ pending edits= section above). With no
+table there is no filter container and nothing to render.
+
+Its =raw.html= was deliberately *reverted* rather than committed: a raw saying
+"Found 0 edits" beside a =rendered.html= built from a table of edits is an
+incoherent pair, and the rendered half cannot be captured at all right now. So
+=user-open-edits= stays at its older baseline and will re-capture cleanly the
+next time that account has an open edit. A timeout there is evidence about the
+account's edit queue, never about the change under test.

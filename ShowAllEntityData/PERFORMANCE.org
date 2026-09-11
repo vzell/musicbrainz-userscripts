@@ -12,7 +12,7 @@ is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
 keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21,
-22, 32 and 34.
+22, 32, 34 and 35.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -2900,11 +2900,10 @@ preservation rules in CLAUDE.md's "CAA/EAA artwork — what must not break" bear
 on this one alone. In particular ~preserveLiveArt~ and the ~_hadInlineArtPh~
 branch both live inside this function and must survive any restructuring of it.
 
-*** TODO Step 35: On-demand Relationships column — implemented
+*** DONE Step 35: On-demand Relationships column — implemented
 
-/Implemented on branch/ ~relationships-column-collapse-toggle~ /(2026-09-10).
-Keyword stays TODO until it lands on/ ~main~, /per this file's own convention —
-see Step 32, which read TODO on its own branch for the same reason./
+/Landed on/ ~main~ /at *9.99.1072* (2026-09-11), branch
+~relationships-column-collapse-toggle~ (implemented 2026-09-10)./
 
 Step 32's shape — the ~<th>~ and every ~<td>~ always exist, only the CELL
 CONTENT defers behind a per-table header toggle — applied to the injected

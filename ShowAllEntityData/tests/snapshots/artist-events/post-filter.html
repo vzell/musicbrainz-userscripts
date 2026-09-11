@@ -141,7 +141,113 @@
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
-        .sort-icon-btn { cursor: pointer; padding: 0 2px; font-weight: bold; transition: color 0.1s; color: black; border-radius: 2px; }
+        /* ── The ⇅ ▲ ▼ sort control, as ONE segmented pill ──────────────────
+           Three sibling spans that are one control, so they are drawn as one
+           pill with hairline dividers rather than three loose glyphs. Tokens
+           come from .mb-col-hdr-flex, shared with the COLUMN-HEADER TOGGLE
+           FAMILY rule further down, so the sort pill and the ▶🔗/▶⏱/📊 pills
+           cannot drift apart.
+
+           ZERO DOM CHANGE, and that is load-bearing rather than merely tidy.
+           A wrapper element carrying the class "sort-icon-btn" would have the
+           text "⇅▲▼", and 19 spec files locate these as
+           "locator('.sort-icon-btn', { hasText: '▲' }).first()" — "hasText" is
+           a SUBSTRING match, so the wrapper would match all three queries and,
+           being first in document order, win ".first()". Every one of those
+           clicks would then land on the wrapper's centre instead of the glyph
+           it named. A differently-classed wrapper avoids that but still costs
+           a re-capture of 14 snapshot baselines. The spans are already
+           contiguous siblings with no whitespace between them, so the segments
+           can be built from the spans themselves.
+
+           THE DIVIDERS ARE BORDERS, NEVER A "|" CHARACTER. A literal pipe is
+           TEXT, and this header's text is read by ~25 places — most of which
+           strip a fixed glyph set by regex, including
+           makeTableSortableUnified()'s own re-derivation of colName on a second
+           pass, which feeds th.dataset.colName and from there some 65
+           consumers. It would also break two exact-equality readers:
+           _exportCleanHeaderText()'s "g === '▲'" and the _clickSortIcon(bare)
+           resolver behind Ctrl+ArrowUp/Down/#. Same argument the Picard glyph's
+           CSS block makes for ::before over element text.
+
+           WHY NOT :first-of-type / :last-of-type — they are WRONG here, and
+           wrong on exactly the most decorated columns. *-of-type counts
+           elements of the same TAG, and these spans are neither the first nor
+           the last <span> in .mb-col-hdr-flex: a .mb-caa-col-hdr-btn,
+           .mb-ms-col-hdr-btn, .mb-rel-col-hdr-btn or a .worklink/.placelink
+           glyph can precede them, and .mb-col-uniq-wrap always follows. Verified
+           against the committed baselines — the Length column really does read
+           "mb-ms-col-hdr-btn > sort-icon-btn ×3 > mb-col-uniq-wrap". So the run
+           is identified relative to itself instead. */
+        .sort-icon-btn {
+            cursor: pointer;
+            font-size: var(--mb-hdr-pill-size);
+            font-weight: bold;
+            color: black;
+            line-height: 1;
+            /* Was "0 2px". This is the entire click target — Playwright clicks
+               element centres and ~19 specs depend on hitting the right glyph —
+               so it may grow but must never shrink. */
+            padding: 2px 5px;
+            background: var(--mb-hdr-pill-bg);
+            /* Side borders start at 0 and are re-grown below, so that exactly
+               ONE hairline falls between two segments. Leaving the shorthand's
+               right border in place would pair it with the next segment's left
+               border and draw the divider twice — a 2px rule between segments
+               and a 1px one at the pill's edges. */
+            border: 1px solid var(--mb-hdr-pill-border);
+            border-left-width: 0;
+            border-right-width: 0;
+            border-radius: 0;
+            transition: color 0.1s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+        }
+        /* Divider: every segment after the first re-grows its left border, so
+           the rule between two segments is a single shared hairline. */
+        .sort-icon-btn + .sort-icon-btn {
+            border-left-width: 1px;
+        }
+        /* First in the run — not preceded by another sort icon.
+
+           margin-left separates the pill from the column name, and it has to be
+           a margin: makeTableSortableUnified() appends the column name WITH a
+           trailing space, which used to be the gap, but that text node is an
+           that text node is an anonymous FLEX ITEM and edge whitespace inside a
+           flex item is trimmed. It went unnoticed while the glyphs were bare
+           text — they simply sat where the space had been — and became visible
+           the moment they gained a border and a ground. */
+        .sort-icon-btn:not(.sort-icon-btn + .sort-icon-btn) {
+            margin-left: 4px;
+            border-left-width: 1px;
+            border-top-left-radius: var(--mb-hdr-pill-radius);
+            border-bottom-left-radius: var(--mb-hdr-pill-radius);
+        }
+        /* Last in the run — not followed by another sort icon. :has() is
+           already used elsewhere in this file, so it is not a new support
+           floor; note this is its first use in a CSS RULE though, where an
+           unsupported selector drops the rule silently rather than throwing.
+           Worst case is a pill missing its right cap, not a broken control. */
+        .sort-icon-btn:not(:has(+ .sort-icon-btn)) {
+            border-right-width: 1px;
+            border-top-right-radius: var(--mb-hdr-pill-radius);
+            border-bottom-right-radius: var(--mb-hdr-pill-radius);
+            margin-right: 3px;
+        }
+        .sort-icon-btn:hover {
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
+        }
+        /* Engaged: the currently applied sort direction. Deliberately NOT the
+           family's blue — green-on-yellow is a long-standing signal here and is
+           far easier to find by scanning a wide table. All that changed is that
+           it now fills the whole segment instead of sitting as a ragged
+           background behind the glyph text, which is only possible because the
+           per-span border-radius above is 0 for anything mid-run.
+           Still a bare ".sort-icon-active" selector with !important, so it also
+           beats :hover — a sorted column stays yellow under the pointer. */
         .sort-icon-active { color: Green !important; background-color: #FFFF00 !important; }
 
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */
@@ -316,11 +422,21 @@
            pointer-events:none keeps the td's own title tooltip reachable
            through it. */
         td[data-mb-len-flag] { position: relative; }
+        /* !important is load-bearing, not defensive styling: MusicBrainz's own
+           native zebra-striping rule (tr.even > td { background: … }) outranks
+           a plain td[data-mb-len-flag="…"] background-color declaration on
+           specificity alone (0,0,1,2 beats 0,0,1,1) — the same class of
+           conflict _ensureDetableifyStyle() already documents for the "edits"
+           pageType's own zebra rule. Confirmed live: a flagged row on an
+           "odd" (unstriped) <tr> showed its tint fine, but the identical flag
+           on an "even" <tr> rendered with no tint at all, regardless of any
+           other row's severity — MusicBrainz's zebra rule simply painted over
+           it. */
         td[data-mb-len-flag="warn"] {
-            background-color: #fff3cd;
+            background-color: #fff3cd !important;
         }
         td[data-mb-len-flag="severe"] {
-            background-color: #f8d7da;
+            background-color: #f8d7da !important;
         }
         td[data-mb-len-flag]::after {
             position: absolute;
@@ -477,12 +593,17 @@
         /* .mb-col-uniq-btn is now a purely visual glyph (📊) inside the wrapper.
            All cursor / hover / active / focus behaviour lives on the wrapper. */
         .mb-col-uniq-btn {
-            font-size: 0.80em;
+            /* 1em = the wrapper's own 0.92em, NOT the header's. It used to be
+               0.80em of the header; leaving that literal here after the wrapper
+               gained a font-size would have made the glyph SMALLER (0.80 x 0.92
+               = 0.74em) while nominally "unchanged" — the same em-compounding
+               trap that left .mb-col-collapse-count at two thirds header size. */
+            font-size: 1em;
             line-height: 1;
-            opacity: 0.45;
+            opacity: 1;
             user-select: none;
             pointer-events: none;   /* clicks pass through to the wrapper */
-            padding: 0 2px;
+            padding: 0 1px;
             flex-shrink: 0;
             transition: opacity 0.15s;
             vertical-align: middle;
@@ -490,36 +611,60 @@
         /* Wrapper that keeps the unique-value count and 📊 glued together as one
            interactive flex unit.  margin-left:auto (when no collapse button is
            present) or 0 (when the collapse button carries the auto margin) is set
-           inline by initCollapsableColumns. */
-        .mb-col-uniq-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 0;
-            flex-shrink: 0;
-            margin-left: auto;   /* default: push the pair to the right edge */
-            cursor: pointer;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-        }
-        .mb-col-uniq-wrap:hover .mb-col-uniq-btn,
-        .mb-col-uniq-wrap:hover .mb-col-uniq-count {
-            opacity: 1;
-        }
-        .mb-col-uniq-wrap:hover {
-            background: rgba(0,0,0,0.09);
-        }
-        .mb-col-uniq-wrap.mb-col-uniq-active,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-btn,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-count {
-            opacity: 1;
-            background: rgba(0,100,255,0.13);
-        }
+           inline by initCollapsableColumns.
+
+           The box itself comes from the column-header control family further
+           down this stylesheet — this block carries only what the family must
+           NOT own: the auto margin that right-aligns the pair, and gap:0 so the
+           count and 📊 read as one unit rather than two. It is the only member
+           of that family which is not a toggle; it opens the unique-values
+           dropdown. Its "on" state is .mb-col-uniq-active rather than
+           aria-pressed/aria-expanded, which is why that arm lives here.
+
+           The hover rules that used to lift the two children from 0.45/0.60 to
+           full opacity are gone: with the family's resting pill they are at
+           full opacity already, and the pill's own hover is what responds. */
+        /* (The rule itself lives after the family rule below — it has to, or
+           the family's later margin-right would win over this control's own.) */
         /* Flex row wrapper for every sortable column header.
            Element order (left → right):
              [.mb-caa-col-hdr-btn ▶🖼/▼🖼 — CAA/EAA columns only, prepended]
              colName  ⇅  ▲  ▼
              [.mb-col-collapse-hdr-btn ▶N▤/▼N▤ — collapsable columns, margin-left:auto]
              [.mb-col-uniq-wrap [ N 📊 ]]  */
+        /* ── Shared pill tokens for every control in a column header ────────
+           The COLUMN-HEADER TOGGLE FAMILY rule below styles ONE element as one
+           pill, and cannot simply gain a seventh selector for the sort glyphs:
+           those are THREE sibling spans that have to read as one pill, so
+           applying the family rule to them would give three. The segmented
+           rules therefore reproduce the same visual language — which is exactly
+           how two things drift apart. Declaring the values once and referencing
+           them from both makes "these are the same kind of control" structural
+           instead of half a dozen literals that have to keep agreeing. Change a
+           pill's look HERE, not in either consumer.
+
+           Declared on "thead", NOT on .mb-col-hdr-flex, and that matters:
+           .mb-picard-col-hdr-btn is inserted straight into its <th> because the
+           Picard header is the one header in this file with no
+           .mb-col-hdr-flex at all. Scoping the tokens to the flex row would
+           leave that one control resolving var() to nothing — i.e. silently
+           unstyled — while every other member looked fine. "thead" is the
+           nearest ancestor all seven actually share.
+
+           Source order is irrelevant for these: custom properties resolve
+           through inheritance at computed-value time, so the .sort-icon-btn
+           rules may (and do) sit earlier in this stylesheet than the
+           declaration. */
+        table.tbl thead {
+            --mb-hdr-pill-bg:          rgba(255, 255, 255, 0.72);
+            --mb-hdr-pill-bg-hover:    rgba(255, 255, 255, 0.95);
+            --mb-hdr-pill-border:      rgba(0, 0, 0, 0.30);
+            --mb-hdr-pill-border-hover: rgba(0, 0, 0, 0.55);
+            --mb-hdr-pill-radius:      3px;
+            --mb-hdr-pill-size:        0.92em;
+            --mb-hdr-pill-engaged-bg:  rgba(0, 100, 255, 0.20);
+            --mb-hdr-pill-engaged-border: #6f9ada;
+        }
         .mb-col-hdr-flex {
             display: flex;
             align-items: center;
@@ -643,31 +788,15 @@
             user-select: none;
         }
 
-        /* Per-column ▶▤/▼▤ toggle button inserted into the .mb-col-hdr-flex row
-           with margin-left:auto, immediately before the 📊 unique-values button.
-           ▶▤ = all cells collapsed; ▼▤ = at least one cell expanded. */
-        .mb-col-collapse-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.55;
-            user-select: none;
-            padding: 0 2px;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
-        .mb-col-collapse-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.09);
-        }
-
         /* Inline count of multi-row cells inside the ▶N▤/▼N▤ collapse button.
-           Slightly smaller than the surrounding glyphs; inherits the button's
-           cursor / user-select so it behaves as part of the same clickable unit. */
+           Still slightly smaller than the surrounding glyphs, deliberately, but
+           no longer illegibly so: em compounds, and 0.82em inside a 0.80em
+           button was 0.66em of the header — the actual number, which is the one
+           piece of INFORMATION in this control, was the smallest thing in it.
+           Inherits the button's cursor / user-select so it behaves as part of
+           the same clickable unit. */
         .mb-col-collapse-count {
-            font-size: 0.82em;
+            font-size: 0.92em;
             font-weight: bold;
             vertical-align: baseline;
             margin: 0 1px;
@@ -680,58 +809,65 @@
            pointer-events must NOT be none here — the browser suppresses title
            tooltips on pointer-events:none elements. */
         .mb-col-uniq-count {
-            font-size: 0.72em;
+            /* Relative to the wrapper's 0.92em, so 0.92em here is 0.85em of the
+               header — up from a flat 0.72em, and still a shade smaller than
+               the 📊 beside it, which is the same relationship
+               .mb-col-collapse-count has to its own glyphs. */
+            font-size: 0.92em;
             font-weight: bold;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
             cursor: default;
             flex-shrink: 0;
             vertical-align: middle;
         }
 
-        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column header.
-           Prepended as the first child of .mb-col-hdr-flex; shows ▶ glyph then
-           thumbnail (▶🖼 collapsed / ▼🖼 expanded). */
-        .mb-caa-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .mb-caa-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
-        }
+        /* ============================================================
+           COLUMN-HEADER TOGGLE FAMILY — .mb-col-hdr-flex slot
+           ============================================================
+           Six controls share this slot and this box: the CAA/EAA thumbnail
+           expander, the millisecond-precision toggle, the Picard column
+           toggle, the Relationships load/empty toggle, the multi-row collapse
+           toggle and the 📊 unique-values wrapper. They were six near-identical
+           copies of the same declarations; they are one rule now, so "these are
+           the same kind of control" is structural rather than a coincidence six
+           blocks have to keep agreeing on. Add a seventh by extending the
+           selector lists, not by copying a block.
 
-        /* Per-column millisecond precision toggle in the "Length" column header.
-           Prepended as the first child of .mb-col-hdr-flex, in the same slot and
-           with the same box metrics as .mb-caa-col-hdr-btn above: ▶⏱ shows
-           seconds (more precision available), ▼⏱ shows milliseconds.
-           The engaged state is ALSO tinted, borrowing
-           .mb-col-uniq-wrap.mb-col-uniq-active's "this control is on" idiom, so
-           it stays scannable across a wide table without relying on telling ▶
-           from ▼ at a glance. */
-        .mb-ms-col-hdr-btn {
+           The 📊 wrapper is the one member that is not a toggle — it opens a
+           dropdown — so it has no aria-pressed/aria-expanded arm; its "on"
+           state is .mb-col-uniq-active, handled beside its own block above.
+
+           RESTING STATE IS A PILL, not bare text at 60% opacity. The old
+           resting style was opacity:0.60 on a transparent ground, inherited
+           from when these sat only on the plain #e8e8e8 header. It fails on
+           the injected-column header: that is #b8b8d0, and 🔗 renders as a
+           BLUE-GREY colour emoji, so glyph and ground were the same hue at
+           the same lightness. Sorting makes it worse rather than better —
+           the first sort column blends rgba(255,200,80,.60) over the header
+           (see _MSCOL_HDR_TINT_RGBA), giving rgb(227,194,131), i.e. a cool
+           glyph on a warm ground, both mid-tone. A light ground of the
+           control's own fixes every combination at once, including a header
+           the user has recoloured via sa_ui_thead_th_bg /
+           sa_ui_thead_th_injected_bg, which no hand-picked glyph colour
+           could. It also makes these read as pressable before they are
+           hovered, which bare text at 60% never did. */
+        .mb-caa-col-hdr-btn,
+        .mb-ms-col-hdr-btn,
+        .mb-picard-col-hdr-btn,
+        .mb-rel-col-hdr-btn,
+        .mb-col-collapse-hdr-btn,
+        .mb-col-uniq-wrap {
             cursor: pointer;
-            font-size: 0.80em;
+            font-size: var(--mb-hdr-pill-size);
             line-height: 1;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
-            padding: 1px 3px;
+            padding: 1px 4px;
             margin-right: 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
+            border-radius: var(--mb-hdr-pill-radius);
+            background: var(--mb-hdr-pill-bg);
+            border: 1px solid var(--mb-hdr-pill-border);
             transition: opacity 0.15s, background 0.15s, border-color 0.15s;
             vertical-align: middle;
             flex-shrink: 0;
@@ -739,33 +875,194 @@
             align-items: center;
             white-space: nowrap;
         }
-        .mb-ms-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
+        .mb-caa-col-hdr-btn:hover,
+        .mb-ms-col-hdr-btn:hover,
+        .mb-picard-col-hdr-btn:hover,
+        .mb-rel-col-hdr-btn:hover,
+        .mb-col-collapse-hdr-btn:hover,
+        .mb-col-uniq-wrap:hover {
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
         }
-        .mb-ms-col-hdr-btn:focus-visible {
+        .mb-caa-col-hdr-btn:focus-visible,
+        .mb-ms-col-hdr-btn:focus-visible,
+        .mb-picard-col-hdr-btn:focus-visible,
+        .mb-rel-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
             outline-offset: 1px;
         }
-        .mb-ms-col-hdr-btn[aria-pressed="true"] {
-            opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
+        /* Engaged: the "this control is on" idiom borrowed from
+           .mb-col-uniq-wrap.mb-col-uniq-active, so a wide table stays
+           scannable without having to tell ▶ from ▼ at a glance. The CAA
+           button is absent here deliberately — it carries no aria-pressed,
+           its state is data-caa-expand-btn on the cells. */
+        .mb-ms-col-hdr-btn[aria-pressed="true"],
+        .mb-picard-col-hdr-btn[aria-pressed="true"],
+        .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-col-collapse-hdr-btn[aria-expanded="true"] {
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
         }
-        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
-           load): yellow warning tint, and the button stays fully clickable —
-           pressing it again retries. Distinct on purpose from the settled,
-           dimmed "MusicBrainz has no sub-second data here" state, which is a
+
+        /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
+           .mb-col-hdr-flex row immediately before the 📊 unique-values button.
+           ▶N▤ = all cells collapsed; ▼N▤ = at least one cell expanded.
+
+           margin-right: 0 because this control is NOT laid out by the family's
+           margin: it carries an inline margin-left:auto (set alongside clearing
+           .mb-col-uniq-wrap's own inline one — see initCollapsableColumns), so
+           BOTH it and the uniq wrap have margin-left:auto and the flex row
+           splits the free space between them. That split is what produces the
+           gap before 📊; a margin-right here would sit inside it and only make
+           the pair look misaligned.
+
+           Its focus ring comes from the page-wide :focus-visible group near the
+           end of this stylesheet (which already lists it, with !important) —
+           the family's own :focus-visible rule would be overridden by it, so
+           this control is deliberately absent from that group.
+
+           State lives on aria-expanded rather than aria-pressed, which is why
+           it has its own arm in the engaged rule above. */
+        .mb-col-collapse-hdr-btn {
+            margin-right: 0;
+        }
+
+        /* 📊 unique-values wrapper — layout deltas the family must not own.
+           MUST sit after the family rule: same specificity, so source order
+           decides, and the family's margin-right:3px would otherwise win over
+           the 0 this control needs as the flex row's last element. The
+           descriptive comment is up with .mb-col-uniq-btn/-count. */
+        .mb-col-uniq-wrap {
+            gap: 0;
+            margin-left: auto;   /* default: push the pair to the right edge */
+            margin-right: 0;     /* last element in the flex row */
+        }
+        /* Engaged: a filter from this column's dropdown is active. Same values
+           as the family's [aria-pressed]/[aria-expanded] arm — the alpha is
+           0.20 rather than the old 0.13 because it now sits over a white pill
+           rather than over the header, exactly as the ⏱ retry tint had to move.
+           Wins on specificity (two classes) regardless of source order. */
+        .mb-col-uniq-wrap.mb-col-uniq-active {
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
+        }
+
+        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column
+           header. Prepended as the first child of .mb-col-hdr-flex; shows a ▶
+           glyph then a REAL 16px thumbnail <img> (not an emoji — the ▶🖼/▼🖼
+           this comment used to claim was never what the code built). The gap
+           separates the two; the fixed-px image is unaffected by the family's
+           font-size. */
+        .mb-caa-col-hdr-btn {
+            gap: 3px;
+            margin-right: 0;
+        }
+
+        /* Per-column millisecond precision toggle in the "Length" column
+           header: ▶⏱ shows seconds (more precision available), ▼⏱ shows
+           milliseconds. Unlike the other three the glyph is element TEXT, set
+           by _msUpdateColHdrBtn(), which is also why the U+FE0E that makes ⏱
+           render monochrome lives in that function's strings and not here. */
+
+        /* SETTLED "no sub-second data on record" — dimmed, and it needs its
+           own rule. It never had one: the dimming came from the family's old
+           opacity:0.60 resting state, so raising that to 1 for legibility
+           would have silently made "unavailable" look identical to a normal
+           available button — collapsing two states the ⏱ feature keeps
+           deliberately distinct (see the five button states in CLAUDE.md's
+           millisecond section: retry is worth a second click, unavailable is
+           not). aria-disabled is the honest hook: _msUpdateColHdrBtn() already
+           sets it for exactly this state and no other. */
+        .mb-ms-col-hdr-btn[aria-disabled="true"] {
+            opacity: 0.55;
+            background: rgba(255, 255, 255, 0.35);
+            border-color: rgba(0, 0, 0, 0.18);
+            cursor: default;
+        }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is
+           under load): yellow warning tint, and the button stays fully
+           clickable — pressing it again retries. Distinct on purpose from the
+           settled, dimmed "no sub-second data here" state above, which is a
            fact about the data rather than about reachability. */
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
-            opacity: 1;
-            background: rgba(255, 193, 7, 0.45);
+            background: rgba(255, 193, 7, 0.55);
             border-color: #d6a100;
         }
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
-            background: rgba(255, 193, 7, 0.65);
+            background: rgba(255, 193, 7, 0.75);
             border-color: #b98900;
+        }
+        /* Loading: aria-busy, ⏳ possibly carrying batch progress ("2/5"). */
+        .mb-ms-col-hdr-btn[aria-busy="true"] {
+            background: rgba(255, 255, 255, 0.55);
+            border-color: rgba(0, 0, 0, 0.22);
+        }
+
+        /* Per-table Picard-column expand/collapse toggle, prepended to the
+           <th class="mb-picard-th">.
+
+           THE GLYPH COMES FROM ::before, NOT FROM THE ELEMENT'S TEXT, and that
+           is load-bearing rather than stylistic. The Picard <th> is the one
+           header in this file with no .mb-col-hdr-flex and no
+           dataset.colName (makeTableSortableUnified always runs BEFORE Picard
+           injects, so it never sees this header), which means
+           _cleanColHeaderText() resolves it through its clone-and-strip
+           fallback and ultimately from th.textContent. A text glyph here
+           would make that read "▶♪Picard" and silently break four consumers
+           that match the name 'Picard' exactly — initCollapsableColumns'
+           column lookup (so the multi-row Picard cells would lose their
+           per-cell ▶/▼ toggles), _exportCleanHeaderText (CSV/JSON/Org/HTML
+           header text), openUniqDrop's isCollapsableCol, and
+           _updateAllColHeaderCounts. Keeping the glyph in CSS leaves
+           th.textContent exactly "Picard". Same argument the
+           length-mismatch flag makes for being attributes-only.
+
+           ♪ (U+266A) needs no U+FE0E: it is a text-presentation character
+           already, which is exactly why this toggle stayed legible while the
+           emoji-glyph ones did not. */
+        .mb-picard-col-hdr-btn::before {
+            content: '▶♪';   /* collapsed: press to build the buttons */
+        }
+        .mb-picard-col-hdr-btn[aria-pressed="true"]::before {
+            content: '▼♪';   /* expanded: press to empty the column */
+        }
+
+        /* Per-table Relationships-column load/empty toggle, prepended into the
+           "Relationships" <th>'s .mb-col-hdr-flex.
+
+           U+FE0E (VARIATION SELECTOR-15) after the chain forces TEXT
+           presentation, so it renders as an outline in the header's own
+           colour instead of as a blue-grey colour emoji. That is the half of
+           the legibility fix the pill cannot do: the pill separates the
+           control from the header, this separates the glyph from the pill —
+           and it is why ♪ above never had the problem. Where the font stack
+           declines to honour it the glyph falls back to the colour emoji on a
+           white pill, which is still the old problem solved.
+
+           The glyph is in CSS rather than in text for consistency with the
+           Picard toggle above, though this <th> would survive either: it
+           carries dataset.colName, which _cleanColHeaderText() returns at
+           step 1, and _exportCleanHeaderText() strips the whole
+           .mb-col-hdr-flex and falls back to dataset.colName too. Keeping it
+           here means aria-pressed stays the single representation of
+           "expanded?" on the button side. */
+        .mb-rel-col-hdr-btn::before {
+            content: '▶🔗︎';   /* collapsed: press to fetch and build */
+        }
+        .mb-rel-col-hdr-btn[aria-pressed="true"]::before {
+            content: '▼🔗︎';   /* expanded: press to empty the column */
+        }
+        /* A collapsed column's filter input matches nothing, because its
+           .mb-rel-filter-key spans do not exist yet. Tint it so that is
+           visible before the user types rather than after — the placeholder
+           and title carry the wording (_relSyncCollapsedFilterAffordance). */
+        .mb-col-filter-input[data-mb-rel-collapsed="1"] {
+            background: rgba(255, 193, 7, 0.18);
+            border-color: #d6a100;
+        }
+        .mb-col-filter-input[data-mb-rel-collapsed="1"]::placeholder {
+            color: #8a6d00;
+            opacity: 1;
         }
 
         #mb-col-uniq-dropdown {
@@ -963,6 +1260,19 @@
         .mb-uniq-rel-item {
             display: flex;
             align-items: center;
+        }
+
+        /* The "this column is collapsed" row in the Relationships section.
+           Not a checkbox item — there is nothing to select — so it deliberately
+           has no hover/cursor affordance, and is tinted with the same yellow
+           the collapsed column's filter input uses. */
+        .mb-uniq-rel-collapsed-note {
+            display: flex;
+            align-items: center;
+            cursor: default;
+            font-style: italic;
+            background: rgba(255, 193, 7, 0.18);
+            color: #6b5500;
         }
 
         /* ============================================================

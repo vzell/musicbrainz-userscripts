@@ -10295,3 +10295,69 @@ recording:
 A one-second guard script under `scripts/` that scans the stylesheet region for
 stray backticks would pay for itself; not added here because it is outside what
 was asked for.
+
+## 2026-09-11 — Merge to main (9.99.1072) + first snapshot re-capture since before the header restyles
+
+Merged `relationships-column-collapse-toggle` into `main` (`--no-ff`), folded
+`WIP.1` → **9.99.1072**, and re-captured the snapshot baselines — the step every
+round of this series had deferred for want of a logged-in session.
+
+### The merge itself
+
+Clean, no conflicts. The hazard worth naming, because it looked certain to bite:
+`main` had folded and DELETED `ShowAllEntityData_CHANGELOG.wip.json` twice
+(9.99.1068, 9.99.1071) while the branch was re-creating it, which is the classic
+modify/delete shape. It merged silently instead, because the merge base
+(`b09f4f4`) predates the branch re-creating the file — so it is an
+*add-against-nothing*, not a modify-against-a-delete. Verified with
+`git merge-tree --write-tree` before merging rather than discovered afterwards.
+
+One thing the fold script does NOT do, and CLAUDE.md's merge-time step 5 says to
+do by hand: the WIP entry kept its authoring date (2026-09-10) while
+`// @version` got the ship date. Corrected to 2026-09-11 so the two agree, which
+is what every existing entry does.
+
+### The re-capture: markup barely moved, and one prediction was wrong twice
+
+10 of 11 pageTypes re-captured (`capture-snapshots.js`, host `NB-3641`,
+2026-09-11 ~14:30-15:05 UTC). `summarize-snapshot-diff.py` reports **0 token
+kinds moved** on six of them; the rest is the already-documented
+`mb-caa-completion-toast` flap plus `user-tags` folding in three features that
+postdate its baseline. The `mb-rel-*` prediction held exactly — **no element in
+any baseline gained a Relationships class or attribute**, which is what
+`_relTableExpanded()`'s no-stamp early return was written for. Every file grew
+16-33 KB of `<style>`.
+
+`data-mb-resize-min` is where the prediction failed, in both halves: it said
+*uniform upward drift on every `<th>`*. Measured:
+
+- **Up +25..+40** on tight headers — the restyle series' real cost (the +54..+78
+  predicted from a fixture render overstated it).
+- **DOWN, hugely, on wide columns** — `AcoustID` **889 → 149**, `Edit notes`
+  616 → 204, `Location` 554 → 180. That is the fix: `scrollWidth` on an element
+  that fits returns `clientWidth`, so the old stamp recorded the auto-resized
+  COLUMN and produced an un-narrowable floor. The baselines held worse cases
+  than the 765 px one the userscript's own comment cites. **A DOWN value here is
+  now expected, not a red flag** — registry.org said the opposite and has been
+  corrected.
+- **Unchanged only where degenerate.** Every "unchanged" count equals that
+  file's count of `8` and `0`: `8` is `0 + 8` from a header stamped while its
+  sub-table was `display:none`, `0` is the Picard `<th>`, which has no
+  `.mb-col-hdr-flex` to measure. Harmless — the drag re-measures at mousedown,
+  which is the entire point of measuring late — but it means a multi-table
+  baseline's floors say nothing about that page.
+
+### `user-open-edits` cannot be re-captured right now, and it is not ours
+
+The run aborts there on `#mb-filter-container` timing out after 90 s. Read off
+the captured HTML rather than guessed: the page says **"Found 0 edits"**, with
+`<title>Open edits by vzell</title>` proving the session was fine. The account
+simply has no open edits any more — the committed baseline was taken while
+several were still inside their ~7-day voting window. No table ⇒ no filter
+container ⇒ nothing to render.
+
+Its `raw.html` was **reverted rather than committed**: a raw saying "Found 0
+edits" beside a `rendered.html` built from a table of edits is an incoherent
+pair, and the rendered half is uncapturable today. A timeout there is evidence
+about the account's edit queue, never about the change under test — the same
+class of false signal as `waitForCaaEaaComplete()` on a large page.
