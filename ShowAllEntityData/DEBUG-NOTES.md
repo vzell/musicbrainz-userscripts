@@ -9576,3 +9576,110 @@ under test.
   when 26 declare the column, and the Statistics panel's TTL-eviction prose says
   "7-day TTL" against a 30-day default. Both are pre-existing doc drift, left
   for a separate docs commit.
+
+## 2026-09-11 — Relationships column: multiplying icons after repeated toggles (fixed, branch relationships-column-collapse-toggle)
+
+Reported against the previous day's on-demand column, with a snapshot:
+`debug/relationships-multiplying.html`. Four observations, all reproduced:
+
+1. First expand — every icon renders once. Correct.
+2. Collapse mid-fetch — rendered icons vanish, but **new icons keep appearing**.
+3. Re-expand — the already-fetched ones come back, the newly-arrived ones are
+   **doubled**.
+4. Every further toggle multiplies by n, where n is the number of toggles.
+
+The snapshot bears this out exactly: 11 cells hold a **single distinct href
+repeated 4 or 5 times**, against a distribution of 0/1/2/4/5 anchors per cell.
+
+### Root cause
+
+**`_initRelationshipsColumnImpl()` never awaited its Phase-2 queue.** The tail
+is `queue.then(() => { … })` — fire-and-forget — so the function resolves as
+soon as *Phase 1* does, `_relColumnActivePromise` goes null, and the queue keeps
+trickling one request per 1100 ms with nothing tracking it. So:
+
+- **Collapse** cleared the cells and `relDone`, but the detached queue still
+  held live references to those `<td>`s and kept calling `_populateCells()` on
+  them → observation 2.
+- **Re-expand** found the re-entrancy guard free, so it started a *second* pass
+  over every cell the first queue had not reached. Both queues then called
+  `_relAppendIcon()`, which **appends** → observation 3. n toggles, n concurrent
+  queues, n copies → observation 4.
+
+So the guard `_relColumnActivePromise` has never covered Phase 2 and never did;
+it only ever serialised calls that arrived inside Phase 1's window, which is why
+it fixed the cross-tab hydrate race it was written for and nothing else. **The
+previous day's JSDoc on the coalescing loop asserted the opposite** — that a
+follow-up pass's candidate set was "disjoint by construction" because the
+previous pass had finished marking cells `relDone`. That was simply false, and
+saying it confidently is how this shipped. Corrected in place.
+
+This also means a variant was **pre-existing on `main`**: `runFilter()`'s gate
+calls `initRelationshipsColumn()` whenever any cell lacks `relDone`, which is
+true throughout Phase 2 — so a filter keystroke mid-fetch started a second
+queue there too. Same family as the doubled-icon bug
+`label-relationships-single-table-column-swap.spec.js` test 2 covers.
+
+### Fix — three changes, and only ONE of them is load-bearing
+
+Recorded this way round on purpose, because the intuitive ranking is wrong and
+the mutation run said so:
+
+| Change | Reverting it fails |
+|---|---|
+| `_relCellWritable()` — refuse to write into a table whose column is collapsed | **the regression test** |
+| `_populateCells()` replaces instead of appending (`td.textContent = ''`) | nothing |
+| `_relQueueStillWants()`'s PRE-sleep skip | nothing |
+
+- **`_relCellWritable()` is the fix.** One check, applied inside
+  `_populateCells()` so every writer — Phase 1's IDB hits and Phase 2's network
+  answers alike — goes through it. A detached cell (`closest()` → null, i.e. a
+  re-render replaced the row the pass captured) is deliberately treated as
+  writable, preserving the existing behaviour where `_srcCells` carries the
+  content to the masters.
+- **`_relQueueStillWants()`'s `!relDone` half is the second correctness guard**
+  and stops a second queue re-answering an mbid the first already wrote. Its
+  pre-sleep placement is a cost win only — the post-sleep check still prevents
+  the request, so reverting the pre-sleep one fails no test. What it buys is
+  that a superseded queue drains at microtask speed instead of holding a
+  ~40-minute timer chain on a large listing.
+- **The idempotency of `_populateCells()` is defence in depth, and is labelled
+  as such in the code.** Kept rather than dropped because the two guards above
+  make overlap *unreachable* while this makes it *harmless*, and every
+  doubled-icon bug in this file's history is a caller reaching a non-idempotent
+  writer twice. The one path with no `relDone` guard in front of it is Phase 1:
+  two passes both resolving the same mbid from IndexedDB would both write.
+  Unreachable today only because the coalescing guard stops two passes sharing a
+  Phase-1 window — which is a conjunction of three separate properties, not an
+  invariant.
+
+### Explicitly rejected: a cancellation epoch
+
+The obvious design — bump a counter on every toggle and have in-flight passes
+abort — is wrong here. A toggle on ONE table would cancel a DIFFERENT table's
+legitimate in-flight fetch, and on a multi-table page that is the normal case.
+The question is per mbid and has to be re-asked at the moment each queue step
+runs, which is what `_relQueueStillWants()` does. Also rejected: `await queue`
+to make the guard honest — it would serialise tables and block a re-expand
+behind a stale queue for as long as the original fetch had left to run.
+
+### Test
+
+One test added to `tests/fixtures/rel-column-collapse-toggle.spec.js`:
+"toggling MID-FETCH never multiplies an icon, and a collapsed column stays
+empty". Six expand/collapse cycles, every one of them landing inside the
+~13 s window that 12 entities at 1100 ms apart provide.
+
+**`maxPerCell` is the assertion that pins this**, not a page-wide anchor total:
+the total grows legitimately as the fetch progresses, so only a per-cell maximum
+distinguishes "12 rows filled in" from "6 rows filled in twice". Before the fix
+the test reported 4 anchors appearing in a *collapsed* column and then 19
+anchors across 12 cells with 7 duplicated; after it, `maxPerCell` is 1 at every
+sample and the end state is 12/12 with zero duplicates.
+
+It also asserts the rate-limit guarantee directly — `ws2.length` must not grow
+while the column is collapsed — and that six cycles still issue **exactly 12
+requests for 12 distinct entities**, so the L1 promise cache is serving the
+repeats and nothing is re-fetched.
+
+Full fixture suite: 174 passed.

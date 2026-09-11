@@ -1431,16 +1431,43 @@ either way**: `_sortCellText()` already returned `''` for every rel cell, since
 Read the setting explicitly (`typeof === 'number' && >= 0`), never `|| 200` —
 that is the `sa_render_threshold` falsy-zero defect this file documents.
 
-**Four things any change here must not undo.** Each was a real defect in the
-first version, and three were silent.
+**The Phase-2 queue is FIRE-AND-FORGET, and `_relColumnActivePromise` does NOT
+cover it.** `_initRelationshipsColumnImpl()` resolves as soon as *Phase 1*
+does, while the queue is still trickling one request per 1100 ms — so a later
+call starts a *second* pass beside the first. Do not re-derive "passes cannot
+overlap" from the re-entrancy guard's existence; that mistake shipped the
+multiplying-icons bug (5 copies of one URL in
+`debug/relationships-multiplying.html`, see `DEBUG-NOTES.md` 2026-09-11). Two
+guards prevent it, and a third makes it harmless:
+
+- **`_relCellWritable()` refuses to write into a table whose column is
+  collapsed.** This is the actual fix — the only one of the three whose removal
+  fails a test. Applied inside `_populateCells()` so Phase 1's IDB hits and
+  Phase 2's network answers both go through it. A DETACHED cell is deliberately
+  writable (`_srcCells` then carries content to the masters).
+- **`_relQueueStillWants()`'s `!relDone` check** stops a second queue
+  re-answering an mbid the first already wrote. Its pre-sleep placement is a
+  cost win only (a superseded queue drains at microtask speed instead of
+  holding a ~40-minute timer chain); the post-sleep check is what prevents the
+  request.
+- **`_populateCells()` is idempotent** (`td.textContent = ''` — it replaces,
+  `_relAppendIcon()` appends). Defence in depth, not the fix, and labelled that
+  way in the code. Keep it: the other two make overlap unreachable, this makes
+  it harmless, and Phase 1 has no `relDone` guard in front of it.
+
+*Rejected, with reasons, so it is not re-proposed:* a cancellation epoch bumped
+on every toggle (it would cancel a DIFFERENT table's legitimate in-flight
+fetch), and `await queue` to make the guard honest (it would serialise tables
+and block a re-expand behind a stale queue).
+
+**Three more things any change here must not undo.** Each was a real defect in
+the first version, and all three were silent.
 
 - **`initRelationshipsColumn()` COALESCES; it must not go back to "await and
   return".** A table expanded mid-flight is not in the running pass's
   `allCells` snapshot, so the old wrapper would have stranded it empty forever.
-  The `do { … } while (_relColumnRerunPending)` loop cannot revive the
-  doubled-icon bug the guard exists for: the follow-up recomputes AFTER the
-  previous pass marked its cells `relDone`, so the sets are disjoint by
-  construction. One boolean, not a counter — N callers owe one follow-up.
+  One boolean, not a counter — N callers owe one follow-up. Note this loop is
+  about not LOSING work; it is not what prevents doubling (see above).
 - **Both `runFilter()` gates go through `_relAnyPendingInExpandedTable()`.** The
   old page-wide `td.mb-rel-cell:not([data-rel-done="1"])` matches a collapsed
   cell forever, so every keystroke would re-read three GM tables and sweep the

@@ -360,6 +360,108 @@ test.describe('Relationships column: collapsed by threshold, loaded on demand', 
             expect(ws2).toHaveLength(0);
         });
 
+    test('toggling MID-FETCH never multiplies an icon, and a collapsed column stays empty',
+        async ({ page }) => {
+            // Regression for the bug reported against the first version of this
+            // feature, reproduced in `debug/relationships-multiplying.html`: one
+            // toggle cycle doubled every newly-arrived icon, two tripled it, and
+            // that snapshot holds five copies of a single URL.
+            //
+            // Mechanism, because the shape of the test follows from it: the
+            // Phase-2 queue is FIRE-AND-FORGET — `_initRelationshipsColumnImpl()`
+            // resolves as soon as Phase 1 does — so `_relColumnActivePromise`
+            // goes null while the queue is still trickling one request per
+            // 1100 ms. Collapsing therefore left a detached queue writing into a
+            // cleared column, and re-expanding started a SECOND queue over every
+            // cell the first had not reached, with `_relAppendIcon()` appending
+            // to both. n toggles, n copies.
+            //
+            // So every assertion here has to be made WHILE the queue is in
+            // flight. 12 entities at 1100 ms apart give ~13 s of window, and
+            // each cycle below deliberately lands inside it.
+            const ws2 = [];
+            await loadRelPage(page, {
+                url: SERIES_URL,
+                shell: SERIES_SHELL,
+                showAllLabel: 'Show all Releases for Series',
+                urlGlob: 'https://musicbrainz.org/series/**',
+                settings: { sa_rel_collapse_threshold: 2 },
+                ws2Urls: ws2,
+            });
+
+            const toggle = 'thead .mb-rel-col-hdr-btn';
+            /**
+             * Per-cell icon counts, plus how many cells hold a repeated href.
+             *
+             * `maxPerCell` is the assertion that actually pins this bug:
+             * a page-wide anchor TOTAL grows legitimately as the fetch
+             * progresses, so only a per-cell maximum can tell "12 rows filled
+             * in" from "6 rows filled in twice".
+             *
+             * @returns {Promise<{anchors: number, maxPerCell: number,
+             *                    dupCells: number, pending: number}>}
+             */
+            const iconShape = () => page.evaluate(() => {
+                const cells = Array.from(
+                    document.querySelectorAll('table.tbl tbody td.mb-rel-cell'));
+                const per = cells.map((td) => td.querySelectorAll('a').length);
+                return {
+                    anchors: per.reduce((a, b) => a + b, 0),
+                    maxPerCell: Math.max(0, ...per),
+                    dupCells: cells.filter((td) => {
+                        const h = Array.from(td.querySelectorAll('a'))
+                            .map((a) => a.getAttribute('href'));
+                        return h.length !== new Set(h).size;
+                    }).length,
+                    pending: window.__saTest.relTableStates()[0].pending,
+                };
+            });
+
+            // Expand and let the first request land, so the queue is genuinely
+            // mid-flight for everything that follows.
+            await page.click(toggle);
+            await expect.poll(async () => (await iconShape()).anchors, { timeout: 15000 })
+                .toBeGreaterThan(0);
+
+            // Collapse mid-fetch. The detached queue must write NOTHING more —
+            // and must stop requesting, or it burns MusicBrainz's rate limit on
+            // answers that are discarded (`_relQueueStillWants()`).
+            await page.click(toggle);
+            await page.waitForTimeout(300);
+            expect((await iconShape()).anchors).toBe(0);
+            const requestsAtCollapse = ws2.length;
+            await page.waitForTimeout(4000);        // ≥3 throttled slots
+            const afterWaiting = await iconShape();
+            expect(afterWaiting.anchors, 'a collapsed column must stay empty').toBe(0);
+            expect(ws2.length, 'a superseded queue must stop requesting')
+                .toBe(requestsAtCollapse);
+
+            // Now the reported scenario: toggle repeatedly, always mid-fetch.
+            for (let i = 0; i < 5; i++) {
+                await page.click(toggle);
+                await page.waitForTimeout(1400);    // ~one more request lands
+                const mid = await iconShape();
+                expect(mid.maxPerCell, `cycle ${i}: one relationship, one icon`).toBe(1);
+                expect(mid.dupCells, `cycle ${i}: no repeated href`).toBe(0);
+                await page.click(toggle);
+                await page.waitForTimeout(700);
+                expect((await iconShape()).anchors, `cycle ${i}: collapse empties`).toBe(0);
+            }
+
+            // Settle fully and check the end state.
+            await page.click(toggle);
+            await expect.poll(async () => (await iconShape()).pending, { timeout: 90000 }).toBe(0);
+            const settled = await iconShape();
+            expect(settled.anchors).toBe(SERIES_ROWS);
+            expect(settled.maxPerCell).toBe(1);
+            expect(settled.dupCells).toBe(0);
+            // Six expand/collapse cycles, still exactly one request per distinct
+            // entity: the L1 promise cache serves the repeats and nothing is
+            // re-fetched.
+            expect(ws2).toHaveLength(SERIES_ROWS);
+            expect(new Set(ws2).size).toBe(SERIES_ROWS);
+        });
+
     test('multi-table: the threshold is decided per sub-table, and collapsing survives a filter',
         async ({ page }) => {
             const ws2 = [];

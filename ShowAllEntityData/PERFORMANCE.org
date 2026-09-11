@@ -2967,9 +2967,17 @@ able to queue a throttled multi-minute run.
    awaited an in-flight run and returned. Sound only while every cell was a
    candidate from birth; a table expanded mid-flight is not in the running
    pass's ~allCells~ snapshot, so it would have been stranded empty forever.
-   Now the wrapper coalesces: one pending follow-up pass, which recomputes
-   AFTER the previous pass finished marking cells — so the sets are disjoint by
-   construction and the doubled-icon bug the guard exists for cannot recur.
+   Now the wrapper coalesces: one pending follow-up pass.
+
+   *The first version of this bullet claimed the follow-up's candidate set was
+   "disjoint by construction" because the previous pass had finished marking
+   cells. That was false, and it shipped the multiplying-icons bug* — the
+   Phase-2 queue is fire-and-forget, so the impl resolves after PHASE 1 and two
+   passes really can overlap. Fixed 2026-09-11: ~_relCellWritable()~ (the
+   load-bearing guard), ~_relQueueStillWants()~'s ~!relDone~ check, and an
+   idempotent ~_populateCells()~ as defence in depth. Full account, including
+   which of the three a mutation run actually pins, in ~DEBUG-NOTES.md~'s
+   2026-09-11 entry.
 2. *Both* ~runFilter()~ *gates were a per-keystroke regression waiting to
    happen.* ~document.querySelector('td.mb-rel-cell:not([data-rel-done="1"]))~
    matches a collapsed cell FOREVER, so every keystroke would re-read three GM

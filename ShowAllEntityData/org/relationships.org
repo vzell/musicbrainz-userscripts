@@ -102,6 +102,38 @@ There is no synthetic sort key for this column at all.
   makes re-expanding free (verified: the second expand issues zero requests).
   Only ~_relRetryMbids()~ evicts, which is its purpose.
 
+** The multiplying-icons bug (reported 2026-09-11, fixed)
+
+Root cause: *the Phase-2 queue is fire-and-forget.* ~_initRelationshipsColumnImpl()~
+resolves as soon as PHASE 1 does, so ~_relColumnActivePromise~ goes null while
+the queue is still trickling one request per 1100 ms. Collapsing therefore left
+a detached queue writing into a cleared column, and re-expanding started a
+second pass over every cell the first had not reached — both appending via
+~_relAppendIcon()~. n toggles, n copies.
+
+*So the re-entrancy guard has never covered Phase 2 and never did.* The first
+version's JSDoc claimed a follow-up pass's candidate set was "disjoint by
+construction"; that was false, and asserting it confidently is how this shipped.
+A variant was also PRE-EXISTING on ~main~: ~runFilter()~'s gate fires
+throughout Phase 2, so a filter keystroke mid-fetch started a second queue too.
+
+Three changes, and *only the first is load-bearing* — the mutation run says so,
+and the intuitive ranking is wrong:
+
+1. ~_relCellWritable()~ — refuse to write into a table whose column is
+   collapsed. Reverting it fails the regression test.
+2. ~_relQueueStillWants()~'s ~!relDone~ check — stops a second queue
+   re-answering a written mbid. Its pre-sleep placement is a cost win only.
+3. ~_populateCells()~ idempotent (replaces, does not append) — defence in
+   depth, reverting it fails nothing, kept and labelled as such.
+
+Rejected, so they are not re-proposed: a cancellation epoch bumped per toggle
+(it would cancel a DIFFERENT table's legitimate in-flight fetch), and
+~await queue~ to make the guard honest (it would serialise tables and block a
+re-expand behind a stale queue).
+
+Full account in ~DEBUG-NOTES.md~'s 2026-09-11 entry.
+
 ** Still open / deliberately not done
 
 - Interaction-latency arms. ~perfDescriptors.js~'s ~applyPicardArm()~ JSDoc
@@ -126,3 +158,25 @@ There is no synthetic sort key for this column at all.
   ~sa_enable_relationships_column~'s description names 4 pageTypes when 26
   declare the column, and the Statistics panel says "7-day TTL" against a
   30-day default.
+
+
+* bug
+
+There is a bug when toggling the fetching of the "Relationships" column back and forth multiple times, see @debug/relationships-multiplying.html:
+
+1.)
+
+When first starting/uncollapsing the glyph it works and each relationship icon got's renderd
+
+2.)
+
+When collapsing it again, the already rendered relationship icons vanish but new icons still appear in new rows
+
+3.)
+
+When uncollapsing it again, already fetched icons reappear, but the newly renderd icons get doubled
+
+4.)
+
+from now on the same happens for every toggle, except that newly fetched icons get multiplied (it looks like they get
+rendered n times in the same data cell, where n equals the nummber of toggling)

@@ -23,6 +23,7 @@
       {
         "label": "🐛 Fix",
         "items": [
+          "Relationship icons could be rendered SEVERAL TIMES in the same cell. The column fetches one entity per second in the background, and anything that asked it to load again while that was still running started a second background run over the rows the first had not reached yet — so both runs added their own copy of every icon. Two such overlaps gave two copies, three gave three. Typing in the filter box while the column was still loading was enough to trigger it. Each run now REPLACES a cell's icons instead of adding to them, so overlapping runs can no longer multiply anything, and a run whose rows are no longer waiting for it now stops instead of continuing to request data nobody is going to use.",
           "Every keystroke in the filter box could kick off a redundant Relationships pass — re-reading three settings tables and walking every row of the page three times — on any page containing a row with no release, release group or work link at all. Such a row gets a Relationships cell that can never be filled, and the check for \"is anything still unloaded?\" counted it forever. The check now ignores cells that have nothing to look up, and skips collapsed tables entirely."
         ]
       }

@@ -64074,14 +64074,32 @@ a { color: #1565c0; }`;
      * with no error and no retry.
      *
      * So a call that arrives busy sets `_relColumnRerunPending` and the owner
-     * of the loop runs again once its own pass settles. That cannot bring back
-     * the doubled-icon bug the guard exists for: the follow-up recomputes its
-     * candidate set AFTER the previous pass finished marking cells `relDone`,
-     * so the two sets are disjoint by construction, which is precisely what
-     * two OVERLAPPING passes could not guarantee. The flag is a single boolean
-     * rather than a counter deliberately — N callers arriving during one long
-     * fetch owe one follow-up between them, not N — so a keystroke storm cannot
-     * queue a pile of full passes.
+     * of the loop runs again once its own pass settles. The flag is a single
+     * boolean rather than a counter deliberately — N callers arriving during
+     * one long fetch owe one follow-up between them, not N — so a keystroke
+     * storm cannot queue a pile of full passes.
+     *
+     * ── What this guard does NOT do, and what actually prevents doubling ─────
+     *
+     * *It does not serialise passes, and it never did.* The Phase-2 queue is
+     * fire-and-forget: `_initRelationshipsColumnImpl()` resolves as soon as
+     * PHASE 1 does, so `_relColumnActivePromise` goes null while the queue is
+     * still trickling one request per 1100 ms, and a later call therefore
+     * starts a second pass alongside the first. An earlier version of this
+     * comment claimed the follow-up's candidate set was "disjoint by
+     * construction" because the previous pass had finished marking cells
+     * `relDone` — that was simply wrong, and it is how the multiplying-icons
+     * bug shipped: one toggle cycle left 19 anchors across 12 cells, and
+     * `debug/relationships-multiplying.html` has five copies of a single URL.
+     *
+     * What actually prevents doubling lives in the impl, and it is two things,
+     * neither of them this guard: `_relCellWritable()` refuses to write into a
+     * table whose column has since been collapsed, and
+     * `_relQueueStillWants()`'s `!relDone` check stops a second queue
+     * re-answering an mbid a first one already wrote. `_populateCells()` is
+     * additionally idempotent (it replaces rather than appends) as defence in
+     * depth. Read all three before changing anything here, and do not
+     * re-derive "passes cannot overlap" from this guard's existence.
      *
      * @returns {Promise<void>}
      */
@@ -64236,10 +64254,73 @@ a { color: #1565c0; }`;
         _relDbg(`initRelationshipsColumn: ${uniqueMbids.length} unique MBIDs, ` +
             `${allCells.length} cells, entityType=${entityType}`);
 
+        /**
+         * Whether `td` may be written to right now.
+         *
+         * A cell whose table's Relationships column has since been COLLAPSED
+         * must not be written, however far this pass has got: the Phase-2 queue
+         * below is fire-and-forget (see `_relQueueStillWants()`), so a pass
+         * whose table the user collapsed a moment ago is still holding live
+         * references to its cells and would keep filling a column that is
+         * supposed to be empty.
+         *
+         * A DETACHED cell (`closest()` → null, i.e. a re-render replaced the
+         * row this pass captured) is deliberately treated as WRITABLE, which
+         * is the pre-existing behaviour: `_srcCells` then carries the content
+         * to the master rows and the next render clones it back. Refusing
+         * those would strand the data until `runFilter()`'s gate re-triggered.
+         *
+         * @param   {HTMLTableCellElement} td
+         * @returns {boolean}
+         */
+        function _relCellWritable(td) {
+            const _table = td.closest ? td.closest('table.tbl') : null;
+            return !_table || _relTableExpanded(_table);
+        }
+
         async function _populateCells(mbid, data) {
-            const cells = cellsByMbid.get(mbid) || [];
-            // Clear loading tint and mark done regardless of data availability
-            cells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
+            // Only the cells still allowed to receive content. Filtering here
+            // rather than at the call site keeps every writer — Phase 1's IDB
+            // hits and Phase 2's network answers alike — behind one check.
+            const cells = (cellsByMbid.get(mbid) || []).filter(_relCellWritable);
+            if (!cells.length) {
+                _relDbg(`_populateCells: ${mbid} — no writable cell (collapsed), skipped`);
+                return;
+            }
+            // Clear loading tint and mark done regardless of data availability.
+            //
+            // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
+            // a cell's icons rather than adding to them, so calling it twice for
+            // the same cell cannot double anything. `_relAppendIcon()` appends,
+            // which is what made the multiplying-icons bug possible at all
+            // (5 copies of one URL in debug/relationships-multiplying.html).
+            //
+            // *Be precise about what this line buys, because the obvious claim
+            // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
+            // reverting it to the old append-only form, and the whole suite
+            // stayed green. The bug is actually prevented upstream, twice over —
+            // `_relCellWritable()` refuses a collapsed table's cells (that
+            // mutation DOES fail the regression test), and
+            // `_relQueueStillWants()`'s `!relDone` check stops a second queue
+            // re-answering an mbid a first one already wrote.
+            //
+            // It is kept anyway, deliberately. Those two guards make overlap
+            // UNREACHABLE; this makes it HARMLESS. `_populateCells()` is the
+            // single authoritative writer for one mbid's cells, and the entire
+            // doubled-icon family in this file's history — the cross-tab
+            // hydrate race, the collapse/expand race — comes from a caller
+            // reaching a non-idempotent writer twice. One assignment is cheap
+            // insurance against the next such caller, and the one path with no
+            // `relDone` guard in front of it is Phase 1: two passes both
+            // resolving the same mbid from IndexedDB would both land here.
+            // (Unreachable today only because the coalescing guard in
+            // `initRelationshipsColumn()` stops two passes sharing a Phase-1
+            // window.)
+            cells.forEach(td => {
+                td.textContent = '';
+                td.style.backgroundColor = '';
+                td.dataset.relDone = '1';
+            });
             // Track source-row cells (not in DOM) so icons sync back later
             const _srcCells = [];
             if (typeof groupedRows !== 'undefined') {
@@ -64256,7 +64337,14 @@ a { color: #1565c0; }`;
             }
             if (!data) {
                 _relDbg(`_populateCells: no data for ${mbid}`);
-                _srcCells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
+                // textContent: same replace-not-append reason as the live cells
+                // above — a master row can also be reached by two overlapping
+                // passes, and this one is the "no relationships" answer.
+                _srcCells.forEach(td => {
+                    td.textContent = '';
+                    td.style.backgroundColor = '';
+                    td.dataset.relDone = '1';
+                });
                 return;
             }
             // WS2 JSON format: data.relations[] filtered by target-type
@@ -64379,12 +64467,61 @@ a { color: #1565c0; }`;
         _relDbg(`initRelationshipsColumn: phase1 done — ` +
             `${_hitFlags.filter(Boolean).length} IDB hits, ${_missMbids.length} network misses`);
 
+        /**
+         * Whether this queue still has anything to do for `mbid`.
+         *
+         * ── Why the queue needs this at all ─────────────────────────────────
+         *
+         * The Phase-2 queue below is FIRE-AND-FORGET: nothing awaits it, so
+         * `_initRelationshipsColumnImpl()` resolves as soon as Phase 1 does and
+         * `_relColumnActivePromise` goes null while the queue is still
+         * trickling one request per 1100 ms. So the re-entrancy guard has never
+         * covered Phase 2, and a second pass CAN run beside a first one — a
+         * collapse/expand cycle and a filter keystroke mid-fetch both cause it.
+         *
+         * This does two distinct jobs, and only the second is pinned by a test.
+         *
+         * The `!relDone` half is a CORRECTNESS guard: it stops a second queue
+         * re-answering an mbid a first one already wrote, which is one of the
+         * two things keeping overlapping passes from doubling icons (the other
+         * is `_relCellWritable()`).
+         *
+         * The `_relCellWritable()` half is a COST guard. Checked before the
+         * sleep, a superseded step costs nothing at all; without that, a stale
+         * queue keeps sleeping 1100 ms per remaining entity for as long as the
+         * original fetch would have taken — up to ~40 minutes of timer chain on
+         * a large listing — and the post-sleep check is then the only thing
+         * stopping the request itself. Reverting just the pre-sleep check fails
+         * no test (verified), because the post-sleep one still prevents the
+         * fetch; it is a drain-time win, not a correctness one.
+         *
+         * Deliberately NOT a pass-level cancellation token. The obvious design
+         * — bump an epoch on every toggle and have in-flight passes abort — is
+         * wrong here, because a toggle on ONE table would cancel a DIFFERENT
+         * table's legitimate in-flight fetch. The question is per mbid and has
+         * to be re-asked at the moment the step runs.
+         *
+         * @param   {string} mbid
+         * @returns {boolean}
+         */
+        function _relQueueStillWants(mbid) {
+            return (cellsByMbid.get(mbid) || []).some(
+                td => !td.dataset.relDone && _relCellWritable(td));
+        }
+
         // Phase 2: throttled network queue for misses only
         let queue = Promise.resolve();
         let _p2CacheHits = 0, _p2NetFetches = 0;
+        let _p2Skipped = 0;
         _missMbids.forEach((mbid, i) => {
             queue = queue.then(async () => {
+                // Checked BEFORE the sleep, so a superseded step costs nothing.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 if (i > 0) await new Promise(r => setTimeout(r, 1100));
+                // And again AFTER it: 1100 ms is long enough for the user to
+                // have collapsed the column, or for another pass to have
+                // answered this mbid from cache, while this step was asleep.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 if (_relWs2Cache.has(`${entityType}:${mbid}`)) _p2CacheHits++;
                 else _p2NetFetches++;
                 await _populateCells(mbid, await _relFetchWs2(mbid, entityType, incOptions));
@@ -64428,6 +64565,21 @@ a { color: #1565c0; }`;
                 cache: _p2CacheHits,
                 net:   _p2NetFetches,
             };
+            // A pass whose every remaining step was skipped — the user collapsed
+            // the column while it was trickling — must not claim a completed
+            // load. `allCells.length`/`uniqueMbids.length` are pass-START
+            // figures and say nothing about what was actually written, so ask
+            // the DOM instead, and hand over to the collapsed-status publisher
+            // when there is genuinely nothing populated to report.
+            const _relAnyPopulated = Array.from(document.querySelectorAll('table.tbl')).some(
+                t => _relTableExpanded(t)
+                    && t.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]'));
+            if (!_relAnyPopulated) {
+                _relDbg(`initRelationshipsColumn: superseded — ${_p2Skipped} of `
+                    + `${_missMbids.length} Phase-2 step(s) skipped, nothing populated`);
+                _relPublishCollapsedStatus();
+                return;
+            }
             _showRelCompletionToast(allCells.length, uniqueMbids.length, _relElapsed, _tierInfo);
             const _fmtT = ms => ms < 1000 ? `${Math.round(ms)}ms`
                 : ms < 60000 ? `${(ms / 1000).toFixed(1)}s`
