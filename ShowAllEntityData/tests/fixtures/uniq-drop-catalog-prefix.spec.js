@@ -59,8 +59,13 @@ test('unique-values dropdown: "Catalog#" prefix section handles real-world separ
     expect(presenceByLabel['🚫 no catalog number']).toBe(1);  // [none]
 
     // Checking the "S" token alone highlights only the standalone "S" in
-    // "CBS S 65480" — it must NOT also fire on "CDCBS", which contains the
-    // letter "S" but not as its own separate prefix token.
+    // each list item that carries it as its OWN token — it must NOT also
+    // fire on "CDCBS", which contains the letter "S" but not as its own
+    // separate prefix token. Row 1's Catalog# cell carries TWO catalog
+    // numbers ("CBS S 65480" and "S 65480", MusicBrainz's own real-world
+    // comma-separated-multi-value shape, wrapped by renderMultiRowCell into
+    // a collapsible <ul><li> list) — both list items match the "S" token
+    // independently and must each get their own highlight span.
     const sTokenCheckbox = page.locator('.mb-col-uniq-item', { hasText: '» prefix: S' }).first();
     await sTokenCheckbox.click();
     await waitForRenderComplete(page, { waitForAutoResize: false });
@@ -78,7 +83,7 @@ test('unique-values dropdown: "Catalog#" prefix section handles real-world separ
     const highlighted = await page.evaluate(() =>
         Array.from(document.querySelectorAll('table.tbl tbody .mb-column-filter-highlight')).map((el) => el.textContent)
     );
-    expect(highlighted).toEqual(['S']);
+    expect(highlighted).toEqual(['S', 'S']);
 
     // The generic explanatory tooltip is present on every prefix entry,
     // including a single-token one — never a per-prefix specific claim.

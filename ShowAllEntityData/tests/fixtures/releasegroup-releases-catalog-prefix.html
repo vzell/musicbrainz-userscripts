@@ -15,10 +15,21 @@
         `/^(?:(.+?)\s+)?(\d+)$/` grammar silently dropped the prefix for:
         a dash-joined prefix with no space ("SOPL-248"), a leading-digit
         number with no letter prefix at all ("40-32210", "138.645"), and a
-        letter+digit run with no separator ("CDCBS65480"). "CBS S 65480" is
-        the multi-word-prefix TOKEN-SPLIT case ("CBS" and "S" must each be
-        their own dropdown entry). "[none]" is MusicBrainz's own literal
-        placeholder, unaffected by the prefix-regex fix.
+        letter+digit run with no separator ("CDCBS65480"). "[none]" is
+        MusicBrainz's own literal placeholder, unaffected by the
+        prefix-regex fix.
+
+        Row 1's Catalog# `<td>` carries TWO comma-separated catalog numbers
+        in ONE cell — MusicBrainz's own real-world multi-value shape for
+        this column, which `renderMultiRowCell` splits into a collapsible
+        `<ul><li>` list (see `applyRenderMultiRowCells()`'s own JSDoc: it
+        splits a `<td>`'s top-level text-node commas into groups). This is
+        the multi-word-prefix TOKEN-SPLIT case ("CBS S 65480" → "CBS" and
+        "S" must each be their own dropdown entry) AND the "does a second,
+        independently-added list item sharing the same token also get its
+        own highlight" case ("S 65480", the cell's second item) — both
+        matter together because the second item starts collapsed
+        (`display:none`) by default.
     -->
     <div id="page">
         <div id="content">
@@ -54,7 +65,7 @@
                         <td>4</td>
                         <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
                         <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
-                        <td><span class="catalog-number">CBS S 65480</span></td>
+                        <td><span class="catalog-number">CBS S 65480</span>, <span class="catalog-number">S 65480</span></td>
                         <td class="barcode-cell">1000000000001</td>
                     </tr>
                     <tr class="even">
