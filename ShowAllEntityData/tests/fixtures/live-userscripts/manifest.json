@@ -54,7 +54,7 @@
             "version": "0.0.69.125",
             "when": "now",
             "touches": [
-                "Builds and appends its OWN new colored schedule/timetable <table> into div#content on artist/event/place/instrument pages — festival lineup visualizations for a fixed set of known festivals (aff/clubAff/floatline/pukkelpop/graspop), fetched as JSON from a gitlab.io-hosted userscript asset host.",
+                "Builds and appends its OWN new colored schedule/timetable <table> into div#content on artist/event/place/instrument/series pages (its doStuff() has its own `case \"series\":` branch) — festival lineup visualizations for a fixed set of known festivals (aff/clubAff/floatline/pukkelpop/graspop), fetched as JSON from a gitlab.io-hosted userscript asset host.",
                 "Adds a manual 'Visualise' toggle button rather than always auto-running (unless config.autoVisualise is enabled).",
                 "Does NOT modify ShowAllEntityData's own rendered table.tbl rows directly — lower expected DOM-collision risk than the jesus2099/More-Flags scripts — but it does append into the same div#content container ShowAllEntityData targets, so a render-order/placement conflict is still possible.",
                 "CAVEAT: its body opens with top-level 'await' (const aff = await getJsonFile(...)), which only runs inside an ES module or an async function — tests/support/liveUserscripts.js wraps every injected body in an async IIFE specifically so this script doesn't throw a SyntaxError on injection.",

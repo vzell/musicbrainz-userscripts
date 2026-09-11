@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`#sanojjonasRoot` (sanojjonas third-party userscript container) could survive on a fully-rendered `/series/<mbid>` page: the pageType whitelist gating its cleanup/late-injection watcher never included `series-releases`. Removed the whitelist entirely — cleanup now runs unconditionally on every page, so this bug class can't recur for the next page type sanojjonas decides to support."
+        ]
+      }
+    ]
+  }
+]

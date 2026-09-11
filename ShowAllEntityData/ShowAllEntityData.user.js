@@ -38344,37 +38344,26 @@ a { color: #1565c0; }`;
                 activeDefinition && activeDefinition.tableMode === 'multi');
     }
 
-    // The three real events pageTypes — `pageDefinitions` has no entry
-    // literally typed `'events'` (that string never matches anything; see
-    // `_shouldCleanupSanojjonas()`'s own JSDoc). Kept as its own array
-    // rather than folded into `_shouldCleanupSanojjonas()` inline so a
-    // future events pageType only needs updating here.
-    const EVENTS_PAGE_TYPES = ['area-events', 'place-events', 'artist-events'];
-
-    /**
-     * Whether sanojjonas cleanup (`removeSanojjonasContainers()` /
-     * `_watchForLateSanojjonasInjections()`) should run for the CURRENT
-     * page — sanojjonas only ever appears on events pages or
-     * `_isReleaseGroupsMultiMode()` pages.
-     *
-     * This exists specifically because `pageType === 'events'` — the
-     * condition every sanojjonas call site used to check inline — is NEVER
-     * true: `pageDefinitions` only has `type: 'artist-events'`,
-     * `'area-events'`, `'place-events'`, never the bare string `'events'`.
-     * Both guarded call sites silently never ran on a real events page,
-     * which is exactly why `_watchForLateSanojjonasInjections()` (the one
-     * thing that can catch sanojjonas injecting its container AFTER this
-     * script's own render finishes — see its own JSDoc for the race) never
-     * got armed there, letting `#sanojjonasRoot` survive on a
-     * fully-rendered `artist-events` page. Centralized into one helper,
-     * rather than repeating the corrected condition at each call site, so
-     * the two guards can't drift apart from each other again the same way.
-     *
-     * @returns {boolean}
-     */
-    function _shouldCleanupSanojjonas() {
-        return EVENTS_PAGE_TYPES.includes(pageType) || _isReleaseGroupsMultiMode();
-    }
+    // Sanojjonas cleanup (`removeSanojjonasContainers()` /
+    // `_watchForLateSanojjonasInjections()`) used to be gated by a hardcoded
+    // pageType whitelist (`EVENTS_PAGE_TYPES` plus `_isReleaseGroupsMultiMode()`),
+    // on the theory that sanojjonas' third-party script only ever injects on
+    // events pages or release-groups-multi pages. That whitelist has now
+    // silently gone stale TWICE: first `pageType === 'events'` never matched
+    // any real pageType (fixed by introducing the whitelist itself — see git
+    // log `9da73b2`), then the whitelist itself was missing `'series-releases'`
+    // (every `/series/<mbid>` page, regardless of its resolved H2 sub-view —
+    // see `debug/event-series-final.html`, `org/sanojjonas.org`), because
+    // sanojjonas' own upstream script supports more MB page types
+    // (`tests/fixtures/live-userscripts/Sanojjonas_Visualise_Stuff.user.js` has
+    // its own `case "series":` branch) than we track here. We don't control
+    // which page types sanojjonas decides to run on next, so the whitelist is
+    // gone: both call sites below now run unconditionally on every page.
+    // `removeSanojjonasContainers()`/`_findSanojjonasContainers()` are cheap
+    // `getElementById` presence checks, and `_watchForLateSanojjonasInjections()`'s
+    // `MutationObserver` cost was already being paid unconditionally on the
+    // largest committed fixture (`artist-events`, 4174 rows) under the old
+    // whitelist, with no known problem.
 
     /**
      * Removes various clutter elements from the MusicBrainz page to prepare for
@@ -38388,7 +38377,7 @@ a { color: #1565c0; }`;
      *   - Slick slider containers (matched by a `700px`-width wrapper style).
      *   - `<details>` blocks containing more than 5 `<img>`s (the cover-art
      *     gallery widget).
-     *   - `removeSanojjonasContainers()`, gated by `_shouldCleanupSanojjonas()`.
+     *   - `removeSanojjonasContainers()`, unconditionally.
      *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
@@ -38439,9 +38428,7 @@ a { color: #1565c0; }`;
         });
         if (removedDetailsCount > 0) Lib.debug('cleanup', `Removed ${removedDetailsCount} gallery/details blocks.`);
 
-        if (_shouldCleanupSanojjonas()) {
-            removeSanojjonasContainers();
-        }
+        removeSanojjonasContainers();
 
         // Remove highlights injected by chaban's "Highlight identical barcodes
         // and toggle merge checkboxes" userscript from Barcode column cells.
@@ -45982,10 +45969,8 @@ a { color: #1565c0; }`;
         // Run refactored clutter removal
         performClutterCleanup();
 
-        if (_shouldCleanupSanojjonas()) {
-            removeSanojjonasContainers();
-            _watchForLateSanojjonasInjections();
-        }
+        removeSanojjonasContainers();
+        _watchForLateSanojjonasInjections();
 
         // Update UI state
         activeBtn.disabled = true;
@@ -48960,18 +48945,22 @@ a { color: #1565c0; }`;
      * (2026-08-28): a fully-rendered `artist-releasegroups` page with
      * `#sanojjonasRoot` still present, because the button was pressed
      * before sanojjonas had rendered anything on `debug/s-present-on-initial.html`.
-     * Accordingly this watcher is called from three sites: the cross-tab
-     * snapshot bootstrap (unconditionally, right before
+     * Accordingly this watcher is called unconditionally from all four
+     * sites: the cross-tab snapshot bootstrap (right before
      * `_hydrateAndRenderFromSnapshotData()`), the plain "Load from Disk"
-     * path (unconditionally, right before that same function's other
-     * caller in `reader.onload`), and `startFetchingProcess()`'s normal
-     * fetch path (gated by `_shouldCleanupSanojjonas()`, the same
-     * condition already guarding every other sanojjonas call site, since
-     * sanojjonas only ever appears on those page shapes — this WAS
-     * `pageType === 'events' || _isReleaseGroupsMultiMode()` inline at
-     * each site, but `pageType` is never literally `'events'` — see
-     * `_shouldCleanupSanojjonas()`'s own JSDoc — so this fetch-path arming
-     * silently never happened on a real events page until that was fixed).
+     * path (right before that same function's other caller in
+     * `reader.onload`), and `startFetchingProcess()`'s normal fetch path.
+     * That last call site used to be gated by a pageType whitelist (on the
+     * theory that sanojjonas only ever appears on events pages or
+     * release-groups-multi pages) — first `pageType === 'events'` inline
+     * (which never matched any real pageType), then a corrected
+     * `_shouldCleanupSanojjonas()` helper — but the whitelist itself went
+     * stale a second time when sanojjonas' upstream script grew support for
+     * series pages (`'series-releases'`) without the whitelist being
+     * updated, letting `#sanojjonasRoot` survive on a fully-rendered series
+     * page (see `org/sanojjonas.org`, `debug/event-series-final.html`). We
+     * don't control which page types sanojjonas decides to run on next, so
+     * the whitelist is gone and this now arms on every page unconditionally.
      *
      * Disconnects itself after `SA_SANOJJONAS_WATCH_MS` — longer than
      * jesus2099's own 5000ms window specifically because sanojjonas' own
