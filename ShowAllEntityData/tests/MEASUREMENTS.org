@@ -1288,3 +1288,114 @@ gap.
   read =arm-e-runs.log= for the day-by-day =uptimeHours= trend (smooth climb
   vs. a step, per the open question above), and add the results here as a
   proper dated table — this bullet list is signpost, not the data.
+
+* Interaction latency — =artist-releases-dylan= (the Relationships arms, 2026-09-11)
+
+| pageType              | tableMode | page title | URL                                                       |
+|-----------------------+-----------+------------+-----------------------------------------------------------|
+| artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0 |
+
+2301 rows x 21 columns, same disk fixture as the Picard arms above. Median of 5,
+fresh page per sample. Produced by =node
+tests/support/capture-interaction-perf.js --pageType=artist-releases-dylan
+--rel-arm=<absent|collapsed|expanded>=.
+
+*This is the measurement PERFORMANCE.org Step 35 shipped without.* Step 35
+banked a REQUEST-count win (one WS/2 request per distinct MBID -> zero) and
+explicitly declined to claim an interaction number, because
+=perfDescriptors.js= forbids an arm re-enabling the column — an unseeded
+=expanded= arm on this page would spend ~42 minutes making 2301 live requests
+INSIDE the measurement brackets. The arm became possible by pre-seeding the
+=rel-ws2= IndexedDB store from REAL WS/2 data
+(=tests/fixtures/saved-data/rel-ws2-artist-releases-dylan.json.gz=, captured in
+24 browse requests by =scripts/capture-rel-ws2-seed.py=), so Phase 1 hits on
+every MBID and the network queue issues nothing.
+
+*The three arms differ ONLY in Relationships settings*, verified from each
+JSON's own recorded =seedGmValues=:
+
+| Arm         | Seeds beyond CAA off                                                      | What it is                                  |
+|-------------+---------------------------------------------------------------------------+---------------------------------------------|
+| =absent=    | =sa_enable_relationships_column: false=                                   | no column at all — what every earlier arm on this page measured |
+| =collapsed= | =..._column: true=, =sa_rel_collapse_threshold: 1=                        | the shipped 9.99.1060 default at this size: column walked, cells empty |
+| =expanded=  | =..._column: true=, =sa_rel_collapse_threshold: 0=, seeded cache          | the pre-9.99.1060 behaviour: 2090 icons built |
+
+*DOM weight, recorded rather than predicted*: =relIconsRendered= = *2090* on the
+expanded arm. The seed holds 2329 url-rels, but =_populateCells()= de-dupes by
+target URL within an entity (131) and renders nothing for a relation type with
+no icon class (108, mostly "purchase for mail-order"). Those maps are
+user-overridable settings, so the rendered count is the script's to decide; the
+harness records it instead of asserting it. 947 of the 2301 entities have no
+url-rel at all, so ~41% of cells stay empty even when expanded.
+
+** Results
+
+All times in ms. Times are UTC and mark when the run STARTED.
+
+| Date       | Time (UTC) | Host      |    Script | Arm         | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+-----------+-----------+-------------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-09-11 |      16:17 | =NB-3641= | 9.99.1073 | =absent=    |   1060 |   1281 | 2044 |     51739 |       387 |     1291 |        3559 |
+| 2026-09-11 |      16:27 | =NB-3641= | 9.99.1073 | =collapsed= |   1065 |   1329 | 1991 |     49864 |       371 |     1294 |        3629 |
+| 2026-09-11 |      16:38 | =NB-3641= | 9.99.1073 | =expanded=  |   1248 |   1434 | 2753 |     53524 |       525 |     1647 |        4668 |
+
+One session, one host, ~10 minutes apart, host conditions near-identical
+(=uptimeHours= 58.7/58.9/59.1, =claudeResident= =count: 1= throughout).
+
+** Ratios
+
+| Metric                | coll/abs | exp/coll | exp/abs |
+|-----------------------+----------+----------+---------|
+| =globalFilter=        |    1.00x |    1.17x |   1.18x |
+| =columnFilter=        |    1.04x |    1.08x |   1.12x |
+| =sort=                |    0.97x |    1.38x |   1.35x |
+| =uniqDropCold=        |    0.96x |    1.07x |   1.03x |
+| =uniqDropWarm=        |    0.96x |    1.42x |   1.36x |
+| =headerCountsInitial= |    1.00x |    1.27x |   1.28x |
+| =headerCountsRestore= |    1.02x |    1.29x |   1.31x |
+
+*Collapsing is where the DOM win is, and the collapsed column is genuinely
+free.* =coll/abs= sits at 0.96-1.04x on all seven metrics — i.e. a column that
+exists, is walked, and has a =<td>= in all 2301 rows costs nothing measurable
+once its cells are empty. That is the same result Step 32 got for Picard, and it
+is what justifies the "keep the =<td>=, defer the CONTENT" shape in both.
+
+Step 35 predicted the DOM-side win would be SMALLER than Picard's 19/13/21%. It
+is not — it is comparable or larger (15% on global filter, 28% on sort, 30% on
+uniq warm, 21/22% on the header-count metrics, all as =1 - collapsed/expanded=).
+The prediction reasoned from what a collapsed cell SAVES per row (one
+=<a><img>= plus a filter-key span, against Picard's whole anchor walk plus
+=<ul>/<li>/<button>/<img>= and an =addEventListener=). That reasoning was sound
+and still produced the wrong sign, because it ignored the read side: those
+=.mb-rel-filter-key= spans feed =getCleanColumnText()=, so on this page every
+filter keystroke and every sort re-reads 2090 hidden URL strings. *Step 35's own
+text says a rel cell is a first-class filter participant and Picard's was not —
+the prediction simply failed to carry that into the estimate.*
+
+** Every ratio above is a LOWER BOUND, and the harness says so itself
+
+=relSettleMs= is recorded per arm precisely so the equalisation can be checked:
+*3001 / 3002 / 6479*. It did not hold. The seeded arm's icon settle overran the
+3000 ms cap, so =expanded= entered every bracket with ~3.5 s MORE idle than its
+comparators — during which idle-scheduled work (notably
+=_updateAllColHeaderCounts()=) progresses.
+
+That bias makes =expanded= look FASTER than it is, and it is slower on all seven
+metrics anyway. So the true costs are at least those above. =REL_ARM_SETTLE_MS=
+has been raised 3000 -> 8000 to clear the measured 6479; a re-run at that value
+would turn these bounds into values. *Always read =relSettleMs= from the three
+JSONs before quoting a ratio from this section.*
+
+*** The first run of these arms was discarded, and why it is worth recording
+
+The settle wait was initially applied only to the SEEDED arm. Every
+=measure*Once()= starts its bracket the instant =loadPage()= returns, so that
+was a head start subtracted from all seven of the expanded arm's metrics. It
+produced =headerCountsInitial= at *0.42x* of collapsed — a populated column
+apparently 2.4x FASTER than an empty one — plus =globalFilter= 0.85x and
+=columnFilter= 0.83x, all physically implausible.
+
+Isolated at =--samples=1= on the same arm and script, the settle wait alone
+moved =headerCountsInitial= *7875 ms -> 1603 ms*. The fix was to charge every
+rel arm the same idle; the discarded run's JSONs were deleted rather than
+committed, since their ratios are artefacts of the harness and not of the
+feature.

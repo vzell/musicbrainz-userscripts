@@ -116,7 +116,9 @@ const {
 } = require('./filterSortAssertions');
 const {
     toArm, pageTypeList, applyPicardArm, PICARD_ARMS,
+    applyRelArm, REL_ARMS, REL_ARMS_NEEDING_SEED,
 } = require('./perfDescriptors');
+const { seedRelWs2Store, seedPathFor } = require('./relWs2Seed');
 const {
     readScriptVersion, machineInfo, readCurrentBranch, archiveFileStem,
 } = require('./runMetadata');
@@ -220,25 +222,98 @@ function sortStatusLocator(page, config) {
  * constant's own JSDoc.
  *
  * @param {string[]} argv
+ * `--rel-arm=absent|collapsed|expanded` is the same idea for the injected
+ * Relationships column, and composes with `--arm=` (both may be given). Unlike
+ * `--arm=`, the `expanded` arm additionally pre-seeds the `rel-ws2` IndexedDB
+ * store from a committed capture, and REFUSES to run without one — see
+ * `REL_ARMS` and `relWs2Seed.js` for why running it unseeded would be worse
+ * than not running it at all.
+ *
  * @returns {{ pageType: string|null, label: string|null, arm: string|null,
- *   samples: number }}
+ *   relArm: string|null, samples: number }}
  */
 function parseArgs(argv) {
     const arg = argv.find((a) => a.startsWith('--pageType='));
     const labelArg = argv.find((a) => a.startsWith('--label='));
     const armArg = argv.find((a) => a.startsWith('--arm='));
+    const relArmArg = argv.find((a) => a.startsWith('--rel-arm='));
     const samplesArg = argv.find((a) => a.startsWith('--samples='));
     const samples = samplesArg ? parseInt(samplesArg.slice('--samples='.length), 10) : DEFAULT_SAMPLES;
     return {
         pageType: arg ? arg.slice('--pageType='.length) : null,
         label: labelArg ? labelArg.slice('--label='.length) : null,
         arm: armArg ? armArg.slice('--arm='.length) : null,
+        relArm: relArmArg ? relArmArg.slice('--rel-arm='.length) : null,
         samples: Number.isFinite(samples) && samples > 0 ? samples : DEFAULT_SAMPLES,
     };
 }
 
+/**
+ * Pre-bracket idle applied to EVERY `--rel-arm=` run, seeded or not.
+ *
+ * ── Why a fixed wait, and why it is not "padding" ───────────────────────────
+ *
+ * The `expanded` arm must let its cells finish populating before anything is
+ * timed — measuring mid-population measures the population. But every
+ * `measure*Once()` starts its bracket the instant `loadPage()` returns, so a
+ * wait applied to ONLY that arm is a head start subtracted from all seven of
+ * its metrics.
+ *
+ * That is not hypothetical; it is what the first run of these arms did.
+ * `headerCountsInitial` came out at 0.42x of the `collapsed` arm — the
+ * populated column apparently 2.4x FASTER than the empty one — because the
+ * idle-scheduled `_updateAllColHeaderCounts()` scan simply ran during the wait.
+ * Isolated on one arm at `--samples=1`, same script, the settle wait alone
+ * moved that metric 7875 ms -> 1603 ms.
+ *
+ * So all three arms now pay the same idle, and the ratios mean something again.
+ * Scoped to `--rel-arm=` runs deliberately: applying it unconditionally would
+ * shift `artist-events`' and `artist-releasegroups`' numbers away from their
+ * committed baselines, which were captured without it.
+ *
+ * Absolutes from a rel arm are therefore NOT comparable to a non-rel arm of the
+ * same pageType. Ratios between the three rel arms are.
+ *
+ * ── Why 8000 and not 3000 ───────────────────────────────────────────────────
+ *
+ * The first equalised run used 3000, and `relSettleMs` — recorded per arm
+ * precisely so the equalisation could be CHECKED rather than trusted — showed
+ * it had not held: 3001 / 3002 / **6479**. The seeded arm's icon settle simply
+ * takes longer than that on 2301 rows, so it still carried ~3.5 s more idle
+ * than its comparators.
+ *
+ * That run's numbers remain usable because the bias runs the safe way (the
+ * expanded arm was handed MORE idle and came out slower anyway, making every
+ * ratio a lower bound) — but "usable as a lower bound" is not the same as
+ * right. 8000 clears the measured 6479 with headroom. Always read `relSettleMs`
+ * from the JSONs before quoting a ratio: if the three arms disagree, the
+ * cheaper arms were handicapped and the ratio is a bound, not a value.
+ */
+const REL_ARM_SETTLE_MS = 8000;
+
 /** Samples per metric for the current run; set once in main() from --samples=. */
 let SAMPLES = DEFAULT_SAMPLES;
+
+/**
+ * Icons the seeded Relationships column actually rendered, from the most recent
+ * `loadPage()`.
+ *
+ * RECORDED rather than predicted (see `loadPage()`'s floor check for why it
+ * cannot be predicted). It is what makes an `expanded` arm interpretable at
+ * all: "expanded is N ms slower than collapsed" means nothing without knowing
+ * how much DOM the expansion actually added.
+ *
+ * @type {number|null}
+ */
+let relIconsRendered = null;
+
+/**
+ * Total pre-bracket idle actually spent on the most recent `loadPage()`, for a
+ * `--rel-arm=` run. Recorded so the equalisation above is verifiable from the
+ * output rather than assumed: all three arms must show the same figure.
+ * @type {number|null}
+ */
+let relSettleMs = null;
 
 /**
  * Runs one sample, retrying a few times before giving up.
@@ -289,7 +364,31 @@ function median(values) {
 async function loadPage(browser, config) {
     const page = await browser.newPage();
     await seedGmValues(page, config.seedGmValues);
-    await loadFromDiskFixture(page, { url: config.url, fixturePath: config.fixturePath, testMode: true });
+    // `beforeRender` (not after the load) is the only window that works for the
+    // Relationships seed: IndexedDB is origin-scoped so there is nothing to
+    // write to before navigation, and the render click is what reaches
+    // `initRelationshipsColumn()`, the reader. Seeding late is a race the arm
+    // loses SILENTLY — by issuing 2301 live requests instead of none, which
+    // reads as a slow arm rather than a failure.
+    // Counted from before the render, so the guard below covers Phase 1 and
+    // every Phase-2 step that could have fired by the time the page settles.
+    // Attached unconditionally (it is one listener) but only ASSERTED on a
+    // seeded arm, so an unseeded arm's own requests stay its business.
+    const ws2Requests = [];
+    let seedInfo = null;
+    if (config.relSeedPath) {
+        page.on('request', (req) => {
+            if (req.url().includes('/ws/2/')) ws2Requests.push(req.url());
+        });
+    }
+    await loadFromDiskFixture(page, {
+        url: config.url,
+        fixturePath: config.fixturePath,
+        testMode: true,
+        beforeRender: config.relSeedPath
+            ? async (p) => { seedInfo = await seedRelWs2Store(p, config.relSeedPath); }
+            : undefined,
+    });
     // waitForRenderComplete (not a bare #mb-filter-container wait) — needed
     // for artist-events' 4174 rows, which exceed the chunked-render
     // threshold; see browser.js's own JSDoc for the confirmed race.
@@ -310,6 +409,79 @@ async function loadPage(browser, config) {
     // master toggle reading "expanded", so a per-table metric's target is a
     // 0x0 element Playwright will never click. See that helper's own JSDoc.
     if (config.tableMode === 'multi') await ensureSubTableVisible(page, config.subTableIndex);
+    // A seeded arm that fetches anything is not measuring what it claims: every
+    // request carries a 1100 ms queue gap, so even a handful of them put real
+    // network latency inside the brackets that follow. Fail the run rather than
+    // publish it — the numbers would look entirely normal.
+    // `tests/fixtures/rel-ws2-seed-warm-cache.spec.js` pins the same property
+    // on a small page; this is the check on the page actually being measured.
+    // A populated Relationships column fills its cells from Phase 1's IDB
+    // reads, which resolve AFTER `waitForRenderComplete()`. Two reasons this
+    // has to settle before the first bracket, and the second is the one that
+    // would quietly corrupt the arm:
+    //
+    //   - measuring while Phase 1 is still writing measures a mixture of the
+    //     interaction and the population, not the interaction;
+    //   - an arm whose icons never arrived at all still produces a full set of
+    //     plausible medians — it would just be measuring a column of empty
+    //     cells, i.e. the `collapsed` arm under a different name, and the
+    //     comparison would report "no difference" as a finding.
+    //
+    // So: poll to stability, then assert a real floor against the seed's own
+    // recorded icon total.
+    // Identical idle on every rel arm — see REL_ARM_SETTLE_MS for why this is
+    // load-bearing rather than padding.
+    if (config.relArm) {
+        const settleStart = Date.now();
+        if (config.relSeedPath) {
+            const urlRels = seedInfo ? seedInfo.urlRelTotal : 0;
+            let last = -1, stable = 0;
+            const deadline = Date.now() + 120000;
+            while (Date.now() < deadline && stable < 4) {
+                /* eslint-disable no-await-in-loop */
+                const n = await page.locator('table.tbl tbody td.mb-rel-cell a').count();
+                stable = (n === last && n > 0) ? stable + 1 : 0;
+                last = n;
+                await page.waitForTimeout(250);
+                /* eslint-enable no-await-in-loop */
+            }
+            // A FLOOR, not an equality — and the difference was found the hard
+            // way. The first version asserted `rendered === urlRelTotal` and
+            // failed reproducibly at 2090 of 2329, which turned out to be
+            // correct rendering: `_populateCells()` de-dupes by target URL
+            // within an entity (131 here) and renders nothing for a relation
+            // type with no icon class (108 here, mostly "purchase for
+            // mail-order"). Those maps are user-overridable settings, so the
+            // exact number is the script's to decide and cannot be predicted
+            // from the seed without duplicating them.
+            //
+            // What the floor still catches is the failure that matters: a seed
+            // that did not apply renders 0, making this arm a second copy of
+            // --rel-arm=collapsed and reporting the feature as free.
+            const floor = Math.floor(urlRels * 0.5);
+            if (last < floor) {
+                throw new Error(
+                    `seeded rel arm rendered only ${last} icons against ${urlRels} url-rels `
+                    + `in the seed (floor ${floor}). An under-populated column makes this `
+                    + 'arm a second copy of --rel-arm=collapsed, which would read as "the '
+                    + 'feature costs nothing".');
+            }
+            relIconsRendered = last;
+        }
+        // Top the settle up to the same total on every arm. Recorded, so a
+        // reader can see the equalisation actually held rather than trust it —
+        // if a seeded settle ever overran REL_ARM_SETTLE_MS, this number would
+        // differ between arms and the ratios would be suspect again.
+        const spent = Date.now() - settleStart;
+        if (spent < REL_ARM_SETTLE_MS) await page.waitForTimeout(REL_ARM_SETTLE_MS - spent);
+        relSettleMs = Date.now() - settleStart;
+    }
+    if (config.relSeedPath && ws2Requests.length) {
+        throw new Error(
+            `seeded rel arm issued ${ws2Requests.length} WS/2 request(s) — the seed did `
+            + `not cover this page. First: ${ws2Requests[0]}. Re-capture with `
+            + 'python3 scripts/capture-rel-ws2-seed.py (it verifies coverage before writing).');
+    }
     return page;
 }
 
@@ -497,7 +669,7 @@ async function runAll(browser, config) {
 }
 
 (async () => {
-    const { pageType, label, arm, samples } = parseArgs(process.argv.slice(2));
+    const { pageType, label, arm, relArm, samples } = parseArgs(process.argv.slice(2));
     SAMPLES = samples;
     if (SAMPLES !== DEFAULT_SAMPLES) {
         console.warn(`  NOTE: --samples=${SAMPLES} — a plumbing check, NOT a publishable arm. `
@@ -508,16 +680,44 @@ async function runAll(browser, config) {
     // a pageType is one edit rather than three (see that module's header).
     let config;
     try {
-        config = applyPicardArm(toArm(pageType), arm);
+        config = applyRelArm(applyPicardArm(toArm(pageType), arm), relArm);
     } catch (err) {
         console.error(err.message);
         console.error(`Supported --pageType=: ${pageTypeList().join(', ')}`);
         console.error(`Supported --arm=: ${Object.keys(PICARD_ARMS).join(', ')}`);
+        console.error(`Supported --rel-arm=: ${Object.keys(REL_ARMS).join(', ')}`);
         process.exit(1);
     }
 
+    // An arm that READS the seeded cache must not run without a seed. Refusing
+    // here rather than letting it proceed is deliberate: an unseeded `expanded`
+    // arm still produces a full set of plausible numbers, having spent ~42
+    // minutes making 2301 live WS/2 requests inside the measurement brackets.
+    // That is the "passes while measuring nothing" failure this harness's CAA
+    // notes keep warning about, and it is worse than a crash because the output
+    // looks publishable.
+    if (relArm && REL_ARMS_NEEDING_SEED.has(relArm)) {
+        const seedPath = seedPathFor(pageType);
+        if (!seedPath || !fs.existsSync(seedPath)) {
+            console.error(`--rel-arm=${relArm} needs a committed rel-ws2 seed for `
+                + `"${pageType}", and there is none at ${seedPath || '(unregistered)'}.`);
+            console.error('Capture one first: python3 scripts/capture-rel-ws2-seed.py');
+            process.exit(1);
+        }
+        config = { ...config, relSeedPath: seedPath };
+    }
+    if (relArm) config = { ...config, relArm };
+
     const branch = readCurrentBranch();
-    const outName = label || (arm ? `${branch}-picard-${arm}` : branch);
+    // Both arms can be active at once, so the name carries whichever are set
+    // rather than assuming one dimension. Without this two rel arms of the same
+    // branch would overwrite each other, which is the exact failure
+    // `interaction-perf-main.json` already suffered once across versions.
+    const armSuffix = [
+        arm ? `picard-${arm}` : null,
+        relArm ? `rel-${relArm}` : null,
+    ].filter(Boolean).join('-');
+    const outName = label || (armSuffix ? `${branch}-${armSuffix}` : branch);
     const startedAt = new Date();
     const capturedAt = startedAt.toISOString().slice(0, 10);
     const scriptVersion = readScriptVersion();
@@ -552,6 +752,16 @@ async function runAll(browser, config) {
             subTableIndex: config.tableMode === 'multi' ? config.subTableIndex : null,
             totalRows: config.totalRows,
             picardArm: arm || null,
+            relArm: relArm || null,
+            // Recorded so a reader can tell a seeded run from an unseeded one
+            // without re-deriving it from the arm name.
+            relSeedPath: config.relSeedPath
+                ? path.relative(path.join(__dirname, '..', '..'), config.relSeedPath)
+                : null,
+            // The arm's actual DOM weight. Without it "expanded - collapsed"
+            // is a number with no denominator.
+            relIconsRendered,
+            relSettleMs,
             seedGmValues: config.seedGmValues,
             branch: outName,
             gitBranch: branch,

@@ -10422,3 +10422,76 @@ Mutation-checked: `git stash` of just the userscript change (kept the new
 test) timed out waiting for the container to be removed — confirming the
 pre-fix code never purges it on this pageType — then `git stash pop`
 restored the fix and the test passed.
+
+## 2026-09-11 — Relationships interaction-latency arm (branch rel-interaction-latency-arm)
+
+PERFORMANCE.org Step 35 shipped a request-count win and explicitly declined to
+claim an interaction number, because `perfDescriptors.js` forbids an arm
+re-enabling the Relationships column — an unseeded `expanded` arm on the Dylan
+page would spend ~42 minutes making 2301 live WS/2 requests *inside* the
+measurement brackets. This builds the arm that removes the reason for that rule.
+
+### Getting real data without 2301 requests
+
+The column fetches `/ws/2/release/<mbid>?inc=url-rels` one MBID at a time.
+`/ws/2/release?artist=<mbid>&inc=url-rels&limit=100` returns the *same*
+per-release `relations` arrays — **24 requests instead of 2301**, verified by
+`scripts/probe-rel-browse-endpoint.py` before anything was built on it. Same
+trick the ms-length batch source documents, in the opposite direction: there the
+browse endpoint was rejected for costing the artist's whole catalogue; here the
+whole catalogue is exactly what is wanted.
+
+The data is REAL, not synthesized — the DOM cost being measured is driven by how
+many `<a><img>` + `.mb-rel-filter-key` triples land per cell, so inventing that
+number would be inventing the answer. `scripts/capture-rel-ws2-seed.py` refuses
+to write a seed with any coverage gap (one uncovered MBID = one live request in
+a bracket). Result: **2301/2301**, zero missing.
+
+### Three guards, because every failure here looks like success
+
+An arm whose seed did not apply still produces a full, plausible set of medians.
+So: a missing seed is refused up front; any WS/2 request during a seeded run
+fails the run; and a column settling under half the seed's url-rel count fails
+it too. `tests/fixtures/rel-ws2-seed-warm-cache.spec.js` pins the premise on a
+small page (2 tests, mutation-verified: no-op'ing the seed fails the seeded test
+and leaves the control green).
+
+### Two mistakes of mine the guards caught
+
+**1. The icon count.** I asserted the seeded column would render 2329 icons —
+the seed's url-rel total. It rendered **2090**, identically across three
+attempts. Replaying `_populateCells()`'s own rule reproduced 2090 exactly:
+2329 − 131 duplicate URLs − 108 relation types with no icon class (mostly
+"purchase for mail-order"). The rendering was right and my expectation was
+wrong. The icon maps are user-overridable settings (`sa_rel_url_icon_classes`
+et al), so predicting the count in Node would be guaranteed drift — the field
+was renamed `urlRelTotal`, documented as an upper bound, the check became a
+floor, and the harness now RECORDS `relIconsRendered` instead.
+
+**2. The settle wait, which silently biased the whole first run.** The wait for
+icons to finish populating ran only on the seeded arm — and every
+`measure*Once()` starts its bracket the instant `loadPage()` returns, so it was
+a head start subtracted from all seven expanded metrics. It produced
+`headerCountsInitial` at **0.42x** of collapsed: a populated column apparently
+2.4x *faster* than an empty one. Isolated at `--samples=1`, same arm and script,
+the wait alone moved that metric **7875 ms → 1603 ms**. Fixed by charging every
+rel arm the same idle; the first run's JSONs were deleted rather than committed.
+
+`relSettleMs` is recorded per arm so the equalisation is checkable rather than
+assumed — and it immediately showed the fix was only partial: 3001/3002/**6479**.
+The seeded settle overruns a 3000 ms cap on 2301 rows. That bias runs the safe
+way (expanded got *more* idle and is still slower on all seven metrics), so the
+committed ratios are **lower bounds**; the cap is now 8000.
+
+### Result
+
+`collapsed/absent` is 0.96-1.04x on every metric — a collapsed column is free,
+the same result Step 32 got for Picard. Collapsing saves 7-30%
+(`1 - collapsed/expanded`): 28% on sort, 30% on warm uniq-drop, 15% on global
+filter. **Step 35's prediction that this would be smaller than Picard's
+19/13/21% was wrong**, and instructively so: it compared only what a collapsed
+cell saves on the WRITE side, ignoring that `.mb-rel-filter-key` spans feed
+`getCleanColumnText()`, so every keystroke and sort re-reads 2090 hidden URL
+strings. Step 35's own text says a rel cell is a first-class filter participant
+where Picard's was not; the estimate just failed to carry that into the
+arithmetic.

@@ -2931,16 +2931,44 @@ exactly (not approximately) in
 ~tests/fixtures/rel-column-collapse-toggle.spec.js~, which intercepts every
 ~**/ws/2/**~ and asserts the count.
 
-*Interaction latency is NOT yet measured, and this step does not claim it.*
-Doing so needs an arm that pre-seeds the ~rel-ws2~ IDB store, because
-~tests/support/perfDescriptors.js~'s ~applyPicardArm()~ JSDoc forbids an arm
-re-enabling this column — /"that would put thousands of live requests inside a
-measurement bracket"/ — and it is right. Until that exists, quote the request
-count and nothing else. Expect the DOM-side win to be smaller than Picard's
-19%/13%/21%: a collapsed rel cell saves cloning an ~<a><img>~ plus a
-~.mb-rel-filter-key~ span, where a collapsed Picard cell saved a whole per-row
-anchor walk plus ~<ul>/<li>/<button>/<img>~ construction and an
-~addEventListener~.
+*Interaction latency was MEASURED on 2026-09-11* (=NB-3641=, 9.99.1073, median
+of 5, one session). The arm this needed — one that pre-seeds the ~rel-ws2~ IDB
+store, so the column can be enabled without putting 2301 live requests inside a
+measurement bracket — now exists as ~--rel-arm=absent|collapsed|expanded~; see
+~tests/support/relWs2Seed.js~ and ~scripts/capture-rel-ws2-seed.py~. Full table
+and caveats in ~tests/MEASUREMENTS.org~.
+
+Two results, on 2301 rows carrying 2090 rendered icons:
+
+  - *A collapsed column is free.* ~collapsed/absent~ is 0.96-1.04x on all seven
+    metrics — a column that exists, is walked, and has a ~<td>~ in every row
+    costs nothing measurable once its cells are empty. Same result Step 32 got
+    for Picard, and it is what justifies the shared "keep the ~<td>~, defer the
+    CONTENT" shape.
+  - *Collapsing saves 7-30%*, as ~1 - collapsed/expanded~: 15% global filter,
+    7% column filter, 28% sort, 30% warm uniq-drop, 21% header-count initial,
+    22% header-count restore, 6% cold uniq-drop.
+
+*This step's own prediction was wrong, and the reason is instructive.* It said
+to "expect the DOM-side win to be smaller than Picard's 19%/13%/21%", reasoning
+that a collapsed rel cell saves only an ~<a><img>~ plus a ~.mb-rel-filter-key~
+span where a collapsed Picard cell saved a whole per-row anchor walk plus
+~<ul>/<li>/<button>/<img>~ construction and an ~addEventListener~. That
+comparison is accurate about the WRITE side and still produced the wrong sign,
+because it ignored the READ side — which this very step documents two sections
+below: those ~.mb-rel-filter-key~ spans feed ~getCleanColumnText()~, so every
+filter keystroke and every sort re-reads 2090 hidden URL strings that a
+collapsed column does not have. Picard's cells contributed ~''~ to all of that.
+The estimate failed to carry this step's own "a rel cell is a first-class filter
+participant" into its arithmetic.
+
+*Every ratio is a LOWER BOUND.* The harness charges each rel arm a fixed
+pre-bracket idle so the three are comparable, and records ~relSettleMs~ so that
+can be checked rather than trusted. It came back 3001/3002/*6479* — the seeded
+arm's settle overran the cap, so ~expanded~ entered every bracket with ~3.5 s
+more idle than its comparators, which biases it FASTER. It is slower on all
+seven metrics regardless. The cap has been raised to clear the measured value;
+a re-run would turn these bounds into values.
 
 **** Threshold, not a flat default — and why
 
