@@ -346,6 +346,11 @@ every distinct non-empty value currently visible in that column.
                        pair of dropdown sections that scan every row on the
                        table to compute an average, so disable it if that
                        measurably slows down very large tables
+    — 🏷️ Attributes — also on the "Attributes" column: one entry per atomic
+                       recording-attribute word (e.g. "live", "cover",
+                       "partial", "demo"), decomposed from MusicBrainz's own
+                       natural-language-joined cell text — checking "live"
+                       also matches a cell reading "cover and live"
     — 📅/🌓/↔️ Date info — on any "Date"/"Begin"/"End"/"Release date"-style
                        column (any column MusicBrainz shows as a
                        YYYY[-MM[-DD]] date or a dash-joined range of two such
