@@ -1,5 +1,77 @@
 [
   {
+    "version": "9.99.1065",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown: the native \"Attributes\" column (work-recordings, artist-relationships, place-performances, area-recordings, …) gets a new \"Attributes\" section — one entry per atomic recording-attribute word (e.g. \"live\", \"cover\", \"partial\"), decomposed from MusicBrainz's own natural-language-joined cell text (e.g. \"cover and live\") via a new `_findCellRecordingAttributeWords()` extractor, reusing the existing `REC_OF_ATTRIBUTES` vocabulary."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1064",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values dropdown: `/series/{mbid}` links (e.g. a user's \"Series subscriptions\" table) never surfaced an \"Entity info - Series name\"/\"- Comment\" section, even when carrying a real disambiguation comment (e.g. \"3CD (Sony Music)\") — `series` was absent from `_ENTITY_TYPE_GLYPH`, so `_findCellEntityRefs()` silently returned nothing for every series cell."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1063",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse`: the duplicate-row fix from the previous release could leak a skipped duplicate's \"Added N years ago...\" text onto an unrelated, earlier row's Title cell (via unbounded appendChild), instead of dropping it along with the duplicate row it belonged to — on a real fetch, one row accumulated over 44,000 characters this way, making its column render artificially wide."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1062",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse`: the same CD stub could appear twice in the consolidated table. This listing ranks by a live, constantly-changing lookup count with no stable secondary sort key, so two page fetches a few seconds apart can return heavily overlapping results (measured ~90% overlap between page 1 and page 2) — an upstream ranking artifact, not something sorting introduced (sorting only made the pre-existing, scattered duplicates collate together and become visible). Rows are now deduplicated by their Title link as they're fetched."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1061",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "`/cdstub/browse` (\"Top CD stubs\"): the native \"Added N years ago, last modified M years ago\" info row's text was landing in the \"Primary alias\" column instead of \"Comment\" — extractMainColumn always appends MB-Name/Comment/Primary alias in that order, so Primary alias (not Comment) is the row's real last cell."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1060",
+    "date": "2026-09-11",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 unique-values dropdown's own quickfilter search box highlighted only the FIRST occurrence of the typed substring inside each entry's label (e.g. typing \"as\" against \"» alias: Southside Johnny & The Asbury Jukes at The Stone Pony\" highlighted \"as\" in \"alias\" but not \"As\" in \"Asbury\"), unlike the main table's global/column filter, which always highlights every occurrence. Fixed for all three affected entry shapes — synthetic entries (\"» alias:\", \"» comment:\", etc.), plain unique-value list entries, and flag-icon (Country/Area) entries — via one shared helper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1059",
     "date": "2026-09-10",
     "sections": [

@@ -1,0 +1,23 @@
+* multiple entries
+
+#+begin_example
+@debug/top-cd-stubs-final.html - final rendered page for URL https://musicbrainz.org/cdstub/browse
+@debug/top-cd-stubs-final-sort.html - final rendered page after sort
+#+end_example
+
+1.)
+
+on the final rendered page after sort, there seem to be multiple same rows which are not present on the initial rendered
+page
+
+2.)
+
+the following elements e.g.
+
+#+begin_example
+<td class="lastupdate" colspan="4">Added 9 years ago, last modified 9 years ago</td>
+#+end_example
+
+show up in the "Primary alias" column instead of the "Comment" column
+
+

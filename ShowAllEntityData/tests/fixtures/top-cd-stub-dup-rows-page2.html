@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Top CD stubs - MusicBrainz</title>
+</head>
+<body>
+    <div class="fullwidth" id="page">
+        <h1>Top CD stubs</h1>
+        <table class="tbl">
+            <thead>
+                <tr><th>Title</th><th>Artist</th><th>Lookup count</th><th>Modify count</th></tr>
+            </thead>
+            <tbody>
+                <!--
+                    Reproduces the real-world overlap this fixture pair
+                    models: MusicBrainz's "Top CD stubs" ranks by a live,
+                    constantly-changing lookup count with no stable secondary
+                    sort key, so a page=2 fetch a few seconds after page=1
+                    can re-return entries page=1 already returned (measured:
+                    ~90% overlap on a real 2-page fetch). Row A, Row B and
+                    Row C here are the SAME hrefs as page1's, deliberately —
+                    THREE consecutive duplicates, so a lastupdate-merge bug
+                    that targets "whichever row is currently last in
+                    allRows" cannot self-heal by accidentally landing back on
+                    the right row (a 1-duplicate run could).
+                -->
+                <tr class="odd">
+                    <td><a href="/cdstub/AAAA1111"><bdi>Row A</bdi></a></td>
+                    <td>Artist A</td>
+                    <td>30</td>
+                    <td>0</td>
+                </tr>
+                <tr class="odd">
+                    <td class="lastupdate" colspan="4">Added 1 year ago, last modified 1 year ago</td>
+                </tr>
+                <tr class="even">
+                    <td><a href="/cdstub/BBBB2222"><bdi>Row B</bdi></a></td>
+                    <td>Artist B</td>
+                    <td>20</td>
+                    <td>0</td>
+                </tr>
+                <tr class="even">
+                    <td class="lastupdate" colspan="4">Added 2 years ago, last modified 2 years ago</td>
+                </tr>
+                <tr class="odd">
+                    <td><a href="/cdstub/CCCC3333"><bdi>Row C</bdi></a></td>
+                    <td>Artist C</td>
+                    <td>10</td>
+                    <td>0</td>
+                </tr>
+                <tr class="odd">
+                    <td class="lastupdate" colspan="4">Added 3 years ago, last modified 3 years ago</td>
+                </tr>
+                <tr class="odd">
+                    <td><a href="/cdstub/DDDD4444"><bdi>Row D</bdi></a></td>
+                    <td>Artist D</td>
+                    <td>5</td>
+                    <td>0</td>
+                </tr>
+                <tr class="odd">
+                    <td class="lastupdate" colspan="4">Added 4 years ago, last modified 4 years ago</td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination">
+            <li><a href="https://musicbrainz.org/cdstub/browse?page=1">Previous</a></li>
+            <li class="separator"></li>
+            <li><a href="https://musicbrainz.org/cdstub/browse?page=1">1</a></li>
+            <li><a class="sel" href="https://musicbrainz.org/cdstub/browse?page=2"><strong>2</strong></a></li>
+        </ul>
+    </div>
+</body>
+</html>

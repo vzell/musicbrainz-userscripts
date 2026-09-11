@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1059+2026-09-10
+// @version      9.99.1065+2026-09-11
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -14013,6 +14013,13 @@
         // below. Named 'top-cd-stub' (not 'cd-stub') to leave that name free
         // for the individual CD stub detail page (/cdstub/<disc-id>).
         // See debug/top-cd-stub.html.
+        //
+        // This listing ranks by lookup count, a value that changes in real
+        // time with no stable secondary sort key, so successive page fetches
+        // can return heavily overlapping results (measured: page 1 and page
+        // 2 of a real 2-page fetch shared ~90% of their rows). The same
+        // startFetchingProcess row loop dedupes by Title href — see
+        // _seenTopCdStubHrefs — keeping the first occurrence of each disc.
         {
             type: 'top-cd-stub',
             match: (path) => path.match(/^\/cdstub\/browse\/?$/),
@@ -21103,6 +21110,35 @@
     }
 
     /**
+     * Splits a native "Attributes" cell's natural-language-joined recording
+     * attribute words into one word per entry — e.g. `"cover and live"` →
+     * `['cover', 'live']`, `"live and partial"` → `['live', 'partial']`.
+     * Reuses `REC_OF_ATTRIBUTES` — already the source of truth for this
+     * exact vocabulary via `_parseRecOfAttributes()` on `release-tracks`'
+     * own "recording of:" `<dt>` prefix, just a differently-shaped rendering
+     * of the same underlying relationship attributes — so an unrecognised
+     * word can never silently produce a stray dropdown entry, same
+     * defensive filtering `_parseRecOfAttributes()` already applies.
+     *
+     * Deliberately only called for the "Attributes" column itself (gated by
+     * column name at the `openUniqDrop()` call site, same convention as
+     * `_findCellFormatParts()`/`isFormatCol` above) — this is plain
+     * free-text parsing with no CSS-class safety net. Applies automatically
+     * to every pageType with a native "Attributes" column (work-recordings,
+     * artist-relationships, place-performances, area-recordings, …), since
+     * MusicBrainz renders this column identically everywhere it appears.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {string[]}
+     */
+    function _findCellRecordingAttributeWords(cell) {
+        if (!cell) return [];
+        const text = getCleanColumnText(cell).toLowerCase();
+        if (!text) return [];
+        return text.split(/\s*,\s*|\s+and\s+/).map(s => s.trim()).filter(s => REC_OF_ATTRIBUTES.includes(s));
+    }
+
+    /**
      * Extracts country/date/weekday parts from a "Country/Date" cell, one
      * entry per `.release-event` — mirrors `splitCountryDate()`'s own DOM
      * walk (`ColumnDataExtractor`) exactly, including its handling of a
@@ -22220,6 +22256,14 @@
             // in one click.
             const want = mode.slice(11);
             return !!cell && _findCellFormatParts(cell).some(p => p.type === want);
+        }
+        if (mode.startsWith('recattr:')) {
+            // Compound mode — matches one atomic recording-attribute word
+            // (e.g. "live") from a native "Attributes" cell's own
+            // natural-language-joined text, via
+            // _findCellRecordingAttributeWords()'s own extraction.
+            const want = mode.slice(8);
+            return !!cell && _findCellRecordingAttributeWords(cell).includes(want);
         }
         if (mode.startsWith('revcountry:')) {
             // Compound mode — matches one "Country/Date" release event's
@@ -35702,6 +35746,14 @@ a { color: #1565c0; }`;
     let allRows = [];
     let originalAllRows = [];
     let groupedRows = [];
+    // top-cd-stub only: MusicBrainz's own "Top CD stubs" browse listing ranks
+    // by lookup count, a value that changes in real time, with no stable
+    // secondary sort key — fetching page 1 then page 2 a few seconds apart
+    // can return heavily overlapping results (measured: ~90% of a 2-page
+    // fetch duplicated). Tracks Title hrefs already rendered so a later
+    // repeat can be skipped — see the pageType === 'top-cd-stub' guard in
+    // startFetchingProcess's row loop.
+    let _seenTopCdStubHrefs = new Set();
     // Filter result cache: Map<string key → TR[]> for single-table,
     // Map<string key → TR[]> per-group for multi-table.
     // Keyed on normalised query + flags + column-filter state.
@@ -40363,6 +40415,7 @@ a { color: #1565c0; }`;
         entity_event:             { label: 'Entity info - Event name',         markerClass: 'eventlink' },
         entity_place:             { label: 'Entity info - Place name',         markerClass: 'placelink' },
         entity_area:              { label: 'Entity info - Area name',          markerClass: 'arealink' },
+        entity_series:            { label: 'Entity info - Series name',       markerClass: 'serieslink' },
         // Fallback for a name entry whose entity type isn't one of
         // `_ENTITY_TYPE_GLYPH`'s known keys (mirrors makeValueSynItem's
         // own `entityType ? … : '» name: '` generic fallback).
@@ -40414,6 +40467,13 @@ a { color: #1565c0; }`;
         formatCount:   { label: 'Format info - Medium count', glyph: '🔢' },
         formatCombo:   { label: 'Format info - Combo',        glyph: '🧩' },
         formatType:    { label: 'Format info - Type',         glyph: '💿' },
+        // Native "Attributes" column (work-recordings, artist-relationships,
+        // place-performances, area-recordings, …): one entry per atomic
+        // recording-attribute word (e.g. "live", "cover", "partial"), from
+        // `_findCellRecordingAttributeWords()`. 🏷️ reused from
+        // entityTagCount/editorRecordedName — same "labelling a thing"
+        // facet.
+        recordingAttributes: { label: 'Attributes', glyph: '🏷️' },
         releaseEventsCountry: { label: 'Release events - Country', glyph: '🌐' },
         releaseEventsDate:    { label: 'Release events - Date',    glyph: '📅' },
         releaseEventsWeekday: { label: 'Release events - Weekday', glyph: '📆' },
@@ -40650,6 +40710,7 @@ a { color: #1565c0; }`;
         namevariation: 'nameVariation',
         role: 'roles', roletoken: 'entityRole',
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
+        recattr: 'recordingAttributes',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
@@ -40732,6 +40793,18 @@ a { color: #1565c0; }`;
      * available in that same stylesheet whenever a future task needs them —
      * check there (or a live page snapshot) before assuming "no verified
      * glyph class" for a type not yet listed here.
+     *
+     * `series` was added 2026-09-11 after a report that a user's "Series
+     * subscriptions" table's own "Name" column (a `/series/{mbid}` `<a>`,
+     * e.g. `<a href="/series/…"><bdi>3CD</bdi></a>&nbsp;<span
+     * class="comment"><bdi>(Sony Music)</bdi></span>` — see
+     * debug/user-subscriptions-artist.html) never surfaced an "Entity info
+     * - Series name"/"- Comment" section despite carrying real
+     * disambiguation comments — `series` was simply absent from this map,
+     * so `_findCellEntityRefs()` silently returned nothing for every
+     * `/series/` cell. Confirmed live (`curl .../icons-*.css | grep
+     * serieslink`) and already reused elsewhere in this file for the same
+     * marker class (see `KNOWN_ENTITY_LINK_KINDS`).
      */
     const _ENTITY_TYPE_GLYPH = {
         work:            'worklink',
@@ -40742,7 +40815,8 @@ a { color: #1565c0; }`;
         event:           'eventlink',
         release:         'releaselink',
         recording:       'recordinglink',
-        'release-group': 'rglink'
+        'release-group': 'rglink',
+        series:          'serieslink'
     };
 
     /**
@@ -41994,6 +42068,26 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the exact matched word for a `recattr:` compound
+     * structure-mode filter — a plain cell-wide, word-boundary regex match
+     * (same reasoning as `_highlightFormatMatch()`'s `formattype:` branch
+     * above), since a native "Attributes" cell has no per-word wrapper
+     * element to scope to (e.g. "cover and live" is one flat text node).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"recattr:live"`.
+     */
+    function _highlightRecAttrMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(8);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the exact matched value for a `role:` compound
      * structure-mode filter (see `openUniqDrop()`'s `makeValueSynItem` and
      * `testRowMatch()`'s `f.isMultiValueFilter` structure-mode fallback) —
@@ -42710,6 +42804,8 @@ a { color: #1565c0; }`;
                                 } else if (mode.startsWith('formatsize:') || mode.startsWith('formatcount:') ||
                                            mode.startsWith('formatcombo:') || mode.startsWith('formattype:')) {
                                     _highlightFormatMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('recattr:')) {
+                                    _highlightRecAttrMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('roletoken:')) {
@@ -45460,6 +45556,7 @@ a { color: #1565c0; }`;
         allRows = [];
         originalAllRows = [];
         groupedRows = [];
+        _seenTopCdStubHrefs = new Set();
         expandedCells.clear();
         _areaFlagRegionCorrected.clear();
         _editsProseDefaultExpandedCols.clear();
@@ -46565,6 +46662,14 @@ a { color: #1565c0; }`;
                         // name (rawName + " " + entityType) when the first data row arrives.
                         let pendingGroupRawName = null; // rawName of the most-recent subh row
                         let pendingGroupResolved = false; // true once the first row has renamed it
+                        // top-cd-stub only: true when the data row just processed was
+                        // skipped as a duplicate (see _seenTopCdStubHrefs). Its own
+                        // lastupdate info row still follows immediately in the DOM —
+                        // without this flag, that row's text would merge onto
+                        // allRows[allRows.length - 1], i.e. some EARLIER, unrelated
+                        // row that happened to be the last one actually kept, instead
+                        // of being dropped along with the row it belongs to.
+                        let _skipNextTopCdStubLastupdate = false;
 
                         tableBody.childNodes.forEach(node => {
                             if (node.nodeName === 'TR') {
@@ -46643,6 +46748,19 @@ a { color: #1565c0; }`;
                                     // native MB "Name <span class="comment">(disambiguation)
                                     // </span>" convention, and mirror it into the row's synthetic
                                     // Comment cell (see 'top-cd-stub' features.extractMainColumn).
+                                    //
+                                    // This row's OWN data row may have just been skipped as a
+                                    // duplicate (see _seenTopCdStubHrefs) — in that case
+                                    // allRows[allRows.length - 1] is some EARLIER, unrelated row
+                                    // that happened to be the last one actually kept, and merging
+                                    // onto it would silently pile this text onto the wrong row
+                                    // (measured: one kept row accumulated 44,000+ characters this
+                                    // way once a long run of duplicates followed it).
+                                    if (_skipNextTopCdStubLastupdate) {
+                                        _skipNextTopCdStubLastupdate = false;
+                                        Lib.debug('parse', 'top-cd-stub: skipped lastupdate merge for a duplicate row\'s own info row');
+                                        return;
+                                    }
                                     const _lastRow = allRows.length > 0 ? allRows[allRows.length - 1] : null;
                                     const _infoText = node.cells[0].textContent.trim();
                                     if (_lastRow && _infoText) {
@@ -46663,11 +46781,17 @@ a { color: #1565c0; }`;
                                         // row is a later sibling in document order) and produced
                                         // an empty Comment cell, since the Title cell had no
                                         // native .comment span at extraction time — top-cd-stub's
-                                        // Comment column is populated exclusively from here. It
-                                        // is always the row's last cell for this page type (no
-                                        // injectedColumns/addCAA/addEAA configured on it).
+                                        // Comment column is populated exclusively from here.
+                                        // _extractMainColumnParts() always appends THREE cells, in
+                                        // this fixed order: MB-Name, Comment, Primary alias (see
+                                        // its own JSDoc and every one of its call sites) — so the
+                                        // row's actual last cell is Primary alias, and Comment is
+                                        // the SECOND-to-last (no injectedColumns/addCAA/addEAA
+                                        // configured on this page type to land after it). Landing
+                                        // on `length - 1` here previously wrote the lastupdate text
+                                        // into Primary alias instead of Comment.
                                         if (mainColIdx !== -1) {
-                                            const _commentCell = _lastRow.cells[_lastRow.cells.length - 1];
+                                            const _commentCell = _lastRow.cells[_lastRow.cells.length - 2];
                                             if (_commentCell) _commentCell.textContent = _infoText;
                                         }
 
@@ -46725,6 +46849,30 @@ a { color: #1565c0; }`;
                                      // legitimately have cells.length === 1.
                                      (node.cells.length === 1 && node.cells[0].colSpan <= 1)) &&
                                     !node.classList.contains('explanation')) {
+                                    // top-cd-stub: skip a row whose Title href was already
+                                    // rendered — see _seenTopCdStubHrefs' own comment for why
+                                    // this listing's live ranking makes successive page fetches
+                                    // overlap. Checked on the raw `node` (before the
+                                    // document.importNode clone below) so a duplicate costs
+                                    // nothing beyond this lookup, and skipped before
+                                    // rowsInThisPage/totalRowsAccumulated increment so the
+                                    // "Loaded N rows" summary reports the true deduplicated count.
+                                    if (pageType === 'top-cd-stub') {
+                                        const _titleHref = node.querySelector('a[href^="/cdstub/"]')?.getAttribute('href');
+                                        if (_titleHref) {
+                                            if (_seenTopCdStubHrefs.has(_titleHref)) {
+                                                Lib.debug('parse', `top-cd-stub: skipped duplicate row for "${_titleHref}" (already rendered)`);
+                                                // Its own lastupdate info row still follows in the
+                                                // DOM — that branch must skip too, or it would
+                                                // merge this dropped row's text onto whichever
+                                                // EARLIER row happens to be allRows' current last.
+                                                _skipNextTopCdStubLastupdate = true;
+                                                return;
+                                            }
+                                            _seenTopCdStubHrefs.add(_titleHref);
+                                        }
+                                        _skipNextTopCdStubLastupdate = false;
+                                    }
                                     // Remove artificial non-data rows on non-paginated pages which have a link "See all <number of rows> relationships" to the full dataset instead
                                     if (activeDefinition && activeDefinition.non_paginated) {
                                         const seeAllCell = node.querySelector('td[colspan]');
@@ -53916,6 +54064,14 @@ a { color: #1565c0; }`;
         // row-filter equality stays the untouched raw getCleanColumnText()
         // string, so clicking the entry keeps filtering exactly as before.
         const valueItemSequence = _uniqCacheHit ? _uniqCacheHit.valueItemSequence : new Map();
+        // "Attributes" column only (work-recordings, artist-relationships,
+        // place-performances, area-recordings, …): one entry per atomic
+        // recording-attribute word (e.g. "live", "cover", "partial"),
+        // decomposed from MusicBrainz's own natural-language-joined cell
+        // text (e.g. "cover and live") via
+        // `_findCellRecordingAttributeWords()`. Column-gated (isAttributesCol
+        // below).
+        const recAttrValueCounts = _uniqCacheHit ? _uniqCacheHit.recAttrValueCounts : new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -53942,6 +54098,12 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for the native "Attributes" column's own
+        // recording-attribute words (e.g. "live", "cover", "partial") — same
+        // convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
+        // above (name-only, no page-type check), so this applies
+        // automatically to every pageType with a native "Attributes" column.
+        const isAttributesCol = _colHeaderName === 'Attributes';
         // Column-name gate for "Length info - Duration" — same convention
         // as isFormatCol/isTracksCol/isCatalogCol above (name-only, no
         // page-type check), so this applies automatically to every
@@ -54129,6 +54291,10 @@ a { color: #1565c0; }`;
                     _rowCountValues.forEach(t => formatCountValueCounts.set(t, (formatCountValueCounts.get(t) || 0) + 1));
                     _rowComboValues.forEach(t => formatComboValueCounts.set(t, (formatComboValueCounts.get(t) || 0) + 1));
                     _rowTypeValues.forEach(t => formatTypeValueCounts.set(t, (formatTypeValueCounts.get(t) || 0) + 1));
+                }
+                if (isAttributesCol) {
+                    const _rowRecAttrValues = new Set(_findCellRecordingAttributeWords(cell));
+                    _rowRecAttrValues.forEach(t => recAttrValueCounts.set(t, (recAttrValueCounts.get(t) || 0) + 1));
                 }
                 {
                     const _rowRevCountryValues = new Set(), _rowRevDateValues = new Set(), _rowRevWeekdayValues = new Set();
@@ -54506,6 +54672,36 @@ a { color: #1565c0; }`;
         const cntBg    = Lib.settings.sa_uniq_count_bg    || '#fffacd';
 
         /**
+         * Appends `text` to `parentEl`, wrapping EVERY case-insensitive
+         * occurrence of `lf` in a <mark> (not just the first) so quickfilter
+         * highlighting in this dropdown matches the main table's
+         * all-occurrence highlighting (see highlightCrossTag()). No-op
+         * highlighting (plain text only) when `lf` is empty.
+         *
+         * @param {HTMLElement} parentEl - Element to append text/mark nodes to.
+         * @param {string} text - Original-case text to render.
+         * @param {string} lf - Lower-cased filter substring to highlight.
+         */
+        function _appendAllMatchesHighlighted(parentEl, text, lf) {
+            if (!lf) { parentEl.appendChild(document.createTextNode(text)); return; }
+            const lt = text.toLowerCase();
+            let pos = 0, idx;
+            while ((idx = lt.indexOf(lf, pos)) !== -1) {
+                if (idx > pos) parentEl.appendChild(document.createTextNode(text.slice(pos, idx)));
+                const mark = document.createElement('mark');
+                mark.textContent = text.slice(idx, idx + lf.length);
+                mark.style.color           = hlColor;
+                mark.style.backgroundColor = hlBg;
+                mark.style.fontWeight      = 'bold';
+                mark.style.borderRadius    = '2px';
+                mark.style.padding         = '0 1px';
+                parentEl.appendChild(mark);
+                pos = idx + lf.length;
+            }
+            if (pos < text.length) parentEl.appendChild(document.createTextNode(text.slice(pos)));
+        }
+
+        /**
          * (Re-)renders the item list, showing only values that match `filter`
          * (case-insensitive substring, matched against each entry's
          * `displayText`). Each entry is prefixed by a styled "(n)" badge
@@ -54631,13 +54827,12 @@ a { color: #1565c0; }`;
                 // get a flagIconMap entry).
                 const flagSegments = hasFlagIcons ? flagIconMap.get(v) : null;
                 if (flagSegments) {
-                    // The quickfilter highlights only the FIRST occurrence of
-                    // the match, found by scanning segments in order. A match
-                    // straddling an icon boundary (a real cell never breaks a
-                    // word around a flag) simply renders unhighlighted, which
-                    // is harmless: inclusion in `matching` above already
-                    // guarantees the match exists somewhere in `v`.
-                    let marked = !filter;
+                    // Every occurrence WITHIN a single segment is highlighted.
+                    // The one remaining limitation: a match straddling an icon
+                    // boundary (split across two segments) still renders
+                    // unhighlighted — a real cell never breaks a word around a
+                    // flag, so this is harmless: inclusion in `matching` above
+                    // already guarantees the match exists somewhere in `v`.
                     if (filter) item.classList.add('mb-uniq-qf-match');
                     for (const seg of flagSegments) {
                         if (seg.type === 'icon') {
@@ -54650,43 +54845,15 @@ a { color: #1565c0; }`;
                             item.appendChild(iconClone);
                             continue;
                         }
-                        if (!marked) {
-                            const lt = seg.text.toLowerCase();
-                            const start = lt.indexOf(lf);
-                            if (start !== -1) {
-                                const end = start + lf.length;
-                                item.appendChild(document.createTextNode(seg.text.slice(0, start)));
-                                const mark = document.createElement('mark');
-                                mark.textContent = seg.text.slice(start, end);
-                                mark.style.color           = hlColor;
-                                mark.style.backgroundColor = hlBg;
-                                mark.style.fontWeight      = 'bold';
-                                mark.style.borderRadius    = '2px';
-                                mark.style.padding         = '0 1px';
-                                item.appendChild(mark);
-                                item.appendChild(document.createTextNode(seg.text.slice(end)));
-                                marked = true;
-                                continue;
-                            }
+                        if (filter) {
+                            _appendAllMatchesHighlighted(item, seg.text, lf);
+                        } else {
+                            item.appendChild(document.createTextNode(seg.text));
                         }
-                        item.appendChild(document.createTextNode(seg.text));
                     }
                 } else if (filter) {
-                    // Build highlighted content with a <mark> around the match
-                    const dl = displayText.toLowerCase();
-                    const start = dl.indexOf(lf);
-                    const end   = start + lf.length;
                     item.classList.add('mb-uniq-qf-match');
-                    item.appendChild(document.createTextNode(displayText.slice(0, start)));
-                    const mark = document.createElement('mark');
-                    mark.textContent = displayText.slice(start, end);
-                    mark.style.color           = hlColor;
-                    mark.style.backgroundColor = hlBg;
-                    mark.style.fontWeight      = 'bold';
-                    mark.style.borderRadius    = '2px';
-                    mark.style.padding         = '0 1px';
-                    item.appendChild(mark);
-                    item.appendChild(document.createTextNode(displayText.slice(end)));
+                    _appendAllMatchesHighlighted(item, displayText, lf);
                 } else {
                     // Use appendChild (not textContent) to preserve the badge node
                     item.appendChild(document.createTextNode(displayText));
@@ -55350,6 +55517,7 @@ a { color: #1565c0; }`;
                 entityHrefGlyphMap, entityHrefTypeMap, entityHrefFlagMap,
                 joinPhraseValueCounts, nameVariationValueCounts,
                 formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
+                recAttrValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
@@ -55419,6 +55587,7 @@ a { color: #1565c0; }`;
             ...joinPhraseValueCounts.values(), ...nameVariationValueCounts.values(),
             ...formatSizeValueCounts.values(), ...formatCountValueCounts.values(),
             ...formatComboValueCounts.values(), ...formatTypeValueCounts.values(),
+            ...recAttrValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
@@ -55800,7 +55969,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -56165,6 +56334,12 @@ a { color: #1565c0; }`;
         const _sortedFormatCountValues = Array.from(formatCountValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedFormatComboValues = Array.from(formatComboValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedFormatTypeValues  = Array.from(formatTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Fixed-vocabulary sort (REC_OF_ATTRIBUTES' own order), not
+        // alphabetical — mirrors the word order MusicBrainz itself uses when
+        // joining multiple attributes (e.g. "cover and live" lists "cover"
+        // before "live", matching REC_OF_ATTRIBUTES' declared order).
+        const _sortedRecAttrValues = Array.from(recAttrValueCounts.keys())
+            .sort((a, b) => REC_OF_ATTRIBUTES.indexOf(a) - REC_OF_ATTRIBUTES.indexOf(b));
         const _sortedRevCountryValues = Array.from(revCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevDateValues    = Array.from(revDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevWeekdayValues = Array.from(revWeekdayValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -56345,6 +56520,7 @@ a { color: #1565c0; }`;
             _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56445,6 +56621,7 @@ a { color: #1565c0; }`;
             _sortedFormatCountValues.forEach(v => makeValueSynItem('formatcount', v, formatCountValueCounts.get(v)));
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
+            _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56681,23 +56858,12 @@ a { color: #1565c0; }`;
                         return;
                     }
 
-                    // Build highlighted content with a <mark> around the match —
-                    // same approach as renderItems()'s own quickfilter marking.
+                    // Build highlighted content with a <mark> around every
+                    // occurrence of the match — same approach as
+                    // renderItems()'s own quickfilter marking.
                     item.classList.add('mb-uniq-qf-match');
                     labelSpan.innerHTML = '';
-                    const ll = label.toLowerCase();
-                    const start = ll.indexOf(lf);
-                    const end   = start + lf.length;
-                    labelSpan.appendChild(document.createTextNode(label.slice(0, start)));
-                    const mark = document.createElement('mark');
-                    mark.textContent = label.slice(start, end);
-                    mark.style.color           = hlColor;
-                    mark.style.backgroundColor = hlBg;
-                    mark.style.fontWeight      = 'bold';
-                    mark.style.borderRadius    = '2px';
-                    mark.style.padding         = '0 1px';
-                    labelSpan.appendChild(mark);
-                    labelSpan.appendChild(document.createTextNode(label.slice(end)));
+                    _appendAllMatchesHighlighted(labelSpan, label, lf);
                 });
 
                 if (filter) {
@@ -56957,6 +57123,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcount:')) return `» mediums: ${mode.slice(12)}`;
         if (mode.startsWith('formatcombo:')) return `» ${mode.slice(12)}`;
         if (mode.startsWith('formattype:')) return `» type: ${mode.slice(11)}`;
+        if (mode.startsWith('recattr:')) return `» ${mode.slice(8)}`;
         if (mode.startsWith('revcountry:'))  return `» country: ${mode.slice(11)}`;
         if (mode.startsWith('revdate:'))     return `» date: ${mode.slice(8)}`;
         if (mode.startsWith('revweekday:'))  return `» weekday: ${mode.slice(11)}`;
@@ -57049,6 +57216,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcount:')) return 'One "Format" group\'s own medium count (the leading "N×"/"Nx" factor, defaulting to 1 when absent).';
         if (mode.startsWith('formatcombo:')) return 'One "Format" group\'s own "<count>x<type>" combination (e.g. "2xVinyl") — only offered for groups with more than one medium.';
         if (mode.startsWith('formattype:')) return 'One "Format" group\'s own type word alone (e.g. "Vinyl"), regardless of size — matches every group of that type even when different rows use different sizes (7"/10"/12").';
+        if (mode.startsWith('recattr:')) return 'One atomic recording-attribute word from this "Attributes" cell\'s own natural-language-joined text (e.g. "live" also matches a cell reading "cover and live").';
         if (mode.startsWith('revcountry:')) return 'One "Country/Date" release event\'s own 2-letter country code.';
         if (mode.startsWith('revdate:')) return 'One release event\'s own date text as displayed (weekday stripped out).';
         if (mode.startsWith('revweekday:')) return 'One release event\'s own chaban-injected weekday abbreviation (e.g. "Mon").';
