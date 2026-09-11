@@ -1,0 +1,84 @@
+* new additions
+
+1.)
+
+At e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works add a unique-values dropdown section for
+the 'Attributes' column — one entry per e.g. bracketed string like e.g.
+
+#+begin_example
+ACAM ID
+SUISA ID
+BUMA/STEMRA ID
+PRS tune code
+etc.
+#+end_example
+
+See @debug/artist-works-initial.html for the raw initial HTML
+
+2.)
+
+a.)
+
+Search the web for the anatomy of a "Catalog Number" assigned by a record label e.g.
+
+#+begin_example
+CBS S 65480
+S 65480
+65480
+KC 31903
+PC 4758
+SOPL-248
+C- 0710888
+40-32210
+DT 0017-1311
+MHCP 721
+88697287402
+CDCBS 65480
+CDCBS65480
+138.645
+746.225/2-032210
+#+end_example
+
+on a music medium
+
+b.)
+
+
+At e.g. https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c re-implement the unique-values
+dropdown section "Catalog info - Prefix" for the 'Catalog' column — one entry per the different kinds of prefixes
+
+c.)
+
+Make sure "S" is listed separately
+
+#+begin_example
+Stereo vs. Mono: In the 1960s and 1970s, labels often used an "S" prefix (as seen in CBS S 65480) to explicitly denote a stereo pressing versus its mono counterpart.
+#+end_example
+
+d.)
+
+The "S" in "CBS S 65480" between "CBS" and "65480" is NOT highlighted when chhosing "S" from the drop down
+
+3.)
+
+At https://musicbrainz.org/cdstub/browse add a unique-values dropdown section for
+the 'Title' column — one entry per
+
+#+begin_example
+Added <n> <date expression>
+Modified <m> <date expression>
+#+end_example
+
+from each comment
+
+#+begin_example
+<span class="comment"><bdi>(Added 9 years ago, last modified 9 years ago)</bdi></span>
+#+end_example
+
+See @debug/top-cd-stubs-final.html for the raw initial HTML, as the comment ONLY exists on the final rendered page, not
+on the initial page
+
+4.)
+
+also add tooltips for explanation of the prefixes if possible
+ 

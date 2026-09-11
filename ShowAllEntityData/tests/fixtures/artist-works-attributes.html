@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bruce Springsteen - Works - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /artist/<mbid>/works skeleton (see
+        debug/artist-works-initial.html) with the "Attributes" column
+        actually populated — MusicBrainz's own identifier-badge shape
+        (rights-society/tune-code IDs), NOT the natural-language
+        recording-attribute words work-recordings-attributes.html covers
+        (a completely different DOM shape sharing only the column name —
+        see _findCellWorkAttributeIdentifiers()'s own JSDoc).
+
+        Row 1 ("Racing in the Street") is untruncated: two rendered
+        <li class="work-attribute"> badges, no <li class="show-all">.
+
+        Row 2 ("Born to Run") reproduces MusicBrainz's own client-side
+        truncation, copied structurally from a real truncated block in
+        debug/artist-works-initial.html: the <script type="application/
+        json"> blob lists FOUR identifiers, but only the first two and the
+        pinned LAST one are rendered as <li>s — "PRS tune code" sits in the
+        truncated middle and is never a rendered <li> in this fixture's own
+        markup. expandShowAllCells() must reconstruct it from the JSON
+        blob before _findCellWorkAttributeIdentifiers() ever sees the row,
+        or this test's "PRS tune code" assertion fails.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere artistheader person-icon">
+            <h1><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul class="tabs">
+                <li class="sel"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works"><bdi>Works</bdi></a></li>
+            </ul>
+        </div>
+        <h2>Works</h2>
+        <table class="tbl mergeable-table">
+            <thead>
+                <tr>
+                    <th colspan="1" class="checkbox-cell"><input type="checkbox"></th>
+                    <th colspan="1">Work</th>
+                    <th colspan="1">Authors</th>
+                    <th colspan="1">Recording artists</th>
+                    <th colspan="1">Other artists</th>
+                    <th colspan="1">ISWC</th>
+                    <th colspan="1">Type</th>
+                    <th colspan="1">Lyrics languages</th>
+                    <th colspan="1">Attributes</th>
+                    <th colspan="1" class="rating c">Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox"></td>
+                    <td><a href="/work/11111111-1111-1111-1111-111111111111"><bdi>Racing in the Street</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="iswc"></td>
+                    <td>Song</td>
+                    <td></td>
+                    <td>
+                        <script type="application/json">{"attributes":[{"typeName":"ACAM ID","value":"111111","typeID":1,"id":1},{"typeName":"SUISA ID","value":"001689 152 36","typeID":18,"id":2}]}</script>
+                        <div class="entity-attributes-container">
+                            <ul aria-label="Work attributes" class="work-attributes">
+                                <li class="work-attribute work-attribute-acam-id">111111<!-- --> <!-- -->(ACAM ID)</li>
+                                <li class="work-attribute work-attribute-suisa-id">001689 152 36<!-- --> <!-- -->(SUISA ID)</li>
+                            </ul>
+                        </div>
+                    </td>
+                    <td class="rating c"></td>
+                </tr>
+                <tr>
+                    <td class="checkbox-cell"><input type="checkbox"></td>
+                    <td><a href="/work/22222222-2222-2222-2222-222222222222"><bdi>Born to Run</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td class="iswc"></td>
+                    <td>Song</td>
+                    <td></td>
+                    <td>
+                        <script type="application/json">{"attributes":[{"typeName":"AGADU ID","value":"6432036","typeID":43,"id":3},{"typeName":"AKM ID","value":"555919101","typeID":23,"id":4},{"typeName":"PRS tune code","value":"135173K","typeID":34,"id":5},{"typeName":"SUISA ID","value":"001038 554 93","typeID":18,"id":6}]}</script>
+                        <div class="entity-attributes-container">
+                            <ul aria-label="Work attributes" class="work-attributes">
+                                <li class="work-attribute work-attribute-agadu-id">6432036<!-- --> <!-- -->(AGADU ID)</li>
+                                <li class="work-attribute work-attribute-akm-id">555919101<!-- --> <!-- -->(AKM ID)</li>
+                                <li class="show-all"><a href="#" role="button" title="Show all attributes">(show 1 more)</a></li>
+                                <li class="work-attribute work-attribute-suisa-id">001038 554 93<!-- --> <!-- -->(SUISA ID)</li>
+                            </ul>
+                        </div>
+                    </td>
+                    <td class="rating c"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
