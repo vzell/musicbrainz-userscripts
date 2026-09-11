@@ -10092,3 +10092,43 @@ second or so after render and costs at most ~6 px, against 43-126 px for the bug
 actually fixed here.
 
 Full fixture suite: 178 passed.
+
+## 2026-09-11 — sort pill sat flush against the column name (fixed); and the backtick trap, a third time
+
+Reported after the pill landed: no gap between the column name and `⇅ ▲ ▼`.
+
+`makeTableSortableUnified()` appends the name as a text node **with a trailing
+space**, and that space used to be the gap. It is trimmed: the text node is an
+anonymous FLEX ITEM in `.mb-col-hdr-flex`, and edge whitespace inside a flex
+item is collapsed away. The defect predates the restyle — it simply could not be
+seen while the glyphs were bare text sitting exactly where the space had been,
+and appeared the moment they gained a border and a ground.
+
+Fixed with `margin-left: 4px` on the run's first segment (the same
+`:not(.sort-icon-btn + .sort-icon-btn)` rule that gives it its left cap), so
+only the outside of the pill gains the gap and the segments stay flush with each
+other. Pinned in `sort-pill-segments.spec.js`: 4px on the first segment, 0 on
+the other two.
+
+### The GM_addStyle backtick trap, third occurrence
+
+Broke the whole userscript again, from
+`` `${colName} ` `` inside a CSS comment — this time carrying **both** a backtick
+pair and a `${…}` interpolation into the template literal. Twice now on the very
+commits that documented the hazard.
+
+Two things made the recovery slower than it should have been, both worth
+recording:
+
+- `node --check` reports the failure at the `GM_addStyle(` line — ~160 lines
+  before the real cause here — so the reported location is actively misleading.
+  The reliable move is
+  `awk 'NR>=<style start> && NR<=<style end> && /\`/ {print NR": "$0}'` over the
+  stylesheet region.
+- `` `${colName} ` `` occurs **three times in the file**, only one of them inside
+  the stylesheet. A blind search-and-replace hit the wrong ones twice before the
+  range was constrained.
+
+A one-second guard script under `scripts/` that scans the stylesheet region for
+stray backticks would pay for itself; not added here because it is outside what
+was asked for.

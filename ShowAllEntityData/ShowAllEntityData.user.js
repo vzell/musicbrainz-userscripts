@@ -34085,8 +34085,17 @@ a { color: #1565c0; }`;
         .sort-icon-btn + .sort-icon-btn {
             border-left-width: 1px;
         }
-        /* First in the run — not preceded by another sort icon. */
+        /* First in the run — not preceded by another sort icon.
+
+           margin-left separates the pill from the column name, and it has to be
+           a margin: makeTableSortableUnified() appends the column name WITH a
+           trailing space, which used to be the gap, but that text node is an
+           that text node is an anonymous FLEX ITEM and edge whitespace inside a
+           flex item is trimmed. It went unnoticed while the glyphs were bare
+           text — they simply sat where the space had been — and became visible
+           the moment they gained a border and a ground. */
         .sort-icon-btn:not(.sort-icon-btn + .sort-icon-btn) {
+            margin-left: 4px;
             border-left-width: 1px;
             border-top-left-radius: var(--mb-hdr-pill-radius);
             border-bottom-left-radius: var(--mb-hdr-pill-radius);

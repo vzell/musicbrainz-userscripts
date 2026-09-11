@@ -72,6 +72,7 @@ const segments = (page, colName) => page.evaluate((name) => {
             glyph:        el.textContent.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g, ''),
             background:   cs.backgroundColor,
             color:        cs.color,
+            marginLeft:   cs.marginLeft,
             borderLeft:   cs.borderLeftWidth,
             borderRight:  cs.borderRightWidth,
             borderTop:    cs.borderTopWidth,
@@ -121,6 +122,15 @@ test.describe('sort glyphs render as one segmented pill', () => {
             expect(seg[0].borderRight).toBe('0px');
             expect(seg[1].borderRight).toBe('0px');
             expect(seg[2].borderRight).toBe('1px');
+
+            // Breathing room from the column name. The name text node ends in
+            // a space, but it is an anonymous flex item and edge whitespace
+            // inside one is trimmed — so the gap has to be a margin, and only
+            // the run's first segment carries it.
+            expect(seg[0].marginLeft, 'gap between the column name and the pill')
+                .toBe('4px');
+            expect(seg[1].marginLeft, 'no gap inside the pill').toBe('0px');
+            expect(seg[2].marginLeft, 'no gap inside the pill').toBe('0px');
 
             // Caps on the ends only — a radius mid-run would show as a notch in
             // the middle of the pill, and would round the active segment's
