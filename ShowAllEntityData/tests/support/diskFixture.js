@@ -80,12 +80,25 @@ const { loadUserscriptPage } = require('./loadPage');
  * and the hydrated data will disagree. Omit it to navigate to the live page,
  * which is what every pre-existing caller does.
  *
+ * `beforeRender` is an async hook called after the fixture file has been
+ * accepted but BEFORE the render click. That window exists for exactly one
+ * caller today — the Relationships interaction-perf arm, which pre-seeds the
+ * `rel-ws2` IndexedDB store (`relWs2Seed.js`). It has to be this window and no
+ * other: IndexedDB is origin-scoped, so there is nothing to write to until the
+ * page has navigated, and `#sa-render-no-filter-confirm` is what ultimately
+ * reaches `initRelationshipsColumn()`, which is the reader. Seeding after the
+ * click is a race the arm would lose silently, by making 2301 live requests
+ * instead of none.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {{ url: string, fixturePath: string, testMode?: boolean,
- *           pageFixtureFile?: string, settingsOverride?: Object<string, *> }} opts
+ *           pageFixtureFile?: string, settingsOverride?: Object<string, *>,
+ *           beforeRender?: (page: import('@playwright/test').Page) => Promise<void> }} opts
  * @returns {Promise<void>}
  */
-async function loadFromDiskFixture(page, { url, fixturePath, testMode, pageFixtureFile, settingsOverride } = {}) {
+async function loadFromDiskFixture(page, {
+    url, fixturePath, testMode, pageFixtureFile, settingsOverride, beforeRender,
+} = {}) {
     await loadUserscriptPage(page, { url, testMode, fixtureFile: pageFixtureFile, settingsOverride });
 
     await page.click('#mb-load-from-disk-btn');
@@ -97,6 +110,8 @@ async function loadFromDiskFixture(page, { url, fixturePath, testMode, pageFixtu
     // `.gz,application/gzip`), which disambiguates the two uniquely.
     const fileInput = page.locator('input[type="file"][accept*="json"]');
     await fileInput.setInputFiles(fixturePath);
+
+    if (beforeRender) await beforeRender(page);
 
     await page.click('#sa-render-no-filter-confirm');
 }

@@ -266,6 +266,25 @@ becomes 5000 again, despite the setting's description promising "0 to disable".
   identical arms. Numbers from different pageTypes are NOT comparable to each
   other — different rows, columns and data; compare arms of the same pageType
   from the same session.
+- *=--rel-arm=absent|collapsed|expanded= measures the injected Relationships
+  column, and it is the one arm that needs a committed cache seed.* That column
+  issues ONE WS/2 request per distinct MBID, 1100 ms apart, so on
+  =artist-releases-dylan='s 2301 rows an unseeded =expanded= arm would spend
+  ~42 minutes making live requests INSIDE the measurement brackets — which is
+  why =perfDescriptors.js= forbids an arm re-enabling the column, and why
+  PERFORMANCE.org Step 35 shipped with no interaction number at all.
+  =--rel-arm=expanded= pre-seeds the =rel-ws2= IndexedDB store from
+  =tests/fixtures/saved-data/rel-ws2-artist-releases-dylan.json.gz= (REAL WS/2
+  data, captured in 24 browse requests by
+  =python3 scripts/capture-rel-ws2-seed.py=), so Phase 1 hits on every MBID and
+  the network queue issues nothing. Three things fail the run rather than
+  letting it publish a wrong number, because every one of these failures
+  otherwise produces a full, plausible set of medians: a missing seed (refused
+  up front), any WS/2 request during a seeded run, and a column that settles
+  under half the seed's url-rel count. Each JSON records =relArm=,
+  =relSeedPath= and =relIconsRendered= — that last one is the arm's actual DOM
+  weight, without which "expanded minus collapsed" has no denominator.
+  =--rel-arm== composes with =--arm==; both appear in the output filename.
 - *On a multi-table arm, read which metrics are page-wide and which are one
   sub-table's.* =columnFilter=, =sort=, =uniqDropCold=/=uniqDropWarm= and both
   =headerCounts*= BADGE assertions act on the descriptor's =SUB_TABLE_INDEX=

@@ -97,6 +97,85 @@ const PICARD_ARMS = {
 const NO_PICARD_COLUMN = new Set(['artist-events', 'artist-releasegroups']);
 
 /**
+ * Relationships-column arms, selected with `--rel-arm=`.
+ *
+ * ── Why these are separate from PICARD_ARMS, and why they are safe ──────────
+ *
+ * `applyPicardArm()` below states the rule these look like a violation of: an
+ * arm must never re-enable the Relationships column, because "that would put
+ * thousands of live requests inside a measurement bracket". That rule is
+ * correct and is why PERFORMANCE.org Step 35 shipped explicitly NOT claiming an
+ * interaction-latency number — `_initRelationshipsColumnImpl()` issues one WS/2
+ * request per distinct MBID with a hard-coded 1100 ms gap, so the Dylan arm's
+ * 2301 rows cost ~42 minutes.
+ *
+ * The `expanded` arm does not break that rule; it removes the reason for it.
+ * `capture-interaction-perf.js` pre-seeds the `rel-ws2` IndexedDB store from a
+ * committed capture of the REAL WS/2 data (`relWs2Seed.js`,
+ * `scripts/capture-rel-ws2-seed.py`) before the render that reads it, so the
+ * column's Phase 1 hits on every MBID, `_missMbids` is empty and the Phase-2
+ * network queue issues nothing. *The seeding is not optional for this arm* —
+ * `--rel-arm=expanded` without a committed seed for that pageType is refused
+ * rather than run, because the failure mode is a slow run rather than an error.
+ *
+ *   absent    — `sa_enable_relationships_column: false`. No column at all: no
+ *               `<th>`, no `<td>`, nothing in any O(rows x columns) walk. This
+ *               is what every committed arm before this one measured, since
+ *               both existing descriptors seed the column off.
+ *   collapsed — the column exists and is walked, but every cell is empty.
+ *               `sa_rel_collapse_threshold: 1` forces it (the shipped default
+ *               of 200 would also collapse a 2301-entity page, but pinning it
+ *               makes the arm independent of that default ever changing).
+ *   expanded  — `sa_rel_collapse_threshold: 0`, i.e. never auto-collapse: the
+ *               pre-9.99.1060 behaviour, with every cell populated from the
+ *               seeded cache.
+ *
+ * `expanded - collapsed` is what Step 35 banked on the DOM side. `collapsed -
+ * absent` is the column's own irreducible cost — the residue Step 32 records as
+ * unfixable for Picard, for the same reason: a collapsed column still has a
+ * `<td>` in every row, deliberately, so no column INDEX moves.
+ *
+ * Expect the win to be SMALLER than Picard's 19%/13%/21%, and this page says
+ * why more precisely than Step 35's prose could: the committed seed covers 2301
+ * entities carrying **2329 icons in total, 1.01 per row**, and *947 of those
+ * entities have no url-rel at all*, so ~41% of cells are empty even when
+ * expanded. A collapsed rel cell saves cloning one `<a><img>` plus a
+ * `.mb-rel-filter-key` span on average, where a collapsed Picard cell saved a
+ * whole per-row anchor walk plus `<ul>/<li>/<button>/<img>` construction and an
+ * `addEventListener`.
+ *
+ * @type {Object<string, Object<string, *>>}
+ */
+const REL_ARMS = {
+    absent:    { sa_enable_relationships_column: false },
+    collapsed: {
+        sa_enable_relationships_column: true,
+        sa_rel_collapse_threshold: 1,
+        sa_rels_idb_enable: true,
+    },
+    expanded: {
+        sa_enable_relationships_column: true,
+        sa_rel_collapse_threshold: 0,
+        sa_rels_idb_enable: true,
+    },
+};
+
+/** Arms that read the seeded cache, and so must not run without one. */
+const REL_ARMS_NEEDING_SEED = new Set(['expanded']);
+
+/**
+ * pageTypes with no `injectedColumns: ['Relationships']`, where `--rel-arm=` is
+ * a no-op.
+ *
+ * `artist-events`' rows link neither a release, a release-group nor a work, so
+ * `_extractMbidFromRow()` returns null for every one of them and no cell ever
+ * gets a `data-mbid` to fetch against. Same shape of limitation as
+ * `NO_PICARD_COLUMN`, and worth saying out loud for the same reason: three
+ * identical arms look like a broken feature rather than an inapplicable page.
+ */
+const NO_REL_COLUMN = new Set(['artist-events']);
+
+/**
  * Turns one descriptor module into the shape the capture scripts consume.
  *
  * The perf-specific fields — the five distinct filter values, and the naming of
@@ -177,11 +256,41 @@ function applyPicardArm(config, arm) {
     return { ...config, seedGmValues: { ...config.seedGmValues, ...PICARD_ARMS[arm] } };
 }
 
+/**
+ * Merges a `--rel-arm=` seed override on top of whatever the descriptor and any
+ * Picard arm already decided.
+ *
+ * Applied AFTER `applyPicardArm()` so the two compose, and so this one wins on
+ * the Relationships keys specifically — which is the whole point, since every
+ * descriptor deliberately seeds `sa_enable_relationships_column: false`.
+ *
+ * @param {Object} config - a `toArm()` result
+ * @param {string|null} relArm
+ * @returns {Object} config, with `seedGmValues` merged
+ * @throws {Error} when `relArm` is not a known arm name.
+ */
+function applyRelArm(config, relArm) {
+    if (!relArm) return config;
+    if (!REL_ARMS[relArm]) {
+        throw new Error(`Unknown rel arm "${relArm}". Supported: ${Object.keys(REL_ARMS).join(', ')}`);
+    }
+    if (NO_REL_COLUMN.has(config.pageType)) {
+        console.warn(`  NOTE: --rel-arm=${relArm} has no effect on ${config.pageType} — its rows `
+            + 'link no release/release-group/work, so no cell ever gets a data-mbid and all '
+            + 'three arms measure the same thing.');
+    }
+    return { ...config, seedGmValues: { ...config.seedGmValues, ...REL_ARMS[relArm] } };
+}
+
 module.exports = {
     DESCRIPTORS,
     PICARD_ARMS,
     NO_PICARD_COLUMN,
+    REL_ARMS,
+    REL_ARMS_NEEDING_SEED,
+    NO_REL_COLUMN,
     toArm,
     pageTypeList,
     applyPicardArm,
+    applyRelArm,
 };
