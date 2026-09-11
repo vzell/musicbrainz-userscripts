@@ -1528,7 +1528,24 @@ toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
-Six controls share that slot, that box, and since 9.99.1060 **one CSS rule**:
+**Seven** controls share that slot and that visual language. Six share **one CSS
+rule**; the seventh — the `⇅ ▲ ▼` sort group — cannot, and the reason matters
+before anyone "finishes the job" by adding it to the selector list: the family
+rule styles **one element as one pill**, and the sort glyphs are **three sibling
+`span.sort-icon-btn`** that must read as one pill. Applying the family rule to
+them gives three pills. They are drawn as a segmented pill instead — see "The
+sort group" below — and the two share values through custom properties
+(`--mb-hdr-pill-*`) so they cannot drift apart.
+
+**The tokens are declared on `table.tbl thead`, not on `.mb-col-hdr-flex`,
+deliberately.** `.mb-picard-col-hdr-btn` is inserted straight into its `<th>`
+because the Picard header is the one header with no `.mb-col-hdr-flex` at all;
+scoping the tokens to the flex row leaves that one control resolving `var()` to
+nothing — silently unstyled while everything else looks fine. Custom properties
+resolve through inheritance at computed-value time, so consuming rules may sit
+earlier in the stylesheet than the declaration.
+
+The six that do share the rule, since 9.99.1060:
 `.mb-caa-col-hdr-btn` (▶🖼 + a real 16px thumbnail `<img>`, not an emoji),
 `.mb-ms-col-hdr-btn` (▶⏱), `.mb-picard-col-hdr-btn` (▶♪),
 `.mb-rel-col-hdr-btn` (▶🔗), `.mb-col-collapse-hdr-btn` (▶N▤) and
@@ -1609,9 +1626,54 @@ informative. Three fixture specs assert these glyph strings **exactly, U+FE0E
 included**, so dropping it fails a test rather than quietly regressing the look.
 
 **The CSS is inside a `GM_addStyle` template literal.** A backtick in a comment
-there terminates the literal and breaks the whole script (cost one debugging
-round); and a CSS `\\XXXX` escape is read as a *JS* escape first, which is why
-this file writes glyphs as literal characters.
+there terminates the literal and breaks the whole script; and a CSS `\\XXXX`
+escape is read as a *JS* escape first, which is why this file writes glyphs as
+literal characters. **Both have now cost a debugging round twice** — the
+backtick one on the very commit that first documented it — and `node --check`
+reports the failure at the *start of the template*, often hundreds of lines
+before the real cause, which is what makes it slow to find. Grep the region you
+just edited for a backtick before reaching for anything else.
+
+### The sort group — a segmented pill, with zero DOM change
+
+`⇅ ▲ ▼` are three sibling spans drawn as one pill: shared background and
+top/bottom border, one hairline between segments, rounded caps on the run's two
+ends only. Four things are load-bearing.
+
+- **No wrapper element, ever — and never the class `sort-icon-btn` on one.**
+  19 spec files locate these as
+  `locator('.sort-icon-btn', { hasText: '▲' }).first()`. `hasText` is a
+  **substring** match, so a wrapper whose text is `⇅▲▼` matches all three
+  queries and, being first in document order, wins `.first()` — every one of
+  those clicks would land on the wrapper's centre instead of the glyph it named.
+  A differently-classed wrapper avoids that but still costs a re-capture of 14
+  snapshot baselines.
+- **The dividers are borders, never a `|` character.** A literal pipe is TEXT,
+  and this header's text is read by ~25 places — most stripping a fixed glyph
+  set by regex, including `makeTableSortableUnified()`'s own re-derivation of
+  `colName`, which feeds `th.dataset.colName` and ~65 consumers from there. It
+  would also break two exact-equality readers: `_exportCleanHeaderText()`'s
+  `g === '▲'` and the `_clickSortIcon(bare)` resolver behind Ctrl+↑/↓/#.
+- **`:first-of-type`/`:last-of-type` are WRONG here.** They count elements of
+  the same TAG, and these spans are neither the first nor the last `<span>` in
+  `.mb-col-hdr-flex`: a `.mb-caa-`/`.mb-ms-`/`.mb-rel-col-hdr-btn` or a
+  `.worklink` glyph can precede them, and `.mb-col-uniq-wrap` **always** follows.
+  Use the run-relative pair — `:not(.sort-icon-btn + .sort-icon-btn)` for the
+  first, `:not(:has(+ .sort-icon-btn))` for the last. Mutated separately to
+  attribute them: `:first-of-type` breaks only PREFIXED columns,
+  `:last-of-type` breaks **every** column.
+  `tests/fixtures/sort-pill-segments.spec.js`'s Length-column test is the sole
+  guard on the first-in-run rule.
+- **Side borders start at 0 and are re-grown.** Leaving the `border` shorthand's
+  right border in place pairs it with the next segment's left border and draws
+  every divider twice — 2px between segments, 1px at the edges. The spec caught
+  this on its first run.
+
+`.sort-icon-active` stays a bare class with `!important` (so it also beats
+`:hover`) and keeps green-on-yellow rather than the family's blue: it is a
+long-standing signal and far easier to find across a wide table. It now fills
+the whole segment, which is only possible because the per-span radius is 0 for
+anything mid-run.
 
 ## Common pitfalls
 

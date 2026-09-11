@@ -260,9 +260,9 @@ Relationships column at all:
   - =.mb-col-filter-input[data-mb-rel-collapsed="1"]= and its =::placeholder=
   - =.mb-uniq-rel-collapsed-note=
 
-*That is style-block text, not markup.* No ELEMENT in any current baseline
-gains an attribute or a class from this change, and that is checked rather than
-assumed:
+*That is style-block text — but see the correction below, because it is NOT the
+whole drift.* No ELEMENT in any current baseline gains an attribute or a class
+from this change, and that much is checked rather than assumed:
 
   - Every rel-carrying entry in =tests/pagetypes.json= seeds
     =sa_enable_relationships_column: false=, so no baseline has a
@@ -283,3 +283,44 @@ pageType seeds the column off is NOT expected and should be investigated.
 No re-capture was performed for this change: it needs a logged-in session
 (=npm run auth:login=; =notes-received= is user-scoped) and the drift is
 inert style text. The nine selectors above are the whole expected delta.
+
+** CORRECTION + the sort-pill round: =data-mb-resize-min= drifts on EVERY <th>
+
+*The entry above understated the drift, and this corrects it.* It said the
+header-control restyles were style-block text only and that no element gained
+anything. The first half is right about classes and attributes being ADDED; the
+second half missed an attribute whose VALUE moves — and it moves on every single
+=<th>= in every baseline.
+
+=makeColumnsResizable()= caches
+
+: th.dataset.mbResizeMin = String(hdrFlex.scrollWidth + 8)
+
+*once*, from measured layout. Every one of these restyles — the six-control pill
+family, the multi-row toggle, the 📊 pair, and now the ⇅▲▼ sort pill — adds
+padding and borders inside =.mb-col-hdr-flex=, so the header gets intrinsically
+wider and that cached number goes up. It is written into the DOM, so it is in
+the baselines.
+
+Measured on =tests/snapshots/release-tracks=, committed baseline vs a fresh
+render of the current branch (fixture =release-tracks-ms-length.html=):
+
+| column           | baseline | now | delta |
+|------------------+----------+-----+-------|
+| =#=              |       71 | 125 |   +54 |
+| =Title=          |       87 | 149 |   +62 |
+| =Artist=         |       94 | 157 |   +63 |
+| =Rating=         |       99 | 163 |   +64 |
+| =Length=         |      128 | 206 |   +78 |
+| =Recording length= |    n/a | 235 |     — |
+
+*The delta is CUMULATIVE across the whole restyle series, not this commit
+alone*, because the baselines have not been re-captured since before any of it.
+So a re-capture will show this on every =<th>= of all 11 =rendered.html= files
+plus =artist-events='s =post-filter.html= / =post-sort.html=.
+
+It is layout-derived and expected. What would NOT be expected, and is worth
+looking at if a diff shows it: a =data-mb-resize-min= that went DOWN, or a
+=<th>= gaining/losing a class or a child element. Re-capture needs a logged-in
+session (=npm run auth:login=; the saved one expired 2026-09-10), so it is a
+merge-time decision.

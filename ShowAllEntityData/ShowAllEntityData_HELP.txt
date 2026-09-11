@@ -1157,8 +1157,9 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
       always available either way — the setting chooses only the starting
       state.
 • The ▶🔗 button, like the ▶🖼 cover-art, ▶⏱ millisecond-length, ▶♪ Picard,
-  ▶N▤ multi-row and 📊 unique-values buttons beside it, is drawn on a small
-  light pill so it stays readable on any column-header colour — including the blue-grey one
+  ▶N▤ multi-row and 📊 unique-values buttons beside it — and the ⇅ ▲ ▼ sort
+  group, which is drawn as one three-segment pill — is on a small light
+  pill so it stays readable on any column-header colour — including the blue-grey one
   injected columns use, and including while that column is sorted (which
   tints the header).
 • A COLLAPSED column says so rather than quietly matching nothing.  Its

@@ -9871,3 +9871,111 @@ be after the family rule**; that is now stated in CLAUDE.md.
 No test changed: every `tests/` reference to `.mb-col-uniq-wrap`/`-btn` is a
 click target or a textContent read, never a style assertion. Full fixture suite:
 174 passed.
+
+## 2026-09-11 — ⇅▲▼ drawn as one segmented pill; `data-mb-resize-min` drift discovered and an earlier claim corrected
+
+Last of the header-control restyles. The three sort glyphs were the only thing
+in the header row still unframed, so a header read as a line of pills with one
+loose trio in the middle. They were never *illegible* (`.sort-icon-btn` is
+`color: black` at full opacity), so this is grouping and consistency, not
+contrast: three glyphs that are one control now look like one control.
+
+Chosen from mockups: one pill, hairline dividers, active segment keeping the
+existing green-on-yellow but filling the whole segment.
+
+### Zero DOM change, and that is load-bearing
+
+No JS at all — pure stylesheet. Not merely the cheap option: **19 spec files**
+locate these as `locator('.sort-icon-btn', { hasText: '▲' }).first()`, and
+`hasText` is a **substring** match. A wrapper carrying that class would have the
+text `⇅▲▼`, match all three queries, and — first in document order — win
+`.first()`, so every one of those clicks would land on the wrapper's centre
+instead of the glyph it named. A differently-classed wrapper avoids that and
+still costs a re-capture of 14 baselines.
+
+The three spans are already contiguous siblings with no whitespace between them,
+so the segments are built from the spans themselves.
+
+### `:first-of-type` / `:last-of-type` are wrong, and they fail differently
+
+They count elements of the same TAG, and these spans are neither the first nor
+the last `<span>` in `.mb-col-hdr-flex` — a `.mb-ms-col-hdr-btn` /
+`.mb-caa-col-hdr-btn` / `.mb-rel-col-hdr-btn` / `.worklink` can precede them, and
+`.mb-col-uniq-wrap` **always** follows. Verified against the committed baselines
+before writing any CSS: the Length column really does read
+`mb-ms-col-hdr-btn > sort-icon-btn ×3 > mb-col-uniq-wrap`.
+
+Run-relative selectors instead: `:not(.sort-icon-btn + .sort-icon-btn)` for the
+first, `:not(:has(+ .sort-icon-btn))` for the last. `:has()` is already used
+seven times in this file — though all in `querySelector`, so this is its first
+CSS use, where an unsupported selector drops the rule silently instead of
+throwing. Worst case is a missing right cap, not a broken control.
+
+**Mutated separately, which changed what the spec claims.** A combined mutation
+failed two tests, so the two halves were mutated independently:
+
+| Mutation | Fails |
+|---|---|
+| only `:first-of-type` | **test 3 alone** (prefixed Length column) |
+| only `:last-of-type` | tests 1 and 3 — `.mb-col-uniq-wrap` always follows, so ▼ is never `:last-of-type` on ANY column |
+
+The spec's header comment originally said the Length test was the only one
+either mutation broke. That was wrong; the decomposition above replaced the
+guess, and the comment now states which test guards which rule.
+
+### Two bugs the work itself caught
+
+- **Double dividers.** The first version kept the `border` shorthand's right
+  border and only zeroed the left, so every divider was drawn twice — 2px
+  between segments, 1px at the pill's edges. The new spec failed on its first
+  run and named it. Side borders now start at 0 and are re-grown per position.
+- **The tokens were scoped where one control could not see them.** The shared
+  `--mb-hdr-pill-*` custom properties were first declared on
+  `.mb-col-hdr-flex` — but `.mb-picard-col-hdr-btn` is inserted straight into
+  its `<th>`, because the Picard header is the one header with no
+  `.mb-col-hdr-flex` at all. That control would have resolved every `var()` to
+  nothing and rendered silently unstyled while the other six looked right.
+  Declared on `table.tbl thead` instead, the nearest ancestor all seven share.
+
+### The backtick trap, twice
+
+`node --check` failed again with `missing ) after argument list` pointing at the
+`GM_addStyle(` line — a **backtick inside a CSS comment** (`` `0 2px` ``)
+terminating the template literal. This is the second time in two days, and the
+first time was on the commit that documented it. The tell is that the reported
+line is the *start of the template*, hundreds of lines before the real cause.
+CLAUDE.md now says to grep the region you just edited for a backtick first.
+
+### An earlier claim corrected: `data-mb-resize-min` drifts on every `<th>`
+
+The previous rounds' notes said the pill restyles were style-block text only and
+that no element gained anything. The first half is right about classes and
+attributes being *added*; it missed an attribute whose **value** moves.
+
+`makeColumnsResizable()` caches `th.dataset.mbResizeMin = String(hdrFlex.scrollWidth + 8)`
+**once**, from measured layout, and writes it into the DOM. Every pill added
+padding and borders inside the flex row, so the number goes up. Measured,
+committed `release-tracks` baseline vs a fresh render of this branch:
+
+| column | baseline | now | delta |
+|---|---|---|---|
+| `#` | 71 | 125 | +54 |
+| `Title` | 87 | 149 | +62 |
+| `Artist` | 94 | 157 | +63 |
+| `Rating` | 99 | 163 | +64 |
+| `Length` | 128 | 206 | +78 |
+
+**Cumulative across the whole series**, not this commit alone — the baselines
+have not been re-captured since before any of it. Recorded in
+`tests/snapshots/registry.org` with the earlier entry explicitly corrected, so a
+re-capture diff is read as expected rather than as a regression. Still not
+re-captured: it needs a logged-in session (`npm run auth:login`; the saved one
+expired 2026-09-10), so it is a merge-time decision.
+
+### Tests
+
+New `tests/fixtures/sort-pill-segments.spec.js`, 3 tests: the segment geometry
+of a plain column, the active segment's yellow fill, and the prefixed-column
+case that is the sole guard on the first-in-run selector. **No existing spec
+needed editing** — the point of the zero-DOM approach. Full fixture suite: 177
+passed.

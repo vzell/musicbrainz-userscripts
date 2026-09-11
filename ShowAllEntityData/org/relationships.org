@@ -192,6 +192,11 @@ background or other stuff we can apply.
 Apply the same treatment to the multi-row counter and glyph, see  [Image #7]. Also increase the font of the counter a
 little bit. See attached image and the raw column header HTML @debug/multi-row-indicator.html
 
+** sort glyphs
+
+Could we somehow treat the sort glyphs in each column header, see [Image #8] also the same, but render them "|"
+separated inside the same kind of oval shaped rectangular box. show me some mockups first
+
 ** TODO outstanding
 
 Three commits on relationships-column-collapse-toggle, still unpushed. Two things outstanding from earlier that I'd still flag:

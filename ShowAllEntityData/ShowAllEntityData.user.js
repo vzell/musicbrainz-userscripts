@@ -33941,7 +33941,104 @@ a { color: #1565c0; }`;
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
-        .sort-icon-btn { cursor: pointer; padding: 0 2px; font-weight: bold; transition: color 0.1s; color: black; border-radius: 2px; }
+        /* ── The ⇅ ▲ ▼ sort control, as ONE segmented pill ──────────────────
+           Three sibling spans that are one control, so they are drawn as one
+           pill with hairline dividers rather than three loose glyphs. Tokens
+           come from .mb-col-hdr-flex, shared with the COLUMN-HEADER TOGGLE
+           FAMILY rule further down, so the sort pill and the ▶🔗/▶⏱/📊 pills
+           cannot drift apart.
+
+           ZERO DOM CHANGE, and that is load-bearing rather than merely tidy.
+           A wrapper element carrying the class "sort-icon-btn" would have the
+           text "⇅▲▼", and 19 spec files locate these as
+           "locator('.sort-icon-btn', { hasText: '▲' }).first()" — "hasText" is
+           a SUBSTRING match, so the wrapper would match all three queries and,
+           being first in document order, win ".first()". Every one of those
+           clicks would then land on the wrapper's centre instead of the glyph
+           it named. A differently-classed wrapper avoids that but still costs
+           a re-capture of 14 snapshot baselines. The spans are already
+           contiguous siblings with no whitespace between them, so the segments
+           can be built from the spans themselves.
+
+           THE DIVIDERS ARE BORDERS, NEVER A "|" CHARACTER. A literal pipe is
+           TEXT, and this header's text is read by ~25 places — most of which
+           strip a fixed glyph set by regex, including
+           makeTableSortableUnified()'s own re-derivation of colName on a second
+           pass, which feeds th.dataset.colName and from there some 65
+           consumers. It would also break two exact-equality readers:
+           _exportCleanHeaderText()'s "g === '▲'" and the _clickSortIcon(bare)
+           resolver behind Ctrl+ArrowUp/Down/#. Same argument the Picard glyph's
+           CSS block makes for ::before over element text.
+
+           WHY NOT :first-of-type / :last-of-type — they are WRONG here, and
+           wrong on exactly the most decorated columns. *-of-type counts
+           elements of the same TAG, and these spans are neither the first nor
+           the last <span> in .mb-col-hdr-flex: a .mb-caa-col-hdr-btn,
+           .mb-ms-col-hdr-btn, .mb-rel-col-hdr-btn or a .worklink/.placelink
+           glyph can precede them, and .mb-col-uniq-wrap always follows. Verified
+           against the committed baselines — the Length column really does read
+           "mb-ms-col-hdr-btn > sort-icon-btn ×3 > mb-col-uniq-wrap". So the run
+           is identified relative to itself instead. */
+        .sort-icon-btn {
+            cursor: pointer;
+            font-size: var(--mb-hdr-pill-size);
+            font-weight: bold;
+            color: black;
+            line-height: 1;
+            /* Was "0 2px". This is the entire click target — Playwright clicks
+               element centres and ~19 specs depend on hitting the right glyph —
+               so it may grow but must never shrink. */
+            padding: 2px 5px;
+            background: var(--mb-hdr-pill-bg);
+            /* Side borders start at 0 and are re-grown below, so that exactly
+               ONE hairline falls between two segments. Leaving the shorthand's
+               right border in place would pair it with the next segment's left
+               border and draw the divider twice — a 2px rule between segments
+               and a 1px one at the pill's edges. */
+            border: 1px solid var(--mb-hdr-pill-border);
+            border-left-width: 0;
+            border-right-width: 0;
+            border-radius: 0;
+            transition: color 0.1s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+        }
+        /* Divider: every segment after the first re-grows its left border, so
+           the rule between two segments is a single shared hairline. */
+        .sort-icon-btn + .sort-icon-btn {
+            border-left-width: 1px;
+        }
+        /* First in the run — not preceded by another sort icon. */
+        .sort-icon-btn:not(.sort-icon-btn + .sort-icon-btn) {
+            border-left-width: 1px;
+            border-top-left-radius: var(--mb-hdr-pill-radius);
+            border-bottom-left-radius: var(--mb-hdr-pill-radius);
+        }
+        /* Last in the run — not followed by another sort icon. :has() is
+           already used elsewhere in this file, so it is not a new support
+           floor; note this is its first use in a CSS RULE though, where an
+           unsupported selector drops the rule silently rather than throwing.
+           Worst case is a pill missing its right cap, not a broken control. */
+        .sort-icon-btn:not(:has(+ .sort-icon-btn)) {
+            border-right-width: 1px;
+            border-top-right-radius: var(--mb-hdr-pill-radius);
+            border-bottom-right-radius: var(--mb-hdr-pill-radius);
+            margin-right: 3px;
+        }
+        .sort-icon-btn:hover {
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
+        }
+        /* Engaged: the currently applied sort direction. Deliberately NOT the
+           family's blue — green-on-yellow is a long-standing signal here and is
+           far easier to find by scanning a wide table. All that changed is that
+           it now fills the whole segment instead of sitting as a ragged
+           background behind the glyph text, which is only possible because the
+           per-span border-radius above is 0 for anything mid-run.
+           Still a bare ".sort-icon-active" selector with !important, so it also
+           beats :hover — a sorted column stays yellow under the pointer. */
         .sort-icon-active { color: Green !important; background-color: #FFFF00 !important; }
 
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */
@@ -34326,6 +34423,39 @@ a { color: #1565c0; }`;
              colName  ⇅  ▲  ▼
              [.mb-col-collapse-hdr-btn ▶N▤/▼N▤ — collapsable columns, margin-left:auto]
              [.mb-col-uniq-wrap [ N 📊 ]]  */
+        /* ── Shared pill tokens for every control in a column header ────────
+           The COLUMN-HEADER TOGGLE FAMILY rule below styles ONE element as one
+           pill, and cannot simply gain a seventh selector for the sort glyphs:
+           those are THREE sibling spans that have to read as one pill, so
+           applying the family rule to them would give three. The segmented
+           rules therefore reproduce the same visual language — which is exactly
+           how two things drift apart. Declaring the values once and referencing
+           them from both makes "these are the same kind of control" structural
+           instead of half a dozen literals that have to keep agreeing. Change a
+           pill's look HERE, not in either consumer.
+
+           Declared on "thead", NOT on .mb-col-hdr-flex, and that matters:
+           .mb-picard-col-hdr-btn is inserted straight into its <th> because the
+           Picard header is the one header in this file with no
+           .mb-col-hdr-flex at all. Scoping the tokens to the flex row would
+           leave that one control resolving var() to nothing — i.e. silently
+           unstyled — while every other member looked fine. "thead" is the
+           nearest ancestor all seven actually share.
+
+           Source order is irrelevant for these: custom properties resolve
+           through inheritance at computed-value time, so the .sort-icon-btn
+           rules may (and do) sit earlier in this stylesheet than the
+           declaration. */
+        table.tbl thead {
+            --mb-hdr-pill-bg:          rgba(255, 255, 255, 0.72);
+            --mb-hdr-pill-bg-hover:    rgba(255, 255, 255, 0.95);
+            --mb-hdr-pill-border:      rgba(0, 0, 0, 0.30);
+            --mb-hdr-pill-border-hover: rgba(0, 0, 0, 0.55);
+            --mb-hdr-pill-radius:      3px;
+            --mb-hdr-pill-size:        0.92em;
+            --mb-hdr-pill-engaged-bg:  rgba(0, 100, 255, 0.20);
+            --mb-hdr-pill-engaged-border: #6f9ada;
+        }
         .mb-col-hdr-flex {
             display: flex;
             align-items: center;
@@ -34520,15 +34650,15 @@ a { color: #1565c0; }`;
         .mb-col-collapse-hdr-btn,
         .mb-col-uniq-wrap {
             cursor: pointer;
-            font-size: 0.92em;
+            font-size: var(--mb-hdr-pill-size);
             line-height: 1;
             opacity: 1;
             user-select: none;
             padding: 1px 4px;
             margin-right: 3px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.72);
-            border: 1px solid rgba(0, 0, 0, 0.30);
+            border-radius: var(--mb-hdr-pill-radius);
+            background: var(--mb-hdr-pill-bg);
+            border: 1px solid var(--mb-hdr-pill-border);
             transition: opacity 0.15s, background 0.15s, border-color 0.15s;
             vertical-align: middle;
             flex-shrink: 0;
@@ -34542,8 +34672,8 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
         .mb-col-uniq-wrap:hover {
-            background: rgba(255, 255, 255, 0.95);
-            border-color: rgba(0, 0, 0, 0.55);
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
         }
         .mb-caa-col-hdr-btn:focus-visible,
         .mb-ms-col-hdr-btn:focus-visible,
@@ -34561,8 +34691,8 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
-            background: rgba(0, 100, 255, 0.20);
-            border-color: #6f9ada;
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
         }
 
         /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
@@ -34604,8 +34734,8 @@ a { color: #1565c0; }`;
            rather than over the header, exactly as the ⏱ retry tint had to move.
            Wins on specificity (two classes) regardless of source order. */
         .mb-col-uniq-wrap.mb-col-uniq-active {
-            background: rgba(0, 100, 255, 0.20);
-            border-color: #6f9ada;
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
         }
 
         /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column
