@@ -182,22 +182,22 @@ from now on the same happens for every toggle, except that newly fetched icons g
 rendered n times in the same data cell, where n equals the nummber of toggling)
 
 * visibility
-** i
+** DONE i
 
 the relationships glyph is not very isible on either the standard rendered column header or when sorted, is there any
 background or other stuff we can apply.
 
-** bug
+** DONE bug
 
 Apply the same treatment to the multi-row counter and glyph, see  [Image #7]. Also increase the font of the counter a
 little bit. See attached image and the raw column header HTML @debug/multi-row-indicator.html
 
-** sort glyphs
+** DONE sort glyphs
 
 Could we somehow treat the sort glyphs in each column header, see [Image #8] also the same, but render them "|"
 separated inside the same kind of oval shaped rectangular box. show me some mockups first
 
-** spaceing
+** DONE spaceing
 
 Two visual glitches
 
@@ -212,10 +212,19 @@ from the URL https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0
 
 See also the complete header row raw HTML at @debug/header-row-resize-bug.html
 
-** TODO outstanding
+** TODO outstnading
 
-Three commits on relationships-column-collapse-toggle, still unpushed. Two things outstanding from earlier that I'd still flag:
+One thing I should own: I hit the GM_addStyle backtick trap a third time — this comment carried both a backtick pair and a ${…} interpolation. It's now cost three rounds, twice on the very commits documenting it. What made recovery slow this time, and what I've written down:
 
-- No interaction-latency measurement for the on-demand column — it needs a pre-seeded rel-ws2 IDB arm, since perfDescriptors.js rightly forbids live requests inside a measurement bracket.
-- Snapshot baselines will gain the new CSS in their <style> block on next re-capture (recorded in registry.org as expected drift).
+- node --check pointed ~160 lines before the real cause
+- the offending string occurs three times in the file, only one inside the stylesheet — my first two search-and-replaces hit the wrong ones
 
+A one-second scripts/ guard that scans the stylesheet region for stray backticks would pay for itself. I've noted it rather than built it, since it's outside what you asked — say the word and it's five minutes.
+
+Branch state
+
+Nine commits on relationships-column-collapse-toggle, still unpushed. Three things I'd want settled at merge time:
+
+- Snapshot re-capture — needs npm run auth:login (session expired 2026-09-10). registry.org records the expected drift, including data-mb-resize-min moving on every <th>.
+- Interaction-latency arm for the Relationships column — needs a pre-seeded rel-ws2 IDB store.
+- Folding WIP.1 into a real version + // @version bump on main.
