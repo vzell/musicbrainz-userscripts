@@ -29958,21 +29958,77 @@ a { color: #1565c0; }`;
      *
      * Drag writes are rAF-gated (`_dragRafPending`) so at most one
      * `col.style.width` write happens per animation frame regardless of how
-     * fast `mousemove` fires, avoiding a per-pixel reflow storm. Each
-     * column's minimum drag width is computed once at setup time (while the
-     * column is still at its natural width) from the header widget's
-     * intrinsic `scrollWidth`, and cached on `th.dataset.mbResizeMin` — it is
-     * NOT recomputed on every drag, since after a column has been widened its
-     * `scrollWidth` would reflect the current (wider) width and permanently
-     * raise the floor, making the column impossible to narrow back down.
-     * That cache is what lets a re-call of this function (e.g. from
-     * `toggleAutoResizeColumns()` after auto-resize has already changed
-     * widths, or after the Restore button removes and re-adds handles) still
-     * use the column's true original minimum.
+     * fast `mousemove` fires, avoiding a per-pixel reflow storm.
+     *
+     * Each column's minimum drag width is measured by `_measureHeaderMinWidth()`
+     * — stamped on `th.dataset.mbResizeMin` here for diagnostics and for the
+     * snapshot baselines, and **re-measured at every mousedown**, which is the
+     * value the drag actually enforces. Read that function's JSDoc before
+     * changing any of this: the previous `scrollWidth`-based cache could not be
+     * refreshed (it ratcheted the floor upward once a column had been widened),
+     * and freezing it at set-up time meant it was taken before the ▶🔗/▶🖼/▶⏱
+     * toggles and the deferred header-count digits existed — so it was wrong on
+     * most columns, in both directions.
      *
      * @param {HTMLTableElement} table - The table to make resizable.
      * @returns {void}
      */
+    /**
+     * The narrowest width at which `th`'s header widget still fits, in px.
+     *
+     * ── Why `max-content` and not `scrollWidth` ─────────────────────────────
+     *
+     * This used to be `hdrFlex.scrollWidth + 8`, cached once at set-up time,
+     * with a long comment explaining that it could not be re-measured later:
+     * `scrollWidth` on an element that FITS returns its `clientWidth`, so after
+     * a column has been widened it reports the current width and the drag floor
+     * ratchets up, making the column impossible to narrow again.
+     *
+     * That reasoning was sound about `scrollWidth` and wrong about the
+     * conclusion, because it made the value un-refreshable at exactly the
+     * moment the header was still incomplete. Measured on a fresh render,
+     * **6 of 21 columns** had a floor smaller than their own header needed, and
+     * on a real page (see `debug/header-row-resize-bug.html`) **20 of 21** did,
+     * the worst by 126 px. Two things arrive after set-up:
+     *
+     *   - **late-injected controls** — `.mb-rel-col-hdr-btn` (43 px),
+     *     `.mb-caa-col-hdr-btn` with its 16 px thumbnail (126 px),
+     *     `.mb-ms-col-hdr-btn`. All are added to `.mb-col-hdr-flex` after
+     *     `makeColumnsResizable()` has already run;
+     *   - **the deferred header-count digits** — `.mb-col-uniq-count` and
+     *     `.mb-col-collapse-count` are written by `_updateAllColHeaderCounts()`,
+     *     which is idle-scheduled and coalesced per table (PERFORMANCE.org
+     *     Steps 3/22), so at set-up time those spans are empty. Worth 4-6 px.
+     *
+     * Dragging then let the column go narrower than its own header, and the
+     * rightmost control — the 📊 unique-values pill — was clipped by the next
+     * column. The header-control pill restyling did not cause this; it made an
+     * existing few-pixel discrepancy wide enough to see.
+     *
+     * `max-content` sizes the element to its content and is **independent of
+     * the current column width**, which is precisely the property `scrollWidth`
+     * lacked. So this can be — and now is — called again at mousedown, when
+     * every control genuinely exists, with no ratchet.
+     *
+     * Costs one forced layout per call. That is fine at set-up and at mousedown;
+     * do NOT call it from `mousemove`, which is rAF-gated for the same reason.
+     *
+     * @param   {HTMLTableCellElement} th
+     * @returns {number} minimum width in px, including the 8 px resizer strip.
+     */
+    function _measureHeaderMinWidth(th) {
+        const _flex = th.querySelector('.mb-col-hdr-flex');
+        // The Picard header has no .mb-col-hdr-flex at all — it is the one
+        // header built outside makeTableSortableUnified(). Fall back to the
+        // cell's own content width.
+        if (!_flex) return th.scrollWidth;
+        const _prev = _flex.style.width;
+        _flex.style.width = 'max-content';
+        const _w = Math.ceil(_flex.getBoundingClientRect().width);
+        _flex.style.width = _prev;
+        return _w + 8;
+    }
+
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
 
@@ -30016,11 +30072,10 @@ a { color: #1565c0; }`;
             let _dragPendingWidth = 0;
 
             // ── Per-column minimum drag width ──────────────────────────────
-            // Computed ONCE here (at set-up time, before any drag has occurred),
-            // when the column is still at its natural/initial width and
-            // _hdrFlex.scrollWidth reflects the true intrinsic minimum of the
-            // header widget (colName + sort icons + unique-values button +
-            // optional collapse-toggle / CAA/EAA header button + 8 px resizer).
+            // Stamped here for diagnostics and for the snapshot baselines, but
+            // the value the DRAG enforces is re-measured at mousedown — see
+            // _measureHeaderMinWidth() for why that is now safe, and why
+            // caching it here was never sufficient.
             //
             // Recomputing inside mousedown is wrong: after the user has dragged
             // a column wider, _hdrFlex.scrollWidth equals the CURRENT (wider)
@@ -30035,16 +30090,36 @@ a { color: #1565c0; }`;
             // makeColumnsResizable invocation during page render — so the cached
             // value always reflects the pre-resize header-content minimum.
             if (!th.dataset.mbResizeMin) {
-                const _initHdrFlex = th.querySelector('.mb-col-hdr-flex');
-                th.dataset.mbResizeMin = String(
-                    _initHdrFlex ? (_initHdrFlex.scrollWidth + 8) : th.scrollWidth
-                );
+                th.dataset.mbResizeMin = String(_measureHeaderMinWidth(th));
             }
-            const _minWidth = Number(th.dataset.mbResizeMin) || 30;
+            // Declared HERE, in the per-column closure scope, not inside the
+            // mousedown handler — `onMouseMove` below is a sibling function and
+            // reads it. Assigned (not initialised) at mousedown, which is where
+            // the authoritative measurement happens.
+            let _minWidth = Number(th.dataset.mbResizeMin) || 30;
 
             resizer.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Re-measure the floor NOW rather than trusting the value
+                // stamped at set-up time: the ▶🔗 / ▶🖼 / ▶⏱ header toggles and
+                // the deferred header-count digits all arrive after that, and a
+                // stale floor let the column be dragged narrower than its own
+                // header — clipping the 📊 pill at the right edge. Safe to
+                // repeat because the measurement is `max-content` and so does
+                // not depend on the column's current width; see
+                // _measureHeaderMinWidth(). One forced layout per mousedown.
+                // The fresh measurement REPLACES the stamped one rather than
+                // being max()'d with it: the old value is unreliable in BOTH
+                // directions. Too small when controls arrived late (the bug
+                // above), and too LARGE when it was taken after auto-resize had
+                // already widened the column — measured on a real page, "Label"
+                // carried a floor of 765 px for a header needing 211, so it
+                // could not be narrowed at all. `max-content` is the truth in
+                // both cases.
+                _minWidth = Math.max(_measureHeaderMinWidth(th), 30);
+                th.dataset.mbResizeMin = String(_minWidth);
 
                 startX = e.pageX;
                 startWidth = th.offsetWidth;

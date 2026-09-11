@@ -9979,3 +9979,116 @@ of a plain column, the active segment's yellow fill, and the prefixed-column
 case that is the sole guard on the first-in-run selector. **No existing spec
 needed editing** — the point of the zero-DOM approach. Full fixture suite: 177
 passed.
+
+## 2026-09-11 — column drag floor was measured before the header was finished (fixed)
+
+Reported as "resize a column to its minimum and the 📊 glyph is cut off a little
+bit on the right", with a screenshot of `Country/Date` on
+`/artist/84c38d3a-…/releases` and the full header row captured to
+`debug/header-row-resize-bug.html`.
+
+### Root cause, measured rather than guessed
+
+`makeColumnsResizable()` computed the drag floor as `hdrFlex.scrollWidth + 8`,
+**once, at set-up time**, and cached it on `th.dataset.mbResizeMin`. Two things
+arrive after that moment:
+
+- **late-injected header controls** — `.mb-rel-col-hdr-btn`, `.mb-caa-col-hdr-btn`
+  (with its 16 px thumbnail), `.mb-ms-col-hdr-btn` are all added to
+  `.mb-col-hdr-flex` *after* `makeColumnsResizable()` has run;
+- **the deferred header-count digits** — `.mb-col-uniq-count` /
+  `.mb-col-collapse-count` are written by `_updateAllColHeaderCounts()`, which
+  is idle-scheduled and coalesced per table (PERFORMANCE.org Steps 3/22), so
+  those spans are empty when the floor is taken.
+
+So the floor was smaller than the header, the drag honoured it, and the
+rightmost control overflowed into the next column.
+
+Quantified against the user's own captured header, re-rendered under the current
+stylesheet and compared to each column's true `max-content` width:
+
+| | |
+|---|---|
+| user's real page | **20 of 21** columns had a floor below their own header; worst 126 px (`CAA`), `Relationships` 76 px, the reported `Country/Date` **37 px** |
+| fresh render of the current build | **6 of 21**; `Relationships` 43 px, four others 4-6 px |
+
+The two figures differ for a reason worth keeping: the first reproduction
+attempt used a fixture where `loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces
+`sa_enable_caa_pics` and `sa_enable_relationships_column` OFF — i.e. it removed
+exactly the two largest contributors and reported **0** affected columns. The
+bug only appears once those are switched back on. A "cannot reproduce" on this
+harness means very little until that override is checked.
+
+**It was wrong in the other direction too.** Where the value happened to get
+cached after auto-resize had already widened a column, the floor was far too
+large: `Label` carried 765 px for a header needing 211, so it could not be
+narrowed at all.
+
+### The fix, and why the old comment argued against it
+
+The existing JSDoc explained at length that the value could *not* be
+re-measured: `scrollWidth` on an element that fits returns its `clientWidth`, so
+after a column has been widened it reports the current width and the floor
+ratchets upward, making the column impossible to narrow again.
+
+That reasoning is correct about `scrollWidth` and led to the wrong conclusion —
+it froze the measurement at the one moment the header was still incomplete.
+`_measureHeaderMinWidth()` measures `max-content` instead, which is
+**independent of the current column width** and therefore has no ratchet. So it
+can be, and now is, called again at every mousedown, when every control
+genuinely exists. One forced layout per mousedown; never from `mousemove`, which
+stays rAF-gated.
+
+The fresh measurement **replaces** the stamped value rather than being `max()`'d
+with it — the old number is unreliable in both directions, and `max()` would
+have preserved the un-narrowable-`Label` half of the bug. (Written as `max()`
+first, caught while re-reading.)
+
+### A scope bug introduced and caught during the fix
+
+`_minWidth` was briefly moved to a `const` inside the mousedown handler — but
+`onMouseMove` is a *sibling* function in the enclosing per-column scope, not a
+closure inside mousedown, so it would have thrown
+`ReferenceError: _minWidth is not defined` on the first movement of every drag.
+`node --check` cannot see this. It is now `let` in the per-column scope, assigned
+at mousedown.
+
+### This was not caused by the pill restyling, but the restyling exposed it
+
+The defect is structural and predates all of it. The pills widened every header
+control, which turned a few-pixel discrepancy into a visible clip.
+
+### Test
+
+`tests/fixtures/column-resize-minimum.spec.js` — asserts, per column, that the
+enforced floor is at least the header's true `max-content` width, after the
+deferred counts have landed (polled, not slept). Mutation-verified: removing the
+mousedown re-measure fails it with `floor 206 < needed 242`.
+
+Two deliberate shapes worth not "simplifying":
+
+- It asserts the **floor**, not "the 📊 is visible after a drag". A drag test
+  would pass as soon as the floor got merely closer, and would hinge on
+  pixel-level hit-testing of an 8 px grip.
+- The expected value is computed **independently** (clone into an off-layout
+  `width: max-content` box) rather than by calling the same helper the fix uses,
+  so the assertion is not circular.
+- `mousedown` is dispatched directly on each grip rather than driven through
+  `page.mouse`: a wide table scrolls most grips out of the viewport, so real
+  coordinates silently miss — which is how the first version of this test failed
+  for the wrong reason.
+- It waits on `waitForColHeaderCountsStable()`, not on "a count span has
+  digits". The count scan is **sliced per column** and coalesced per table, so
+  columns finish at different times: the first version waited for the first span
+  only, passed standalone, and failed under full-suite load with `Catalog#` 2 px
+  short because that column's digits landed after the mousedown.
+
+**A residual worth knowing, deliberately not fixed.** That last failure was a
+real race, not just a test artefact: a mousedown fired *while* the initial count
+scan is still running can still commit a floor a few pixels short, because the
+digits arrive afterwards. Closing it would mean re-measuring during `mousemove`,
+which is rAF-gated precisely to avoid per-pixel layout. The window is the first
+second or so after render and costs at most ~6 px, against 43-126 px for the bug
+actually fixed here.
+
+Full fixture suite: 178 passed.

@@ -1675,6 +1675,42 @@ long-standing signal and far easier to find across a wide table. It now fills
 the whole segment, which is only possible because the per-span radius is 0 for
 anything mid-run.
 
+## Column resize: the drag floor must be measured LATE
+
+`makeColumnsResizable()` stamps `th.dataset.mbResizeMin`, but the value the drag
+enforces is re-measured by `_measureHeaderMinWidth()` **at every mousedown**.
+Both halves matter and the reasons are easy to get backwards.
+
+- **Measure `max-content`, never `scrollWidth`.** `scrollWidth` on an element
+  that FITS returns its `clientWidth` — i.e. the current column width — so a
+  floor derived from it ratchets upward once a column has been widened, and the
+  column can never be narrowed again. `max-content` is independent of the
+  current width, which is what makes re-measuring safe at all.
+- **Measure late, because the header is not finished at set-up time.** The
+  `▶🔗` / `▶🖼` / `▶⏱` toggles are injected into `.mb-col-hdr-flex` *after*
+  `makeColumnsResizable()` runs, and the `.mb-col-uniq-count` /
+  `.mb-col-collapse-count` digits are written later still by the idle-scheduled
+  `_updateAllColHeaderCounts()`. A floor frozen at set-up is short by 4-6 px on
+  a plain column and by 43-126 px on one carrying a late toggle — which let a
+  column be dragged narrower than its own header and clipped the 📊 pill.
+- **The fresh measurement REPLACES the stamped one; do not `max()` them.** The
+  stamped value is unreliable in both directions — too small for the reason
+  above, and too large wherever it was taken after auto-resize had widened the
+  column (measured: a floor of 765 px for a header needing 211, i.e.
+  un-narrowable).
+- **`_minWidth` lives in the per-column closure scope, not inside the mousedown
+  handler.** `onMouseMove` is a sibling function, not a closure inside
+  mousedown, so a `const` there throws `ReferenceError` on the first drag
+  movement — and `node --check` cannot see it.
+
+**When reproducing anything in this area, check the fixture settings first.**
+`loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` and
+`sa_enable_relationships_column` OFF for every fixture spec — i.e. it removes
+the two largest late-injected controls. The first attempt to reproduce this bug
+reported **0 of 21** affected columns for exactly that reason, against **20 of
+21** on the real page. A "cannot reproduce" here means nothing until that
+override has been switched back on.
+
 ## Common pitfalls
 
 - `str_replace` requires the `old_str` to be **unique** in the file — include

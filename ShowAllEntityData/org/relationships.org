@@ -197,6 +197,21 @@ little bit. See attached image and the raw column header HTML @debug/multi-row-i
 Could we somehow treat the sort glyphs in each column header, see [Image #8] also the same, but render them "|"
 separated inside the same kind of oval shaped rectangular box. show me some mockups first
 
+** spaceing
+
+Two visual glitches
+
+1.)
+
+There should be a little space between the actual column name and the sort glyphs in each column header, see [Image #9]
+
+2.)
+
+Additionally when resizing a column to the minimum size, e.g. in the screenshot [Image #9] the "Country/Date" column
+from the URL https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases, the unique value drop down glyph is cut off a little bit on the right side
+
+See also the complete header row raw HTML at @debug/header-row-resize-bug.html
+
 ** TODO outstanding
 
 Three commits on relationships-column-collapse-toggle, still unpushed. Two things outstanding from earlier that I'd still flag:
