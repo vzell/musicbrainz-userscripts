@@ -1,5 +1,5 @@
 * adjustments
-** i
+** DONE i
 
 1.)
 
@@ -15,4 +15,34 @@ screenshot [Image #14] some section names should renamed
 "Event info - Event date" ==> "Event info - Date"
 "Event info - Event name" ==> "Event info - Name"
 "Event info - Event cancelled" ==> "Event info - Cancelled"
+#+end_example
+
+** DONE 2
+
+1.)
+
+On e.g, the following URLs, in the unique value drop down menues, the entity name and comment sections are missing
+
+#+begin_example
+https://musicbrainz.org/user/vzell/subscriptions/artist - @debug/user-subscriptions-artist.html - "Name" column 
+https://musicbrainz.org/cdstub/browse - @debug/top-cd-stubs-initial.html - "Title" column
+#+end_example
+
+2.)
+
+On e.g. https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 add a new section in the unique value drop
+down menue of the "Attributes" column which shows the unique values for each attribute e.g.
+
+#+begin_example
+live
+partial
+cover
+etc.
+#+end_example
+
+
+** TODO On e.g, the following URLs, in the unique value drop down menues, the entity name and comment sections are missing
+
+#+begin_example
+https://musicbrainz.org/cdstub/browse - @debug/top-cd-stubs-final.html - "Title" column
 #+end_example
