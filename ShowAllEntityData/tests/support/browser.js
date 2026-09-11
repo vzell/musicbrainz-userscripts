@@ -55,7 +55,13 @@ const { waitForCaaEaaComplete, waitForRelationshipsComplete } = require('./async
  *   `hasCaaOrEaa`/`hasRelationships` should mirror the target pageType's own
  *   `features.addCAA`/`features.addEAA`/`features.injectedColumns` (does it
  *   include `'Relationships'`?) declarations in `ShowAllEntityData.user.js`'s
- *   `pageDefinitions`. `waitForAutoResize` (default `true`) additionally
+ *   `pageDefinitions`. `hasRelationships` is still safe on a page whose
+ *   Relationships column starts COLLAPSED (the shipped default above
+ *   `sa_rel_collapse_threshold`, since 9.99.1060): that state publishes
+ *   `🔗Rels: collapsed` into the same `#mb-info-display-rel` element, so the
+ *   wait resolves rather than hanging — see `waitForRelationshipsComplete()`'s
+ *   own JSDoc, which also explains why it is the wrong wait on a LARGE
+ *   expanded page. `waitForAutoResize` (default `true`) additionally
  *   waits for the auto-resize-on-load pass (`sa_auto_resize_columns`,
  *   default-on) to finish — via `#mb-resize-btn`'s title flipping to
  *   "Restore…" (`updateResizeButtonState(true)`, the same signal a user

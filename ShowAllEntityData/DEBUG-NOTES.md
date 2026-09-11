@@ -9368,6 +9368,215 @@ the Picard passage about walking every row on every keystroke (unchanged — tha
 is `_picardExtractRowEntities`, not this), and the dropdown note about a section
 that scans every row (unrelated). No new setting, no new UI, no behaviour change.
 
+## 2026-09-10 — Relationships column: on-demand ▶🔗/▼🔗 header toggle, threshold-collapsed (branch relationships-column-collapse-toggle)
+
+Asked as "could we gain the same benefits with the Relationships column as
+commit `4814c70` gave the Picard column". Answer: yes, and the prize is far
+larger — because what defers here is the NETWORK, not DOM construction.
+
+### What shipped
+
+`sa_rel_collapse_threshold` (new, default **200** distinct entities, `0` =
+never). A table whose Relationships column would need more than that many
+distinct MBID lookups starts collapsed: the `<th>` and every
+`td.mb-rel-cell` exist as before, and nothing is fetched until the user
+presses `▶🔗` in that table's own column header. Per table, not per page.
+Multi-table pages also get `#mb-rel-col-hdr-toggle-all-btn`, anchored after
+the Picard all-button (else the last CAA/EAA one, else collapse-all), giving
+collapse-all → CAA-all → EAA-all → Picard-all → Rel-all whichever pass ran
+first.
+
+The arithmetic that motivates it: `_initRelationshipsColumnImpl()` issues one
+WS/2 request per distinct MBID, Phase 2 serialised with a hard-coded 1100 ms
+sleep. Unique-MBID count ≈ row count on these 26 pageTypes, so Bob Dylan's
+2301-release page cost **~42 minutes** of trickling requests, started from the
+render tail before the user had scrolled, plus one cross-origin
+`google.com/s2/favicons` `<img>` per icon. Measured result: **requests issued
+at render go from ~2301 to 0.**
+
+### Why a THRESHOLD and not Picard's flat "collapsed by default"
+
+This is the one real asymmetry with `4814c70` and it drove the whole design. A
+Picard cell contributed `''` to filtering, sorting and the 📊 dropdown, so
+hiding it cost the user nothing. A rel cell is a first-class filter
+participant: its `display:none` `.mb-rel-filter-key` spans feed
+`getCleanColumnText()` (they are deliberately IN `getCleanColumnText`'s input
+and OUT of `getCleanVisibleText`'s — that asymmetry is why `testRowMatch()` and
+`applySubFilter()` each carry a targeted `.mb-rel-cell` fallback),
+`_highlightRelCellIcons()`, `openUniqDrop()`'s `isRelCellCol`/`relIconCounts`,
+and the `rel:<domainKey>` structure modes. So collapsing removes searchable
+content — affordable at 2301 entities, pointless at 12. Sorting is unaffected
+either way: `_sortCellText()` already returned `''` for every rel cell.
+
+Hence also the affordances, and hence that none of them auto-fetches: a tinted
+filter input reading "collapsed — press ▶🔗" (originals stashed in
+`data-mb-rel-ph-saved`/`-title-saved` and restored verbatim, because the
+generic filter-row builder puts a real help `title` there), a
+`.mb-uniq-rel-collapsed-note` row in the 📊 dropdown instead of an empty
+"Relationship icons" section, and `🔗Rels: collapsed` in the status bar. A
+glance at a dropdown must not be able to queue a throttled multi-minute run.
+
+### Four mechanisms that had to change, none with a Picard analogue
+
+1. **The re-entrancy wrapper silently DROPPED work.**
+   `initRelationshipsColumn()` awaited `_relColumnActivePromise` and returned.
+   Correct only while every cell was a candidate from birth; a table expanded
+   mid-flight is not in the running pass's `allCells` snapshot, so it would sit
+   empty forever with no error. Now the wrapper coalesces: `do { … } while
+   (_relColumnRerunPending)`, one pending follow-up. That cannot revive the
+   doubled-icon bug the guard exists for (the one
+   `label-relationships-single-table-column-swap.spec.js` test 2 covers),
+   because the follow-up recomputes AFTER the previous pass finished marking
+   cells `relDone` — the two sets are disjoint by construction, which is exactly
+   what two OVERLAPPING passes could not guarantee.
+2. **Both `runFilter()` gates would have become a per-keystroke regression.**
+   `document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')` matches a
+   collapsed cell FOREVER, so every keystroke would re-read three GM tables
+   (`_initRelMappings()`) and sweep the live tbody + `groupedRows` + `allRows`
+   (`_ensureRelCell()`). Replaced with `_relAnyPendingInExpandedTable()`.
+   **That also fixes a pre-existing instance of the same defect**: the row-build
+   pass creates the `<td>` unconditionally but stamps `data-mbid` only when the
+   row links a release/release-group/work, so a page with any such row already
+   had a permanently unfillable cell keeping the old gate true. The new gate
+   requires `[data-mbid]`.
+3. **The completion signal lost its meaning.** The `!allCells.length` branch
+   counted `td.mb-rel-cell[data-mbid]` page-wide, ignoring `relDone`, so an
+   all-collapsed page reported a whole page of deliberately-empty cells as
+   "already populated from disk-load" — on `#mb-info-display-rel`, which
+   `waitForRelationshipsComplete()` reads as settled. Now counted per table over
+   expanded ones only.
+4. **The pipeline was page-wide.** `allCells`, `uniqueMbids` and the Phase-2
+   queue are one per page; candidate collection is now per table.
+   `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` already removes the
+   column outright from a sub-table whose rows link no release, so "fewer
+   Relationships headers than tables, possibly none" is a normal state the
+   page-wide button tolerates by design.
+
+### Three things found by measuring rather than reasoning
+
+- **The collapsed status message was published and then immediately wiped.**
+  First version set `#mb-info-display-rel` inline in the impl's collapsed
+  branch; the probe read it back empty and hidden.
+  `startFetchingProcess()`'s status block runs `globalStatusDisplay.innerHTML =
+  ''`, `_relGlobalStatusDone = false` and `_setInfoSub('mb-info-display-rel',
+  '')` **synchronously after** the render tail has already called us. The normal
+  completion toast survives only because it is genuinely async. Fixed by
+  extracting `_relPublishCollapsedStatus()` and calling it from BOTH the impl
+  and just after each status reset (fetch path and disk-load path) —
+  deliberately not by deferring with a microtask, which would work only until
+  someone adds an `await` between the tail and the reset.
+- **`_relTableExpanded()` was stamping every table on every page.** Most of its
+  callers run unconditionally, and `runFilter()`'s gate is one of them, so a
+  `data-mb-rel-expanded` attribute would have landed in every rendered table on
+  every pageType — including the eleven committed `tests/snapshots/*/rendered.html`
+  baselines that carry no rel cell at all. It now returns `true` without
+  stamping when the table has no `td.mb-rel-cell`. Caught before running the
+  snapshot harness, by asking what the attribute would do to a page with no such
+  column; that guard is the only reason **no baseline gains real markup** here.
+- **The CSS still drifts every baseline, and the first draft of this entry said
+  otherwise.** `snapshot.js`'s `_serializeWithoutScripts()` strips `<script>`
+  but KEEPS `<style>`, so the nine new selectors land in every `rendered.html`
+  on its next re-capture, on every pageType, column or no column. Found by
+  grepping a `SAVE_HTML=1` run for `data-mb-rel-*`: the only hits on a rel-OFF
+  page are the CSS rule text itself — the same "it is the stylesheet, not a
+  cell" trap `tests/snapshots/registry.org` already documents for
+  `mb-rel-cell`. Recorded there as expected drift, with the exact nine-selector
+  delta and the check that distinguishes it from real markup drift. Not
+  re-captured: that needs a logged-in session (`notes-received` is user-scoped)
+  and the delta is inert style text.
+- **The first mirror test proved nothing.** It collapsed a table that had never
+  been expanded, so its master rows were empty either way — removing the
+  master-row mirroring entirely left all nine tests green. Replaced with a test
+  that expands, collapses, then filters and clears, on the MULTI-table page
+  specifically (`renderFinalTable()` MOVES rows, so on a single-table initial
+  render the live row IS the master and emptying one empties both for free;
+  `renderGroupedTable()` always clones). That version does fail under the
+  mutation. This is CLAUDE.md's "name the guarantee precisely, or the test
+  proves something adjacent" arriving in practice.
+
+### Tests
+
+`tests/fixtures/rel-column-collapse-toggle.spec.js`, 9 tests, network-free.
+Deliberately NOT built on `loadFromDiskFixture()`: see the pre-existing flake
+below. It uses `loadUserscriptPage()` + a routed `page.route()` fetch + the
+"Show all" click, `search-recordings-continuation.spec.js`'s shape, with both
+table modes (`series-releases` single / `releasegroup-releases` multi, whose two
+sub-tables of 6 and 1 entities straddle a threshold of 3 and so make "decided
+per table" falsifiable rather than merely asserted).
+
+The headline assertion is a **request count**, intercepted and exact — "the
+icons are absent" would also pass if they were merely slow, and "the icons
+arrive" would also pass if the column had never been deferred.
+`__saTest.relInitRuns()` and `__saTest.relTableStates()` were added because
+neither is observable otherwise: a collapsed rel cell is byte-identical whether
+a full pass ran and found nothing or no pass ran at all.
+
+Mutation-verified, four mutations:
+
+| Mutation | Fails |
+|---|---|
+| `_expanded = true` (never collapse) | 6 of 9 |
+| restore the old page-wide `runFilter` gate | exactly the keystroke test |
+| drop the `_thr === 0` carve-out | exactly the threshold test |
+| remove the master-row mirroring | exactly the populated-collapse test |
+
+**One thing the threshold test does NOT cover, recorded so it is not mistaken
+for covered:** reading the setting as `Lib.settings.x || 200` — the falsy-zero
+defect `sa_render_threshold` and `sa_chunked_render_threshold` still carry. That
+mutant resolves `0` to `200` and, on a 12-entity page, still reports "expanded",
+so the two readings are indistinguishable there. They diverge only above the
+schema default, which no committed fixture reaches. The code reads it explicitly
+anyway.
+
+Full fixture suite: **173 passed**, no regressions.
+
+### A pre-existing harness flake, measured so it is not mis-attributed
+
+`loadFromDiskFixture()` can fail at `page.click('#sa-render-no-filter-confirm')`
+with "element is outside of the viewport". `#sa-load-dialog-overlay` is
+`position: fixed` with `max-height: calc(100vh - 40px)`, `overflow-y: auto` and
+**no `top`/`left`** — so it takes its static flow position, measured at viewport
+y≈382 on the `releasegroup-releases` shell, leaving its own bottom (and that
+button, at y≈1051) below a 1280×720 viewport. Playwright can scroll the
+overlay's own content but not the overlay itself.
+
+Confirmed pre-existing and independent of this change: it reproduces with an
+exact copy of `picard-cells-survive-rerender.spec.js`'s `beforeEach`, and that
+spec itself failed 1 of 4 on a standalone re-run of unmodified `main` code
+(passing 4 of 4 in the next run). Raising the viewport to 1400×1200 does **not**
+fix it, since the overlay's height tracks `100vh`. Not fixed here — the real fix
+is to give that dialog a `top` — but new specs should avoid the dialog, and a
+`loadFromDiskFixture` timeout should not be read as evidence about the code
+under test.
+
+### Not done, with reasons
+
+- **Interaction-latency arms.** `tests/support/perfDescriptors.js`'s
+  `applyPicardArm()` JSDoc forbids an arm re-enabling this column — *"that
+  would put thousands of live requests inside a measurement bracket"* — and it
+  is right. A `rel-absent|rel-collapsed|rel-expanded` arm needs the `rel-ws2`
+  store pre-seeded first (`tests/live/idb-cache-hit-bigbox.spec.js` is the
+  existing seed-IDB idiom). So nothing was added to `tests/MEASUREMENTS.org`:
+  the only number this change has is the request count, and it is in the spec.
+  Expect the DOM-side win to be well under Picard's 19%/13%/21% — a collapsed
+  rel cell saves cloning an `<a><img>` plus one span, where a collapsed Picard
+  cell saved a whole per-row anchor walk plus `<ul>/<li>/<button>/<img>`
+  construction and an `addEventListener`.
+- **No live spec.** The fixture spec covers both table modes and the guarantee
+  is "nothing is fetched", which a fixture pins exactly and a live page pins
+  only slowly. Worth adding if the toggle grows behaviour that depends on real
+  WS/2 payload shapes.
+- **`_relRetryMbids()`'s dead flag.** It sets and clears `_relRetryActive`
+  *synchronously around a fire-and-forget async call*, so the flag is already
+  `false` by the time Phase 2 reads it. Harmless only because the caches are
+  physically deleted first. Found while reading the retry path; deliberately not
+  folded in (one logical change per session).
+- **`sa_enable_relationships_column`'s own description names 4 pageTypes**
+  (`artist-releasegroups, artist-releases, label-releases, releasegroup-releases`)
+  when 26 declare the column, and the Statistics panel's TTL-eviction prose says
+  "7-day TTL" against a 30-day default. Both are pre-existing doc drift, left
+  for a separate docs commit.
+
 ## 2026-09-10 — uniq-dropdown quickfilter only highlighted the FIRST occurrence of a match (fixed, branch fix-uniq-quickfilter-highlight-all-matches)
 
 Reported: typing "as" into the 📊 unique-values dropdown's own quickfilter box
@@ -9531,3 +9740,558 @@ sticky Title cell (must be exactly 1 — the Comment column's overwrite
 semantics hide the leak that appendChild does not). Mutation-checked: fails
 with `[1, 1, 4, 1]` on the pre-fix code (Row C absorbed A's, B's, and its own
 lastupdate spans), passes after.
+## 2026-09-11 — Relationships column: multiplying icons after repeated toggles (fixed, branch relationships-column-collapse-toggle)
+
+Reported against the previous day's on-demand column, with a snapshot:
+`debug/relationships-multiplying.html`. Four observations, all reproduced:
+
+1. First expand — every icon renders once. Correct.
+2. Collapse mid-fetch — rendered icons vanish, but **new icons keep appearing**.
+3. Re-expand — the already-fetched ones come back, the newly-arrived ones are
+   **doubled**.
+4. Every further toggle multiplies by n, where n is the number of toggles.
+
+The snapshot bears this out exactly: 11 cells hold a **single distinct href
+repeated 4 or 5 times**, against a distribution of 0/1/2/4/5 anchors per cell.
+
+### Root cause
+
+**`_initRelationshipsColumnImpl()` never awaited its Phase-2 queue.** The tail
+is `queue.then(() => { … })` — fire-and-forget — so the function resolves as
+soon as *Phase 1* does, `_relColumnActivePromise` goes null, and the queue keeps
+trickling one request per 1100 ms with nothing tracking it. So:
+
+- **Collapse** cleared the cells and `relDone`, but the detached queue still
+  held live references to those `<td>`s and kept calling `_populateCells()` on
+  them → observation 2.
+- **Re-expand** found the re-entrancy guard free, so it started a *second* pass
+  over every cell the first queue had not reached. Both queues then called
+  `_relAppendIcon()`, which **appends** → observation 3. n toggles, n concurrent
+  queues, n copies → observation 4.
+
+So the guard `_relColumnActivePromise` has never covered Phase 2 and never did;
+it only ever serialised calls that arrived inside Phase 1's window, which is why
+it fixed the cross-tab hydrate race it was written for and nothing else. **The
+previous day's JSDoc on the coalescing loop asserted the opposite** — that a
+follow-up pass's candidate set was "disjoint by construction" because the
+previous pass had finished marking cells `relDone`. That was simply false, and
+saying it confidently is how this shipped. Corrected in place.
+
+This also means a variant was **pre-existing on `main`**: `runFilter()`'s gate
+calls `initRelationshipsColumn()` whenever any cell lacks `relDone`, which is
+true throughout Phase 2 — so a filter keystroke mid-fetch started a second
+queue there too. Same family as the doubled-icon bug
+`label-relationships-single-table-column-swap.spec.js` test 2 covers.
+
+### Fix — three changes, and only ONE of them is load-bearing
+
+Recorded this way round on purpose, because the intuitive ranking is wrong and
+the mutation run said so:
+
+| Change | Reverting it fails |
+|---|---|
+| `_relCellWritable()` — refuse to write into a table whose column is collapsed | **the regression test** |
+| `_populateCells()` replaces instead of appending (`td.textContent = ''`) | nothing |
+| `_relQueueStillWants()`'s PRE-sleep skip | nothing |
+
+- **`_relCellWritable()` is the fix.** One check, applied inside
+  `_populateCells()` so every writer — Phase 1's IDB hits and Phase 2's network
+  answers alike — goes through it. A detached cell (`closest()` → null, i.e. a
+  re-render replaced the row the pass captured) is deliberately treated as
+  writable, preserving the existing behaviour where `_srcCells` carries the
+  content to the masters.
+- **`_relQueueStillWants()`'s `!relDone` half is the second correctness guard**
+  and stops a second queue re-answering an mbid the first already wrote. Its
+  pre-sleep placement is a cost win only — the post-sleep check still prevents
+  the request, so reverting the pre-sleep one fails no test. What it buys is
+  that a superseded queue drains at microtask speed instead of holding a
+  ~40-minute timer chain on a large listing.
+- **The idempotency of `_populateCells()` is defence in depth, and is labelled
+  as such in the code.** Kept rather than dropped because the two guards above
+  make overlap *unreachable* while this makes it *harmless*, and every
+  doubled-icon bug in this file's history is a caller reaching a non-idempotent
+  writer twice. The one path with no `relDone` guard in front of it is Phase 1:
+  two passes both resolving the same mbid from IndexedDB would both write.
+  Unreachable today only because the coalescing guard stops two passes sharing a
+  Phase-1 window — which is a conjunction of three separate properties, not an
+  invariant.
+
+### Explicitly rejected: a cancellation epoch
+
+The obvious design — bump a counter on every toggle and have in-flight passes
+abort — is wrong here. A toggle on ONE table would cancel a DIFFERENT table's
+legitimate in-flight fetch, and on a multi-table page that is the normal case.
+The question is per mbid and has to be re-asked at the moment each queue step
+runs, which is what `_relQueueStillWants()` does. Also rejected: `await queue`
+to make the guard honest — it would serialise tables and block a re-expand
+behind a stale queue for as long as the original fetch had left to run.
+
+### Test
+
+One test added to `tests/fixtures/rel-column-collapse-toggle.spec.js`:
+"toggling MID-FETCH never multiplies an icon, and a collapsed column stays
+empty". Six expand/collapse cycles, every one of them landing inside the
+~13 s window that 12 entities at 1100 ms apart provide.
+
+**`maxPerCell` is the assertion that pins this**, not a page-wide anchor total:
+the total grows legitimately as the fetch progresses, so only a per-cell maximum
+distinguishes "12 rows filled in" from "6 rows filled in twice". Before the fix
+the test reported 4 anchors appearing in a *collapsed* column and then 19
+anchors across 12 cells with 7 duplicated; after it, `maxPerCell` is 1 at every
+sample and the end state is 12/12 with zero duplicates.
+
+It also asserts the rate-limit guarantee directly — `ws2.length` must not grow
+while the column is collapsed — and that six cycles still issue **exactly 12
+requests for 12 distinct entities**, so the L1 promise cache is serving the
+repeats and nothing is re-fetched.
+
+Full fixture suite: 174 passed.
+
+## 2026-09-11 — column-header toggles were illegible on injected/sorted headers; four blocks folded into one family
+
+Reported with two screenshots: `▶🔗` on a `Relationships` header, plain and
+sorted, in both cases barely visible. Diagnosed, six options mocked against the
+real backgrounds for the user to choose from, and the pick applied to **all
+four** toggles rather than just the one that was reported.
+
+### Why it was invisible — four things compounding
+
+1. **`opacity: 0.60` at rest**, inherited from `.mb-ms-col-hdr-btn`, which was
+   designed for the plain `#e8e8e8` header where 40% washout still reads.
+2. **🔗 is a colour emoji and renders blue-grey. The injected-column header is
+   `#b8b8d0` — also blue-grey.** Same hue family at the same lightness, so
+   almost no figure/ground separation. This is the real culprit, and it is
+   exactly why `▶♪` on the Picard header never had the problem: **♪ (U+266A) is
+   a text-presentation character** that inherits `#333`.
+3. **Sorting made it worse, not better.** The first sort column blends
+   `rgba(255,200,80,.60)` over the header (`_MSCOL_HDR_TINT_RGBA`), giving
+   `rgb(227,194,131)` — a cool glyph on a warm ground, both mid-tone.
+4. **Transparent background and border at rest**, so it did not read as a
+   control at all.
+
+### What shipped
+
+The four blocks (`.mb-caa-`/`.mb-ms-`/`.mb-picard-`/`.mb-rel-col-hdr-btn`) were
+four near-identical copies of the same declarations. They are now **one rule**,
+so "these are the same kind of control" is structural rather than something four
+blocks have to keep agreeing on. Resting state is a light pill
+(`rgba(255,255,255,.72)` + a real border) at full opacity and `0.92em`, which
+fixes every header/sort combination at once — including a header the user
+recoloured via `sa_ui_thead_th_bg`/`sa_ui_thead_th_injected_bg`, which no
+hand-picked glyph colour could.
+
+Glyph presentation had to be handled per button, because the four differ more
+than they look:
+
+| Button | Glyph from | Treatment |
+|---|---|---|
+| `.mb-rel-col-hdr-btn` | CSS `::before` | 🔗 + U+FE0E |
+| `.mb-picard-col-hdr-btn` | CSS `::before` | none needed — ♪ is already text |
+| `.mb-ms-col-hdr-btn` | element text, `_msUpdateColHdrBtn()` | ⏱ + U+FE0E, in the JS strings |
+| `.mb-caa-col-hdr-btn` | child `<span>` + real 16px `<img>` | no emoji at all |
+
+The `.mb-caa-col-hdr-btn` comment claiming `▶🖼/▼🖼` was **wrong** and has been
+corrected: that button has never contained an emoji, it contains a thumbnail.
+
+U+FE0E degrades safely: where a font declines to honour it the glyph falls back
+to the colour emoji *on a white pill*, which is still the reported problem
+solved. `⏳` (loading) deliberately keeps its colour — transient and
+informative.
+
+### Two traps, both found by doing it rather than by reasoning
+
+- **Raising the resting opacity silently merged two ⏱ states.** The settled
+  "no sub-second data on record" state had **no CSS rule of its own** — `grep -c
+  '\[aria-disabled'` returned **0**. Its dimming was a side effect of the
+  family's `opacity: 0.60`, so lifting that to 1 would have made `unavailable`
+  look identical to a normal available button, collapsing it into the `retry`
+  state CLAUDE.md's millisecond section is explicit about keeping distinct ("one
+  is worth a second click, the other is not"). Now an explicit
+  `[aria-disabled="true"]` rule, and `work-recordings-ms-length.spec.js` pins
+  the dimming — mutation-verified: setting that rule's opacity back to 1 fails
+  the test. **Before changing any base declaration in a shared rule, check which
+  states were relying on inheriting it.**
+- **A state tint's alpha is relative to what is behind it.** The retry yellow
+  moved `0.45 → 0.55` (hover `0.65 → 0.75`) and the engaged blue `0.13 → 0.20`,
+  purely because they now sit over a white pill rather than over the header
+  itself. The existing spec caught the retry change immediately, which is the
+  system working: that tint is how `retry` is told apart from `unavailable`, so
+  it *should* be pinned exactly. Updated with the reason recorded beside it.
+
+### Two self-inflicted rounds worth not repeating
+
+Both are properties of the `GM_addStyle` template literal the CSS lives in:
+
+- **A backtick in a CSS comment terminates the literal** and breaks the entire
+  userscript. `node --check` reported the failure ~50 lines *before* the real
+  cause, at the start of the template, which makes it easy to misread.
+- **A CSS `\XXXX` escape is read as a JS escape first.** `content: '\25B6'`
+  does not survive. The file's own convention — literal glyph characters — is
+  the reason nothing had hit this before.
+
+### Tests
+
+Nothing new was written for the restyle itself beyond the `[aria-disabled]` pin;
+three existing specs already asserted the ⏱ glyph text and now assert it
+**exactly, U+FE0E included** (`GLYPH_SECONDS`/`GLYPH_MILLIS` named in
+`release-tracks-ms-length.spec.js`), so dropping the text-presentation selector
+is a test failure rather than a silent look regression. Full fixture suite: 174
+passed.
+
+The six-option comparison the pick was made from is an artifact, not a committed
+file: https://claude.ai/code/artifact/8e450e55-7d3e-4691-a5e8-ed65a42878e0
+
+## 2026-09-11 — multi-row ▶N▤ toggle joins the header-control family; its count was two-thirds header size
+
+Follow-up to the entry above, from a screenshot of a `Date` column header:
+`▶2▤` was as washed out as `▶🔗` had been, and its count was smaller still.
+
+`.mb-col-collapse-hdr-btn` is now the **fifth** member of the shared
+column-header control rule, so it gets the same resting pill, full opacity and
+`0.92em` as the other four, plus an engaged tint keyed on `aria-expanded` (its
+state attribute — the others use `aria-pressed`).
+
+**The count was the real finding: `em` compounds.** `.mb-col-collapse-count` was
+`0.82em` inside a `0.80em` button, i.e. **`0.66em` of the header** — so the one
+piece of actual INFORMATION in that control was the smallest thing in the entire
+header row. It is `0.92em` inside a `0.92em` button now: `0.85em` of the header,
+**up 29%**, and still deliberately a shade smaller than the ▶/▤ glyphs around
+it. Worth generalising: anything nested inside one of these buttons has to be
+sized against the button's own `font-size`, not against the header's.
+
+**Two per-control deltas that must not be tidied into the family**, both
+recorded in CLAUDE.md:
+
+- `margin-right: 0`, because this control is not laid out by the family's
+  margin at all. It carries an inline `margin-left: auto` (set alongside
+  clearing `.mb-col-uniq-wrap`'s own inline one, see `initCollapsableColumns`),
+  so BOTH it and the uniq wrap have `margin-left: auto` and the flex row splits
+  the free space between them. That split is what produces the gap before 📊; a
+  `margin-right` here would sit inside that gap and only make the pair look
+  misaligned.
+- No entry in the family's `:focus-visible` group: this control is already in
+  the page-wide `:focus-visible` list near the end of the stylesheet, which uses
+  `!important` and would override the family's rule anyway.
+
+**Not touched, and offered rather than assumed:** `.mb-col-uniq-wrap`'s own
+`35 📊` pair, whose count is `0.72em` at `opacity: 0.60` and is arguably the
+next-least-legible thing in the header. It is a different kind of control (always
+present, not a toggle), so it was left alone pending a decision rather than
+swept in.
+
+Nothing in `tests/` asserts on these controls' styling — the four specs that
+touch `.mb-col-collapse-count` all read its textContent — so no test changed.
+Full fixture suite: 174 passed. One run showed the known pre-existing
+`loadFromDiskFixture` viewport flake (documented 2026-09-10); the spec passes
+4/4 standalone and the suite passed clean on re-run.
+
+## 2026-09-11 — 📊 unique-values pair joins the header-control family (sixth member)
+
+Asked for after the multi-row entry above, which had flagged it as the
+next-least-legible thing in the header and left it pending a decision.
+
+`.mb-col-uniq-wrap` is now the **sixth** member of the shared rule. Its two
+children were the faintest things in the whole header:
+`.mb-col-uniq-btn` (📊) at **`opacity: 0.45`** and `.mb-col-uniq-count` at
+`0.72em` / `opacity: 0.60`. Both are at full opacity now — the pill provides the
+contrast the dimming was standing in for — and the count is `0.92em` of the
+wrapper, i.e. **0.85em of the header, up 18%**, still a shade smaller than the
+📊 beside it, which is the same relationship `.mb-col-collapse-count` has to its
+own glyphs.
+
+### The em-compounding trap, a second time
+
+`.mb-col-uniq-btn` was `0.80em` of the header. The wrapper had **no**
+`font-size`, so that was its absolute size. Joining the family gives the wrapper
+`0.92em` — at which point leaving `0.80em` on the child would have made the
+glyph **smaller** (0.80 × 0.92 = 0.74em) while looking untouched in the diff. It
+is `1em` now, i.e. the wrapper's 0.92em. Same trap as the multi-row count, hit
+from the opposite direction: there a literal was too small, here an unchanged
+literal would have *become* too small.
+
+### A cascade bug caught before it shipped
+
+`.mb-col-uniq-wrap`'s own block sits **earlier** in the stylesheet than the
+family rule, and both are single-class selectors — so source order decides, and
+the family's `margin-right: 3px` would have beaten the `margin-right: 0` this
+control needs as the flex row's last element. The layout deltas were moved to
+sit after the family, next to `.mb-col-collapse-hdr-btn`'s, with a pointer left
+behind at the descriptive comment. **Any per-control delta in this family has to
+be after the family rule**; that is now stated in CLAUDE.md.
+
+### Two states re-tuned for the pill beneath them
+
+- `.mb-col-uniq-active` (a filter from this column's dropdown is engaged):
+  `rgba(0,100,255,0.13) → 0.20` plus a border, matching the family's
+  `[aria-pressed]`/`[aria-expanded]` arm. Same reason the ⏱ retry yellow had to
+  move: the alpha is relative to what is behind it, and that is now white rather
+  than the header. It wins on specificity (two classes) regardless of order, so
+  no move was needed.
+- The two `:hover` rules that lifted the children from 0.45/0.60 to full opacity
+  are **deleted**, not kept — at full opacity they were dead CSS, and the pill's
+  own hover is what responds now.
+
+No test changed: every `tests/` reference to `.mb-col-uniq-wrap`/`-btn` is a
+click target or a textContent read, never a style assertion. Full fixture suite:
+174 passed.
+
+## 2026-09-11 — ⇅▲▼ drawn as one segmented pill; `data-mb-resize-min` drift discovered and an earlier claim corrected
+
+Last of the header-control restyles. The three sort glyphs were the only thing
+in the header row still unframed, so a header read as a line of pills with one
+loose trio in the middle. They were never *illegible* (`.sort-icon-btn` is
+`color: black` at full opacity), so this is grouping and consistency, not
+contrast: three glyphs that are one control now look like one control.
+
+Chosen from mockups: one pill, hairline dividers, active segment keeping the
+existing green-on-yellow but filling the whole segment.
+
+### Zero DOM change, and that is load-bearing
+
+No JS at all — pure stylesheet. Not merely the cheap option: **19 spec files**
+locate these as `locator('.sort-icon-btn', { hasText: '▲' }).first()`, and
+`hasText` is a **substring** match. A wrapper carrying that class would have the
+text `⇅▲▼`, match all three queries, and — first in document order — win
+`.first()`, so every one of those clicks would land on the wrapper's centre
+instead of the glyph it named. A differently-classed wrapper avoids that and
+still costs a re-capture of 14 baselines.
+
+The three spans are already contiguous siblings with no whitespace between them,
+so the segments are built from the spans themselves.
+
+### `:first-of-type` / `:last-of-type` are wrong, and they fail differently
+
+They count elements of the same TAG, and these spans are neither the first nor
+the last `<span>` in `.mb-col-hdr-flex` — a `.mb-ms-col-hdr-btn` /
+`.mb-caa-col-hdr-btn` / `.mb-rel-col-hdr-btn` / `.worklink` can precede them, and
+`.mb-col-uniq-wrap` **always** follows. Verified against the committed baselines
+before writing any CSS: the Length column really does read
+`mb-ms-col-hdr-btn > sort-icon-btn ×3 > mb-col-uniq-wrap`.
+
+Run-relative selectors instead: `:not(.sort-icon-btn + .sort-icon-btn)` for the
+first, `:not(:has(+ .sort-icon-btn))` for the last. `:has()` is already used
+seven times in this file — though all in `querySelector`, so this is its first
+CSS use, where an unsupported selector drops the rule silently instead of
+throwing. Worst case is a missing right cap, not a broken control.
+
+**Mutated separately, which changed what the spec claims.** A combined mutation
+failed two tests, so the two halves were mutated independently:
+
+| Mutation | Fails |
+|---|---|
+| only `:first-of-type` | **test 3 alone** (prefixed Length column) |
+| only `:last-of-type` | tests 1 and 3 — `.mb-col-uniq-wrap` always follows, so ▼ is never `:last-of-type` on ANY column |
+
+The spec's header comment originally said the Length test was the only one
+either mutation broke. That was wrong; the decomposition above replaced the
+guess, and the comment now states which test guards which rule.
+
+### Two bugs the work itself caught
+
+- **Double dividers.** The first version kept the `border` shorthand's right
+  border and only zeroed the left, so every divider was drawn twice — 2px
+  between segments, 1px at the pill's edges. The new spec failed on its first
+  run and named it. Side borders now start at 0 and are re-grown per position.
+- **The tokens were scoped where one control could not see them.** The shared
+  `--mb-hdr-pill-*` custom properties were first declared on
+  `.mb-col-hdr-flex` — but `.mb-picard-col-hdr-btn` is inserted straight into
+  its `<th>`, because the Picard header is the one header with no
+  `.mb-col-hdr-flex` at all. That control would have resolved every `var()` to
+  nothing and rendered silently unstyled while the other six looked right.
+  Declared on `table.tbl thead` instead, the nearest ancestor all seven share.
+
+### The backtick trap, twice
+
+`node --check` failed again with `missing ) after argument list` pointing at the
+`GM_addStyle(` line — a **backtick inside a CSS comment** (`` `0 2px` ``)
+terminating the template literal. This is the second time in two days, and the
+first time was on the commit that documented it. The tell is that the reported
+line is the *start of the template*, hundreds of lines before the real cause.
+CLAUDE.md now says to grep the region you just edited for a backtick first.
+
+### An earlier claim corrected: `data-mb-resize-min` drifts on every `<th>`
+
+The previous rounds' notes said the pill restyles were style-block text only and
+that no element gained anything. The first half is right about classes and
+attributes being *added*; it missed an attribute whose **value** moves.
+
+`makeColumnsResizable()` caches `th.dataset.mbResizeMin = String(hdrFlex.scrollWidth + 8)`
+**once**, from measured layout, and writes it into the DOM. Every pill added
+padding and borders inside the flex row, so the number goes up. Measured,
+committed `release-tracks` baseline vs a fresh render of this branch:
+
+| column | baseline | now | delta |
+|---|---|---|---|
+| `#` | 71 | 125 | +54 |
+| `Title` | 87 | 149 | +62 |
+| `Artist` | 94 | 157 | +63 |
+| `Rating` | 99 | 163 | +64 |
+| `Length` | 128 | 206 | +78 |
+
+**Cumulative across the whole series**, not this commit alone — the baselines
+have not been re-captured since before any of it. Recorded in
+`tests/snapshots/registry.org` with the earlier entry explicitly corrected, so a
+re-capture diff is read as expected rather than as a regression. Still not
+re-captured: it needs a logged-in session (`npm run auth:login`; the saved one
+expired 2026-09-10), so it is a merge-time decision.
+
+### Tests
+
+New `tests/fixtures/sort-pill-segments.spec.js`, 3 tests: the segment geometry
+of a plain column, the active segment's yellow fill, and the prefixed-column
+case that is the sole guard on the first-in-run selector. **No existing spec
+needed editing** — the point of the zero-DOM approach. Full fixture suite: 177
+passed.
+
+## 2026-09-11 — column drag floor was measured before the header was finished (fixed)
+
+Reported as "resize a column to its minimum and the 📊 glyph is cut off a little
+bit on the right", with a screenshot of `Country/Date` on
+`/artist/84c38d3a-…/releases` and the full header row captured to
+`debug/header-row-resize-bug.html`.
+
+### Root cause, measured rather than guessed
+
+`makeColumnsResizable()` computed the drag floor as `hdrFlex.scrollWidth + 8`,
+**once, at set-up time**, and cached it on `th.dataset.mbResizeMin`. Two things
+arrive after that moment:
+
+- **late-injected header controls** — `.mb-rel-col-hdr-btn`, `.mb-caa-col-hdr-btn`
+  (with its 16 px thumbnail), `.mb-ms-col-hdr-btn` are all added to
+  `.mb-col-hdr-flex` *after* `makeColumnsResizable()` has run;
+- **the deferred header-count digits** — `.mb-col-uniq-count` /
+  `.mb-col-collapse-count` are written by `_updateAllColHeaderCounts()`, which
+  is idle-scheduled and coalesced per table (PERFORMANCE.org Steps 3/22), so
+  those spans are empty when the floor is taken.
+
+So the floor was smaller than the header, the drag honoured it, and the
+rightmost control overflowed into the next column.
+
+Quantified against the user's own captured header, re-rendered under the current
+stylesheet and compared to each column's true `max-content` width:
+
+| | |
+|---|---|
+| user's real page | **20 of 21** columns had a floor below their own header; worst 126 px (`CAA`), `Relationships` 76 px, the reported `Country/Date` **37 px** |
+| fresh render of the current build | **6 of 21**; `Relationships` 43 px, four others 4-6 px |
+
+The two figures differ for a reason worth keeping: the first reproduction
+attempt used a fixture where `loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces
+`sa_enable_caa_pics` and `sa_enable_relationships_column` OFF — i.e. it removed
+exactly the two largest contributors and reported **0** affected columns. The
+bug only appears once those are switched back on. A "cannot reproduce" on this
+harness means very little until that override is checked.
+
+**It was wrong in the other direction too.** Where the value happened to get
+cached after auto-resize had already widened a column, the floor was far too
+large: `Label` carried 765 px for a header needing 211, so it could not be
+narrowed at all.
+
+### The fix, and why the old comment argued against it
+
+The existing JSDoc explained at length that the value could *not* be
+re-measured: `scrollWidth` on an element that fits returns its `clientWidth`, so
+after a column has been widened it reports the current width and the floor
+ratchets upward, making the column impossible to narrow again.
+
+That reasoning is correct about `scrollWidth` and led to the wrong conclusion —
+it froze the measurement at the one moment the header was still incomplete.
+`_measureHeaderMinWidth()` measures `max-content` instead, which is
+**independent of the current column width** and therefore has no ratchet. So it
+can be, and now is, called again at every mousedown, when every control
+genuinely exists. One forced layout per mousedown; never from `mousemove`, which
+stays rAF-gated.
+
+The fresh measurement **replaces** the stamped value rather than being `max()`'d
+with it — the old number is unreliable in both directions, and `max()` would
+have preserved the un-narrowable-`Label` half of the bug. (Written as `max()`
+first, caught while re-reading.)
+
+### A scope bug introduced and caught during the fix
+
+`_minWidth` was briefly moved to a `const` inside the mousedown handler — but
+`onMouseMove` is a *sibling* function in the enclosing per-column scope, not a
+closure inside mousedown, so it would have thrown
+`ReferenceError: _minWidth is not defined` on the first movement of every drag.
+`node --check` cannot see this. It is now `let` in the per-column scope, assigned
+at mousedown.
+
+### This was not caused by the pill restyling, but the restyling exposed it
+
+The defect is structural and predates all of it. The pills widened every header
+control, which turned a few-pixel discrepancy into a visible clip.
+
+### Test
+
+`tests/fixtures/column-resize-minimum.spec.js` — asserts, per column, that the
+enforced floor is at least the header's true `max-content` width, after the
+deferred counts have landed (polled, not slept). Mutation-verified: removing the
+mousedown re-measure fails it with `floor 206 < needed 242`.
+
+Two deliberate shapes worth not "simplifying":
+
+- It asserts the **floor**, not "the 📊 is visible after a drag". A drag test
+  would pass as soon as the floor got merely closer, and would hinge on
+  pixel-level hit-testing of an 8 px grip.
+- The expected value is computed **independently** (clone into an off-layout
+  `width: max-content` box) rather than by calling the same helper the fix uses,
+  so the assertion is not circular.
+- `mousedown` is dispatched directly on each grip rather than driven through
+  `page.mouse`: a wide table scrolls most grips out of the viewport, so real
+  coordinates silently miss — which is how the first version of this test failed
+  for the wrong reason.
+- It waits on `waitForColHeaderCountsStable()`, not on "a count span has
+  digits". The count scan is **sliced per column** and coalesced per table, so
+  columns finish at different times: the first version waited for the first span
+  only, passed standalone, and failed under full-suite load with `Catalog#` 2 px
+  short because that column's digits landed after the mousedown.
+
+**A residual worth knowing, deliberately not fixed.** That last failure was a
+real race, not just a test artefact: a mousedown fired *while* the initial count
+scan is still running can still commit a floor a few pixels short, because the
+digits arrive afterwards. Closing it would mean re-measuring during `mousemove`,
+which is rAF-gated precisely to avoid per-pixel layout. The window is the first
+second or so after render and costs at most ~6 px, against 43-126 px for the bug
+actually fixed here.
+
+Full fixture suite: 178 passed.
+
+## 2026-09-11 — sort pill sat flush against the column name (fixed); and the backtick trap, a third time
+
+Reported after the pill landed: no gap between the column name and `⇅ ▲ ▼`.
+
+`makeTableSortableUnified()` appends the name as a text node **with a trailing
+space**, and that space used to be the gap. It is trimmed: the text node is an
+anonymous FLEX ITEM in `.mb-col-hdr-flex`, and edge whitespace inside a flex
+item is collapsed away. The defect predates the restyle — it simply could not be
+seen while the glyphs were bare text sitting exactly where the space had been,
+and appeared the moment they gained a border and a ground.
+
+Fixed with `margin-left: 4px` on the run's first segment (the same
+`:not(.sort-icon-btn + .sort-icon-btn)` rule that gives it its left cap), so
+only the outside of the pill gains the gap and the segments stay flush with each
+other. Pinned in `sort-pill-segments.spec.js`: 4px on the first segment, 0 on
+the other two.
+
+### The GM_addStyle backtick trap, third occurrence
+
+Broke the whole userscript again, from
+`` `${colName} ` `` inside a CSS comment — this time carrying **both** a backtick
+pair and a `${…}` interpolation into the template literal. Twice now on the very
+commits that documented the hazard.
+
+Two things made the recovery slower than it should have been, both worth
+recording:
+
+- `node --check` reports the failure at the `GM_addStyle(` line — ~160 lines
+  before the real cause here — so the reported location is actively misleading.
+  The reliable move is
+  `awk 'NR>=<style start> && NR<=<style end> && /\`/ {print NR": "$0}'` over the
+  stylesheet region.
+- `` `${colName} ` `` occurs **three times in the file**, only one of them inside
+  the stylesheet. A blind search-and-replace hit the wrong ones twice before the
+  range was constrained.
+
+A one-second guard script under `scripts/` that scans the stylesheet region for
+stray backticks would pay for itself; not added here because it is outside what
+was asked for.

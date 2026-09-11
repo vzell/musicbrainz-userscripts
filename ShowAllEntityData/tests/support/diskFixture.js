@@ -50,6 +50,20 @@ const { loadUserscriptPage } = require('./loadPage');
  *         (`asyncCompletion.js`) still resolves correctly in this case — the
  *         "all cells already done" path still fires the same completion
  *         signal the normal fetch-and-populate path does, just with no fetch.
+ *         Since 9.99.1060 such a table also starts EXPANDED regardless of
+ *         `sa_rel_collapse_threshold`, precisely so this round trip keeps
+ *         working: its data is already present at zero cost, so collapsing it
+ *         would be pure loss (see `_relTableExpanded()`'s two defaults).
+ *         The converse is the thing to watch when RE-CAPTURING a fixture:
+ *         saving a page whose column was collapsed writes rel cells with no
+ *         icons and no `relDone`, so
+ *         `tests/fixtures/saved-data/artist-releases-bodeans.json.gz` — the
+ *         one committed fixture carrying real relationship data, whose 56
+ *         populated cells `tests/live/artist-releases-filter-sort.spec.js`
+ *         hard-codes counts against — must be re-captured with
+ *         `sa_rel_collapse_threshold: 0` or with its column expanded by hand.
+ *         At 56 rows it is under the default threshold anyway, but that is a
+ *         coincidence of this page's size, not a guarantee.
  *     Fixture files captured **before** this change are version `1.0` and
  *     naturally lack both new fields — they still load correctly, just via
  *     the pre-1.1 fallback behavior (cdtoc toggle stays broken, Relationships

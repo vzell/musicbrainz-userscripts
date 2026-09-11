@@ -22,7 +22,7 @@ now reconciled here; see "Step-number provenance" below before trusting any
 
 *Line references* (~:12345~) are only valid for the script version named
 alongside them. Re-grep the symbol rather than trusting a number that looks
-stale — the userscript is ~74 000 lines and they drift constantly.
+stale — the userscript is ~77 000 lines and they drift constantly.
 
 ** Context
 
@@ -304,15 +304,25 @@ is outside what any committed measurement observes. Recorded in that file too.
 
 ** What is already deferred — the idioms to copy
 
-Four working deferrals already exist. Any new one should follow the closest of
-them rather than invent a fifth shape.
+Six working deferrals now exist. Any new one should follow the closest of them
+rather than invent a seventh shape.
 
-| Feature                  | How it defers                                                                           | Reusable as                                      |
-|--------------------------+-----------------------------------------------------------------------------------------+--------------------------------------------------|
-| Millisecond Length       | Opt-in per page via a header button; fetches lazily on first press; five button states  | the model for any "offer it, don't do it" column |
-| CAA/EAA big-image strips | ~sa_caa_pics_initially_collapsed~ defaults *true* — loads nothing until toggled         | threshold-free deferral of a whole subsystem     |
-| Auto-resize columns      | ~sa_auto_resize_columns_threshold~ (default 2000 rows) skips it entirely, plus a button | the row-count-threshold idiom                    |
-| Unique-values dropdown   | Computed on open, then memoized per (table, column, row set) — Step 4                   | compute-on-demand + cache                        |
+| Feature                  | How it defers                                                                                       | Reusable as                                      |
+|--------------------------+-----------------------------------------------------------------------------------------------------+--------------------------------------------------|
+| Millisecond Length       | Opt-in per page via a header button; fetches lazily on first press; five button states              | the model for any "offer it, don't do it" column |
+| CAA/EAA big-image strips | ~sa_caa_pics_initially_collapsed~ defaults *true* — loads nothing until toggled                     | threshold-free deferral of a whole subsystem     |
+| Auto-resize columns      | ~sa_auto_resize_columns_threshold~ (default 2000 rows) skips it entirely, plus a button             | the row-count-threshold idiom                    |
+| Unique-values dropdown   | Computed on open, then memoized per (table, column, row set) — Step 4                               | compute-on-demand + cache                        |
+| Picard column            | Cell CONTENT deferred per table behind ▶♪/▼♪; ~<th>~ and ~<td>~ always exist — Step 32              | deferral with NO index churn                     |
+| Relationships column     | Same shape, but the threshold decides the start state and what defers is the NETWORK — Step 35       | the two combined, for a column that costs requests |
+
+The last two are one idiom with two settings shapes, and the choice between
+them is not stylistic: *flat-collapsed is right when the column is
+semantically inert, a threshold is right when it carries data.* A Picard cell
+contributed ~''~ to filtering, sorting and the 📊 dropdown, so hiding it cost
+the user nothing and it can default to collapsed everywhere. A rel cell feeds
+all three, so hiding it removes searchable content — which is affordable at
+2 301 entities and pointless at 12.
 
 Two costs are also already better optimised than they look, and should not be
 re-attacked: the prose-clamp ~scrollHeight~/~clientHeight~ reads are batched
@@ -532,7 +542,7 @@ harder on ~_rowTextCache~.
 | Step        | Standing                                                                                              |
 |-------------+-------------------------------------------------------------------------------------------------------|
 | 5 (+7, +12) | Large but artwork-only, and a fresh reimplementation. *Step 33 must reuse its observer, not add one.* |
-| 33          | Take after 5. Large on any page carrying the Relationships column, which is most listing pageTypes.   |
+| 33          | Take after 5, and RE-ESTIMATE first — Step 35 took the large half (a big table now fetches nothing until asked). What is left is under-threshold tables and deliberately-expanded ones. |
 | 1/2         | Re-judge only after Tier 1 and Step 30 — see "Why Steps 1/2 are not first" above.                     |
 | 15/16       | A port from a 290-commit-behind branch, not a design. Artwork pages only.                             |
 | 11          | ~release-tracks~ only; ~10-15 full-table scans collapse to one.                                       |
@@ -1208,6 +1218,17 @@ only mis-matches a row. Step 29 feeds that same cache into the highlight pass,
 at which point a stale entry also mis-HIGHLIGHTS one — a visibly wrong answer
 rather than a silently missing match. The severity assessment above is accurate
 for ~main~ today and stops being accurate the moment Step 29 lands.
+
+*Step 35 narrowed this by one column and widened the reason to care.* A
+user-driven Relationships toggle turns "only bites when a user filters before
+an async column finishes loading" into a repeatable action — filter while
+collapsed, expand, and the column filter matches nothing while the icons are
+plainly visible. ~_relToggleTable()~ therefore drops that column's own entry
+per row (~_relDropRowTextCache()~), which is a scoped instance of this fix, not
+this fix. Every OTHER async populator — ~initReleaseEventsColumn()~,
+~_artSetInlineSortKey()~ and friends — still has no invalidation hook at all,
+so *this step is still fully open*; treat the rel case as the worked example of
+what the general version has to do at each site.
 
 *** TODO Step 10: Precompute sort keys before ~sortLargeArray~
 
@@ -2672,10 +2693,17 @@ Full design and test plan in ~org/picard.org~.
 
 *** TODO Step 33: Lazy Relationships-column fetch
 
-~_initRelationshipsColumnImpl()~ (~:62582~) collects every unpopulated
-~td.mb-rel-cell~ on the page (~:62619-62620~), dedupes to ~uniqueMbids~
-(~:62659~) and fetches one WS2 request per unique MBID at initial render,
-regardless of where the row sits relative to the viewport.
+~_initRelationshipsColumnImpl()~ collects every unpopulated ~td.mb-rel-cell~,
+dedupes to ~uniqueMbids~, and fetches one WS/2 request per unique MBID at
+initial render, regardless of where the row sits relative to the viewport.
+(Grep the function name; the line refs this paragraph used to carry —
+~:62582~, ~:62619-62620~, ~:62659~ — were already ~600 lines stale before they
+were removed.)
+
+Since Step 35 the collection is *per table and skips collapsed ones*, so
+"every unpopulated cell on the page" is no longer literally true; the sentence
+still describes what happens inside every EXPANDED table, which is what this
+step is about.
 
 It is well-behaved in the ways artwork was not — it skips ~relDone~ cells so a
 filter keystroke never re-fetches, and it has a two-tier cache (memory plus the
@@ -2683,11 +2711,35 @@ filter keystroke never re-fetches, and it has a two-tier cache (memory plus the
 fires: a cold large page queues one request per distinct entity against
 MusicBrainz's rate limit before the user has scrolled anywhere.
 
-Same treatment as Step 5, different subsystem — and it *must reuse Step 5's
+*Re-scoped 2026-09-10 by Step 35, which is the other half of this and is not a
+substitute for it.* A toggle decides WHETHER; an observer decides WHEN. Step 35
+makes a large table start collapsed and fetch nothing at all until the user
+presses ▶🔗, so the sentence above — "before the user has scrolled anywhere" —
+no longer describes the shipped default above
+~sa_rel_collapse_threshold~. What is left for this step is the case Step 35
+cannot help with:
+
+- a table UNDER the threshold, which still fetches every distinct entity at
+  render regardless of viewport;
+- a table the user has deliberately EXPANDED, where the whole queue then runs
+  for rows that may be thousands of rows below the fold. This is where an
+  observer still earns its keep, and Step 35 makes it *more* valuable rather
+  than less: an explicit press is a much better signal of intent than a page
+  load, so it is worth spending the observer on.
+
+Both are strictly smaller than the original scope, so re-estimate before
+taking it — the Tier 4 sizing below was written against the pre-Step-35
+premise. The hard dependency is unchanged: it *must reuse Step 5's
 ~IntersectionObserver~ rather than adding a second one*, so take it after that
 step lands. Note Step 7's lesson while doing it: Step 5's own gate read
 ~allRows.length~, which is always 0 in ~tableMode: 'multi'~, so the threshold
 silently never fired there.
+
+One thing Step 35 settled that this step should NOT re-derive: the candidate
+scan is now per table and gated on ~_relTableExpanded()~
+(~_relAnyPendingInExpandedTable()~), and both of ~runFilter()~'s gates go
+through it. An observer must extend that gate, not add a second answer to "is
+this cell a candidate".
 
 Separately worth probing: the millisecond-Length feature batches 100 MBIDs into
 one ~rid:~ SEARCH request, measured in ~tests/MEASUREMENTS.org~. Whether that
@@ -2847,6 +2899,137 @@ how listeners are bound, this changes how a cell is queried, and the artwork
 preservation rules in CLAUDE.md's "CAA/EAA artwork — what must not break" bear
 on this one alone. In particular ~preserveLiveArt~ and the ~_hadInlineArtPh~
 branch both live inside this function and must survive any restructuring of it.
+
+*** TODO Step 35: On-demand Relationships column — implemented
+
+/Implemented on branch/ ~relationships-column-collapse-toggle~ /(2026-09-10).
+Keyword stays TODO until it lands on/ ~main~, /per this file's own convention —
+see Step 32, which read TODO on its own branch for the same reason./
+
+Step 32's shape — the ~<th>~ and every ~<td>~ always exist, only the CELL
+CONTENT defers behind a per-table header toggle — applied to the injected
+"Relationships" column. Two things make it a different, and bigger, bet than
+Picard.
+
+**** What is deferred here is the NETWORK, and that changes the arithmetic
+
+~_initRelationshipsColumnImpl()~ issues *one WS/2 request per distinct MBID*,
+Phase 2 strictly serialised with a hard-coded 1100 ms sleep. Unique-MBID count
+≈ row count on these pageTypes, so:
+
+| Page                                    | Distinct entities | Cold Phase-2 wall clock |
+|-----------------------------------------+-------------------+-------------------------|
+| ~artist-releases~ (Dylan, 2301 rows)    |             ~2301 | *~42 min*               |
+| ~artist-releasegroups~ (Springsteen)    |             ~2142 | ~39 min                 |
+
+It fired unconditionally from the render tail, before the user had scrolled.
+Plus a second cost nothing else in the file has: every icon is a cross-origin
+~<img>~ to ~google.com/s2/favicons~.
+
+So the headline result is a COUNT, not a latency ratio, and it is qualitative:
+*requests issued at render go from one-per-distinct-entity to zero.* Verified
+exactly (not approximately) in
+~tests/fixtures/rel-column-collapse-toggle.spec.js~, which intercepts every
+~**/ws/2/**~ and asserts the count.
+
+*Interaction latency is NOT yet measured, and this step does not claim it.*
+Doing so needs an arm that pre-seeds the ~rel-ws2~ IDB store, because
+~tests/support/perfDescriptors.js~'s ~applyPicardArm()~ JSDoc forbids an arm
+re-enabling this column — /"that would put thousands of live requests inside a
+measurement bracket"/ — and it is right. Until that exists, quote the request
+count and nothing else. Expect the DOM-side win to be smaller than Picard's
+19%/13%/21%: a collapsed rel cell saves cloning an ~<a><img>~ plus a
+~.mb-rel-filter-key~ span, where a collapsed Picard cell saved a whole per-row
+anchor walk plus ~<ul>/<li>/<button>/<img>~ construction and an
+~addEventListener~.
+
+**** Threshold, not a flat default — and why
+
+Unlike Picard, whose cells contributed ~''~ to everything,
+*a rel cell carries real filterable data*: its ~.mb-rel-filter-key~ spans feed
+~getCleanColumnText()~, ~openUniqDrop()~'s ~relIconCounts~ and the
+~rel:<domainKey>~ structure modes. Collapsing therefore removes searchable
+content, so the default is ~sa_rel_collapse_threshold~ (200 distinct entities,
+0 = never) rather than a flat "collapsed": a 12-row listing costs ~13 s and
+keeps behaving exactly as before, while a 2301-row one no longer costs 42
+minutes nobody asked for. Sorting is unaffected either way — ~_sortCellText()~
+already returns ~''~ for every rel cell, since ~getCleanVisibleText()~
+FILTER_REJECTs that span and the icons are ~<img>~.
+
+A collapsed column states its own state (tinted filter input, a 📊 note, a
+~🔗Rels: collapsed~ status) instead of silently matching nothing, and
+deliberately does NOT auto-fetch on either: a glance at a dropdown must not be
+able to queue a throttled multi-minute run.
+
+**** Four mechanisms this had to touch, none of which Picard had
+
+1. *The re-entrancy wrapper silently DROPPED work.* ~initRelationshipsColumn()~
+   awaited an in-flight run and returned. Sound only while every cell was a
+   candidate from birth; a table expanded mid-flight is not in the running
+   pass's ~allCells~ snapshot, so it would have been stranded empty forever.
+   Now the wrapper coalesces: one pending follow-up pass.
+
+   *The first version of this bullet claimed the follow-up's candidate set was
+   "disjoint by construction" because the previous pass had finished marking
+   cells. That was false, and it shipped the multiplying-icons bug* — the
+   Phase-2 queue is fire-and-forget, so the impl resolves after PHASE 1 and two
+   passes really can overlap. Fixed 2026-09-11: ~_relCellWritable()~ (the
+   load-bearing guard), ~_relQueueStillWants()~'s ~!relDone~ check, and an
+   idempotent ~_populateCells()~ as defence in depth. Full account, including
+   which of the three a mutation run actually pins, in ~DEBUG-NOTES.md~'s
+   2026-09-11 entry.
+2. *Both* ~runFilter()~ *gates were a per-keystroke regression waiting to
+   happen.* ~document.querySelector('td.mb-rel-cell:not([data-rel-done="1"]))~
+   matches a collapsed cell FOREVER, so every keystroke would re-read three GM
+   tables and sweep the live tbody plus ~groupedRows~ plus ~allRows~. Replaced
+   by ~_relAnyPendingInExpandedTable()~. That also fixes a *pre-existing*
+   instance of the same defect: the row-build pass creates the ~<td>~
+   unconditionally but stamps ~data-mbid~ only when the row links a release,
+   release group or work, so a page with any such row already had a cell that
+   could never be filled and already made the old gate permanently true.
+3. *The completion signal lost its meaning.* The ~!allCells.length~ branch
+   counted ~td.mb-rel-cell[data-mbid]~ page-wide, regardless of ~relDone~, so
+   an all-collapsed page reported a whole page of deliberately-empty cells as
+   "already populated from disk-load" — on the element
+   ~waitForRelationshipsComplete()~ reads as settled. Now counted per table
+   over expanded ones only, with ~_relPublishCollapsedStatus()~ for the
+   all-collapsed case.
+4. *The pipeline was page-wide.* ~allCells~, ~uniqueMbids~ and the Phase-2
+   queue are one per page. Candidate collection is now per table.
+   ~_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()~ already removes the
+   column outright from a sub-table whose rows link no release, so "fewer
+   Relationships headers than tables, possibly none" is a normal state the
+   page-wide button tolerates by design.
+
+**** Step 9 is a co-requisite, and was addressed only in scope
+
+~_rowTextCache~ is invalidated nowhere (Step 9). Today that bites in the narrow
+window where a user filters before the first fetch finishes; a user-driven
+toggle makes it wide and repeatable — filter while collapsed, ~''~ is cached
+per row, expand, and the icons are visible while the filter matches nothing.
+~_relToggleTable()~ therefore drops the rel column's own entry per row
+(~_relDropRowTextCache()~, nulling ~cols[idx]~ only — ~c.full~ is
+~getCleanVisibleText()~, which excludes this span and so cannot be affected).
+*Step 9's general fix is still open* and this does not close it.
+
+**** Also worth knowing
+
+- ~user-ratings-type~ deliberately dropped its ~injectedColumns~ declaration
+  because ~_ensureRelCell~ sweeps every ~table.tbl~ row page-wide under one
+  global ~entityType~; its in-file note concludes /"making this genuinely work
+  would need a per-table-scoped redesign"/. The per-table gating here is the
+  first half of that redesign. Not attempted.
+- ~_relRetryMbids()~ sets and clears ~_relRetryActive~ *synchronously around a
+  fire-and-forget async call*, so the flag is already false by the time Phase 2
+  reads it. Harmless only because the caches are physically deleted first.
+  Found while doing this, deliberately not folded in — see ~DEBUG-NOTES.md~.
+- Mutation-verified, all four: never-collapse fails 6 of 9 tests; restoring the
+  old ~runFilter~ gate fails exactly the keystroke test; dropping the ~=== 0~
+  threshold carve-out fails exactly the threshold test; removing the master-row
+  mirroring fails exactly the populated-collapse test. That last one was a real
+  finding — the first version of the mirror test collapsed a NEVER-POPULATED
+  table and stayed green under the mirror's removal, which is the
+  "proves something adjacent" trap this file and CLAUDE.md both warn about.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 

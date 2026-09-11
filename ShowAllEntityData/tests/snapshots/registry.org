@@ -245,3 +245,82 @@ The live page has drifted 4174 -> 4178 rows. rendered.html follows the live
 page; post-filter.html/post-sort.html stay pinned at 4174 by the disk fixture.
 That divergence is deliberate — see tests/support/artistEventsFixture.js for why
 the constants describe the fixture and not the live page.
+
+** Relationships-column CSS lands in every rendered.html (9.99.1060)
+
+The on-demand Relationships column (PERFORMANCE.org Step 35) adds nine CSS
+rules to the userscript's injected =GM_addStyle= block, and
+=snapshot.js='s =_serializeWithoutScripts()= strips =<script>= but *keeps
+=<style>=*. So every =rendered.html= baseline gains the same nine selectors on
+its next re-capture, on every pageType, whether or not that page has a
+Relationships column at all:
+
+  - =.mb-rel-col-hdr-btn= — base box, =::before= (▶🔗), =[aria-pressed=true]::before=
+    (▼🔗), =:hover=, =:focus-visible=, =[aria-pressed="true"]= engaged tint
+  - =.mb-col-filter-input[data-mb-rel-collapsed="1"]= and its =::placeholder=
+  - =.mb-uniq-rel-collapsed-note=
+
+*That is style-block text — but see the correction below, because it is NOT the
+whole drift.* No ELEMENT in any current baseline gains an attribute or a class
+from this change, and that much is checked rather than assumed:
+
+  - Every rel-carrying entry in =tests/pagetypes.json= seeds
+    =sa_enable_relationships_column: false=, so no baseline has a
+    =td.mb-rel-cell= at all — the 9 =mb-rel-cell= hits already in each file are
+    the pre-existing CSS rules, and =data-rel-done= is 0 everywhere. Same trap
+    the series-releases row above documents.
+  - =_relTableExpanded()= deliberately returns =true= WITHOUT stamping when a
+    table has no =td.mb-rel-cell=. Without that guard, =runFilter()='s
+    unconditional gate would have put =data-mb-rel-expanded= on every rendered
+    table on every pageType — real markup drift in all eleven baselines. It was
+    written that way for exactly this reason.
+
+So a re-capture diff confined to those nine selectors inside the =<style>=
+block is *this change and nothing else — commit it.* An =mb-rel-*= token
+appearing on a =<td>=, =<th>=, =<table>= or =<input>= in a baseline whose
+pageType seeds the column off is NOT expected and should be investigated.
+
+No re-capture was performed for this change: it needs a logged-in session
+(=npm run auth:login=; =notes-received= is user-scoped) and the drift is
+inert style text. The nine selectors above are the whole expected delta.
+
+** CORRECTION + the sort-pill round: =data-mb-resize-min= drifts on EVERY <th>
+
+*The entry above understated the drift, and this corrects it.* It said the
+header-control restyles were style-block text only and that no element gained
+anything. The first half is right about classes and attributes being ADDED; the
+second half missed an attribute whose VALUE moves — and it moves on every single
+=<th>= in every baseline.
+
+=makeColumnsResizable()= caches
+
+: th.dataset.mbResizeMin = String(hdrFlex.scrollWidth + 8)
+
+*once*, from measured layout. Every one of these restyles — the six-control pill
+family, the multi-row toggle, the 📊 pair, and now the ⇅▲▼ sort pill — adds
+padding and borders inside =.mb-col-hdr-flex=, so the header gets intrinsically
+wider and that cached number goes up. It is written into the DOM, so it is in
+the baselines.
+
+Measured on =tests/snapshots/release-tracks=, committed baseline vs a fresh
+render of the current branch (fixture =release-tracks-ms-length.html=):
+
+| column           | baseline | now | delta |
+|------------------+----------+-----+-------|
+| =#=              |       71 | 125 |   +54 |
+| =Title=          |       87 | 149 |   +62 |
+| =Artist=         |       94 | 157 |   +63 |
+| =Rating=         |       99 | 163 |   +64 |
+| =Length=         |      128 | 206 |   +78 |
+| =Recording length= |    n/a | 235 |     — |
+
+*The delta is CUMULATIVE across the whole restyle series, not this commit
+alone*, because the baselines have not been re-captured since before any of it.
+So a re-capture will show this on every =<th>= of all 11 =rendered.html= files
+plus =artist-events='s =post-filter.html= / =post-sort.html=.
+
+It is layout-derived and expected. What would NOT be expected, and is worth
+looking at if a diff shows it: a =data-mb-resize-min= that went DOWN, or a
+=<th>= gaining/losing a class or a child element. Re-capture needs a logged-in
+session (=npm run auth:login=; the saved one expired 2026-09-10), so it is a
+merge-time decision.

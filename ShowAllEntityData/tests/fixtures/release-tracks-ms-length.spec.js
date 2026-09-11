@@ -3,6 +3,13 @@
 const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
+
+// The ⏱ toggle's two glyphs. The trailing U+FE0E is the text-presentation
+// selector: without it ⏱ renders as a colour emoji, which is illegible against
+// the column-header backgrounds (see the toggle family's CSS block). Named and
+// asserted exactly, so removing it fails a test instead of quietly regressing.
+const GLYPH_SECONDS = '▶⏱\uFE0E';
+const GLYPH_MILLIS  = '▼⏱\uFE0E';
 const { waitForFilterSettled, waitForSortSettled, getPageRowCount } = require('../support/filterSortAssertions');
 
 // Millisecond track lengths on release-tracks, read from MusicBrainz's own
@@ -72,7 +79,8 @@ test.describe('release-tracks: millisecond Length precision', () => {
         const states = await toggleState(page);
         expect(states.length).toBeGreaterThan(0);
         states.forEach((s) => {
-            expect(s.glyph).toBe('▶⏱');
+            // Exact, U+FE0E included — see GLYPH_* below.
+            expect(s.glyph).toBe(GLYPH_SECONDS);
             expect(s.pressed).toBe('false');
             expect(s.title).toContain('Show millisecond precision');
         });
@@ -97,7 +105,7 @@ test.describe('release-tracks: millisecond Length precision', () => {
         expect(await lengthValues(page)).toEqual(MILLIS);
 
         (await toggleState(page)).forEach((s) => {
-            expect(s.glyph).toBe('▼⏱');
+            expect(s.glyph).toBe(GLYPH_MILLIS);
             expect(s.pressed).toBe('true');
             expect(s.title).toContain('Hide millisecond precision');
         });

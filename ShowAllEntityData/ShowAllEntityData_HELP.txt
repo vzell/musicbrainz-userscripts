@@ -1184,6 +1184,43 @@ On pages that declare injectedColumns:["Relationships"] the script injects
 a "Relationships" column populated asynchronously from the MusicBrainz
 Web Service.  Relationship icons (favicons) appear after the table renders.
 
+• LOADED ON DEMAND on big listings — ▶🔗 / ▼🔗 in the column header.
+  The column asks the Web Service about every DISTINCT release, release
+  group or work on the page, one request at a time with a mandatory one
+  second between them, so the cost is roughly one second per row: a
+  2 300-release artist page spends about 42 minutes trickling requests in
+  the background.  So a table needing more than the "Relationships
+  auto-collapse threshold" (⚙️ Settings, default 200 distinct entities)
+  now starts COLLAPSED: the column and its cells are there, and nothing is
+  fetched until you press ▶🔗 in that table's own column header.  ▼🔗
+  empties it again.
+    — The decision is made PER TABLE, so on a multi-section page a small
+      section loads itself while a large one waits for you.
+    — Multi-section pages also get a page-wide "▶🔗 Load all Relationships"
+      / "▼🔗 Empty all Relationships" button, next to the existing
+      collapse-all, cover-art and Picard page-wide buttons.
+    — The ▶🔗 tooltip says what pressing it will cost, in requests and in
+      expected time, so it is never a blind choice.
+    — Emptying a column KEEPS everything already fetched (memory + the
+      IndexedDB cache), so pressing ▶🔗 again is instant and costs no
+      requests.  Only the 🔗⟳ Retry buttons clear that data.
+    — A table restored from a saved snapshot always starts EXPANDED, whatever
+      the threshold says: its icons are already in the file.
+    — Set the threshold to 0 to never auto-collapse.  The ▶🔗/▼🔗 button is
+      always available either way — the setting chooses only the starting
+      state.
+• The ▶🔗 button, like the ▶🖼 cover-art, ▶⏱ millisecond-length, ▶♪ Picard,
+  ▶N▤ multi-row and 📊 unique-values buttons beside it — and the ⇅ ▲ ▼ sort
+  group, which is drawn as one three-segment pill — is on a small light
+  pill so it stays readable on any column-header colour — including the blue-grey one
+  injected columns use, and including while that column is sorted (which
+  tints the header).
+• A COLLAPSED column says so rather than quietly matching nothing.  Its
+  column-filter box is tinted and reads "collapsed — press ▶🔗", the 📊
+  unique-values dropdown shows a "Collapsed — press ▶🔗 in the column
+  header to load" line instead of an empty "Relationship icons" section,
+  and the status bar reports "🔗Rels: collapsed" rather than a completed
+  load.  Neither the filter box nor the dropdown starts the fetch.
 • Rich filter-aware tooltip — when a filter is active and it matches content
   in a Relationships cell, hovering an icon in that cell opens a rich HTML
   tooltip showing the full URL.  The tooltip is suppressed when no active
@@ -1198,6 +1235,8 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Round-trips through Save-to-Disk/Load-from-Disk with zero network activity
   when every Relationships cell was already fully populated at save time —
   only a row saved mid-fetch triggers a fresh fetch for that row on load.
+  Saving a page whose column was COLLAPSED naturally saves it empty, so
+  press ▶🔗 first if the point of the file is to keep the icons.
 • The 🔗 Relationship icons section in the unique-values dropdown supports
   multi-select filtering, like every other section there (see UNIQUE-VALUES
   COLUMN DROPDOWN above).
@@ -1641,6 +1680,9 @@ labels and descriptions.  Major setting groups:
 
 • 🔗 RELATIONSHIPS COLUMN
     — Enable / disable the asynchronous Relationships column
+    — Auto-collapse threshold in unique entities (default 200; 0 = never) —
+      a bigger table starts collapsed and fetches nothing until you press
+      ▶🔗 in its column header
     — Related settings for entity types and tooltips
 
 • ↔️ COLUMN RESIZE FEATURE

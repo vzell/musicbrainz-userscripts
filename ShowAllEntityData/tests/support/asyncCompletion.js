@@ -52,6 +52,22 @@ async function waitForCaaEaaComplete(page, { timeout = 30000 } = {}) {
  * is off) — `#mb-info-display-rel` never becomes visible, so this simply
  * waits out the timeout in that case.
  *
+ * A COLLAPSED column still resolves this, and deliberately so. Since
+ * 9.99.1060 a table whose Relationships column would need more than
+ * `sa_rel_collapse_threshold` distinct lookups starts collapsed and fetches
+ * nothing, but `_relPublishCollapsedStatus()` publishes `🔗Rels: collapsed`
+ * into this same element — because what the element means is "this subsystem
+ * has settled", which is true either way, and a wait that hung on the shipped
+ * default would be worse than useless. Read the TEXT, not just visibility, if
+ * a spec needs to know which of the two happened.
+ *
+ * Note this is NOT the wait to reach for on a large page. `_showRelCompletionToast()`
+ * fires when the whole Phase-2 queue drains, and that queue is serialised
+ * 1100 ms apart — a 2 000-entity listing simply outlasts any sane timeout.
+ * Poll the thing you actually care about (populated `td.mb-rel-cell a`, or
+ * `__saTest.relTableStates()[i].pending`) until it stops changing. Same
+ * argument, and the same trap, as `waitForCaaEaaComplete()` above.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {{ timeout?: number }} [opts]
  * @returns {Promise<void>}

@@ -377,13 +377,20 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect(await toggle(page).getAttribute('aria-disabled')).toBeNull();
         // Yellow warning tint rather than the dimmed "settled" look. Two
         // wrinkles, both real rather than incidental: the pointer is still
-        // resting on the button after .click(), so :hover's deeper 0.65 shade
+        // resting on the button after .click(), so :hover's deeper shade
         // applies until it is moved away; and the button carries a 150ms
         // background transition, so this needs the auto-retrying toHaveCSS
         // rather than a one-shot getComputedStyle() that would sample an
         // intermediate alpha.
+        //
+        // The alpha moved 0.45 -> 0.55 (and :hover 0.65 -> 0.75) when the
+        // column-header toggle family gained a resting white pill: the same
+        // yellow over white reads lighter than it did over the header itself,
+        // so the weight had to go up to keep "transient failure, press again"
+        // as loud as it was. Pinned exactly on purpose — this tint is how the
+        // retry state is told apart from the settled unavailable one.
         await page.mouse.move(0, 0);
-        await expect(toggle(page)).toHaveCSS('background-color', 'rgba(255, 193, 7, 0.45)');
+        await expect(toggle(page)).toHaveCSS('background-color', 'rgba(255, 193, 7, 0.55)');
 
         // Column untouched by the failure.
         expect(await lengthValues(page)).toEqual(SECONDS);
@@ -409,6 +416,17 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect(await toggle(page).getAttribute('data-mb-ms-retry')).toBeNull();
         expect(await lengthValues(page)).toEqual(SECONDS);
         expect(counter.ws2).toBe(1);
+
+        // DIMMED, and this needs asserting rather than assuming. Until the
+        // column-header toggle family was restyled, the dimming was a side
+        // effect of the family's resting opacity:0.60 and had no rule of its
+        // own — so raising that to 1 for legibility made "unavailable" look
+        // identical to a normal available button, silently collapsing it into
+        // the state the test above is at pains to keep it distinct from. It
+        // now has an explicit [aria-disabled="true"] rule; this is what stops
+        // that from being re-broken by the next restyle.
+        await page.mouse.move(0, 0);
+        await expect(toggle(page)).toHaveCSS('opacity', '0.55');
 
         // Cached: a further press does not re-request. `force` because the
         // button is legitimately aria-disabled here, which Playwright honours

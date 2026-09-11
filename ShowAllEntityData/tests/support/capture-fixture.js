@@ -301,6 +301,14 @@ async function captureOne(browser, {
         // realNetwork fixtures fetch real CAA art + Relationships — wait
         // for both to genuinely finish so they're baked into the saved
         // snapshot, not left mid-flight.
+        //
+        // Since 9.99.1060 that is only true when the Relationships column is
+        // actually expanded: a table over `sa_rel_collapse_threshold` (default
+        // 200 distinct entities) fetches nothing, publishes `🔗Rels: collapsed`,
+        // and this wait resolves on THAT — so the saved fixture would carry rel
+        // cells with no icons. Pass `sa_rel_collapse_threshold: 0` in
+        // `seedGmValues` for any realNetwork fixture that is meant to bake the
+        // populated column in. See diskFixture.js's save-format-1.1 note.
         hasCaaOrEaa: realNetwork,
         hasRelationships: realNetwork,
         timeout: renderTimeout,

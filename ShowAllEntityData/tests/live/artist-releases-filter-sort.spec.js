@@ -83,7 +83,19 @@ function stripFocusPrefix(value) {
 }
 
 async function loadBodeans(page) {
-    await loadFromDiskFixture(page, { url: BODEANS_URL, fixturePath: FIXTURE_PATH, testMode: true });
+    // sa_rel_collapse_threshold: 0 — the committed fixture was captured with
+    // real Relationships data (56 populated cells) and several cases below
+    // count on them. At 56 distinct entities this page is under the shipped
+    // default threshold, AND a snapshot whose cells arrive `relDone` starts
+    // expanded regardless — so this seed changes nothing today. It is set
+    // explicitly so that neither of those two coincidences is what the
+    // assertions depend on.
+    await loadFromDiskFixture(page, {
+        url: BODEANS_URL,
+        fixturePath: FIXTURE_PATH,
+        testMode: true,
+        settingsOverride: { sa_rel_collapse_threshold: 0 },
+    });
     // waitForAutoResize: false — loadFromDiskFixture()'s hydration path
     // never triggers the auto-resize pass (that only runs from
     // startFetchingProcess()'s live-fetch path).
@@ -361,7 +373,13 @@ test('§A2 chaban day-of-week third-party interop: Country/Date ~ "Tue"', { tag:
     // faithfully includes it — see that helper's own JSDoc for the full
     // investigation.
     const patchedFixturePath = buildChabanPatchedFixture(FIXTURE_PATH, COLUMN_INDEX['Country/Date']);
-    await loadFromDiskFixture(page, { url: BODEANS_URL, fixturePath: patchedFixturePath, testMode: true });
+    // sa_rel_collapse_threshold: 0 — same reason as loadBodeans()'s own seed.
+    await loadFromDiskFixture(page, {
+        url: BODEANS_URL,
+        fixturePath: patchedFixturePath,
+        testMode: true,
+        settingsOverride: { sa_rel_collapse_threshold: 0 },
+    });
     await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
 
     const dayTuesdayCase = FILTER_CASES.find((c) => c.column === 'Day' && c.value === 'Tuesday');

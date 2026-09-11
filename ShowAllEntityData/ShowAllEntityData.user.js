@@ -1314,6 +1314,25 @@
                          + 'by Aurelien Mino <aurelien.mino@gmail.com>'
         },
 
+        sa_rel_collapse_threshold: {
+            label: 'Relationships auto-collapse threshold (unique entities)',
+            type: 'number',
+            default: 200,
+            min: 0,
+            max: 100000,
+            description: 'A table whose Relationships column would need MORE than this many '
+                         + 'distinct MusicBrainz entities starts COLLAPSED: the column and its '
+                         + 'cells are there, but nothing is fetched until you press the '
+                         + '▶🔗 toggle in that table\'s column header. '
+                         + 'The count is the number of Web Service requests the column would '
+                         + 'issue, and they are throttled to one per second, so a 2 000-row '
+                         + 'release listing costs roughly half an hour of background fetching. '
+                         + 'Set to 0 to never auto-collapse (the pre-9.99.1060 behaviour). '
+                         + 'The toggle is always available either way, and a table restored '
+                         + 'from a saved snapshot always starts expanded because its data is '
+                         + 'already there.'
+        },
+
         sa_rels_idb_enable: {
             label: 'Enable IndexedDB Relationships WS2 data cache',
             type: 'checkbox',
@@ -18503,7 +18522,12 @@
             return;
         }
         btn.removeAttribute('aria-busy');
-        btn.textContent = showing ? '▼⏱' : '▶⏱';
+        // U+FE0E after the stopwatch forces TEXT presentation, so it renders
+        // as an outline in the header's own colour rather than as a colour
+        // emoji — the legibility half of the column-header toggle family's
+        // restyling (see its CSS block). This one lives here rather than in
+        // CSS because, uniquely among the four, this glyph is element text.
+        btn.textContent = showing ? '▼⏱︎' : '▶⏱︎';
         btn.setAttribute('aria-pressed', showing ? 'true' : 'false');
         delete btn.dataset.mbMsRetry;
 
@@ -30226,21 +30250,77 @@ a { color: #1565c0; }`;
      *
      * Drag writes are rAF-gated (`_dragRafPending`) so at most one
      * `col.style.width` write happens per animation frame regardless of how
-     * fast `mousemove` fires, avoiding a per-pixel reflow storm. Each
-     * column's minimum drag width is computed once at setup time (while the
-     * column is still at its natural width) from the header widget's
-     * intrinsic `scrollWidth`, and cached on `th.dataset.mbResizeMin` — it is
-     * NOT recomputed on every drag, since after a column has been widened its
-     * `scrollWidth` would reflect the current (wider) width and permanently
-     * raise the floor, making the column impossible to narrow back down.
-     * That cache is what lets a re-call of this function (e.g. from
-     * `toggleAutoResizeColumns()` after auto-resize has already changed
-     * widths, or after the Restore button removes and re-adds handles) still
-     * use the column's true original minimum.
+     * fast `mousemove` fires, avoiding a per-pixel reflow storm.
+     *
+     * Each column's minimum drag width is measured by `_measureHeaderMinWidth()`
+     * — stamped on `th.dataset.mbResizeMin` here for diagnostics and for the
+     * snapshot baselines, and **re-measured at every mousedown**, which is the
+     * value the drag actually enforces. Read that function's JSDoc before
+     * changing any of this: the previous `scrollWidth`-based cache could not be
+     * refreshed (it ratcheted the floor upward once a column had been widened),
+     * and freezing it at set-up time meant it was taken before the ▶🔗/▶🖼/▶⏱
+     * toggles and the deferred header-count digits existed — so it was wrong on
+     * most columns, in both directions.
      *
      * @param {HTMLTableElement} table - The table to make resizable.
      * @returns {void}
      */
+    /**
+     * The narrowest width at which `th`'s header widget still fits, in px.
+     *
+     * ── Why `max-content` and not `scrollWidth` ─────────────────────────────
+     *
+     * This used to be `hdrFlex.scrollWidth + 8`, cached once at set-up time,
+     * with a long comment explaining that it could not be re-measured later:
+     * `scrollWidth` on an element that FITS returns its `clientWidth`, so after
+     * a column has been widened it reports the current width and the drag floor
+     * ratchets up, making the column impossible to narrow again.
+     *
+     * That reasoning was sound about `scrollWidth` and wrong about the
+     * conclusion, because it made the value un-refreshable at exactly the
+     * moment the header was still incomplete. Measured on a fresh render,
+     * **6 of 21 columns** had a floor smaller than their own header needed, and
+     * on a real page (see `debug/header-row-resize-bug.html`) **20 of 21** did,
+     * the worst by 126 px. Two things arrive after set-up:
+     *
+     *   - **late-injected controls** — `.mb-rel-col-hdr-btn` (43 px),
+     *     `.mb-caa-col-hdr-btn` with its 16 px thumbnail (126 px),
+     *     `.mb-ms-col-hdr-btn`. All are added to `.mb-col-hdr-flex` after
+     *     `makeColumnsResizable()` has already run;
+     *   - **the deferred header-count digits** — `.mb-col-uniq-count` and
+     *     `.mb-col-collapse-count` are written by `_updateAllColHeaderCounts()`,
+     *     which is idle-scheduled and coalesced per table (PERFORMANCE.org
+     *     Steps 3/22), so at set-up time those spans are empty. Worth 4-6 px.
+     *
+     * Dragging then let the column go narrower than its own header, and the
+     * rightmost control — the 📊 unique-values pill — was clipped by the next
+     * column. The header-control pill restyling did not cause this; it made an
+     * existing few-pixel discrepancy wide enough to see.
+     *
+     * `max-content` sizes the element to its content and is **independent of
+     * the current column width**, which is precisely the property `scrollWidth`
+     * lacked. So this can be — and now is — called again at mousedown, when
+     * every control genuinely exists, with no ratchet.
+     *
+     * Costs one forced layout per call. That is fine at set-up and at mousedown;
+     * do NOT call it from `mousemove`, which is rAF-gated for the same reason.
+     *
+     * @param   {HTMLTableCellElement} th
+     * @returns {number} minimum width in px, including the 8 px resizer strip.
+     */
+    function _measureHeaderMinWidth(th) {
+        const _flex = th.querySelector('.mb-col-hdr-flex');
+        // The Picard header has no .mb-col-hdr-flex at all — it is the one
+        // header built outside makeTableSortableUnified(). Fall back to the
+        // cell's own content width.
+        if (!_flex) return th.scrollWidth;
+        const _prev = _flex.style.width;
+        _flex.style.width = 'max-content';
+        const _w = Math.ceil(_flex.getBoundingClientRect().width);
+        _flex.style.width = _prev;
+        return _w + 8;
+    }
+
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
 
@@ -30284,11 +30364,10 @@ a { color: #1565c0; }`;
             let _dragPendingWidth = 0;
 
             // ── Per-column minimum drag width ──────────────────────────────
-            // Computed ONCE here (at set-up time, before any drag has occurred),
-            // when the column is still at its natural/initial width and
-            // _hdrFlex.scrollWidth reflects the true intrinsic minimum of the
-            // header widget (colName + sort icons + unique-values button +
-            // optional collapse-toggle / CAA/EAA header button + 8 px resizer).
+            // Stamped here for diagnostics and for the snapshot baselines, but
+            // the value the DRAG enforces is re-measured at mousedown — see
+            // _measureHeaderMinWidth() for why that is now safe, and why
+            // caching it here was never sufficient.
             //
             // Recomputing inside mousedown is wrong: after the user has dragged
             // a column wider, _hdrFlex.scrollWidth equals the CURRENT (wider)
@@ -30303,16 +30382,36 @@ a { color: #1565c0; }`;
             // makeColumnsResizable invocation during page render — so the cached
             // value always reflects the pre-resize header-content minimum.
             if (!th.dataset.mbResizeMin) {
-                const _initHdrFlex = th.querySelector('.mb-col-hdr-flex');
-                th.dataset.mbResizeMin = String(
-                    _initHdrFlex ? (_initHdrFlex.scrollWidth + 8) : th.scrollWidth
-                );
+                th.dataset.mbResizeMin = String(_measureHeaderMinWidth(th));
             }
-            const _minWidth = Number(th.dataset.mbResizeMin) || 30;
+            // Declared HERE, in the per-column closure scope, not inside the
+            // mousedown handler — `onMouseMove` below is a sibling function and
+            // reads it. Assigned (not initialised) at mousedown, which is where
+            // the authoritative measurement happens.
+            let _minWidth = Number(th.dataset.mbResizeMin) || 30;
 
             resizer.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+
+                // Re-measure the floor NOW rather than trusting the value
+                // stamped at set-up time: the ▶🔗 / ▶🖼 / ▶⏱ header toggles and
+                // the deferred header-count digits all arrive after that, and a
+                // stale floor let the column be dragged narrower than its own
+                // header — clipping the 📊 pill at the right edge. Safe to
+                // repeat because the measurement is `max-content` and so does
+                // not depend on the column's current width; see
+                // _measureHeaderMinWidth(). One forced layout per mousedown.
+                // The fresh measurement REPLACES the stamped one rather than
+                // being max()'d with it: the old value is unreliable in BOTH
+                // directions. Too small when controls arrived late (the bug
+                // above), and too LARGE when it was taken after auto-resize had
+                // already widened the column — measured on a real page, "Label"
+                // carried a floor of 765 px for a header needing 211, so it
+                // could not be narrowed at all. `max-content` is the truth in
+                // both cases.
+                _minWidth = Math.max(_measureHeaderMinWidth(th), 30);
+                th.dataset.mbResizeMin = String(_minWidth);
 
                 startX = e.pageX;
                 startWidth = th.offsetWidth;
@@ -34209,7 +34308,113 @@ a { color: #1565c0; }`;
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
-        .sort-icon-btn { cursor: pointer; padding: 0 2px; font-weight: bold; transition: color 0.1s; color: black; border-radius: 2px; }
+        /* ── The ⇅ ▲ ▼ sort control, as ONE segmented pill ──────────────────
+           Three sibling spans that are one control, so they are drawn as one
+           pill with hairline dividers rather than three loose glyphs. Tokens
+           come from .mb-col-hdr-flex, shared with the COLUMN-HEADER TOGGLE
+           FAMILY rule further down, so the sort pill and the ▶🔗/▶⏱/📊 pills
+           cannot drift apart.
+
+           ZERO DOM CHANGE, and that is load-bearing rather than merely tidy.
+           A wrapper element carrying the class "sort-icon-btn" would have the
+           text "⇅▲▼", and 19 spec files locate these as
+           "locator('.sort-icon-btn', { hasText: '▲' }).first()" — "hasText" is
+           a SUBSTRING match, so the wrapper would match all three queries and,
+           being first in document order, win ".first()". Every one of those
+           clicks would then land on the wrapper's centre instead of the glyph
+           it named. A differently-classed wrapper avoids that but still costs
+           a re-capture of 14 snapshot baselines. The spans are already
+           contiguous siblings with no whitespace between them, so the segments
+           can be built from the spans themselves.
+
+           THE DIVIDERS ARE BORDERS, NEVER A "|" CHARACTER. A literal pipe is
+           TEXT, and this header's text is read by ~25 places — most of which
+           strip a fixed glyph set by regex, including
+           makeTableSortableUnified()'s own re-derivation of colName on a second
+           pass, which feeds th.dataset.colName and from there some 65
+           consumers. It would also break two exact-equality readers:
+           _exportCleanHeaderText()'s "g === '▲'" and the _clickSortIcon(bare)
+           resolver behind Ctrl+ArrowUp/Down/#. Same argument the Picard glyph's
+           CSS block makes for ::before over element text.
+
+           WHY NOT :first-of-type / :last-of-type — they are WRONG here, and
+           wrong on exactly the most decorated columns. *-of-type counts
+           elements of the same TAG, and these spans are neither the first nor
+           the last <span> in .mb-col-hdr-flex: a .mb-caa-col-hdr-btn,
+           .mb-ms-col-hdr-btn, .mb-rel-col-hdr-btn or a .worklink/.placelink
+           glyph can precede them, and .mb-col-uniq-wrap always follows. Verified
+           against the committed baselines — the Length column really does read
+           "mb-ms-col-hdr-btn > sort-icon-btn ×3 > mb-col-uniq-wrap". So the run
+           is identified relative to itself instead. */
+        .sort-icon-btn {
+            cursor: pointer;
+            font-size: var(--mb-hdr-pill-size);
+            font-weight: bold;
+            color: black;
+            line-height: 1;
+            /* Was "0 2px". This is the entire click target — Playwright clicks
+               element centres and ~19 specs depend on hitting the right glyph —
+               so it may grow but must never shrink. */
+            padding: 2px 5px;
+            background: var(--mb-hdr-pill-bg);
+            /* Side borders start at 0 and are re-grown below, so that exactly
+               ONE hairline falls between two segments. Leaving the shorthand's
+               right border in place would pair it with the next segment's left
+               border and draw the divider twice — a 2px rule between segments
+               and a 1px one at the pill's edges. */
+            border: 1px solid var(--mb-hdr-pill-border);
+            border-left-width: 0;
+            border-right-width: 0;
+            border-radius: 0;
+            transition: color 0.1s, background 0.15s, border-color 0.15s;
+            vertical-align: middle;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+        }
+        /* Divider: every segment after the first re-grows its left border, so
+           the rule between two segments is a single shared hairline. */
+        .sort-icon-btn + .sort-icon-btn {
+            border-left-width: 1px;
+        }
+        /* First in the run — not preceded by another sort icon.
+
+           margin-left separates the pill from the column name, and it has to be
+           a margin: makeTableSortableUnified() appends the column name WITH a
+           trailing space, which used to be the gap, but that text node is an
+           that text node is an anonymous FLEX ITEM and edge whitespace inside a
+           flex item is trimmed. It went unnoticed while the glyphs were bare
+           text — they simply sat where the space had been — and became visible
+           the moment they gained a border and a ground. */
+        .sort-icon-btn:not(.sort-icon-btn + .sort-icon-btn) {
+            margin-left: 4px;
+            border-left-width: 1px;
+            border-top-left-radius: var(--mb-hdr-pill-radius);
+            border-bottom-left-radius: var(--mb-hdr-pill-radius);
+        }
+        /* Last in the run — not followed by another sort icon. :has() is
+           already used elsewhere in this file, so it is not a new support
+           floor; note this is its first use in a CSS RULE though, where an
+           unsupported selector drops the rule silently rather than throwing.
+           Worst case is a pill missing its right cap, not a broken control. */
+        .sort-icon-btn:not(:has(+ .sort-icon-btn)) {
+            border-right-width: 1px;
+            border-top-right-radius: var(--mb-hdr-pill-radius);
+            border-bottom-right-radius: var(--mb-hdr-pill-radius);
+            margin-right: 3px;
+        }
+        .sort-icon-btn:hover {
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
+        }
+        /* Engaged: the currently applied sort direction. Deliberately NOT the
+           family's blue — green-on-yellow is a long-standing signal here and is
+           far easier to find by scanning a wide table. All that changed is that
+           it now fills the whole segment instead of sitting as a ragged
+           background behind the glyph text, which is only possible because the
+           per-span border-radius above is 0 for anything mid-run.
+           Still a bare ".sort-icon-active" selector with !important, so it also
+           beats :hover — a sorted column stays yellow under the pointer. */
         .sort-icon-active { color: Green !important; background-color: #FFFF00 !important; }
 
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */
@@ -34555,12 +34760,17 @@ a { color: #1565c0; }`;
         /* .mb-col-uniq-btn is now a purely visual glyph (📊) inside the wrapper.
            All cursor / hover / active / focus behaviour lives on the wrapper. */
         .mb-col-uniq-btn {
-            font-size: 0.80em;
+            /* 1em = the wrapper's own 0.92em, NOT the header's. It used to be
+               0.80em of the header; leaving that literal here after the wrapper
+               gained a font-size would have made the glyph SMALLER (0.80 x 0.92
+               = 0.74em) while nominally "unchanged" — the same em-compounding
+               trap that left .mb-col-collapse-count at two thirds header size. */
+            font-size: 1em;
             line-height: 1;
-            opacity: 0.45;
+            opacity: 1;
             user-select: none;
             pointer-events: none;   /* clicks pass through to the wrapper */
-            padding: 0 2px;
+            padding: 0 1px;
             flex-shrink: 0;
             transition: opacity 0.15s;
             vertical-align: middle;
@@ -34568,36 +34778,60 @@ a { color: #1565c0; }`;
         /* Wrapper that keeps the unique-value count and 📊 glued together as one
            interactive flex unit.  margin-left:auto (when no collapse button is
            present) or 0 (when the collapse button carries the auto margin) is set
-           inline by initCollapsableColumns. */
-        .mb-col-uniq-wrap {
-            display: inline-flex;
-            align-items: center;
-            gap: 0;
-            flex-shrink: 0;
-            margin-left: auto;   /* default: push the pair to the right edge */
-            cursor: pointer;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-        }
-        .mb-col-uniq-wrap:hover .mb-col-uniq-btn,
-        .mb-col-uniq-wrap:hover .mb-col-uniq-count {
-            opacity: 1;
-        }
-        .mb-col-uniq-wrap:hover {
-            background: rgba(0,0,0,0.09);
-        }
-        .mb-col-uniq-wrap.mb-col-uniq-active,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-btn,
-        .mb-col-uniq-wrap.mb-col-uniq-active .mb-col-uniq-count {
-            opacity: 1;
-            background: rgba(0,100,255,0.13);
-        }
+           inline by initCollapsableColumns.
+
+           The box itself comes from the column-header control family further
+           down this stylesheet — this block carries only what the family must
+           NOT own: the auto margin that right-aligns the pair, and gap:0 so the
+           count and 📊 read as one unit rather than two. It is the only member
+           of that family which is not a toggle; it opens the unique-values
+           dropdown. Its "on" state is .mb-col-uniq-active rather than
+           aria-pressed/aria-expanded, which is why that arm lives here.
+
+           The hover rules that used to lift the two children from 0.45/0.60 to
+           full opacity are gone: with the family's resting pill they are at
+           full opacity already, and the pill's own hover is what responds. */
+        /* (The rule itself lives after the family rule below — it has to, or
+           the family's later margin-right would win over this control's own.) */
         /* Flex row wrapper for every sortable column header.
            Element order (left → right):
              [.mb-caa-col-hdr-btn ▶🖼/▼🖼 — CAA/EAA columns only, prepended]
              colName  ⇅  ▲  ▼
              [.mb-col-collapse-hdr-btn ▶N▤/▼N▤ — collapsable columns, margin-left:auto]
              [.mb-col-uniq-wrap [ N 📊 ]]  */
+        /* ── Shared pill tokens for every control in a column header ────────
+           The COLUMN-HEADER TOGGLE FAMILY rule below styles ONE element as one
+           pill, and cannot simply gain a seventh selector for the sort glyphs:
+           those are THREE sibling spans that have to read as one pill, so
+           applying the family rule to them would give three. The segmented
+           rules therefore reproduce the same visual language — which is exactly
+           how two things drift apart. Declaring the values once and referencing
+           them from both makes "these are the same kind of control" structural
+           instead of half a dozen literals that have to keep agreeing. Change a
+           pill's look HERE, not in either consumer.
+
+           Declared on "thead", NOT on .mb-col-hdr-flex, and that matters:
+           .mb-picard-col-hdr-btn is inserted straight into its <th> because the
+           Picard header is the one header in this file with no
+           .mb-col-hdr-flex at all. Scoping the tokens to the flex row would
+           leave that one control resolving var() to nothing — i.e. silently
+           unstyled — while every other member looked fine. "thead" is the
+           nearest ancestor all seven actually share.
+
+           Source order is irrelevant for these: custom properties resolve
+           through inheritance at computed-value time, so the .sort-icon-btn
+           rules may (and do) sit earlier in this stylesheet than the
+           declaration. */
+        table.tbl thead {
+            --mb-hdr-pill-bg:          rgba(255, 255, 255, 0.72);
+            --mb-hdr-pill-bg-hover:    rgba(255, 255, 255, 0.95);
+            --mb-hdr-pill-border:      rgba(0, 0, 0, 0.30);
+            --mb-hdr-pill-border-hover: rgba(0, 0, 0, 0.55);
+            --mb-hdr-pill-radius:      3px;
+            --mb-hdr-pill-size:        0.92em;
+            --mb-hdr-pill-engaged-bg:  rgba(0, 100, 255, 0.20);
+            --mb-hdr-pill-engaged-border: #6f9ada;
+        }
         .mb-col-hdr-flex {
             display: flex;
             align-items: center;
@@ -34721,31 +34955,15 @@ a { color: #1565c0; }`;
             user-select: none;
         }
 
-        /* Per-column ▶▤/▼▤ toggle button inserted into the .mb-col-hdr-flex row
-           with margin-left:auto, immediately before the 📊 unique-values button.
-           ▶▤ = all cells collapsed; ▼▤ = at least one cell expanded. */
-        .mb-col-collapse-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.55;
-            user-select: none;
-            padding: 0 2px;
-            border-radius: 3px;
-            transition: opacity 0.15s, background 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-        }
-        .mb-col-collapse-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.09);
-        }
-
         /* Inline count of multi-row cells inside the ▶N▤/▼N▤ collapse button.
-           Slightly smaller than the surrounding glyphs; inherits the button's
-           cursor / user-select so it behaves as part of the same clickable unit. */
+           Still slightly smaller than the surrounding glyphs, deliberately, but
+           no longer illegibly so: em compounds, and 0.82em inside a 0.80em
+           button was 0.66em of the header — the actual number, which is the one
+           piece of INFORMATION in this control, was the smallest thing in it.
+           Inherits the button's cursor / user-select so it behaves as part of
+           the same clickable unit. */
         .mb-col-collapse-count {
-            font-size: 0.82em;
+            font-size: 0.92em;
             font-weight: bold;
             vertical-align: baseline;
             margin: 0 1px;
@@ -34758,58 +34976,65 @@ a { color: #1565c0; }`;
            pointer-events must NOT be none here — the browser suppresses title
            tooltips on pointer-events:none elements. */
         .mb-col-uniq-count {
-            font-size: 0.72em;
+            /* Relative to the wrapper's 0.92em, so 0.92em here is 0.85em of the
+               header — up from a flat 0.72em, and still a shade smaller than
+               the 📊 beside it, which is the same relationship
+               .mb-col-collapse-count has to its own glyphs. */
+            font-size: 0.92em;
             font-weight: bold;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
             cursor: default;
             flex-shrink: 0;
             vertical-align: middle;
         }
 
-        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column header.
-           Prepended as the first child of .mb-col-hdr-flex; shows ▶ glyph then
-           thumbnail (▶🖼 collapsed / ▼🖼 expanded). */
-        .mb-caa-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .mb-caa-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
-        }
+        /* ============================================================
+           COLUMN-HEADER TOGGLE FAMILY — .mb-col-hdr-flex slot
+           ============================================================
+           Six controls share this slot and this box: the CAA/EAA thumbnail
+           expander, the millisecond-precision toggle, the Picard column
+           toggle, the Relationships load/empty toggle, the multi-row collapse
+           toggle and the 📊 unique-values wrapper. They were six near-identical
+           copies of the same declarations; they are one rule now, so "these are
+           the same kind of control" is structural rather than a coincidence six
+           blocks have to keep agreeing on. Add a seventh by extending the
+           selector lists, not by copying a block.
 
-        /* Per-column millisecond precision toggle in the "Length" column header.
-           Prepended as the first child of .mb-col-hdr-flex, in the same slot and
-           with the same box metrics as .mb-caa-col-hdr-btn above: ▶⏱ shows
-           seconds (more precision available), ▼⏱ shows milliseconds.
-           The engaged state is ALSO tinted, borrowing
-           .mb-col-uniq-wrap.mb-col-uniq-active's "this control is on" idiom, so
-           it stays scannable across a wide table without relying on telling ▶
-           from ▼ at a glance. */
-        .mb-ms-col-hdr-btn {
+           The 📊 wrapper is the one member that is not a toggle — it opens a
+           dropdown — so it has no aria-pressed/aria-expanded arm; its "on"
+           state is .mb-col-uniq-active, handled beside its own block above.
+
+           RESTING STATE IS A PILL, not bare text at 60% opacity. The old
+           resting style was opacity:0.60 on a transparent ground, inherited
+           from when these sat only on the plain #e8e8e8 header. It fails on
+           the injected-column header: that is #b8b8d0, and 🔗 renders as a
+           BLUE-GREY colour emoji, so glyph and ground were the same hue at
+           the same lightness. Sorting makes it worse rather than better —
+           the first sort column blends rgba(255,200,80,.60) over the header
+           (see _MSCOL_HDR_TINT_RGBA), giving rgb(227,194,131), i.e. a cool
+           glyph on a warm ground, both mid-tone. A light ground of the
+           control's own fixes every combination at once, including a header
+           the user has recoloured via sa_ui_thead_th_bg /
+           sa_ui_thead_th_injected_bg, which no hand-picked glyph colour
+           could. It also makes these read as pressable before they are
+           hovered, which bare text at 60% never did. */
+        .mb-caa-col-hdr-btn,
+        .mb-ms-col-hdr-btn,
+        .mb-picard-col-hdr-btn,
+        .mb-rel-col-hdr-btn,
+        .mb-col-collapse-hdr-btn,
+        .mb-col-uniq-wrap {
             cursor: pointer;
-            font-size: 0.80em;
+            font-size: var(--mb-hdr-pill-size);
             line-height: 1;
-            opacity: 0.60;
+            opacity: 1;
             user-select: none;
-            padding: 1px 3px;
+            padding: 1px 4px;
             margin-right: 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
+            border-radius: var(--mb-hdr-pill-radius);
+            background: var(--mb-hdr-pill-bg);
+            border: 1px solid var(--mb-hdr-pill-border);
             transition: opacity 0.15s, background 0.15s, border-color 0.15s;
             vertical-align: middle;
             flex-shrink: 0;
@@ -34817,38 +35042,131 @@ a { color: #1565c0; }`;
             align-items: center;
             white-space: nowrap;
         }
-        .mb-ms-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
+        .mb-caa-col-hdr-btn:hover,
+        .mb-ms-col-hdr-btn:hover,
+        .mb-picard-col-hdr-btn:hover,
+        .mb-rel-col-hdr-btn:hover,
+        .mb-col-collapse-hdr-btn:hover,
+        .mb-col-uniq-wrap:hover {
+            background: var(--mb-hdr-pill-bg-hover);
+            border-color: var(--mb-hdr-pill-border-hover);
         }
-        .mb-ms-col-hdr-btn:focus-visible {
+        .mb-caa-col-hdr-btn:focus-visible,
+        .mb-ms-col-hdr-btn:focus-visible,
+        .mb-picard-col-hdr-btn:focus-visible,
+        .mb-rel-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
             outline-offset: 1px;
         }
-        .mb-ms-col-hdr-btn[aria-pressed="true"] {
-            opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
+        /* Engaged: the "this control is on" idiom borrowed from
+           .mb-col-uniq-wrap.mb-col-uniq-active, so a wide table stays
+           scannable without having to tell ▶ from ▼ at a glance. The CAA
+           button is absent here deliberately — it carries no aria-pressed,
+           its state is data-caa-expand-btn on the cells. */
+        .mb-ms-col-hdr-btn[aria-pressed="true"],
+        .mb-picard-col-hdr-btn[aria-pressed="true"],
+        .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-col-collapse-hdr-btn[aria-expanded="true"] {
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
         }
-        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is under
-           load): yellow warning tint, and the button stays fully clickable —
-           pressing it again retries. Distinct on purpose from the settled,
-           dimmed "MusicBrainz has no sub-second data here" state, which is a
+
+        /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
+           .mb-col-hdr-flex row immediately before the 📊 unique-values button.
+           ▶N▤ = all cells collapsed; ▼N▤ = at least one cell expanded.
+
+           margin-right: 0 because this control is NOT laid out by the family's
+           margin: it carries an inline margin-left:auto (set alongside clearing
+           .mb-col-uniq-wrap's own inline one — see initCollapsableColumns), so
+           BOTH it and the uniq wrap have margin-left:auto and the flex row
+           splits the free space between them. That split is what produces the
+           gap before 📊; a margin-right here would sit inside it and only make
+           the pair look misaligned.
+
+           Its focus ring comes from the page-wide :focus-visible group near the
+           end of this stylesheet (which already lists it, with !important) —
+           the family's own :focus-visible rule would be overridden by it, so
+           this control is deliberately absent from that group.
+
+           State lives on aria-expanded rather than aria-pressed, which is why
+           it has its own arm in the engaged rule above. */
+        .mb-col-collapse-hdr-btn {
+            margin-right: 0;
+        }
+
+        /* 📊 unique-values wrapper — layout deltas the family must not own.
+           MUST sit after the family rule: same specificity, so source order
+           decides, and the family's margin-right:3px would otherwise win over
+           the 0 this control needs as the flex row's last element. The
+           descriptive comment is up with .mb-col-uniq-btn/-count. */
+        .mb-col-uniq-wrap {
+            gap: 0;
+            margin-left: auto;   /* default: push the pair to the right edge */
+            margin-right: 0;     /* last element in the flex row */
+        }
+        /* Engaged: a filter from this column's dropdown is active. Same values
+           as the family's [aria-pressed]/[aria-expanded] arm — the alpha is
+           0.20 rather than the old 0.13 because it now sits over a white pill
+           rather than over the header, exactly as the ⏱ retry tint had to move.
+           Wins on specificity (two classes) regardless of source order. */
+        .mb-col-uniq-wrap.mb-col-uniq-active {
+            background: var(--mb-hdr-pill-engaged-bg);
+            border-color: var(--mb-hdr-pill-engaged-border);
+        }
+
+        /* Per-column CAA/EAA expand/collapse button in the CAA/EAA column
+           header. Prepended as the first child of .mb-col-hdr-flex; shows a ▶
+           glyph then a REAL 16px thumbnail <img> (not an emoji — the ▶🖼/▼🖼
+           this comment used to claim was never what the code built). The gap
+           separates the two; the fixed-px image is unaffected by the family's
+           font-size. */
+        .mb-caa-col-hdr-btn {
+            gap: 3px;
+            margin-right: 0;
+        }
+
+        /* Per-column millisecond precision toggle in the "Length" column
+           header: ▶⏱ shows seconds (more precision available), ▼⏱ shows
+           milliseconds. Unlike the other three the glyph is element TEXT, set
+           by _msUpdateColHdrBtn(), which is also why the U+FE0E that makes ⏱
+           render monochrome lives in that function's strings and not here. */
+
+        /* SETTLED "no sub-second data on record" — dimmed, and it needs its
+           own rule. It never had one: the dimming came from the family's old
+           opacity:0.60 resting state, so raising that to 1 for legibility
+           would have silently made "unavailable" look identical to a normal
+           available button — collapsing two states the ⏱ feature keeps
+           deliberately distinct (see the five button states in CLAUDE.md's
+           millisecond section: retry is worth a second click, unavailable is
+           not). aria-disabled is the honest hook: _msUpdateColHdrBtn() already
+           sets it for exactly this state and no other. */
+        .mb-ms-col-hdr-btn[aria-disabled="true"] {
+            opacity: 0.55;
+            background: rgba(255, 255, 255, 0.35);
+            border-color: rgba(0, 0, 0, 0.18);
+            cursor: default;
+        }
+        /* Transient failure (e.g. a 503 while MusicBrainz's Web Service is
+           under load): yellow warning tint, and the button stays fully
+           clickable — pressing it again retries. Distinct on purpose from the
+           settled, dimmed "no sub-second data here" state above, which is a
            fact about the data rather than about reachability. */
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"] {
-            opacity: 1;
-            background: rgba(255, 193, 7, 0.45);
+            background: rgba(255, 193, 7, 0.55);
             border-color: #d6a100;
         }
         .mb-ms-col-hdr-btn[data-mb-ms-retry="1"]:hover {
-            background: rgba(255, 193, 7, 0.65);
+            background: rgba(255, 193, 7, 0.75);
             border-color: #b98900;
+        }
+        /* Loading: aria-busy, ⏳ possibly carrying batch progress ("2/5"). */
+        .mb-ms-col-hdr-btn[aria-busy="true"] {
+            background: rgba(255, 255, 255, 0.55);
+            border-color: rgba(0, 0, 0, 0.22);
         }
 
         /* Per-table Picard-column expand/collapse toggle, prepended to the
-           <th class="mb-picard-th">. Same box metrics and the same
-           hover/:focus-visible/engaged-tint idiom as .mb-ms-col-hdr-btn above.
+           <th class="mb-picard-th">.
 
            THE GLYPH COMES FROM ::before, NOT FROM THE ELEMENT'S TEXT, and that
            is load-bearing rather than stylistic. The Picard <th> is the one
@@ -34866,44 +35184,52 @@ a { color: #1565c0; }`;
            th.textContent exactly "Picard". Same argument the
            length-mismatch flag makes for being attributes-only.
 
-           These are the first .mb-picard-* rules in the file — every other
-           Picard element is inline-styled. */
-        .mb-picard-col-hdr-btn {
-            cursor: pointer;
-            font-size: 0.80em;
-            line-height: 1;
-            opacity: 0.60;
-            user-select: none;
-            padding: 1px 3px;
-            margin-right: 3px;
-            border-radius: 3px;
-            border: 1px solid transparent;
-            transition: opacity 0.15s, background 0.15s, border-color 0.15s;
-            vertical-align: middle;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            white-space: nowrap;
-        }
+           ♪ (U+266A) needs no U+FE0E: it is a text-presentation character
+           already, which is exactly why this toggle stayed legible while the
+           emoji-glyph ones did not. */
         .mb-picard-col-hdr-btn::before {
             content: '▶♪';   /* collapsed: press to build the buttons */
         }
         .mb-picard-col-hdr-btn[aria-pressed="true"]::before {
             content: '▼♪';   /* expanded: press to empty the column */
         }
-        .mb-picard-col-hdr-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.07);
-            border-color: #bbb;
+
+        /* Per-table Relationships-column load/empty toggle, prepended into the
+           "Relationships" <th>'s .mb-col-hdr-flex.
+
+           U+FE0E (VARIATION SELECTOR-15) after the chain forces TEXT
+           presentation, so it renders as an outline in the header's own
+           colour instead of as a blue-grey colour emoji. That is the half of
+           the legibility fix the pill cannot do: the pill separates the
+           control from the header, this separates the glyph from the pill —
+           and it is why ♪ above never had the problem. Where the font stack
+           declines to honour it the glyph falls back to the colour emoji on a
+           white pill, which is still the old problem solved.
+
+           The glyph is in CSS rather than in text for consistency with the
+           Picard toggle above, though this <th> would survive either: it
+           carries dataset.colName, which _cleanColHeaderText() returns at
+           step 1, and _exportCleanHeaderText() strips the whole
+           .mb-col-hdr-flex and falls back to dataset.colName too. Keeping it
+           here means aria-pressed stays the single representation of
+           "expanded?" on the button side. */
+        .mb-rel-col-hdr-btn::before {
+            content: '▶🔗︎';   /* collapsed: press to fetch and build */
         }
-        .mb-picard-col-hdr-btn:focus-visible {
-            outline: 2px solid rgba(0, 100, 255, 0.55);
-            outline-offset: 1px;
+        .mb-rel-col-hdr-btn[aria-pressed="true"]::before {
+            content: '▼🔗︎';   /* expanded: press to empty the column */
         }
-        .mb-picard-col-hdr-btn[aria-pressed="true"] {
+        /* A collapsed column's filter input matches nothing, because its
+           .mb-rel-filter-key spans do not exist yet. Tint it so that is
+           visible before the user types rather than after — the placeholder
+           and title carry the wording (_relSyncCollapsedFilterAffordance). */
+        .mb-col-filter-input[data-mb-rel-collapsed="1"] {
+            background: rgba(255, 193, 7, 0.18);
+            border-color: #d6a100;
+        }
+        .mb-col-filter-input[data-mb-rel-collapsed="1"]::placeholder {
+            color: #8a6d00;
             opacity: 1;
-            background: rgba(0, 100, 255, 0.13);
-            border-color: #9bb8e8;
         }
 
         #mb-col-uniq-dropdown {
@@ -35101,6 +35427,19 @@ a { color: #1565c0; }`;
         .mb-uniq-rel-item {
             display: flex;
             align-items: center;
+        }
+
+        /* The "this column is collapsed" row in the Relationships section.
+           Not a checkbox item — there is nothing to select — so it deliberately
+           has no hover/cursor affordance, and is tinted with the same yellow
+           the collapsed column's filter input uses. */
+        .mb-uniq-rel-collapsed-note {
+            display: flex;
+            align-items: center;
+            cursor: default;
+            font-style: italic;
+            background: rgba(255, 193, 7, 0.18);
+            color: #6b5500;
         }
 
         /* ============================================================
@@ -43571,9 +43910,17 @@ a { color: #1565c0; }`;
             // where runFilter fires BEFORE initRelationshipsColumn — appending here
             // would then land picard_td before rel_td and swap both columns' data.
             initPicardTaggerColumn(/* rewireOnly */ true);
+            // renderGroupedTable() rebuilt every <thead> from a clone, so the
+            // per-table ▶🔗 toggles are gone and have to be recreated —
+            // unconditionally, because the gate below deliberately does NOT
+            // fire on a settled page.
+            _relInitColHeaderToggles();
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
-            if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
+            // Scoped to EXPANDED tables and to cells that can actually be
+            // fetched — see _relAnyPendingInExpandedTable()'s JSDoc for the two
+            // ways the old page-wide selector went permanently true.
+            if (_relAnyPendingInExpandedTable()) {
                 initRelationshipsColumn();
             }
         } else {
@@ -43822,9 +44169,15 @@ a { color: #1565c0; }`;
                     setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+2000ms'), 2000);
                     setTimeout(() => _debugDumpCaaColumnState('runFilter:post-initCaaPics+5000ms'), 5000);
                 }
+                // The single-table re-render keeps its <thead>, but refresh the
+                // ▶🔗 toggle anyway: it is idempotent, and the gate below
+                // deliberately does not fire on a settled page.
+                _relInitColHeaderToggles();
                 // Re-populate any rel cells that were not yet done when runFilter rebuilt
                 // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
-                if (document.querySelector('td.mb-rel-cell:not([data-rel-done="1"])')) {
+                // See _relAnyPendingInExpandedTable()'s JSDoc for why this is no
+                // longer one page-wide selector.
+                if (_relAnyPendingInExpandedTable()) {
                     initRelationshipsColumn();
                 }
                 // Zebra striping / comment normalisation / sticky column / barcode
@@ -47721,6 +48074,10 @@ a { color: #1565c0; }`;
             if (activeReleaseEventColumns.length) initReleaseEventsColumn();
 
             // Populate Relationships column cells via async WS2 fetches (if configured).
+            // The ▶🔗 per-table toggle is built first and unconditionally: on a
+            // table over sa_rel_collapse_threshold the fetch below does nothing
+            // at all, and the toggle is the only way for the user to ask for it.
+            _relInitColHeaderToggles();
             if (activeInjectedColumns.length) initRelationshipsColumn();
 
             // Inject Picard tagger column AFTER Relationships so Picard is always the
@@ -47834,6 +48191,13 @@ a { color: #1565c0; }`;
             _sdAppend(`Rendering: ${renderSeconds}s`, ', ',
                 'Time to build and insert the fetched rows into the DOM.');
             fetchProgressWrap.style.display = 'none';
+
+            // The status block above cleared #mb-info-display-rel and reset
+            // _relGlobalStatusDone, AFTER the render tail had already called
+            // initRelationshipsColumn(). An all-collapsed page has its answer
+            // synchronously, so it has to be re-stated here — see
+            // _relPublishCollapsedStatus()'s JSDoc.
+            _relPublishCollapsedStatus();
 
             Lib.debug('success', `Process complete. Final Row Count: ${totalRowsAccumulated}. Total Time: ${((performance.now() - startTime) / 1000).toFixed(2)}s`);
         } catch (err) {
@@ -55520,7 +55884,12 @@ a { color: #1565c0; }`;
             return false;
         })();
 
-        const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts : isRelCellCol ? (() => {
+        // `_relTableExpanded(table)`: a collapsed column has no
+        // `.mb-rel-filter-key` spans, so this walk of every visible row can only
+        // ever produce an empty Map. Skipping it is both cheaper and what makes
+        // the "Collapsed — press ▶🔗" note below the section's only content.
+        const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts
+            : isRelCellCol && _relTableExpanded(table) ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -56757,6 +57126,24 @@ a { color: #1565c0; }`;
             _sortedDateMonthValues.forEach(v => makeValueSynItem('datemonth', v, dateMonthValueCounts.get(v)));
             _sortedDateYearValues.forEach(v => makeValueSynItem('dateyear', v, dateYearValueCounts.get(v)));
             _sortedDateWeekdayValues.forEach(v => makeValueSynItem('dateweekday', v, dateWeekdayValueCounts.get(v)));
+        }
+
+        // ── Relationships column: collapsed → say so, do not offer nothing ────
+        // A collapsed column has no .mb-rel-filter-key spans, so relIconCounts
+        // is legitimately empty and the section would simply not appear —
+        // indistinguishable from "this page has no relationships at all". One
+        // non-interactive row makes the difference visible, and deliberately
+        // does NOT start the fetch: a glance at a dropdown must not be able to
+        // queue forty minutes of throttled requests.
+        if (isRelCellCol && !_relTableExpanded(table)) {
+            const _note = document.createElement('div');
+            _note.className = 'mb-col-uniq-item mb-uniq-rel-collapsed-note';
+            _note.textContent = '🔗 Collapsed — press ▶🔗 in the column header to load';
+            _note.title = 'This table’s Relationships column has not been fetched, because it '
+                        + `would need ${_relTableUniqueMbidCount(table)} distinct Web Service `
+                        + 'lookups (throttled to 1 per second). Nothing in it can be filtered '
+                        + 'until you load it. Threshold: sa_rel_collapse_threshold.';
+            getOrCreateSynSection('relationships').itemsBox.appendChild(_note);
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -62720,6 +63107,24 @@ a { color: #1565c0; }`;
     let _relColumnActivePromise = null;
 
     /**
+     * True when a call arrived while a run was already in flight, so exactly
+     * ONE follow-up pass is owed once that run settles — see
+     * `initRelationshipsColumn()`'s "why a follow-up pass" JSDoc section.
+     */
+    let _relColumnRerunPending = false;
+
+    /**
+     * Count of `_initRelationshipsColumnImpl()` invocations since page load.
+     *
+     * Exposed to tests as `__saTest.relInitRuns()` because the per-table
+     * collapse gate's whole effect is that this stops going up — a collapsed
+     * column looks byte-identical in the DOM whether a pass ran and found
+     * nothing to do or never ran at all. Same argument as
+     * `__saTest.picardEntityScans()`.
+     */
+    let _relInitRunCount = 0;
+
+    /**
      * Reads one WS2 rel-data record from IndexedDB.
      * Returns null when IDB is disabled, unavailable, or the entry is missing/expired.
      * @param {string} ckey  '${entityType}:${mbid}'
@@ -63836,6 +64241,679 @@ a { color: #1565c0; }`;
             if (e.target.closest('td.mb-rel-cell')) _hideAll();
         }, true);
     }
+
+    // ── Relationships column: per-table collapse/expand ──────────────────────
+    //
+    // Deferring the CELL CONTENT of a column whose <th> and <td>s always exist
+    // is PERFORMANCE.org Step 32's shape, borrowed wholesale from the Picard
+    // column (`_picardTableExpanded`/`_picardToggleTable`). Two things differ,
+    // and both make this the bigger win and the more delicate change:
+    //
+    //   - What is deferred is the NETWORK. This column issues one WS2 request
+    //     per distinct entity, strictly serialised at 1100 ms — so a 2 301-row
+    //     release listing costs ~42 minutes of background fetching that starts
+    //     before the user has scrolled, plus one cross-origin favicon <img>
+    //     per icon. Picard deferred DOM construction only.
+    //   - Unlike a Picard cell, a rel cell carries real filterable data (its
+    //     `.mb-rel-filter-key` spans feed `getCleanColumnText()`, the 📊
+    //     dropdown's `relIconCounts` and the `rel:` structure modes). So
+    //     collapsing genuinely removes searchable content, which is why the
+    //     default is a THRESHOLD rather than a flat "collapsed", and why a
+    //     collapsed column says so instead of quietly matching nothing.
+    //     Sorting is unaffected either way: `_sortCellText()` already returns
+    //     `''` for every rel cell, since `getCleanVisibleText()` FILTER_REJECTs
+    //     `.mb-rel-filter-key` and the icons are <img>.
+
+    /**
+     * Number of DISTINCT MBIDs this table's Relationships column would fetch.
+     *
+     * This is the cost the threshold is about: `_initRelationshipsColumnImpl()`
+     * dedupes to `uniqueMbids` and issues exactly one request per entry, so the
+     * count IS the request count and (at 1100 ms apart) very nearly the
+     * wall-clock seconds.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {number}
+     */
+    function _relTableUniqueMbidCount(table) {
+        const _seen = new Set();
+        table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]')
+            .forEach(td => _seen.add(td.dataset.mbid));
+        return _seen.size;
+    }
+
+    /**
+     * Whether `table`'s Relationships column is expanded, defaulting and
+     * stamping `data-mb-rel-expanded` on first read.
+     *
+     * ── Why the state is explicit, and why it lives on the `<table>` ─────────
+     *
+     * Both answers are `_picardTableExpanded()`'s, for the same reasons. "Is
+     * any cell populated?" cannot serve as the state, because an expanded cell
+     * for an entity with no relationships is byte-identical to a collapsed one.
+     * And `renderGroupedTable()`'s reuse branch replaces the `<tbody>`'s
+     * contents but never the `<table>`, its `dataset` or its `<thead>`, while
+     * `runFilter()`'s multi branch always passes a truthy query — so a flag
+     * here survives every keystroke, sort and discography-view switch, and is
+     * lost only where a `<table>` is newly created, which IS the "initially
+     * collapsed" contract.
+     *
+     * ── The two defaults ────────────────────────────────────────────────────
+     *
+     * 1. A table that already carries populated cells starts EXPANDED,
+     *    whatever the threshold says. This is the disk-load and cross-tab
+     *    handoff case: save-format 1.1 bakes `mbid`/`relDone` and the icon
+     *    markup into the snapshot, so the data is present at zero cost and
+     *    hiding it would be pure loss. It also keeps every fixture captured
+     *    with relationships populated behaving exactly as before.
+     * 2. Otherwise: collapsed iff the threshold is enabled and this table's
+     *    distinct-entity count exceeds it.
+     *
+     * `sa_rel_collapse_threshold` is read WITHOUT `||`, deliberately. The
+     * setting documents `0` as "never auto-collapse", and `0 || 200` is `200` —
+     * the exact defect `sa_render_threshold` and `sa_chunked_render_threshold`
+     * still carry (see CLAUDE.md's note on it). A non-numeric or negative value
+     * falls back to the schema default instead of silently disabling.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {boolean}
+     */
+    function _relTableExpanded(table) {
+        if (table.dataset.mbRelExpanded === undefined) {
+            // A table with no Relationships column at all is reported expanded
+            // and — importantly — NOT stamped. Most callers here run on every
+            // page: `runFilter()`'s gate is unconditional, and
+            // `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` strips
+            // the column from any sub-table whose rows link no release. Stamping
+            // those would put a `data-mb-rel-expanded` attribute into every
+            // rendered table on every pageType, including the eleven committed
+            // `tests/snapshots/*/rendered.html` baselines that carry no rel cell
+            // at all — a diff with no behaviour behind it.
+            if (!table.querySelector('tbody td.mb-rel-cell')) return true;
+            let _expanded;
+            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) {
+                _expanded = true;
+            } else {
+                const _raw = Lib.settings.sa_rel_collapse_threshold;
+                const _thr = (typeof _raw === 'number' && _raw >= 0) ? _raw : 200;
+                _expanded = (_thr === 0) || (_relTableUniqueMbidCount(table) <= _thr);
+            }
+            table.dataset.mbRelExpanded = _expanded ? '1' : '0';
+        }
+        return table.dataset.mbRelExpanded === '1';
+    }
+
+    /**
+     * Whether any EXPANDED table still has a fetchable, unpopulated rel cell.
+     *
+     * Replaces the bare `document.querySelector('td.mb-rel-cell:not([data-rel-done="1"]))`
+     * that both of `runFilter()`'s branches used to gate their
+     * `initRelationshipsColumn()` call. Two independent reasons that selector
+     * cannot survive a collapse toggle:
+     *
+     *   - A COLLAPSED cell never gets `data-rel-done`, so the old gate would be
+     *     permanently true and every keystroke would kick a full pass — which
+     *     re-reads three GM tables (`_initRelMappings()`) and sweeps the live
+     *     tbody plus `groupedRows` plus `allRows` in `_ensureRelCell()`. Three
+     *     whole-row walks per keystroke, on the hot path.
+     *   - `[data-mbid]` is new here and fixes a PRE-EXISTING version of the
+     *     same defect: the row-build pass creates the `<td>` unconditionally but
+     *     stamps `data-mbid` only when the row actually links a release /
+     *     release-group / work, so a page with any such row already had a cell
+     *     that could never be populated and therefore already made the old gate
+     *     permanently true.
+     *
+     * Cost is one short-circuiting `querySelector` per table, so the same order
+     * as the single page-wide one it replaces.
+     *
+     * @returns {boolean}
+     */
+    function _relAnyPendingInExpandedTable() {
+        for (const _table of document.querySelectorAll('table.tbl')) {
+            if (!_relTableExpanded(_table)) continue;
+            if (_table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Drops the cached clean text of one row's Relationships cell.
+     *
+     * `_rowTextCache` is never invalidated anywhere (PERFORMANCE.org Step 9),
+     * which today only bites in the narrow window where a user filters while
+     * the first fetch is still running. A user-driven toggle widens that window
+     * into a repeatable bug: filter the column while collapsed, and `''` is
+     * cached for every row; expand, and the icons are plainly visible while the
+     * same filter still matches nothing.
+     *
+     * Only the one column entry is dropped, not the whole row: `c.full` is
+     * `getCleanVisibleText(row)`, which FILTER_REJECTs `.mb-rel-filter-key` and
+     * so cannot be affected by this column at all.
+     *
+     * @param   {HTMLTableRowElement}  row
+     * @param   {number}               colIdx
+     * @returns {void}
+     */
+    function _relDropRowTextCache(row, colIdx) {
+        const _c = _rowTextCache.get(row);
+        if (_c && _c.cols) _c.cols[colIdx] = null;
+    }
+
+    /**
+     * Flips one table's Relationships column between collapsed and expanded.
+     *
+     * ── Collapsing keeps both caches ────────────────────────────────────────
+     *
+     * It clears cell content and the `relDone` marker, and nothing else. The L1
+     * `_relWs2Cache` and the L2 `rel-ws2` IndexedDB store are deliberately left
+     * alone, which is what makes re-expanding free — contrast
+     * `_relRetryMbids()`, whose whole purpose is to evict them.
+     *
+     * ── Expanding just asks; it does not fetch here ──────────────────────────
+     *
+     * `initRelationshipsColumn()` is called with no scope argument: its own
+     * per-table gate finds exactly this table's pending cells, and its
+     * follow-up-pass loop is what guarantees the call lands even when another
+     * table's fetch is still in flight (see that function's JSDoc).
+     *
+     * ── Both directions mirror onto the master rows ──────────────────────────
+     *
+     * `renderGroupedTable()` always clones, and so does every `runFilter()`
+     * re-render, so the masters in `groupedRows`/`allRows` are what the NEXT
+     * render starts from. Unlike the Picard toggle, here the mirror IS
+     * load-bearing for correctness: nothing reconciles a cloned rel cell
+     * against its table's state on a later pass — `_stripTransientCellState()`
+     * has no `.mb-rel-*` arm and never touches `relDone` — so a collapse that
+     * left the masters populated would have the icons reappear on the next
+     * keystroke.
+     *
+     * Resolved through one `_buildMasterRowIndex()` per press plus the
+     * owner-array sweep, never `_findMasterRowByIdx()` per row: that helper is
+     * a linear scan and per-row use would make this O(N²).
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relToggleTable(table) {
+        const _next = !_relTableExpanded(table);
+        table.dataset.mbRelExpanded = _next ? '1' : '0';
+
+        const _masterIdx   = _buildMasterRowIndex();
+        const _ownerArrays = new Set();
+        const _seen        = new Set();
+        let _cleared = 0;
+
+        /**
+         * Empties one cell, at most once per cell.
+         *
+         * The dedup carries `_picardToggleTable()`'s rationale verbatim: the
+         * owner-array sweep below re-visits masters the `_masterIdx` loop
+         * already reached, and on a single-table page's initial render the
+         * master row IS the live row (`renderFinalTable` moves rather than
+         * clones), so a cell would arrive twice from the other direction.
+         *
+         * @param   {HTMLTableRowElement}  row
+         * @param   {HTMLTableCellElement} td
+         * @returns {void}
+         */
+        const _clear = (row, td) => {
+            if (_seen.has(td)) return;
+            _seen.add(td);
+            _relDropRowTextCache(row, td.cellIndex);
+            if (_next) return;              // expanding: leave the cell for the fetch
+            if (td.firstChild) td.textContent = '';
+            delete td.dataset.relDone;
+            td.style.backgroundColor = '';
+            _cleared++;
+        };
+
+        table.querySelectorAll('tbody tr').forEach(tr => {
+            const _liveTd = tr.querySelector('td.mb-rel-cell');
+            if (_liveTd) _clear(tr, _liveTd);
+            const _entry = _masterIdx.get(tr.dataset ? tr.dataset.mbRowIdx : undefined);
+            if (!_entry) return;
+            if (_entry.row !== tr) {
+                const _masterTd = _entry.row.querySelector('td.mb-rel-cell');
+                if (_masterTd) _clear(_entry.row, _masterTd);
+            }
+            _ownerArrays.add(_entry.owner);
+        });
+
+        // Rows the active filter left unrendered have no live counterpart, so
+        // sweep whichever source arrays this table feeds — otherwise clearing
+        // the filter brings back rows in the OLD state. Resolved from rows
+        // actually present, so no group-index assumption is made (merged
+        // discography view breaks that correspondence).
+        _ownerArrays.forEach(arr => arr.forEach(row => {
+            const _td = row.querySelector('td.mb-rel-cell');
+            if (_td) _clear(row, _td);
+        }));
+
+        // Cell content changed with no row show/hide, which the uniq-dropdown
+        // cache's visible-row-set signature cannot see. Unconditional: a press
+        // always changed something.
+        _invalidateUniqDropDataCacheForTable(table);
+
+        const _btn = table.querySelector('thead .mb-rel-col-hdr-btn');
+        if (_btn) _relUpdateColHdrBtn(_btn, table, _next);
+        _relSyncCollapsedFilterAffordance(table);
+        _relSyncGlobalColHdrBtn();
+
+        if (_next) initRelationshipsColumn();
+
+        Lib.debug('relationships', _next
+            ? `_relToggleTable: expanded — fetch requested for `
+              + `${_relTableUniqueMbidCount(table)} distinct entity/entities`
+            : `_relToggleTable: collapsed — ${_cleared} cell(s) cleared, caches kept`);
+    }
+
+    /**
+     * Repaints one per-table header toggle from the table's current state.
+     *
+     * Sets `aria-pressed`, `title` and `aria-label` only. **The glyph comes
+     * from a CSS `::before` keyed on `aria-pressed`, never from text** — see
+     * the `.mb-rel-col-hdr-btn` CSS block for why, and note that unlike the
+     * Picard header this one would survive a text glyph (it carries
+     * `dataset.colName`, which `_cleanColHeaderText()` returns at step 1). It
+     * is kept in CSS anyway: `aria-pressed` then does double duty as state and
+     * as the selector the glyph and the engaged tint hang off, so every
+     * "expanded?" read on the BUTTON side has one answer.
+     *
+     * The collapsed tooltip names the real cost in requests and seconds,
+     * because "press this to load" gives the user no way to know whether that
+     * means two seconds or forty minutes.
+     *
+     * @param   {HTMLElement}      btn
+     * @param   {HTMLTableElement} table
+     * @param   {boolean}          expanded
+     * @returns {void}
+     */
+    function _relUpdateColHdrBtn(btn, table, expanded) {
+        btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        if (expanded) {
+            btn.title = 'Empty the Relationships column in this table '
+                      + '(already-fetched data is kept, so re-loading is instant)';
+            btn.setAttribute('aria-label', 'Empty the Relationships column in this table');
+            return;
+        }
+        const _n = _relTableUniqueMbidCount(table);
+        btn.title = 'Load the relationship icons for this table — '
+                  + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} to look up, `
+                  + `about ${_relFormatEta(_n)} at the MusicBrainz rate limit of 1 request/second `
+                  + '(anything already cached is instant)';
+        btn.setAttribute('aria-label',
+            `Load the relationship icons for this table, ${_n} entities to look up`);
+    }
+
+    /**
+     * Formats an at-1-req/s ETA for a lookup count, for the toggle tooltip.
+     *
+     * @param   {number} count
+     * @returns {string}
+     */
+    function _relFormatEta(count) {
+        const _s = Math.round(count * 1.1);
+        if (_s < 60)   return `${_s} second${_s === 1 ? '' : 's'}`;
+        if (_s < 3600) return `${Math.round(_s / 60)} minute${Math.round(_s / 60) === 1 ? '' : 's'}`;
+        return `${(_s / 3600).toFixed(1)} hours`;
+    }
+
+    /**
+     * Handles a click or Enter/Space keydown anywhere inside a `table.tbl`,
+     * acting only when it originated on a `.mb-rel-col-hdr-btn`.
+     *
+     * Module-level rather than a closure so both listeners share one reference
+     * and the target table is resolved from the event, never captured.
+     *
+     * @param   {Event} ev
+     * @returns {void}
+     */
+    function _relHdrDelegateHandler(ev) {
+        const _btn = ev.target.closest ? ev.target.closest('.mb-rel-col-hdr-btn') : null;
+        if (!_btn) return;
+        if (ev.type === 'keydown' && ev.key !== 'Enter' && ev.key !== ' ') return;
+        // preventDefault: Space would otherwise scroll the page.
+        // stopPropagation: the <th> carries a sort handler and the document a
+        // click handler of its own.
+        ev.preventDefault();
+        ev.stopPropagation();
+        const _table = _btn.closest('table.tbl');
+        if (_table) _relToggleTable(_table);
+    }
+
+    /**
+     * Installs the header-toggle click/keydown delegation on `table`, once.
+     *
+     * Hosted on the `<table>` for `_picardEnsureHdrDelegate()`'s reasons:
+     * `renderGroupedTable()` rebuilds each group's `<thead>` from
+     * `templateHead.cloneNode(true)`, so a span wired with `addEventListener`
+     * arrives as a live-LOOKING dead clone and a "wired" marker on the span
+     * would be copied by `cloneNode` and would lie. The `<thead>` is no safer —
+     * unlike the `<tbody>` it IS replaced. The `<table>` and this guard have
+     * identical lifetimes, so the guard cannot lie.
+     *
+     * The guard is set only AFTER `addEventListener()` has run, deliberately
+     * not copying `ensureCollapseDelegate()`'s latent bug of marking a
+     * `tbody`-less table before its own null-check.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relEnsureHdrDelegate(table) {
+        if (table.dataset.mbRelHdrDelegate) return;
+        table.addEventListener('click', _relHdrDelegateHandler);
+        table.addEventListener('keydown', _relHdrDelegateHandler);
+        table.dataset.mbRelHdrDelegate = '1';
+        Lib.debug('relationships', '_relEnsureHdrDelegate: header delegate installed on <table>.');
+    }
+
+    /**
+     * Creates or refreshes the `▶🔗`/`▼🔗` toggle in one table's
+     * "Relationships" `<th>`, and makes sure that table carries the delegation
+     * the toggle depends on.
+     *
+     * The button is prepended into the header's `.mb-col-hdr-flex`, the slot
+     * `.mb-caa-col-hdr-btn` and `.mb-ms-col-hdr-btn` already use — this header
+     * is a normal sortable one, so `makeTableSortableUnified()` has built it a
+     * flex row (which is also why this cannot run before that function: it
+     * wipes `th.innerHTML` first). A bare `<span role="button">` rather than a
+     * `<button>`, so the navigation guard's `closest('button')` merge-form
+     * branch never sees it.
+     *
+     * The class name is `mb-rel-col-hdr-btn` and must not be
+     * `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn`:
+     * `initCollapsableColumns()`'s idempotent cleanup pass removes both of
+     * those table-wide, so the toggle would delete itself.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relInitColHeaderToggle(table) {
+        const _th = Array.from(table.querySelectorAll('thead tr:first-child th.mb-injected-column'))
+            .find(th => th.dataset.colName === 'Relationships');
+        if (!_th) return;
+        const _flex = _th.querySelector('.mb-col-hdr-flex');
+        if (!_flex) return;             // makeTableSortableUnified has not run yet
+        let _btn = _flex.querySelector('.mb-rel-col-hdr-btn');
+        if (!_btn) {
+            _btn = document.createElement('span');
+            _btn.className = 'mb-rel-col-hdr-btn';
+            _btn.setAttribute('role', 'button');
+            _btn.tabIndex = 0;
+            _flex.insertBefore(_btn, _flex.firstChild);
+        }
+        _relEnsureHdrDelegate(table);
+        _relUpdateColHdrBtn(_btn, table, _relTableExpanded(table));
+        _relSyncCollapsedFilterAffordance(table);
+    }
+
+    /**
+     * Refreshes every table's Relationships header toggle, then the page-wide
+     * button.
+     *
+     * Called on every render path rather than from
+     * `_initRelationshipsColumnImpl()`, and that separation is the point: the
+     * impl is now gated on there being something to fetch, so on a settled page
+     * it does not run — which is exactly when `renderGroupedTable()` has just
+     * rebuilt every `<thead>` from a clone and the toggles need recreating.
+     *
+     * No-ops when the column is not active for this page.
+     *
+     * @returns {void}
+     */
+    function _relInitColHeaderToggles() {
+        if (!Lib.settings.sa_enable_relationships_column) return;
+        if (!activeInjectedColumns.length) return;
+        document.querySelectorAll('table.tbl').forEach(_relInitColHeaderToggle);
+        _relInitGlobalColHdrToggle();
+    }
+
+    /**
+     * Marks or unmarks one table's Relationships column filter input as
+     * belonging to a collapsed column.
+     *
+     * A collapsed column's `.mb-rel-filter-key` spans do not exist, so typing
+     * in its filter matches nothing — and unlike the Picard column, which was
+     * genuinely empty by nature, that is a temporary state the user can undo.
+     * Saying so beats matching nothing silently, and beats auto-fetching: a
+     * single keystroke must not be able to start forty minutes of requests.
+     *
+     * `placeholder` and `title` carry the message; `data-mb-rel-collapsed`
+     * carries the tint (CSS, so it survives `cloneNode`).
+     *
+     * The originals are STASHED and restored verbatim rather than blanked. The
+     * generic filter-row builder gives every input a `'…'` placeholder and a
+     * long keyboard-shortcut `title`, so clearing them on expand would quietly
+     * strip this one column's help text — the same save-and-restore idiom the
+     * rel tooltip already uses on an anchor's native `title`.
+     *
+     * `data-col-idx` is the header cell's own index (`addColumnFilterRow()`
+     * builds the row from `originalHeader.cells` and stamps the loop index), so
+     * `_th.cellIndex` addresses the right input. It resolves nothing when the
+     * filter row has not been built yet, or was just rebuilt by the
+     * stale-detection path — both are covered by the next render pass, since
+     * `_relInitColHeaderToggles()` re-runs this every time.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relSyncCollapsedFilterAffordance(table) {
+        const _th = Array.from(table.querySelectorAll('thead tr:first-child th.mb-injected-column'))
+            .find(th => th.dataset.colName === 'Relationships');
+        if (!_th) return;
+        const _input = table.querySelector(
+            `thead .mb-col-filter-input[data-col-idx="${_th.cellIndex}"]`);
+        if (!_input) return;
+
+        if (_relTableExpanded(table)) {
+            if (!_input.dataset.mbRelCollapsed) return;
+            delete _input.dataset.mbRelCollapsed;
+            _input.placeholder = _input.dataset.mbRelPhSaved || '…';
+            _input.title       = _input.dataset.mbRelTitleSaved || '';
+            delete _input.dataset.mbRelPhSaved;
+            delete _input.dataset.mbRelTitleSaved;
+            return;
+        }
+
+        if (_input.dataset.mbRelCollapsed) return;      // already marked
+        _input.dataset.mbRelPhSaved    = _input.placeholder;
+        _input.dataset.mbRelTitleSaved = _input.title;
+        _input.dataset.mbRelCollapsed  = '1';
+        _input.placeholder = 'collapsed — press ▶🔗';
+        _input.title = 'This table’s Relationships column is collapsed, so there is nothing '
+                     + 'to filter yet — press ▶🔗 in the column header to load it. '
+                     + 'Threshold: sa_rel_collapse_threshold.';
+    }
+
+    /**
+     * States the "nothing was fetched, the column is collapsed" fact in the
+     * `#mb-info-display-rel` info sub and the global status bar.
+     *
+     * ── Why this is a function with two call sites and not one inline block ──
+     *
+     * `startFetchingProcess()`'s status block runs `globalStatusDisplay.innerHTML
+     * = ''`, `_relGlobalStatusDone = false` and `_setInfoSub('mb-info-display-rel',
+     * '')` — SYNCHRONOUSLY AFTER the render tail has already called
+     * `initRelationshipsColumn()`. The normal completion toast survives that only
+     * because it is genuinely async (it fires on the Phase-1/Phase-2 promise
+     * chain), whereas the all-collapsed answer is known immediately and would be
+     * wiped a few statements later. Measured, not assumed: the first version of
+     * this published inline and `#mb-info-display-rel` came back empty and
+     * hidden.
+     *
+     * So it is called BOTH from the impl (which covers a later toggle-off, where
+     * no status reset happens) and from just after each status reset (initial
+     * render and disk-load). Idempotent, and deliberately not deferred with a
+     * `setTimeout`/microtask, which would only work as long as nobody adds an
+     * `await` between the tail and the reset.
+     *
+     * Says nothing when some expanded table has data — the real toast speaks for
+     * that case and is more informative.
+     *
+     * @returns {void}
+     */
+    function _relPublishCollapsedStatus() {
+        if (!Lib.settings.sa_enable_relationships_column) return;
+        if (!activeInjectedColumns.length) return;
+        let _collapsed = 0;
+        let _populated = 0;
+        document.querySelectorAll('table.tbl').forEach(_table => {
+            if (!_table.querySelector('tbody td.mb-rel-cell')) return;
+            if (_relTableExpanded(_table)) {
+                _populated += _table.querySelectorAll(
+                    'tbody td.mb-rel-cell[data-rel-done="1"]').length;
+            } else {
+                _collapsed++;
+            }
+        });
+        if (!_collapsed || _populated) return;
+
+        const _plural = _collapsed === 1 ? '' : 's';
+        _setInfoSub('mb-info-display-rel',
+            '🔗Rels: collapsed',
+            `The Relationships column is collapsed in ${_collapsed} table${_plural}, so `
+            + 'nothing has been fetched. Press ▶🔗 in a column header to load it — one Web '
+            + 'Service request per distinct entity, throttled to 1 per second. '
+            + 'Threshold: sa_rel_collapse_threshold.');
+        if (!_relGlobalStatusDone) {
+            _relGlobalStatusDone = true;
+            _sdAppend(
+                '🔗Rels: collapsed',
+                ', ',
+                `Relationship icons: not loaded — the column is collapsed in ${_collapsed} `
+                + `table${_plural} because it would need more than `
+                + 'sa_rel_collapse_threshold distinct lookups. Press ▶🔗 in the column '
+                + 'header to load it.');
+        }
+    }
+
+    /** Fixed id of the page-wide Relationships column toggle — its own idempotency key. */
+    const _REL_COL_ALL_BTN_ID = 'mb-rel-col-hdr-toggle-all-btn';
+
+    /**
+     * All per-table Relationships header toggles currently in the document.
+     *
+     * @returns {HTMLElement[]}
+     */
+    function _relColHdrBtns() {
+        return Array.from(document.querySelectorAll('thead .mb-rel-col-hdr-btn'));
+    }
+
+    /**
+     * Refreshes the page-wide "Show/Hide all Relationships" button's label,
+     * tooltip and visibility from the aggregate state of the per-table toggles.
+     *
+     * Safe to call when the button does not exist.
+     *
+     * @returns {void}
+     */
+    function _relSyncGlobalColHdrBtn() {
+        const _b = document.getElementById(_REL_COL_ALL_BTN_ID);
+        if (!_b) return;
+        const _all = _relColHdrBtns();
+        if (!_all.length) { _b.style.display = 'none'; return; }
+        const _anyCollapsed = _all.some(x => x.getAttribute('aria-pressed') !== 'true');
+        _b.dataset.mbRelColAllExpanded = _anyCollapsed ? 'false' : 'true';
+        const _label = _b.querySelector('.mb-rel-col-hdr-all-label');
+        if (_label) {
+            _label.textContent = _anyCollapsed
+                ? '▶🔗 Load all Relationships'
+                : '▼🔗 Empty all Relationships';
+        }
+        _b.title = _anyCollapsed
+            ? 'Load the relationship icons in every sub-table section — one Web Service '
+              + 'request per distinct entity, throttled to 1 per second'
+            : 'Empty the Relationships column in every sub-table section '
+              + '(already-fetched data is kept)';
+        _b.style.display = 'inline-flex';
+    }
+
+    /**
+     * Creates or updates the page-wide "Load/Empty all Relationships" button,
+     * modelled on `_picardInitGlobalColHdrToggle()`.
+     *
+     * MULTI-TABLE ONLY, as the CAA/EAA and Picard globals are: a single-table
+     * page has one Relationships header, so its own toggle already IS the
+     * page-wide control.
+     *
+     * Placement anchors on the LAST existing page-wide column button — the
+     * Picard one if present, else the last CAA/EAA one, else collapse-all —
+     * giving a deterministic reading order of collapse-all, CAA-all, EAA-all,
+     * Picard-all, Rel-all whichever pass happened to run first.
+     *
+     * `_relColHdrBtns().length === 0` is a normal state, not an error:
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` removes the
+     * column outright from any sub-table whose rows link no release or release
+     * group, so a heterogeneous page legitimately has fewer Relationships
+     * headers than tables — and possibly none.
+     *
+     * Idempotent via the fixed `_REL_COL_ALL_BTN_ID`.
+     *
+     * @returns {void}
+     */
+    function _relInitGlobalColHdrToggle() {
+        if (!activeDefinition || activeDefinition.tableMode !== 'multi') return;
+
+        if (_relColHdrBtns().length === 0) {
+            const _stale = document.getElementById(_REL_COL_ALL_BTN_ID);
+            if (_stale) _stale.style.display = 'none';
+            return;
+        }
+
+        const _globalCollapseBtn = document.getElementById('mb-col-collapse-all-btn');
+        if (!_globalCollapseBtn) return;
+
+        let _btn = document.getElementById(_REL_COL_ALL_BTN_ID);
+        if (!_btn) {
+            _btn = document.createElement('button');
+            _btn.id   = _REL_COL_ALL_BTN_ID;
+            _btn.type = 'button';
+            _btn.style.cssText =
+                'font-size:0.8em; padding:2px 4px 2px 3px; border-radius:4px;' +
+                ' background:rgb(240,240,240); border:1px solid rgb(204,204,204);' +
+                ' cursor:pointer; vertical-align:middle; display:none;' +
+                ' align-items:center; gap:4px;' +
+                ' transition:background-color 0.2s, color 0.2s;';
+
+            const _labelSpan = document.createElement('span');
+            _labelSpan.className = 'mb-rel-col-hdr-all-label';
+            _btn.appendChild(_labelSpan);
+
+            _btn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const _hdrBtns = _relColHdrBtns();
+                if (!_hdrBtns.length) return;
+                // Expand if any is currently collapsed, else collapse all.
+                const _nowExpanding = _hdrBtns.some(b => b.getAttribute('aria-pressed') !== 'true');
+                _hdrBtns.forEach(b => {
+                    const _isExpanded = b.getAttribute('aria-pressed') === 'true';
+                    // .click() on a <span> dispatches a bubbling click, which is
+                    // what the per-table delegate on the <table> listens for —
+                    // so this drives the real toggle rather than a copy of it.
+                    if (_isExpanded !== _nowExpanding) b.click();
+                });
+                _relSyncGlobalColHdrBtn();
+                Lib.debug('relationships',
+                    `_relInitGlobalColHdrToggle: ${_nowExpanding ? 'expanded' : 'collapsed'} ` +
+                    `all ${_hdrBtns.length} Relationships column(s)`);
+            });
+
+            const _picardAll = document.getElementById(_PICARD_COL_ALL_BTN_ID);
+            const _caaAllBtns = document.querySelectorAll('[data-mb-caa-col-all-ctx]');
+            const _anchor = _picardAll
+                ? _picardAll
+                : (_caaAllBtns.length ? _caaAllBtns[_caaAllBtns.length - 1] : _globalCollapseBtn);
+            _anchor.after(_btn);
+            Lib.debug('relationships',
+                '_relInitGlobalColHdrToggle: created page-wide Relationships toggle btn');
+        }
+
+        _relSyncGlobalColHdrBtn();
+    }
+    // ── end Relationships column collapse/expand ─────────────────────────────
+
     /**
      * Populates the injected "Relationships" column for every `td.mb-rel-cell`
      * element currently in the DOM.
@@ -63888,17 +64966,59 @@ a { color: #1565c0; }`;
      * in flight awaits the in-flight run instead of starting a second,
      * overlapping one — the actual work lives in `_initRelationshipsColumnImpl()`.
      *
+     * ── Why a follow-up pass, and why exactly one ────────────────────────────
+     *
+     * "Await the in-flight run and return" was sound only while every cell was
+     * a candidate from the moment it existed: whatever a second caller wanted
+     * done, the in-flight run's own `allCells` snapshot already covered it.
+     * `_relTableExpanded()` breaks that. A table the user expands mid-flight
+     * was NOT in the running pass's snapshot — the snapshot predates the
+     * expansion — so a plain "await, return" would strand it empty forever,
+     * with no error and no retry.
+     *
+     * So a call that arrives busy sets `_relColumnRerunPending` and the owner
+     * of the loop runs again once its own pass settles. The flag is a single
+     * boolean rather than a counter deliberately — N callers arriving during
+     * one long fetch owe one follow-up between them, not N — so a keystroke
+     * storm cannot queue a pile of full passes.
+     *
+     * ── What this guard does NOT do, and what actually prevents doubling ─────
+     *
+     * *It does not serialise passes, and it never did.* The Phase-2 queue is
+     * fire-and-forget: `_initRelationshipsColumnImpl()` resolves as soon as
+     * PHASE 1 does, so `_relColumnActivePromise` goes null while the queue is
+     * still trickling one request per 1100 ms, and a later call therefore
+     * starts a second pass alongside the first. An earlier version of this
+     * comment claimed the follow-up's candidate set was "disjoint by
+     * construction" because the previous pass had finished marking cells
+     * `relDone` — that was simply wrong, and it is how the multiplying-icons
+     * bug shipped: one toggle cycle left 19 anchors across 12 cells, and
+     * `debug/relationships-multiplying.html` has five copies of a single URL.
+     *
+     * What actually prevents doubling lives in the impl, and it is two things,
+     * neither of them this guard: `_relCellWritable()` refuses to write into a
+     * table whose column has since been collapsed, and
+     * `_relQueueStillWants()`'s `!relDone` check stops a second queue
+     * re-answering an mbid a first one already wrote. `_populateCells()` is
+     * additionally idempotent (it replaces rather than appends) as defence in
+     * depth. Read all three before changing anything here, and do not
+     * re-derive "passes cannot overlap" from this guard's existence.
+     *
      * @returns {Promise<void>}
      */
     async function initRelationshipsColumn() {
         if (_relColumnActivePromise) {
+            _relColumnRerunPending = true;
             await _relColumnActivePromise;
             return;
         }
-        _relColumnActivePromise = _initRelationshipsColumnImpl().finally(() => {
-            _relColumnActivePromise = null;
-        });
-        return _relColumnActivePromise;
+        do {
+            _relColumnRerunPending = false;
+            _relColumnActivePromise = _initRelationshipsColumnImpl().finally(() => {
+                _relColumnActivePromise = null;
+            });
+            await _relColumnActivePromise;
+        } while (_relColumnRerunPending);
     }
 
     /**
@@ -63953,10 +65073,29 @@ a { color: #1565c0; }`;
             if (typeof allRows !== 'undefined' && allRows.length) allRows.forEach(_ensureRelCell);
         }
 
-        const allCells = Array.from(document.querySelectorAll('td.mb-rel-cell'))
-            .filter(td => td.dataset.mbid && !td.dataset.relDone);  // mb-rel-cell is always present
+        // Candidates, per table, skipping the collapsed ones.
+        //
+        // This used to be one page-wide `document.querySelectorAll`. Walking
+        // per table is what makes `_relTableExpanded()` mean anything, and it
+        // collects exactly the same set when nothing is collapsed: a rel cell
+        // that is in the document is inside a `table.tbl` by construction, and
+        // the `groupedRows`/`allRows` masters are detached, so they were never
+        // in the old page-wide result either.
+        const allCells = [];
+        let _collapsedTables = 0;
+        document.querySelectorAll('table.tbl').forEach(_table => {
+            if (!_relTableExpanded(_table)) { _collapsedTables++; return; }
+            _table.querySelectorAll('tbody td.mb-rel-cell').forEach(td => {
+                // mb-rel-cell is always present; data-mbid is not — the
+                // row-build pass stamps it only when the row links a release,
+                // release group or work.
+                if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);
+            });
+        });
+        _relInitRunCount++;
         if (!allCells.length) {
-            _relDbg('initRelationshipsColumn: no unpopulated cells');
+            _relDbg(`initRelationshipsColumn: no unpopulated cells `
+                + `(${_collapsedTables} collapsed table(s))`);
             // Cells can reach this "nothing to do" state not only because the
             // page has none at all, but also because every one was already
             // restored fully-populated from a disk-load (relDone already '1'
@@ -63971,7 +65110,19 @@ a { color: #1565c0; }`;
             // re-render still refreshes it; only the global status-bar segment
             // (_sdAppend) is deduped via _relGlobalStatusDone to avoid a
             // duplicate "🔗Rels: ..." segment across re-renders.
-            const _doneCells = Array.from(document.querySelectorAll('td.mb-rel-cell[data-mbid]'));
+            //
+            // Counted per table and only over the EXPANDED ones. A page-wide
+            // `td.mb-rel-cell[data-mbid]` query matches regardless of
+            // `relDone`, so once a column can be collapsed it would report a
+            // whole page of deliberately-empty cells as "already populated" —
+            // completion text that is simply untrue, on the same element the
+            // test harness reads as the settled-state signal.
+            const _doneCells = [];
+            document.querySelectorAll('table.tbl').forEach(_table => {
+                if (!_relTableExpanded(_table)) return;
+                _table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]')
+                    .forEach(td => _doneCells.push(td));
+            });
             if (_doneCells.length) {
                 const _doneMbids = new Set(_doneCells.map(td => td.dataset.mbid)).size;
                 _showRelCompletionToast(_doneCells.length, _doneMbids, 0, { idb: 0, cache: 0, net: 0 });
@@ -63985,6 +65136,15 @@ a { color: #1565c0; }`;
                         `${_doneCells.length} cell${_doneCells.length !== 1 ? 's' : ''}) — no fetch needed.`
                     );
                 }
+            } else if (_collapsedTables) {
+                // Every Relationships column on the page is collapsed. Still
+                // flip #mb-info-display-rel visible — it means "this subsystem
+                // has settled", which is true, and both real users and
+                // waitForRelationshipsComplete() rely on it becoming visible —
+                // but say what actually happened rather than claiming a load.
+                // See _relPublishCollapsedStatus()'s JSDoc for why this cannot
+                // be the ONLY call site.
+                _relPublishCollapsedStatus();
             }
             return;
         }
@@ -63997,10 +65157,73 @@ a { color: #1565c0; }`;
         _relDbg(`initRelationshipsColumn: ${uniqueMbids.length} unique MBIDs, ` +
             `${allCells.length} cells, entityType=${entityType}`);
 
+        /**
+         * Whether `td` may be written to right now.
+         *
+         * A cell whose table's Relationships column has since been COLLAPSED
+         * must not be written, however far this pass has got: the Phase-2 queue
+         * below is fire-and-forget (see `_relQueueStillWants()`), so a pass
+         * whose table the user collapsed a moment ago is still holding live
+         * references to its cells and would keep filling a column that is
+         * supposed to be empty.
+         *
+         * A DETACHED cell (`closest()` → null, i.e. a re-render replaced the
+         * row this pass captured) is deliberately treated as WRITABLE, which
+         * is the pre-existing behaviour: `_srcCells` then carries the content
+         * to the master rows and the next render clones it back. Refusing
+         * those would strand the data until `runFilter()`'s gate re-triggered.
+         *
+         * @param   {HTMLTableCellElement} td
+         * @returns {boolean}
+         */
+        function _relCellWritable(td) {
+            const _table = td.closest ? td.closest('table.tbl') : null;
+            return !_table || _relTableExpanded(_table);
+        }
+
         async function _populateCells(mbid, data) {
-            const cells = cellsByMbid.get(mbid) || [];
-            // Clear loading tint and mark done regardless of data availability
-            cells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
+            // Only the cells still allowed to receive content. Filtering here
+            // rather than at the call site keeps every writer — Phase 1's IDB
+            // hits and Phase 2's network answers alike — behind one check.
+            const cells = (cellsByMbid.get(mbid) || []).filter(_relCellWritable);
+            if (!cells.length) {
+                _relDbg(`_populateCells: ${mbid} — no writable cell (collapsed), skipped`);
+                return;
+            }
+            // Clear loading tint and mark done regardless of data availability.
+            //
+            // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
+            // a cell's icons rather than adding to them, so calling it twice for
+            // the same cell cannot double anything. `_relAppendIcon()` appends,
+            // which is what made the multiplying-icons bug possible at all
+            // (5 copies of one URL in debug/relationships-multiplying.html).
+            //
+            // *Be precise about what this line buys, because the obvious claim
+            // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
+            // reverting it to the old append-only form, and the whole suite
+            // stayed green. The bug is actually prevented upstream, twice over —
+            // `_relCellWritable()` refuses a collapsed table's cells (that
+            // mutation DOES fail the regression test), and
+            // `_relQueueStillWants()`'s `!relDone` check stops a second queue
+            // re-answering an mbid a first one already wrote.
+            //
+            // It is kept anyway, deliberately. Those two guards make overlap
+            // UNREACHABLE; this makes it HARMLESS. `_populateCells()` is the
+            // single authoritative writer for one mbid's cells, and the entire
+            // doubled-icon family in this file's history — the cross-tab
+            // hydrate race, the collapse/expand race — comes from a caller
+            // reaching a non-idempotent writer twice. One assignment is cheap
+            // insurance against the next such caller, and the one path with no
+            // `relDone` guard in front of it is Phase 1: two passes both
+            // resolving the same mbid from IndexedDB would both land here.
+            // (Unreachable today only because the coalescing guard in
+            // `initRelationshipsColumn()` stops two passes sharing a Phase-1
+            // window.)
+            cells.forEach(td => {
+                td.textContent = '';
+                td.style.backgroundColor = '';
+                td.dataset.relDone = '1';
+            });
             // Track source-row cells (not in DOM) so icons sync back later
             const _srcCells = [];
             if (typeof groupedRows !== 'undefined') {
@@ -64017,7 +65240,14 @@ a { color: #1565c0; }`;
             }
             if (!data) {
                 _relDbg(`_populateCells: no data for ${mbid}`);
-                _srcCells.forEach(td => { td.style.backgroundColor = ''; td.dataset.relDone = '1'; });
+                // textContent: same replace-not-append reason as the live cells
+                // above — a master row can also be reached by two overlapping
+                // passes, and this one is the "no relationships" answer.
+                _srcCells.forEach(td => {
+                    td.textContent = '';
+                    td.style.backgroundColor = '';
+                    td.dataset.relDone = '1';
+                });
                 return;
             }
             // WS2 JSON format: data.relations[] filtered by target-type
@@ -64140,12 +65370,61 @@ a { color: #1565c0; }`;
         _relDbg(`initRelationshipsColumn: phase1 done — ` +
             `${_hitFlags.filter(Boolean).length} IDB hits, ${_missMbids.length} network misses`);
 
+        /**
+         * Whether this queue still has anything to do for `mbid`.
+         *
+         * ── Why the queue needs this at all ─────────────────────────────────
+         *
+         * The Phase-2 queue below is FIRE-AND-FORGET: nothing awaits it, so
+         * `_initRelationshipsColumnImpl()` resolves as soon as Phase 1 does and
+         * `_relColumnActivePromise` goes null while the queue is still
+         * trickling one request per 1100 ms. So the re-entrancy guard has never
+         * covered Phase 2, and a second pass CAN run beside a first one — a
+         * collapse/expand cycle and a filter keystroke mid-fetch both cause it.
+         *
+         * This does two distinct jobs, and only the second is pinned by a test.
+         *
+         * The `!relDone` half is a CORRECTNESS guard: it stops a second queue
+         * re-answering an mbid a first one already wrote, which is one of the
+         * two things keeping overlapping passes from doubling icons (the other
+         * is `_relCellWritable()`).
+         *
+         * The `_relCellWritable()` half is a COST guard. Checked before the
+         * sleep, a superseded step costs nothing at all; without that, a stale
+         * queue keeps sleeping 1100 ms per remaining entity for as long as the
+         * original fetch would have taken — up to ~40 minutes of timer chain on
+         * a large listing — and the post-sleep check is then the only thing
+         * stopping the request itself. Reverting just the pre-sleep check fails
+         * no test (verified), because the post-sleep one still prevents the
+         * fetch; it is a drain-time win, not a correctness one.
+         *
+         * Deliberately NOT a pass-level cancellation token. The obvious design
+         * — bump an epoch on every toggle and have in-flight passes abort — is
+         * wrong here, because a toggle on ONE table would cancel a DIFFERENT
+         * table's legitimate in-flight fetch. The question is per mbid and has
+         * to be re-asked at the moment the step runs.
+         *
+         * @param   {string} mbid
+         * @returns {boolean}
+         */
+        function _relQueueStillWants(mbid) {
+            return (cellsByMbid.get(mbid) || []).some(
+                td => !td.dataset.relDone && _relCellWritable(td));
+        }
+
         // Phase 2: throttled network queue for misses only
         let queue = Promise.resolve();
         let _p2CacheHits = 0, _p2NetFetches = 0;
+        let _p2Skipped = 0;
         _missMbids.forEach((mbid, i) => {
             queue = queue.then(async () => {
+                // Checked BEFORE the sleep, so a superseded step costs nothing.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 if (i > 0) await new Promise(r => setTimeout(r, 1100));
+                // And again AFTER it: 1100 ms is long enough for the user to
+                // have collapsed the column, or for another pass to have
+                // answered this mbid from cache, while this step was asleep.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 if (_relWs2Cache.has(`${entityType}:${mbid}`)) _p2CacheHits++;
                 else _p2NetFetches++;
                 await _populateCells(mbid, await _relFetchWs2(mbid, entityType, incOptions));
@@ -64189,6 +65468,21 @@ a { color: #1565c0; }`;
                 cache: _p2CacheHits,
                 net:   _p2NetFetches,
             };
+            // A pass whose every remaining step was skipped — the user collapsed
+            // the column while it was trickling — must not claim a completed
+            // load. `allCells.length`/`uniqueMbids.length` are pass-START
+            // figures and say nothing about what was actually written, so ask
+            // the DOM instead, and hand over to the collapsed-status publisher
+            // when there is genuinely nothing populated to report.
+            const _relAnyPopulated = Array.from(document.querySelectorAll('table.tbl')).some(
+                t => _relTableExpanded(t)
+                    && t.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]'));
+            if (!_relAnyPopulated) {
+                _relDbg(`initRelationshipsColumn: superseded — ${_p2Skipped} of `
+                    + `${_missMbids.length} Phase-2 step(s) skipped, nothing populated`);
+                _relPublishCollapsedStatus();
+                return;
+            }
             _showRelCompletionToast(allCells.length, uniqueMbids.length, _relElapsed, _tierInfo);
             const _fmtT = ms => ms < 1000 ? `${Math.round(ms)}ms`
                 : ms < 60000 ? `${(ms / 1000).toFixed(1)}s`
@@ -65705,6 +66999,11 @@ a { color: #1565c0; }`;
             // Cells restored from a 1.1+ file with relDone already true are
             // skipped entirely by initRelationshipsColumn()'s own candidate
             // filter — see its "all cells already done" completion-signal fix.
+            // Such a table also starts EXPANDED regardless of
+            // sa_rel_collapse_threshold: its data is already present at zero
+            // cost, so collapsing it would be pure loss. See
+            // _relTableExpanded()'s "the two defaults".
+            _relInitColHeaderToggles();
             if (activeInjectedColumns.length) initRelationshipsColumn();
             setTimeout(_relCreateRetryButtons, 200);
 
@@ -65810,6 +67109,12 @@ a { color: #1565c0; }`;
             _sdLoadedFromDisk.textContent = `Loaded ${loadedRowCount} ${rowLabel} from ${file ? `disk file ${file.name}` : sourceLabel}`;
             _sdLoadedFromDisk.title = 'Rows loaded from a saved snapshot file.';
             globalStatusDisplay.appendChild(_sdLoadedFromDisk);
+
+            // Same reason as the fetch path's call: the reset just above wiped
+            // whatever the (synchronous) all-collapsed answer had published.
+            // A 1.1 snapshot whose cells arrive populated starts EXPANDED, so
+            // this is a no-op there — see _relTableExpanded()'s two defaults.
+            _relPublishCollapsedStatus();
 
             _setInfoSub('mb-info-display-generic',
                 `✓ Loaded ${loadedRowCount} ${rowLabel} from ${file ? `file ${file.name}` : sourceLabel} | Active Pre-Filter: ${!!filterQueryRaw}`,
@@ -76340,6 +77645,48 @@ a { color: #1565c0; }`;
              */
             picardEntityScans() {
                 return _picardEntityScans;
+            },
+
+            /**
+             * How many times `_initRelationshipsColumnImpl()` has reached its
+             * candidate-collection step since the page loaded.
+             *
+             * Exposed for the same reason as `picardEntityScans()` above: the
+             * per-table collapse gate's effect is that this stops going up, and
+             * that is invisible in the DOM. A collapsed rel cell looks exactly
+             * the same whether a full pass ran and found nothing to do — after
+             * re-reading three GM tables and sweeping the live tbody plus
+             * `groupedRows` plus `allRows` — or whether no pass ran at all. A
+             * test types a filter keystroke and asserts this did not move.
+             *
+             * @returns {number}
+             */
+            relInitRuns() {
+                return _relInitRunCount;
+            },
+
+            /**
+             * Per-table Relationships collapse state, as
+             * `[{ uniqueMbids, expanded, pending }]` in document table order.
+             *
+             * Exposed because a test otherwise has to reach for
+             * `data-mb-rel-expanded` and re-derive the distinct-entity count
+             * itself, which would re-implement `_relTableUniqueMbidCount()` —
+             * the exact "a new call site with its own hand-rolled count"
+             * mistake CLAUDE.md warns about for `_findCellListItems()` and
+             * `_classifyCollapseCell()`.
+             *
+             * @returns {Array<{uniqueMbids: number, expanded: boolean, pending: number}>}
+             */
+            relTableStates() {
+                return Array.from(document.querySelectorAll('table.tbl'))
+                    .filter(t => t.querySelector('tbody td.mb-rel-cell'))
+                    .map(t => ({
+                        uniqueMbids: _relTableUniqueMbidCount(t),
+                        expanded:    _relTableExpanded(t),
+                        pending:     t.querySelectorAll(
+                            'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])').length,
+                    }));
             },
 
             /**

@@ -1,0 +1,230 @@
+* relationships columns
+
+Please analyse if we could gain the same benefits with the "Relationships" column on specific pageTypes as what we did
+in commit "4814c70" for the "Picard" columns
+
+** Answer, 2026-09-10: yes, and the prize is larger
+
+Same shape as ~4814c70~ / PERFORMANCE.org Step 32 — the ~<th>~ and every
+~<td>~ always exist, only the CELL CONTENT defers behind a per-table header
+toggle — but what defers here is the *network*, not DOM construction.
+
+~_initRelationshipsColumnImpl()~ issues one WS/2 request per distinct MBID,
+Phase 2 serialised with a hard-coded 1100 ms sleep. Unique-MBID count ≈ row
+count on all 26 pageTypes that declare ~injectedColumns: ['Relationships']~,
+so Bob Dylan's 2301-release page cost about *42 minutes* of trickling requests,
+started from the render tail before the user had scrolled, plus one
+cross-origin ~google.com/s2/favicons~ ~<img>~ per icon.
+~sa_enable_relationships_column~ defaults *true*, so every such page paid it.
+
+Implemented on branch ~relationships-column-collapse-toggle~. Design record,
+findings and the four mechanisms it had to change: ~DEBUG-NOTES.md~'s
+2026-09-10 entry and PERFORMANCE.org Step 35. This file keeps only the
+decisions and the things worth not re-deriving.
+
+** Decisions taken with the user — do not re-litigate
+
+1. *Threshold-based default*, not Picard's flat "collapsed":
+   ~sa_rel_collapse_threshold~, default *200* distinct entities, ~0~ = never.
+   The reason is the one real asymmetry with Picard — see below.
+2. *All 26 pageTypes*, via one global setting plus a per-table toggle. No
+   per-pageType allowlist and no ~features~ flag: the cost is per distinct
+   entity and scales with row count on every one of them, so a list would only
+   drift.
+3. *A collapsed column states its own state; it does NOT auto-fetch.* Touching
+   the column filter or opening its 📊 dropdown surfaces "collapsed — press
+   ▶🔗" rather than starting the run. A glance at a dropdown must not be able
+   to queue a throttled multi-minute fetch.
+
+** The asymmetry with Picard, which is what drove the design
+
+A Picard cell contributed ~''~ to filtering, sorting and the 📊 dropdown, so
+hiding it cost the user nothing and it can default to collapsed everywhere.
+
+A rel cell is a first-class *filter* participant:
+
+- ~.mb-rel-filter-key~ (a ~display:none~ span holding the URL) is deliberately
+  IN ~getCleanColumnText()~'s input and OUT of ~getCleanVisibleText()~'s —
+  which is why ~testRowMatch()~ and ~applySubFilter()~ each carry a targeted
+  ~.mb-rel-cell~ fallback;
+- ~_highlightRelCellIcons()~ / ~.mb-rel-icon-match~, because
+  ~highlightCrossTag()~ cannot highlight inside an ~<img>~;
+- ~openUniqDrop()~'s ~isRelCellCol~ / ~relIconCounts~, with
+  ~_findCellRelIcons()~ as the single source of truth and a
+  ~rel:<domainKey>~ structure mode.
+
+So collapsing genuinely removes searchable content: affordable at 2301
+entities, pointless at 12. Hence the threshold, and hence the affordances.
+
+*Sorting is unaffected either way*, which is worth knowing before worrying
+about it: ~_sortCellText()~ already returned ~''~ for every rel cell, since
+~getCleanVisibleText()~ FILTER_REJECTs that span and the icons are ~<img>~.
+There is no synthetic sort key for this column at all.
+
+** What made it EASIER than Picard
+
+- The structural invariant already held. The ~<th>~ comes from
+  ~cleanupHeaders()~ and the ~td.mb-rel-cell~ from the row-build pass (three
+  sites), both independent of ~initRelationshipsColumn()~ — whose own candidate
+  filter already carried the comment ~// mb-rel-cell is always present~. Every
+  index-churn argument in Step 32's "What was rejected" half was satisfied for
+  free.
+- ~buildActiveInjectedColumns()~'s ~sa_enable_relationships_column~ gate is the
+  exact analogue of ~sa_enable_picard_tagger~ (column absent entirely).
+- *Picard's text-glyph hazard does not apply.* This ~<th>~ carries
+  ~dataset.colName~, which ~_cleanColHeaderText()~ returns at step 1 and
+  ~_exportCleanHeaderText()~ falls back to after stripping the whole
+  ~.mb-col-hdr-flex~ — so a text glyph would have survived. The CSS ~::before~
+  is used anyway, so that ~aria-pressed~ is the single representation of
+  "expanded?" on the button side. The toggle also gets a REAL slot: this is a
+  normal sortable header, so ~makeTableSortableUnified()~ builds it a
+  ~.mb-col-hdr-flex~ and the button prepends into it exactly like
+  ~.mb-caa-col-hdr-btn~ / ~.mb-ms-col-hdr-btn~, instead of Picard's
+  no-flex ~th.firstChild~ fallback.
+- Re-render survival needed no new work: ~_stripTransientCellState()~'s union
+  selector has no ~.mb-rel-*~ arm and never touches ~relDone~/~mbid~, and the
+  hover tooltip is already body-delegated by ~_initRelTooltipListeners()~.
+
+** Traps, all of which held
+
+- Do NOT name the toggle ~.mb-caa-col-hdr-btn~ or ~.mb-col-collapse-hdr-btn~ —
+  ~initCollapsableColumns()~'s idempotent cleanup removes both table-wide, so
+  it would delete itself.
+- ~_relInitColHeaderToggles()~ must be called on EVERY render path and NOT from
+  inside the fetch impl: the impl is now gated on there being something to
+  fetch, so on a settled page it does not run — which is precisely when
+  ~renderGroupedTable()~ has just rebuilt every ~<thead>~ from a clone and the
+  toggles need recreating.
+- Delegate on the ~<table>~, guard set only AFTER ~addEventListener~ — not
+  copying ~ensureCollapseDelegate()~'s latent "mark before the null-check" bug,
+  which is still open.
+- Collapsing must keep ~_relWs2Cache~ and the ~rel-ws2~ IDB store. That is what
+  makes re-expanding free (verified: the second expand issues zero requests).
+  Only ~_relRetryMbids()~ evicts, which is its purpose.
+
+** The multiplying-icons bug (reported 2026-09-11, fixed)
+
+Root cause: *the Phase-2 queue is fire-and-forget.* ~_initRelationshipsColumnImpl()~
+resolves as soon as PHASE 1 does, so ~_relColumnActivePromise~ goes null while
+the queue is still trickling one request per 1100 ms. Collapsing therefore left
+a detached queue writing into a cleared column, and re-expanding started a
+second pass over every cell the first had not reached — both appending via
+~_relAppendIcon()~. n toggles, n copies.
+
+*So the re-entrancy guard has never covered Phase 2 and never did.* The first
+version's JSDoc claimed a follow-up pass's candidate set was "disjoint by
+construction"; that was false, and asserting it confidently is how this shipped.
+A variant was also PRE-EXISTING on ~main~: ~runFilter()~'s gate fires
+throughout Phase 2, so a filter keystroke mid-fetch started a second queue too.
+
+Three changes, and *only the first is load-bearing* — the mutation run says so,
+and the intuitive ranking is wrong:
+
+1. ~_relCellWritable()~ — refuse to write into a table whose column is
+   collapsed. Reverting it fails the regression test.
+2. ~_relQueueStillWants()~'s ~!relDone~ check — stops a second queue
+   re-answering a written mbid. Its pre-sleep placement is a cost win only.
+3. ~_populateCells()~ idempotent (replaces, does not append) — defence in
+   depth, reverting it fails nothing, kept and labelled as such.
+
+Rejected, so they are not re-proposed: a cancellation epoch bumped per toggle
+(it would cancel a DIFFERENT table's legitimate in-flight fetch), and
+~await queue~ to make the guard honest (it would serialise tables and block a
+re-expand behind a stale queue).
+
+Full account in ~DEBUG-NOTES.md~'s 2026-09-11 entry.
+
+** Still open / deliberately not done
+
+- Interaction-latency arms. ~perfDescriptors.js~'s ~applyPicardArm()~ JSDoc
+  forbids an arm re-enabling this column, correctly, so a
+  ~rel-absent|rel-collapsed|rel-expanded~ set needs the ~rel-ws2~ store
+  pre-seeded first. Nothing went into ~tests/MEASUREMENTS.org~: the only number
+  this change has is the request count, and it lives in the spec.
+- PERFORMANCE.org *Step 33* (IntersectionObserver) is now the other half of
+  this, not a substitute — a toggle decides WHETHER, an observer decides WHEN.
+  Re-scoped in that step; still blocked on Step 5.
+- *Step 9* (~_rowTextCache~ invalidation) is a co-requisite and was addressed
+  only in scope, for this one column, via ~_relDropRowTextCache()~. Every other
+  async populator still has no hook.
+- ~user-ratings-type~ deliberately dropped its ~injectedColumns~ declaration
+  because ~_ensureRelCell~ sweeps every ~table.tbl~ row page-wide under one
+  global ~entityType~; the per-table gating here is the first half of the
+  "per-table-scoped redesign" that note asks for. Not attempted.
+- ~_relRetryMbids()~ sets and clears ~_relRetryActive~ synchronously around a
+  fire-and-forget async call, so the flag is dead by the time Phase 2 reads it.
+  Harmless only because the caches are deleted first. Recorded, not fixed.
+- Two pre-existing doc drifts left for a separate commit:
+  ~sa_enable_relationships_column~'s description names 4 pageTypes when 26
+  declare the column, and the Statistics panel says "7-day TTL" against a
+  30-day default.
+
+
+* bug
+
+There is a bug when toggling the fetching of the "Relationships" column back and forth multiple times, see @debug/relationships-multiplying.html:
+
+1.)
+
+When first starting/uncollapsing the glyph it works and each relationship icon got's renderd
+
+2.)
+
+When collapsing it again, the already rendered relationship icons vanish but new icons still appear in new rows
+
+3.)
+
+When uncollapsing it again, already fetched icons reappear, but the newly renderd icons get doubled
+
+4.)
+
+from now on the same happens for every toggle, except that newly fetched icons get multiplied (it looks like they get
+rendered n times in the same data cell, where n equals the nummber of toggling)
+
+* visibility
+** DONE i
+
+the relationships glyph is not very isible on either the standard rendered column header or when sorted, is there any
+background or other stuff we can apply.
+
+** DONE bug
+
+Apply the same treatment to the multi-row counter and glyph, see  [Image #7]. Also increase the font of the counter a
+little bit. See attached image and the raw column header HTML @debug/multi-row-indicator.html
+
+** DONE sort glyphs
+
+Could we somehow treat the sort glyphs in each column header, see [Image #8] also the same, but render them "|"
+separated inside the same kind of oval shaped rectangular box. show me some mockups first
+
+** DONE spaceing
+
+Two visual glitches
+
+1.)
+
+There should be a little space between the actual column name and the sort glyphs in each column header, see [Image #9]
+
+2.)
+
+Additionally when resizing a column to the minimum size, e.g. in the screenshot [Image #9] the "Country/Date" column
+from the URL https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases, the unique value drop down glyph is cut off a little bit on the right side
+
+See also the complete header row raw HTML at @debug/header-row-resize-bug.html
+
+** TODO outstnading
+
+One thing I should own: I hit the GM_addStyle backtick trap a third time — this comment carried both a backtick pair and a ${…} interpolation. It's now cost three rounds, twice on the very commits documenting it. What made recovery slow this time, and what I've written down:
+
+- node --check pointed ~160 lines before the real cause
+- the offending string occurs three times in the file, only one inside the stylesheet — my first two search-and-replaces hit the wrong ones
+
+A one-second scripts/ guard that scans the stylesheet region for stray backticks would pay for itself. I've noted it rather than built it, since it's outside what you asked — say the word and it's five minutes.
+
+Branch state
+
+Nine commits on relationships-column-collapse-toggle, still unpushed. Three things I'd want settled at merge time:
+
+- Snapshot re-capture — needs npm run auth:login (session expired 2026-09-10). registry.org records the expected drift, including data-mb-resize-min moving on every <th>.
+- Interaction-latency arm for the Relationships column — needs a pre-seeded rel-ws2 IDB store.
+- Folding WIP.1 into a real version + // @version bump on main.

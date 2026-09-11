@@ -21,7 +21,17 @@ const SINGLE_TABLE_BTN = '#mb-stf-distributed_release-single-table-btn';
 test('"Show single-table" snapshot keeps Release events/Relationships columns aligned', { tag: '@extended' }, async ({ page, context }) => {
     const pageErrors = collectPageErrors(page);
 
-    await loadUserscriptPage(page, { url: LABEL_URL, testMode: true });
+    // sa_rel_collapse_threshold: 0 — this test asserts "at least one real
+    // populated Release events <li class="flag">" specifically so it cannot
+    // pass on a never-populated column, and it reads the Relationships cells
+    // by class in the popup. A collapsed column (the 9.99.1060 default above
+    // the threshold) would satisfy neither. 0 restores the pre-9.99.1060
+    // always-fetch behaviour.
+    await loadUserscriptPage(page, {
+        url: LABEL_URL,
+        testMode: true,
+        settingsOverride: { sa_rel_collapse_threshold: 0 },
+    });
 
     const showAllBtn = page.locator(SHOW_ALL_BUTTON);
     await expect(showAllBtn).toBeVisible();
@@ -122,7 +132,19 @@ test('"Show single-table" snapshot keeps Release events/Relationships columns al
 test('"Show single-table" snapshot never double-populates a Relationships cell', { tag: '@extended' }, async ({ page, context }) => {
     const pageErrors = collectPageErrors(page);
 
-    await loadUserscriptPage(page, { url: LABEL_URL, testMode: true });
+    // sa_rel_collapse_threshold: 0 — this test's whole premise is that the
+    // SOURCE page's Relationships fetch is still MID-FLIGHT when the
+    // "Show single-table" button is clicked (it asserts that below, so it
+    // cannot trivially pass once the fetch finishes). Since 9.99.1060 a table
+    // needing more than the threshold's worth of distinct lookups starts
+    // collapsed and fetches nothing at all, which would leave nothing in
+    // flight to race. 0 disables the auto-collapse and restores exactly the
+    // pre-9.99.1060 behaviour these assertions were written against.
+    await loadUserscriptPage(page, {
+        url: LABEL_URL,
+        testMode: true,
+        settingsOverride: { sa_rel_collapse_threshold: 0 },
+    });
 
     const showAllBtn = page.locator(SHOW_ALL_BUTTON);
     await expect(showAllBtn).toBeVisible();
