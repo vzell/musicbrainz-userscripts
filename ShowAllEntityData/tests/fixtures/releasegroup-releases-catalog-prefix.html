@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Release group "Catalog Prefix Test" by Test Artist - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /release-group/<mbid> releases-table
+        skeleton (row shape copied verbatim from the committed
+        tests/snapshots/releasegroup-releases/raw.html baseline, with only
+        the Release title/href and the Catalog# span's own text varied per
+        row) — covers the real-world catalog-number shapes from
+        org/uvd-additions.org that _findCellCatalogParts()'s old
+        `/^(?:(.+?)\s+)?(\d+)$/` grammar silently dropped the prefix for:
+        a dash-joined prefix with no space ("SOPL-248"), a leading-digit
+        number with no letter prefix at all ("40-32210", "138.645"), and a
+        letter+digit run with no separator ("CDCBS65480"). "CBS S 65480" is
+        the multi-word-prefix TOKEN-SPLIT case ("CBS" and "S" must each be
+        their own dropdown entry). "[none]" is MusicBrainz's own literal
+        placeholder, unaffected by the prefix-regex fix.
+    -->
+    <div id="page">
+        <div id="content">
+            <div class="wrap-anywhere rgheader">
+                <h1><a href="/release-group/aaaaaaaa-0000-0000-0000-000000000001"><bdi>Catalog Prefix Test</bdi></a></h1>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/release-group/aaaaaaaa-0000-0000-0000-000000000001"><bdi>Overview</bdi></a></li>
+                </ul>
+            </div>
+            <h2>Single</h2>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox"></th>
+                        <th>Release</th>
+                        <th>Artist</th>
+                        <th>Format</th>
+                        <th>Tracks</th>
+                        <th>Country/Date</th>
+                        <th>Label</th>
+                        <th>Catalog#</th>
+                        <th>Barcode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="1"></td>
+                        <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111111"><bdi>CBS S Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>7" Vinyl</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">CBS S 65480</span></td>
+                        <td class="barcode-cell">1000000000001</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="2"></td>
+                        <td><a class="wrap-anywhere" href="/release/22222222-2222-2222-2222-222222222222"><bdi>SOPL Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">SOPL-248</span></td>
+                        <td class="barcode-cell">1000000000002</td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="3"></td>
+                        <td><a class="wrap-anywhere" href="/release/33333333-3333-3333-3333-333333333333"><bdi>Leading Digit Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">40-32210</span></td>
+                        <td class="barcode-cell">1000000000003</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="4"></td>
+                        <td><a class="wrap-anywhere" href="/release/44444444-4444-4444-4444-444444444444"><bdi>Dot Number Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">138.645</span></td>
+                        <td class="barcode-cell">1000000000004</td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="5"></td>
+                        <td><a class="wrap-anywhere" href="/release/55555555-5555-5555-5555-555555555555"><bdi>No Separator Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">CDCBS65480</span></td>
+                        <td class="barcode-cell">1000000000005</td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="6"></td>
+                        <td><a class="wrap-anywhere" href="/release/66666666-6666-6666-6666-666666666666"><bdi>No Catalog Release</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>4</td>
+                        <td><div class="release-events-container"><ul aria-label="Release events" class="release-events abbreviated"><li aria-label="Release event" class="release-event"><span class="flag flag-JP release-country"><a href="/area/2db42837-c832-3c27-b4a3-08198f75693c"><abbr title="Japan">JP</abbr></a></span><span class="release-date">1988-09-21</span></li></ul></div></td>
+                        <td><a href="/label/08f37a61-1c54-4257-b31d-810fa2ac5cd5"><bdi>CBS/Sony</bdi></a></td>
+                        <td><span class="catalog-number">[none]</span></td>
+                        <td class="barcode-cell">1000000000006</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

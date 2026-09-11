@@ -21115,6 +21115,60 @@
     }
 
     /**
+     * Extracts one `{value, typeName}` pair per identifier badge from a
+     * `artist-works`-style "Attributes" cell — e.g.
+     * `<li class="work-attribute work-attribute-acam-id">2356168 (ACAM
+     * ID)</li>` → `{value: '2356168', typeName: 'ACAM ID'}`. This is a
+     * COMPLETELY DIFFERENT cell shape from `_findCellRecordingAttributeWords()`
+     * above, despite both potentially living under a column literally named
+     * "Attributes": that one is free-text natural-language relationship
+     * words ("cover and live"); this one is MusicBrainz's own
+     * `<ul class="work-attributes"><li class="work-attribute …">` identifier
+     * badges (rights-society/tune-code IDs), gated on that DOM shape alone
+     * — deliberately NOT on the column name — so the two families can never
+     * collide even though `SYN_SECTION_META.recordingAttributes` already
+     * claims the bare label `'Attributes'`/glyph `🏷️` for the other one (see
+     * `SYN_SECTION_META.workAttrIdType`'s own comment for the resolution).
+     *
+     * Reads the LIVE, already-expanded DOM via `getCleanColumnText()` (never
+     * `textContent` directly, so a previous pass's own highlight wrapper is
+     * read through rather than silently dropped) — MusicBrainz truncates a
+     * long attribute list client-side behind a `<li class="show-all">(show
+     * N more)</li>` placeholder, but `expandShowAllCells()` (see
+     * `SHOW_ALL_JSON_HANDLERS.attributes`) already reconstructs every
+     * truncated `<li class="work-attribute">` from the cell's own sibling
+     * `<script type="application/json">` blob BEFORE any row is ever
+     * extracted, so by the time this function (or `openUniqDrop()`) ever
+     * sees the cell, the full set is already real `<li>` elements — no
+     * independent JSON re-parsing needed here.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{value: string, typeName: string, el: Element}>}
+     */
+    function _findCellWorkAttributeIdentifiers(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('li.work-attribute').forEach(li => {
+            const text = getCleanColumnText(li);
+            if (!text) return;
+            // Cleaned text renders as "value (Type Name)" — the two React
+            // comment-node artefacts either side of the value/type-name
+            // boundary (see the raw markup in this function's own JSDoc)
+            // produce no text of their own and are invisible to
+            // getCleanColumnText()'s TreeWalker (SHOW_TEXT only), leaving
+            // exactly one space between the value and the parenthesized
+            // type name.
+            const m = text.match(/^(.*)\s\(([^)]+)\)$/);
+            if (!m) return;
+            const typeName = m[2].trim();
+            const value = m[1].trim();
+            if (!typeName || !value) return;
+            out.push({ value, typeName, el: li });
+        });
+        return out;
+    }
+
+    /**
      * Extracts country/date/weekday parts from a "Country/Date" cell, one
      * entry per `.release-event` — mirrors `splitCountryDate()`'s own DOM
      * walk (`ColumnDataExtractor`) exactly, including its handling of a
@@ -21202,6 +21256,60 @@
             out.push({ flagClass, name: m[1].trim(), code: m[2], a });
         });
         return out;
+    }
+
+    /**
+     * Extracts the "Added"/"last modified" phrases from a `top-cd-stub`
+     * Title cell's own `.comment` span — e.g. `"(Added 9 years ago, last
+     * modified 9 years ago)"` → `{added: '9 years ago', modified: '9 years
+     * ago'}`. This span is injected by the `pageType === 'top-cd-stub'`
+     * merge branch in `startFetchingProcess()` (folding MusicBrainz's own
+     * separate `<tr class="lastupdate">` info row onto the preceding data
+     * row's Title cell — see that branch's own JSDoc) from MusicBrainz's
+     * raw, unit-agnostic text (nothing guarantees every stub uses
+     * year-granularity — "months ago"/"days ago" must work identically, so
+     * the split regex below never hardcodes "years").
+     *
+     * Deliberately NOT built on `_findCellEntityCommentParts()`/
+     * `_findCellEntityRefs()` — a `/cdstub/<hash>` href is not MBID-shaped
+     * and `'cdstub'` is absent from `_ENTITY_TYPE_GLYPH`, so that machinery
+     * would never recognize this cell's own link as an entity ref in the
+     * first place. This is a dedicated, DOM-shape-only extractor instead,
+     * which also lets the single comment string decompose into two
+     * independently filterable facets (Added vs. Modified) that the
+     * generic flat `comment:`/`entityComment` kind cannot express.
+     *
+     * Reads via `getCleanColumnText(commentSpan)` — the WHOLE `.comment`
+     * span, not just its `<bdi>` child — deliberately: the merge branch
+     * that builds this span appends the surrounding `(`/`)` as text-node
+     * SIBLINGS of the `<bdi>` (not inside it), but a `<bdi>` containing the
+     * parens too is an equally possible shape (comment/highlight wrapping
+     * can move text across that boundary) — reading the whole span is
+     * robust to either, since `getCleanColumnText()`'s trailing `.trim()`
+     * absorbs the extra join-space this can introduce around a bare `"("`/
+     * `")"` text-node.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{added: ?string, modified: ?string, bdiEl: Element}}
+     */
+    function _findCellTitleAgeParts(cell) {
+        if (!cell) return null;
+        const commentSpan = cell.querySelector('.comment');
+        if (!commentSpan) return null;
+        // bdiEl: the tightest available highlight scope (used by
+        // _highlightTitleAgeMatch() — never a fresh independent query at
+        // the highlight call site) — falls back to the span itself if no
+        // <bdi> is present.
+        const bdiEl = commentSpan.querySelector('bdi') || commentSpan;
+        let text = getCleanColumnText(commentSpan);
+        if (!text) return null;
+        text = text.replace(/^\(([\s\S]*)\)$/, '$1').trim();
+        const parts = text.split(/,?\s*last modified\s+/i);
+        if (parts.length < 2) return null;
+        const added = parts[0].replace(/^Added\s+/i, '').trim() || null;
+        const modified = parts[1].trim() || null;
+        if (!added && !modified) return null;
+        return { added, modified, bdiEl };
     }
 
     /**
@@ -21329,14 +21437,37 @@
     /**
      * Splits each item of a "Catalog#" cell into its optional leading
      * string prefix and trailing numeric catalog number — e.g. `"S CBS
-     * 86061"` → `{prefix: 'S CBS', number: '86061', none: false}`,
-     * `"32210"` → `{prefix: null, number: '32210', none: false}`. A
-     * multi-word prefix (`"S CBS"`) is kept as one atomic string, never
-     * further split. MusicBrainz's own literal placeholder text `"[none]"`
-     * (a medium with no catalog number set at all) is recognized as its
-     * own distinct shape — `{prefix: null, number: null, none: true}` —
-     * rather than silently dropped for not matching the prefix+number
-     * grammar.
+     * 86061"` → `{prefix: 'S CBS', tokens: ['S', 'CBS'], number: '86061',
+     * none: false}`, `"32210"` → `{prefix: null, tokens: [], number:
+     * '32210', none: false}`. MusicBrainz's own literal placeholder text
+     * `"[none]"` (a medium with no catalog number set at all) is recognized
+     * as its own distinct shape — `{prefix: null, tokens: [], number: null,
+     * none: true}` — rather than silently dropped for not matching the
+     * prefix+number grammar.
+     *
+     * The prefix/number split is the index of the first digit in the
+     * cell's cleaned text — a prefix is conventionally alphabetic (real
+     * catalog numbers "lack a strictly defined anatomy" per MusicBrainz's
+     * own documentation of the field), so a string starting with a digit
+     * has no letter prefix at all. This replaces an earlier, narrower
+     * `/^(?:(.+?)\s+)?(\d+)$/` grammar that required the ENTIRE trailing
+     * portion to be pure digits with whitespace separation — it silently
+     * dropped the prefix for any real-world shape ending in embedded
+     * punctuation with no space (`"SOPL-248"`), or separated by a bare
+     * hyphen/dot/slash instead of whitespace (`"40-32210"`, `"138.645"`,
+     * `"746.225/2-032210"`). Known limitation, not solved here: a prefix
+     * containing its OWN embedded digit (e.g. a hypothetical "MCA2-4029")
+     * still mis-splits at that digit — same class of ambiguity.
+     *
+     * A multi-word prefix (`"S CBS"`) is additionally split on internal
+     * whitespace into independent `tokens` — each is its own separately
+     * filterable `catalogprefix:` dropdown entry (see `openUniqDrop()`'s
+     * Catalog# aggregation and `_highlightCatalogPrefixMatch()`), because a
+     * short token (e.g. "S"/"M") recurs across many unrelated labels and is
+     * independently meaningful — burying it inside a compound string would
+     * make it unfindable. `prefix` itself is kept for the presence flags
+     * (`catalog-has-prefix`/`catalog-no-prefix`), which care only whether
+     * ANY prefix exists, not which token(s).
      *
      * Reuses `_findCellListItems()` (never a fresh ad hoc `ul > li` query —
      * see that function's own JSDoc for why a new hand-rolled version of
@@ -21352,7 +21483,7 @@
      * parsing with no CSS-class safety net.
      *
      * @param {?HTMLTableCellElement} cell
-     * @returns {Array<{prefix: ?string, number: ?string, none: boolean, el: Element}>}
+     * @returns {Array<{prefix: ?string, tokens: string[], number: ?string, none: boolean, el: Element}>}
      */
     function _findCellCatalogParts(cell) {
         if (!cell) return [];
@@ -21369,12 +21500,23 @@
             // when present, else the <li>/cell itself.
             const el = source.querySelector ? (source.querySelector('.catalog-number') || source) : source;
             if (t === '[none]') {
-                out.push({ prefix: null, number: null, none: true, el });
+                out.push({ prefix: null, tokens: [], number: null, none: true, el });
                 return;
             }
-            const m = t.match(/^(?:(.+?)\s+)?(\d+)$/);
-            if (!m) return;
-            out.push({ prefix: m[1] ? m[1].trim() : null, number: m[2], none: false, el });
+            const idx = t.search(/\d/);
+            let prefix, number;
+            if (idx === -1) {
+                prefix = t;
+                number = null;
+            } else if (idx === 0) {
+                prefix = null;
+                number = t;
+            } else {
+                prefix = t.slice(0, idx).replace(/\s+$/, '') || null;
+                number = t.slice(idx);
+            }
+            const tokens = prefix ? prefix.split(/\s+/).filter(Boolean) : [];
+            out.push({ prefix, tokens, number, none: false, el });
         });
         return out;
     }
@@ -22241,6 +22383,16 @@
             const want = mode.slice(8);
             return !!cell && _findCellRecordingAttributeWords(cell).includes(want);
         }
+        if (mode.startsWith('workattrid:')) {
+            // Compound mode — matches one identifier-badge TYPE (e.g. "ACAM
+            // ID") from an `artist-works`-style "Attributes" cell's own
+            // `.work-attribute` badges, via
+            // _findCellWorkAttributeIdentifiers()'s own extraction. A
+            // DIFFERENT cell shape from 'recattr:' above despite the shared
+            // column name — see _findCellWorkAttributeIdentifiers()'s JSDoc.
+            const want = mode.slice(11);
+            return !!cell && _findCellWorkAttributeIdentifiers(cell).some(p => p.typeName === want);
+        }
         if (mode.startsWith('revcountry:')) {
             // Compound mode — matches one "Country/Date" release event's
             // own 2-letter country code, from
@@ -22294,6 +22446,17 @@
             const want = mode.slice(10);
             return !!cell && _findCellEventDateParts(cell).includes(want);
         }
+        if (mode.startsWith('titleageadded:') || mode.startsWith('titleagemodified:')) {
+            // Compound modes — match a `top-cd-stub` Title cell's own
+            // "Added"/"last modified" age phrase, from
+            // _findCellTitleAgeParts()'s own extraction. Two separate
+            // prefixes (rather than one shared kind) because Added and
+            // Modified are independent facets of the same comment string.
+            const isAdded = mode.startsWith('titleageadded:');
+            const want = mode.slice(isAdded ? 14 : 17);
+            const parts = cell && _findCellTitleAgeParts(cell);
+            return !!parts && (isAdded ? parts.added === want : parts.modified === want);
+        }
         if (mode === 'date-complete' || mode === 'date-partial' || mode === 'date-range') {
             // Fixed-flag modes — true when a `dateParts`-fed column's own
             // date expression has this precision shape, from
@@ -22344,10 +22507,11 @@
         }
         if (mode.startsWith('catalogprefix:')) {
             // Compound mode — matches one "Catalog#" list item's own
-            // leading string prefix (e.g. "CBS", "S CBS"), from
-            // _findCellCatalogParts()'s own extraction.
+            // leading string prefix TOKEN (e.g. "CBS" or "S", each
+            // independently, out of a compound prefix like "CBS S"), from
+            // _findCellCatalogParts()'s own tokens[] extraction.
             const want = mode.slice(14);
-            return !!cell && _findCellCatalogParts(cell).some(p => p.prefix === want);
+            return !!cell && _findCellCatalogParts(cell).some(p => p.tokens.includes(want));
         }
         if (mode.startsWith('lengthbucket:')) {
             // Compound mode — matches a "Length" cell's own "N to N+1
@@ -40019,6 +40183,34 @@ a { color: #1565c0; }`;
     const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
 
     /**
+     * Generic, non-per-prefix explanation appended to every `catalogprefix:`
+     * dropdown entry's tooltip (see `makeValueSynItem()`'s `kind ===
+     * 'catalogprefix'` special case). Deliberately ONE static string shown
+     * on every value, including single-token entries split out of a
+     * compound prefix (e.g. "S") — there is no reliable source mapping
+     * specific letter codes to specific labels/meanings across the music
+     * industry, so no per-prefix lookup table is attempted. The historical
+     * "S"/"M" stereo/mono convention is mentioned only as an illustrative,
+     * explicitly non-universal example — research confirms it varied by
+     * label (e.g. Atlantic used "SD" for stereo/"ATL" for mono; other
+     * labels used "S"/"M" for the same distinction; some used the letter
+     * for something else entirely) — never assert a fixed meaning for any
+     * specific token.
+     */
+    const CATALOG_PREFIX_TOOLTIP =
+        'Record catalog numbers typically consist of a prefix (letters — ' +
+        'commonly the label/imprint, series, or a format code — meanings ' +
+        'are never standardized across labels), a main numeric block (the ' +
+        "release's sequence number in that catalogue), and sometimes a " +
+        'suffix (extra digits/letters for format, disc number, etc.). A ' +
+        'short one- or two-letter prefix or suffix token (e.g. "S"/"M") ' +
+        'was often used historically to denote stereo vs. mono pressings, ' +
+        'but this was a per-label convention, not a universal standard — ' +
+        'the same letter can mean something else on a different label. ' +
+        'Separators, when present, vary by label: space, dash, dot, ' +
+        'slash, or none at all.';
+
+    /**
      * Display metadata for each collapsible synthetic-entry section inside
      * the unique-values dropdown's `synBox` — replaces the single flat
      * "Cell structure" header that used to lump every family together (see
@@ -40135,6 +40327,16 @@ a { color: #1565c0; }`;
         // entityTagCount/editorRecordedName — same "labelling a thing"
         // facet.
         recordingAttributes: { label: 'Attributes', glyph: '🏷️' },
+        // `artist-works`' own "Attributes" column shape — one entry per
+        // identifier-badge TYPE (e.g. "ACAM ID", "SUISA ID"), from
+        // `_findCellWorkAttributeIdentifiers()`. Deliberately a DISTINCT
+        // label/glyph from `recordingAttributes` above, even though both
+        // can appear under a column literally named "Attributes" — they
+        // are unrelated facets (free-text relationship words vs.
+        // MusicBrainz's own `.work-attribute` identifier badges) gated by
+        // DOM shape, not column name, so neither ever collides with the
+        // other's dropdown entries.
+        workAttrIdType: { label: 'Attributes - Identifier type', glyph: '🔑' },
         releaseEventsCountry: { label: 'Release events - Country', glyph: '🌐' },
         releaseEventsDate:    { label: 'Release events - Date',    glyph: '📅' },
         releaseEventsWeekday: { label: 'Release events - Weekday', glyph: '📆' },
@@ -40225,6 +40427,15 @@ a { color: #1565c0; }`;
         // are never enumerated value-by-value in this dropdown, only as
         // structural flags.
         changelogPresence:  { label: 'Version history - Changelog', glyph: '📜' },
+        // `top-cd-stub`'s Title column only: the "Added"/"last modified"
+        // age phrases folded onto its own `.comment` span by
+        // startFetchingProcess()'s own merge branch — see
+        // _findCellTitleAgeParts()'s JSDoc. Split into two sibling
+        // sections (Added/Modified are independent facets — a stub's last
+        // modification date is not derivable from its added date) rather
+        // than one flat kind-list.
+        titleAgeAdded:    { label: 'Title info - Added',    glyph: '🆕' },
+        titleAgeModified: { label: 'Title info - Modified', glyph: '🔄' },
         // "Release info - Data quality" — the "Release" column's own
         // native `<span class="high-data-quality">`/`<span class=
         // "low-data-quality">` marker (see _findCellReleaseDataQuality()'s
@@ -40372,6 +40583,7 @@ a { color: #1565c0; }`;
         role: 'roles', roletoken: 'entityRole',
         formatsize: 'formatSize', formatcount: 'formatCount', formatcombo: 'formatCombo', formattype: 'formatType',
         recattr: 'recordingAttributes',
+        workattrid: 'workAttrIdType',
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
@@ -40386,6 +40598,7 @@ a { color: #1565c0; }`;
         localelanguage: 'localeLanguage',
         datedecade: 'dateExprDecade', datemonth: 'dateExprMonth',
         pendingedit: 'pendingEditsEntity',
+        titleageadded: 'titleAgeAdded', titleagemodified: 'titleAgeModified',
     };
 
     /**
@@ -41079,27 +41292,29 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Highlights the exact matched value for a `catalogprefix:` compound
+     * Highlights the exact matched TOKEN for a `catalogprefix:` compound
      * structure-mode filter — re-derives from `_findCellCatalogParts()`
      * directly, scoped to that entry's own `el` (the native
      * `<span class="catalog-number">` wrapper, or the `<li>`/cell as a
-     * fallback). No word-boundary needed: the prefix is always the exact
-     * leading substring of that element's own text (per
-     * `_findCellCatalogParts()`'s own `^(?:(.+?)\s+)?(\d+)$` grammar), and
-     * that element contains nothing else the literal prefix string could
-     * ambiguously match within.
+     * fallback). Word-boundary IS needed here, unlike a single-token-only
+     * design: since a compound prefix like "CBS S" is now tokenized (see
+     * `_findCellCatalogParts()`'s own JSDoc) and each token is
+     * independently checkable, a plain substring match on a short token
+     * (e.g. "S") would also wrongly light up inside an unrelated
+     * no-space prefix that happens to contain that letter run (e.g.
+     * "CDCBS", "SOPL-").
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
-     * @param {string} mode - The compound mode string, e.g. `"catalogprefix:CBS"`.
+     * @param {string} mode - The compound mode string, e.g. `"catalogprefix:S"`.
      */
     function _highlightCatalogPrefixMatch(cell, mode) {
         if (!cell) return;
         const _want = mode.slice(14);
         if (!_want) return;
         const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const _regex = new RegExp(_escaped, 'g');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
         _findCellCatalogParts(cell).forEach(p => {
-            if (p.prefix !== _want || !p.el) return;
+            if (!p.tokens.includes(_want) || !p.el) return;
             p.el.normalize();
             highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
         });
@@ -41373,6 +41588,44 @@ a { color: #1565c0; }`;
         });
         cell.normalize();
         highlightCrossTag(cell, new RegExp(patterns.join('|'), 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched age phrase for a `titleageadded:`/
+     * `titleagemodified:` compound structure-mode filter — re-derives from
+     * `_findCellTitleAgeParts()` directly, scoped to that entry's own
+     * `bdiEl`. Lookbehind/lookahead anchor each pattern to the "Added "/
+     * "last modified " context immediately surrounding the matching half
+     * (same idiom as `_highlightDateAtomMatch()` above) — needed because
+     * Added and Modified can share the IDENTICAL phrase text (e.g. both
+     * "9 years ago"), and a plain substring match would highlight only the
+     * first occurrence (or both, ambiguously) rather than the specific half
+     * the checked entry actually represents.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"titleageadded:9 years ago"` or `"titleagemodified:15 years ago"`.
+     */
+    function _highlightTitleAgeMatch(cell, mode) {
+        if (!cell) return;
+        const isAdded = mode.startsWith('titleageadded:');
+        const want = mode.slice(isAdded ? 14 : 17);
+        if (!want) return;
+        const parts = _findCellTitleAgeParts(cell);
+        if (!parts || !parts.bdiEl) return;
+        if (isAdded ? parts.added !== want : parts.modified !== want) return;
+        const escaped = want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // The trailing ")" that closes this comment span's parenthetical
+        // may or may not fall INSIDE bdiEl's own text — see
+        // _findCellTitleAgeParts()'s JSDoc for why both shapes are
+        // possible — so the Modified pattern's end anchor tolerates an
+        // optional literal ")" before end-of-string rather than requiring
+        // a bare `$`.
+        const regex = isAdded
+            ? new RegExp(`(?<=Added\\s)${escaped}(?=,?\\s*last modified)`, 'gi')
+            : new RegExp(`(?<=last modified\\s)${escaped}(?=\\)?$)`, 'gi');
+        parts.bdiEl.normalize();
+        highlightCrossTag(parts.bdiEl, regex, 'mb-column-filter-highlight');
     }
 
     /**
@@ -41746,6 +41999,31 @@ a { color: #1565c0; }`;
         const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
         cell.normalize();
         highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched TYPE NAME for a `workattrid:` compound
+     * structure-mode filter — re-derives from
+     * `_findCellWorkAttributeIdentifiers()` directly, scoped to that
+     * entry's own `el` (the `<li class="work-attribute">`), unlike
+     * `_highlightRecAttrMatch()` above: each identifier badge is its own
+     * `<li>`, so the highlight can be scoped tightly to the parenthesized
+     * type-name substring within that one badge rather than the whole cell.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"workattrid:ACAM ID"`.
+     */
+    function _highlightWorkAttributeIdMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(11);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\(${_escaped}\\)`, 'g');
+        _findCellWorkAttributeIdentifiers(cell).forEach(p => {
+            if (p.typeName !== _want || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
+        });
     }
 
     /**
@@ -42454,6 +42732,8 @@ a { color: #1565c0; }`;
                                     _highlightInstrumentDescriptionMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('titleageadded:') || mode.startsWith('titleagemodified:')) {
+                                    _highlightTitleAgeMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'date-complete' || mode === 'date-partial' || mode === 'date-range') {
                                     _highlightDatePrecisionMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('datedecade:') || mode.startsWith('datemonth:')) {
@@ -42467,6 +42747,8 @@ a { color: #1565c0; }`;
                                     _highlightFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('recattr:')) {
                                     _highlightRecAttrMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('workattrid:')) {
+                                    _highlightWorkAttributeIdMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('role:')) {
                                     _highlightEventRoleMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('roletoken:')) {
@@ -53708,6 +53990,20 @@ a { color: #1565c0; }`;
         // `_findCellRecordingAttributeWords()`. Column-gated (isAttributesCol
         // below).
         const recAttrValueCounts = _uniqCacheHit ? _uniqCacheHit.recAttrValueCounts : new Map();
+        // `artist-works`-style "Attributes" column only: one entry per
+        // identifier-badge TYPE (e.g. "ACAM ID"), via
+        // `_findCellWorkAttributeIdentifiers()`. Also column-gated by
+        // isAttributesCol below, alongside recAttrValueCounts above — the
+        // two coexist harmlessly on the same column name since they key off
+        // different DOM shapes (see that extractor's own JSDoc).
+        const workAttrIdValueCounts = _uniqCacheHit ? _uniqCacheHit.workAttrIdValueCounts : new Map();
+        // `top-cd-stub`'s Title column only: one entry per distinct
+        // "Added"/"last modified" age phrase (e.g. "9 years ago"), via
+        // `_findCellTitleAgeParts()`. Reuses the existing isTitleCol gate
+        // just below — safe on every OTHER Title column too, since the
+        // extractor itself returns null off-shape (no `.comment` span).
+        const titleAgeAddedValueCounts = _uniqCacheHit ? _uniqCacheHit.titleAgeAddedValueCounts : new Map();
+        const titleAgeModifiedValueCounts = _uniqCacheHit ? _uniqCacheHit.titleAgeModifiedValueCounts : new Map();
         const isTitleCol = (() => {
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
@@ -53914,6 +54210,13 @@ a { color: #1565c0; }`;
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 _rowAnyHrefValues.forEach(h => entityHrefAnyValueCounts.set(h, (entityHrefAnyValueCounts.get(h) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
+                if (isTitleCol) {
+                    const _ageParts = _findCellTitleAgeParts(cell);
+                    if (_ageParts) {
+                        if (_ageParts.added)    titleAgeAddedValueCounts.set(_ageParts.added, (titleAgeAddedValueCounts.get(_ageParts.added) || 0) + 1);
+                        if (_ageParts.modified) titleAgeModifiedValueCounts.set(_ageParts.modified, (titleAgeModifiedValueCounts.get(_ageParts.modified) || 0) + 1);
+                    }
+                }
                 if (_findNameVariationElements(cell).length > 0) nameVariationCount++;
                 if (isFormatCol) {
                     const _rowSizeValues = new Set(), _rowCountValues = new Set(), _rowComboValues = new Set(), _rowTypeValues = new Set();
@@ -53931,6 +54234,8 @@ a { color: #1565c0; }`;
                 if (isAttributesCol) {
                     const _rowRecAttrValues = new Set(_findCellRecordingAttributeWords(cell));
                     _rowRecAttrValues.forEach(t => recAttrValueCounts.set(t, (recAttrValueCounts.get(t) || 0) + 1));
+                    const _rowWorkAttrIdValues = new Set(_findCellWorkAttributeIdentifiers(cell).map(p => p.typeName));
+                    _rowWorkAttrIdValues.forEach(t => workAttrIdValueCounts.set(t, (workAttrIdValueCounts.get(t) || 0) + 1));
                 }
                 {
                     const _rowRevCountryValues = new Set(), _rowRevDateValues = new Set(), _rowRevWeekdayValues = new Set();
@@ -53969,8 +54274,13 @@ a { color: #1565c0; }`;
                 }
                 if (isCatalogCol) {
                     const _catalogParts = _findCellCatalogParts(cell);
+                    // Each independent TOKEN of a (possibly multi-word)
+                    // prefix contributes its own count — see
+                    // _findCellCatalogParts()'s own JSDoc for why "CBS S"
+                    // becomes two separately filterable entries, "CBS" and
+                    // "S", rather than one combined "CBS S" entry.
                     const _rowPrefixValues = new Set();
-                    _catalogParts.forEach(p => { if (p.prefix) _rowPrefixValues.add(p.prefix); });
+                    _catalogParts.forEach(p => { p.tokens.forEach(t => _rowPrefixValues.add(t)); });
                     _rowPrefixValues.forEach(t => catalogPrefixValueCounts.set(t, (catalogPrefixValueCounts.get(t) || 0) + 1));
                     if (_catalogParts.some(p => p.prefix)) catalogHasPrefixCount++;
                     // Excludes "[none]" items (also prefix: null) — that's
@@ -55148,7 +55458,8 @@ a { color: #1565c0; }`;
                 entityHrefGlyphMap, entityHrefTypeMap, entityHrefFlagMap,
                 joinPhraseValueCounts, nameVariationValueCounts,
                 formatSizeValueCounts, formatCountValueCounts, formatComboValueCounts, formatTypeValueCounts,
-                recAttrValueCounts,
+                recAttrValueCounts, workAttrIdValueCounts,
+                titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
@@ -55218,7 +55529,8 @@ a { color: #1565c0; }`;
             ...joinPhraseValueCounts.values(), ...nameVariationValueCounts.values(),
             ...formatSizeValueCounts.values(), ...formatCountValueCounts.values(),
             ...formatComboValueCounts.values(), ...formatTypeValueCounts.values(),
-            ...recAttrValueCounts.values(),
+            ...recAttrValueCounts.values(), ...workAttrIdValueCounts.values(),
+            ...titleAgeAddedValueCounts.values(), ...titleAgeModifiedValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
@@ -55600,7 +55912,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -55646,7 +55958,11 @@ a { color: #1565c0; }`;
         const makeValueSynItem = (kind, value, count, glyphClass, entityType, flagNode, hrefOverride) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
-            item.title = value;
+            // 'catalogprefix' entries get a generic explanatory tooltip
+            // appended after the value — see CATALOG_PREFIX_TOOLTIP's own
+            // JSDoc for why this is one static string for every entry
+            // rather than a per-prefix lookup.
+            item.title = (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}` : value;
 
             const badge = document.createElement('span');
             badge.className = 'mb-uniq-count-badge';
@@ -55715,6 +56031,9 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
+                 : kind === 'workattrid'    ? '» identifier: '
+                 : kind === 'titleageadded'    ? '» added: '
+                 : kind === 'titleagemodified' ? '» modified: '
                  : kind === 'lengthbucket'  ? '» duration: '
                  : kind === 'partofseriesname'   ? '» series name: '
                  : kind === 'partofseriesdate'   ? '» date: '
@@ -55971,6 +56290,9 @@ a { color: #1565c0; }`;
         // before "live", matching REC_OF_ATTRIBUTES' declared order).
         const _sortedRecAttrValues = Array.from(recAttrValueCounts.keys())
             .sort((a, b) => REC_OF_ATTRIBUTES.indexOf(a) - REC_OF_ATTRIBUTES.indexOf(b));
+        const _sortedWorkAttrIdValues = Array.from(workAttrIdValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedTitleAgeAddedValues = Array.from(titleAgeAddedValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedTitleAgeModifiedValues = Array.from(titleAgeModifiedValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevCountryValues = Array.from(revCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevDateValues    = Array.from(revDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevWeekdayValues = Array.from(revWeekdayValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -56020,6 +56342,8 @@ a { color: #1565c0; }`;
             _sortedTagCountValues.length > 0 || _sortedEventCancelledValues.length > 0 ||
             _sortedJoinPhraseValues.length > 0 || _sortedNameVariationValues.length > 0 ||
             _sortedFormatSizeValues.length > 0 || _sortedFormatCountValues.length > 0 || _sortedFormatComboValues.length > 0 || _sortedFormatTypeValues.length > 0 ||
+            _sortedWorkAttrIdValues.length > 0 ||
+            _sortedTitleAgeAddedValues.length > 0 || _sortedTitleAgeModifiedValues.length > 0 ||
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
@@ -56152,6 +56476,9 @@ a { color: #1565c0; }`;
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
             _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
+            _sortedWorkAttrIdValues.forEach(v => makeValueSynItem('workattrid', v, workAttrIdValueCounts.get(v)));
+            _sortedTitleAgeAddedValues.forEach(v => makeValueSynItem('titleageadded', v, titleAgeAddedValueCounts.get(v)));
+            _sortedTitleAgeModifiedValues.forEach(v => makeValueSynItem('titleagemodified', v, titleAgeModifiedValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56253,6 +56580,9 @@ a { color: #1565c0; }`;
             _sortedFormatComboValues.forEach(v => makeValueSynItem('formatcombo', v, formatComboValueCounts.get(v)));
             _sortedFormatTypeValues.forEach(v => makeValueSynItem('formattype', v, formatTypeValueCounts.get(v)));
             _sortedRecAttrValues.forEach(v => makeValueSynItem('recattr', v, recAttrValueCounts.get(v)));
+            _sortedWorkAttrIdValues.forEach(v => makeValueSynItem('workattrid', v, workAttrIdValueCounts.get(v)));
+            _sortedTitleAgeAddedValues.forEach(v => makeValueSynItem('titleageadded', v, titleAgeAddedValueCounts.get(v)));
+            _sortedTitleAgeModifiedValues.forEach(v => makeValueSynItem('titleagemodified', v, titleAgeModifiedValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
@@ -56737,6 +57067,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcombo:')) return `» ${mode.slice(12)}`;
         if (mode.startsWith('formattype:')) return `» type: ${mode.slice(11)}`;
         if (mode.startsWith('recattr:')) return `» ${mode.slice(8)}`;
+        if (mode.startsWith('workattrid:')) return `» identifier: ${mode.slice(11)}`;
+        if (mode.startsWith('titleageadded:')) return `» added: ${mode.slice(14)}`;
+        if (mode.startsWith('titleagemodified:')) return `» modified: ${mode.slice(17)}`;
         if (mode.startsWith('revcountry:'))  return `» country: ${mode.slice(11)}`;
         if (mode.startsWith('revdate:'))     return `» date: ${mode.slice(8)}`;
         if (mode.startsWith('revweekday:'))  return `» weekday: ${mode.slice(11)}`;
@@ -56830,6 +57163,9 @@ a { color: #1565c0; }`;
         if (mode.startsWith('formatcombo:')) return 'One "Format" group\'s own "<count>x<type>" combination (e.g. "2xVinyl") — only offered for groups with more than one medium.';
         if (mode.startsWith('formattype:')) return 'One "Format" group\'s own type word alone (e.g. "Vinyl"), regardless of size — matches every group of that type even when different rows use different sizes (7"/10"/12").';
         if (mode.startsWith('recattr:')) return 'One atomic recording-attribute word from this "Attributes" cell\'s own natural-language-joined text (e.g. "live" also matches a cell reading "cover and live").';
+        if (mode.startsWith('workattrid:')) return 'One identifier-badge TYPE (e.g. "ACAM ID") from this "Attributes" cell\'s own MusicBrainz identifier badges — a different shape from the free-text recording-attribute words above.';
+        if (mode.startsWith('titleageadded:')) return 'This "Title" cell\'s own "Added N ago" age phrase, from its `.comment` span (top-cd-stub only).';
+        if (mode.startsWith('titleagemodified:')) return 'This "Title" cell\'s own "last modified N ago" age phrase, from its `.comment` span (top-cd-stub only).';
         if (mode.startsWith('revcountry:')) return 'One "Country/Date" release event\'s own 2-letter country code.';
         if (mode.startsWith('revdate:')) return 'One release event\'s own date text as displayed (weekday stripped out).';
         if (mode.startsWith('revweekday:')) return 'One release event\'s own chaban-injected weekday abbreviation (e.g. "Mon").';
