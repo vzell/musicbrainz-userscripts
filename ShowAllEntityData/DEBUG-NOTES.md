@@ -10495,3 +10495,51 @@ cell saves on the WRITE side, ignoring that `.mb-rel-filter-key` spans feed
 strings. Step 35's own text says a rel cell is a first-class filter participant
 where Picard's was not; the estimate just failed to carry that into the
 arithmetic.
+
+## 2026-09-12 — 📊 unique-values count badge didn't close the dropdown on a second click (fixed, branch fix/uniq-dropdown-count-click-toggle)
+
+Reported via `debug/uvd.html`: clicking the 📊 glyph inside
+`.mb-col-uniq-wrap` toggles the dropdown correctly (open, then closed on a
+second click), but clicking the count badge in front of it
+(`.mb-col-uniq-count`, a sibling span) opens it and then appears to never
+close — a second click reopens it instead.
+
+Root cause was not in `openUniqDrop()`'s toggle check (`_uniqDropOwner ===
+btn`, line ~54037) — that logic is correct and target-agnostic, since the
+wrapper's own `click` listener always passes `uniqWrap` regardless of which
+child was clicked. It was in the document-level capture-phase "close on
+outside click" `mousedown` handler, which used an exact-identity check:
+
+```javascript
+if (ev.target === _uniqDropOwner) return; // button click handled separately
+```
+
+`.mb-col-uniq-btn` has `pointer-events: none` ("clicks pass through to the
+wrapper"), so a click on the glyph is hit-tested by the browser as landing on
+`.mb-col-uniq-wrap` itself — `ev.target === _uniqDropOwner` is true, and the
+handler exempts it. `.mb-col-uniq-count` deliberately does NOT have
+`pointer-events: none` (a click there needs to keep its own `title` tooltip
+working — `pointer-events: none` suppresses those), so `ev.target` is the
+count span, a distinct element. The check failed, so the handler fell through
+to `closeUniqDrop(false)` and cleared `_uniqDropOwner` to `null` in the
+capture phase — *before* the wrapper's own bubble-phase `click` listener ran
+and called `openUniqDrop(uniqWrap, ...)` again. By then `_uniqDropOwner` was
+`null`, not `uniqWrap`, so the toggle-close branch never matched and the
+"open" branch ran instead: a close-then-immediately-reopen flicker that reads
+as "never closes."
+
+Fix: change the identity check to a containment check, so any click landing
+anywhere inside the owning wrapper — glyph, count, or the wrapper's own
+padding — is recognized as "the button click, handled separately," regardless
+of which child's `pointer-events` happened to route the hit test there:
+
+```javascript
+if (_uniqDropOwner.contains(ev.target)) return; // click on wrap or either child (glyph/count)
+```
+
+**Regression test:** `tests/fixtures/uniq-drop-count-click-toggle.spec.js`,
+against the same `artist-recordings`/`Length`-column fixture
+`uniq-drop-length-bucket.spec.js` uses. Asserts the existing glyph
+double-click toggle as a sanity control, then opens via the glyph and closes
+via a click on `.mb-col-uniq-count`. Confirmed failing before the fix (second
+assertion: dropdown stayed visible) and passing after.

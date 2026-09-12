@@ -53561,7 +53561,7 @@ a { color: #1565c0; }`;
         // Close when anything outside the panel (and not the owning 📊 button) is clicked
         document.addEventListener('mousedown', (ev) => {
             if (!_uniqDropOwner) return;
-            if (ev.target === _uniqDropOwner) return; // button click handled separately
+            if (_uniqDropOwner.contains(ev.target)) return; // click on wrap or either child (glyph/count) — handled separately
             if (el.contains(ev.target)) return;       // click inside panel — keep open
             // Don't restore focus to the original filter input here — the
             // user's own click is already about to move focus elsewhere (or
