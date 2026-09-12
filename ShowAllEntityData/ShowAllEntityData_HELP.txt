@@ -1226,6 +1226,10 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
   tooltip showing the full URL.  The tooltip is suppressed when no active
   filter matches that specific cell, to avoid intrusive popups during normal
   browsing.
+• Sortable by icon count — clicking the column header's ▲/▼ orders rows by
+  how many relationship icons appear in that row's cell (fewest first
+  ascending).  A COLLAPSED cell has 0 icons until you press ▶🔗, so sorting
+  a collapsed column does nothing until it is expanded.
 • Filter match highlighting — when a filter expression matches a URL in the
   Relationships cell, the corresponding relationship icon is highlighted with
   a coloured border/background so the match is immediately visible.
