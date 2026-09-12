@@ -12,3 +12,11 @@ For example in
 the "as" is only highlighted in the string "alias" but not "Asbury", see also [Image #1]
 
 Filtering via the table global or column filter always highlights all filter string occurences
+
+* DONE uvd click
+
+Currently when clicking the unique value drop down menu in a colum neader there is a difference if clicking on the glyph
+itself or the counter in front of it @debug/uvd.html
+
+- When clicking the glyph it acts as a toggle, first click opens the menu, second click closes it again. This is what I want.
+- When clicking the counter number in front of it, it opens the menu, but another click doesn't close it
