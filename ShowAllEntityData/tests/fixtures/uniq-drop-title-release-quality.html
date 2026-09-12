@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Relationships - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?link_type_id=44">Relationships</a></li></ul>
+        </div>
+        <h2>“part of” relationships</h2>
+        <!--
+            Regression fixture for the "Title" column not getting the
+            "Release info - Data quality" 📊 dropdown section on
+            artist-relationships-filtered pages (real evidence:
+            debug/quality-row.html / debug/quality-page.html — MusicBrainz
+            DOES stamp the native <span class="high-data-quality">/
+            <span class="low-data-quality"> marker right after a relationship
+            target's own <span class="releaselink"></span><a> link, exactly
+            as it does on a dedicated "Release" listing column).
+
+            Row A: release target, high-data-quality marker.
+            Row B: release target, low-data-quality marker.
+            Row C: release target, NO marker at all (MusicBrainz's own
+                   "normal quality, nothing to flag" default).
+            Row D: a NON-release target (a work) — no <span class="releaselink">
+                   at all. Must contribute to NONE of the three quality
+                   counts; this is the regression the entity-kind guard in
+                   openUniqDrop() exists to prevent (without it, this row's
+                   cell would be silently miscounted as "normal quality" via
+                   _findCellReleaseDataQuality()'s own "no marker -> normal"
+                   fallback).
+        -->
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>2007</td>
+                    <td><span class="releaselink"></span><a href="/release/11111111-2222-4333-8444-555555555501"><bdi>Magic</bdi></a><span class="high-data-quality" title="High quality: All available data has been added, if possible including cover art with liner info that proves it"></span></td>
+                    <td>vocals</td>
+                    <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                </tr>
+                <tr>
+                    <td>1998</td>
+                    <td><span class="releaselink"></span><a href="/release/11111111-2222-4333-8444-555555555502"><bdi>Tracks</bdi></a><span class="low-data-quality" title="Low quality: This release needs serious help"></span></td>
+                    <td>vocals</td>
+                    <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                </tr>
+                <tr>
+                    <td>2012</td>
+                    <td><span class="releaselink"></span><a href="/release/11111111-2222-4333-8444-555555555503"><bdi>Wrecking Ball</bdi></a></td>
+                    <td>vocals</td>
+                    <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td><span class="worklink"></span><a href="/work/11111111-2222-4333-8444-555555555504"><bdi>Born to Run</bdi></a></td>
+                    <td>composer</td>
+                    <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release info - Data quality\" 📊 dropdown section never appeared on a relationship listing's \"Title\" column (e.g. an artist's Relationships tab) even when the relationship's target is a release carrying MusicBrainz's own native high/low-data-quality marker — the section's eligibility check was gated on the column being literally named \"Release\", which a relationship-target column never is (it can point to any entity kind, so MusicBrainz always calls it \"Title\"). The gate now also accepts \"Title\", additionally checking each cell's own native `<span class=\"releaselink\">` marker so a relationship targeting a non-release entity is never miscounted as \"normal quality\"."
+        ]
+      }
+    ]
+  }
+]

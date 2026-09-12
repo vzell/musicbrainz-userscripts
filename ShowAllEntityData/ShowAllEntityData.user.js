@@ -22120,13 +22120,16 @@
      * data quality is a new, unrelated facet, not a comment/alias, so it
      * doesn't belong in that generic "Entity info" pipeline.
      *
-     * Deliberately only called for the "Release" column itself (gated by
-     * column name at the `openUniqDrop()` call site) — this DOM shape is
-     * expected to recur on every page type with a "Release" column
-     * (release listings, the LowDataQualityReleases report, …), so gating
-     * by column name alone (not page type) lets it apply everywhere
-     * automatically, matching `isCatalogCol`/`isFormatCol`/`isEventCol`'s
-     * own precedent.
+     * Called for the "Release" column (gated by column name at the
+     * `openUniqDrop()` call site, matching `isCatalogCol`/`isFormatCol`/
+     * `isEventCol`'s own name-only precedent) AND, on relationship-style
+     * "Title" columns whose target can be any entity kind, for a cell
+     * that MusicBrainz's own native `<span class="releaselink">` marker
+     * identifies as actually targeting a release (see debug/quality-row.html,
+     * debug/quality-page.html) — the `openUniqDrop()` call site does that
+     * entity-kind check itself before calling this function, since a
+     * non-release Title cell has no quality span at all and would
+     * otherwise be miscounted via this function's own `'normal'` fallback.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {'high'|'low'|'normal'} 'normal' whenever `cell` is falsy or
@@ -54674,8 +54677,15 @@ a { color: #1565c0; }`;
         // Column-name gate for the "Release" column's own native
         // data-quality marker (see _findCellReleaseDataQuality()'s own
         // JSDoc) — name-only, no page-type check, so this applies
-        // automatically to every page type with a "Release" column.
-        const isReleaseCol = _colHeaderName === 'Release';
+        // automatically to every page type with a "Release" column. Also
+        // covers a generic "Title" column (e.g. *-relationships pageTypes,
+        // whose target entity can be any kind) — the per-row loop below
+        // additionally checks for a native <span class="releaselink">
+        // marker before actually classifying a Title cell's quality, so a
+        // relationship targeting a non-release entity is never miscounted
+        // via _findCellReleaseDataQuality()'s own "no marker -> normal"
+        // fallback. See debug/quality-row.html/debug/quality-page.html.
+        const isReleaseCol = _colHeaderName === 'Release' || _colHeaderName === 'Title';
         // Column-name gate for recording-fingerprints' native "AcoustID"
         // column's own link/unlink state (see
         // _findCellAcoustIdLinkStatus()'s own JSDoc) — name-only, no
@@ -54924,10 +54934,17 @@ a { color: #1565c0; }`;
                     if (_hasChangelog === false) changelogNoMessageCount++;
                 }
                 if (isReleaseCol) {
-                    const _quality = _findCellReleaseDataQuality(cell);
-                    if (_quality === 'high')   releaseQualityHighCount++;
-                    if (_quality === 'low')    releaseQualityLowCount++;
-                    if (_quality === 'normal') releaseQualityNormalCount++;
+                    // On a "Title" column (relationship target can be any
+                    // entity kind), only classify a cell that actually
+                    // targets a release — the "Release" column path is
+                    // always a release already, so this is a no-op there.
+                    const _isReleaseTarget = _colHeaderName === 'Release' || !!cell.querySelector('span.releaselink');
+                    if (_isReleaseTarget) {
+                        const _quality = _findCellReleaseDataQuality(cell);
+                        if (_quality === 'high')   releaseQualityHighCount++;
+                        if (_quality === 'low')    releaseQualityLowCount++;
+                        if (_quality === 'normal') releaseQualityNormalCount++;
+                    }
                 }
                 if (isAcoustIdCol) {
                     const _linkStatus = _findCellAcoustIdLinkStatus(cell);
