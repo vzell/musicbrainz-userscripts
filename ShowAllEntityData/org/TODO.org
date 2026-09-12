@@ -5,3 +5,9 @@ https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationship
 * TODO when milliseconds lenght is clicked on the "Length" column, and a sort is been done midflight, the glpyh doesn't react anymore on clicks
 
 when milliseconds lenght is clicked on the "Length" column, and a sort is been done midflight, the glpyh doesn't react anymore on clicks
+
+* DONE bug
+
+On e.g. https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
+when repeatedly sorting on a column, all multi-line columns, eg "Recorded at place" get wider for every click on sort glpyh
+
