@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: the \"Recording date\" column's 📊 dropdown never showed the \"Date info - Precision/Decade/Month/Year/Weekday\" section family every other date-bearing column gets. That family is gated on a column's name appearing in a declarative `columnExtractors`/`syntheticColumnExtractors` entry with `extractor: 'dateParts'`, but \"Recording date\" is built entirely inside `applyExtractTrackTitleData()`'s bespoke AR-column pipeline, outside that mechanism, so it was never registered. Its `<th>`-creation site now also registers the name (with an empty `syntheticColumns`, so it can never inject an unwanted derived column) — the same \"column whose existence isn't known at authoring time\" registration pattern `_picardRegisterCollapsableColumn()` already uses."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-13",
     "sections": [

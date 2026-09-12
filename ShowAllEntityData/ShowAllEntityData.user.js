@@ -8702,6 +8702,21 @@
                         _recOfDateTh = document.createElement('th');
                         _recOfDateTh.textContent = 'Recording date';
                         _arsHeaderRef.before(_recOfDateTh);
+                        // Register the name with _dateExprColumnNames() (see
+                        // its own JSDoc) so openUniqDrop()'s "Date info -
+                        // Precision/Decade/Month/Year/Weekday" family applies
+                        // to this column too — the cell's plain "YYYY-MM-DD"
+                        // text (_parseRecOfDate() below) is already the shape
+                        // _findCellDateExpressionParts() parses, but this
+                        // column is built here, outside the declarative
+                        // columnExtractors/syntheticColumnExtractors pipeline,
+                        // so it was never in that lookup's name list. An empty
+                        // `syntheticColumns` makes this a pure name-registration
+                        // entry: every other consumer of
+                        // activeSyntheticColumnExtractors only acts via
+                        // `entry.syntheticColumns.forEach(...)`, a no-op here,
+                        // so it can never inject an unwanted derived column.
+                        activeSyntheticColumnExtractors.push({ sourceColumn: 'Recording date', extractor: 'dateParts', syntheticColumns: [] });
                     }
                 }
                 // "Recorded at event"/"Recorded at place" — read from
