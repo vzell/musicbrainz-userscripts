@@ -489,10 +489,15 @@ visible while it is engaged and releases it, page-wide.
                        artist has that role, alone or together with others —
                        e.g. selecting "composer" also matches an artist
                        credited as "composer, lyricist"
-    — ⭐ Release info - Data quality — on any "Release" column: MusicBrainz's
-                       own native data-quality marker as three fixed entries,
-                       🟢 high / 🟠 low / ⚪ normal (normal = no explicit
-                       marker present, matching MusicBrainz's own convention)
+    — ⭐ Release info - Data quality — on any "Release" column, and on a
+                       relationship listing's "Title" column for whichever
+                       rows actually target a release (e.g. an artist's
+                       Relationships tab): MusicBrainz's own native
+                       data-quality marker as three fixed entries, 🟢 high /
+                       🟠 low / ⚪ normal (normal = no explicit marker
+                       present, matching MusicBrainz's own convention). A
+                       "Title" row targeting a non-release entity is simply
+                       left out of all three counts
     — 🔗 Relationship icons — one entry per distinct relationship base URL,
                        multi-select (checkbox, OR'd, panel stays open) like
                        every other section, with per-icon highlighting on
