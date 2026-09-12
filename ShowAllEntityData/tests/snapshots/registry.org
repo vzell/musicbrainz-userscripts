@@ -131,6 +131,75 @@ Expect unrelated drift in the same re-capture, already seen in this one: the
 on =main= long after the 9.99.953 baseline, and the Wikipedia extract flapped
 per the section below.
 
+** Collapsable-column =min-width= floors — re-captured 2026-09-12
+
+OUR movement, not MusicBrainz's. =initCollapsableColumns()= measured each
+multi-row cell's first =<li>= as =li.scrollWidth=, which for a block box that
+fits returns its =clientWidth= — the column's own current width — and applied
+=that + 28= as =th.style.minWidth=, raising it and never lowering it. Every
+re-render therefore added a notch. See =DEBUG-NOTES.md=, 2026-09-12.
+
+*The baselines had the ratchet baked into them, and the re-capture takes it
+out.* =artist-events= is the clearest case, because its three files were
+captured after different numbers of passes:
+
+| file             | pass                    | Location | Place | Locality | Region | Country |
+|------------------+-------------------------+----------+-------+----------+--------+---------|
+| rendered.html    | first render            |      913 |   425 |      238 |    353 |     187 |
+| post-filter.html | + one column filter     |  924→913 | 436→425 |  249→238 | 364→353 | 198→187 |
+| post-sort.html   | + a sort                |  948→913 | 460→425 |  273→238 | 388→353 | 222→187 |
+
++11 px after a filter pass and +35 px after a sort pass, on five columns, in
+files that were supposed to differ only in row order and row count. All three
+now agree on the same first-pass value.
+
+*Independent confirmation that the new values are the right ones*: the frozen
+disk fixture =tests/fixtures/saved-data/artist-events.json.gz=, saved long
+before this bug was noticed, stores =min-width: 913px= / =425px= / =238px= /
+=353px= / =187px= in its own serialized headers — exactly what the fixed build
+now produces. It is also why those =<th>=s carry no =data-mb-collapse-min-px=
+stamp: the restored value already equals the intrinsic measurement, so
+=minPx > existingMin= is false and nothing is written.
+
+What changed, per baseline:
+
+| baseline                        | change                                                        |
+|---------------------------------+---------------------------------------------------------------|
+| artist-events/rendered.html     | +5 =data-mb-collapse-min-px= attributes, +150 bytes; no value moved |
+| artist-events/post-filter.html  | 5 columns smaller (above); byte-identical size                |
+| artist-events/post-sort.html    | 5 columns smaller (above); byte-identical size                |
+| release-tracks/rendered.html    | +9 =data-mb-collapse-min-px= attributes; no value moved       |
+| notes-received                  | unchanged (re-captured, byte-identical)                       |
+
+*Smaller is the correct new baseline. LARGER would be a real regression.*
+
+Two things worth knowing about the stamp before reading a future diff:
+
+- It is written ONLY when this feature's floor actually wins. Where auto-resize
+  ran (=waitForAutoResize: true=, most pageTypes) its own floor — measured
+  across the whole cell rather than its first item — is usually larger and
+  stays in force, so most =min-width= values in these files legitimately do not
+  move.
+- A stamp can therefore appear ORPHANED, naming a value that is not the one in
+  force. =artist-events/rendered.html= has exactly this:
+  =data-mb-collapse-min-px="546"= beside =min-width: 930px=, because
+  auto-resize overwrote our floor after we stamped it. That is expected and
+  self-heals — the next =initCollapsableColumns()= pass sees the mismatch,
+  leaves the min-width alone and drops the stale attribute.
+
+*Not re-captured, and why*: the eight remaining baselines have no multi-row
+collapsable cells at all (their single =mb-has-collapse-toggle= hit is the CSS
+rule text in the =<style>= block, not a cell), so they cannot gain a stamp or
+move a floor. Re-capturing them would only fold in unrelated upstream drift.
+
+*=user-open-edits= could not be re-captured*, and this is NOT related to the
+above: the capture times out waiting for =#mb-filter-container=. Reproduced on
+unmodified =main=, so it is pre-existing. Cause, measured against the live page
+with the saved session: the account currently has *zero* open edits — no
+=table.tbl=, no edit rows — so the script has nothing to render. Its committed
+baseline dates from when there were open edits and is left untouched. Nothing
+to fix in the script; re-capture when the account next has open edits.
+
 ** Picard column shipping collapsed — re-captured 2026-09-10
 
 Like the count badges above, this is OUR movement, not MusicBrainz's. As of

@@ -10543,3 +10543,217 @@ against the same `artist-recordings`/`Length`-column fixture
 double-click toggle as a sanity control, then opens via the glyph and closes
 via a click on `.mb-col-uniq-count`. Confirmed failing before the fix (second
 assertion: dropdown stayed visible) and passing after.
+
+## 2026-09-12 — every multi-row column widened on each sort click (fixed, branch fix/collapse-column-minwidth-ratchet)
+
+Reported as: on `https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a`,
+"when repeatedly sorting on a column, all multi-line columns, e.g. 'Recorded at
+place', get wider for every click on the sort glyph".
+
+### Root cause
+
+`initCollapsableColumns()` sets a per-column floor from the widest first `<li>`
+of that column's multi-row cells:
+
+```javascript
+_firstLisForMeasure.forEach(li => { li.style.whiteSpace = 'nowrap'; });
+_firstLisForMeasure.forEach(li => {
+    maxFirstLiWidth = Math.max(maxFirstLiWidth, li.scrollWidth);
+});
+…
+const minPx = maxFirstLiWidth + 28;
+const existingMin = parseFloat(th.style.minWidth) || 0;
+if (minPx > existingMin) th.style.minWidth = minPx + 'px';
+```
+
+An `<li>` is a BLOCK box and MusicBrainz's `<ul>`s carry `padding: 0`, so it
+fills its `<td>`'s content box exactly — and for a block box with no horizontal
+overflow **`scrollWidth` returns `clientWidth`**, i.e. the column's CURRENT
+rendered width, not the item's own. `nowrap` makes the reading unwrapped; it does
+not stop that fallback.
+
+A sort click is `runFilter()` → `renderGroupedTable()`'s reuse branch, which does
+`tbody.innerHTML = ''` and nothing else — `makeTableSortableUnified()` is
+new-table-only, so the `<thead>` and its inline `style="min-width:…"` survive.
+`initCollapsableColumns(table)` then runs from that render tail, reads its own
+previous value back as `existingMin`, and adds another notch. Per pass the error
+is `28 − tdPadLeft − tdPadRight(22) − ulPadLeft` plus the header's own chrome.
+
+Measured live on the reported page, `min-width` per sort click:
+
+| column             | click 1 | 2   | 3   | 4   | 5   |
+|--------------------|---------|-----|-----|-----|-----|
+| Recorded at place  | 537     | 549 | 561 | 573 | 585 |
+| Recording engineer | 310     | 322 | 334 | 346 | 358 |
+| Engineer           | 255     | 267 | 279 | 291 | 303 |
+| Producer           | 355     | 367 | 379 | 391 | 403 |
+
+**+12 px per click, every multi-row column, identical delta regardless of
+content** — which is the signature: `maxFirstLiWidth` collapses to the one shared
+`clientWidth`, so every column moves by the same amount.
+
+This is the same failure mode `_measureHeaderMinWidth()` already documents and
+cures for the column drag floor (see 2026-09-11 above). The cure is the same:
+`max-content` sizes an element to its content and is independent of the
+containing block.
+
+### The fix
+
+1. Measure `li.style.width = 'max-content'` → `getBoundingClientRect().width`,
+   keeping the same three-phase write-all/read-all/reset-all batch so the cost
+   stays one forced layout per column. `max-content` subsumes the `nowrap`
+   intent, so the second property is gone.
+2. Stamp the written value on `th.dataset.mbCollapseMinPx`, and release it in the
+   function's own cleanup pass (`thead th[data-mb-collapse-min-px]`), so a fresh
+   measurement REPLACES ours. The `> existingMin` comparison stays — auto-resize
+   writes the same property with a floor measured across the whole cell, which is
+   legitimately larger and must keep winning. Clearing only a value that still
+   equals our own stamp is what keeps those two apart.
+
+The cleanup comment had claimed for its whole existence that it cleared
+"previously set minWidths"; `git log -S "th.style.minWidth = '';"` shows it never
+did. It does now.
+
+### Only the sorted sub-table ratchets
+
+A sort is a scoped re-render (`_renderDirtyGroupIdxs`), and untouched groups
+return before `initCollapsableColumns` is reached. On a multi-medium release,
+sorting medium 1 repeatedly leaves medium 2's widths pinned — a useful diagnostic
+signature, and the reason a page-wide tally would have been the wrong measurement.
+
+### The fixture could not reproduce it, and said so with a clean pass
+
+The first version of the regression spec passed against **fully broken code**.
+A fixture is a saved HTML file and musicbrainz.org's stylesheet is not loaded, so
+browser defaults apply — and they differ in exactly the two properties this bug
+turns on:
+
+|                        | live  | fixture (bare)              |
+|------------------------|-------|-----------------------------|
+| `td ul` `padding-left` | 0px   | 40px (the `<ul>` default)   |
+| `td` `padding-left`    | 4.8px | 1px                         |
+
+With a 40 px list indent the per-pass error is comfortably NEGATIVE: the value
+converges after one pass and the fixture reports stable, plausible, entirely
+misleading numbers. Restoring just those two declarations
+(`MB_GEOMETRY_CSS` in the spec) reproduces it — +3 px per click there, +12 live.
+
+**This is the `FIXTURE_SETTINGS_OVERRIDE` trap from 2026-09-11 in a second
+form**, and worth generalizing: a fixture's CSS environment is not the live
+page's, so "cannot reproduce on the fixture" is not evidence until the specific
+properties the bug depends on have been compared against a live measurement.
+
+### Tests
+
+`tests/fixtures/collapse-column-width-stable-on-sort.spec.js`, four tests, all
+network-free. Mutation-checked against three separate reverts
+(`scripts/mutate-collapse-minwidth.py`):
+
+| mutation                          | 1 sorts/auto-on | 2 sorts/auto-off | 3 narrows again | 4 not inflated |
+|-----------------------------------|-----------------|------------------|-----------------|----------------|
+| A — measurement back to scrollWidth | **fail**      | pass             | pass            | **fail**       |
+| B — cleanup reset removed           | pass          | pass             | **fail**        | pass           |
+| C — both (the shipped pre-fix code) | **fail**      | **fail**         | **fail**        | **fail**       |
+
+B is why test 3 exists at all: with the max-content measurement in place the
+"only ever raised" half is otherwise invisible, since on this data the
+high-water mark equals the current mark. Test 3 filters the page down to a row
+that is narrow in the widest column and asserts the floor drops.
+
+Full fixture suite: 207 passed.
+
+Verified on the reported page after the fix: `Recorded at place` pinned at
+`min-width: 537px` / 548 px rendered across five consecutive sort clicks.
+
+### Which change caused it — none of the recent ones
+
+Asked explicitly, so it was measured rather than attributed.
+
+- `scripts/scan-minwidth-history.sh` walks every commit that touched the
+  userscript and tests for both anchors. The one-way `minPx > existingMin`
+  application is present in the FIRST commit of this repo's visible history
+  (`cf5042c`, 2026-05-16, the rename — so it predates it); the batched
+  `li.scrollWidth` read arrives with `3d1d4f1` (2026-05-20), which only moved an
+  existing per-cell `scrollWidth` read out of the loop.
+- `scripts/bisect-collapse-minwidth.sh` swaps in the userscript from a given
+  commit and runs the ratchet probe against the live page. `ef0cd87` (current
+  `main`) ratchets +12 px/click; **`aba1951^` (2026-08-09) ratchets identically**,
+  507→519→531→543. The `3d1d4f1^` arm could not be measured — that build has no
+  "Show all Tracks for Release" button, so the page type was not supported yet.
+- **An earlier guess in this session was wrong and is corrected here**: `aba1951`
+  ("support every AR relationship type on release-tracks") was suspected of
+  making the bug visible by registering AR columns as collapsable. It did not —
+  "Recorded at place" and its siblings are statically declared in the
+  `release-tracks` page definition and were already ratcheting before that
+  commit. `aba1951` only added the *dynamically discovered* AR columns.
+
+Across the last 25 commits touching the userscript the only width-related diffs
+are `1d0f0b2` (the drag floor — a different min-width, read only at mousedown)
+and the four header-pill restyles, none of which touch this measurement.
+
+### Docs
+
+`ShowAllEntityData_HELP.txt` needed no edit — checked rather than assumed. It
+documents ↔️ Resize, manual drag resize and the prose-column auto-resize cap, but
+has never described the collapsable-column minimum this bug is in, so nothing in
+it became false.
+
+### Snapshot baselines re-captured — they had the ratchet baked in
+
+Deferred at first because the Playwright session had expired; done once it was
+renewed. `tests/snapshots/artist-events/` is the clearest evidence in the repo,
+because its three files are captured after different numbers of passes:
+
+| file             | pass                | Location | Place   | Locality | Region  | Country |
+|------------------|---------------------|----------|---------|----------|---------|---------|
+| rendered.html    | first render        | 913      | 425     | 238      | 353     | 187     |
+| post-filter.html | + one column filter | 924→913  | 436→425 | 249→238  | 364→353 | 198→187 |
+| post-sort.html   | + a sort            | 948→913  | 460→425 | 273→238  | 388→353 | 222→187 |
+
+**+11 px after a filter pass and +35 px after a sort pass**, on five columns, in
+files that are supposed to differ only in row order and row count. All three now
+agree on the first-pass value.
+
+**The frozen disk fixture confirms those are the correct widths, independently.**
+`tests/fixtures/saved-data/artist-events.json.gz` was saved long before this bug
+was noticed and stores `min-width: 913px`/`425px`/`238px`/`353px`/`187px` in its
+own serialized headers — exactly what the fixed build now produces. It is also
+the answer to a puzzle that cost a detour: those `<th>`s carry NO
+`data-mb-collapse-min-px` stamp even though the value is clearly ours. They do
+not need one — hydration restores the stored value, the fresh intrinsic
+measurement equals it, so `minPx > existingMin` is false and nothing is written.
+The stamp is absent because the write never happens, not because it was lost.
+
+Measured on the disk-fixture path, which is a second rendering path entirely
+(`loadFromDiskFixture` → `_hydrateAndRenderFromSnapshotData`, auto-resize never
+runs there): `main` goes 924 after render → **936 after a sort**; the fixed build
+holds 913 → 913. So the fix is verified on both the live fetch path and the
+hydration path.
+
+Per baseline: `artist-events/rendered.html` +5 stamps and +150 bytes with no
+value moved; `release-tracks/rendered.html` +9 stamps, no value moved;
+`notes-received` byte-identical; the eight others have no multi-row collapsable
+cells at all, so they cannot move and were deliberately left alone rather than
+re-captured into unrelated upstream drift.
+
+**An orphaned stamp is expected, not a bug.** `artist-events/rendered.html`
+serializes `data-mb-collapse-min-px="546"` beside `min-width: 930px`: we wrote
+and stamped 546, then auto-resize cleared every floor and wrote its own 930. The
+next `initCollapsableColumns()` pass sees the mismatch, leaves the min-width
+alone — correctly, it is not ours — and drops the stale attribute. Self-healing
+by construction, and the reason the cleanup compares the value rather than just
+testing for the attribute's presence.
+
+### `user-open-edits` cannot be captured right now — pre-existing, not this change
+
+Its capture times out waiting for `#mb-filter-container`. **Reproduced on
+unmodified `main`**, so it is not this branch's doing. Cause, measured against
+the live page with the renewed session rather than guessed: the account has
+**zero** open edits at the moment — `table.tbl` count 0, no edit rows, logged in
+confirmed — so the script has nothing to render and the filter bar is never
+built. Its committed baseline dates from when there were open edits and is left
+untouched; the orphaned `raw.html` the aborted run wrote was reverted, since raw
+and rendered must stay a matched pair. Re-capture when the account next has open
+edits. `scripts/check-auth-state.js` reports whether the saved session is usable,
+which is the first thing to check if this ever looks like an auth problem
+instead.
