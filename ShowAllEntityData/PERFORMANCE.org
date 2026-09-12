@@ -1642,6 +1642,19 @@ total hits, most on dialogs/tooltips/dropdowns unrelated to table rows):
   ~:60981~, ~:62578~): these only run on ~mouseenter~ of an element the
   user is currently pointing at, which by definition cannot be in the
   skipped (off-screen) state at that moment.
+- *At risk, newly identified* — ~initCollapsableColumns()~'s first-~<li>~
+  width measurement (the batched ~width:max-content~ →
+  ~getBoundingClientRect().width~ pass that feeds ~th.style.minWidth~).
+  This one DOES read layout geometry on a live row's descendant, once per
+  collapsable column, over every multi-row cell in it — so under row
+  skipping a skipped row's ~<li>~ would measure as a placeholder and the
+  column's floor would be computed from whatever subset happened to be on
+  screen. It is listed here because the bullet above could be read as
+  covering it: ~_findCellListItems~/~_classifyCollapseCell~ are indeed
+  geometry-free, but their CALLER is not. Pre-existing — the pass read
+  ~li.scrollWidth~ before it read ~getBoundingClientRect()~ (changed
+  2026-09-12 to stop a ratchet; see ~DEBUG-NOTES.md~), so this step's
+  exposure is the same either way, just now written down.
 - *Not yet checked* — ~_updateAllColHeaderCounts~/~openUniqDrop~'s row
   scans: expected safe (textContent/DOM-structure based per Steps 3-4's own
   analysis, no geometry reads spotted in the preliminary grep), but not

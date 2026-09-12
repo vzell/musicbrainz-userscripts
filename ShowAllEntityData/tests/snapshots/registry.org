@@ -131,6 +131,40 @@ Expect unrelated drift in the same re-capture, already seen in this one: the
 on =main= long after the 9.99.953 baseline, and the Wikipedia extract flapped
 per the section below.
 
+** Collapsable-column =min-width= floors — NOT yet re-captured
+
+OUR movement, not MusicBrainz's, and recorded here BEFORE the re-capture rather
+than after it, because the session cookie in =playwright/.auth/vzell.json= had
+expired when the fix landed and capturing logged-out would have folded unrelated
+header-chrome drift into the same diff.
+
+=initCollapsableColumns()= measured each multi-row cell's first =<li>= as
+=li.scrollWidth=, which for a block box that fits returns its =clientWidth= — the
+column's own current width — and applied =that + 28= as =th.style.minWidth=,
+raising it and never lowering it. Every sort click therefore added a notch:
++12 px per click per column, measured live. See =DEBUG-NOTES.md=, 2026-09-12.
+
+What a re-capture should show, on the baselines whose pages have multi-row
+collapsable columns (=release-tracks= above all, then =series-recordings=,
+=releasegroup-releases=, =artist-releasegroups=):
+
+  - =style="min-width: …"= on those =<th>=s becoming SMALLER, or disappearing
+    where the column no longer needs a floor of its own. Smaller is the correct
+    new baseline. LARGER would be a real regression.
+  - Columns whose floor comes from AUTO-RESIZE instead (it writes the same
+    property, measured across the whole cell rather than its first item, and is
+    legitimately the larger of the two) should be UNCHANGED. =capture-snapshots.js=
+    runs with =waitForAutoResize: true= on most pageTypes, so expect most of the
+    =min-width= values in these files to sit still.
+  - A new =data-mb-collapse-min-px= attribute on any =<th>= whose floor this
+    feature actually owns — the stamp that lets the cleanup pass release its own
+    previous value without touching an auto-resize floor. It is written only when
+    this feature's value wins, so on an auto-resized capture it may not appear at
+    all.
+
+Nothing in =npm test= reads these baselines, so this cannot turn the suite red
+either way.
+
 ** Picard column shipping collapsed — re-captured 2026-09-10
 
 Like the count badges above, this is OUR movement, not MusicBrainz's. As of

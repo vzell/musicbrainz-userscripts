@@ -58874,7 +58874,9 @@ a { color: #1565c0; }`;
 
         // ── Idempotent cleanup ────────────────────────────────────────────────
         // Remove any toggles and CSS classes added by a previous call (e.g.
-        // disk-load), reset hidden <li> items, and clear previously set minWidths.
+        // disk-load), reset hidden <li> items, and drop the column min-width THIS
+        // function set last time (identified by th[data-mb-collapse-min-px], so an
+        // auto-resize floor written to the same property is never touched).
         //
         // IMPORTANT: CAA/EAA multi-row art cells (those whose <td> contains a
         // direct-child `ul.mb-caa-art-ul`) are EXCLUDED from every cleanup step.
@@ -58901,10 +58903,14 @@ a { color: #1565c0; }`;
         //                               pass below re-adds the clamp class only when both the
         //                               cell is still a prose candidate AND
         //                               sa_enable_annotation_collapse is on
+        //   th[data-mb-collapse-min-px] — the column min-width THIS function set on a
+        //                               previous pass; cleared so the fresh measurement
+        //                               below REPLACES it instead of only ever raising it
         table.querySelectorAll(
             '.mb-col-collapse-hdr-btn, .mb-caa-col-hdr-btn, ' +
             '.mb-cell-collapse-toggle, ' +
             'td.mb-has-collapse-toggle, td.mb-collapse-col-pad, ' +
+            'thead th[data-mb-collapse-min-px], ' +
             'tbody td ul > li, ' +
             '.mb-text-clamp-marker'
         ).forEach(el => {
@@ -58934,6 +58940,19 @@ a { color: #1565c0; }`;
                 // positioning and reserved-space classes; both are re-applied by
                 // the per-column wiring pass below when still warranted.
                 el.classList.remove('mb-has-collapse-toggle', 'mb-collapse-col-pad');
+            } else if (el.tagName === 'TH') {
+                // th[data-mb-collapse-min-px] — drop OUR OWN previous column
+                // min-width so the fresh measurement can replace it (and so a
+                // column can narrow again when a filter removes the row that was
+                // widest).  Only when the inline value is still the one we wrote:
+                // auto-resize writes the same property with a floor of its own
+                // (toggleAutoResizeColumns / toggleSubTableAutoResize), and a
+                // manual drag or a Restore may have replaced it too — none of
+                // those are ours to clear.
+                if (el.style.minWidth === el.dataset.mbCollapseMinPx + 'px') {
+                    el.style.minWidth = '';
+                }
+                delete el.dataset.mbCollapseMinPx;
             } else {
                 // tbody td ul > li — reset display unless art-managed.
                 if (!el.classList.contains('mb-caa-art-li')) {
@@ -59151,14 +59170,39 @@ a { color: #1565c0; }`;
             });
 
             // ── Batch measure first-<li> natural widths (1 FSL per column) ─────
-            // All DOM writes above are done; a single batch of: set nowrap on all,
-            // read all scrollWidths, reset nowrap — causes exactly one layout flush
-            // per column instead of one per cell (which was 1000s of forced reflows).
-            _firstLisForMeasure.forEach(li => { li.style.whiteSpace = 'nowrap'; });
+            // All DOM writes above are done; a single batch of: set max-content on
+            // all, read all widths, reset — causes exactly one layout flush per
+            // column instead of one per cell (which was 1000s of forced reflows).
+            //
+            // ── Why `max-content` and not `white-space:nowrap` + `scrollWidth` ──
+            //
+            // This used to be `li.style.whiteSpace = 'nowrap'` followed by a read
+            // of `li.scrollWidth`.  An <li> is a BLOCK box and the <ul>s this
+            // script builds carry `padding:0`, so the item fills its <td>'s content
+            // box exactly — and for a block box with no horizontal overflow,
+            // `scrollWidth` returns `clientWidth`, i.e. THE COLUMN'S CURRENT
+            // RENDERED WIDTH rather than the item's own.  `nowrap` makes the
+            // reading unwrapped; it does not stop that fallback.
+            //
+            // Since the value below is applied as `th.style.minWidth` and only ever
+            // RAISED, and since a sort re-render reuses the existing <thead>
+            // untouched (renderGroupedTable's reuse branch empties the <tbody>
+            // only), every repeated sort click re-read the width the previous click
+            // had forced, added the 28 px toggle allowance, and committed it — so
+            // every multi-row column crept wider by a constant on each click.
+            //
+            // `max-content` sizes the element to its own content and is
+            // INDEPENDENT of the containing block, which is precisely the property
+            // `scrollWidth` lacked — and it subsumes the `nowrap` intent, so no
+            // second property is needed.  Same reasoning, same cure, and the same
+            // three-phase batch as `_measureHeaderMinWidth()`, which fixed this
+            // identical failure mode for the column drag floor; see its JSDoc.
+            _firstLisForMeasure.forEach(li => { li.style.width = 'max-content'; });
             _firstLisForMeasure.forEach(li => {
-                maxFirstLiWidth = Math.max(maxFirstLiWidth, li.scrollWidth);
+                maxFirstLiWidth = Math.max(
+                    maxFirstLiWidth, Math.ceil(li.getBoundingClientRect().width));
             });
-            _firstLisForMeasure.forEach(li => { li.style.whiteSpace = ''; });
+            _firstLisForMeasure.forEach(li => { li.style.width = ''; });
 
             // ── Hidden-match indicator for art cells (CAA/EAA column) ─────────
             // Art cells were skipped in the loop above to avoid duplicate toggles,
@@ -59351,11 +59395,29 @@ a { color: #1565c0; }`;
             // below the visible content area.  List cells only — prose
             // columns get their width capped separately during auto-resize.
             // 28 px = 18 px toggle icon width + 10 px margin / padding buffer.
+            // That allowance is only correct because the measurement above is
+            // INTRINSIC: it excludes `td.mb-has-collapse-toggle`'s own reserved
+            // 22 px right padding, which the old scrollWidth reading included and
+            // then added 28 px on top of.
+            //
+            // The `> existingMin` comparison is deliberate and must stay: auto-
+            // resize writes this same property (toggleAutoResizeColumns /
+            // toggleSubTableAutoResize, `columnWidths[idx] + 20`) and its floor
+            // legitimately outranks ours.  What must NOT happen is our own value
+            // being treated as an untouchable floor on the next pass — that is
+            // what made this monotone across sort clicks.  So stamp what we write
+            // on the <th>; the cleanup pass at the top of this function drops it
+            // again (and only it), letting a fresh measurement REPLACE ours.
+            // Replacing rather than max()ing is the same call the drag-floor fix
+            // made, for the same reason: the old number is unreliable in both
+            // directions, and a max() would keep a column that can never narrow
+            // again once a filter removes the row that was widest.
             if (multiRowCells.length > 0) {
                 const minPx = maxFirstLiWidth + 28;
                 const existingMin = parseFloat(th.style.minWidth) || 0;
                 if (minPx > existingMin) {
                     th.style.minWidth = minPx + 'px';
+                    th.dataset.mbCollapseMinPx = String(minPx);
                 }
             }
 
