@@ -16854,12 +16854,18 @@
      * entry for them (e.g. `release-discids`' per-disc totals) still sorts as
      * a duration rather than falling through to `parseFloat`.
      *
+     * `'count'` is likewise an exact-name match, for the injected
+     * "Relationships" column: its cells carry no visible text at all (icons
+     * only, see `_relAppendIcon()`), so it is sorted by the number of
+     * `.mb-rel-filter-key` spans in the cell instead of `_sortCellText()`.
+     *
      * @param   {string} name  Column name from `_sortColumnHeaderName()`.
-     * @returns {('duration'|'numeric'|'text')}
+     * @returns {('duration'|'numeric'|'count'|'text')}
      */
     function _sortColumnKind(name) {
         if (!name) return 'text';
         if (name === 'Length') return 'duration';
+        if (name === 'Relationships') return 'count';
         if (activeIntegerColumns.some(e => e.sourceColumn === name && e.align === ':')) return 'duration';
         // Primary source: integerColumns declared in the page definition.
         if (activeIntegerColumns.some(e => e.sourceColumn === name)) return 'numeric';
@@ -18866,15 +18872,25 @@
      * Create a comparison function for table sorting
      * @param {number} index - Column index
      * @param {boolean} isAscending - Sort direction
-     * @param {('duration'|'numeric'|'text')} kind - Comparison kind, from
+     * @param {('duration'|'numeric'|'count'|'text')} kind - Comparison kind, from
      *   `_sortColumnKind()`. Was previously an `isNumeric` boolean; `'duration'`
      *   is the added case, which parses `M:SS[.mmm]` properly and pins `"?:??"`
      *   last instead of comparing a digits-only `parseFloat` of the text.
+     *   `'count'` (the Relationships column) is checked before `byLength` and
+     *   before `_sortCellText()` is even called, since a rel cell has no
+     *   visible text to extract.
      * @param {boolean} [byLength=false] - When true, sort by visible text length instead of value
      * @returns {Function} Comparison function
      */
     function createSortComparator(index, isAscending, kind, byLength = false) {
         return (a, b) => {
+            if (kind === 'count' && !byLength) {
+                const cellA = a.cells[index], cellB = b.cells[index];
+                const countA = cellA ? cellA.querySelectorAll('.mb-rel-filter-key').length : 0;
+                const countB = cellB ? cellB.querySelectorAll('.mb-rel-filter-key').length : 0;
+                return isAscending ? countA - countB : countB - countA;
+            }
+
             const valA = _sortCellText(a.cells[index]);
             const valB = _sortCellText(b.cells[index]);
 
@@ -18917,9 +18933,6 @@
                 const idx = sortCol.colIndex;
                 const isAscending = sortCol.direction === 1;
 
-                const valA = _sortCellText(a.cells[idx]);
-                const valB = _sortCellText(b.cells[idx]);
-
                 // Same resolver the single-column path uses — see
                 // `_sortColumnKind()`'s JSDoc for the divergence this replaced
                 // (this branch used to consult only the raw header text and
@@ -18927,21 +18940,34 @@
                 const kind = _sortColumnKind(_sortColumnHeaderName(headers[idx]));
 
                 let result;
-                if (kind === 'duration') {
-                    // Already direction-final — return it directly, bypassing
-                    // the shared sign flip below (which would float a pinned
-                    // "?:??" to the TOP of a descending sort). Only a 0 falls
-                    // through, so equal durations still reach the next
-                    // tie-breaking column in the chain.
-                    const durCmp = _compareDurations(valA, valB, isAscending);
-                    if (durCmp !== 0) return durCmp;
-                    result = 0;
-                } else if (kind === 'numeric') {
-                    const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
-                    const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
-                    result = numA - numB;
+                if (kind === 'count') {
+                    // Relationships column: no visible cell text to extract —
+                    // skip _sortCellText() entirely, same as the
+                    // single-column path.
+                    const cellA = a.cells[idx], cellB = b.cells[idx];
+                    const countA = cellA ? cellA.querySelectorAll('.mb-rel-filter-key').length : 0;
+                    const countB = cellB ? cellB.querySelectorAll('.mb-rel-filter-key').length : 0;
+                    result = countA - countB;
                 } else {
-                    result = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+                    const valA = _sortCellText(a.cells[idx]);
+                    const valB = _sortCellText(b.cells[idx]);
+
+                    if (kind === 'duration') {
+                        // Already direction-final — return it directly, bypassing
+                        // the shared sign flip below (which would float a pinned
+                        // "?:??" to the TOP of a descending sort). Only a 0 falls
+                        // through, so equal durations still reach the next
+                        // tie-breaking column in the chain.
+                        const durCmp = _compareDurations(valA, valB, isAscending);
+                        if (durCmp !== 0) return durCmp;
+                        result = 0;
+                    } else if (kind === 'numeric') {
+                        const numA = parseFloat(valA.replace(/[^0-9.-]/g, '')) || 0;
+                        const numB = parseFloat(valB.replace(/[^0-9.-]/g, '')) || 0;
+                        result = numA - numB;
+                    } else {
+                        result = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+                    }
                 }
 
                 if (result !== 0) return isAscending ? result : -result;
@@ -77917,7 +77943,7 @@ a { color: #1565c0; }`;
 
             /**
              * @param {string} name - Column name as `_sortColumnHeaderName()` yields it.
-             * @returns {('duration'|'numeric'|'text')} Resolved sort kind.
+             * @returns {('duration'|'numeric'|'count'|'text')} Resolved sort kind.
              */
             sortColumnKind(name) {
                 return _sortColumnKind(name);
