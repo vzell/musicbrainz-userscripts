@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1076",
+    "date": "2026-09-12",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sorting the Relationships column did nothing: `_sortCellText()` returns '' for every relationship cell (its icons carry no visible text), so both comparators compared '' against '' regardless of icon count. `_sortColumnKind()` now classifies 'Relationships' as a new 'count' kind, sorted by the number of relationship icons (`.mb-rel-filter-key` spans) in each cell instead of cell text."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1075",
     "date": "2026-09-12",
     "sections": [
