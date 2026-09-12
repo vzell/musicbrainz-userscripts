@@ -9100,9 +9100,27 @@
                     }
                     if (_recOfTh) {
                         const _td = document.createElement('td');
-                        const _workAnchor = _recOfDd ? _recOfDd.querySelector(':scope > a') : null;
+                        // Not `:scope > a` — when the credited work
+                        // currently has open/pending edits, MusicBrainz
+                        // wraps its anchor one level deeper in native
+                        // `<span class="mp">` (the same marker
+                        // `_findCellPendingEdits()` scans for elsewhere;
+                        // see debug/release-tracks-*.html's "Light of Day"
+                        // row), so a direct-child query silently found
+                        // nothing and the cell rendered empty. Filtering by
+                        // href prefix instead mirrors `_recordedAtDdAnchor`'s
+                        // own fix for the equivalent `name-variation`
+                        // wrapping case.
+                        const _workAnchor = _recOfDd ? _recOfDd.querySelector('a[href^="/work/"]') : null;
                         if (_workAnchor) {
-                            _td.appendChild(_workAnchor.cloneNode(true));
+                            // Clone the wrapping <span class="mp">/
+                            // <span class="name-variation"> (if any) rather
+                            // than the bare <a> — see
+                            // _outerCreditAnchorWrapper()'s JSDoc — so both
+                            // the pending-edits highlight and
+                            // _findCellPendingEdits()'s column-agnostic scan
+                            // still find it here.
+                            _td.appendChild(_outerCreditAnchorWrapper(_workAnchor).cloneNode(true));
                             // Attribute words (e.g. "live"/"cover") used to
                             // get their own column per word; reverted to
                             // render inline instead, matching every
@@ -9308,7 +9326,16 @@
                         _br.remove();
                     }
                     _titleTd.innerHTML = '';
-                    _titleTd.appendChild(_recAnchor);
+                    // Move the WRAPPING <span class="mp">/<span
+                    // class="name-variation"> (if any), not the bare anchor
+                    // — see `_outerCreditAnchorWrapper()`'s JSDoc. Moving
+                    // (not cloning) still preserves `_recAnchor`'s own
+                    // identity, since the wrapper is only ever the anchor's
+                    // live parent, never a copy of it. A recording whose
+                    // OWN title currently has open/pending edits used to
+                    // silently lose that highlight here, before it ever
+                    // reached `_titleRecordingAnchor()`'s callers.
+                    _titleTd.appendChild(_outerCreditAnchorWrapper(_recAnchor));
                 }
             });
         });
@@ -10700,6 +10727,38 @@
     }
 
     /**
+     * Walks outward from a credited entity's `<a>` through any wrapping
+     * `<span class="mp">` (MusicBrainz's own open/pending-edits marker —
+     * see `_findCellPendingEdits()`'s JSDoc) and/or
+     * `<span class="name-variation">` (alias/disambiguated name), returning
+     * the OUTERMOST such wrapper — or the anchor itself when neither wraps
+     * it. Cloning this instead of the bare `<a>` is what makes both the
+     * pending-edits highlight and the name-variation underline survive into
+     * a rendered cell; cloning the bare anchor silently drops both stylings
+     * even though the link text itself is unaffected.
+     *
+     * Used by every fixed-column credit builder that resolves one entity's
+     * anchor and clones it into a `<td>`/`<li>` — `_buildCreditListItem()`,
+     * `_buildInstrumentVocalsListItem()`, and the "Recording of work"
+     * work-anchor lookup in `applyExtractTrackTitleData()`. Column families
+     * that clone a `<dd>`'s direct children wholesale instead of resolving
+     * one anchor (`_buildKindSplitListTd()`) never need this — an `.mp`
+     * wrapper there is just carried along as ordinary content already.
+     *
+     * @param {HTMLAnchorElement} anchor
+     * @returns {HTMLElement}
+     */
+    function _outerCreditAnchorWrapper(anchor) {
+        let _node = anchor;
+        while (_node.parentElement && _node.parentElement.tagName === 'SPAN' &&
+               (_node.parentElement.classList.contains('mp') ||
+                _node.parentElement.classList.contains('name-variation'))) {
+            _node = _node.parentElement;
+        }
+        return _node;
+    }
+
+    /**
      * Finds every credited instrument `<a href="/instrument/…">` within a
      * `_buildCreditListTd` segment — same nested-anchor search as
      * `_findCreditSegmentArtistAnchor`, generalized to "every match" since
@@ -11035,18 +11094,17 @@
         const _artistA = _findCreditSegmentArtistAnchor(seg);
         if (!_artistA) return null;
         const li = document.createElement('li');
-        // Clone the WRAPPING `<span class="name-variation">` instead of the
-        // bare `<a>` when present, not just its href/text — MusicBrainz
-        // underlines a name-variation credit via that span's own class to
-        // visually flag it as an alias rather than the artist's primary
-        // name (see debug/artist-name-variation-and-primary-alias.html:
-        // cloning only the `<a>` silently dropped that styling, even
-        // though the text/link itself was already correct).
-        const _artistNode = (_artistA.parentElement &&
-                              _artistA.parentElement.tagName === 'SPAN' &&
-                              _artistA.parentElement.classList.contains('name-variation'))
-            ? _artistA.parentElement : _artistA;
-        li.appendChild(_artistNode.cloneNode(true));
+        // Clone the WRAPPING `<span class="name-variation">`/`<span
+        // class="mp">` instead of the bare `<a>` when present, not just its
+        // href/text — MusicBrainz underlines a name-variation credit via
+        // that span's own class to visually flag it as an alias rather than
+        // the artist's primary name (see
+        // debug/artist-name-variation-and-primary-alias.html: cloning only
+        // the `<a>` silently dropped that styling, even though the
+        // text/link itself was already correct), and highlights a
+        // pending-edits credit the same way — see
+        // `_outerCreditAnchorWrapper()`'s JSDoc.
+        li.appendChild(_outerCreditAnchorWrapper(_artistA).cloneNode(true));
 
         const _commentSpan = _findCreditSegmentCommentSpan(seg);
         if (_commentSpan) {
@@ -11295,11 +11353,10 @@
             li.appendChild(_instrClone);
             li.appendChild(document.createTextNode(': '));
         }
-        const _artistNode = (_artistA.parentElement &&
-                              _artistA.parentElement.tagName === 'SPAN' &&
-                              _artistA.parentElement.classList.contains('name-variation'))
-            ? _artistA.parentElement : _artistA;
-        li.appendChild(_artistNode.cloneNode(true));
+        // See `_buildCreditListItem()`'s identical clone-wrapper comment —
+        // `_outerCreditAnchorWrapper()` preserves both a name-variation
+        // underline and a pending-edits highlight.
+        li.appendChild(_outerCreditAnchorWrapper(_artistA).cloneNode(true));
 
         const _commentSpan = _findCreditSegmentCommentSpan(seg);
         if (_commentSpan) {
@@ -17352,9 +17409,37 @@
      * @returns {?number|undefined} Milliseconds; `null` when MusicBrainz has no
      *   length for the recording; `undefined` when the row matched no track.
      */
+    /**
+     * Resolves a Title cell's OWN recording anchor — the same DIRECT-CHILD
+     * scoping this function's three callers all rely on (never an unscoped
+     * query: a track's `<div class="ars">` can carry further `/recording/`
+     * links, e.g. a "DJ-mix of" relationship, and an unscoped query would key
+     * the row to one of those instead) — while still tolerating MusicBrainz
+     * wrapping that anchor in `<span class="mp">` (open/pending edits) and/or
+     * `<span class="name-variation">` (alias), in either nesting order, the
+     * same two wrappers `_outerCreditAnchorWrapper()` walks OUTWARD through
+     * for a credited entity's own anchor. A bare `:scope > a` here silently
+     * treats a currently-pending-edits recording as if the row had none at
+     * all — see `applyExtractTrackTitleData`'s "Recording of work" work-anchor
+     * fix for the identical failure on a different relationship.
+     *
+     * @param {?HTMLTableCellElement} titleTd
+     * @returns {?HTMLAnchorElement}
+     */
+    function _titleRecordingAnchor(titleTd) {
+        if (!titleTd) return null;
+        return titleTd.querySelector(
+            ':scope > a[href*="/recording/"], ' +
+            ':scope > span.mp > a[href*="/recording/"], ' +
+            ':scope > span.name-variation > a[href*="/recording/"], ' +
+            ':scope > span.mp > span.name-variation > a[href*="/recording/"], ' +
+            ':scope > span.name-variation > span.mp > a[href*="/recording/"]',
+        );
+    }
+
     function _msLengthForRow(cells, medIdx, titleIdx, posIdx, maps) {
         const titleTd = titleIdx === -1 ? null : cells[titleIdx];
-        const recA    = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+        const recA    = _titleRecordingAnchor(titleTd);
         const gidM    = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
         if (gidM && maps.byRecording.has(gidM[1])) return maps.byRecording.get(gidM[1]);
 
@@ -17541,12 +17626,11 @@
                 if (!lenTd || lenTd.dataset.mbMs) return;   // idempotent
 
                 let ms;
-                // Primary key: the Title cell's own DIRECT-CHILD recording
-                // anchor. Scoped deliberately — a track's `<div class="ars">`
-                // can carry further /recording/ links (e.g. a "DJ-mix of"
-                // relationship), and an unscoped query would grab one of those.
+                // Primary key: the Title cell's own recording anchor, via
+                // `_titleRecordingAnchor()` (direct-child-scoped, tolerant of
+                // an `.mp`/`.name-variation` wrapper).
                 const titleTd = titleIdx === -1 ? null : tr.children[titleIdx];
-                const recA    = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+                const recA    = _titleRecordingAnchor(titleTd);
                 const gidM    = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
                 if (gidM && maps.byRecording.has(gidM[1])) ms = maps.byRecording.get(gidM[1]);
 
@@ -18367,9 +18451,12 @@
         let lengthStamped = 0, recordingStamped = 0;
         _msSourceRows().forEach(row => {
             const titleTd = row.cells[titleIdx];
-            // Direct-child only — see this function's own column-index
-            // helper's JSDoc for why an unscoped query is unsafe here.
-            const recA = titleTd && titleTd.querySelector(':scope > a[href*="/recording/"]');
+            // Direct-child scoped (see this function's own column-index
+            // helper's JSDoc for why an unscoped query is unsafe here), via
+            // `_titleRecordingAnchor()` so a pending-edits recording (native
+            // `<span class="mp">` wrapper) doesn't silently look like a row
+            // with no recording link at all.
+            const recA = _titleRecordingAnchor(titleTd);
             const gidM = recA && recA.getAttribute('href').match(/\/recording\/([0-9a-f-]{36})/);
             const gid = gidM && gidM[1];
             if (!gid) return;

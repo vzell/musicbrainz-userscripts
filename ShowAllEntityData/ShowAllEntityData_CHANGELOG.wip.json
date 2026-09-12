@@ -1,0 +1,17 @@
+[
+    {
+        "version": "WIP.1",
+        "date": "2026-09-13",
+        "sections": [
+            {
+                "label": "🐛 Fix",
+                "items": [
+                    "release-tracks: the \"Recording of work\" cell rendered completely empty when the credited work currently has open/pending edits on musicbrainz.org. MusicBrainz wraps the work anchor one level deeper in its own native `<span class=\"mp\">` open-edits marker in that case, which the `:scope > a` direct-child lookup didn't accept — the lookup now filters by `href^=\"/work/\"` instead (mirroring `_recordedAtDdAnchor`'s existing fix for the equivalent name-variation-wrapping case), and clones the wrapping `<span class=\"mp\">`/`<span class=\"name-variation\">` (via the new shared `_outerCreditAnchorWrapper()`) so the pending-edits highlight survives into the cell too.",
+                    "release-tracks: a track's own Title cell silently lost its pending-edits highlight (the recording name itself still rendered) whenever that recording currently has open/pending edits — the Title-cell rebuild in `applyExtractTrackTitleData()` moved back only the bare recording `<a>`, discarding the `<span class=\"mp\">` wrapper it came from.",
+                    "release-tracks: Performer/Vocals/Instruments/engineer-mixer-etc. credit columns (`_buildCreditListItem()`/`_buildInstrumentVocalsListItem()`) silently lost the pending-edits highlight for a credited artist with open/pending edits — the name rendered correctly either way, only the `<span class=\"mp\">` marker was dropped from the clone.",
+                    "release-tracks: the millisecond-length WS2 backfill (`_msStampFullReleaseRows()`) silently skipped a row entirely when that row's own recording currently has open/pending edits — its `:scope > a[href*=\"/recording/\"]` lookup found nothing once the Title-cell fix above started preserving the `<span class=\"mp\">` wrapper, so the row never got backfilled to millisecond precision even though the WS2 answer for it had arrived. New shared `_titleRecordingAnchor()` tolerates the wrapper while keeping the existing direct-child scoping (still required to avoid matching a nested `/recording/` link from an unrelated relationship like \"DJ-mix of\")."
+                ]
+            }
+        ]
+    }
+]

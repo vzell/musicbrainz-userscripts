@@ -10757,3 +10757,76 @@ and rendered must stay a matched pair. Re-capture when the account next has open
 edits. `scripts/check-auth-state.js` reports whether the saved session is usable,
 which is the first thing to check if this ever looks like an auth problem
 instead.
+
+## 2026-09-13 — `<span class="mp">` open-edits wrapper silently ate four release-tracks anchors (fixed, branch fix/release-tracks-pending-edits-anchors)
+
+User-reported: a track's "Recording of work" cell rendered completely empty
+for a work with open/pending edits (`debug/release-tracks-initial.html`/
+`-final.html`, "Barcelona Night" release 20a52f17-ce0b-48bf-911e-9f962a518185,
+track 8 "Light of Day", work d662d712-f9f8-4118-8bb2-a821395dbf96). Root cause:
+`_findRecOfDt`'s work-anchor lookup was `_recOfDd.querySelector(':scope > a')`
+— a direct-child-only query — but MusicBrainz wraps a credited entity's anchor
+one level deeper in native `<span class="mp">` whenever that entity's own
+`/entity/<mbid>/open_edits` list is non-empty (same marker documented in
+`[[project_mb_mp_open_edits_class]]`, previously only confirmed for a joined
+ARTIST credit). Confirmed the real shape directly in the debug HTML:
+`<dd><span class="worklink"></span><span class="mp"><a href="/work/…">Light
+of Day</a></span> (on 1999-04-11)<dl class="ars">…`. Fixed by filtering on
+`href^="/work/"` instead of scope (mirroring `_recordedAtDdAnchor`'s existing
+fix for the equivalent name-variation-wrapping case), then cloning the
+OUTERMOST `<span class="mp">`/`<span class="name-variation">` wrapper via a
+new shared `_outerCreditAnchorWrapper()` rather than the bare anchor, so the
+pending-edits highlight survives into the cell too — not just the link text.
+
+Auditing every other AR-column builder for the same shape (user asked "could
+this happen on other columns") turned up three more real instances, all
+narrower — the credited NAME still rendered in each, only the marker/row was
+lost:
+
+- **Performer/Vocals/Instruments/engineer-mixer-etc. credit columns**
+  (`_buildCreditListItem()`/`_buildInstrumentVocalsListItem()`) cloned the
+  wrapping `<span class="name-variation">` when present but never checked for
+  `.mp` — `_findCreditSegmentArtistAnchor()` already finds the anchor
+  regardless of wrapping (unscoped `querySelector`), so only the highlight was
+  lost, silently. Same `_outerCreditAnchorWrapper()` fix.
+- **The Title column's own recording anchor** — found only while trying to
+  write a fixture for the next item below: a debug dump of the rendered Title
+  `<td>` showed the `<span class="mp">` I'd put in the raw fixture had
+  vanished entirely, even though nothing I'd touched yet should affect it.
+  Root cause was upstream of every anchor-lookup fix above:
+  `applyExtractTrackTitleData()` rebuilds the Title cell via
+  `_titleTd.innerHTML = ''; _titleTd.appendChild(_recAnchor)` — `_recAnchor`
+  is only the bare `<a>` (found via an unscoped query, so wrapping doesn't
+  stop it being FOUND), and moving just that element back in discards
+  whatever it was wrapped in. Fixed by moving
+  `_outerCreditAnchorWrapper(_recAnchor)` instead — still a move, not a
+  clone, so the JSDoc's node-identity guarantee for third-party scripts
+  (jesus2099's AcoustID lookup) holds.
+- **The millisecond-length WS2 backfill** (`_msStampFullReleaseRows()`) keys
+  each row by re-reading the Title cell's recording anchor via
+  `:scope > a[href*="/recording/"]` (deliberately direct-child-scoped — an
+  unscoped query can grab an unrelated `/recording/` link from e.g. a
+  "DJ-mix of" relationship elsewhere in the cell). Before the Title-column fix
+  above, this was actually unreachable dead weight: the wrapper never
+  survived long enough to reach it. New shared `_titleRecordingAnchor()`
+  enumerates the direct-child case plus both wrapper orders
+  (`mp > name-variation` and the reverse), keeping the scoping guarantee
+  while tolerating the wrapper. Verified reachable only after fixing the
+  Title-column bug first — my first mutation-test attempt on this one falsely
+  "passed" against the unfixed code because the wrapper was already gone
+  before this function ever ran.
+
+Five fixture regression tests added, each mutation-tested (temporarily
+reverted, confirmed to fail, restored):
+`release-tracks-recording-of-pending-edits.spec.js` (two tests — the empty
+cell, and a same-`<dd>` nested "version of:" work that a naive unscoped query
+could have grabbed instead, since the real fixture row happens to credit
+TWO different `.mp`-wrapped works one nested inside the other's `<dd>`),
+`release-tracks-credit-pending-edits.spec.js`, `release-tracks-title-pending-edits.spec.js`,
+`release-tracks-ms-length-overflow-pending-edits.spec.js`. All four new/
+reused fixtures are real MusicBrainz markup (three spliced from
+`debug/release-tracks-initial.html`'s own "Barcelona Night" tracklist rows
+into the existing clean `tests/snapshots/release-tracks/raw.html` DOM shell;
+the ms-length one reuses `release-tracks-ms-length-overflow.html` with one
+track's title anchor synthetically `.mp`-wrapped, since no real captured page
+happened to have a pending-edit RECORDING rather than a pending-edit work).
