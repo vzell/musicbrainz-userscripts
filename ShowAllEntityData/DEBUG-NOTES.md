@@ -10697,3 +10697,63 @@ and the four header-pill restyles, none of which touch this measurement.
 documents ↔️ Resize, manual drag resize and the prose-column auto-resize cap, but
 has never described the collapsable-column minimum this bug is in, so nothing in
 it became false.
+
+### Snapshot baselines re-captured — they had the ratchet baked in
+
+Deferred at first because the Playwright session had expired; done once it was
+renewed. `tests/snapshots/artist-events/` is the clearest evidence in the repo,
+because its three files are captured after different numbers of passes:
+
+| file             | pass                | Location | Place   | Locality | Region  | Country |
+|------------------|---------------------|----------|---------|----------|---------|---------|
+| rendered.html    | first render        | 913      | 425     | 238      | 353     | 187     |
+| post-filter.html | + one column filter | 924→913  | 436→425 | 249→238  | 364→353 | 198→187 |
+| post-sort.html   | + a sort            | 948→913  | 460→425 | 273→238  | 388→353 | 222→187 |
+
+**+11 px after a filter pass and +35 px after a sort pass**, on five columns, in
+files that are supposed to differ only in row order and row count. All three now
+agree on the first-pass value.
+
+**The frozen disk fixture confirms those are the correct widths, independently.**
+`tests/fixtures/saved-data/artist-events.json.gz` was saved long before this bug
+was noticed and stores `min-width: 913px`/`425px`/`238px`/`353px`/`187px` in its
+own serialized headers — exactly what the fixed build now produces. It is also
+the answer to a puzzle that cost a detour: those `<th>`s carry NO
+`data-mb-collapse-min-px` stamp even though the value is clearly ours. They do
+not need one — hydration restores the stored value, the fresh intrinsic
+measurement equals it, so `minPx > existingMin` is false and nothing is written.
+The stamp is absent because the write never happens, not because it was lost.
+
+Measured on the disk-fixture path, which is a second rendering path entirely
+(`loadFromDiskFixture` → `_hydrateAndRenderFromSnapshotData`, auto-resize never
+runs there): `main` goes 924 after render → **936 after a sort**; the fixed build
+holds 913 → 913. So the fix is verified on both the live fetch path and the
+hydration path.
+
+Per baseline: `artist-events/rendered.html` +5 stamps and +150 bytes with no
+value moved; `release-tracks/rendered.html` +9 stamps, no value moved;
+`notes-received` byte-identical; the eight others have no multi-row collapsable
+cells at all, so they cannot move and were deliberately left alone rather than
+re-captured into unrelated upstream drift.
+
+**An orphaned stamp is expected, not a bug.** `artist-events/rendered.html`
+serializes `data-mb-collapse-min-px="546"` beside `min-width: 930px`: we wrote
+and stamped 546, then auto-resize cleared every floor and wrote its own 930. The
+next `initCollapsableColumns()` pass sees the mismatch, leaves the min-width
+alone — correctly, it is not ours — and drops the stale attribute. Self-healing
+by construction, and the reason the cleanup compares the value rather than just
+testing for the attribute's presence.
+
+### `user-open-edits` cannot be captured right now — pre-existing, not this change
+
+Its capture times out waiting for `#mb-filter-container`. **Reproduced on
+unmodified `main`**, so it is not this branch's doing. Cause, measured against
+the live page with the renewed session rather than guessed: the account has
+**zero** open edits at the moment — `table.tbl` count 0, no edit rows, logged in
+confirmed — so the script has nothing to render and the filter bar is never
+built. Its committed baseline dates from when there were open edits and is left
+untouched; the orphaned `raw.html` the aborted run wrote was reverted, since raw
+and rendered must stay a matched pair. Re-capture when the account next has open
+edits. `scripts/check-auth-state.js` reports whether the saved session is usable,
+which is the first thing to check if this ever looks like an auth problem
+instead.
