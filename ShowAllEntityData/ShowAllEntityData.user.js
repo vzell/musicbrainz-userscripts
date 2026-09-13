@@ -5091,7 +5091,7 @@
      * family, from either the primary or synthetic extractor registry — see
      * `openUniqDrop()`'s `isDateExprCol` for why both are checked (e.g.
      * "Date" is a primary column on some pageTypes, a synthetic one produced
-     * by `splitCountryDate` on others). Two independent sources:
+     * by `splitCountryDate` on others). Three independent sources:
      *
      * - A `dateParts`-fed column's own `sourceColumn` — its raw cell text is
      *   already a clean "YYYY[-MM[-DD]]" date, so `_findCellDateExpressionParts()`
@@ -5103,6 +5103,16 @@
      *   " HH:MM GMT+N" text that `_findCellDateExpressionParts()`'s regex
      *   does not match, so including it would silently produce zero entries
      *   rather than the family working.
+     * - An `eventParts`-fed entry's "Event-Date" OUTPUT column
+     *   (`syntheticColumns[1]` — always the second of its nine fixed
+     *   synthetic columns, see `ColumnDataExtractor.eventParts`'s own
+     *   JSDoc). Its raw cell text is already a clean "YYYY[-MM[-DD]]" token
+     *   (optionally with a trailing uncertain-day "/DD" suffix — see
+     *   `_matchDateExprText()`'s own JSDoc), so — unlike release-tracks'
+     *   "Recorded at event" (a `dateParts` name registered directly at its
+     *   `<th>`-creation site, with no `syntheticColumns` entry of its own,
+     *   since it needs `_findCellDateExpressionParts()`'s `.mb-credit-date`
+     *   fallback instead) — it needs no cell-shape fallback here.
      *
      * Exists so `renderGroupedTable()`'s per-group extractor rebuild (user-
      * ratings / tag-value / user-tag-value / instrument-list) can snapshot
@@ -5123,6 +5133,7 @@
         const _collect = (entries) => (entries || []).forEach(e => {
             if (e.extractor === 'dateParts') names.add(e.sourceColumn);
             else if (e.extractor === 'dateTimeParts' && e.syntheticColumns && e.syntheticColumns[0]) names.add(e.syntheticColumns[0]);
+            else if (e.extractor === 'eventParts' && e.syntheticColumns && e.syntheticColumns[1]) names.add(e.syntheticColumns[1]);
         });
         _collect(columnExtractors);
         _collect(syntheticColumnExtractors);
@@ -8734,6 +8745,17 @@
                     _recordedAtEventTh = document.createElement('th');
                     _recordedAtEventTh.textContent = 'Recorded at event';
                     _arsHeaderRef.before(_recordedAtEventTh);
+                    // Register the name with _dateExprColumnNames() (see its
+                    // own JSDoc), same "column built outside the declarative
+                    // columnExtractors/syntheticColumnExtractors pipeline"
+                    // reasoning as "Recording date" above — but here the
+                    // cell's OWN text is "<event name> (YYYY-MM-DD)", not a
+                    // bare date, so it needs _findCellDateExpressionParts()'s
+                    // `.mb-credit-date`-sentinel fallback (see that
+                    // function's own JSDoc) rather than being readable
+                    // directly; the empty `syntheticColumns` name
+                    // registration here is still sufficient to enable it.
+                    activeSyntheticColumnExtractors.push({ sourceColumn: 'Recorded at event', extractor: 'dateParts', syntheticColumns: [] });
                 }
                 if (_pageHasRecordedAtPlace && !_headerCells.some(th => th.textContent.trim() === 'Recorded at place')) {
                     _recordedAtPlaceTh = document.createElement('th');
@@ -21956,6 +21978,19 @@
      * own — independent of and never modifying `dateParts`' own
      * synthetic-column output.
      *
+     * DATE_TOKEN also accepts a trailing one-or-more `"/DD"` uncertain-day
+     * suffix (e.g. `"2001-12-22/23"`) — `eventParts`' own `DATE_RE` shape,
+     * MusicBrainz's "recorded on one of these days, exact day unclear"
+     * convention (see `ColumnDataExtractor.eventParts`'s own JSDoc and
+     * `debug/multiple-dates.html`) — so "Event-Date" cells carrying it still
+     * classify as 'complete' (the slash isn't a hyphen, so the atom-count
+     * check below is unaffected). `_dateAtomYear`/`_dateAtomMonth`/
+     * `_dateAtomDecade` all read from the START of the atom with no end
+     * anchor, so the suffix doesn't disturb them; `_dateAtomWeekday`'s regex
+     * IS end-anchored and so already returns `null` for such an atom — a
+     * free, correct consequence, not a special case to add, since the exact
+     * day (and so the weekday) is genuinely ambiguous.
+     *
      * Deliberately only called for a column whose declared extractor is
      * `dateParts` (gated by an `activeColumnExtractors`/
      * `activeSyntheticColumnExtractors` lookup at the `openUniqDrop()` call
@@ -21964,18 +21999,16 @@
      * net; a column not shaped like a date would simply fail the leading
      * regex below and return `null`.
      *
-     * @param {?HTMLTableCellElement} cell
+     * @param {?string} text
      * @returns {?{kind: 'complete'|'partial'|'range', value: string, atoms: string[]}}
-     *   `atoms` holds one raw "YYYY[-MM[-DD]]" token for 'complete'/
-     *   'partial', two (start, end) for 'range'. `null` when the cell's
-     *   text isn't a recognizable date expression at all (empty cell, or
-     *   free text that doesn't match any shape above).
+     *   `atoms` holds one raw "YYYY[-MM[-DD]][/DD…]" token for 'complete'/
+     *   'partial', two (start, end) for 'range'. `null` when `text` isn't a
+     *   recognizable date expression at all (empty, or free text that
+     *   doesn't match any shape above).
      */
-    function _findCellDateExpressionParts(cell) {
-        if (!cell) return null;
-        const text = getCleanColumnText(cell);
+    function _matchDateExprText(text) {
         if (!text) return null;
-        const DATE_TOKEN = '\\d{4}(?:-\\d{2}(?:-\\d{2})?)?';
+        const DATE_TOKEN = '\\d{4}(?:-\\d{2}(?:-\\d{2}(?:/\\d{2})*)?)?';
         const leadMatch = text.match(new RegExp(`^(${DATE_TOKEN})`));
         if (!leadMatch) return null;
         const firstToken = leadMatch[1];
@@ -21984,6 +22017,35 @@
         const rangeMatch = rest.match(new RegExp(`^[–-]\\s*(${DATE_TOKEN})$`));
         if (!rangeMatch) return null;
         return { kind: 'range', value: text, atoms: [firstToken, rangeMatch[1]] };
+    }
+
+    /**
+     * Resolves `_matchDateExprText()` for one cell — see that function's own
+     * JSDoc for the shapes recognized. Tries the cell's OWN cleaned text
+     * first (every plain `dateParts`/`eventParts`-fed column: "Date",
+     * "Begin", "Recording date", "Event-Date", …), then falls back to a
+     * SINGLE `.mb-credit-date` sentinel inside the cell (see
+     * `_wrapTrailingParenDateAnnotations()`) when the whole-cell text isn't
+     * itself a bare date expression — release-tracks' "Recorded at event"
+     * cell shape, `"<event name> (YYYY-MM-DD)"`, where the leading event
+     * name is never a date but the trailing parenthetical, already wrapped
+     * in that sentinel, is. Scoped to exactly one sentinel to avoid
+     * ambiguity on a genuinely multi-credit cell; "Recorded at event" is
+     * documented elsewhere in this file as intentionally staying
+     * single-anchor/never-a-list, so it is always 0 or 1. Every other
+     * `dateParts`/`eventParts`-fed column has no `.mb-credit-date` sentinel
+     * at all, so this fallback never fires for them.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?{kind: 'complete'|'partial'|'range', value: string, atoms: string[]}}
+     */
+    function _findCellDateExpressionParts(cell) {
+        if (!cell) return null;
+        const wholeCellMatch = _matchDateExprText(getCleanColumnText(cell));
+        if (wholeCellMatch) return wholeCellMatch;
+        const sentinels = cell.querySelectorAll('.mb-credit-date');
+        if (sentinels.length !== 1) return null;
+        return _matchDateExprText(sentinels[0].textContent.trim());
     }
 
     /**

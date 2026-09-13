@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-09-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks/many pageTypes: \"Event-Date\" (the synthetic column produced by the `eventParts` extractor, e.g. release-tracks' live-performance \"Disambiguation\" parsing, or work-recordings'/artist-relationships' \"Comment\" parsing) never showed the \"Date info - Precision/Decade/Month/Year/Weekday\" section family, because `_dateExprColumnNames()` only ever collected names from `dateParts`/`dateTimeParts` entries, never `eventParts`. Also extended the shared date-token match to recognize `eventParts`' own uncertain-day \"YYYY-MM-DD/DD\" shape (MusicBrainz's \"recorded on one of these days\" convention) as a complete date with no single resolvable weekday, rather than not matching it at all."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-13",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "release-tracks: the \"Recorded at event\" column's 📊 dropdown never showed the \"Date info - Precision/Decade/Month/Year/Weekday\" section family every other date-bearing column gets — the same gap the \"Recording date\" fix closed, but this column's own cell text is \"<event name> (YYYY-MM-DD)\", not a bare date, so `_findCellDateExpressionParts()` now also falls back to the cell's `.mb-credit-date` sentinel (the trailing date annotation) when the whole-cell text isn't itself a date expression."
+        ]
+      }
+    ]
+  }
+]
