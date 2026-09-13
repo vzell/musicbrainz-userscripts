@@ -17,7 +17,7 @@ memory or from this file. Same for the changelog: the newest entry in
 **External dependencies:** `iro` (colour picker), `pako` (compression)
 **Other top-level docs:** `PERFORMANCE.org` (measurements + numbered Steps),
 `PAGETYPES-TESTING-REFERENCE.org` (every pageType, its URL, its coverage plan),
-`DEBUG-NOTES.md` (dated root-cause log), `REFACTORING.org`, `forum.org`
+`DEBUG-NOTES.md` (dated root-cause log), `REFACTORING.org`, `FORUM.org`
 
 ## File structure
 

@@ -2,7 +2,7 @@
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
-## Changes since last version (9.99.746 -> 9.99.964)
+## Changes since last version (9.99.746 -> 9.99.1079)
 
 ### New: consolidated Release tracklists
 
@@ -28,6 +28,18 @@
 
 * **Multi-recording credits, each on their own line** --- a relationship crediting several different source recordings at once (e.g. a DJ-mix referencing multiple originals) now lists each one on its own row instead of silently merging them together.
 
+* **Multiple credited series on one track, each on its own line** --- a track crediting more than one series at once ("Part of series") now lists each one separately instead of gluing them into one row, and its own 📊 filter dropdown lets you filter by a credited series' own name, comment or numeric position individually.
+
+### New: millisecond-precision track lengths
+
+* **See track lengths down to the millisecond** --- MusicBrainz stores every track length far more precisely than it displays it. A new ⏱ toggle at the left of any "Length" column heading reveals that full precision ("4:50" becomes "4:50.160") and switches back just as easily. On a release page this costs nothing at all --- the numbers are already sitting in the page. On dozens of other pages that list recordings (an artist's or work's recordings, ISRC pages, search results, and more) it's fetched on demand instead, in one efficient request per page rather than one per row, and remembered afterwards so you never pay for it twice.
+[SCREENSHOT: the ⏱ toggle and a Length column showing millisecond precision]
+
+* **A second "Recording length" column on release tracklists** --- sitting right next to the release's own "Length", this shows what MusicBrainz has on record for the underlying recording itself, whenever it disagrees with this particular release's own track length, which happens more often than you'd expect (six of eight tracks on *Born to Run*, for instance). Where the two always agree, no extra column is added at all.
+
+* **Flags a track/recording length mismatch automatically** --- when a track's length and its underlying recording's length differ by more than a threshold (configurable in settings), both cells get a ⚠️, or a ❌ past a larger threshold, together with a tooltip spelling out which one is longer and by how much --- handy for catching data-entry mistakes at a glance. New "(N) LENGTH ⚠️"/"(N) LENGTH ❌" buttons in the filter bar jump straight to the flagged tracks.
+[SCREENSHOT: a release tracklist with a flagged Length/Recording length pair]
+
 ### New: consolidated Annotation history pages
 
 * **A whole entity's Annotation history in one table** --- every entity type with an Annotation-history page (artist, label, release, release group, recording, work, area, place, series, event, instrument) now gets a "Show Annotation History" button that pulls every past revision into the same filterable/sortable view as everything else, instead of MusicBrainz's own plain listing.
@@ -47,7 +59,7 @@
 
 * **Smarter name/role/credit filters** --- ready-made filters for individual artist/place/work names, artist roles, and credit details (like "additional", a specific instrument, or a date range) show up wherever they're relevant, without you having to type them out. Later additions cover how several people are joined together in one credit ("&", "with", "feat.", ...) and names a companion script has flagged as differing from an entity's real/canonical name. A newer addition lets you filter by a single credited role even inside a combined credit --- e.g. matching "composer" also matches someone credited as "composer, lyricist" together.
 
-* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, tag-vote counts, and the "(cancelled)" event marker are now each their own filterable, checkable entries where relevant. A newer addition adds a quick High / Low / Not marked filter for MusicBrainz's own release data-quality rating, wherever a Release column appears.
+* **New structural filters for release and media details** --- distinct disc formats and sizes, release country/date/weekday, catalog-number prefixes, per-medium track counts, tag-vote counts, and the "(cancelled)" event marker are now each their own filterable, checkable entries where relevant. A newer addition adds a quick High / Low / Not marked filter for MusicBrainz's own release data-quality rating, wherever a Release column --- or a relationship listing's "Title" column pointing at a release --- appears.
 [SCREENSHOT: the reorganised 📊 dropdown showing the new Format/Release events/Catalog sections]
 
 * **Multi-select relationship-icon filtering** --- relationship icons in the filter dropdown can now be checked and unchecked like any other filter option, instead of only letting you pick one at a time.
@@ -62,6 +74,19 @@
 
 * **Collapse or expand every filter section at once** --- Ctrl+Click any section heading in the 📊 dropdown to fold or unfold all of them together, instead of one at a time --- handy now that there are quite a few sections.
 
+* **A "Date info" section on every date column** --- any column showing a date (Release date, Begin/End, Recording date, Revision date, election dates, and more) now offers the same rich breakdown: whether it's a complete date, a partial one, or a range; and open lists letting you filter by decade, calendar month, year, or day of the week.
+[SCREENSHOT: the new Date info section in a 📊 dropdown]
+
+* **Length columns get their own info section** --- bucket recordings by how long they run (in one-minute bands), by how far they deviate from the page's own average length (live/extended versions are excluded from that average so they don't skew it), or simply by whether they're flagged as a live recording at all.
+
+* **Filter by pending MusicBrainz edits** --- MusicBrainz already highlights an entity that currently has open/pending edits; a new ⏳ toggle in the filter bar narrows the table down to just those rows (on a multi-section page, each section gets its own toggle plus a combined master button), and the 📊 dropdown gains matching "Pending edits" sections so you can filter to one specific in-edit entity by name as well.
+
+* **Two entities that happen to share a name are no longer conflated** --- e.g. two different areas both called "New York" (the city and the state) now get their own separate, independently filterable entries instead of one entry silently matching both.
+
+* **More columns get their own dedicated filter sections** --- an alias's Locale (language + primary flag), instrument-list comments/descriptions, catalog-number prefixes (now recognised in many more real-world formats, and split into individually filterable words), AcoustID link status, CD stub "Added"/"Modified" ages, and native recording-attribute words (live, cover, partial, ...) each now have their own section, the same way names, roles and credit details already did.
+
+* **Editor-detail filtering extended to Elections** --- the same "has this editor account been deleted / how long have they been active / recorded name" breakdown already available on Annotation-history pages now also works for the Candidate/Proposer/Seconder columns on the Elections pages.
+
 ### Enhancements: other
 
 * **"Show single-table" button** (on by default) --- on pages that split results across several category sub-tables (relationship listings, place performances, an artist's release groups, a release group's releases), any sub-table that MusicBrainz itself doesn't already paginate behind its own "see all" link gets this button: click it to open that sub-table's already-rendered rows as a plain, single, unified table in a new tab, instead of the usual split-by-category layout.
@@ -74,6 +99,21 @@
 * **Sensible defaults for new installs** --- several settings now default to more useful values out of the box: flag icons in the filter dropdown, more visible dropdown rows, and auto-resizing columns on load are all now on by default. Anyone who already changed one of these keeps their own choice.
 
 * **Pick which columns start hidden, per page type** --- a new settings table lets you decide which columns should start hidden the very first time a given page type's table renders, instead of hiding them by hand every time via the column-visibility menu.
+
+* **Relationships column now loads on demand** --- on a big catalogue (a prolific artist's releases, say) the Relationships column used to quietly fetch data for every single row in the background the moment the page opened, which could take the better part of an hour on the largest pages. It now starts collapsed on any table over a configurable size (200 distinct entities by default), with a ▶🔗/▼🔗 button in the header that tells you up front how many lookups it will cost before you commit to them; small tables keep loading automatically as before, and once loaded the data stays cached so re-expanding it again is instant.
+[SCREENSHOT: the collapsed Relationships column with its cost estimate]
+
+* **The Picard tagger column also starts collapsed**, for the same reason --- building all those "send to Picard" buttons costs time even when you're not tagging anything. A per-table ▶♪/▼♪ toggle (and a page-wide "Show all Picard" button) reveals them on demand.
+
+* **Multi-release recording search results no longer look broken** --- MusicBrainz's own search results page lists a second, third, etc. release credited to one recording as an unlabeled, misaligned row; those now merge cleanly into that recording's own row as extra list entries, with the same collapse/expand, filtering and inline cover-art support as any other multi-value cell.
+
+* **Cover art no longer flickers and "reloads" on every sort or filter** --- artwork icons, inline thumbnails and the big-picture strips were all being torn down and rebuilt on every table refresh even when nothing about them had actually changed, which made large pages feel like they were constantly re-downloading images. They're now left alone whenever nothing changed, so only genuinely new artwork is ever fetched or repainted.
+
+* **Sorting one section of a multi-section page no longer touches any other section** --- reordering a single sub-table (one artist discography category, one relationship-type group, ...) used to silently rebuild every other sub-table on the page as well; now only the one you sorted is touched, which is both noticeably faster on a big page and leaves everything else exactly as you left it.
+
+* **The unique-values dropdown reopens instantly** --- reopening the same column's 📊 panel with nothing having changed since used to redo several full passes over the table every time; it's now served from a cache instead and typically opens dozens of times faster.
+
+* **Column header buttons are easier to see and use** --- the small ▶🖼/▶⏱/▶♪/▶🔗 toggles and the 📊 filter-count badge now sit on their own light, legible pill regardless of the column's own background colour (a few of them were nearly invisible before), the multi-row and filter-count numbers are noticeably bigger, and the sort arrows are drawn as one connected control instead of three loose glyphs.
 
 ### Enhancements: report pages
 
@@ -105,3 +145,16 @@
 * Cleaned up leftover clutter that a different, unrelated userscript (a tag-aggregation tool) could sometimes leave behind on the page after this script finished rendering.
 * Fixed a rare crash triggered by certain other browser extensions/scripts sending unusual keyboard events.
 * A few small positioning fixes on the new Annotation history page's relocated "Compare versions" button.
+* Several more cases where a filter match narrowed the table correctly but wasn't visually highlighted (a match spanning a name/comment boundary, a chain of linked areas separated by commas, or CAA/EAA image type/comment text) now highlight properly.
+* A column hidden via the 👁️ Column Visibility toggle no longer silently reappears, fully populated, after the next filter or sort.
+* Fixed several places where a page listing recordings or relationships dropped a credited name --- or the whole cell --- whenever the underlying entity currently has a pending MusicBrainz edit (its own orange highlight), instead of showing it normally.
+* Cleaned up more residue left behind by jesus2099's companion userscripts (styling/attributes bleeding into the Length column and its header, and stray millisecond values appearing on pages that don't otherwise support that feature yet), so it never leaks into the consolidated table.
+* Sorting by "Length" no longer treats an unknown ("?:??") duration as zero --- unknown-length rows now always sort to the end instead of floating to the top.
+* Fixed the CAA/EAA artwork column never actually sorting by artwork presence, and typing "no"/"yes" into its own filter box no longer accidentally doubles as an artwork-presence filter.
+* Fixed the "Release events"/"Relationships" columns occasionally swapping their data, and the Relationships column occasionally duplicating its icons, after opening a sub-table's "Show single-table" view.
+* Fixed the release data-quality filter section missing on relationship "Title" columns, and the "Recording date" column missing its date-breakdown filter sections, on release tracklists.
+* Fixed a handful of third-party userscript interop issues: a stray leftover container from an unrelated script surviving on Series/Events pages, and two different flag-icon userscripts occasionally showing the wrong icon, showing it twice, or showing it in an inconsistent order/position.
+* Fixed duplicate and corrupted rows on the "Top CD stubs" listing.
+* Fixed the "Recorded at place"/"Mixed at place" columns sometimes repeating one place's date onto every other place credited on the same track.
+* Fixed the "Artists with collaboration relationships" report's main column rendering empty.
+* Minor: the video icon is centered in its cell again.

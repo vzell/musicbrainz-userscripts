@@ -1,8 +1,27 @@
-* TODO data quality is missing on e.g. pages which have release info reached rom artist-relationships
+* DONE data quality is missing
+** i
 
+1.)
+
+The data quality (see "function _findCellReleaseDataQuality(cell)") is missing in the unique value drop down menu on the
+"Title" column on e.g. the following pages
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?direction=1&link_type_id=44&page=1
+#+end_example
 
-* TODO when milliseconds lenght is clicked on the "Length" column, and a sort is been done midflight, the glpyh doesn't react anymore on clicks
+#+begin_example
+@debug/quality-row.html row with quality from https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships (sub-table "Vocals release")
+@debug/qualitz/page.html - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?direction=1&link_type_id=44&page=1
+#+end_example
+
+2.)
+
+On pageType 'release-tracks' the column "Recording date" is missing the date specific sections in the unique value drop
+down menu what other date columns have like e.g. "Date info - Month" etc
+
+* DONE when milliseconds length is clicked on the "Length" column, and a sort is been done midflight, the glpyh doesn't react anymore on clicks
 
 when milliseconds lenght is clicked on the "Length" column, and a sort is been done midflight, the glpyh doesn't react anymore on clicks
 
@@ -11,3 +30,36 @@ when milliseconds lenght is clicked on the "Length" column, and a sort is been d
 On e.g. https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a
 when repeatedly sorting on a column, all multi-line columns, eg "Recorded at place" get wider for every click on sort glpyh
 
+* DONE bug release-tracks
+
+On pageType 'release-tracks' there is a bug parsing information when the underlying entity has pending edits on
+MusicBrainz, e,g the following work
+
+#+begin_example
+<span class="mp"><a class="wrap-anywhere" href="/work/d662d712-f9f8-4118-8bb2-a821395dbf96"><bdi>Light of Day</bdi></a></span>
+#+end_example
+
+It's NOT rendered in the "Recording of work" column on the final rendered page
+
+#+begin_example
+release-tracks-initial.html - initial raw HTML
+release-tracks-final.html - final rendered page
+#+end_example 
+
+* DONE adjust forum.org
+
+1.)
+
+Rename forum.org to FORUM.org
+
+2.)
+
+currently the file holds the following changes: ## Changes since last version (9.99.746 -> 9.99.964)
+
+a.)
+
+Add all the missing stuff starting from 9.99.964
+
+b.)
+
+Reread the current content and adjust accordingly if same newer changes contradict

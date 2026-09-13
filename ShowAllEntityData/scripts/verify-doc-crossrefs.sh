@@ -12,7 +12,7 @@ check_str()  { grep -qF "$2" "$1" && printf '  OK   %-34s in %s\n' "$2" "$1" \
 
 echo "--- files/dirs named in the docs ---"
 for f in DEBUG-NOTES.md PAGETYPES-TESTING-REFERENCE.org PERFORMANCE.org \
-         REFACTORING.org forum.org tests/README.org tests/pagetypes.json \
+         REFACTORING.org FORUM.org tests/README.org tests/pagetypes.json \
          tests/live/registry.org tests/snapshots/registry.org \
          tests/support/customDialog.js tests/support/authState.js \
          tests/support/liveAssertions.js tests/support/gmStubs.js \
