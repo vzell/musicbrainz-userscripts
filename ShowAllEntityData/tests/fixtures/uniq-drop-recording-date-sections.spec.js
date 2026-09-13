@@ -25,6 +25,23 @@ async function openRecordingDateDrop(page) {
     return page.evaluate(() => window.__saTest.getUniqDropSections('Recording date'));
 }
 
+// Same fixture also carries a "recorded at:" AR (eventlink) on both tracks,
+// with the identical (1999-04-11) trailing date — "Recorded at event"'s cell
+// text is "<event name> (YYYY-MM-DD)", not a bare date, so this exercises
+// _findCellDateExpressionParts()'s `.mb-credit-date`-sentinel fallback
+// rather than the plain whole-cell-text match "Recording date" above uses.
+async function openRecordedAtEventDrop(page) {
+    await loadUserscriptPage(page, {
+        url: RELEASE_URL,
+        fixtureFile: FIXTURE,
+        testMode: true,
+        settingsOverride: { sa_enable_release_tracks: true },
+    });
+    await page.click('button[data-label="Show all Tracks for Release"]');
+    await page.waitForSelector('#mb-filter-container');
+    return page.evaluate(() => window.__saTest.getUniqDropSections('Recorded at event'));
+}
+
 test.describe('unique-values dropdown: "Date info" sections on release-tracks\' "Recording date" column', () => {
     test('gets the full Date-info section family, not just the raw value list', async ({ page }) => {
         const sections = await openRecordingDateDrop(page);
@@ -82,5 +99,70 @@ test.describe('unique-values dropdown: "Date info" sections on release-tracks\' 
                 .map((r) => r.cells[idx].textContent.trim());
         });
         expect(highlights).toEqual(['1999-04-11', '1999-04-11']);
+    });
+});
+
+test.describe('unique-values dropdown: "Date info" sections on release-tracks\' "Recorded at event" column', () => {
+    test('gets the full Date-info section family, not just the raw value list', async ({ page }) => {
+        const sections = await openRecordedAtEventDrop(page);
+
+        // Before the fix, "Recorded at event" wasn't in _dateExprColumnNames()
+        // at all (unlike "Recording date", registering the name alone isn't
+        // enough here — see openRecordedAtEventDrop()'s own comment), so
+        // isDateExprCol was always false and NONE of these sections existed.
+        const labels = sections.map((s) => s.label);
+        expect(labels).toEqual(expect.arrayContaining([
+            'Date info - Precision',
+            'Date info - Decade',
+            'Date info - Month',
+            'Date info - Year',
+            'Date info - Weekday',
+        ]));
+
+        // Both tracks share the identical date "1999-04-11" -> every bucket
+        // this single value belongs to gets exactly 2.
+        const find = (label, item) => sections.find((s) => s.label === label).items.find((i) => i.label === item);
+        expect(find('Date info - Precision', '📅 complete dates').count).toBe(2);
+        expect(find('Date info - Decade', '» decade: 1990-2000').count).toBe(2);
+        expect(find('Date info - Month', '» month: April').count).toBe(2);
+        expect(find('Date info - Year', '» year: 1999').count).toBe(2);
+        expect(find('Date info - Weekday', '» weekday: Sunday').count).toBe(2);
+    });
+
+    test('checking "Sunday" highlights only the trailing date, not the event name', async ({ page }) => {
+        await openRecordedAtEventDrop(page);
+
+        await page.evaluate(() => {
+            const sectionEl = Array.from(document.querySelectorAll('#mb-col-uniq-dropdown .mb-uniq-section'))
+                .find((s) => s.querySelector('.mb-uniq-section-label')?.textContent === 'Date info - Weekday');
+            const item = Array.from(sectionEl.querySelectorAll('.mb-col-uniq-item'))
+                .find((el) => el.dataset.mbUniqSynLabel === '» weekday: Sunday');
+            item.click();
+        });
+
+        await page.waitForFunction(() => {
+            const idx = Array.from(document.querySelectorAll('table.tbl thead th'))
+                .findIndex((th) => (th.dataset.colName || '') === 'Recorded at event');
+            if (idx < 0) return false;
+            return Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .filter((r) => r.style.display !== 'none')
+                .every((r) => r.cells[idx]?.querySelector('.mb-column-filter-highlight'));
+        }, null, { timeout: 15000 });
+
+        // Unlike "Recording date" (whose cell IS the date), this cell also
+        // contains the event's own name — which MusicBrainz auto-generates
+        // as "YYYY‐MM‐DD: <venue…>" using U+2010 HYPHEN, not the ASCII
+        // hyphen the highlighting regex requires — so this also regression-
+        // guards that the event name's own leading date-like text is never
+        // mistaken for a second match: exactly one highlighted fragment per
+        // row, holding only the real trailing "(YYYY-MM-DD)" date.
+        const highlights = await page.evaluate(() => {
+            const idx = Array.from(document.querySelectorAll('table.tbl thead th'))
+                .findIndex((th) => (th.dataset.colName || '') === 'Recorded at event');
+            return Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                .filter((r) => r.style.display !== 'none')
+                .map((r) => Array.from(r.cells[idx].querySelectorAll('.mb-column-filter-highlight')).map((h) => h.textContent));
+        });
+        expect(highlights).toEqual([['1999-04-11'], ['1999-04-11']]);
     });
 });
