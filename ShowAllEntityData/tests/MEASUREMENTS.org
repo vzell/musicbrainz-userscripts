@@ -334,14 +334,14 @@ this is F, seven hours later, with a Claude Code session resident the whole
 time. Against F:
 
 | Metric                | =NB-3641= F (rebooted, no claude) | =NB-3641= +7h (resident session) | ratio |
-|-----------------------+------------------------------------+------------------------------------+-------|
-| =globalFilter=        |                               1664 |                               1693 | 1.02x |
-| =columnFilter=        |                               1757 |                               1660 | 0.95x |
-| =sort=                |                               3622 |                               3391 | 0.94x |
-| =uniqDropCold=        |                              29531 |                              30469 | 1.03x |
-| =uniqDropWarm=        |                                823 |                                824 | 1.00x |
-| =headerCountsInitial= |                               4334 |                               4580 | 1.06x |
-| =headerCountsRestore= |                               5319 |                               5260 | 0.99x |
+|-----------------------+-----------------------------------+----------------------------------+-------|
+| =globalFilter=        |                              1664 |                             1693 | 1.02x |
+| =columnFilter=        |                              1757 |                             1660 | 0.95x |
+| =sort=                |                              3622 |                             3391 | 0.94x |
+| =uniqDropCold=        |                             29531 |                            30469 | 1.03x |
+| =uniqDropWarm=        |                               823 |                              824 | 1.00x |
+| =headerCountsInitial= |                              4334 |                             4580 | 1.06x |
+| =headerCountsRestore= |                              5319 |                             5260 | 0.99x |
 
 0.94-1.06x, mean ~1.00x — flat, no consistent direction. Two things this does
 and does not show:
@@ -357,9 +357,9 @@ and does not show:
 
 * Interaction latency — =artist-releases-dylan= (the Picard arms)
 
-| pageType              | tableMode | page title | URL                                                          |
-|-----------------------+-----------+------------+--------------------------------------------------------------|
-| artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0    |
+| pageType              | tableMode | page title | URL                                                        |
+|-----------------------+-----------+------------+------------------------------------------------------------|
+| artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0 |
 
 2301 rows x 21 columns, loaded from the committed
 =tests/fixtures/saved-data/artist-releases-dylan.json.gz= disk fixture. Median
@@ -380,11 +380,11 @@ and at 2301 rows it stays under =sa_render_threshold= (5000), so it never pops
 *The three arms differ ONLY in Picard settings*, verified from each JSON's own
 recorded =seedGmValues=:
 
-| Arm         | Seeds beyond CAA/Relationships off                                                | What it is                                          |
-|-------------+-----------------------------------------------------------------------------------+-----------------------------------------------------|
-| =absent=    | =sa_enable_picard_tagger: false=                                                  | no column at all — not even a =<td>= in the walks   |
-| =collapsed= | =..._tagger: true=, =..._initially_collapsed: true=                               | the shipped 9.99.1057 default: column walked, cells empty |
-| =expanded=  | =..._tagger: true=, =..._initially_collapsed: false=                              | the pre-9.99.1057 behaviour: every ♪ built at render |
+| Arm         | Seeds beyond CAA/Relationships off                   | What it is                                                |
+|-------------+------------------------------------------------------+-----------------------------------------------------------|
+| =absent=    | =sa_enable_picard_tagger: false=                     | no column at all — not even a =<td>= in the walks         |
+| =collapsed= | =..._tagger: true=, =..._initially_collapsed: true=  | the shipped 9.99.1057 default: column walked, cells empty |
+| =expanded=  | =..._tagger: true=, =..._initially_collapsed: false= | the pre-9.99.1057 behaviour: every ♪ built at render      |
 
 ** Results
 
@@ -514,14 +514,14 @@ given payload, not across payloads.
 =scripts/probe-multitable-metric-targets.js=, written after the first smoke run
 died with =locator.click: Timeout 30000ms exceeded= on the column-filter input:
 
-| Element                          | Measured                                                     |
-|----------------------------------+--------------------------------------------------------------|
-| =.mb-master-toggle=              | =data-state="expanded"=, text "Hide all sub-sections"        |
-| =table.tbl= visibility           | *45 of 47 =display:none=*; 2 visible (indices 0 and one more) |
-| sub-table 29 =<table>=           | =display:none=                                               |
-| sub-table 29 =<h3>=              | visible 1570x31                                              |
-| its filter input / ✕ / sort / 📊 | *0x0* — targets Playwright will never click                  |
-| after a DOM-level =<h3>= click   | table visible 1570x26142; all four controls clickable        |
+| Element                           | Measured                                                      |
+|-----------------------------------+---------------------------------------------------------------|
+| =.mb-master-toggle=               | =data-state="expanded"=, text "Hide all sub-sections"         |
+| =table.tbl= visibility            | *45 of 47 =display:none=*; 2 visible (indices 0 and one more) |
+| sub-table 29 =<table>=            | =display:none=                                                |
+| sub-table 29 =<h3>=               | visible 1570x31                                               |
+| its filter input / ✕ / sort / 📊 | *0x0* — targets Playwright will never click                   |
+| after a DOM-level =<h3>= click    | table visible 1570x26142; all four controls clickable         |
 
 This is CLAUDE.md's "do not trust =.mb-master-toggle='s =data-state=" warning
 with numbers on it. =clickMasterToggleAndExpandAll()= cannot drive this page —
@@ -698,17 +698,17 @@ resident =claude= session — recorded because every arm records it, not because
 either matters to a count. Uptime moves timings by up to 1.8x (see the bisect
 section); it does not move a count at all, which is a large part of the point.
 
-| Date       | Time (UTC) | Host    | Script    | Arm  | Phase           |    gCS |     qsa |     qs | clone(tr) | walker | layout |
-|------------+------------+---------+-----------+------+-----------------+--------+---------+--------+-----------+--------+--------|
-| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
-| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterApply     |   3318 |   52892 |  45303 |       158 |   5596 |    316 |
-| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | filterClear     |      0 | 1078372 | 113612 |      4174 |   4474 |      0 |
-| 2026-09-09 | 07:46      | =petri= | 9.99.1049 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
+|       Date | Time (UTC) | Host      |    Script | Arm  | Phase           |    gCS |     qsa |     qs | clone(tr) | walker | layout |
 |------------+------------+-----------+-----------+------+-----------------+--------+---------+--------+-----------+--------+--------|
-| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
-| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | filterApply     |   3318 |   53051 |  44669 |       158 |   5438 |    316 |
-| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | filterClear     |      0 | 1079876 | 114246 |      4174 |   4632 |      0 |
-| 2026-09-10 | 15:07      | =NB-3641= | 9.99.1058 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
+| 2026-09-09 |      07:46 | =petri=   | 9.99.1049 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
+| 2026-09-09 |      07:46 | =petri=   | 9.99.1049 | main | filterApply     |   3318 |   52892 |  45303 |       158 |   5596 |    316 |
+| 2026-09-09 |      07:46 | =petri=   | 9.99.1049 | main | filterClear     |      0 | 1078372 | 113612 |      4174 |   4474 |      0 |
+| 2026-09-09 |      07:46 | =petri=   | 9.99.1049 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
+|------------+------------+-----------+-----------+------+-----------------+--------+---------+--------+-----------+--------+--------|
+| 2026-09-10 |      15:07 | =NB-3641= | 9.99.1058 | main | initialRender   | 175309 | 2364742 | 322478 |      4174 |      0 |   8374 |
+| 2026-09-10 |      15:07 | =NB-3641= | 9.99.1058 | main | filterApply     |   3318 |   53051 |  44669 |       158 |   5438 |    316 |
+| 2026-09-10 |      15:07 | =NB-3641= | 9.99.1058 | main | filterClear     |      0 | 1079876 | 114246 |      4174 |   4632 |      0 |
+| 2026-09-10 |      15:07 | =NB-3641= | 9.99.1058 | main | postClearSettle |  87654 |  134077 | 134474 |         0 |   4174 |   8373 |
 
 =gCS= =getComputedStyle=, =qsa= =querySelectorAll=, =qs= =querySelector=,
 =walker= =createTreeWalker=, =layout= the four layout-forcing getters
@@ -851,13 +851,13 @@ every =<a>= in the cell and asks each one whether it contains an icon.
 
 ** =artist-releasegroups= (multi-table, 2143 x 9 = 19 287 cells)
 
-| Phase             | =querySelectorAll= |           | =querySelector= |        |
-|                   |               main |    step34 |            main | step34 |
-|-------------------+--------------------+-----------+-----------------+--------|
-| =initialRender=   |            646 889 |   214 002 |         212 593 | 174 012 |
-| =filterApply=     |            205 956 |    69 183 |          40 878 |  27 809 |
-| =filterClear=     |          *323 422* | *107 099* |          49 665 |  30 946 |
-| =postClearSettle= |                  5 |         5 |               0 |       0 |
+| Phase             | =querySelectorAll= |           | =querySelector= |         |
+|                   | main               | step34    | main            | step34  |
+|-------------------+--------------------+-----------+-----------------+---------|
+| =initialRender=   | 646 889            | 214 002   | 212 593         | 174 012 |
+| =filterApply=     | 205 956            | 69 183    | 40 878          | 27 809  |
+| =filterClear=     | *323 422*          | *107 099* | 49 665          | 30 946  |
+| =postClearSettle= | 5                  | 5         | 0               | 0       |
 
 *−66.9% on a multi-table filter clear*, and the same on its initial render.
 Smaller than the single-table figure for the reason the =main= arm already
@@ -877,10 +877,10 @@ had to do so while leaving fourteen unrelated counters untouched to the digit.
 
 ** Attribution after the change — the leader hands over
 
-| Arm                    | =_stripTransientCellState= share of =filterClear= =qsa= | before   | after                    |
-|------------------------+---------------------------------------------------------+----------+--------------------------|
-| =artist-events=        | ~1 052 000 (97.5%) -> ~54 000 (65%)                     | 1st      | still 1st, of a tiny phase |
-| =artist-releasegroups= | ~230 400 (71%) -> ~14 400 (13%)                         | 1st      | *4th*                    |
+| Arm                    | =_stripTransientCellState= share of =filterClear= =qsa= | before | after                      |
+|------------------------+---------------------------------------------------------+--------+----------------------------|
+| =artist-events=        | ~1 052 000 (97.5%) -> ~54 000 (65%)                     | 1st    | still 1st, of a tiny phase |
+| =artist-releasegroups= | ~230 400 (71%) -> ~14 400 (13%)                         | 1st    | *4th*                      |
 
 ÷19.5 and ÷16 respectively. Note the single-table figure of ~54 000 is BELOW one
 query per cell (87 654): the =firstElementChild= early-out skips the pass
@@ -1291,8 +1291,8 @@ gap.
 
 * Interaction latency — =artist-releases-dylan= (the Relationships arms, 2026-09-11)
 
-| pageType              | tableMode | page title | URL                                                       |
-|-----------------------+-----------+------------+-----------------------------------------------------------|
+| pageType              | tableMode | page title | URL                                                        |
+|-----------------------+-----------+------------+------------------------------------------------------------|
 | artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0 |
 
 2301 rows x 21 columns, same disk fixture as the Picard arms above. Median of 5,
@@ -1314,11 +1314,11 @@ every MBID and the network queue issues nothing.
 *The three arms differ ONLY in Relationships settings*, verified from each
 JSON's own recorded =seedGmValues=:
 
-| Arm         | Seeds beyond CAA off                                                      | What it is                                  |
-|-------------+---------------------------------------------------------------------------+---------------------------------------------|
-| =absent=    | =sa_enable_relationships_column: false=                                   | no column at all — what every earlier arm on this page measured |
-| =collapsed= | =..._column: true=, =sa_rel_collapse_threshold: 1=                        | the shipped 9.99.1060 default at this size: column walked, cells empty |
-| =expanded=  | =..._column: true=, =sa_rel_collapse_threshold: 0=, seeded cache          | the pre-9.99.1060 behaviour: 2090 icons built |
+| Arm         | Seeds beyond CAA off                                             | What it is                                                             |
+|-------------+------------------------------------------------------------------+------------------------------------------------------------------------|
+| =absent=    | =sa_enable_relationships_column: false=                          | no column at all — what every earlier arm on this page measured        |
+| =collapsed= | =..._column: true=, =sa_rel_collapse_threshold: 1=               | the shipped 9.99.1060 default at this size: column walked, cells empty |
+| =expanded=  | =..._column: true=, =sa_rel_collapse_threshold: 0=, seeded cache | the pre-9.99.1060 behaviour: 2090 icons built                          |
 
 *DOM weight, recorded rather than predicted*: =relIconsRendered= = *2090* on the
 expanded arm. The seed holds 2329 url-rels, but =_populateCells()= de-dupes by
