@@ -374,8 +374,19 @@ every distinct non-empty value currently visible in that column.
                        dates) — including a pure-date column split off a
                        combined "date + time" cell, such as the elections
                        pages' "Vote date"/"Election start/end date" or the
-                       annotation-history pages' "Revision date" — split
-                       into five facets: "- Precision" is a fixed 3-flag
+                       annotation-history pages' "Revision date"; a column
+                       whose cell carries a trailing "(YYYY-MM-DD)"
+                       annotation after other text, such as release-tracks'
+                       "Recorded at event"; or a column whose date can carry
+                       MusicBrainz's own uncertain-day "YYYY-MM-DD/DD" suffix
+                       ("recorded on one of these days"), such as the
+                       "Event-Date" column parsed from live-performance
+                       metadata (release-tracks' "Disambiguation" field, or
+                       "Comment" on work-recordings and others) — a "/DD"
+                       date still counts toward Precision/Decade/Month/Year
+                       but never a specific Weekday, since the exact day is
+                       ambiguous — split into five facets: "- Precision" is
+                       a fixed 3-flag
                        count of how many visible rows are a complete date
                        ("📅"), a partial year/year-month date ("🌓"), or a
                        date range ("↔️") — NOT one entry per distinct date
