@@ -160,22 +160,26 @@ test.describe('tag-value: "Show single-table" button for sub-tables without a na
         await tab.close();
     });
 
-    test('Events (has seeAllUrl) gets the native "Show all N rows" button', async ({ page }) => {
-        // NOTE: this does NOT also assert the single-table button is absent.
-        // A later settle/re-render pass on this page independently re-adds
-        // it here too (via the "Also inject … if absent" defensive block,
-        // whose own `!group.seeAllUrl` check reads a rebuilt group object
-        // that no longer carries `seeAllUrl`) — a pre-existing latent bug,
-        // reproducible on every pageType already in
-        // SA_SNAPSHOT_SUPPORTED_PAGETYPES before this change (e.g.
-        // artist-relationships), not something introduced by adding
-        // tag-value/user-tag-value to that Set. Out of scope here; flagged
-        // separately rather than asserted around.
+    test('Events (has a native "See all" overflow link) gets "Show all" instead, not "Show single-table"', async ({ page }) => {
+        // The primary/defensive button-insertion blocks used to key off
+        // `group.seeAllUrl` alone, which is only the field name
+        // artist-relationships/label-relationships/place-performances-style
+        // pages use — tag-value/user-tag-value's own "See all N" block sets
+        // `group.tagSeeAllUrl` instead. Since that was never treated as
+        // "already has a native overflow", every tag-value category with a
+        // real overflow link (like Events, here) got a redundant
+        // "Show single-table" button alongside its correct "Show all N
+        // rows" one. See DEBUG-NOTES.md's 2026-09-14 tag-value
+        // entity-column-leak entry.
         await openTagRock(page, { sa_enable_show_single_table_btn: true });
 
         const eventsH3 = page.locator('h3', { hasText: 'Events' });
         await expect(eventsH3).toBeVisible();
-        const hasShowAll = await eventsH3.evaluate((h3) => /Show all \d+ rows/.test(h3.textContent));
-        expect(hasShowAll).toBe(true);
+        const eventsSection = await eventsH3.evaluate((h3) => ({
+            hasShowAll: /Show all \d+ rows/.test(h3.textContent),
+            hasSingleTable: !!h3.querySelector('.mb-show-single-table-btn'),
+        }));
+        expect(eventsSection.hasShowAll).toBe(true);
+        expect(eventsSection.hasSingleTable).toBe(false);
     });
 });

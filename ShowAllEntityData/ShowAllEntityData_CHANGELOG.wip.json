@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "tag-value/user-tag-value: a sub-table category that DOES have a native \"See all N …\" overflow link (e.g. Events) got a redundant \"Show single-table\" button rendered alongside its correct \"Show all N rows\" one (see WIP.2). Both button-insertion sites gated on group.seeAllUrl alone, which is only the field name artist-relationships/label-relationships/place-performances-style pages use — tag-value/user-tag-value set group.tagSeeAllUrl instead. Fixed by also checking !group.tagSeeAllUrl/!group.ratingsViewAllUrl at both sites."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-14",
     "sections": [

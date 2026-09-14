@@ -51891,6 +51891,7 @@ a { color: #1565c0; }`;
                     };
                     subTableControls.insertBefore(showAllBtn, subTableControls.firstChild);
                 } else if (Lib.settings.sa_enable_show_single_table_btn &&
+                        !group.tagSeeAllUrl && !group.ratingsViewAllUrl &&
                         SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                     // No MusicBrainz overflow for this category — either it's under
                     // MB's own single-page cap, or (artist-releasegroups /
@@ -51901,6 +51902,18 @@ a { color: #1565c0; }`;
                     // to fetch. Offer a client-side "convert this sub-table to a
                     // single-table page" snapshot instead — see
                     // openSubtableAsSingleTableTab().
+                    //
+                    // The `!group.tagSeeAllUrl && !group.ratingsViewAllUrl` guards
+                    // matter because `group.seeAllUrl` alone is only the field name
+                    // artist-relationships/label-relationships/place-performances-
+                    // style pages use — tag-value/user-tag-value's own "See all N"
+                    // block above (grep `group.tagSeeAllUrl = _href;`) sets
+                    // `tagSeeAllUrl` instead, never `seeAllUrl`. Without this, every
+                    // tag-value category with a real native overflow link (e.g.
+                    // "Events") got a redundant "Show single-table" button
+                    // alongside its already-correct "Show all N rows" button, since
+                    // `group.seeAllUrl` was unconditionally falsy for it. See
+                    // DEBUG-NOTES.md's 2026-09-14 tag-value entity-column-leak entry.
                     const singleTableBtn = document.createElement('button');
                     singleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
                     singleTableBtn.type = 'button';
@@ -52089,12 +52102,16 @@ a { color: #1565c0; }`;
 
                     // Also inject the "Show single-table" button if absent — mirrors
                     // the primary group.seeAllUrl / else branch above (this button
-                    // only applies to categories with no MB overflow, i.e. no
-                    // group.seeAllUrl). Note: the sibling "Show all N rows" button
-                    // has this same defensive-rebuild gap pre-existing in this
-                    // branch already — left alone here, out of scope for this change.
+                    // only applies to categories with no MB overflow AT ALL, i.e.
+                    // no group.seeAllUrl AND no group.tagSeeAllUrl/
+                    // ratingsViewAllUrl — see that block's own comment for why all
+                    // three field names matter). Note: the sibling "Show all N
+                    // rows" button has this same defensive-rebuild gap pre-existing
+                    // in this branch already — left alone here, out of scope for
+                    // this change.
                     if (Lib.settings.sa_enable_show_single_table_btn &&
-                            !h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
+                            !h3.querySelector('.mb-show-single-table-btn') &&
+                            !group.seeAllUrl && !group.tagSeeAllUrl && !group.ratingsViewAllUrl &&
                             SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                         const subSingleTableBtn = document.createElement('button');
                         subSingleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;

@@ -10895,3 +10895,30 @@ is a hardcoded pageType allow-list and simply never included `'tag-value'`/
 `user-tag-value-entity` single-table sibling via an extra PATH segment,
 rather than the `?link_type_id=1` query-param trick the other pageTypes in
 that allow-list use.
+
+**Follow-up, same day:** adding tag-value/user-tag-value to
+`SA_SNAPSHOT_SUPPORTED_PAGETYPES` immediately surfaced a second, genuinely
+pre-existing bug — every category that DOES have a native "See all N …"
+overflow link (e.g. Events, 257 rows) got a redundant "Show single-table"
+button rendered alongside its correct "Show all N rows" one. Root cause: the
+button-insertion blocks (the primary one right after `_updateSubTableH3Tooltip`,
+and the defensive "Also inject … if absent" tail) both gate on
+`group.seeAllUrl` alone — but that is only the field name
+artist-relationships/label-relationships/place-performances-style pages use.
+tag-value/user-tag-value's own "See all N" block (grep `group.tagSeeAllUrl
+= _href;`) sets `tagSeeAllUrl` instead, never `seeAllUrl`, so
+`!group.seeAllUrl` was unconditionally true for every tag-value category
+regardless of whether it actually had a real overflow link. (Initial
+suspicion was a later settle/re-render pass losing `seeAllUrl` off a rebuilt
+group object — checked via `runFilter()`'s `filteredArray.push({ ...group,
+rows: matches })`, which is a full shallow spread and drops nothing. The bug
+was present on the very first render already, via the wrong field name, not
+a second-pass data loss.) Fixed by additionally checking `!group.tagSeeAllUrl
+&& !group.ratingsViewAllUrl` (the latter for `user-ratings`' equivalent
+field, currently unreachable here since `user-ratings` isn't in
+`SA_SNAPSHOT_SUPPORTED_PAGETYPES`, but included so the same mistake can't
+recur if it ever is) at both call sites, rather than touching `seeAllUrl`
+itself — the existing `if (group.seeAllUrl) { …builds a generic "Show all N
+rows" button… }` branch must stay untouched, since tag-value's own dedicated
+block already builds the correctly-worded button using `tagSeeAllUrl`
+earlier in the same render pass.
