@@ -1,5 +1,34 @@
 [
   {
+    "version": "9.99.1086",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: fixed it also missing on /user/<user>/ratings (Labels/Release groups/Works), on artist-credit pages (Release groups/Releases), and on artist-relationships/label-relationships/place-performances' work/label-targeted sub-tables — three more instances of 9.99.1085's 'a shared value read after whichever group ran last' bug family, one of them a genuinely new mechanism for pages with no entityFeatures map at all (grouped by relationship type, not entity kind).",
+          "Fixed a page-wide instance of the same bug: several functions (_relInitColHeaderToggles, _relPublishCollapsedStatus, _initRelationshipsColumnImpl's own entry guard, _relCreateRetryButtons, both initRelationshipsColumn() call sites) gated on the shared activeInjectedColumns.length to decide whether the PAGE has a Relationships column at all — since that variable reflects whichever group's rebuild ran last, a page whose last-processed group declares no injectedColumns (e.g. artist-credit's 'Recordings') silently skipped the WS2 fetch, the toggles, and the retry buttons for the WHOLE page, even though earlier groups' tables genuinely have the column. Replaced with a DOM-based check (does any td.mb-rel-cell exist).",
+          "artist-credit: 'Recordings' was also missing its own Video/Event-* column headers entirely (cloning whichever group's header the fetch loop processed last instead of its own) — renderGroupedTable()'s per-group <thead> rebuild was missing 'artist-credit' from its pageType list even though the fetch-loop's equivalent rebuild already covered it.",
+          "_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks() now dynamically sniffs a table's own /work/ or /label/ link (for pageTypes with no entityFeatures map to resolve an entity-kind hint from) instead of relying on a page-wide default that never varies per sub-table — scoped to pageTypes with no entityFeatures map so it cannot second-guess an already-correctly-resolved entityType (a release listing's own 'Label' record-label credit column briefly caused a regression here, caught by the existing rel-ws2-seed-warm-cache regression test)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1085",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: fixed two stacked bugs that hid it on release-group/release/label/work tables. On tag-value/user-tag-value pages (/tag/<value>, /user/<user>/tag/<value>), activeInjectedColumns was resolved exactly ONCE, page-wide, from whichever entityFeatures key the page's own <h2> happened to match — and since that heading (\"Entities tagged as X\") never matches any per-entity key, resolution always fell back to the first declared key ('Areas', which declares no injectedColumns), hiding the column across the WHOLE page including 'Release groups'/'Releases' groups that DO declare it. buildActiveInjectedColumns() also picked the WS2 entityType from a pageType-string switch alone (defaulting to 'release' for anything not artist-releasegroups/artist-works), which can't distinguish 'Release groups' from 'Labels' from 'Works' when they share one pageType. Both the per-group column-presence rebuild AND the per-group entity-type resolution (fetch loop, render-time header build, and the Relationships fetch pipeline itself) now key off each group's own resolved entity kind, so Labels/Release groups/Releases/Works each get the column and query their own correct WS2 entity type simultaneously on the same page.",
+          "Relationships column: added it to area-labels, area-works/area-works-filtered, collections-releases ('Labels'/'Works'), series-releases ('Works'), search ('Labels'/'Works'), and — dynamically, per report, based on the report's own main column — the whole report-multiple-linked/report-detail family (e.g. ASINsWithMultipleReleases, DiscogsLinksWithMultipleReleaseGroups). A report whose main column isn't Release/Release group/Label/Work (Recording, Artist, Place, Collaborator, …) correctly gets no column at all rather than defaulting to 'release'.",
+          "_extractMbidFromRow() now also recognizes /label/<mbid> links, and _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks() no longer wrongly strips the column from a Labels table — its only entity link lives in the sticky title column, the same reason 'work' was already exempted."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1084",
     "date": "2026-09-14",
     "sections": [
