@@ -1,4 +1,4 @@
-* new additions
+* DONE new additions
 ** DONE i
 
 1.)

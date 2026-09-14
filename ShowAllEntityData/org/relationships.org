@@ -1,4 +1,4 @@
-* relationships columns
+* DONE relationships columns
 
 Please analyse if we could gain the same benefits with the "Relationships" column on specific pageTypes as what we did
 in commit "4814c70" for the "Picard" columns
@@ -231,7 +231,7 @@ Nine commits on relationships-column-collapse-toggle, still unpushed. Three thin
 - Folding WIP.1 into a real version + // @version bump on main.
 
 
-* sorting of "Relationships" column
+* DONE sorting of "Relationships" column
 
 Currently sorting of the "Relationships" column doesn't seem to do anything.
 
