@@ -124,7 +124,7 @@ get's not picked up by our userscript, see also the following console log
 
 * DONE column content shifted on https://musicbrainz.org/tag/rock for the sub-tables "Areas" and "Artists" (fixed, branch fix/tag-value-entity-column-leak, see DEBUG-NOTES.md's 2026-09-14 entry)
 
-on the pageType ""tag-value e.g. https://musicbrainz.org/tag/rock the sub-tables "Areas", "Artists", "Series", Instruments", "Labels", "Places" and "Works" have no 
+on the pageType "tag-value" e.g. https://musicbrainz.org/tag/rock the sub-tables "Areas", "Artists", "Series", Instruments", "Labels", "Places" and "Works" have no 
 extractors defined on the main/first column.
 
 1.)
@@ -165,7 +165,28 @@ Also some of them are missing the "Show single-table"-button which renders the s
 
 See @debug/tag-rock.html for the raw HTML on the final rendered table
 
-* "Relationships" column is missing on e.g. URL https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+* DONE "Relationships" column is missing on e.g. URL https://musicbrainz.org/user/vzell/tag/back%20scan%20missing (fixed, branch fix/relationships-column-missing-entities, see DEBUG-NOTES.md's 2026-09-14 entry)
 
-"Relationships" column is missing on e.g. URL https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+1.)
+
+On at LEAST the following pageTypes the "Relationships" column is missing on sub-tables/tables where the main column is
+either of type release-group, release, label or work
+
+Multi-table:
+#+begin_example
+https://musicbrainz.org/tag/rock - see the newly captured @debug/tag-rock.html for the raw HTML on the final rendered table - sub-table "Labels", "Release groups", "Releases" and "Works"
+https://musicbrainz.org/user/vzell/tag/back%20scan%20missing - sub-table "Releases"
+#+end_example
+
+Single-table:
+#+begin_example
+https://musicbrainz.org/report/ASINsWithMultipleReleases - column "Release"
+https://musicbrainz.org/report/DiscogsLinksWithMultipleReleaseGroups - column "Release group"
+#+end_example
+
+2.)
+
+Also check potential other pageTypes which are missing the "Relationships" column
+
+
 

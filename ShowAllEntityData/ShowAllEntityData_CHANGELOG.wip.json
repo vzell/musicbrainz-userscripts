@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: fixed two stacked bugs that hid it on release-group/release/label/work tables. On tag-value/user-tag-value pages (/tag/<value>, /user/<user>/tag/<value>), activeInjectedColumns was resolved exactly ONCE, page-wide, from whichever entityFeatures key the page's own <h2> happened to match — and since that heading (\"Entities tagged as X\") never matches any per-entity key, resolution always fell back to the first declared key ('Areas', which declares no injectedColumns), hiding the column across the WHOLE page including 'Release groups'/'Releases' groups that DO declare it. buildActiveInjectedColumns() also picked the WS2 entityType from a pageType-string switch alone (defaulting to 'release' for anything not artist-releasegroups/artist-works), which can't distinguish 'Release groups' from 'Labels' from 'Works' when they share one pageType. Both the per-group column-presence rebuild AND the per-group entity-type resolution (fetch loop, render-time header build, and the Relationships fetch pipeline itself) now key off each group's own resolved entity kind, so Labels/Release groups/Releases/Works each get the column and query their own correct WS2 entity type simultaneously on the same page.",
+          "Relationships column: added it to area-labels, area-works/area-works-filtered, collections-releases ('Labels'/'Works'), series-releases ('Works'), search ('Labels'/'Works'), and — dynamically, per report, based on the report's own main column — the whole report-multiple-linked/report-detail family (e.g. ASINsWithMultipleReleases, DiscogsLinksWithMultipleReleaseGroups). A report whose main column isn't Release/Release group/Label/Work (Recording, Artist, Place, Collaborator, …) correctly gets no column at all rather than defaulting to 'release'.",
+          "_extractMbidFromRow() now also recognizes /label/<mbid> links, and _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks() no longer wrongly strips the column from a Labels table — its only entity link lives in the sticky title column, the same reason 'work' was already exempted."
+        ]
+      }
+    ]
+  }
+]

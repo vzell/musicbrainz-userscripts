@@ -10922,3 +10922,103 @@ itself — the existing `if (group.seeAllUrl) { …builds a generic "Show all N
 rows" button… }` branch must stay untouched, since tag-value's own dedicated
 block already builds the correctly-worded button using `tagSeeAllUrl`
 earlier in the same render pass.
+
+## 2026-09-14 — Relationships column missing on release-group/release/label/work tables (branch fix/relationships-column-missing-entities)
+
+Reported against `/tag/rock` (Labels/Release groups/Releases/Works
+sub-tables), `/user/vzell/tag/back%20scan%20missing` (Releases), and
+`/report/ASINsWithMultipleReleases`/`/report/DiscogsLinksWithMultipleReleaseGroups`.
+Confirmed against the captured `debug/tag-rock.html`: zero
+`Relationships`/`mb-rel-cell` occurrences across all 11 rendered sub-tables,
+not just the four named ones.
+
+**Root cause 1 - `activeInjectedColumns` resolved once, page-wide.**
+`tag-value`/`user-tag-value` declare `injectedColumns: ['Relationships']`
+only under the `'Release groups'`/`'Releases'` `entityFeatures` keys.
+`activeInjectedColumns` was built exactly once in `startFetchingProcess()`
+from `resolveEntityFeaturesFromH2(baseDef)` - and a tag page's real `<h2>`
+("Entities tagged as X") never matches any `entityFeatures` key, so
+resolution always fell back to the FIRST declared key (`'Areas'`, which is
+`{}`), hiding the column for the whole page. The per-group extractor-rebuild
+block that already exists for exactly this class of page (see the
+2026-09-14 entity-column-leak entry above - same mechanism, same fix
+pattern) never rebuilt `activeInjectedColumns`, only the extractor/eraser
+arrays.
+
+**A second, independent instance of the same bug** lived in
+`renderGroupedTable()`'s OWN per-group `<thead>` rebuild (a separate,
+later pass from the fetch loop) - it also never rebuilt
+`activeInjectedColumns`, so even after fixing the fetch-loop rebuild, every
+group's cloned `<thead>` still carried whichever entity type the FETCH
+LOOP's last-processed group had left behind. Caught by a debug capture
+showing every group's header-injection log line reporting the SAME
+`entityType` ("(work)", since `'Works'` is last in `entityFeatures`'
+declaration order) regardless of which group it belonged to, and a
+`hasColumn: true` on `'Areas'` (which declares no `injectedColumns` at
+all) with a `null` mbid - a ghost cell, not a real one.
+
+**A third, independent instance** lived in `_initRelationshipsColumnImpl()`
+itself: `const { entityType, incOptions } = activeInjectedColumns[0];` is a
+SINGLE destructured value used for every cell's IDB lookup, L1 cache key,
+and WS2 fetch across the WHOLE page - so even with both rebuilds above
+fixed, every group's WS2 request was still issued against whichever
+entityType happened to be the page-wide value by the time this function
+ran (again, whichever group's render-loop rebuild ran last). Confirmed via
+route interception: all requests hit `/ws/2/work/<mbid>` regardless of
+whether the mbid belonged to a Label, Release group, or Release row.
+
+**Fix**, in three parts mirroring the three call sites: (1)
+`buildActiveInjectedColumns(def, entityKindHint)` gained an optional hint
+parameter, normalized via a new `_relEntityKindFromHint()` (`'Release
+groups'`/`'Releases'`/`'Labels'`/`'Works'` -> `release-group`/`release`/
+`label`/`work`, anything else -> unsupported/no column); (2) both the
+fetch-loop and render-loop per-group rebuilds now pass the group's own
+category/entityFeatures key as that hint, AND the render-loop additionally
+stamps the resolved entity type onto the actual DOM `<table>` element
+(`table.dataset.mbRelEntityType`) since that table - not the fetch-loop's
+scratch table - is what still exists when `_initRelationshipsColumnImpl()`
+runs later; (3) that function now resolves each cell's entityType from its
+OWN closest table's stamp (`mbidEntityType` map, built alongside
+`cellsByMbid`) at every IDB/cache/fetch call site, falling back to the old
+page-wide value for every other pageType (single entity kind, never
+stamped, unaffected). `_relRetryTable`/`_relRetryAll` got the same
+per-table/per-entity-type treatment, the latter now grouping mbids by
+their owning table's entity type and issuing one retry pass per group
+instead of one page-wide pass.
+
+Two smaller, narrower gaps compounded root causes 1-3: `_extractMbidFromRow()`'s
+href regex didn't recognize `/label/` at all (only
+release-group/release/work), and `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`
+only exempted `entityType === 'work'` from its "no release/release-group
+link found -> strip the column" check - a Labels table's only entity link
+lives in the STICKY title column (excluded by that check's own selector),
+exactly the same reason `work` needed the exemption. Both fixed by adding
+`label` alongside the existing `work` handling.
+
+Also added the same `injectedColumns: ['Relationships']` declaration to
+several other pageTypes/entityFeatures-keys found missing it by the same
+audit, where a sibling with the identical entity kind already had it:
+`area-labels`, `area-works`/`area-works-filtered`, `collections-releases`
+(`'Labels'`/`'Works'`), `series-releases` (`'Works'`), `search`
+(`'Labels'`/`'Works'`), and - resolved dynamically per report from its own
+main-column name rather than a static declaration, since `report-detail`/
+`report-multiple-linked` are ONE definition shared by ~117 differently
+shaped reports - the whole report family. A report whose main column isn't
+Release/Release group/Label/Work (Recording, Artist, Place, Collaborator,
+etc.) correctly gets no column, via the same `_relEntityKindFromHint()`
+normalization returning "unsupported" rather than a hardcoded per-pageType
+denylist.
+
+Regression coverage: `tests/fixtures/tag-value-relationships-column.spec.js`
+(new fixture `tag-value-relationships-column.html`, extending the same
+h3+ul native shape as `tag-value-entity-column-leak.html`) asserts all four
+target groups get the column with the CORRECT WS2 entity type
+simultaneously, that the control group (`'Areas'`) gets none, and that no
+request ever queries `entityType=release` for a Labels/Release-groups/Works
+row (the specific old-default regression). `tests/fixtures/report-relationships-column.spec.js`
+covers both named reports plus a report-detail report whose main column
+(`Place`) is unsupported, confirming it gets no column and issues no WS2
+request at all. Both mutation-checked via the actual before/after states
+captured while iterating on the fix (each of the three root causes was
+independently observed to reproduce with the fix for the other two already
+applied, then to disappear once fixed).

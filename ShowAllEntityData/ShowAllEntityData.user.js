@@ -5185,22 +5185,85 @@
     }
 
     /**
+     * Normalizes a free-form entity-kind label — an entityFeatures map key
+     * (e.g. 'Release groups', plural) or a resolved report main-column name
+     * (e.g. 'Release group', singular) — into the WS2 entityType/incOptions
+     * pair buildActiveInjectedColumns() needs. The naive trailing-'s' strip
+     * is safe for both forms here because none of the four supported
+     * singular forms ('release', 'release group', 'label', 'work') end in
+     * 's' themselves.
+     *
+     * @param {string} hint
+     * @returns {{entityType: string, incOptions: string[]}|null} null for any
+     *   entity kind not currently supported by the Relationships column
+     *   (Recording, Artist, Event, Place, Series, Area, Instrument, Genre,
+     *   Collaborator, …) — callers treat null as "no column for this hint".
+     */
+    function _relEntityKindFromHint(hint) {
+        const _h = (hint || '').trim().toLowerCase().replace(/s$/, '');
+        if (_h === 'release group') return { entityType: 'release-group', incOptions: ['url-rels', 'release-group-rels'] };
+        if (_h === 'release')       return { entityType: 'release',       incOptions: ['url-rels'] };
+        if (_h === 'work')          return { entityType: 'work',          incOptions: ['url-rels', 'artist-rels'] };
+        if (_h === 'label')         return { entityType: 'label',         incOptions: ['url-rels', 'label-rels'] };
+        return null;
+    }
+
+    /**
+     * The WS2 `inc` options for a given Relationships-column entityType — the
+     * same mapping `buildActiveInjectedColumns()` uses, exposed standalone so
+     * `_initRelationshipsColumnImpl()` (and the retry helpers) can resolve
+     * `incOptions` PER CELL from a stamped `entityType` rather than from the
+     * single page-wide `activeInjectedColumns[0]`. A page whose groups span
+     * multiple entity kinds (tag-value's Labels/Release groups/Releases/Works,
+     * each with their own `table.dataset.mbRelEntityType`) needs a different
+     * `inc` per group, not one value borrowed from whichever group resolved
+     * `activeInjectedColumns` last.
+     *
+     * @param {string} entityType
+     * @returns {string[]}
+     */
+    function _relIncOptionsForEntityType(entityType) {
+        if (entityType === 'release-group') return ['url-rels', 'release-group-rels'];
+        if (entityType === 'work')          return ['url-rels', 'artist-rels'];
+        if (entityType === 'label')         return ['url-rels', 'label-rels'];
+        return ['url-rels'];
+    }
+
+    /**
      * Derives the runtime injected-column descriptor list from a merged
      * activeDefinition object.
      *
-     * Maps the pageType to the correct WS2 entity-type path segment and the
-     * corresponding `inc` options required by the MusicBrainz WS2 API:
+     * Maps the pageType (or, when the pageType alone is ambiguous, the
+     * caller-supplied `entityKindHint`) to the correct WS2 entity-type path
+     * segment and the corresponding `inc` options required by the
+     * MusicBrainz WS2 API:
      *
-     *   artist-releasegroups → entity 'release-group', inc: url-rels + release-group-rels
-     *   artist-works         → entity 'work',          inc: url-rels + artist-rels
-     *   all others           → entity 'release',        inc: url-rels
+     *   artist-releasegroups        → entity 'release-group', inc: url-rels + release-group-rels
+     *   artist-works                → entity 'work',          inc: url-rels + artist-rels
+     *   area-labels                 → entity 'label',         inc: url-rels + label-rels
+     *   area-works(-filtered)       → entity 'work',          inc: url-rels + artist-rels
+     *   entityKindHint supplied     → resolved via _relEntityKindFromHint()
+     *   all others (no hint)        → entity 'release',       inc: url-rels
+     *
+     * `entityKindHint` exists for pageTypes where a single `def.type` covers
+     * multiple entity kinds and the caller already knows which one is live —
+     * a `tag-value`/`user-tag-value`/etc. group's own entityFeatures key
+     * (e.g. 'Labels'), or a report's dynamically-resolved main-column name
+     * (see `_reportMultipleLinkedMainColumnName()`). When the hint doesn't
+     * normalize to a supported entity kind, this returns `[]` for that call
+     * specifically — e.g. a report whose main column is 'Recording' or
+     * 'Artist' correctly gets no Relationships column, independent of
+     * `report-detail`/`report-multiple-linked` declaring the feature at all.
      *
      * Only columns named 'Relationships' are currently supported.
      *
      * @param {object} def - Merged activeDefinition (the resolved page definition object).
+     * @param {string} [entityKindHint] - Optional entity-kind label (entityFeatures
+     *   key or resolved report main-column name) used when `def.type` alone
+     *   doesn't determine the entity kind.
      * @returns {Array<{colName: string, entityType: string, incOptions: string[]}>}
      */
-    function buildActiveInjectedColumns(def) {
+    function buildActiveInjectedColumns(def, entityKindHint) {
         const cols = def?.features?.injectedColumns;
         if (!Array.isArray(cols) || cols.length === 0) return [];
         if (!Lib.settings.sa_enable_relationships_column) return [];
@@ -5212,6 +5275,17 @@
         } else if (_pType === 'artist-works') {
             _et  = 'work';
             _inc = ['url-rels', 'artist-rels'];
+        } else if (_pType === 'area-labels') {
+            _et  = 'label';
+            _inc = ['url-rels', 'label-rels'];
+        } else if (_pType === 'area-works' || _pType === 'area-works-filtered') {
+            _et  = 'work';
+            _inc = ['url-rels', 'artist-rels'];
+        } else if (entityKindHint) {
+            const _resolved = _relEntityKindFromHint(entityKindHint);
+            if (!_resolved) return []; // unsupported entity kind for this hint — no column
+            _et  = _resolved.entityType;
+            _inc = _resolved.incOptions;
         } else {
             _et  = 'release';
             _inc = ['url-rels'];
@@ -13975,6 +14049,13 @@
                 addCAA: [ 'Release', 'Release group' ],
                 addEAA: 'Event',
                 insertH2: 'Report',
+                // The runtime entity kind is resolved dynamically per report
+                // from the real header name (see startFetchingProcess's
+                // report-detail/report-multiple-linked rebuild block, right
+                // after mainColIdx resolution) — a report whose main column
+                // isn't Release/Release group/Label/Work (Recording, Artist,
+                // Collaborator, …) correctly ends up with no column at all.
+                injectedColumns: [ 'Relationships' ],
                 removeSelector: 'li:has(a[href*="?filter=1"])'
             },
             tableMode: 'single'
@@ -14062,6 +14143,9 @@
                 // of these candidate columns, so array form picks whichever is present.
                 addCAA: [ 'Release', 'Release group' ],
                 addEAA: 'Event',
+                // Same dynamic per-report resolution as report-multiple-linked —
+                // see the comment on that pageType's own injectedColumns entry.
+                injectedColumns: [ 'Relationships' ],
                 // The native description block includes "Show only results that are
                 // in my subscribed entities." — redundant with the "Show all
                 // (subscribed only)" button above, so remove it if present.
@@ -14362,7 +14446,9 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
                 'Instruments': {},
-                'Labels': {},
+                'Labels': {
+                    injectedColumns: [ 'Relationships' ]
+                },
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -14390,7 +14476,9 @@
                     ]
                 },
                 'Series': {},
-                'Works': {}
+                'Works': {
+                    injectedColumns: [ 'Relationships' ]
+                }
             },
             features: {
                 // Empty sectionId triggers Structure C in applyListToTable: the
@@ -14430,7 +14518,9 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], 'Date' ]
                 },
                 'Instruments': {},
-                'Labels': {},
+                'Labels': {
+                    injectedColumns: [ 'Relationships' ]
+                },
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -14461,7 +14551,9 @@
                     ]
                 },
                 'Series': {},
-                'Works': {}
+                'Works': {
+                    injectedColumns: [ 'Relationships' ]
+                }
             },
             features: {
                 // Empty sectionId triggers Structure D in applyListToTable.
@@ -14505,6 +14597,7 @@
                 },
                 'Labels': {
                     columnExtractors: [ { sourceColumn: 'Label', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
+                    injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 },
                 'Places': {
@@ -14554,6 +14647,7 @@
                 },
                 'Works': {
                     columnExtractors: [ { sourceColumn: 'Work', extractor: 'tagCount', syntheticColumns: ['Tag count'] } ],
+                    injectedColumns: [ 'Relationships' ],
                     integerColumns: [ {sourceColumn: 'Tag count', align: 'R'} ]
                 }
             },
@@ -14587,7 +14681,9 @@
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
                 'Instruments': {},
-                'Labels': {},
+                'Labels': {
+                    injectedColumns: [ 'Relationships' ]
+                },
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: erase the jesus2099 "mb. SUPER MIND
@@ -14618,7 +14714,9 @@
                     ]
                 },
                 'Series': {},
-                'Works': {}
+                'Works': {
+                    injectedColumns: [ 'Relationships' ]
+                }
             },
             features: {
                 // Empty sectionId triggers Structure D in applyListToTable.
@@ -14747,6 +14845,7 @@
                         { sourceColumn: 'End',        extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                     ],
                     integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'B-DD', align: 'R'}, {sourceColumn: 'B-MM', align: 'R'}, {sourceColumn: 'B-YYYY', align: 'C'}, {sourceColumn: 'E-DD', align: 'R'}, {sourceColumn: 'E-MM', align: 'R'}, {sourceColumn: 'E-YYYY', align: 'C'} ],
+                    injectedColumns: [ 'Relationships' ],
                     extractMainColumn: 'Label',
                     stickyColumn: 'Label'
                 },
@@ -14812,6 +14911,7 @@
                 },
                 'Works': {
                     collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Attributes' ],
+                    injectedColumns: [ 'Relationships' ],
                     extractMainColumn: 'Work',
                     stickyColumn: 'Work'
                 }
@@ -15099,6 +15199,7 @@
                         { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                         { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
                     ],
+                    injectedColumns: [ 'Relationships' ],
                     extractMainColumn: 'Name',
                     stickyColumn: 'Name'
                 },
@@ -15336,6 +15437,7 @@
                     { sourceColumn: 'End',   extractor: 'dateParts', syntheticColumns: ['E-DD', 'E-MM', 'E-YYYY', 'E-Day', 'E-Month'] }
                 ],
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'B-DD', align: 'R'}, {sourceColumn: 'B-MM', align: 'R'}, {sourceColumn: 'B-YYYY', align: 'C'}, {sourceColumn: 'E-DD', align: 'R'}, {sourceColumn: 'E-MM', align: 'R'}, {sourceColumn: 'E-YYYY', align: 'C'} ],
+                injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Label',
                 stickyColumn: 'Label'
             },
@@ -15502,6 +15604,7 @@
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
 		],
+                injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15519,6 +15622,7 @@
                 integerColumns: [
 		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
 		],
+                injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15722,6 +15826,7 @@
                     stickyColumn: 'Name'
                 },
                 'Works': {
+                    injectedColumns: [ 'Relationships' ],
                     extractMainColumn: 'Title',
                     stickyColumn: 'Title'
                 }
@@ -45689,7 +45794,21 @@ a { color: #1565c0; }`;
 
         // Build the unified column eraser list from the merged activeDefinition.
         // Each eraser descriptor removes specific marker spans from a designated source column.
-        activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
+        //
+        // entityKindHint: for a pageType whose entityFeatures map spans multiple
+        // entity kinds under one def.type (search, collections-releases,
+        // series-releases, tag-value-entity, user-tag-value-entity), the merged
+        // `injectedColumns` declaration above already correctly reflects the
+        // resolved entityFeatures block (resolveEntityFeaturesFromH2() returns
+        // that block BY REFERENCE), but buildActiveInjectedColumns() still needs
+        // to know WHICH entity kind it is to pick the right WS2 entityType/inc
+        // options — def.type alone is ambiguous for these pageTypes. Recover the
+        // matched key by finding which entityFeatures key is reference-equal to
+        // the resolved entitySpecificFeatures object (every resolveEntityFeaturesFromH2()
+        // branch returns `def.entityFeatures[key]` directly, never a copy).
+        const _entityKindHintFromH2 = (baseDef.entityFeatures &&
+            Object.keys(baseDef.entityFeatures).find(k => baseDef.entityFeatures[k] === entitySpecificFeatures)) || undefined;
+        activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _entityKindHintFromH2);
         activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
         activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
         if (activeInjectedColumns.length) {
@@ -46540,6 +46659,24 @@ a { color: #1565c0; }`;
                     });
                 }
 
+                // report-detail/report-multiple-linked: both pageTypes share ONE
+                // definition across ~117 differently-shaped reports, so
+                // buildActiveInjectedColumns() can't resolve entityType from
+                // pageType alone (see its JSDoc). Rebuild here using whichever
+                // column name actually resolved as THIS report's main column —
+                // headerNames[mainColIdx] is valid whether that index came from
+                // candidate-matching above or from a forced numeric fallback
+                // (e.g. CollaborationRelationships' index 1). A report whose
+                // main column isn't Release/Release group/Label/Work (Recording,
+                // Artist, Collaborator, …) correctly ends up with no column, and
+                // one where extractMainColumn couldn't resolve a column at all
+                // (mainColIdx === -1) gets none either.
+                if (pageType === 'report-detail' || pageType === 'report-multiple-linked') {
+                    activeInjectedColumns = (mainColIdx !== -1 && headerNames[mainColIdx])
+                        ? buildActiveInjectedColumns(activeDefinition, headerNames[mainColIdx])
+                        : [];
+                }
+
                 // ── headerName → colIdx lookup for syntheticColumnExtractors ───────
                 // Lets a syntheticColumnExtractors entry's sourceColumn address ANY
                 // real header present in the table — not just synthetic columns
@@ -47075,6 +47212,20 @@ a { color: #1565c0; }`;
                             // debug/cell.html, WIP.81 — the doubled CAA inline image bug this
                             // fixes for real).
                             activeColumnErasers = buildActiveColumnErasers(_tmpDef);
+                            // Rebuilt per group for the same reason — activeInjectedColumns
+                            // used to be resolved exactly ONCE, page-wide, from whichever
+                            // entityFeatures key resolveEntityFeaturesFromH2()/H3() happened
+                            // to pick at the top of startFetchingProcess(). On a page whose
+                            // real <h2> never matches any entityFeatures key (e.g. tag-value's
+                            // "Entities tagged as X"), that resolution silently falls back to
+                            // the FIRST map key — which made the Relationships column vanish
+                            // for the WHOLE page, including groups (e.g. 'Release groups',
+                            // 'Releases') that DO declare injectedColumns. Passing this
+                            // group's own category name as the entity-kind hint also lets
+                            // buildActiveInjectedColumns() resolve the correct WS2 entityType
+                            // per group (e.g. 'release-group' for a "Release groups" group)
+                            // instead of the page-type-wide 'release' default.
+                            activeInjectedColumns = buildActiveInjectedColumns(_tmpDef, currentGroup.category);
 
                             // Reset all extractors for this table.
                             activeColumnExtractors.forEach(e => { e.colIdx = -1; });
@@ -51325,6 +51476,32 @@ a { color: #1565c0; }`;
                             activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_td);
                             activeInjectedColumnExtractors  = buildActiveInjectedColumnExtractors(_td);
                             activeIntegerColumns            = buildActiveIntegerColumns(_td);
+                            // Rebuilt here too, alongside the extractor lists above — this
+                            // render-time per-group rebuild is a SEPARATE pass from the
+                            // fetch-loop one (see the fetch loop's own comment on this same
+                            // rebuild), and cleanupHeaders(_theadForGroup) below reads THIS
+                            // pass's value, not the fetch loop's. Without it, the fetch loop
+                            // leaves activeInjectedColumns frozen at whichever group ran LAST
+                            // there, and every group's <thead> — built in THIS loop, one call
+                            // per group — would clone that same stale (colName, entityType)
+                            // regardless of its own entityFeatures, exactly like the
+                            // extractor-leak bug this whole per-group-rebuild pattern exists
+                            // to prevent.
+                            activeInjectedColumns = buildActiveInjectedColumns(_td, group.category);
+                            // Stamp the resolved entityType onto THIS table so
+                            // _initRelationshipsColumnImpl() (which runs later, once
+                            // per page, after every group's table already exists) can
+                            // resolve each cell's WS2 entityType/incOptions from its
+                            // OWN table instead of the single page-wide
+                            // activeInjectedColumns value — which by the time that
+                            // function runs is frozen at whichever group's rebuild ran
+                            // LAST in this per-group loop. Cleared (not left stale) when
+                            // this group has no Relationships column at all.
+                            if (activeInjectedColumns.length) {
+                                table.dataset.mbRelEntityType = activeInjectedColumns[0].entityType;
+                            } else {
+                                delete table.dataset.mbRelEntityType;
+                            }
 
                             // Persist any per-group tooltipColumns / extractMainColumn on the
                             // table element so that _artInitBigPics can snapshot them at call
@@ -63352,7 +63529,8 @@ a { color: #1565c0; }`;
      * Recognised entity-type path segments:
      *   - release-group  (artist-releasegroups pages)
      *   - release        (artist-releases, label-releases, etc.)
-     *   - work           (artist-works pages)
+     *   - work           (artist-works, area-works pages)
+     *   - label          (area-labels pages, Labels sub-tables)
      *
      * Cover-art links (/cover-art suffix) are skipped because they share the
      * release path but do not represent a standalone release entity.
@@ -63361,7 +63539,7 @@ a { color: #1565c0; }`;
      * @returns {string|null} The raw UUID string, or null if no MBID could be found.
      */
     function _extractMbidFromRow(row) {
-        const RE = /\/(release-group|release|work)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/;
+        const RE = /\/(release-group|release|work|label)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/;
         for (const a of row.querySelectorAll('a[href]')) {
             const href = a.getAttribute('href');
             if (!href || href.endsWith('/cover-art')) continue;
@@ -64123,12 +64301,15 @@ a { color: #1565c0; }`;
 
         // This guard's premise (no /release/ or /release-group/ link ⇒ nothing to
         // show) only applies when the injected Relationships column targets a
-        // release/release-group entity discovered via a link in the row (entityType
-        // 'release' or 'release-group'). On artist-works (entityType 'work') the
-        // column targets the row's OWN Work entity via its own MBID — there's no
-        // release/release-group link to find here by design, so the check must not
-        // gate the column for that entityType.
-        if (activeInjectedColumns[0].entityType === 'work') return;
+        // release/release-group entity discovered via a SECONDARY link in the
+        // row (entityType 'release' or 'release-group'). On artist-works/
+        // area-works (entityType 'work') and area-labels/Labels sub-tables
+        // (entityType 'label') the column targets the row's OWN Work/Label
+        // entity via the row's own title link — which lives in the STICKY
+        // column, excluded by this guard's own selector below — so checking
+        // for it here would always find nothing and wrongly suppress. Both
+        // entity types are therefore exempted the same way.
+        if (activeInjectedColumns[0].entityType === 'work' || activeInjectedColumns[0].entityType === 'label') return;
 
         // ── Empty-tbody guard ───────────────────────────────────────────────────
         // Same race condition as _suppressReleaseEventsIfNoReleaseLinks: when
@@ -65493,9 +65674,26 @@ a { color: #1565c0; }`;
             return;
         }
         const cellsByMbid = new Map();
+        // Per-mbid entityType, resolved from each cell's OWN table where that
+        // table stamped one (tag-value/user-tag-value/instrument-list's
+        // per-group render — see table.dataset.mbRelEntityType), falling back
+        // to the page-wide `entityType` for every other pageType, where all
+        // tables share one entity kind and no table is ever stamped. This is
+        // what lets a single tag page correctly fetch Labels as 'label',
+        // Release groups as 'release-group', Releases as 'release' and Works
+        // as 'work' all at once, instead of every mbid on the page being
+        // queried with whichever entity kind `activeInjectedColumns` was last
+        // rebuilt to (see buildActiveInjectedColumns()'s and this function's
+        // own JSDoc for the fuller history).
+        const mbidEntityType = new Map();
         allCells.forEach(td => {
-            if (!cellsByMbid.has(td.dataset.mbid)) cellsByMbid.set(td.dataset.mbid, []);
-            cellsByMbid.get(td.dataset.mbid).push(td);
+            const _mbid = td.dataset.mbid;
+            if (!cellsByMbid.has(_mbid)) cellsByMbid.set(_mbid, []);
+            cellsByMbid.get(_mbid).push(td);
+            if (!mbidEntityType.has(_mbid)) {
+                const _tbl = td.closest('table.tbl');
+                mbidEntityType.set(_mbid, (_tbl && _tbl.dataset.mbRelEntityType) || entityType);
+            }
         });
         const uniqueMbids = Array.from(cellsByMbid.keys());
         _relDbg(`initRelationshipsColumn: ${uniqueMbids.length} unique MBIDs, ` +
@@ -65699,11 +65897,12 @@ a { color: #1565c0; }`;
         // Net effect: pages visited before (IDB warm) render all icons at once;
         // first visits still show icons one per second as before.
         const _phase1 = uniqueMbids.map(async mbid => {
-            const cached = await _relIdbGet(`${entityType}:${mbid}`);
+            const _mbidEt = mbidEntityType.get(mbid) || entityType;
+            const cached = await _relIdbGet(`${_mbidEt}:${mbid}`);
             if (cached) {
                 _relDbg(`initRelationshipsColumn: phase1 IDB hit for ${mbid}`);
                 // Also store in L1 memory cache so _relFetchWs2 sees it
-                _relWs2Cache.set(`${entityType}:${mbid}`, Promise.resolve(cached));
+                _relWs2Cache.set(`${_mbidEt}:${mbid}`, Promise.resolve(cached));
                 await _populateCells(mbid, cached);
                 return true;   // hit
             }
@@ -65769,9 +65968,11 @@ a { color: #1565c0; }`;
                 // have collapsed the column, or for another pass to have
                 // answered this mbid from cache, while this step was asleep.
                 if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
-                if (_relWs2Cache.has(`${entityType}:${mbid}`)) _p2CacheHits++;
+                const _mbidEt  = mbidEntityType.get(mbid) || entityType;
+                const _mbidInc = _relIncOptionsForEntityType(_mbidEt);
+                if (_relWs2Cache.has(`${_mbidEt}:${mbid}`)) _p2CacheHits++;
                 else _p2NetFetches++;
-                await _populateCells(mbid, await _relFetchWs2(mbid, entityType, incOptions));
+                await _populateCells(mbid, await _relFetchWs2(mbid, _mbidEt, _mbidInc));
             });
         });
         const _relStartMs = performance.now();
@@ -66007,8 +66208,14 @@ a { color: #1565c0; }`;
      */
     function _relRetryTable(table) {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        const { entityType, incOptions } = activeInjectedColumns[0] || {};
+        // This table's OWN stamped entityType (see the tag-value/user-tag-value/
+        // instrument-list per-group render — table.dataset.mbRelEntityType) takes
+        // priority over the page-wide activeInjectedColumns[0], which on those
+        // pageTypes reflects whichever group rendered LAST, not necessarily this
+        // table's own entity kind.
+        const entityType = table.dataset.mbRelEntityType || (activeInjectedColumns[0] || {}).entityType;
         if (!entityType) return;
+        const incOptions = _relIncOptionsForEntityType(entityType);
         const mbids = [...new Set(
             Array.from(table.querySelectorAll('td.mb-rel-cell[data-mbid]'))
                 .map(td => td.dataset.mbid).filter(Boolean)
@@ -66021,16 +66228,27 @@ a { color: #1565c0; }`;
      * Same as `_relRetryTable` but scans all `td.mb-rel-cell[data-mbid]` across
      * the entire document rather than a single table.  Used by the global
      * `#mb-rel-retry-global` retry button on multi-table pages.
+     *
+     * Groups by each cell's OWN table's stamped entityType (falling back to the
+     * page-wide default) rather than retrying every mbid on the page as one
+     * entity kind — see `_relRetryTable`'s comment on the same fallback.
      */
     function _relRetryAll() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        const { entityType, incOptions } = activeInjectedColumns[0] || {};
-        if (!entityType) return;
-        const mbids = [...new Set(
-            Array.from(document.querySelectorAll('td.mb-rel-cell[data-mbid]'))
-                .map(td => td.dataset.mbid).filter(Boolean)
-        )];
-        _relRetryMbids(mbids, entityType, incOptions);
+        const _pageDefaultEt = (activeInjectedColumns[0] || {}).entityType;
+        const _mbidsByEntityType = new Map();
+        Array.from(document.querySelectorAll('td.mb-rel-cell[data-mbid]')).forEach(td => {
+            const _mbid = td.dataset.mbid;
+            if (!_mbid) return;
+            const _tbl = td.closest('table.tbl');
+            const _et = (_tbl && _tbl.dataset.mbRelEntityType) || _pageDefaultEt;
+            if (!_et) return;
+            if (!_mbidsByEntityType.has(_et)) _mbidsByEntityType.set(_et, new Set());
+            _mbidsByEntityType.get(_et).add(_mbid);
+        });
+        _mbidsByEntityType.forEach((mbidSet, entityType) => {
+            _relRetryMbids([...mbidSet], entityType, _relIncOptionsForEntityType(entityType));
+        });
     }
 
     /**
@@ -66857,8 +67075,9 @@ a { color: #1565c0; }`;
             // assignment so all downstream code (descriptor builders, initCaaPics,
             // initCaaInlinePics, applyStickyColumn, etc.) sees the correct merged
             // features.
+            let _diskEntityFeatures = null;
             if (baseDefinition && baseDefinition.entityFeatures) {
-                const _diskEntityFeatures = resolveEntityFeaturesFromH2(baseDefinition);
+                _diskEntityFeatures = resolveEntityFeaturesFromH2(baseDefinition);
                 if (_diskEntityFeatures && Object.keys(_diskEntityFeatures).length > 0) {
                     activeDefinition = {
                         ...activeDefinition,
@@ -66885,7 +67104,13 @@ a { color: #1565c0; }`;
                     `collapsableColumns=${JSON.stringify(activeDefinition?.features?.collapsableColumns || [])}`);
             }
             if (!activeInjectedColumns.length) {
-                activeInjectedColumns = buildActiveInjectedColumns(activeDefinition);
+                // Same entity-kind-hint recovery as startFetchingProcess (see its
+                // comment on _entityKindHintFromH2) — needed for the same
+                // multi-entity-kind pageTypes (series-releases, collections-releases,
+                // …) when a sub-table snapshot for one of them is restored here.
+                const _diskEntityKindHint = (baseDefinition && baseDefinition.entityFeatures &&
+                    Object.keys(baseDefinition.entityFeatures).find(k => baseDefinition.entityFeatures[k] === _diskEntityFeatures)) || undefined;
+                activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _diskEntityKindHint);
                 Lib.debug('cache', `disk-load: rebuilt activeInjectedColumns (${activeInjectedColumns.length})`);
             }
             if (!activeReleaseEventColumns.length) {
