@@ -122,7 +122,46 @@ get's not picked up by our userscript, see also the following console log
 10:50:55.952 [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities] 📝 Changelog source: remote — replaced 0 local entries with 921 remote entries (fromCache=true)
 #+end_example
 
-* TODO column content shifted on https://musicbrainz.org/tag/rock for the sub-tables "Areas" and "Artists"
+* DONE column content shifted on https://musicbrainz.org/tag/rock for the sub-tables "Areas" and "Artists" (fixed, branch fix/tag-value-entity-column-leak, see DEBUG-NOTES.md's 2026-09-14 entry)
 
-column content shifted on https://musicbrainz.org/tag/rock for the sub-tables "Areas" and "Artists"
+on the pageType ""tag-value e.g. https://musicbrainz.org/tag/rock the sub-tables "Areas", "Artists", "Series", Instruments", "Labels", "Places" and "Works" have no 
+extractors defined on the main/first column.
+
+1.)
+
+The following columns happens to be extracted right into the "MB-Name", "Comment" and "Primary-Alias" columns
+
+#+begin_example
+Instruments
+Labels
+Places
+#+end_example
+
+2.)
+
+The following columns
+
+#+begin_example
+Series
+Works
+#+end_example
+
+have the "Event-Additional-Info" column filled with the same content as the "Comment" column, which is wrong
+
+3.)
+
+The following columns have data extracted wrongly
+
+#+begin_example
+Areas - into the "Event-Type" and "Event-Detail" instead onf "MB-Name" and "Comment"
+Artists - into the "Event-Type" and "Event-Date" instead onf "MB-Name" and "Comment"
+#+end_example
+
+4.)
+
+Also some of them are missing the "Show single-table"-button which renders the specific sub-table in single-table mode on a new tab
+
+5.)
+
+See @debug/tag-rock.html for the raw HTML on the final rendered table
 
