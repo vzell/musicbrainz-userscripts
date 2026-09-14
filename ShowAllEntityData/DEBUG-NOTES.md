@@ -11022,3 +11022,126 @@ request at all. Both mutation-checked via the actual before/after states
 captured while iterating on the fix (each of the three root causes was
 independently observed to reproduce with the fix for the other two already
 applied, then to disappear once fixed).
+
+## 2026-09-15 — Relationships column follow-up: user-ratings, artist-credit, artist-relationships (same branch)
+
+User reported the 2026-09-14 fix above still left the column missing on
+`/user/vzell/ratings`, `/artist/<mbid>/relationships` (work-related
+sub-tables), and `/artist-credit/<id>` — plus a second, independent bug on
+the latter (missing column HEADERS on its 'Recordings' sub-table). All three
+turned out to be more instances of the same "a shared value is read after
+whichever group ran last, not the group actually being asked about" family
+already diagnosed the day before, plus one genuinely new mechanism
+(artist-relationships has no entityFeatures map at all to key a fix off of).
+
+**user-ratings/user-ratings-type**: their 'Release groups'/'Labels'/'Works'
+entityFeatures keys had `injectedColumns` deliberately REMOVED, with a
+comment citing three reasons — verbatim, buildActiveInjectedColumns()
+resolving entityType from pageType alone, the render-loop per-group thead
+rebuild never re-deriving activeInjectedColumns, and
+`_initRelationshipsColumnImpl()`'s page-wide `_ensureRelCell` scan tagging
+every entity kind as the same one. All three were exactly what the
+2026-09-14 fix addressed for tag-value — the comment's own reasoning was
+sound, just no longer current. Re-enabled `injectedColumns` on those keys;
+the only new wiring needed was storing `_lastGroup.entityFeaturesKey`
+(distinct from `.category`, since user-ratings' h3 text is "Release group
+ratings" but its entityFeatures key is "Release groups") and passing THAT as
+buildActiveInjectedColumns()'s hint in both the fetch-loop and (newly added)
+render-loop rebuilds. Verified against the real capture
+`tests/fixtures/user-ratings-multigroup.html` (already committed for an
+unrelated bug) — Labels/Release groups/Works ratings now get the column with
+the correct WS2 entity type, Artist ratings correctly gets none.
+
+**artist-credit**: `renderGroupedTable()`'s per-group `<thead>` rebuild
+branch (the one that already existed for tag-value/user-tag-value/
+instrument-list) never listed `'artist-credit'` as a matching pageType,
+despite the FETCH-loop's own equivalent rebuild already covering it. Every
+sub-table's header was therefore just a clone of the single shared
+`templateHead` — built once, reflecting whichever group's extractors the
+fetch loop left active last. Confirmed via `debug/artist-credit.html`:
+'Recordings'' own `Video`/`Event-*` headers (from its own
+`columnExtractors`/`syntheticColumnExtractors`) never appeared at all, and
+'Release groups'/'Releases' MB-Name/Comment/Primary-alias headers carried a
+`title="Extracted from 'Release group': …"` tooltip regardless of which
+group they actually belonged to. Fix: add `'artist-credit'` to that branch's
+condition — same one-line class of fix as the tag-value/user-ratings case
+above, just a different call site.
+
+**A fourth, page-wide instance of the same bug family**, found debugging
+artist-credit: several functions gate on the shared `activeInjectedColumns.length`
+to decide "does this PAGE have a Relationships column at all" —
+`_relInitColHeaderToggles()`, `_relPublishCollapsedStatus()`,
+`_initRelationshipsColumnImpl()`'s own entry guard, `_relCreateRetryButtons()`,
+and both `initRelationshipsColumn()` call sites in the render tail (live and
+disk-load paths). Every one of these runs AFTER the whole per-group render
+loop finishes, so by then that variable holds whatever the LAST-processed
+group's own declaration was — on artist-credit, that group is 'Recordings'
+(declares no `injectedColumns`), so `initRelationshipsColumn()` was never
+even CALLED, for the whole page, despite 'Release groups'/'Releases' having
+real `.mb-rel-cell` tds sitting inert in the DOM. Same failure shape as
+user-ratings if its last-alphabetical group (e.g. 'Works') happened to be
+declared and a later one wasn't — order-dependent, silent, and invisible
+from a single test fixture unless the fixture's own group order happens to
+put a declaring group last. Fixed by adding `_relPageHasColumn()` —
+`!!document.querySelector('td.mb-rel-cell')`, the actual DOM-truth signal,
+since a cell is only ever appended when SOME group's own
+`activeInjectedColumns.length` was true at that row's build time — and
+swapping every one of those gates to call it instead. `_initRelationshipsColumnImpl()`'s
+own fallback `entityType`/`incOptions` destructure (now genuinely reachable
+with `activeInjectedColumns` empty, where it used to be unreachable because
+the same stale check that gated the function also gated the destructure)
+needed default values to not throw.
+
+**artist-relationships (and label-relationships/place-performances, same
+shape)**: genuinely the odd one out — no entityFeatures map at all, one flat
+page-wide `features` block, grouped by RELATIONSHIP TYPE (h3 = "wrote work",
+"producer", …) rather than entity kind. `buildActiveInjectedColumns()` has
+nothing to key a hint off, so every sub-table's entityType is the page-wide
+generic 'release' default forever. `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`'s
+existing work/label exemption only fired when the (never-varying) page-wide
+default already equalled 'work'/'label' — never true here — so a
+work-targeted sub-table's column was unconditionally stripped. Confirmed
+against a real capture, `debug/artist-relationships.html`'s "wrote work"
+sub-table (uncollapsed, user-supplied): the Title column is not even
+physically first (native order is Date, Title, Credited as, Attributes,
+Artist) and its cell is exactly `<span class="worklink"></span><a
+href="/work/<mbid>">`, no secondary reference anywhere else in the row — the
+same structural fact that already justified the work/label sticky-column
+exemption for artist-works/area-labels, just never reachable dynamically.
+
+Fix: `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` now SNIFFS for
+a `/work/` or `/label/` link anywhere in the tbody (deliberately NOT scoped
+to `.mb-sticky-col` — `applyStickyColumn()` hasn't run yet at this call site,
+it happens later in the render tail, confirmed by this exact table failing
+to match a sticky-scoped selector on the first attempt) and, if found, stamps
+`table.dataset.mbRelEntityType` and exempts the table exactly as if it had
+been declared that way. The existing release/release-group non-sticky scan
+was extended the same way — capture which of the two patterns matched and
+stamp accordingly, since a page mixing release- and release-group-targeted
+relationship types (both surface their link via the CAA-column thumbnail)
+would otherwise all silently fall back to the page-wide 'release' default
+too.
+
+**Regression this same sniff caused, caught by the existing suite**: gating
+the sniff on "`table.dataset.mbRelEntityType` not yet set" alone was too
+broad — it also fired for `series-releases` (which DOES have an
+entityFeatures map and an already-correctly-resolved 'release' entityType
+via the 2026-09-14 fix's `_entityKindHintFromH2` mechanism), because a
+release listing's own "Label" column (record-label credit, unrelated to the
+row's own release entity) legitimately contains a `/label/<mbid>` link. That
+wrongly re-stamped a genuinely release-typed table as 'label', caught by
+`rel-ws2-seed-warm-cache.spec.js` expecting `/ws/2/release/` and observing
+`/ws/2/label/` instead. Fixed by gating the whole sniff (both the new
+work/label check and the extended release/release-group stamp) on
+`!activeDefinition.entityFeatures` — it now only ever runs for pageTypes
+that have NO entityFeatures map to have resolved a hint from in the first
+place, which is exactly the set of pageTypes it exists for.
+
+New regression coverage: `tests/fixtures/user-ratings-relationships-column.spec.js`
+(reuses the already-committed `user-ratings-multigroup.html` capture),
+`tests/fixtures/artist-credit-relationships-column.spec.js` (new fixture,
+covers both the header-cloning bug and the Relationships column),
+`tests/fixtures/artist-relationships-work-column.spec.js` (new fixture built
+from the real "wrote work" structure above). All three mutation-checked the
+same way as the 2026-09-14 entry's specs — observed failing before each
+respective fix, passing after.

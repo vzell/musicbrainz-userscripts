@@ -13747,7 +13747,9 @@
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
-                'Labels': {},
+                'Labels': {
+                    injectedColumns: [ 'Relationships' ]
+                },
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: the source <li> list carries the jesus2099
@@ -13774,24 +13776,19 @@
                     // tooltip, which showed only "Artist" and never the release group's
                     // own name. Confirmed live against a real /user/<name>/ratings page.
                     //
-                    // NO injectedColumns here — deliberately (removed; see debug/
-                    // user-rating-no-relationship.html). The 'Relationships' column
-                    // is designed for single-entity-type pages only: (1)
-                    // buildActiveInjectedColumns() picks the WS2 entity type/inc
-                    // options by pageType alone, and 'user-ratings-type' falls
-                    // through to its generic 'release' branch — wrong entity
-                    // namespace for a release-group MBID; (2) renderGroupedTable's
-                    // per-group thead rebuild never re-derives activeInjectedColumns
-                    // per group (unlike activeColumnExtractors etc.), so the
-                    // declaration was silently never picked up anyway; and (3) even
-                    // fixing both, _initRelationshipsColumnImpl()'s _ensureRelCell
-                    // scans EVERY table.tbl row on the page unconditionally, so a
-                    // single global entityType would tag Artist/Event/Label/Place/
-                    // Recording/Work ratings rows as release-groups too. Making this
-                    // genuinely work would need a per-table-scoped redesign — see the
-                    // setting's own description, which already limits it to
-                    // artist-releasegroups/artist-releases/label-releases/
-                    // releasegroup-releases.
+                    // injectedColumns re-added (was removed; see debug/
+                    // user-rating-no-relationship.html) now that all three reasons it
+                    // was pulled are fixed: buildActiveInjectedColumns() resolves the
+                    // WS2 entity type from a per-group hint (not just pageType alone),
+                    // the render-loop per-group thead rebuild now re-derives
+                    // activeInjectedColumns per group (mirrors the fix already applied
+                    // to tag-value/user-tag-value), and _initRelationshipsColumnImpl()
+                    // resolves each cell's entity type from its own table's stamped
+                    // dataset rather than one page-wide value — so a page-wide
+                    // _ensureRelCell scan across Artist/Event/Label/Place/Recording/
+                    // Work ratings tables can no longer mistag any of them. See
+                    // DEBUG-NOTES.md's Relationships-column entries.
+                    injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
@@ -13803,7 +13800,9 @@
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
-                'Works': {}
+                'Works': {
+                    injectedColumns: [ 'Relationships' ]
+                }
             },
             tableMode: 'single'
         },
@@ -13851,7 +13850,9 @@
                     addEAA: 'Event',
                     tooltipColumns: [ 'MB-Name', ['(', 'Comment', ')'], '---', 'Date' ]
                 },
-                'Labels': {},
+                'Labels': {
+                    injectedColumns: [ 'Relationships' ]
+                },
                 'Places': {},
                 'Release groups': {
                     // 'jesus2099' eraser: /user/<username>/ratings' "Release group
@@ -13879,24 +13880,15 @@
                     // tooltip, which showed only "Artist" and never the release group's
                     // own name. Confirmed live against a real /user/<name>/ratings page.
                     //
-                    // NO injectedColumns here — deliberately (removed; see debug/
-                    // user-rating-no-relationship.html). The 'Relationships' column
-                    // is designed for single-entity-type pages only: (1)
-                    // buildActiveInjectedColumns() picks the WS2 entity type/inc
-                    // options by pageType alone, and 'user-ratings' falls through
-                    // to its generic 'release' branch — wrong entity namespace for
-                    // a release-group MBID; (2) renderGroupedTable's per-group
-                    // thead rebuild never re-derives activeInjectedColumns per
-                    // group (unlike activeColumnExtractors etc.), so the
-                    // declaration was silently never picked up anyway; and (3) even
-                    // fixing both, _initRelationshipsColumnImpl()'s _ensureRelCell
-                    // scans EVERY table.tbl row on the page unconditionally, so a
-                    // single global entityType would tag Artist/Event/Label/Place/
-                    // Recording/Work ratings rows as release-groups too. Making this
-                    // genuinely work would need a per-table-scoped redesign — see
-                    // the setting's own description, which already limits it to
-                    // artist-releasegroups/artist-releases/label-releases/
-                    // releasegroup-releases.
+                    // injectedColumns re-added (was removed; see debug/
+                    // user-rating-no-relationship.html) — see the identical entry on
+                    // 'user-ratings-type' above for why all three original reasons no
+                    // longer apply. `group.entityFeaturesKey` (not `group.category`,
+                    // which reads "Release group ratings" here) is what
+                    // buildActiveInjectedColumns() is given as the hint — see the
+                    // fetch-loop's group-creation block and the render-loop's
+                    // user-ratings branch.
+                    injectedColumns: [ 'Relationships' ],
                     addCAA: 'Release group',
                     tooltipColumns: [ 'Artist', 'MB-Name' ]
                 },
@@ -13908,7 +13900,9 @@
                         { sourceColumn: 'Comment', extractor: 'eventParts', syntheticColumns: ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail', 'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'] }
                     ],
                 },
-                'Works': {}
+                'Works': {
+                    injectedColumns: [ 'Relationships' ]
+                }
             },
             tableMode: 'multi'
         },
@@ -47148,6 +47142,13 @@ a { color: #1565c0; }`;
                                     ? table.dataset.mbEntityFeaturesKey
                                     : category;
                                 _lastGroup.entityFeatures = resolveEntityFeaturesFromH3(_efKey, activeDefinition);
+                                // Stored separately from `category` because the two differ for
+                                // user-ratings ("Release group ratings" vs. the entityFeatures
+                                // key "Release groups") — buildActiveInjectedColumns()'s
+                                // entityKindHint needs the KEY, not the display category, to
+                                // resolve the right WS2 entity type. Equals `category` for every
+                                // other entityFeatures-driven pageType.
+                                _lastGroup.entityFeaturesKey = _efKey;
                             }
                             // For user-ratings, store per-group column headers (from
                             // applyListToTable Structure H) so renderGroupedTable can
@@ -47225,7 +47226,7 @@ a { color: #1565c0; }`;
                             // buildActiveInjectedColumns() resolve the correct WS2 entityType
                             // per group (e.g. 'release-group' for a "Release groups" group)
                             // instead of the page-type-wide 'release' default.
-                            activeInjectedColumns = buildActiveInjectedColumns(_tmpDef, currentGroup.category);
+                            activeInjectedColumns = buildActiveInjectedColumns(_tmpDef, currentGroup.entityFeaturesKey || currentGroup.category);
 
                             // Reset all extractors for this table.
                             activeColumnExtractors.forEach(e => { e.colIdx = -1; });
@@ -48460,7 +48461,7 @@ a { color: #1565c0; }`;
             // table over sa_rel_collapse_threshold the fetch below does nothing
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
-            if (activeInjectedColumns.length) initRelationshipsColumn();
+            if (_relPageHasColumn()) initRelationshipsColumn();
 
             // Inject Picard tagger column AFTER Relationships so Picard is always the
             // rightmost column (injectedColumns like Relationships append to the row end;
@@ -51410,6 +51411,29 @@ a { color: #1565c0; }`;
                             activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_urTd);
                             activeInjectedColumnExtractors  = buildActiveInjectedColumnExtractors(_urTd);
                             activeIntegerColumns            = buildActiveIntegerColumns(_urTd);
+                            // Rebuilt here too — same reason and same mechanism as the
+                            // tag-value/user-tag-value/instrument-list/artist-credit branch
+                            // below (see its own comment). `group.entityFeaturesKey` (not
+                            // `group.category`) is the hint: user-ratings' category text is
+                            // "Release group ratings" while its entityFeatures key is
+                            // "Release groups" — the key is what buildActiveInjectedColumns()
+                            // needs. This, together with declaring injectedColumns on the
+                            // relevant entityFeatures keys, is what makes it safe to finally
+                            // remove the "NO injectedColumns here — deliberately" rationale
+                            // those keys used to carry (see their own former comment / this
+                            // fix's DEBUG-NOTES.md entry) — all three reasons it gave are now
+                            // fixed: buildActiveInjectedColumns() resolves entityType from a
+                            // hint (not just pageType), this render-loop rebuild now re-derives
+                            // activeInjectedColumns per group, and _initRelationshipsColumnImpl()
+                            // resolves each cell's entityType from its own table's stamp,
+                            // so a page-wide scan across Artist/Event/Label/Place/Recording/Work
+                            // ratings tables can no longer mistag any of them.
+                            activeInjectedColumns = buildActiveInjectedColumns(_urTd, group.entityFeaturesKey);
+                            if (activeInjectedColumns.length) {
+                                table.dataset.mbRelEntityType = activeInjectedColumns[0].entityType;
+                            } else {
+                                delete table.dataset.mbRelEntityType;
+                            }
                             if (_urGroupEF.tooltipColumns) {
                                 table.dataset.mbEntityTooltipColumns =
                                     JSON.stringify(_urGroupEF.tooltipColumns);
@@ -51450,11 +51474,23 @@ a { color: #1565c0; }`;
                             });
                         });
                         cleanupHeaders(_theadForGroup);
-                    } else if ((pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'instrument-list') && rawTemplateHead) {
-                        // ── Per-group thead for tag-value / instrument-list multi-table
-                        //    mode ─────────────────────────────────────────────────────
+                    } else if ((pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'instrument-list' || pageType === 'artist-credit') && rawTemplateHead) {
+                        // ── Per-group thead for tag-value / instrument-list / artist-credit
+                        //    multi-table mode ────────────────────────────────────────────
                         // Each group has a different entity-type (or, for instrument-list,
                         // family) column and therefore different synthetic columns.
+                        //
+                        // artist-credit was missing from this branch entirely, so every
+                        // one of its sub-tables (Release groups/Releases/Recordings) just
+                        // cloned the single shared `templateHead` — built once, from
+                        // whichever group's extractors the FETCH LOOP (which DOES already
+                        // rebuild per group — see that loop's own gate, which already
+                        // included 'artist-credit') happened to leave active last. This
+                        // is what made 'Recordings'' own Video/Event-* headers (from its
+                        // own columnExtractors/syntheticColumnExtractors) never appear at
+                        // all, and its MB-Name/Comment/Primary alias headers carry a
+                        // "Extracted from 'Release group': ..." tooltip regardless of
+                        // which group they actually belonged to — see debug/artist-credit.html.
                         // Resolve extractors from the group's entity-specific features
                         // (entityFeatures map), rebuild active lists, then call
                         // cleanupHeaders so it injects the correct headers.
@@ -64263,6 +64299,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether ANY table on the page currently has a Relationships column —
+     * the DOM-based answer to a question several functions used to ask the
+     * shared `activeInjectedColumns` module variable instead, which is wrong
+     * on any pageType whose sub-tables get a per-group rebuild (tag-value,
+     * user-tag-value, instrument-list, artist-credit, user-ratings): by the
+     * time these gates run — always AFTER the whole render loop has finished
+     * — that variable holds whatever the LAST-processed group's own
+     * declaration was, not "does the page have this column anywhere". A page
+     * whose last group happens to declare no `injectedColumns` (e.g.
+     * artist-credit's 'Recordings', or user-ratings' 'Places') made every one
+     * of these gates false even though earlier groups' tables genuinely have
+     * the column — silently skipping the WS2 fetch, the ▶🔗 toggles, and the
+     * retry buttons for the WHOLE page. `td.mb-rel-cell` is only ever
+     * appended when SOME group's own `activeInjectedColumns.length` was true
+     * at that row's build time, so its mere presence is the correct signal
+     * regardless of render order.
+     * @returns {boolean}
+     */
+    function _relPageHasColumn() {
+        return !!document.querySelector('td.mb-rel-cell');
+    }
+
+    /**
      * Suppresses the "Relationships" column in `table` when the table's tbody contains
      * no anchor linking to a MusicBrainz /release/<mbid> or /release-group/<mbid> page
      * in the "Title" data cells.
@@ -64308,8 +64367,58 @@ a { color: #1565c0; }`;
         // entity via the row's own title link — which lives in the STICKY
         // column, excluded by this guard's own selector below — so checking
         // for it here would always find nothing and wrongly suppress. Both
-        // entity types are therefore exempted the same way.
-        if (activeInjectedColumns[0].entityType === 'work' || activeInjectedColumns[0].entityType === 'label') return;
+        // entity types are therefore exempted the same way. `table.dataset.mbRelEntityType`
+        // (stamped by a per-group rebuild — tag-value/user-tag-value/
+        // instrument-list/artist-credit/user-ratings) is authoritative when
+        // present; it takes priority over the page-wide default because on
+        // those pageTypes the shared `activeInjectedColumns[0]` reflects
+        // whichever group's rebuild ran LAST, not necessarily this table's own.
+        const _declaredEt = table.dataset.mbRelEntityType || activeInjectedColumns[0].entityType;
+        if (_declaredEt === 'work' || _declaredEt === 'label') return;
+
+        // Dynamic sniff for pageTypes with NO per-group entity-kind
+        // declaration at all — artist-relationships/label-relationships/
+        // place-performances and their siblings are grouped by RELATIONSHIP
+        // TYPE (h3 = "Composer", "Vocals", …), not by entity kind, so there is
+        // no entityFeatures map to resolve a hint from and `activeInjectedColumns`
+        // stays fixed at the page-wide 'release' default for every sub-table.
+        // A work/label-targeted sub-table's ONLY entity reference is its own
+        // title-column link (there is no secondary link for those two kinds
+        // the way a release/release-group row's CAA-column thumbnail provides
+        // one for the scan below) — so check for one FIRST and, if found,
+        // stamp this table and exempt it exactly as if it had been declared
+        // that way. Deliberately NOT scoped to `.mb-sticky-col`: this runs
+        // BEFORE applyStickyColumn() ever touches this table (that call
+        // happens later, in the render tail), so the class does not exist yet
+        // — confirmed against a real capture (debug/artist-relationships.html,
+        // the "wrote work" sub-table) where the title column carries the only
+        // /work/ link in the row and is not physically the first cell either
+        // (native order there is Date, Title, Credited as, …), which is why
+        // this can't key off cell position instead. Release/release-group
+        // sub-tables are untouched: their existing detection via the
+        // non-sticky scan further down already works and stays scoped to
+        // avoid a coincidental match elsewhere in the row.
+        //
+        // Gated on `!activeDefinition.entityFeatures` — pageTypes that DO
+        // carry an entityFeatures map (series-releases, collections-releases,
+        // tag-value, …) already get a correctly-resolved entityType from
+        // startFetchingProcess()'s entityKindHint mechanism (or a per-group
+        // rebuild), and must not have this sniff second-guess it. Without
+        // this gate, a genuinely release-typed series-releases table was
+        // wrongly re-stamped 'label' by this same sniff, because its row's
+        // "Label" column (record-label credit, unrelated to the row's own
+        // release entity) legitimately contains a /label/<mbid> link —
+        // caught by rel-ws2-seed-warm-cache.spec.js expecting a
+        // /ws/2/release/ request and getting /ws/2/label/ instead.
+        if (!table.dataset.mbRelEntityType && !activeDefinition.entityFeatures) {
+            const _stickyLink = table.querySelector(
+                'tbody td:not(.mb-rel-cell) a[href*="/work/"], tbody td:not(.mb-rel-cell) a[href*="/label/"]');
+            if (_stickyLink) {
+                const _href = _stickyLink.getAttribute('href') || '';
+                table.dataset.mbRelEntityType = _href.includes('/work/') ? 'work' : 'label';
+                return;
+            }
+        }
 
         // ── Empty-tbody guard ───────────────────────────────────────────────────
         // Same race condition as _suppressReleaseEventsIfNoReleaseLinks: when
@@ -64331,11 +64440,22 @@ a { color: #1565c0; }`;
         // The :not() exclusions mirror the Picard column guard exactly so that
         // the sticky "Title" cell and the async Relationships cell itself are
         // not mistakenly counted as evidence of a release link.
-        const _hasLink = !!table.querySelector(
-            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href*="/release/"],' +
-            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href*="/release-group/"]'
-        );
-        if (_hasLink) return; // Relationships column is appropriate — leave table untouched.
+        const _rgLink = table.querySelector(
+            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href*="/release-group/"]');
+        const _relLink = _rgLink || table.querySelector(
+            'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href*="/release/"]');
+        if (_relLink) {
+            // Stamp which of the two this table actually is, when not already
+            // declared and only for the same no-entityFeatures pageTypes the
+            // sniff above targets — a page whose sub-tables mix release- and
+            // release-group-targeted relationships (both surface their link
+            // the same way, via the CAA-column thumbnail) would otherwise all
+            // silently fall back to the page-wide 'release' default.
+            if (!table.dataset.mbRelEntityType && !activeDefinition.entityFeatures) {
+                table.dataset.mbRelEntityType = _rgLink ? 'release-group' : 'release';
+            }
+            return; // Relationships column is appropriate — leave table untouched.
+        }
 
         Lib.debug('relationships',
             `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks: no /release/ or ` +
@@ -65190,7 +65310,7 @@ a { color: #1565c0; }`;
      */
     function _relInitColHeaderToggles() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!activeInjectedColumns.length) return;
+        if (!_relPageHasColumn()) return;
         document.querySelectorAll('table.tbl').forEach(_relInitColHeaderToggle);
         _relInitGlobalColHdrToggle();
     }
@@ -65281,7 +65401,7 @@ a { color: #1565c0; }`;
      */
     function _relPublishCollapsedStatus() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!activeInjectedColumns.length) return;
+        if (!_relPageHasColumn()) return;
         let _collapsed = 0;
         let _populated = 0;
         document.querySelectorAll('table.tbl').forEach(_table => {
@@ -65555,7 +65675,7 @@ a { color: #1565c0; }`;
      */
     async function _initRelationshipsColumnImpl() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!activeInjectedColumns.length) return;
+        if (!_relPageHasColumn()) return;
 
         // Ensure body-level delegation for rich tooltips is installed once.
         _initRelTooltipListeners();
@@ -65568,7 +65688,12 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...args);
         };
 
-        const { entityType, incOptions } = activeInjectedColumns[0];
+        // Fallback default only — used for any cell whose own table was never
+        // stamped with `mbRelEntityType` (every pageType without a per-group
+        // rebuild, where this module-level value is correct and stable for the
+        // whole page). May be `{}` now that the entry gate above is DOM-based
+        // rather than `activeInjectedColumns.length`, so default both fields.
+        const { entityType = 'release', incOptions = ['url-rels'] } = activeInjectedColumns[0] || {};
         // ── Ensure mb-rel-cell tds exist in every data row ───────────────────
         // Inject into BOTH DOM rows and source rows (groupedRows/allRows).
         // runFilter() clones from source rows — if those lack mb-rel-cell,
@@ -66166,7 +66291,7 @@ a { color: #1565c0; }`;
      */
     function _relCreateRetryButtons() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!activeInjectedColumns.length) return;
+        if (!_relPageHasColumn()) return;
         const C = 'cursor:pointer;padding:1px 4px;border:1px solid #aaa;border-radius:3px;background:#f5f5f5;vertical-align:middle;font-size:0.8em;margin-left:3px;line-height:1;display:inline-flex;align-items:center;box-sizing:border-box;transition:transform 0.1s,box-shadow 0.1s;';
         function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';b.title=t;b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
         // The global Relationships retry button is only meaningful on multi-table
@@ -67573,7 +67698,7 @@ a { color: #1565c0; }`;
             // cost, so collapsing it would be pure loss. See
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
-            if (activeInjectedColumns.length) initRelationshipsColumn();
+            if (_relPageHasColumn()) initRelationshipsColumn();
             setTimeout(_relCreateRetryButtons, 200);
 
             // Inject Picard tagger column AFTER Relationships so Picard is always
@@ -74554,7 +74679,7 @@ a { color: #1565c0; }`;
         const globalRelRetryId = 'mb-rel-retry-global';
         if (!document.getElementById(globalRelRetryId) &&
                 Lib.settings.sa_enable_relationships_column &&
-                typeof activeInjectedColumns !== 'undefined' && activeInjectedColumns.length) {
+                _relPageHasColumn()) {
             const relRetryBtn   = document.createElement('button');
             relRetryBtn.id      = globalRelRetryId;
             relRetryBtn.type    = 'button';

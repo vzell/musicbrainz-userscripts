@@ -1,5 +1,20 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: fixed it also missing on /user/<user>/ratings (Labels/Release groups/Works), on artist-credit pages (Release groups/Releases), and on artist-relationships/label-relationships/place-performances' work/label-targeted sub-tables — three more instances of WIP.1's 'a shared value read after whichever group ran last' bug family, one of them a genuinely new mechanism for pages with no entityFeatures map at all (grouped by relationship type, not entity kind).",
+          "Fixed a page-wide instance of the same bug: several functions (_relInitColHeaderToggles, _relPublishCollapsedStatus, _initRelationshipsColumnImpl's own entry guard, _relCreateRetryButtons, both initRelationshipsColumn() call sites) gated on the shared activeInjectedColumns.length to decide whether the PAGE has a Relationships column at all — since that variable reflects whichever group's rebuild ran last, a page whose last-processed group declares no injectedColumns (e.g. artist-credit's 'Recordings') silently skipped the WS2 fetch, the toggles, and the retry buttons for the WHOLE page, even though earlier groups' tables genuinely have the column. Replaced with a DOM-based check (does any td.mb-rel-cell exist).",
+          "artist-credit: 'Recordings' was also missing its own Video/Event-* column headers entirely (cloning whichever group's header the fetch loop processed last instead of its own) — renderGroupedTable()'s per-group <thead> rebuild was missing 'artist-credit' from its pageType list even though the fetch-loop's equivalent rebuild already covered it.",
+          "_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks() now dynamically sniffs a table's own /work/ or /label/ link (for pageTypes with no entityFeatures map to resolve an entity-kind hint from) instead of relying on a page-wide default that never varies per sub-table — scoped to pageTypes with no entityFeatures map so it cannot second-guess an already-correctly-resolved entityType (a release listing's own 'Label' record-label credit column briefly caused a regression here, caught by the existing rel-ws2-seed-warm-cache regression test)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-14",
     "sections": [

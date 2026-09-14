@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bruce Springsteen - Relationships - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A trimmed /artist/<mbid>/relationships overview page. artist-relationships
+        has NO entityFeatures map at all (a single flat `features` block,
+        injectedColumns declared page-wide) and groups its sub-tables by
+        RELATIONSHIP TYPE (h3 = "wrote work"), not by entity kind — confirmed
+        against a real capture (debug/artist-relationships.html, the "wrote
+        work" sub-section uncollapsed): native column order there is Date,
+        Title, Credited as, Attributes, Artist, Length — Title is NOT the
+        first cell — and the Title cell's only content is
+        <span class="worklink"></span><a href="/work/<mbid>">, no secondary
+        link anywhere else in the row (no CAA thumbnail the way a release/
+        release-group row gets one).
+
+        Reproduces the reported bug: the Relationships column was being
+        stripped entirely from work-related sub-tables, because the page-wide
+        entityType default ('release') never gets overridden per group here,
+        and the work/label exemption only ever fired for pageTypes that
+        declared entityType:'work' statically (artist-works, area-works) —
+        never for a dynamically-mixed page like this one, grouped by
+        relationship type rather than entity kind.
+    -->
+    <div class="fullwidth" id="page">
+        <div id="content">
+            <h1><bdi>Bruce Springsteen</bdi></h1>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships">Relationships</a></li>
+                </ul>
+            </div>
+            <h2>Relationships</h2>
+
+            <h3>wrote work</h3>
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Title</th>
+                        <th>Credited as</th>
+                        <th>Attributes</th>
+                        <th>Artist</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1975</td>
+                        <td><span class="worklink"></span><a href="/work/745c079d-374e-4436-9448-da92dedef3ce"><bdi>Born to Run</bdi></a></td>
+                        <td></td>
+                        <td></td>
+                        <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
