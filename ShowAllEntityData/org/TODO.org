@@ -210,12 +210,13 @@ Also check potential other pageTypes which are missing the "Relationships" colum
 // ==/UserScript==
 #+end_example
 
+
 * TODO menue problem
 
 On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd when clicking the "Recording date" column on
 medium 2, the column header unique value pull down opens in the direction to the end of the page but gets truncated, as
 the number of rows in the sub-table itself is lower then the entries in the menu
-
+See screenshot 
 
 * TODO remove "Showing all recordings" from the pageType 'artist-recordings'
 
