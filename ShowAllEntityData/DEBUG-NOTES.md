@@ -10830,3 +10830,95 @@ into the existing clean `tests/snapshots/release-tracks/raw.html` DOM shell;
 the ms-length one reuses `release-tracks-ms-length-overflow.html` with one
 track's title anchor synthetically `.mp`-wrapped, since no real captured page
 happened to have a pending-edit RECORDING rather than a pending-edit work).
+
+## 2026-09-14 — tag-value multi-table: Areas/Artists/Series/Works picked up Recordings' Event-* columns (fixed, branch fix/tag-value-entity-column-leak)
+
+User-reported on `/tag/rock` (`pageType: 'tag-value'`, `tableMode: 'multi'`,
+snapshot `debug/tag-rock.html`): the Areas and Artists sub-tables rendered
+their entity name/comment under `Event-Type`/`Event-Date`/`Event-Detail`
+instead of `MB-Name`/`Comment`, Series/Works got a spurious
+`Event-Additional-Info` column that exactly duplicated `Comment`, and
+Instruments/Labels/Places happened to render correctly. All seven declare an
+empty `entityFeatures: {}` in the pageDefinition, same as everything else
+with no per-entity extras — so the config itself was not the bug.
+
+Root cause: `activeColumnExtractors`/`activeSyntheticColumnExtractors`/
+`activeInjectedColumnExtractors`/`activeIntegerColumns`/`activeColumnErasers`
+are module-level variables shared across every group table on a multi-table
+page. Two call sites (the fetch loop's "Per-table extractor colIdx
+resolution" block, and `renderGroupedTable`'s "Per-group thead for tag-value
+/ instrument-list multi-table" block, plus the neighboring `user-ratings`
+branch with the identical pattern) only rebuilt these arrays from the
+current group's own `entityFeatures` when that map was non-empty
+(`if (Object.keys(_groupFeatures).length > 0) { ... }`). When a group's
+`entityFeatures` was `{}`, the whole rebuild was skipped, so the shared
+arrays simply kept whatever the *previous group in iteration order* last
+built. Both loops walk groups in the same fixed order — Areas, Artists,
+Events, Instruments, Labels, Places, Release groups, Releases, Recordings,
+Series, Works (the `entityFeatures` map's own declaration order) — so:
+
+- Areas/Artists (right before Events) got correct 4-cell rows in the fetch
+  pass (still `[]` at that point), but in the render pass — which restarts
+  iteration from Areas again — inherited whatever the *previous full pass*
+  left behind: Recordings' `eventParts` extractor (keyed on `'Comment'`,
+  always resolvable since `MB-Name`/`Comment`/`Primary alias` exist on every
+  group via the page-level `extractMainColumn` feature). 13 `<th>` vs. 4
+  `<td>` → the browser's own positional column-count mismatch fallback
+  shifted the real data left into `Event-Type`/`Event-Date`/`Event-Detail`.
+- Instruments/Labels/Places (right after Events) inherited Events' harmless
+  `dateParts` extractor (keyed on `'Date'`, a no-op column they don't have) —
+  just as leaked, but invisibly so.
+- Series/Works (right after Recordings) inherited `eventParts` consistently
+  in both passes, so header/cell counts agreed (13/13), but the extractor ran
+  for real against their own unrelated `Comment` text, hit its own
+  "unrecognized shape" fallback, and dumped the whole raw comment into
+  `Event-Additional-Info` — an exact duplicate of `Comment`.
+
+Fixed by dropping the `Object.keys(...).length > 0` guard at all three call
+sites (fetch loop, tag-value/user-tag-value/instrument-list render-loop
+branch, user-ratings render-loop branch) — the rebuild now always runs,
+merging the group's own `entityFeatures` when present and otherwise
+collapsing back to the page-level `activeDefinition.features` baseline, so a
+`{}` group can no longer inherit a neighbor's extractors. No change needed
+to `resolveEntityFeaturesFromH3` or any `buildActive*` helper — both were
+already correct; only the callers' conditional skip was at fault.
+
+Separately (same session, unrelated cause): the "Show single-table" button
+was missing entirely on every tag-value/user-tag-value sub-table without a
+native MusicBrainz overflow link (`group.seeAllUrl`) — `SA_SNAPSHOT_SUPPORTED_PAGETYPES`
+is a hardcoded pageType allow-list and simply never included `'tag-value'`/
+`'user-tag-value'`. Added both, plus a new `SA_TAG_VALUE_CATEGORY_SLUGS` map
+(h3 category name → MusicBrainz's own singular entity-type URL slug, e.g.
+"Release groups" → `release-group`, confirmed against
+`PAGETYPES-TESTING-REFERENCE.org` #38/#36's real `/tag/rock/artist` URL) so
+`openSubtableAsSingleTableTab` routes the new tab to the `tag-value-entity`/
+`user-tag-value-entity` single-table sibling via an extra PATH segment,
+rather than the `?link_type_id=1` query-param trick the other pageTypes in
+that allow-list use.
+
+**Follow-up, same day:** adding tag-value/user-tag-value to
+`SA_SNAPSHOT_SUPPORTED_PAGETYPES` immediately surfaced a second, genuinely
+pre-existing bug — every category that DOES have a native "See all N …"
+overflow link (e.g. Events, 257 rows) got a redundant "Show single-table"
+button rendered alongside its correct "Show all N rows" one. Root cause: the
+button-insertion blocks (the primary one right after `_updateSubTableH3Tooltip`,
+and the defensive "Also inject … if absent" tail) both gate on
+`group.seeAllUrl` alone — but that is only the field name
+artist-relationships/label-relationships/place-performances-style pages use.
+tag-value/user-tag-value's own "See all N" block (grep `group.tagSeeAllUrl
+= _href;`) sets `tagSeeAllUrl` instead, never `seeAllUrl`, so
+`!group.seeAllUrl` was unconditionally true for every tag-value category
+regardless of whether it actually had a real overflow link. (Initial
+suspicion was a later settle/re-render pass losing `seeAllUrl` off a rebuilt
+group object — checked via `runFilter()`'s `filteredArray.push({ ...group,
+rows: matches })`, which is a full shallow spread and drops nothing. The bug
+was present on the very first render already, via the wrong field name, not
+a second-pass data loss.) Fixed by additionally checking `!group.tagSeeAllUrl
+&& !group.ratingsViewAllUrl` (the latter for `user-ratings`' equivalent
+field, currently unreachable here since `user-ratings` isn't in
+`SA_SNAPSHOT_SUPPORTED_PAGETYPES`, but included so the same mistake can't
+recur if it ever is) at both call sites, rather than touching `seeAllUrl`
+itself — the existing `if (group.seeAllUrl) { …builds a generic "Show all N
+rows" button… }` branch must stay untouched, since tag-value's own dedicated
+block already builds the correctly-worded button using `tagSeeAllUrl`
+earlier in the same render pass.

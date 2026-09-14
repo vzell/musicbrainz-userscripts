@@ -1393,11 +1393,14 @@ standard filterable/sortable multi-table view (one sub-table per medium).
 
 SHOW SINGLE-TABLE BUTTON  (📑 SHOW SINGLE-TABLE BUTTON in ⚙️ Settings)
 --------------------------------------------------------------------------
-On by default. When enabled, a relationship/performance/release-listing
-sub-table category that has no MusicBrainz overflow (every row already on
-screen — artist-relationships, label-relationships, place-performances,
-artist-releasegroups, releasegroup-releases) shows a "Show single-table"
-button instead of the usual "Show all N rows" overflow expander.
+On by default. When enabled, a relationship/performance/release-listing/
+tagged-entity sub-table category that has no MusicBrainz overflow (every
+row already on screen — artist-relationships, label-relationships,
+place-performances, artist-releasegroups, releasegroup-releases,
+work-recordings, area-recordings, area-works, area-releases, and each
+entity-kind section on a tag page, e.g. /tag/rock) shows a "Show
+single-table" button instead of the usual "Show all N rows" overflow
+expander.
 • Clicking it opens the currently-rendered rows as a standalone single-table
   view in a new browser tab, via a client-side snapshot — no MusicBrainz
   re-fetch, and no data leaves the browser.

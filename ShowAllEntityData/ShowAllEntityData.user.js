@@ -30891,12 +30891,22 @@ a { color: #1565c0; }`;
      * in PAGETYPES-TESTING-REFERENCE.org) but were missing from this Set —
      * on any area/work whose categories all stay under the cap, that left
      * neither button rendered at all.
+     *
+     * `tag-value`/`user-tag-value` share the same shape too — MB caps each
+     * entity-kind section at 10 rows and only emits a native overflow link
+     * (group.seeAllUrl) past that, so any category staying under the cap
+     * (routinely Areas/Artists/Instruments/Labels/Places/Series/Works, and
+     * sometimes every category on a small tag) got no button at all. Unlike
+     * the pairs above, these two route through `SA_TAG_VALUE_CATEGORY_SLUGS`
+     * rather than `SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES` — see
+     * `openSubtableAsSingleTableTab`.
      * @type {Set<string>}
      */
     const SA_SNAPSHOT_SUPPORTED_PAGETYPES = new Set([
         'artist-relationships', 'label-relationships', 'place-performances',
         'artist-releasegroups', 'releasegroup-releases',
         'work-recordings', 'area-recordings', 'area-works', 'area-releases',
+        'tag-value', 'user-tag-value',
     ]);
 
     /**
@@ -30924,6 +30934,29 @@ a { color: #1565c0; }`;
         'artist-relationships', 'label-relationships', 'place-performances',
         'work-recordings', 'area-recordings', 'area-works', 'area-releases',
     ]);
+
+    /**
+     * `tag-value`/`user-tag-value`'s own routing sibling to
+     * `SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES`: maps an h3 category name (the
+     * `entityFeatures` key, e.g. "Areas", "Release groups") to MusicBrainz's
+     * own SINGULAR entity-type URL slug, confirmed against
+     * PAGETYPES-TESTING-REFERENCE.org #38/#36 (`/tag/rock/artist`, NOT
+     * `/tag/rock/artists`) — the same slugs already used everywhere in this
+     * script for entity links (`/area/`, `/artist/`, …, `/release-group/`).
+     * `openSubtableAsSingleTableTab` appends `/<slug>` to the page's own
+     * path to route the new tab to the `tag-value-entity`/
+     * `user-tag-value-entity` single-table sibling, instead of the
+     * `?link_type_id=1` query-param trick the other pageTypes above use —
+     * tag-value's single-table sibling is reached by an extra PATH segment,
+     * not a query param.
+     * @type {Object<string, string>}
+     */
+    const SA_TAG_VALUE_CATEGORY_SLUGS = {
+        'Areas': 'area', 'Artists': 'artist', 'Events': 'event',
+        'Instruments': 'instrument', 'Labels': 'label', 'Places': 'place',
+        'Release groups': 'release-group', 'Releases': 'release',
+        'Recordings': 'recording', 'Series': 'series', 'Works': 'work',
+    };
 
     /**
      * Builds the serialized `{html, colSpan, rowSpan}` object for one table
@@ -31058,7 +31091,8 @@ a { color: #1565c0; }`;
         return {
             version: SA_SNAPSHOT_FORMAT_VERSION,
             url: window.location.href,
-            pageType: SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? `${pageType}-filtered` : pageType,
+            pageType: SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? `${pageType}-filtered` :
+                (pageType === 'tag-value' || pageType === 'user-tag-value') ? `${pageType}-entity` : pageType,
             buttonLabel: null,
             timestamp: Date.now(),
             timestampReadable: new Date().toISOString(),
@@ -31108,8 +31142,18 @@ a { color: #1565c0; }`;
         const payload = captureSubtableSnapshot(table, categoryName, pageType);
         const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
         GM_setValue(`mb_sa_subtable_snapshot_${uid}`, payload);
-        const query = SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? '?link_type_id=1' : '';
-        const targetUrl = `${window.location.origin}${window.location.pathname}${query}#mb-sa-snapshot=${uid}`;
+        // tag-value/user-tag-value's single-table sibling is reached by an
+        // extra PATH segment (MB's own singular entity slug, e.g.
+        // /tag/rock/artist), not the ?link_type_id=1 query-param trick the
+        // other pageTypes below use — see SA_TAG_VALUE_CATEGORY_SLUGS.
+        let targetUrl;
+        if (pageType === 'tag-value' || pageType === 'user-tag-value') {
+            const _slug = SA_TAG_VALUE_CATEGORY_SLUGS[categoryName] || '';
+            targetUrl = `${window.location.origin}${window.location.pathname}/${_slug}#mb-sa-snapshot=${uid}`;
+        } else {
+            const query = SA_SNAPSHOT_LINK_TYPE_ID_PAGETYPES.has(pageType) ? '?link_type_id=1' : '';
+            targetUrl = `${window.location.origin}${window.location.pathname}${query}#mb-sa-snapshot=${uid}`;
+        }
         // TEMP DEBUG (bug 2 investigation) — capture-time wall-clock, correlate
         // against _hydrateAndRenderFromSnapshotData's own entry timestamp in the
         // new tab's console to see how much time (and how many _caaQueue items)
@@ -46996,32 +47040,41 @@ a { color: #1565c0; }`;
                         // table's headers — otherwise previous tables' resolved colIdx
                         // values linger and cause multiple extractors to fire on every row.
                         if (pageType === 'tag-value' || pageType === 'user-tag-value' || pageType === 'user-ratings' || pageType === 'instrument-list' || pageType === 'artist-credit') {
-                            // If this group has entity-specific features (from entityFeatures map),
-                            // rebuild the active extractors and integer columns from that feature set,
-                            // merged with the base features (listToTable, removeSelector, etc.).
+                            // Rebuild the active extractors/integer-columns/erasers from this
+                            // group's own entity-specific features (entityFeatures map, if any),
+                            // merged with the base features (listToTable, removeSelector, etc.) —
+                            // UNCONDITIONALLY, every group, even when entityFeatures is `{}`.
+                            // These are module-level arrays shared across every group table on
+                            // the page; skipping the rebuild for a `{}` group (as a previous
+                            // version did, gated on `Object.keys(_groupFeatures).length > 0`)
+                            // left them holding whatever the PREVIOUS group's non-empty
+                            // entityFeatures last built — e.g. on 'tag-value', Areas/Artists
+                            // (both `{}`) silently inherited Recordings' `eventParts` extractor
+                            // from the prior page render pass, and Series/Works (also `{}`,
+                            // processed right after Recordings) inherited it within the very
+                            // same pass, corrupting their own Comment-column extraction. See
+                            // DEBUG-NOTES.md's tag-value entity-column-leak entry.
                             const _groupFeatures = currentGroup.entityFeatures || {};
-                            if (Object.keys(_groupFeatures).length > 0) {
-                                const _mergedForGroup = {
-                                    ...(activeDefinition.features || {}),
-                                    ..._groupFeatures
-                                };
-                                const _tmpDef = { ...activeDefinition, features: _mergedForGroup };
-                                activeColumnExtractors = buildActiveColumnExtractors(_tmpDef);
-                                activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_tmpDef);
-                                activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(_tmpDef);
-                                activeIntegerColumns = buildActiveIntegerColumns(_tmpDef);
-                                // Rebuilt alongside the extractor lists above so a group's own
-                                // entityFeatures.columnErasers (e.g. the 'jesus2099' cover-art-icon
-                                // eraser some 'Release group'/'Release' groups declare) actually
-                                // takes effect — without this, applyColumnErasers() below keeps
-                                // using whatever activeColumnErasers was resolved ONCE at the top
-                                // of startFetchingProcess() (from the page-level H2, not this row's
-                                // own group), silently never erasing anything for groups whose
-                                // eraser only lives inside their own entityFeatures block (see
-                                // debug/cell.html, WIP.81 — the doubled CAA inline image bug this
-                                // fixes for real).
-                                activeColumnErasers = buildActiveColumnErasers(_tmpDef);
-                            }
+                            const _mergedForGroup = {
+                                ...(activeDefinition.features || {}),
+                                ..._groupFeatures
+                            };
+                            const _tmpDef = { ...activeDefinition, features: _mergedForGroup };
+                            activeColumnExtractors = buildActiveColumnExtractors(_tmpDef);
+                            activeSyntheticColumnExtractors = buildActiveSyntheticColumnExtractors(_tmpDef);
+                            activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(_tmpDef);
+                            activeIntegerColumns = buildActiveIntegerColumns(_tmpDef);
+                            // Rebuilt alongside the extractor lists above so a group's own
+                            // entityFeatures.columnErasers (e.g. the 'jesus2099' cover-art-icon
+                            // eraser some 'Release group'/'Release' groups declare) actually
+                            // takes effect — without this, applyColumnErasers() below keeps
+                            // using whatever activeColumnErasers was resolved ONCE at the top
+                            // of startFetchingProcess() (from the page-level H2, not this row's
+                            // own group), silently never erasing anything for groups whose
+                            // eraser only lives inside their own entityFeatures block (see
+                            // debug/cell.html, WIP.81 — the doubled CAA inline image bug this
+                            // fixes for real).
+                            activeColumnErasers = buildActiveColumnErasers(_tmpDef);
 
                             // Reset all extractors for this table.
                             activeColumnExtractors.forEach(e => { e.colIdx = -1; });
@@ -51192,8 +51245,14 @@ a { color: #1565c0; }`;
                         // desyncing header count from cell count. Mirrors the tag-value/
                         // user-tag-value/instrument-list per-group thead path just below,
                         // which already calls cleanupHeaders() unconditionally.
+                        // Rebuilt UNCONDITIONALLY every group (including `{}` ones) for the
+                        // same reason as the tag-value/instrument-list branch below — leaving
+                        // these module-level arrays untouched for a `{}` group lets it inherit
+                        // whatever the previous group last built instead of collapsing back to
+                        // the page-level baseline. See DEBUG-NOTES.md's tag-value
+                        // entity-column-leak entry (same pattern, this branch's own instance).
                         const _urGroupEF = group.entityFeatures || {};
-                        if (Object.keys(_urGroupEF).length > 0) {
+                        {
                             const _urMf = { ...(activeDefinition.features || {}), ..._urGroupEF };
                             const _urTd = { ...activeDefinition, features: _urMf };
                             activeColumnExtractors          = buildActiveColumnExtractors(_urTd);
@@ -51248,8 +51307,18 @@ a { color: #1565c0; }`;
                         // Resolve extractors from the group's entity-specific features
                         // (entityFeatures map), rebuild active lists, then call
                         // cleanupHeaders so it injects the correct headers.
+                        // Rebuild UNCONDITIONALLY every group — including one whose own
+                        // entityFeatures is `{}` — collapsing back to the page-level baseline
+                        // (activeDefinition.features alone) rather than leaving these shared
+                        // module-level arrays holding whatever the PREVIOUS group last built.
+                        // Gating this on "entityFeatures non-empty" (as a previous version
+                        // did) is what let e.g. 'tag-value' Areas/Artists/Series/Works (all
+                        // `{}`) silently inherit a neighboring group's synthetic-column
+                        // extractor (Recordings' `eventParts`) and render its Event-* columns
+                        // against their own unrelated Comment text. See DEBUG-NOTES.md's
+                        // tag-value entity-column-leak entry.
                         const _groupEntityFeatures = group.entityFeatures || {};
-                        if (Object.keys(_groupEntityFeatures).length > 0) {
+                        {
                             const _mf = { ...(activeDefinition.features || {}), ..._groupEntityFeatures };
                             const _td = { ...activeDefinition, features: _mf };
                             activeColumnExtractors          = buildActiveColumnExtractors(_td);
@@ -51822,6 +51891,7 @@ a { color: #1565c0; }`;
                     };
                     subTableControls.insertBefore(showAllBtn, subTableControls.firstChild);
                 } else if (Lib.settings.sa_enable_show_single_table_btn &&
+                        !group.tagSeeAllUrl && !group.ratingsViewAllUrl &&
                         SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                     // No MusicBrainz overflow for this category — either it's under
                     // MB's own single-page cap, or (artist-releasegroups /
@@ -51832,6 +51902,18 @@ a { color: #1565c0; }`;
                     // to fetch. Offer a client-side "convert this sub-table to a
                     // single-table page" snapshot instead — see
                     // openSubtableAsSingleTableTab().
+                    //
+                    // The `!group.tagSeeAllUrl && !group.ratingsViewAllUrl` guards
+                    // matter because `group.seeAllUrl` alone is only the field name
+                    // artist-relationships/label-relationships/place-performances-
+                    // style pages use — tag-value/user-tag-value's own "See all N"
+                    // block above (grep `group.tagSeeAllUrl = _href;`) sets
+                    // `tagSeeAllUrl` instead, never `seeAllUrl`. Without this, every
+                    // tag-value category with a real native overflow link (e.g.
+                    // "Events") got a redundant "Show single-table" button
+                    // alongside its already-correct "Show all N rows" button, since
+                    // `group.seeAllUrl` was unconditionally falsy for it. See
+                    // DEBUG-NOTES.md's 2026-09-14 tag-value entity-column-leak entry.
                     const singleTableBtn = document.createElement('button');
                     singleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;
                     singleTableBtn.type = 'button';
@@ -52020,12 +52102,16 @@ a { color: #1565c0; }`;
 
                     // Also inject the "Show single-table" button if absent — mirrors
                     // the primary group.seeAllUrl / else branch above (this button
-                    // only applies to categories with no MB overflow, i.e. no
-                    // group.seeAllUrl). Note: the sibling "Show all N rows" button
-                    // has this same defensive-rebuild gap pre-existing in this
-                    // branch already — left alone here, out of scope for this change.
+                    // only applies to categories with no MB overflow AT ALL, i.e.
+                    // no group.seeAllUrl AND no group.tagSeeAllUrl/
+                    // ratingsViewAllUrl — see that block's own comment for why all
+                    // three field names matter). Note: the sibling "Show all N
+                    // rows" button has this same defensive-rebuild gap pre-existing
+                    // in this branch already — left alone here, out of scope for
+                    // this change.
                     if (Lib.settings.sa_enable_show_single_table_btn &&
-                            !h3.querySelector('.mb-show-single-table-btn') && !group.seeAllUrl &&
+                            !h3.querySelector('.mb-show-single-table-btn') &&
+                            !group.seeAllUrl && !group.tagSeeAllUrl && !group.ratingsViewAllUrl &&
                             SA_SNAPSHOT_SUPPORTED_PAGETYPES.has(pageType)) {
                         const subSingleTableBtn = document.createElement('button');
                         subSingleTableBtn.id = `mb-stf-${categoryName.replace(/[^a-zA-Z0-9_-]/g, '_')}-single-table-btn`;

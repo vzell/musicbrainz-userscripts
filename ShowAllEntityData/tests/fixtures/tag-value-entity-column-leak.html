@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag &ldquo;rock&rdquo; - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A tag-value overview page (/tag/rock), trimmed from the real capture
+        debug/tag-rock-initial.html down to six of the eleven entity-kind
+        sections — just enough to reproduce the module-level extractor-registry
+        leak between groups whose own entityFeatures is `{}`:
+
+          Areas       ({}) — no native "See all" overflow link
+          Artists     ({}) — no native "See all" overflow link
+          Events      (non-empty: cancelledEvent/eventDate/dateParts)
+          Instruments ({}) — no native "See all" overflow link
+          Recordings  (non-empty: artistCredit/video/eventParts)
+          Series      ({}) — no native "See all" overflow link
+
+        This exact iteration order (matching entityFeatures' own declaration
+        order in the pageDefinition) is what makes the leak entity-position-
+        dependent rather than entity-kind-dependent: Areas/Artists sit before
+        Events ever runs (so they escape the FETCH pass, but not the RENDER
+        pass, which restarts iteration and inherits whatever the fetch pass
+        left behind — Recordings' own `eventParts`, since Series never
+        overwrites it); Instruments sits right after Events (inherits its
+        harmless `dateParts`, a no-op with no 'Date' column to match); Series
+        sits right after Recordings (inherits `eventParts` in BOTH passes
+        consistently, so header/cell counts agree but the content is wrong).
+        See DEBUG-NOTES.md's 2026-09-14 tag-value entity-column-leak entry.
+    -->
+    <div class="fullwidth " id="page">
+        <div id="content">
+            <div class="tagheader">
+                <h1>Tag &ldquo;<a href="/tag/rock">rock</a>&rdquo;</h1>
+                <p class="subheader"><span class="prefix">~</span> Tag</p>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/tag/rock">Overview</a></li>
+                    <li><a href="/tag/rock/artist">Artists</a></li>
+                    <li><a href="/tag/rock/recording">Recordings</a></li>
+                </ul>
+            </div>
+            <h2>Entities tagged as &ldquo;rock&rdquo;</h2>
+            <p>1,242,549 entities found</p>
+
+            <h3>Areas</h3>
+            <ul>
+                <li><span class="flag flag-GB"><a href="/area/8a754a16-0027-3a29-b6d7-2b40ea0481ed"><bdi>United Kingdom</bdi></a></span></li>
+                <li><a href="/area/4b190b90-aafd-4d87-8a51-95a710516176"><bdi>Aichi</bdi></a> <span class="comment">(<bdi><i title="Primary alias">Aichi Prefecture</i></bdi>)</span></li>
+            </ul>
+
+            <h3>Artists</h3>
+            <ul>
+                <li><a href="/artist/b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d" title="Beatles, The (UK rock band)"><bdi>The Beatles</bdi></a> <span class="comment">(<bdi>UK rock band, &ldquo;The Fab Four&rdquo;</bdi>)</span></li>
+                <li><a href="/artist/0383dadf-2a4e-4d10-a46a-e9e041da8eb3" title="Queen (UK rock group)"><bdi>Queen</bdi></a> <span class="comment">(<bdi>UK rock group</bdi>)</span></li>
+            </ul>
+
+            <h3>Events</h3>
+            <ul>
+                <li><a href="/event/cc7c9bff-68a8-4e71-bd6a-3c8533db1ecf"><bdi>Noe Terceros en Santana Bar</bdi></a> (2018-07-14)<!-- --> <span class="comment">(<bdi>Noe Terceros presenta Umbral en Santana Bar, Ramos Mej&iacute;a</bdi>)</span></li>
+                <li><a href="/event/02c4a4fd-8b13-4ab6-8f9c-31ea22fb7124"><bdi>1er Encuentro Naciendo en Primavera</bdi></a> (2015-09-26)</li>
+                <li><em><a href="/tag/rock/event">See all 257 events</a></em></li>
+            </ul>
+
+            <h3>Instruments</h3>
+            <ul>
+                <li><a href="/instrument/12092505-6ee1-46af-a15a-b5b468b6b155"><bdi>drums (drum set)</bdi></a> <span class="comment">(<bdi>Set of drums in modern music</bdi>)</span></li>
+                <li><a href="/instrument/4431f7b0-69a4-49ee-b84f-15dda19fb70c"><bdi>tambourine</bdi></a></li>
+            </ul>
+
+            <h3>Recordings</h3>
+            <ul>
+                <li><a href="/recording/8d2338a2-4acc-4d99-b2a7-1151f428cab6"><bdi>Brown Sugar</bdi></a> <span class="comment">(<bdi>original single stereo version</bdi>)</span> by <bdi><a href="/artist/b071f9fa-14b0-4217-8e97-eb41da73f598" title="Rolling Stones, The">The Rolling Stones</a></bdi></li>
+                <li><a href="/recording/ec04e3c5-0548-4e73-bfc3-19a26108f302"><bdi>Imagine</bdi></a> <span class="comment">(<bdi>original studio mix</bdi>)</span> by <bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John">John Lennon</a></bdi></li>
+                <li><em><a href="/tag/rock/recording">See all 660,078 recordings</a></em></li>
+            </ul>
+
+            <h3>Series</h3>
+            <ul>
+                <li><a href="/series/7f463ef6-b914-4d82-b139-31e9c774c227"><bdi>50 Years Later</bdi></a> <span class="comment">(<bdi>Pale Wizard Records</bdi>)</span></li>
+                <li><a href="/series/78f20d91-6e07-4d91-916d-41e0803cac27"><bdi>Coke Studio Pakistan</bdi></a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

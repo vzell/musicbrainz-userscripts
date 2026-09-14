@@ -1,0 +1,38 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "tag-value/user-tag-value: a sub-table category that DOES have a native \"See all N …\" overflow link (e.g. Events) got a redundant \"Show single-table\" button rendered alongside its correct \"Show all N rows\" one (see WIP.2). Both button-insertion sites gated on group.seeAllUrl alone, which is only the field name artist-relationships/label-relationships/place-performances-style pages use — tag-value/user-tag-value set group.tagSeeAllUrl instead. Fixed by also checking !group.tagSeeAllUrl/!group.ratingsViewAllUrl at both sites."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "tag-value/user-tag-value: sub-tables without a native MusicBrainz overflow link (e.g. Areas, Instruments, Labels, Places, Series, Works on most tags) never got a \"Show single-table\" button, since that pageType pair was simply absent from the button's hardcoded allow-list. Added them, plus a new category→entity-slug map so the new tab routes to the tag-value-entity/user-tag-value-entity single-table sibling via the correct singular MusicBrainz URL segment (e.g. \"Release groups\" → /tag/<value>/release-group)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-14",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "tag-value/user-tag-value/user-ratings/instrument-list/artist-credit: a group whose own entityFeatures was empty (e.g. tag-value's Areas/Artists/Series/Works) could silently inherit a PREVIOUS group's synthetic-column extractor, since the shared active extractor registries were only rebuilt when the current group's entityFeatures was non-empty. On /tag/<value> this made Areas/Artists render their entity name/comment under Event-Type/Event-Date/Event-Detail instead of MB-Name/Comment, and made Series/Works grow a spurious Event-Additional-Info column duplicating Comment. Instruments/Labels/Places happened to inherit a harmless no-op extractor instead, masking that they were leaked too. Fixed by always rebuilding the active extractor registries per group, collapsing back to the page-level feature baseline when a group has no entity-specific overrides of its own."
+        ]
+      }
+    ]
+  }
+]
