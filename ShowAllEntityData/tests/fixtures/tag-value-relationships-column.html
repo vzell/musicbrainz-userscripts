@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Tag &ldquo;rock&rdquo; - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A tag-value overview page (/tag/rock), trimmed to four of the eleven
+        entity-kind sections plus one control group, built to reproduce the
+        "Relationships column missing on release-group/release/label/work
+        tables" bug: activeInjectedColumns used to be resolved exactly ONCE,
+        page-wide, from whichever entityFeatures key resolveEntityFeaturesFromH2()
+        picked at the top of startFetchingProcess() — and since this page's
+        real <h2> ("Entities tagged as X") never matches any entityFeatures
+        key, that always fell back to the FIRST declared key ('Areas', which
+        declares no injectedColumns), silently hiding the column on every
+        group including 'Release groups'/'Releases', which DO declare it.
+
+          Areas         (control — no injectedColumns; must get NO column)
+          Labels        (injectedColumns: ['Relationships'])
+          Release groups (injectedColumns: ['Relationships'])
+          Releases      (injectedColumns: ['Relationships'])
+          Works         (injectedColumns: ['Relationships'])
+
+        Mirrors tests/fixtures/tag-value-entity-column-leak.html's shape
+        (same pageType, same h3+ul native structure).
+    -->
+    <div class="fullwidth " id="page">
+        <div id="content">
+            <div class="tagheader">
+                <h1>Tag &ldquo;<a href="/tag/rock">rock</a>&rdquo;</h1>
+                <p class="subheader"><span class="prefix">~</span> Tag</p>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/tag/rock">Overview</a></li>
+                    <li><a href="/tag/rock/artist">Artists</a></li>
+                    <li><a href="/tag/rock/recording">Recordings</a></li>
+                </ul>
+            </div>
+            <h2>Entities tagged as &ldquo;rock&rdquo;</h2>
+            <p>4 entities found</p>
+
+            <h3>Areas</h3>
+            <ul>
+                <li><span class="flag flag-GB"><a href="/area/8a754a16-0027-3a29-b6d7-2b40ea0481ed"><bdi>United Kingdom</bdi></a></span></li>
+            </ul>
+
+            <h3>Labels</h3>
+            <ul>
+                <li><a href="/label/c595c289-47ce-4fba-b999-b87503a8db19"><bdi>Reprise Records</bdi></a></li>
+            </ul>
+
+            <h3>Release groups</h3>
+            <ul>
+                <li><a href="/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c"><bdi>Tougher Than the Rest</bdi></a> <span class="comment">(<bdi>by Bruce Springsteen</bdi>)</span></li>
+            </ul>
+
+            <h3>Releases</h3>
+            <ul>
+                <li><a href="/release/dd0080d5-6795-4f57-b1cc-a15737e3f0b1"><bdi>Born to Run</bdi></a> <span class="comment">(<bdi>by Bruce Springsteen</bdi>)</span></li>
+            </ul>
+
+            <h3>Works</h3>
+            <ul>
+                <li><a href="/work/745c079d-374e-4436-9448-da92dedef3ce"><bdi>Born to Run</bdi></a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

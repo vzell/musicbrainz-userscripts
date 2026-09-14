@@ -1202,8 +1202,8 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 
 • LOADED ON DEMAND on big listings — ▶🔗 / ▼🔗 in the column header.
   The column asks the Web Service about every DISTINCT release, release
-  group or work on the page, one request at a time with a mandatory one
-  second between them, so the cost is roughly one second per row: a
+  group, label or work on the page, one request at a time with a mandatory
+  one second between them, so the cost is roughly one second per row: a
   2 300-release artist page spends about 42 minutes trickling requests in
   the background.  So a table needing more than the "Relationships
   auto-collapse threshold" (⚙️ Settings, default 200 distinct entities)

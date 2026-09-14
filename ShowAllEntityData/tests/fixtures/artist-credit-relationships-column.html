@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Artist credit &ldquo;Bruce Springsteen &amp; The E Street Band&rdquo; - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A trimmed artist-credit overview page (/artist-credit/1488075), native
+        shape per applyListToTable's Structure F: <h2>Uses</h2> followed by
+        <h3>+<ul> pairs, one per entity kind. Reproduces the bug where
+        'artist-credit' was missing from renderGroupedTable()'s per-group
+        <thead> rebuild branch — every sub-table just cloned the single
+        shared templateHead (whichever group's extractors the fetch loop
+        left active last), so 'Recordings'' own Video/Event-* headers never
+        appeared and its MB-Name/Comment/Primary alias headers carried a
+        "Extracted from 'Release group'" tooltip regardless of which group
+        they belonged to. See debug/artist-credit.html and DEBUG-NOTES.md's
+        2026-09-14 Relationships-column entry.
+    -->
+    <div class="fullwidth" id="page">
+        <div id="content">
+            <h1>Artist credit &ldquo;Bruce Springsteen &amp; The E Street Band&rdquo;</h1>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/artist-credit/1488075">Overview</a></li>
+                </ul>
+            </div>
+            <h2>Artist list</h2>
+            <ul id="artist-credit-artists">
+                <li><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></li>
+            </ul>
+            <p>This artist credit is composed of the artists above, used together in the following entities:</p>
+            <h2>Uses</h2>
+
+            <h3>Release groups</h3>
+            <ul>
+                <li><a href="/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c"><bdi>Tougher Than the Rest</bdi></a></li>
+            </ul>
+
+            <h3>Releases</h3>
+            <ul>
+                <li><a href="/release/dd0080d5-6795-4f57-b1cc-a15737e3f0b1"><bdi>Born to Run</bdi></a></li>
+            </ul>
+
+            <h3>Recordings</h3>
+            <ul>
+                <li><a href="/recording/8d2338a2-4acc-4d99-b2a7-1151f428cab6"><bdi>Born to Run</bdi></a></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
