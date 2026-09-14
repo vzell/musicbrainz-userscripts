@@ -165,3 +165,7 @@ Also some of them are missing the "Show single-table"-button which renders the s
 
 See @debug/tag-rock.html for the raw HTML on the final rendered table
 
+* "Relationships" column is missing on e.g. URL https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+
+"Relationships" column is missing on e.g. URL https://musicbrainz.org/user/vzell/tag/back%20scan%20missing
+
