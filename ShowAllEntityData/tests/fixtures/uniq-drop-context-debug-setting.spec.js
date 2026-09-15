@@ -25,14 +25,19 @@ async function openDateDropAndCollectDebugLines(page, settingsOverride) {
     return lines;
 }
 
+// sa_enable_uniq_drop_context_debug is the SOLE on/off switch for these
+// debug lines — there is deliberately no "on, without column/table context"
+// mode. Off means zero "Uniq-drop col N" lines, even with the script-wide
+// "Enable debug logging" master switch on; on means every line carries
+// col="…" table="…", even with the master switch also on (still required —
+// Lib.debug() itself no-ops when it's off, covered by the last test below).
 test.describe('unique-values dropdown: sa_enable_uniq_drop_context_debug setting', () => {
-    test('defaults to off — debug lines carry no col=/table= context even with debug logging on', async ({ page }) => {
+    test('defaults to off — no "Uniq-drop" debug lines at all, even with the debug-logging master switch on', async ({ page }) => {
         const lines = await openDateDropAndCollectDebugLines(page, { sa_enable_debug_logging: true });
-        expect(lines.length).toBeGreaterThan(0);
-        expect(lines.some((l) => l.includes('col="Date"') || l.includes('table='))).toBe(false);
+        expect(lines.length).toBe(0);
     });
 
-    test('when enabled, adds the real column name and owning table/h2 name to the debug lines', async ({ page }) => {
+    test('when enabled, every debug line carries the real column name and owning table/h2 name', async ({ page }) => {
         const lines = await openDateDropAndCollectDebugLines(page, {
             sa_enable_debug_logging: true,
             sa_enable_uniq_drop_context_debug: true,
@@ -41,7 +46,7 @@ test.describe('unique-values dropdown: sa_enable_uniq_drop_context_debug setting
         expect(lines.every((l) => l.includes('col="Date"') && l.includes('table="Events"'))).toBe(true);
     });
 
-    test('setting alone (without debug logging) produces no debug output at all', async ({ page }) => {
+    test('setting alone, without the debug-logging master switch, produces no debug output at all', async ({ page }) => {
         const lines = await openDateDropAndCollectDebugLines(page, {
             sa_enable_debug_logging: false,
             sa_enable_uniq_drop_context_debug: true,
