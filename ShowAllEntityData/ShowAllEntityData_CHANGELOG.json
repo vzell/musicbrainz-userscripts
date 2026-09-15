@@ -1,5 +1,65 @@
 [
   {
+    "version": "9.99.1091",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Unique-values (📊) dropdown debug logging (see 9.99.1087/9.99.1089/9.99.1090): the 'Uniq-drop col N' debug lines from those fixes are now gated behind their own dedicated setting, 'Enable unique-values dropdown debug logging' (sa_enable_uniq_drop_context_debug, default off) — off means none of these lines appear at all, independent of every other channel the 'Enable debug logging' master switch controls; on means each line always carries the real column name and the owning table's name (page h2 in single-table mode, sub-table h3 in multi-table mode), with no 'on, without context' variant. Still requires 'Enable debug logging' to also be active."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1090",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown: replaced the per-item-count formula estimating the panel's needed height with a real measurement of its own rendered content (drop.scrollHeight). The formula assumed a flat +50px of section-header overhead regardless of how many distinct synBox sections actually rendered — measured live: a 'Date' column with 4 sections estimated 262px against a real 849px, capping the panel far below what the viewport had room for and forcing an unnecessary internal scrollbar (reported on 'Artist'/'Length'/'Recording date' columns). Since the panel's content is already fully built by the time this positioning code runs, scrollHeight can't drift from actual layout the way a formula can."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1089",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown: fixed the panel, when opening UPWARD (see 9.99.1087), sizing itself to fill ALL available space above the button instead of to what its own content actually needed — on a real release-tracks page this pushed a 13-value column's panel flush against the top of the page, dozens of rows away from the header it belonged to, whenever spaceAbove was generous (worsened by a user-raised sa_uniq_dropdown_visible_rows, which widens the cap that used to be the limiting factor). Now caps max-height to the content's own estimated height too, not just the cap and the available space, so the panel opens close to its button."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1088",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "artist-recordings: removed the native 'Showing all recordings (Show only standalone recordings / Show only videos)' paragraph — redundant with this script's own '⊚ All recordings'/'♫ Standalone'/'🎬 Video' toolbar buttons."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1087",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown: fixed the panel getting silently clipped past the bottom of the browser window when a column header sits low enough on screen that neither the space above nor below it can hold the panel's full natural height. The old 'flip upward' logic only fired when the WHOLE panel fit above the button; otherwise it fell through to opening downward with no clamp at all, and since the panel is position:fixed on document.body, the overflow was genuinely invisible rather than reachable by scrolling. Now clamps the panel's max-height to whichever side (above/below) actually has more room, so its existing internal scrollbar takes over instead."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1086",
     "date": "2026-09-15",
     "sections": [
