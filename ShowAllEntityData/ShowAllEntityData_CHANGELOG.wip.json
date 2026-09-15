@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "WIP",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown: fixed the panel getting silently clipped past the bottom of the browser window when a column header sits low enough on screen that neither the space above nor below it can hold the panel's full natural height. The old 'flip upward' logic only fired when the WHOLE panel fit above the button; otherwise it fell through to opening downward with no clamp at all, and since the panel is position:fixed on document.body, the overflow was genuinely invisible rather than reachable by scrolling. Now clamps the panel's max-height to whichever side (above/below) actually has more room, so its existing internal scrollbar takes over instead."
+        ]
+      }
+    ]
+  }
+]

@@ -58003,13 +58003,13 @@ a { color: #1565c0; }`;
         // Visible-rows cap: user-configurable via sa_uniq_dropdown_visible_rows
         // (default 8 — the same effective cap the dropdown's original
         // hardcoded 320px gave: 8 rows * 29px/row + 88px overhead (50 syn
-        // header/divider + 38 qf bar) = 320). Set as an inline max-height,
-        // which always wins over the CSS fallback of that same 320px
-        // default on #mb-col-uniq-dropdown, so raising it needs no
-        // stylesheet change.
+        // header/divider + 38 qf bar) = 320). This is only the UPPER bound —
+        // the actual applied max-height is clamped below to whichever side
+        // of the button (above/below) has more room, so it always wins over
+        // the CSS fallback of that same 320px default on #mb-col-uniq-dropdown
+        // without needing a stylesheet change.
         const _uniqVisibleRows = Math.max(1, Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8);
         const maxDropH = _uniqVisibleRows * 29 + 88;
-        drop.style.maxHeight = `${maxDropH}px`;
 
         const bRect = btn.getBoundingClientRect();
         const vw    = window.innerWidth;
@@ -58029,12 +58029,33 @@ a { color: #1565c0; }`;
         const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
         const dropW = drop.offsetWidth || 200;
 
-        let top  = bRect.bottom + 3;
-        let left = bRect.left;
+        // Pick whichever side has more room and CLAMP the panel's height to
+        // that side's actual available space, rather than only flipping when
+        // the full natural height fits on one side. A button sitting low on
+        // a short page (few rows below it) can have LESS than dropH free in
+        // BOTH directions — the old all-or-nothing gate then fell through to
+        // "open downward" unconditionally with no clamp, and since the panel
+        // is position:fixed on document.body, anything past window.innerHeight
+        // was genuinely clipped, not just off-screen-but-scrollable. Sizing
+        // max-height to the available space instead makes the panel's own
+        // overflow-y:auto scroll internally when content still doesn't fit.
+        const spaceBelow = vh - bRect.bottom - 6;
+        const spaceAbove = bRect.top - 6;
 
-        if (top + dropH > vh - 6 && bRect.top > dropH) {
-            top = bRect.top - dropH - 3;
+        let top, effectiveMaxH;
+        if (dropH <= spaceBelow || spaceBelow >= spaceAbove) {
+            // Open downward — also the fallback when neither side has full
+            // room, matching the previous default direction.
+            top = bRect.bottom + 3;
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceBelow - 3));
+        } else {
+            // Open upward.
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceAbove - 3));
+            top = bRect.top - effectiveMaxH - 3;
         }
+        drop.style.maxHeight = `${effectiveMaxH}px`;
+
+        let left = bRect.left;
         if (left + dropW > vw - 6) {
             left = Math.max(6, vw - dropW - 6);
         }
