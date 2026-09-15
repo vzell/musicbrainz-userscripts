@@ -16130,7 +16130,8 @@
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
                 addCAA: 'Release groups',
                 extractMainColumn: 'Name',
-                stickyColumn: 'Name'
+                stickyColumn: 'Name',
+                removeSelector: '#content > p' // native "Showing all recordings (Show only standalone recordings / Show only videos)" — redundant with this script's own toolbar buttons
             },
             tableMode: 'single'
         },

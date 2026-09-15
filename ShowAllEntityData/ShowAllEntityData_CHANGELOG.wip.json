@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "WIP",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "artist-recordings: removed the native 'Showing all recordings (Show only standalone recordings / Show only videos)' paragraph — redundant with this script's own '⊚ All recordings'/'♫ Standalone'/'🎬 Video' toolbar buttons."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "WIP",
     "sections": [
