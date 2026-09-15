@@ -1257,6 +1257,17 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
   so filters, sorting, the 📊 dropdown, exports and Save to Disk never see
   them.  Rows loaded by hand survive filtering and sorting; pressing ▼🔗
   empties them along with everything else.
+• BULK FETCHING — on an artist's releases, release groups and works, a label's
+  releases, a release group's or recording's releases, and an area's labels,
+  the column asks for up to 100 rows per request instead of one per row: a
+  2 300-release artist page needs about 24 requests (under a minute when the
+  Web Service is not busy) instead of about 42 minutes.  Rows the bulk answer
+  does not include — a "Various Artists" view, for example — are still looked
+  up one by one, and bulk fetching stops by itself as soon as one-by-one would
+  be cheaper.  Bulk answers go into the same cache as single ones, so other
+  pages listing the same releases get them for free.  Clicking a single cell
+  still loads just that row.  "Relationships: fetch whole pages at once where
+  MusicBrainz allows it" in ⚙️ Settings (on by default) switches it off.
 • Rich filter-aware tooltip — when a filter is active and it matches content
   in a Relationships cell, hovering an icon in that cell opens a rich HTML
   tooltip showing the full URL.  The tooltip is suppressed when no active
@@ -1737,6 +1748,9 @@ labels and descriptions.  Major setting groups:
       ▶🔗 in its column header
     — Show a load-state glyph in each cell (default ON) — also switches
       click-to-load a single row on or off
+    — Fetch whole pages at once where MusicBrainz allows it (default ON) —
+      up to 100 rows per request on artist, label, release-group, recording
+      and area listings
     — Related settings for entity types and tooltips
 
 • ↔️ COLUMN RESIZE FEATURE

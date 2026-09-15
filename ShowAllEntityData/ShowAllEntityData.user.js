@@ -1366,6 +1366,19 @@
                          + 'click-to-load off.'
         },
 
+        sa_rel_browse_batch_enable: {
+            label: 'Relationships: fetch whole pages at once where MusicBrainz allows it',
+            type: 'checkbox',
+            default: true,
+            description: 'On an artist\'s releases, release groups or works, a label\'s releases, a release '
+                         + 'group\'s or recording\'s releases, and an area\'s labels, the Relationships '
+                         + 'column asks the Web Service for up to 100 entities per request instead of one '
+                         + 'per row — about 24 requests instead of 2 300 for a large discography. Rows the '
+                         + 'bulk answer does not cover are still looked up one by one, and bulk fetching '
+                         + 'stops on its own when one-by-one would be cheaper. Disable to always look rows '
+                         + 'up one at a time.'
+        },
+
         sa_rels_idb_enable: {
             label: 'Enable IndexedDB Relationships WS2 data cache',
             type: 'checkbox',
@@ -15466,7 +15479,11 @@
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'B-DD', align: 'R'}, {sourceColumn: 'B-MM', align: 'R'}, {sourceColumn: 'B-YYYY', align: 'C'}, {sourceColumn: 'E-DD', align: 'R'}, {sourceColumn: 'E-MM', align: 'R'}, {sourceColumn: 'E-YYYY', align: 'C'} ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Label',
-                stickyColumn: 'Label'
+                stickyColumn: 'Label',
+                // Relationships bulk source, see _relBrowseSource(). Not
+                // declared for area-releases: browsing releases BY area returns a
+                // different set than that page lists (0 for New Jersey).
+                relBrowse: { entity: 'label', by: 'area' }
             },
             tableMode: 'single'
         },
@@ -15936,6 +15953,8 @@
                 injectedColumns: [ 'Relationships' ],
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'CAA' ],
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', 'Catalog#', 'Barcode' ],
+                // Relationships bulk source, see _relBrowseSource().
+                relBrowse: { entity: 'release', by: 'label' },
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
                 stickyColumn: 'Release'
@@ -16090,6 +16109,11 @@
                 ],
                 injectedColumns: [ 'Relationships' ],
                 integerColumns: [ {sourceColumn: 'Year', align: 'C'}, {sourceColumn: 'Releases', align: 'R'} ],
+                // Relationships bulk source, see _relBrowseSource(). The "Various
+                // Artists RGs" view lists release groups the artist is not
+                // credited on, which this browse cannot return — the cost rule's
+                // zero-match stop hands those rows to per-row lookups.
+                relBrowse: { entity: 'release-group', by: 'artist' },
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', ['Year', '(', 'Releases', ')'] ],
                 addCAA: 'Title',
@@ -16134,7 +16158,10 @@
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', ['Label', '-', 'Catalog#'], 'Barcode' ],
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
-                stickyColumn: 'Release'
+                stickyColumn: 'Release',
+                // Relationships bulk source, see _relBrowseSource(). Probed:
+                // scripts/probe-rel-batch-endpoints.py (tests/MEASUREMENTS.org).
+                relBrowse: { entity: 'release', by: 'artist' }
             },
             tableMode: 'single'
         },
@@ -16174,6 +16201,10 @@
             buttons: [ { label: 'Show all Works for Artist' } ],
             features: {
                 collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Lyrics languages', 'Attributes' ],
+                // Relationships bulk source, see _relBrowseSource(). `match` also
+                // accepts non-artist /works paths; the resolver only uses this on
+                // an /artist/<mbid> URL.
+                relBrowse: { entity: 'work', by: 'artist' },
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Work',
                 stickyColumn: 'Work'
@@ -16209,7 +16240,10 @@
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', ['Label', '-', 'Catalog#'], 'Barcode' ],
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
-                stickyColumn: 'Release'
+                stickyColumn: 'Release',
+                // Relationships bulk source, see _relBrowseSource(). A release
+                // group's releases usually fit one browse page.
+                relBrowse: { entity: 'release', by: 'release-group' }
             },
             tableMode: 'multi',
             non_paginated: false
@@ -16352,6 +16386,8 @@
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'CAA' ],
                 tooltipColumns: [ 'Release title', 'italic:Comment', 'Release Artist', 'Release group type', '---', ['#', 'Title', '(', 'Length', ')'], 'Track artist', 'Country/Date', ['Label', '-', 'Catalog#'] ],
                 addCAA: 'Release title',
+                // Relationships bulk source, see _relBrowseSource().
+                relBrowse: { entity: 'release', by: 'recording' },
                 extractMainColumn: 'Release title',
                 stickyColumn: 'Title'
             },
@@ -64396,6 +64432,109 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Entities per browse page — the Web Service's maximum `limit`, confirmed
+     * honoured with `inc=…-rels` by scripts/probe-rel-batch-endpoints.py.
+     */
+    const _REL_BROWSE_LIMIT = 100;
+
+    /**
+     * The WS/2 browse source this page offers for one table entity type, or
+     * `null`.
+     *
+     * Declared per pageType as `features.relBrowse: { entity, by }` — e.g. an
+     * artist's releases are `/ws/2/release?artist=<mbid>`. Only mappings that
+     * passed scripts/probe-rel-batch-endpoints.py are declared: browse returned
+     * the same `relations` a lookup does for every sampled entity. Deliberately
+     * absent: area-releases (browsing releases by area is a different set from
+     * the one that page lists) and collections (unprobed).
+     *
+     * Three guards, each needed:
+     *   - `entity` must equal the TABLE's entity type — a pageType can hold
+     *     sub-tables of another kind, and a browse answer is cached under the
+     *     lookup key, so a mismatch would poison the cache;
+     *   - the URL's own entity must be `by` — some `match()` functions are
+     *     looser than the page they are named for (artist-works matches any
+     *     `/works` path);
+     *   - `sa_rel_browse_batch_enable` must not be off.
+     *
+     * @param   {string} entityType  The table's WS/2 entity type.
+     * @returns {?{entity: string, by: string, byMbid: string}}
+     */
+    function _relBrowseSource(entityType) {
+        if (Lib.settings.sa_rel_browse_batch_enable === false) return null;
+        const decl = activeDefinition && activeDefinition.features && activeDefinition.features.relBrowse;
+        if (!decl || decl.entity !== entityType) return null;
+        const m = window.location.pathname.match(
+            /^\/(artist|label|release-group|recording|area)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        if (!m || m[1] !== decl.by) return null;
+        return { entity: decl.entity, by: decl.by, byMbid: m[2] };
+    }
+
+    /**
+     * Fetches one browse page for `src`, on the shared rate gate, with the same
+     * retry policy as a lookup.
+     *
+     * The `inc` set is `_relIncOptionsForEntityType(src.entity)` — exactly the
+     * lookup's, and that parity is load-bearing: every entity on the page is
+     * cached under the LOOKUP's key, so a thinner `inc` would be served as a
+     * complete answer for the whole cache TTL.
+     *
+     * Never rejects.
+     *
+     * @param   {{entity: string, by: string, byMbid: string}} src
+     * @param   {number} offset
+     * @returns {Promise<{ok: boolean, items: Array<Object>, total: ?number, detail: string}>}
+     */
+    async function _relBrowseFetchPage(src, offset) {
+        const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
+        const inc = _relIncOptionsForEntityType(src.entity).join('+');
+        const url = `/ws/2/${src.entity}?${src.by}=${src.byMbid}&inc=${inc}`
+                  + `&limit=${_REL_BROWSE_LIMIT}&offset=${offset}&fmt=json`;
+        await _relAwaitRateSlot();
+        _dbg(`_relBrowseFetchPage: ${url}`);
+        const res = await _ws2GetJson(url, {
+            tries: _REL_WS2_TRIES,
+            beforeRetry: async attempt => {
+                await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+                await _relAwaitRateSlot();
+            },
+            dbg: _dbg,
+            label: `_relBrowseFetchPage ${src.entity}?${src.by}`,
+        });
+        const items = res.ok && res.data ? res.data[`${src.entity}s`] : null;
+        if (!Array.isArray(items)) {
+            return { ok: false, items: [], total: null, detail: res.detail || 'unexpected response shape' };
+        }
+        const total = res.data[`${src.entity}-count`];
+        return { ok: true, items, total: typeof total === 'number' ? total : null, detail: '' };
+    }
+
+    /**
+     * Writes one browse page's entities to the `rel-ws2` store in ONE
+     * transaction, under each entity's lookup key.
+     *
+     * Deliberately not a loop over `_relIdbPut()`, which opens a transaction per
+     * call — a hundred per page. Same record shape (`{ckey, data, ts}`), so
+     * `_relIdbGet()`, the TTL sweep, retry eviction and the Statistics counts
+     * read it exactly like a lookup's. Mirrors `_msIdbPutLengths()`.
+     *
+     * Never rejects: the cache is an optimisation.
+     *
+     * @param   {Array<[string, Object]>} entries  `[ckey, data]` pairs.
+     * @returns {void}
+     */
+    function _relIdbPutMany(entries) {
+        if (!Lib.settings.sa_rels_idb_enable || !entries.length) return;
+        _artOpenIdb().then(db => {
+            const tx = db.transaction('rel-ws2', 'readwrite');
+            const store = tx.objectStore('rel-ws2');
+            const ts = Date.now();
+            entries.forEach(([ckey, data]) => store.put({ ckey, data, ts }));
+        }).catch(() => {});
+    }
+
+    /**
      * Rebuilds the REL_* lookup maps from user-configured GM storage tables.
      * Falls back to the hardcoded default values when a table is empty.
      * Called once at startup and before each initRelationshipsColumn() run so
@@ -66620,8 +66759,120 @@ a { color: #1565c0; }`;
                     && !td.dataset.relLoading && _relCellWritable(td));
         }
 
+        /**
+         * Phase 1.5 — answers as many of `missMbids` as a browse source can,
+         * cheaper than one lookup each (PERFORMANCE.org Step 36).
+         *
+         * Grouped per entity type, since one page can hold several, and used
+         * only where `_relBrowseSource()` finds a declared, matching source.
+         *
+         * ── The cost rule ───────────────────────────────────────────────────
+         *
+         * A browse page costs one request whatever it returns; a lookup costs
+         * one request per row. So:
+         *   - fewer than 2 rows pending → no browsing (a page can only tie);
+         *   - page 1 is always fetched otherwise — its `*-count` is what says
+         *     how big the catalogue is, so the worst case is ONE request more
+         *     than lookups alone;
+         *   - stop when a page matched NOTHING still pending (the zero-match
+         *     rule): those rows are not in this browse set at all — a
+         *     "Various Artists" view is the real case;
+         *   - stop when the pages left are no fewer than the rows still pending
+         *     (the page-count rule): a 5 000-release catalogue is not browsed to
+         *     find three rows;
+         *   - stop on the last page, and on a failed page.
+         * Whatever is still pending afterwards falls through to the per-MBID
+         * steps below, which skip — at no cost, via `_relQueueStillWants()` —
+         * every row a page already answered.
+         *
+         * Every entity on a page is cached (L1, and IndexedDB in one
+         * transaction) under its LOOKUP key, including ones not on this page:
+         * the data is identical, and another pageType listing them gets it free.
+         * An L1 entry already present (an in-flight lookup, say) is left alone.
+         *
+         * Matched rows are written through `_populateCells()`, so the
+         * collapsed-table guard (`_relCellWritable()`) holds for browse answers
+         * exactly as for lookups.
+         *
+         * Never rejects.
+         *
+         * @param   {string[]} missMbids  Phase 1's IndexedDB misses.
+         * @returns {Promise<{requests: number, rows: number}>}
+         */
+        async function _relBrowsePhase(missMbids) {
+            const out = { requests: 0, rows: 0 };
+            const byType = new Map();
+            missMbids.forEach(mbid => {
+                const et = mbidEntityType.get(mbid) || entityType;
+                if (!byType.has(et)) byType.set(et, []);
+                byType.get(et).push(mbid);
+            });
+            for (const [et, mbids] of byType) {
+                const src = _relBrowseSource(et);
+                if (!src) continue;
+                let offset = 0;
+                let total = null;
+                for (;;) {
+                    const pending = mbids.filter(_relQueueStillWants);
+                    if (pending.length < 2) break;
+                    if (total !== null) {
+                        if (offset >= total) break;
+                        const pagesLeft = Math.ceil((total - offset) / _REL_BROWSE_LIMIT);
+                        if (pagesLeft >= pending.length) {
+                            _relDbg(`browse ${et}?${src.by}: stop — ${pagesLeft} page(s) left for ` +
+                                `${pending.length} row(s), lookups are cheaper`);
+                            break;
+                        }
+                    }
+                    const page = await _relBrowseFetchPage(src, offset);
+                    out.requests++;
+                    if (!page.ok) {
+                        _relDbg(`browse ${et}?${src.by}: page at offset ${offset} failed ` +
+                            `(${page.detail}) — per-row lookups take over`);
+                        break;
+                    }
+                    total = page.total !== null ? page.total : offset + page.items.length;
+                    const pendingSet = new Set(pending);
+                    const toStore = [];
+                    let matched = 0;
+                    for (const ent of page.items) {
+                        if (!ent || !ent.id) continue;
+                        const data = { relations: ent.relations || [] };
+                        const ckey = `${et}:${ent.id}`;
+                        toStore.push([ckey, data]);
+                        if (!_relWs2Cache.has(ckey)) {
+                            _relWs2Cache.set(ckey, Promise.resolve({ outcome: 'ok', data, detail: '' }));
+                        }
+                        if (pendingSet.has(ent.id) && _relQueueStillWants(ent.id)) {
+                            matched++;
+                            await _populateCells(ent.id, data);
+                        }
+                    }
+                    _relIdbPutMany(toStore);
+                    out.rows += matched;
+                    _relDbg(`browse ${et}?${src.by}: offset ${offset}, ${page.items.length} entities, ` +
+                        `${matched} matched, total ${total}`);
+                    offset += _REL_BROWSE_LIMIT;
+                    if (matched === 0) {
+                        _relDbg(`browse ${et}?${src.by}: stop — the page matched no pending row`);
+                        break;
+                    }
+                    if (page.items.length < _REL_BROWSE_LIMIT) break;
+                }
+            }
+            return out;
+        }
+
+        // Phase 1.5: browse pages, where this page has a browse source. It is
+        // the FIRST link of the same fire-and-forget chain, so the per-MBID
+        // steps below run after it and skip every row it answered.
+        let _p15Requests = 0, _p15Rows = 0;
+        let queue = _relBrowsePhase(_missMbids).then(r => {
+            _p15Requests = r.requests;
+            _p15Rows = r.rows;
+        });
+
         // Phase 2: throttled network queue for misses only
-        let queue = Promise.resolve();
         let _p2CacheHits = 0, _p2NetFetches = 0;
         let _p2Skipped = 0, _p2Failed = 0;
         _missMbids.forEach(mbid => {
@@ -66697,6 +66948,8 @@ a { color: #1565c0; }`;
                 cache:  _p2CacheHits,
                 net:    _p2NetFetches,
                 failed: _p2Failed,
+                browseRows:     _p15Rows,
+                browseRequests: _p15Requests,
             };
             if (_p2Failed) {
                 _relDbg(`initRelationshipsColumn: ${_p2Failed} request(s) failed after retries — ` +
@@ -66729,6 +66982,10 @@ a { color: #1565c0; }`;
                 { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _tierInfo.cache },
                 { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _tierInfo.net   },
             ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+             .concat(_tierInfo.browseRequests
+                 ? [`📚 browse: ${_tierInfo.browseRows} row(s) in ${_tierInfo.browseRequests} `
+                    + 'bulk request(s), up to 100 entities each']
+                 : [])
              .concat(_tierInfo.failed
                  ? [`⚠️ failed: ${_tierInfo.failed} — still failing after retries; `
                     + 'collapse + expand the column, or use 🔗⟳, to retry']
@@ -66753,8 +67010,11 @@ a { color: #1565c0; }`;
      * @param {number} cellCount   Total number of .mb-rel-cell elements processed.
      * @param {number} mbidCount   Number of unique MBIDs fetched.
      * @param {number} elapsedMs   Elapsed time since initRelationshipsColumn() started.
-     * @param {{idb:number, cache:number, net:number, failed?:number}} [tierInfo]  Per-tier fetch
-     *   counts; `failed` = requests that still failed after every retry.
+     * @param {{idb:number, cache:number, net:number, failed?:number,
+     *          browseRows?:number, browseRequests?:number}} [tierInfo]  Per-tier fetch
+     *   counts; `failed` = requests that still failed after every retry;
+     *   `browseRows`/`browseRequests` = rows answered by bulk browse pages, and
+     *   how many pages that took.
      */
     function _showRelCompletionToast(cellCount, mbidCount, elapsedMs, tierInfo) {
         const _fmtMs = ms => {
@@ -66770,6 +67030,10 @@ a { color: #1565c0; }`;
             { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _ti.cache || 0 },
             { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _ti.net   || 0 },
         ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+         .concat(_ti.browseRequests
+             ? [`📚 browse: ${_ti.browseRows} row(s) in ${_ti.browseRequests} `
+                + 'bulk request(s), up to 100 entities each']
+             : [])
          .concat(_ti.failed
              ? [`⚠️ failed: ${_ti.failed} — still failing after retries; `
                 + 'collapse + expand the column, or use 🔗⟳, to retry']
@@ -66789,6 +67053,7 @@ a { color: #1565c0; }`;
         if (_ti.idb)    _tierParts.push(`📦 IDB: ${_ti.idb}`);
         if (_ti.cache)  _tierParts.push(`💾 cache: ${_ti.cache}`);
         if (_ti.net)    _tierParts.push(`🌐 net: ${_ti.net}`);
+        if (_ti.browseRequests) _tierParts.push(`📚 browse: ${_ti.browseRows} in ${_ti.browseRequests} req`);
         if (_ti.failed) _tierParts.push(`⚠️ failed: ${_ti.failed}`);
         const lines = [
             _ti.failed

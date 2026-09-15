@@ -1,0 +1,184 @@
+[
+  {
+    "name": "no browse at all (pre-Step-36): one-request test",
+    "why": "An early return in the browse phase is exactly the code before this feature: every row is looked up one by one.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "fetches it in ONE browse request",
+    "expect": "fail"
+  },
+  {
+    "name": "no browse at all (pre-Step-36): partial-coverage test",
+    "why": "Same early return; the partial-coverage test must not be satisfiable by lookups alone.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "rows the browse page does not contain",
+    "expect": "fail"
+  },
+  {
+    "name": "no browse at all (pre-Step-36): zero-match test",
+    "why": "Same early return; the zero-match test asserts exactly one browse request was made.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "the zero-match rule",
+    "expect": "fail"
+  },
+  {
+    "name": "no browse at all (pre-Step-36): page-count test",
+    "why": "Same early return; the page-count test asserts exactly one browse request was made.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "the page-count rule",
+    "expect": "fail"
+  },
+  {
+    "name": "no browse at all (pre-Step-36): cache test",
+    "why": "Same early return; without its browse-count assertion this test would pass on lookups, which fill IndexedDB too.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "cached under the lookup key",
+    "expect": "fail"
+  },
+  {
+    "name": "no browse at all (pre-Step-36): failing-page test",
+    "why": "Same early return; the failing-page test asserts the browse page was retried.",
+    "edits": [
+      {
+        "find": "            const out = { requests: 0, rows: 0 };\n            const byType = new Map();",
+        "replace": "            const out = { requests: 0, rows: 0 };\n            return out;\n            const byType = new Map();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "keeps failing",
+    "expect": "fail"
+  },
+  {
+    "name": "cost rule: no zero-match stop",
+    "why": "A page that matched nothing no longer ends browsing, so a 300-entity catalogue is paged through for rows it does not contain.",
+    "edits": [
+      {
+        "find": "                    if (matched === 0) {\n                        _relDbg(`browse ${et}?${src.by}: stop — the page matched no pending row`);\n                        break;\n                    }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "the zero-match rule",
+    "expect": "fail"
+  },
+  {
+    "name": "cost rule: no page-count stop",
+    "why": "A 5 000-release catalogue is paged on although 3 lookups would answer the remaining rows.",
+    "edits": [
+      {
+        "find": "                        if (pagesLeft >= pending.length) {",
+        "replace": "                        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "the page-count rule",
+    "expect": "fail"
+  },
+  {
+    "name": "cost rule: a single pending row is browsed",
+    "why": "Promotion's lone row at render issues a browse page instead of one lookup, which can only tie at best.",
+    "edits": [
+      {
+        "find": "                    if (pending.length < 2) break;",
+        "replace": "                    if (pending.length < 1) break;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "fetches it in ONE browse request",
+    "expect": "fail"
+  },
+  {
+    "name": "kill switch ignored",
+    "why": "sa_rel_browse_batch_enable: false no longer prevents browse requests.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_rel_browse_batch_enable === false) return null;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "sa_rel_browse_batch_enable off",
+    "expect": "fail"
+  },
+  {
+    "name": "inc: wrong relationship set",
+    "why": "The browse request asks for a different inc set than the lookup, which would cache thinner records under the lookup key.",
+    "edits": [
+      {
+        "find": "        const inc = _relIncOptionsForEntityType(src.entity).join('+');",
+        "replace": "        const inc = 'release-rels';"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "fetches it in ONE browse request",
+    "expect": "fail"
+  },
+  {
+    "name": "inc: hard-coded url-rels (gap)",
+    "why": "KNOWN GAP: the spec only exercises the release mapping, whose lookup inc set IS url-rels alone, so it cannot see a hard-coded url-rels that would drop release-group-rels/label-rels/artist-rels on the other mappings. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "        const inc = _relIncOptionsForEntityType(src.entity).join('+');",
+        "replace": "        const inc = 'url-rels';"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "fetches it in ONE browse request",
+    "expect": "pass"
+  },
+  {
+    "name": "cache: browse page not written to IndexedDB",
+    "why": "A fresh page in the same context finds nothing under the lookup key and has to fetch again.",
+    "edits": [
+      {
+        "find": "                    _relIdbPutMany(toStore);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "cached under the lookup key",
+    "expect": "fail"
+  },
+  {
+    "name": "cache: browse answers not put in L1 (overlap)",
+    "why": "KNOWN OVERLAP: on re-expand, Phase 1 reads the same answers back from IndexedDB, so no request is made and the spec cannot see the missing L1 entry. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "                        if (!_relWs2Cache.has(ckey)) {\n                            _relWs2Cache.set(ckey, Promise.resolve({ outcome: 'ok', data, detail: '' }));\n                        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "cached under the lookup key",
+    "expect": "pass"
+  }
+]

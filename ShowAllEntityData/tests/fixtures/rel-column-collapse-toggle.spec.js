@@ -79,7 +79,15 @@ async function loadRelPage(page, { url, shell, showAllLabel, urlGlob, settings, 
         url,
         fixtureFile: shell,
         testMode: true,
-        settingsOverride: { sa_enable_relationships_column: true, ...(settings || {}) },
+        // The browse bulk source is switched off: this file's guarantees are
+        // counted in per-entity LOOKUPS, and on the releasegroup-releases shell
+        // one browse page would answer a whole sub-table. Browse has its own
+        // spec, rel-column-browse-batch.spec.js.
+        settingsOverride: {
+            sa_enable_relationships_column: true,
+            sa_rel_browse_batch_enable: false,
+            ...(settings || {}),
+        },
     });
 
     await page.route('**/ws/2/**', (route) => {

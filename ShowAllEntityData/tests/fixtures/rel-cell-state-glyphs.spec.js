@@ -85,7 +85,13 @@ async function loadRelPage(page, { url, shell, showAllLabel, urlGlob, settings, 
         url,
         fixtureFile: shell,
         testMode: true,
-        settingsOverride: { sa_enable_relationships_column: true, ...(settings || {}) },
+        // Browse bulk source off: these guarantees are counted in per-row
+        // lookups. Browse has its own spec, rel-column-browse-batch.spec.js.
+        settingsOverride: {
+            sa_enable_relationships_column: true,
+            sa_rel_browse_batch_enable: false,
+            ...(settings || {}),
+        },
     });
     await page.route('**/ws/2/**', async (route) => {
         const reqUrl = route.request().url();
@@ -418,6 +424,7 @@ test.describe('Relationships column: per-row load-state glyphs and click-to-load
                     sa_enable_relationships_column: true,
                     sa_rel_collapse_threshold: 3,
                     sa_enable_show_single_table_btn: true,
+                    sa_rel_browse_batch_enable: false,
                 },
             });
             await page.click(`button[data-label="${RG.showAllLabel}"]`);

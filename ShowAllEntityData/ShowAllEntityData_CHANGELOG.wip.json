@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Relationships column: on an artist's releases, release groups and works, a label's releases, a release group's and a recording's releases, and an area's labels, the column now asks MusicBrainz's Web Service for up to 100 rows per request instead of one request per row — about 24 requests instead of 2 300 for a large discography, i.e. under a minute instead of about 42 minutes when the service is not busy. The bulk answers carry the same relationships as per-row lookups (checked on 51 entities across these 7 page types) and go into the same cache, so other pages listing the same entities get them for free. Rows a bulk answer does not contain, such as a Various Artists view, are still looked up one by one, and bulk fetching stops by itself as soon as one-by-one would be cheaper. The completion toast says how many rows came from bulk requests.",
+          "New setting 'Relationships: fetch whole pages at once where MusicBrainz allows it' (sa_rel_browse_batch_enable, default on) switches bulk fetching off."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-09-15",
     "sections": [

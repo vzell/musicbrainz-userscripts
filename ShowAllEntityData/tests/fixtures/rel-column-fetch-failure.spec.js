@@ -211,6 +211,9 @@ test.describe('Relationships column: a failed WS/2 request is not "no relationsh
                 settingsOverride: {
                     sa_enable_relationships_column: true,
                     sa_rel_collapse_threshold: 3,
+                    // Per-row lookups are what this test counts; browse has its
+                    // own spec, rel-column-browse-batch.spec.js.
+                    sa_rel_browse_batch_enable: false,
                 },
             });
             await page.route('**/ws/2/**', (route) => {
