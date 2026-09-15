@@ -11145,3 +11145,82 @@ covers both the header-cloning bug and the Relationships column),
 from the real "wrote work" structure above). All three mutation-checked the
 same way as the 2026-09-14 entry's specs — observed failing before each
 respective fix, passing after.
+
+## 2026-09-15 — release listings looked every row up as a LABEL: no Relationships icons at all (hotfix, branch fix/rel-release-listings-label-entity)
+
+Not reported by a user. Found while building the Relationships browse source
+(PERFORMANCE.org Step 36, branch `rel-column-batch-and-cell-states`): its
+browse-resolver refused every releasegroup-releases table because the table
+claimed to be a LABEL table, and the spec saw zero browse requests.
+
+**Evidence.** The failing test's Playwright trace held seven requests of the
+form `/ws/2/label/001af5ba-d4a5-4677-a3ec-601250031fb6?inc=url-rels+label-rels`.
+In `tests/snapshots/releasegroup-releases/raw.html` that MBID is
+`href="/release/001af5ba-…"` — a release. The page's 7 rows carry 7 `/label/`
+links (the "Label" column) and 8 `/release/` links. The only `/release-group/`
+links in the raw page sit in MusicBrainz's own relationship details table, not
+in the release rows.
+
+**Root cause.** `442dd8c` added a work/label sniff to
+`_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` for
+artist-relationships' work- and label-targeted sub-tables, and placed it BEFORE
+the release/release-group scan. A release listing's own record-label link
+matched it on the first row, so the table was stamped
+`mbRelEntityType = 'label'` and every release was looked up as a label. Live,
+each lookup is a 404, which the column renders as "no relationships": no icons
+at all. The earlier `!activeDefinition.entityFeatures` gate fixed exactly this
+for series-releases (caught by `rel-ws2-seed-warm-cache.spec.js`) but left every
+release listing WITHOUT an entityFeatures map exposed — artist-releases,
+releasegroup-releases, recording-releases and the rest.
+
+**Shipped in 9.99.1086 through 9.99.1091**, verified by ancestry rather than log
+order: `git merge-base --is-ancestor 442dd8c` holds for the 9.99.1086 and
+9.99.1091 folds and fails for 9.99.1084.
+
+**Why no test caught it.** Every Relationships spec routes `**/ws/2/**` to a
+canned answer carrying a relationship, whatever URL was asked. A label lookup
+"found" icons exactly like a release lookup, so the column looked healthy. The
+lesson is the same "proves something adjacent" trap CLAUDE.md warns about: the
+specs pinned "icons appear", never "the right entity is asked for" — except the
+tag-value/user-ratings/artist-credit/report specs, which do assert the entity
+segment but on pages that never had a Label column.
+
+**Fix.** The release/release-group scan now runs first (after the empty-tbody
+guard, which the sniff could never have matched through anyway), and the
+work/label sniff only runs when no release link exists. A row that links a
+release is a release row, whatever else it links. The "wrote work" fixture
+(`tests/fixtures/artist-relationships-work-column.html`) has 0 release links
+and 1 work link, so the case the sniff exists for is unchanged.
+
+**Regression spec** `tests/fixtures/rel-column-release-listing-entity.spec.js`
+asserts the REQUEST, not the icons: both sub-tables stamped `release`, every
+lookup `/ws/2/release/<mbid>`, none `/ws/2/label/`, and each looked-up MBID one
+of the page's own releases. It failed on unmodified `main` with stamps
+`["label", "label"]`. Reverting the fix restores exactly that pre-fix code, so
+that run is the mutation check.
+
+Done in a git worktree off `main`, so the in-progress Step 36 branch's
+uncommitted work was never stashed or disturbed.
+
+**One red test in the pre-merge suite, bisected rather than waved through.**
+The full fixture suite on this branch was 254/255: `picard-cells-survive-rerender.spec.js`'s
+"a global-filter keystroke does not empty the Picard column" timed out in a
+`page.waitForFunction` (its filter-settle waits). It runs on the SAME
+releasegroup-releases shell this fix touches, so it was A/B'd on `vzell-lap`,
+2026-09-15 evening UTC, running that one test with `--workers=1
+--repeat-each` on the userscript stashed back to `main` and on the fix:
+
+| Code        | Runs | Failed |
+|-------------+------+--------|
+| `main`      |   18 |      2 |
+| this fix    |   22 |      4 |
+
+The same timeout on unfixed `main`, at a comparable rate. The code rules the fix
+out entirely, too: that spec loads a disk fixture through `loadUserscriptPage()`
+with `fixtureFile`, so `FIXTURE_SETTINGS_OVERRIDE` forces
+`sa_enable_relationships_column` off; the disk-load path rebuilds
+`activeInjectedColumns` through `buildActiveInjectedColumns()`, which returns
+`[]` with that setting off; and `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`
+returns on its `!activeInjectedColumns.length` check, before the reordered
+block, in both versions. It is the spec's own documented settle flake, not a
+regression.

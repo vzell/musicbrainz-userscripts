@@ -64457,50 +64457,6 @@ a { color: #1565c0; }`;
         const _declaredEt = table.dataset.mbRelEntityType || activeInjectedColumns[0].entityType;
         if (_declaredEt === 'work' || _declaredEt === 'label') return;
 
-        // Dynamic sniff for pageTypes with NO per-group entity-kind
-        // declaration at all — artist-relationships/label-relationships/
-        // place-performances and their siblings are grouped by RELATIONSHIP
-        // TYPE (h3 = "Composer", "Vocals", …), not by entity kind, so there is
-        // no entityFeatures map to resolve a hint from and `activeInjectedColumns`
-        // stays fixed at the page-wide 'release' default for every sub-table.
-        // A work/label-targeted sub-table's ONLY entity reference is its own
-        // title-column link (there is no secondary link for those two kinds
-        // the way a release/release-group row's CAA-column thumbnail provides
-        // one for the scan below) — so check for one FIRST and, if found,
-        // stamp this table and exempt it exactly as if it had been declared
-        // that way. Deliberately NOT scoped to `.mb-sticky-col`: this runs
-        // BEFORE applyStickyColumn() ever touches this table (that call
-        // happens later, in the render tail), so the class does not exist yet
-        // — confirmed against a real capture (debug/artist-relationships.html,
-        // the "wrote work" sub-table) where the title column carries the only
-        // /work/ link in the row and is not physically the first cell either
-        // (native order there is Date, Title, Credited as, …), which is why
-        // this can't key off cell position instead. Release/release-group
-        // sub-tables are untouched: their existing detection via the
-        // non-sticky scan further down already works and stays scoped to
-        // avoid a coincidental match elsewhere in the row.
-        //
-        // Gated on `!activeDefinition.entityFeatures` — pageTypes that DO
-        // carry an entityFeatures map (series-releases, collections-releases,
-        // tag-value, …) already get a correctly-resolved entityType from
-        // startFetchingProcess()'s entityKindHint mechanism (or a per-group
-        // rebuild), and must not have this sniff second-guess it. Without
-        // this gate, a genuinely release-typed series-releases table was
-        // wrongly re-stamped 'label' by this same sniff, because its row's
-        // "Label" column (record-label credit, unrelated to the row's own
-        // release entity) legitimately contains a /label/<mbid> link —
-        // caught by rel-ws2-seed-warm-cache.spec.js expecting a
-        // /ws/2/release/ request and getting /ws/2/label/ instead.
-        if (!table.dataset.mbRelEntityType && !activeDefinition.entityFeatures) {
-            const _stickyLink = table.querySelector(
-                'tbody td:not(.mb-rel-cell) a[href*="/work/"], tbody td:not(.mb-rel-cell) a[href*="/label/"]');
-            if (_stickyLink) {
-                const _href = _stickyLink.getAttribute('href') || '';
-                table.dataset.mbRelEntityType = _href.includes('/work/') ? 'work' : 'label';
-                return;
-            }
-        }
-
         // ── Empty-tbody guard ───────────────────────────────────────────────────
         // Same race condition as _suppressReleaseEventsIfNoReleaseLinks: when
         // runFilter() produces zero matching rows for a group, renderGroupedTable()
@@ -64513,14 +64469,29 @@ a { color: #1565c0; }`;
         // Picard column header and the Picard column has no header at all.
         // Guard: skip suppression entirely when the tbody has no rows so that the
         // Relationships <th> is never destroyed based on an empty-tbody false negative.
+        // (It used to sit after the work/label sniff below; that sniff found
+        // nothing in an empty tbody either, so moving it up changes nothing.)
         const _tbodyForCheck = table.querySelector('tbody');
         if (!_tbodyForCheck || !_tbodyForCheck.querySelector('tr')) return;
 
+        // ── Release/release-group scan — FIRST, and the order is load-bearing ──
+        //
         // Check whether the tbody contains at least one /release/<mbid> or
         // /release-group/<mbid> link in a non-sticky, non-rel-cell data cell.
         // The :not() exclusions mirror the Picard column guard exactly so that
         // the sticky "Title" cell and the async Relationships cell itself are
         // not mistakenly counted as evidence of a release link.
+        //
+        // This scan MUST run before the work/label sniff below. A release
+        // listing's own "Label" column (record-label credit, unrelated to the
+        // row's release entity) carries a /label/<mbid> link on nearly every
+        // row; with the sniff first, artist-releases, releasegroup-releases,
+        // recording-releases and every other release listing without an
+        // entityFeatures map were stamped 'label' and looked each release up as
+        // `/ws/2/label/<release mbid>` — a 404 per row, i.e. a column with no
+        // icons at all (9.99.1086-9.99.1091; see DEBUG-NOTES.md 2026-09-15 and
+        // tests/fixtures/rel-column-release-listing-entity.spec.js). A row that
+        // links a release is a release row, whatever else it links.
         const _rgLink = table.querySelector(
             'tbody td:not(.mb-sticky-col):not(.mb-rel-cell) a[href*="/release-group/"]');
         const _relLink = _rgLink || table.querySelector(
@@ -64528,7 +64499,7 @@ a { color: #1565c0; }`;
         if (_relLink) {
             // Stamp which of the two this table actually is, when not already
             // declared and only for the same no-entityFeatures pageTypes the
-            // sniff above targets — a page whose sub-tables mix release- and
+            // sniff below targets — a page whose sub-tables mix release- and
             // release-group-targeted relationships (both surface their link
             // the same way, via the CAA-column thumbnail) would otherwise all
             // silently fall back to the page-wide 'release' default.
@@ -64536,6 +64507,46 @@ a { color: #1565c0; }`;
                 table.dataset.mbRelEntityType = _rgLink ? 'release-group' : 'release';
             }
             return; // Relationships column is appropriate — leave table untouched.
+        }
+
+        // Dynamic sniff for pageTypes with NO per-group entity-kind
+        // declaration at all — artist-relationships/label-relationships/
+        // place-performances and their siblings are grouped by RELATIONSHIP
+        // TYPE (h3 = "Composer", "Vocals", …), not by entity kind, so there is
+        // no entityFeatures map to resolve a hint from and `activeInjectedColumns`
+        // stays fixed at the page-wide 'release' default for every sub-table.
+        // A work/label-targeted sub-table's ONLY entity reference is its own
+        // title-column link (there is no secondary link for those two kinds
+        // the way a release/release-group row's CAA-column thumbnail provides
+        // one for the scan above) — so, once that scan has found no release
+        // link at all, check for one and, if found, stamp this table and exempt
+        // it exactly as if it had been declared that way. Deliberately NOT
+        // scoped to `.mb-sticky-col`: this runs BEFORE applyStickyColumn() ever
+        // touches this table (that call happens later, in the render tail), so
+        // the class does not exist yet — confirmed against a real capture
+        // (debug/artist-relationships.html, the "wrote work" sub-table) where
+        // the title column carries the only /work/ link in the row and is not
+        // physically the first cell either (native order there is Date, Title,
+        // Credited as, …), which is why this can't key off cell position
+        // instead.
+        //
+        // Gated on `!activeDefinition.entityFeatures` — pageTypes that DO
+        // carry an entityFeatures map (series-releases, collections-releases,
+        // tag-value, …) already get a correctly-resolved entityType from
+        // startFetchingProcess()'s entityKindHint mechanism (or a per-group
+        // rebuild), and must not have this sniff second-guess it. That gate
+        // was the first fix for the "Label column link read as the row's
+        // entity" problem, caught on series-releases by
+        // rel-ws2-seed-warm-cache.spec.js; running the release scan first is
+        // the general one, for the pageTypes with no entityFeatures map.
+        if (!table.dataset.mbRelEntityType && !activeDefinition.entityFeatures) {
+            const _stickyLink = table.querySelector(
+                'tbody td:not(.mb-rel-cell) a[href*="/work/"], tbody td:not(.mb-rel-cell) a[href*="/label/"]');
+            if (_stickyLink) {
+                const _href = _stickyLink.getAttribute('href') || '';
+                table.dataset.mbRelEntityType = _href.includes('/work/') ? 'work' : 'label';
+                return;
+            }
         }
 
         Lib.debug('relationships',
