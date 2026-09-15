@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "WIP",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Unique-values (📊) dropdown: fixed the panel, when opening UPWARD (see WIP.1), sizing itself to fill ALL available space above the button instead of to what its own content actually needed — on a real release-tracks page this pushed a 13-value column's panel flush against the top of the page, dozens of rows away from the header it belonged to, whenever spaceAbove was generous (worsened by a user-raised sa_uniq_dropdown_visible_rows, which widens the cap that used to be the limiting factor). Now caps max-height to the content's own estimated height too, not just the cap and the available space, so the panel opens close to its button."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "WIP",
     "sections": [

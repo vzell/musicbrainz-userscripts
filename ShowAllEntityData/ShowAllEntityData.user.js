@@ -58043,17 +58043,31 @@ a { color: #1565c0; }`;
         const spaceBelow = vh - bRect.bottom - 6;
         const spaceAbove = bRect.top - 6;
 
+        // Never size the panel past what its own content (dropH) needs —
+        // only shrink toward the available space when the content itself
+        // is taller than it. CSS max-height already shrink-wraps a
+        // shorter panel for free in the DOWN direction (top is fixed at
+        // bRect.bottom+3 regardless of the cap), but in the UP direction
+        // `top` is computed BY SUBTRACTING effectiveMaxH — an oversized
+        // cap there pushes the panel away from the button even though the
+        // content would have fit much closer. Measured live: a 13-value
+        // "Title" column (dropH=465) with abundant spaceAbove (862, driven
+        // by a user-configured sa_uniq_dropdown_visible_rows=30 raising
+        // maxDropH to 958) opened at top=6 — flush with the page top,
+        // dozens of rows away from its own trigger button at bRect.top=871
+        // — purely because effectiveMaxH filled all 862px of headroom
+        // instead of the 465px the content actually used.
         let top, effectiveMaxH, _openDir;
         if (dropH <= spaceBelow || spaceBelow >= spaceAbove) {
             // Open downward — also the fallback when neither side has full
             // room, matching the previous default direction.
             _openDir = 'down';
             top = bRect.bottom + 3;
-            effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceBelow - 3));
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceBelow - 3));
         } else {
             // Open upward.
             _openDir = 'up';
-            effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceAbove - 3));
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceAbove - 3));
             top = bRect.top - effectiveMaxH - 3;
         }
         drop.style.maxHeight = `${effectiveMaxH}px`;
