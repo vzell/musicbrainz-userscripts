@@ -66824,7 +66824,14 @@ a { color: #1565c0; }`;
                 let offset = 0;
                 let total = null;
                 for (;;) {
-                    const pending = mbids.filter(_relQueueStillWants);
+                    // A row whose answer is already in L1 is NOT pending for
+                    // browsing: the per-MBID steps below serve it for free. Without
+                    // this, a re-expand whose Phase 1 missed IndexedDB (setting off,
+                    // or a failed write) fetched a whole page again although every
+                    // answer was already in memory — found when a mutation meant to
+                    // fail the IndexedDB assertion failed the L1 one instead.
+                    const pending = mbids.filter(m => _relQueueStillWants(m)
+                        && !_relWs2Cache.has(`${et}:${m}`));
                     if (pending.length < 2) break;
                     if (total !== null) {
                         if (offset >= total) break;

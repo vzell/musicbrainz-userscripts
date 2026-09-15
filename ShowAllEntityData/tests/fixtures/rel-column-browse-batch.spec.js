@@ -263,6 +263,39 @@ test.describe('Relationships column: browse endpoint as a bulk source', () => {
             await page2.close();
         });
 
+    test('with IndexedDB off, re-expanding a browsed sub-table is served from memory, not re-browsed',
+        async ({ page }) => {
+            // Browse answers go into L1 as well as IndexedDB. The browse phase
+            // used to ignore L1: with IndexedDB off (or a failed write), a
+            // re-expand missed Phase 1 and fetched the whole page again although
+            // every answer was already in memory. Found when a mutation meant to
+            // fail the fresh-page IndexedDB assertion in the cache test failed its
+            // L1 assertion instead (DEBUG-NOTES.md, 2026-09-15).
+            let official = [];
+            const reqs = await loadRgPage(page, {
+                settings: { sa_rels_idb_enable: false },
+                browse: () => ({ body: browseBody(official) }),
+            });
+            await expect.poll(() => count(reqs, 'lookup'), { timeout: 15000 }).toBe(1);
+            official = await collapsedMbids(page);
+            await expandCollapsed(page);
+            await expect.poll(() => pendingTotal(page), { timeout: 20000 }).toBe(0);
+            expect(count(reqs, 'browse'), 'the sub-table was browsed once').toBe(1);
+            const settled = reqs.length;
+
+            const officialToggle = page.locator('table.tbl thead .mb-rel-col-hdr-btn').first();
+            await officialToggle.click();
+            await expect.poll(async () => (await anchorsByMbid(page))[official[0]], { timeout: 10000 }).toBe(0);
+            await officialToggle.click();
+            await expect.poll(() => pendingTotal(page), { timeout: 15000 }).toBe(0);
+            await page.waitForTimeout(1500);                 // room for a stray browse or lookup
+
+            expect(reqs, 'no second browse page and no lookups: memory served the re-expand')
+                .toHaveLength(settled);
+            const anchors = await anchorsByMbid(page);
+            for (const m of official) expect(anchors[m], `icon for ${m} from memory`).toBe(1);
+        });
+
     test('with sa_rel_browse_batch_enable off, the column only ever issues lookups',
         async ({ page }) => {
             const reqs = await loadRgPage(page, {

@@ -11358,3 +11358,57 @@ with `fixtureFile`, so `FIXTURE_SETTINGS_OVERRIDE` forces
 returns on its `!activeInjectedColumns.length` check, before the reordered
 block, in both versions. It is the spec's own documented settle flake, not a
 regression.
+
+## 2026-09-15 — Relationships browse endpoint as a bulk source (branch rel-column-batch-and-cell-states)
+
+PERFORMANCE.org Step 36, part 3 — item 1 of `org/relationships.org`: fetch more
+than one row per request.
+
+**Built.** `features.relBrowse: { entity, by }` on the seven pageTypes
+`scripts/probe-rel-batch-endpoints.py` cleared; `_relBrowseSource()` resolves it
+only when the URL's own entity is `by` AND the table's entity type is
+`entity`. The impl's browse phase is the first link of the fire-and-forget
+fetch chain: a lone pending row is left to a lookup; page 1 is always fetched
+otherwise; browsing stops on a page that matched nothing still pending, when
+the pages left are no fewer than the rows still pending, on the last page, or
+on a failed page. Every entity on a page is cached under its lookup key (L1,
+plus one IndexedDB transaction per page via `_relIdbPutMany()`). Kill switch
+`sa_rel_browse_batch_enable`.
+
+**First run: zero browse requests — a bug on `main`, not in this code.**
+Release listings were stamped as label tables (see the hotfix entry above), so
+`_relBrowseSource()` correctly refused every one. Fixed on `main` as 9.99.1092
+and merged into this branch; `rel-column-browse-batch.spec.js` went 0/6 →
+7/7 on the merged tree with no change to the browse code.
+
+**Mutation run** (`scripts/mutations/rel-column-browse-batch.json`, `vzell-lap`,
+2026-09-15 evening UTC): 14 of 14 as expected, userscript restored and
+hash-verified.
+
+- An early `return` in the browse phase — the pre-Step-36 code — failed all six
+  browse-exercising tests, one entry each, which is the "fails before" proof.
+- Removing the zero-match stop, removing the page-count stop, browsing a lone
+  pending row, ignoring the kill switch, and asking for a wrong `inc` set each
+  failed their own test.
+- Two documented passes: a hard-coded `url-rels` (the spec only covers the
+  release mapping, whose inc set is `url-rels` alone — a real coverage gap for
+  release-group/work/label), and not putting browse answers into L1 (IndexedDB
+  covers the re-expand).
+
+**One mutation failed at the WRONG assertion, and that was a finding.**
+"Browse page not written to IndexedDB" was meant to fail at the fresh-page L2
+check, but failed earlier, at "the L1 cache served the re-expand". With the IDB
+write gone, the re-expand's Phase 1 misses every row, and `_relBrowsePhase()`
+then fetched a whole page again — it never consults `_relWs2Cache`, although
+every answer was already there. Live, that is one wasted request per expand
+whenever IndexedDB does not serve the rows (`sa_rels_idb_enable` off, or a
+failed write).
+
+**Fixed.** The browse phase now leaves L1-answerable rows out of its pending
+set, so the per-MBID steps serve them for free. Pinned by a new test, "with
+IndexedDB off, re-expanding a browsed sub-table is served from memory, not
+re-browsed", and a fifteenth mutation entry, "browse phase ignores L1", which
+reverts the fix. Re-run of the whole list: 15 of 15 as expected, userscript
+restored and hash-verified — and the IndexedDB entry now fails at the assertion
+it was written for ("IndexedDB served every row, browsed or looked up") rather
+than at the L1 one. Browse spec: 8 of 8.

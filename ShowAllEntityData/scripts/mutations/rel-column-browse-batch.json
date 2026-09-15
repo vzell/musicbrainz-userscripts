@@ -180,5 +180,18 @@
     "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
     "grep": "cached under the lookup key",
     "expect": "pass"
+  },
+  {
+    "name": "browse phase ignores L1",
+    "why": "The browse phase counts L1-answered rows as pending again, so with IndexedDB off a re-expand fetches a whole browse page that memory could have served.",
+    "edits": [
+      {
+        "find": "                    const pending = mbids.filter(m => _relQueueStillWants(m)\n                        && !_relWs2Cache.has(`${et}:${m}`));",
+        "replace": "                    const pending = mbids.filter(_relQueueStillWants);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-browse-batch.spec.js",
+    "grep": "with IndexedDB off",
+    "expect": "fail"
   }
 ]
