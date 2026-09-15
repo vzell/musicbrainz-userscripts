@@ -458,8 +458,7 @@ here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
   Relationships column (off ⇒ no `<th>`, no `<td>`, nothing);
   `sa_rel_collapse_threshold` (default **200** distinct entities, `0` = never)
   decides only which tables START collapsed — the `▶🔗` toggle is always
-  present. Its own description is stale and names 4 pageTypes; 26 declare the
-  column. See the Relationships section below
+  present. See the Relationships section below
 
 ## Debug channels (`Lib.debug('channel', …)`)
 
@@ -1525,6 +1524,61 @@ text-glyph hazard does not apply (CSS `::before` is used anyway, so
 `aria-pressed` stays the single state representation). And do NOT name the
 toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 `initCollapsableColumns()` self-deletion trap as Picard's.
+
+### IN PROGRESS: batched source + per-row load states (branch `rel-column-batch-and-cell-states`)
+
+**This is a DESIGN, not shipped code.** Rewrite this subsection to describe what
+actually landed when the branch merges, and delete this paragraph. Plan and
+probe results: `PERFORMANCE.org` Step 36, and `org/relationships.org`'s
+2026-09-15 answer.
+
+Two additions on top of everything above. Neither relaxes a guard listed there.
+
+- **A bulk source via the WS/2 BROWSE endpoint, never the ⏱ feature's `rid:`
+  search.** Search results carry no `relations`; browse results do.
+  `/ws/2/release?artist=<mbid>&inc=url-rels&limit=100` covered 2301/2301 of
+  Dylan's releases in 24 requests (`scripts/probe-rel-browse-endpoint.py`).
+  Browse costs the page ENTITY's whole catalogue rather than the rows shown —
+  the exact reason the ⏱ feature rejected it — so a run fetches page 1, reads
+  the `*-count`, and keeps browsing only while that stays cheaper than the
+  MBIDs still pending. Leftovers fall through to the per-MBID queue.
+- **CSS-only per-cell load-state glyphs** (🔗︎ not loaded, ⋯ queued, ◌ loading,
+  – none, ⚠︎ failed, hover ⟳ reload), clickable to load ONE row — also inside a
+  COLLAPSED table — plus a `done/total` badge on the header toggle.
+
+The traps. Every one of them fails silently:
+
+- **inc parity.** A browse request must ask for exactly
+  `_relIncOptionsForEntityType(entityType)`. Browse answers are cached under the
+  lookup's own ckey, so a record missing `release-group-rels` would be served as
+  complete forever after, showing fewer icons than a lookup would.
+- **A transport failure is not "no relationships".** On `main`,
+  `_relFetchWs2()` resolves `null` on HTTP 503, `_populateCells(mbid, null)`
+  stamps `relDone`, and the null promise stays in `_relWs2Cache` for the
+  session. A "none" glyph would state that as fact. Cache only a successful
+  answer — the millisecond feature's lesson, verbatim.
+- **Exclude a failed cell from `_relAnyPendingInExpandedTable()` and from the
+  impl's candidate scan**, or every filter keystroke re-requests every failure.
+  Retry only on an explicit click, a 🔗⟳ button, or a re-expand.
+- **The per-row path must not reuse `_relCellWritable()`.** That guard exists to
+  refuse collapsed tables, which is exactly where a click has to write. A click
+  writes a cell only if the cell still carries its own `data-rel-loading`
+  token; a collapse clears the token, so a late answer for an emptied column is
+  dropped. It is a per-cell question, not the rejected per-table epoch.
+- **A partly loaded snapshot must not restore as expanded.**
+  `_relTableExpanded()`'s "any `relDone` ⇒ expanded" default would turn three
+  hand-loaded rows into a queued fetch of the other 2298. Default to expanded
+  only when nothing fetchable is still pending.
+- **Progress never goes to `#mb-info-display-rel`.**
+  `waitForRelationshipsComplete()` resolves on that element's VISIBILITY, so
+  live progress there would let every test settle early. The header badge
+  carries it instead.
+- **The glyph is `::before`, never text**, so `getCleanColumnText()`, the
+  icon-count sort, 📊, export and Save-to-Disk (`innerHTML`) cannot see it. Note
+  `td.mb-rel-cell` sets `font-size: 0; line-height: 0`, so the pseudo-element
+  must size itself. Steady states key off attributes that already exist
+  (`data-mbid`, `data-rel-done`, `:empty`, the table's `data-mb-rel-expanded`);
+  only `data-rel-loading` and `data-rel-error` are new, and both are transient.
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 

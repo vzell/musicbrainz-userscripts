@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Settings: the 'Enable Relationships column' description no longer claims the column applies only to four page types (artist-releasegroups, artist-releases, label-releases, releasegroup-releases) — it applies to every page type that declares it, including collections, series, tag pages, reports and search results — and now says what the icons come from (URL relationships of the row's release, release group, label or work, plus release/release-group relationships that have an icon).",
+          "Statistics panel: the 'Rel WS2 TTL evictions' row said cached relationship records expire after a '7-day TTL'; the default has been 30 days all along. It now shows the configured 'Relationships IDB cache TTL (days)' (sa_rel_idb_ttl_days) value."
+        ]
+      }
+    ]
+  }
+]

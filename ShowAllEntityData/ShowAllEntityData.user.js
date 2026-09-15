@@ -1324,9 +1324,12 @@
             description: 'When enabled and the page type declares injectedColumns:["Relationships"], '
                          + 'a synthetic "Relationships" column is injected and populated '
                          + 'asynchronously with favicon icon links from the MusicBrainz Web Service '
-                         + '(url-rels for each release-group or release). '
-                         + 'Applies to: artist-releasegroups, artist-releases, label-releases, '
-                         + 'releasegroup-releases. Disable to suppress the column entirely. '
+                         + '(the URL relationships of each row\'s release, release group, label '
+                         + 'or work, plus release and release-group relationships that have an '
+                         + 'icon, e.g. "single from"). Applies to every page type that declares '
+                         + 'the column: artist, label, area, release-group and recording release '
+                         + 'listings, collections, series, tag pages, reports and search results '
+                         + 'among them. Disable to suppress the column entirely. '
                          + 'Adapted from "Display shortcut for relationships on MusicBrainz" '
                          + 'by Aurelien Mino <aurelien.mino@gmail.com>'
         },
@@ -29239,7 +29242,7 @@ ${sections.join('\n')}
                     value:   String(_relIdbTtlEvictCount),
                     comment: _relIdbTtlEvictCount > 0
                         ? `${_relIdbTtlEvictCount} rel-ws2 record(s) found expired during reads and deleted`
-                        : 'Records silently removed when a cached record is read after its 7-day TTL',
+                        : `Records silently removed when a cached record is read after its ${Lib.settings.sa_rel_idb_ttl_days || 30}-day TTL (sa_rel_idb_ttl_days)`,
                     _id:     null,
                 },
                 {
