@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: on release listings that have a Label column — an artist's releases, a release group's releases, a recording's releases and similar pages — every row was looked up as a LABEL (/ws/2/label/<release id>) instead of as a release, so the column showed no relationship icons at all. The row's own record-label link was mistaken for the entity the row stands for. Release rows are now always looked up as releases; work- and label-targeted sub-tables on relationship pages are still detected as before."
+        ]
+      }
+    ]
+  }
+]
