@@ -292,6 +292,23 @@
                          "'Enable debug logging' to also be active."
         },
 
+        sa_enable_uniq_drop_context_debug: {
+            label: "Enable unique-values dropdown debug logging",
+            type: "checkbox",
+            default: false,
+            description: "Log 'Uniq-drop col N' debug lines (positioning inputs/outputs, " +
+                         "plus the resulting value count) every time a 📊 unique-values " +
+                         "dropdown is opened. This is the sole on/off switch for these " +
+                         "lines — off means none of them appear at all, independent of the " +
+                         "'Enable debug logging' master switch's other channels. When on, " +
+                         "each line always carries the real column name and the owning " +
+                         "table's name (the page's h2 in single-table mode, or the " +
+                         "sub-table's h3 in multi-table mode) — there is no 'on, without " +
+                         "context' variant. Off by default since resolving the owning " +
+                         "header costs a small extra DOM walk on every open. Still requires " +
+                         "'Enable debug logging' to also be active."
+        },
+
         // ============================================================
         // EXPERIMENTAL FEATURES SECTION
         // ============================================================
@@ -16130,7 +16147,8 @@
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
                 addCAA: 'Release groups',
                 extractMainColumn: 'Name',
-                stickyColumn: 'Name'
+                stickyColumn: 'Name',
+                removeSelector: '#content > p' // native "Showing all recordings (Show only standalone recordings / Show only videos)" — redundant with this script's own toolbar buttons
             },
             tableMode: 'single'
         },
@@ -58003,44 +58021,109 @@ a { color: #1565c0; }`;
         // Visible-rows cap: user-configurable via sa_uniq_dropdown_visible_rows
         // (default 8 — the same effective cap the dropdown's original
         // hardcoded 320px gave: 8 rows * 29px/row + 88px overhead (50 syn
-        // header/divider + 38 qf bar) = 320). Set as an inline max-height,
-        // which always wins over the CSS fallback of that same 320px
-        // default on #mb-col-uniq-dropdown, so raising it needs no
-        // stylesheet change.
+        // header/divider + 38 qf bar) = 320). This is only the UPPER bound —
+        // the actual applied max-height is clamped below to whichever side
+        // of the button (above/below) has more room, so it always wins over
+        // the CSS fallback of that same 320px default on #mb-col-uniq-dropdown
+        // without needing a stylesheet change.
         const _uniqVisibleRows = Math.max(1, Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8);
         const maxDropH = _uniqVisibleRows * 29 + 88;
-        drop.style.maxHeight = `${maxDropH}px`;
 
         const bRect = btn.getBoundingClientRect();
         const vw    = window.innerWidth;
         const vh    = window.innerHeight;
-        const synItemCount = (isCollapsableCol
-            ? (emptyCellCount          > 0 ? 1 : 0) +
-              (singleRowCount          > 0 ? 1 : 0) +
-              (multiRowCollapsedCount  > 0 ? 1 : 0) +
-              (multiRowExpandedCount   > 0 ? 1 : 0) +
-              (totalMultiRow > 1         ? 1 : 0)
-            : (emptyCellCount > 0 ? 1 : 0)) +
-            (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-            _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-            _sortedInstrumentValues.length + _sortedAltNameValues.length +
-            _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
-            _sortedRoleValues.length + _sortedRoleTokenValues.length;
-        const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
+
+        // The panel's real natural content height, not an estimate — every
+        // synBox section and listBox item was already built and appended
+        // above this point in the function, so scrollHeight reflects the
+        // true rendered height. This replaced a per-row-count formula
+        // ((combinedVals.length + synItemCount) * 29 + 50 + 38) that was
+        // only ever an approximation of actual layout (real row height
+        // varies with wrapped text, flag icons, section dividers, etc.) —
+        // close enough most of the time, but capable of drifting in EITHER
+        // direction: an overestimate wasted space and pushed the panel away
+        // from its button when opening upward (see the "Title" case in the
+        // comment below), while an UNDERestimate capped max-height below
+        // what the viewport actually had room for, forcing a scrollbar that
+        // wasn't necessary. scrollHeight always reflects the full content
+        // height regardless of any max-height/overflow clamp currently
+        // applied (e.g. left over from a previous open), so it's safe to
+        // read before this open's own clamp is set below.
+        const dropH = Math.min(maxDropH, drop.scrollHeight);
         const dropW = drop.offsetWidth || 200;
 
-        let top  = bRect.bottom + 3;
-        let left = bRect.left;
+        // Pick whichever side has more room and CLAMP the panel's height to
+        // that side's actual available space, rather than only flipping when
+        // the full natural height fits on one side. A button sitting low on
+        // a short page (few rows below it) can have LESS than dropH free in
+        // BOTH directions — the old all-or-nothing gate then fell through to
+        // "open downward" unconditionally with no clamp, and since the panel
+        // is position:fixed on document.body, anything past window.innerHeight
+        // was genuinely clipped, not just off-screen-but-scrollable. Sizing
+        // max-height to the available space instead makes the panel's own
+        // overflow-y:auto scroll internally when content still doesn't fit.
+        const spaceBelow = vh - bRect.bottom - 6;
+        const spaceAbove = bRect.top - 6;
 
-        if (top + dropH > vh - 6 && bRect.top > dropH) {
-            top = bRect.top - dropH - 3;
+        // Never size the panel past what its own content (dropH) needs —
+        // only shrink toward the available space when the content itself
+        // is taller than it. CSS max-height already shrink-wraps a
+        // shorter panel for free in the DOWN direction (top is fixed at
+        // bRect.bottom+3 regardless of the cap), but in the UP direction
+        // `top` is computed BY SUBTRACTING effectiveMaxH — an oversized
+        // cap there pushes the panel away from the button even though the
+        // content would have fit much closer. Measured live: a 13-value
+        // "Title" column (dropH=465) with abundant spaceAbove (862, driven
+        // by a user-configured sa_uniq_dropdown_visible_rows=30 raising
+        // maxDropH to 958) opened at top=6 — flush with the page top,
+        // dozens of rows away from its own trigger button at bRect.top=871
+        // — purely because effectiveMaxH filled all 862px of headroom
+        // instead of the 465px the content actually used.
+        let top, effectiveMaxH, _openDir;
+        if (dropH <= spaceBelow || spaceBelow >= spaceAbove) {
+            // Open downward — also the fallback when neither side has full
+            // room, matching the previous default direction.
+            _openDir = 'down';
+            top = bRect.bottom + 3;
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceBelow - 3));
+        } else {
+            // Open upward.
+            _openDir = 'up';
+            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceAbove - 3));
+            top = bRect.top - effectiveMaxH - 3;
         }
+        drop.style.maxHeight = `${effectiveMaxH}px`;
+
+        let left = bRect.left;
         if (left + dropW > vw - 6) {
             left = Math.max(6, vw - dropW - 6);
         }
 
         drop.style.top  = `${top}px`;
         drop.style.left = `${left}px`;
+
+        // Positioning debug logging is gated ENTIRELY by
+        // sa_enable_uniq_drop_context_debug (still subject to the
+        // sa_enable_debug_logging master switch inside Lib.debug() itself)
+        // — off means no "Uniq-drop col N" lines at all, on means they
+        // always carry the real column name (already resolved as
+        // _colHeaderName) and the name of the table that owns it: the
+        // page's h2 in single-table mode, or the sub-table's own h3 in
+        // multi-table mode, both via the same caaFindHeaderForTable() used
+        // elsewhere to resolve "which header owns this table" (see its own
+        // JSDoc). There is deliberately no "on, but without context" mode —
+        // a bare colIndex is useless for telling sub-tables/columns apart
+        // on a multi-table page, which was the whole point of adding this.
+        if (Lib.settings.sa_enable_uniq_drop_context_debug) {
+            const _ownerHeader = caaFindHeaderForTable(table);
+            const _tableName = _ownerHeader
+                ? _ownerHeader.textContent.split('(')[0].replace(/[▼▲]/g, '').trim()
+                : '(unknown table)';
+            const _debugContext = ` col="${_colHeaderName}" table="${_tableName}"`;
+
+            Lib.debug('filter', `Uniq-drop col ${colIndex}${_debugContext} position: bRect.top=${bRect.top.toFixed(0)} bRect.bottom=${bRect.bottom.toFixed(0)} vh=${vh} spaceAbove=${spaceAbove.toFixed(0)} spaceBelow=${spaceBelow.toFixed(0)} dropH=${dropH} maxDropH=${maxDropH} dir=${_openDir} effectiveMaxH=${effectiveMaxH} top=${top.toFixed(0)}`);
+            Lib.debug('filter', `Uniq-drop col ${colIndex}${_debugContext}: ${combinedVals.length} values`);
+        }
 
         // Snapshot the button's viewport rect the panel was just positioned
         // against, so the close-on-scroll listener can tell a genuine scroll
@@ -58050,8 +58133,6 @@ a { color: #1565c0; }`;
 
         // Auto-focus the quickfilter input so the user can type immediately
         requestAnimationFrame(() => qfInput.focus());
-
-        Lib.debug('filter', `Uniq-drop col ${colIndex}: ${combinedVals.length} values`);
     }
 
     /**
