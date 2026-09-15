@@ -292,6 +292,19 @@
                          "'Enable debug logging' to also be active."
         },
 
+        sa_enable_uniq_drop_context_debug: {
+            label: "Enable unique-values dropdown column/table context in debug log",
+            type: "checkbox",
+            default: false,
+            description: "Add the real column name and the owning table's name (the " +
+                         "page's h2 in single-table mode, or the sub-table's h3 in " +
+                         "multi-table mode) to the 'Uniq-drop col N position' debug line " +
+                         "already logged whenever a 📊 unique-values dropdown is opened. " +
+                         "Off by default since resolving the owning header costs a small " +
+                         "extra DOM walk on every open. Requires 'Enable debug logging' " +
+                         "to also be active."
+        },
+
         // ============================================================
         // EXPERIMENTAL FEATURES SECTION
         // ============================================================
@@ -58085,7 +58098,26 @@ a { color: #1565c0; }`;
         drop.style.top  = `${top}px`;
         drop.style.left = `${left}px`;
 
-        Lib.debug('filter', `Uniq-drop col ${colIndex} position: bRect.top=${bRect.top.toFixed(0)} bRect.bottom=${bRect.bottom.toFixed(0)} vh=${vh} spaceAbove=${spaceAbove.toFixed(0)} spaceBelow=${spaceBelow.toFixed(0)} dropH=${dropH} maxDropH=${maxDropH} dir=${_openDir} effectiveMaxH=${effectiveMaxH} top=${top.toFixed(0)}`);
+        // Optional, off-by-default context for the debug line below: the
+        // real column name (already resolved as _colHeaderName) and the
+        // name of the table that owns it — the page's h2 in single-table
+        // mode, or the sub-table's own h3 in multi-table mode, both via the
+        // same caaFindHeaderForTable() used elsewhere to resolve "which
+        // header owns this table" (see its own JSDoc). Gated separately
+        // from sa_enable_debug_logging (which only gates this whole line)
+        // because resolving the owning header costs a small extra DOM walk
+        // on every open, not worth paying unless someone actually needs to
+        // tell sub-tables/columns apart in the log.
+        let _debugContext = '';
+        if (Lib.settings.sa_enable_uniq_drop_context_debug) {
+            const _ownerHeader = caaFindHeaderForTable(table);
+            const _tableName = _ownerHeader
+                ? _ownerHeader.textContent.split('(')[0].replace(/[▼▲]/g, '').trim()
+                : '(unknown table)';
+            _debugContext = ` col="${_colHeaderName}" table="${_tableName}"`;
+        }
+
+        Lib.debug('filter', `Uniq-drop col ${colIndex}${_debugContext} position: bRect.top=${bRect.top.toFixed(0)} bRect.bottom=${bRect.bottom.toFixed(0)} vh=${vh} spaceAbove=${spaceAbove.toFixed(0)} spaceBelow=${spaceBelow.toFixed(0)} dropH=${dropH} maxDropH=${maxDropH} dir=${_openDir} effectiveMaxH=${effectiveMaxH} top=${top.toFixed(0)}`);
 
         // Snapshot the button's viewport rect the panel was just positioned
         // against, so the close-on-scroll listener can tell a genuine scroll
@@ -58096,7 +58128,7 @@ a { color: #1565c0; }`;
         // Auto-focus the quickfilter input so the user can type immediately
         requestAnimationFrame(() => qfInput.focus());
 
-        Lib.debug('filter', `Uniq-drop col ${colIndex}: ${combinedVals.length} values`);
+        Lib.debug('filter', `Uniq-drop col ${colIndex}${_debugContext}: ${combinedVals.length} values`);
     }
 
     /**

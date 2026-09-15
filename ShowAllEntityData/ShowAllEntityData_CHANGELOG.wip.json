@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.5",
+    "date": "WIP",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Unique-values (📊) dropdown debug logging (see WIP.1/WIP.3/WIP.4): added the real column name and the owning table's name (page h2 in single-table mode, sub-table h3 in multi-table mode) to the existing 'Uniq-drop col N' debug lines, gated behind a new 'Enable unique-values dropdown column/table context in debug log' setting (sa_enable_uniq_drop_context_debug, default off, still requires 'Enable debug logging'). Off by default since resolving the owning header costs a small extra DOM walk on every open."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "WIP",
     "sections": [
