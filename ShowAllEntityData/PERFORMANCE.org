@@ -3170,6 +3170,35 @@ bypassing the bulk one. A failed cell is excluded from
 ~_relAnyPendingInExpandedTable()~, or Step 35's per-keystroke gate becomes a
 per-keystroke retry storm.
 
+**** Status on the branch (2026-09-15)
+
+Still TODO on ~main~. Landed on ~rel-column-batch-and-cell-states~ so far:
+
+- *Failure handling* (~0952e1d~): the ~_relFetchWs2()~ outcome, retries via
+  ~_ws2GetJson()~, and one rate gate, ~_relAwaitRateSlot()~. Regression spec
+  ~rel-column-fetch-failure.spec.js~, mutation-checked.
+- *Per-row glyphs and click-to-load*: ~_relLoadRow()~ with its per-cell token;
+  module-level ~_relWriteResult()~, ~_relWriteFailure()~ and
+  ~_relMasterCellsFor()~; the partial-snapshot rule in ~_relTableExpanded()~;
+  the setting ~sa_rel_cell_state_glyphs~. Spec ~rel-cell-state-glyphs.spec.js~.
+
+Two things the plan predicted turned out otherwise while building, recorded so
+they are not re-derived:
+
+- *A click needs no "priority slot" on the rate gate.* The Phase-2 queue only
+  ever holds ONE reservation ahead, so a click that reserves the next slot is
+  served within about two spacing intervals. The spec's "clicking a queued row
+  fetches it ahead of the queue" test pins that the clicked row is requested
+  well before the queue would reach it.
+- *The glyph CSS cannot be gated by a class on* ~<html>~. The snapshot harness
+  serializes the whole ~documentElement~, so that would have drifted every
+  rendered baseline, including pageTypes with no Relationships column. It is a
+  conditionally injected stylesheet instead.
+
+Outstanding before merge: the browse source, the header badge, the 📊 section,
+and *the perf gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
+in one session, because every pending cell now paints a glyph.
+
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31). *Everything below

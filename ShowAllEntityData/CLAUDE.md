@@ -1531,58 +1531,70 @@ toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 
 ### IN PROGRESS: batched source + per-row load states (branch `rel-column-batch-and-cell-states`)
 
-**This is a DESIGN, not shipped code.** Rewrite this subsection to describe what
-actually landed when the branch merges, and delete this paragraph. Plan and
-probe results: `PERFORMANCE.org` Step 36, and `org/relationships.org`'s
-2026-09-15 answer.
+**Partly landed on the branch, not on `main`.** When the branch merges, rewrite
+this subsection to describe what shipped and drop "IN PROGRESS". Plan, probe
+results and status: `PERFORMANCE.org` Step 36. Decisions and the mockup:
+`org/relationships.org`'s 2026-09-15 answer.
 
-Two additions on top of everything above. Neither relaxes a guard listed there.
+On the branch so far. Neither relaxes a guard listed above:
 
-- **A bulk source via the WS/2 BROWSE endpoint, never the ⏱ feature's `rid:`
-  search.** Search results carry no `relations`; browse results do.
-  `/ws/2/release?artist=<mbid>&inc=url-rels&limit=100` covered 2301/2301 of
-  Dylan's releases in 24 requests (`scripts/probe-rel-browse-endpoint.py`).
-  Browse costs the page ENTITY's whole catalogue rather than the rows shown —
-  the exact reason the ⏱ feature rejected it — so a run fetches page 1, reads
-  the `*-count`, and keeps browsing only while that stays cheaper than the
-  MBIDs still pending. Leftovers fall through to the per-MBID queue.
-- **CSS-only per-cell load-state glyphs** (🔗︎ not loaded, ⋯ queued, ◌ loading,
-  – none, ⚠︎ failed, hover ⟳ reload), clickable to load ONE row — also inside a
-  COLLAPSED table — plus a `done/total` badge on the header toggle.
+- **A failure is its own outcome.** `_relFetchWs2()` resolves
+  `{outcome: 'ok'|'error', data, detail}`, retries through `_ws2GetJson()`
+  (shared with the ⏱ batch source), never caches an error, and every request
+  waits on one rate gate, `_relAwaitRateSlot()`.
+- **CSS-only per-cell load-state glyphs, and click-to-load ONE row** — also in a
+  COLLAPSED table: 🔗︎ not loaded, ⋯ queued, ◌ loading, – none, ⚠︎ failed,
+  hover ⟳ reload. `sa_rel_cell_state_glyphs` turns both off. The writers are
+  module-level — `_relWriteResult()`, `_relWriteFailure()`,
+  `_relMasterCellsFor()` — shared by the bulk pass and `_relLoadRow()`. The
+  click and hover delegates are installed by `_relEnsureHdrDelegate()`.
+
+Still to come: the browse-endpoint bulk source (search results carry no
+`relations`; browse matched lookups exactly on 7 pageTypes), the `done/total`
+header badge, and the 📊 load-state section.
 
 The traps. Every one of them fails silently:
 
-- **inc parity.** A browse request must ask for exactly
-  `_relIncOptionsForEntityType(entityType)`. Browse answers are cached under the
-  lookup's own ckey, so a record missing `release-group-rels` would be served as
-  complete forever after, showing fewer icons than a lookup would.
-- **A transport failure is not "no relationships".** On `main`,
-  `_relFetchWs2()` resolves `null` on HTTP 503, `_populateCells(mbid, null)`
-  stamps `relDone`, and the null promise stays in `_relWs2Cache` for the
-  session. A "none" glyph would state that as fact. Cache only a successful
+- **inc parity**, for the coming browse source. A browse request must ask for
+  exactly `_relIncOptionsForEntityType(entityType)`. Browse answers are cached
+  under the lookup's own ckey, so a record missing `release-group-rels` would be
+  served as complete forever after, showing fewer icons than a lookup would.
+- **A transport failure is not "no relationships".** Before this branch, a 503
+  was stamped `relDone` exactly like an entity with zero relationships, and the
+  `null` stayed in `_relWs2Cache` for the session. Cache only a successful
   answer — the millisecond feature's lesson, verbatim.
-- **Exclude a failed cell from `_relAnyPendingInExpandedTable()` and from the
-  impl's candidate scan**, or every filter keystroke re-requests every failure.
-  Retry only on an explicit click, a 🔗⟳ button, or a re-expand.
-- **The per-row path must not reuse `_relCellWritable()`.** That guard exists to
+- **A failed or loading cell is skipped in three places** —
+  `_relAnyPendingInExpandedTable()`, the impl's candidate scan, and
+  `_relQueueStillWants()` — or every filter keystroke re-requests every failure.
+  The scan's and `_relQueueStillWants()`'s exclusions cover for each other, so a
+  spec can only pin them as a PAIR; the mutation files under
+  `scripts/mutations/` record that as `"expect": "pass"` entries.
+- **`_relLoadRow()` must not reuse `_relCellWritable()`.** That guard exists to
   refuse collapsed tables, which is exactly where a click has to write. A click
-  writes a cell only if the cell still carries its own `data-rel-loading`
-  token; a collapse clears the token, so a late answer for an emptied column is
-  dropped. It is a per-cell question, not the rejected per-table epoch.
+  writes only into cells, live AND master, that still carry its own
+  `data-rel-loading` token. `_relToggleTable()`'s collapse clears the token, so
+  a late answer for an emptied column is dropped. A per-cell question, not the
+  rejected per-table epoch.
+- **When the clicked row is filtered out mid-flight, render into a master.**
+  With no live cell, `_relWriteResult()` uses the first master as its primary.
+  Mirroring an empty `innerHTML` over the masters instead would bring the row
+  back marked done with no icons.
 - **A partly loaded snapshot must not restore as expanded.**
-  `_relTableExpanded()`'s "any `relDone` ⇒ expanded" default would turn three
-  hand-loaded rows into a queued fetch of the other 2298. Default to expanded
-  only when nothing fetchable is still pending.
+  `_relTableExpanded()` defaults to expanded only when EVERY rel cell is done;
+  a partly populated table goes by the threshold, or one hand-loaded row turns
+  into a queued fetch of every other row when the snapshot is reopened.
 - **Progress never goes to `#mb-info-display-rel`.**
   `waitForRelationshipsComplete()` resolves on that element's VISIBILITY, so
-  live progress there would let every test settle early. The header badge
-  carries it instead.
-- **The glyph is `::before`, never text**, so `getCleanColumnText()`, the
-  icon-count sort, 📊, export and Save-to-Disk (`innerHTML`) cannot see it. Note
-  `td.mb-rel-cell` sets `font-size: 0; line-height: 0`, so the pseudo-element
-  must size itself. Steady states key off attributes that already exist
-  (`data-mbid`, `data-rel-done`, `:empty`, the table's `data-mb-rel-expanded`);
-  only `data-rel-loading` and `data-rel-error` are new, and both are transient.
+  live progress there would let every test settle early. `_relLoadRow()` never
+  touches it.
+- **The glyph is `::before`/`::after`, never text**, so `getCleanColumnText()`,
+  the icon-count sort, 📊, export and Save-to-Disk (`innerHTML`) cannot see it.
+  `td.mb-rel-cell` sets `font-size: 0; line-height: 0`, so each pseudo-element
+  sizes itself. The stylesheet, `#mb-rel-cell-glyph-style`, is injected only
+  while the setting is on. **Never gate it with a class on `<html>`**: the
+  snapshot harness serializes the whole `documentElement`, so a page-level class
+  drifts every rendered baseline, including pageTypes with no Relationships
+  column at all.
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 

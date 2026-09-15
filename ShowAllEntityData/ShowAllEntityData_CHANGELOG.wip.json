@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Relationships column: every cell now shows a small, faint glyph saying where that row stands — 🔗 not loaded yet, ⋯ queued (the column is still fetching), ◌ loading, – loaded but nothing with an icon, ⚠ the request failed. In a huge table where only a few rows have relationships, you can now see at a glance which rows have been looked up and which are still waiting, without the debug console.",
+          "Relationships column: click a cell to load just that row — one request — even while the column is collapsed; the rest of the table stays collapsed and untouched. Clicking a queued row while the column is still fetching gets it ahead of the queue, and clicking a failed (⚠) row retries it. On a loaded cell, hovering shows ⟳: clicking the cell outside its icons re-fetches that row, bypassing the cache. Rows loaded by hand survive filtering, sorting and multi-table re-renders, and emptying the column (▼🔗) while a row is still loading discards its late answer.",
+          "New setting 'Relationships: show a load-state glyph in each cell' (sa_rel_cell_state_glyphs, default on) hides the glyphs and turns click-to-load off. The glyphs are drawn purely by CSS, so filters, sorting, the 📊 dropdown, exports and Save to Disk never see them."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Relationships column: the icon writer and the failure marker moved out of the column's fetch pass into shared module-level functions (_relWriteResult, _relWriteFailure, _relMasterCellsFor), so a bulk pass and a single-row load write cells through the same idempotent code."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-15",
     "sections": [

@@ -4,8 +4,8 @@
     "why": "runFilter()'s gate treats a failed cell as pending, so a keystroke starts a pass. relInitRuns() must move and the spec must notice.",
     "edits": [
       {
-        "find": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"]):not([data-rel-error])')) {",
-        "replace": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"])')) {"
+        "find": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"]):not([data-rel-error]):not([data-rel-loading])')) {",
+        "replace": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"]):not([data-rel-loading])')) {"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
@@ -17,12 +17,12 @@
     "why": "A pass that does run picks the failed cell up and re-requests it. The forced relRunPass() must catch it.",
     "edits": [
       {
-        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);",
-        "replace": "if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);"
+        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError\n                    && !td.dataset.relLoading) allCells.push(td);",
+        "replace": "if (td.dataset.mbid && !td.dataset.relDone\n                    && !td.dataset.relLoading) allCells.push(td);"
       },
       {
-        "find": "td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));",
-        "replace": "td => !td.dataset.relDone && _relCellWritable(td));"
+        "find": "td => !td.dataset.relDone && !td.dataset.relError\n                    && !td.dataset.relLoading && _relCellWritable(td));",
+        "replace": "td => !td.dataset.relDone\n                    && !td.dataset.relLoading && _relCellWritable(td));"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
@@ -34,8 +34,8 @@
     "why": "KNOWN OVERLAP: _relQueueStillWants() still skips the failed cell, so the spec cannot see this alone. Recorded, not hidden.",
     "edits": [
       {
-        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);",
-        "replace": "if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);"
+        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError\n                    && !td.dataset.relLoading) allCells.push(td);",
+        "replace": "if (td.dataset.mbid && !td.dataset.relDone\n                    && !td.dataset.relLoading) allCells.push(td);"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
@@ -47,8 +47,8 @@
     "why": "KNOWN OVERLAP: the candidate scan still skips the failed cell, so the spec cannot see this alone. Recorded, not hidden.",
     "edits": [
       {
-        "find": "td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));",
-        "replace": "td => !td.dataset.relDone && _relCellWritable(td));"
+        "find": "td => !td.dataset.relDone && !td.dataset.relError\n                    && !td.dataset.relLoading && _relCellWritable(td));",
+        "replace": "td => !td.dataset.relDone\n                    && !td.dataset.relLoading && _relCellWritable(td));"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
@@ -73,8 +73,8 @@
     "why": "After collapse + expand the cell still carries data-rel-error, the scan skips it, and it is never retried.",
     "edits": [
       {
-        "find": "            delete td.dataset.relError;\n            td.style.backgroundColor = '';\n            _cleared++;",
-        "replace": "            td.style.backgroundColor = '';\n            _cleared++;"
+        "find": "            delete td.dataset.relError;\n            // And a loading token:",
+        "replace": "            // And a loading token:"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
@@ -99,8 +99,8 @@
     "why": "Multi-table re-render clones a master without the marker, the gate sees a pending cell, and the failure is re-requested.",
     "edits": [
       {
-        "find": "            cells.forEach(_mark);\n            _relMasterCellsFor(mbid, cells).forEach(_mark);",
-        "replace": "            cells.forEach(_mark);"
+        "find": "_relWriteFailure(cells, _relMasterCellsFor(mbid, cells), detail);",
+        "replace": "_relWriteFailure(cells, [], detail);"
       }
     ],
     "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",

@@ -1353,6 +1353,19 @@
                          + 'already there.'
         },
 
+        sa_rel_cell_state_glyphs: {
+            label: 'Relationships: show a load-state glyph in each cell',
+            type: 'checkbox',
+            default: true,
+            description: 'Draws a small, faint glyph in every Relationships cell saying where that row '
+                         + 'stands: 🔗 not loaded yet (click it to load just that row, one request), '
+                         + '⋯ queued, ◌ loading, – loaded but nothing with an icon, ⚠ the request failed '
+                         + '(click to retry). Hovering a loaded cell shows ⟳: clicking the cell outside '
+                         + 'its icons re-fetches that row. The glyphs are drawn by CSS, so filtering, '
+                         + 'sorting and exports never see them. Disable to hide the glyphs and turn '
+                         + 'click-to-load off.'
+        },
+
         sa_rels_idb_enable: {
             label: 'Enable IndexedDB Relationships WS2 data cache',
             type: 'checkbox',
@@ -36008,6 +36021,70 @@ a { color: #1565c0; }`;
             }
         `);
         _rs.id = 'mb-rel-column-style';
+
+        // ── Per-cell load-state glyphs (PERFORMANCE.org Step 36) ─────────────
+        // Injected only while sa_rel_cell_state_glyphs is on. Deliberately NOT
+        // gated by a class on <html>: the snapshot harness serializes the whole
+        // documentElement, so a page-level class would put markup drift into
+        // every rendered baseline — including every pageType with no
+        // Relationships column at all. Click-to-load reads the same setting.
+        if (Lib.settings.sa_rel_cell_state_glyphs !== false) {
+            const _gs = GM_addStyle(`
+                /* Generated content only, keyed on attributes, so filtering,
+                   sorting, the unique-values dropdown, export and Save-to-Disk
+                   never see a glyph. The cell itself is font-size 0 and
+                   line-height 0, so every pseudo-element sizes itself. */
+                table.tbl tbody td.mb-rel-cell[data-mbid] {
+                    cursor: pointer;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid]::before,
+                table.tbl tbody td.mb-rel-cell[data-mbid]::after {
+                    display: inline-block;
+                    vertical-align: middle;
+                    font-size: 12px;
+                    line-height: 16px;
+                    min-width: 14px;
+                    text-align: center;
+                    opacity: 0.35;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid]:hover::before {
+                    opacity: 1;
+                }
+                table.tbl[data-mb-rel-expanded="0"] tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-loading]):not([data-rel-error])::before {
+                    content: "🔗︎";
+                }
+                table.tbl[data-mb-rel-expanded="1"] tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-loading]):not([data-rel-error])::before {
+                    content: "⋯";
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-loading]::before {
+                    content: "◌";
+                    opacity: 0.8;
+                    animation: mb-rel-cell-spin 1s linear infinite;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-done="1"]:empty:not([data-rel-loading])::before {
+                    content: "–";
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-error]:not([data-rel-loading])::before {
+                    content: "⚠︎";
+                    color: #c77700;
+                    opacity: 0.9;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-done="1"]:not([data-rel-loading]):hover::after {
+                    content: "⟳";
+                    margin-left: 2px;
+                    opacity: 0.6;
+                }
+                @keyframes mb-rel-cell-spin {
+                    to { transform: rotate(360deg); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-loading]::before {
+                        animation: none;
+                    }
+                }
+            `);
+            _gs.id = 'mb-rel-cell-glyph-style';
+        }
     })();
 
     if (Lib.settings.sa_enable_count_stat_tooltip) {
@@ -63963,6 +64040,362 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Every master-row (`groupedRows`/`allRows`) Relationships cell for `mbid`
+     * that is not already in `exclude` — what the writers below mirror onto, so
+     * that the next re-render clones the new state rather than the old one.
+     *
+     * Module-level since PERFORMANCE.org Step 36 (it used to live inside
+     * `_initRelationshipsColumnImpl()`), because the per-row click path writes
+     * cells without ever entering that function.
+     *
+     * @param   {string}                 mbid
+     * @param   {HTMLTableCellElement[]} exclude  Cells already being written.
+     * @returns {HTMLTableCellElement[]}
+     */
+    function _relMasterCellsFor(mbid, exclude) {
+        const out = [];
+        const _take = r => {
+            const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
+            if (td && !exclude.includes(td)) out.push(td);
+        };
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_take));
+        if (typeof allRows !== 'undefined') allRows.forEach(_take);
+        return out;
+    }
+
+    /**
+     * Writes one entity's WS/2 answer into `cells` and mirrors the result onto
+     * `masters` — the single authoritative writer of relationship icons,
+     * shared by the bulk pass (`_populateCells()`) and the per-row click path
+     * (`_relLoadRow()`).
+     *
+     * `data === null` is the "no relationships" answer: the cells are emptied
+     * and marked done, which the CSS draws as the – glyph.
+     *
+     * When `cells` is empty — a click whose row the active filter has since
+     * hidden, so only master rows still carry its token — the icons are
+     * rendered into the first master and copied to the rest, rather than
+     * mirroring an empty string over a real answer.
+     *
+     * @param   {HTMLTableCellElement[]} cells    Live cells to render into.
+     * @param   {HTMLTableCellElement[]} masters  Master-row cells to mirror onto.
+     * @param   {string}                 mbid
+     * @param   {?Object}                data     Parsed WS/2 entity, or null.
+     * @returns {void}
+     */
+    function _relWriteResult(cells, masters, mbid, data) {
+        const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
+        const primary = cells.length ? cells : masters.slice(0, 1);
+        const rest    = cells.length ? masters : masters.slice(1);
+        // Clear loading tint and mark done regardless of data availability.
+        //
+        // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
+        // a cell's icons rather than adding to them, so calling it twice for
+        // the same cell cannot double anything. `_relAppendIcon()` appends,
+        // which is what made the multiplying-icons bug possible at all
+        // (5 copies of one URL in debug/relationships-multiplying.html).
+        //
+        // *Be precise about what this line buys, because the obvious claim
+        // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
+        // reverting it to the old append-only form, and the whole suite
+        // stayed green. The bug is actually prevented upstream, twice over —
+        // `_relCellWritable()` refuses a collapsed table's cells (that
+        // mutation DOES fail the regression test), and
+        // `_relQueueStillWants()`'s `!relDone` check stops a second queue
+        // re-answering an mbid a first one already wrote.
+        //
+        // It is kept anyway, deliberately. Those two guards make overlap
+        // UNREACHABLE; this makes it HARMLESS. This is the single
+        // authoritative writer for one mbid's cells, and the entire
+        // doubled-icon family in this file's history — the cross-tab
+        // hydrate race, the collapse/expand race — comes from a caller
+        // reaching a non-idempotent writer twice. It also matters more now
+        // that a second caller exists: the ⟳ reload writes into cells that
+        // already hold icons.
+        //
+        // `relError` and `relLoading` go with it: a successful answer
+        // supersedes an earlier failure, and ends the loading state.
+        const _markDone = td => {
+            td.textContent = '';
+            td.style.backgroundColor = '';
+            td.dataset.relDone = '1';
+            delete td.dataset.relError;
+            delete td.dataset.relLoading;
+        };
+        primary.forEach(_markDone);
+        if (!data) {
+            _dbg(`_relWriteResult: no data for ${mbid}`);
+            rest.forEach(_markDone);
+            return;
+        }
+        // WS2 JSON format: data.relations[] filtered by target-type
+        const allRels  = data.relations || [];
+        const urlRels  = allRels.filter(r => r['target-type'] === 'url');
+        // Non-URL rels: release-group and release relationships (e.g. 'single from')
+        const nonUrlRels = allRels.filter(r => {
+            const tt = r['target-type'];
+            return tt === 'release_group' || tt === 'release-group' || tt === 'release';
+        });
+        _dbg(`_relWriteResult: ${mbid} → ${urlRels.length} url-rels, ` +
+             `${nonUrlRels.length} non-url-rels, ${primary.length} cell(s)`);
+
+        // ── URL relationships ─────────────────────────────────────────
+        const seen = new Set();
+        for (const rel of urlRels) {
+            const relType = rel.type || '';
+            const tUrl    = rel.url?.resource || '';
+            const ended   = !!rel.ended;
+            if (!tUrl || seen.has(tUrl)) continue;
+            seen.add(tUrl);
+            _dbg(`_relWriteResult: rel type='${relType}' url='${tUrl}' ended=${ended}`);
+            if (relType === 'discography entry') {
+                // Discography entries: use Google favicon (no HEAD probe needed,
+                // no GM_xmlhttpRequest, no async delay, no ghost).
+                const gUrl = _relGoogleFaviconUrl(tUrl);
+                _dbg(`_relWriteResult: discography entry favicon ${tUrl} → ${gUrl}`);
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+                continue;
+            }
+            // For known service types: filter using REL_*_CLASSES maps,
+            // but render using Google favicons (avoids CSS sprite ghost).
+            const cls = REL_URL_ICON_CLASSES[relType] ||
+                (['free streaming','streaming','download for free','purchase for download']
+                    .includes(relType)
+                    ? _relFindIconClass(tUrl, REL_STREAMING_CLASSES)
+                    : _relFindIconClass(tUrl, REL_OTHER_DB_CLASSES));
+            _dbg(`_relWriteResult: type='${relType}' cls='${cls || 'none'}' url='${tUrl}'`);
+            if (cls) {
+                const gUrl = _relGoogleFaviconUrl(tUrl);
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+            }
+        }
+
+        // ── Non-URL relationships (release-group, release) ────────────
+        // Renders icons for relationship types listed in REL_NON_URL_ICONS.
+        // WS2 JSON: target-type uses underscore (release_group);
+        //           nested entity key uses hyphen (release-group).
+        _dbg(`_relWriteResult: ${nonUrlRels.length} non-url-rels for ${mbid}`);
+        if (Lib.settings.sa_enable_relationship_debug) {
+            nonUrlRels.forEach((r, i) => {
+                Lib.debug('relationships',
+                    `  non-url-rel[${i}] type='${r.type}' target-type='${r['target-type']}' ` +
+                    `rg-id='${r['release-group']?.id}' rel-id='${r.release?.id}'`);
+            });
+        }
+        const seenNonUrl = new Set();
+        for (const rel of nonUrlRels) {
+            const relType = rel.type || '';
+            const iconUrl = REL_NON_URL_ICONS[relType];
+            if (!iconUrl) {
+                _dbg(`_relWriteResult: non-url-rel type='${relType}' not in REL_NON_URL_ICONS — skipped`);
+                continue;
+            }
+            const tt = rel['target-type'] || '';
+            // WS2 uses 'release_group' (underscore) for target-type
+            // but 'release-group' (hyphen) for the nested entity key
+            const isRG = tt.replace('-','_') === 'release_group';
+            // Try both hyphen and underscore key variants defensively
+            const rgEntity = rel['release-group'] || rel['release_group'];
+            const targetId = isRG ? rgEntity?.id : rel.release?.id;
+            if (!targetId) {
+                _dbg(`_relWriteResult: non-url-rel type='${relType}' no targetId — skipped`);
+                continue;
+            }
+            const href = isRG ? `/release-group/${targetId}` : `/release/${targetId}`;
+            if (seenNonUrl.has(href)) continue;
+            seenNonUrl.add(href);
+            const ended = !!rel.ended;
+            // Build tooltip: 'relType: Title (URL)' using the title from WS2 JSON
+            const _entityTitle = (isRG ? rgEntity?.title : rel.release?.title) || '';
+            const _tooltip = _entityTitle
+                ? `${relType}: ${_entityTitle}\n${href}`
+                : href;
+            _dbg(`_relWriteResult: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
+            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
+        }
+        // Immediately sync icon HTML to source-row cells so runFilter clones
+        // carry the correct content even when the Phase-2 queue is still mid-flight.
+        const _srcHtml = primary.length ? primary[0].innerHTML : '';
+        rest.forEach(td => {
+            td.innerHTML = _srcHtml;
+            td.style.backgroundColor = '';
+            td.dataset.relDone = '1';
+            delete td.dataset.relError;
+            delete td.dataset.relLoading;
+        });
+    }
+
+    /**
+     * Records a FAILED request on `cells` and on `masters`.
+     *
+     * Deliberately the opposite of `_relWriteResult()`'s "no data" branch: the
+     * cell is emptied but NOT marked done, and carries `data-rel-error`
+     * instead. `_relAnyPendingInExpandedTable()`, the impl's candidate scan and
+     * `_relQueueStillWants()` all skip that marker, so a failure is neither
+     * shown as "no relationships" nor re-requested on every keystroke.
+     *
+     * The master mirror is load-bearing on a multi-table page:
+     * `renderGroupedTable()` always clones, so a marker on the live cell alone
+     * would vanish on the next keystroke, the cell would read as plain pending
+     * again, and `runFilter()`'s gate would re-request it.
+     *
+     * @param   {HTMLTableCellElement[]} cells
+     * @param   {HTMLTableCellElement[]} masters
+     * @param   {string}                 detail  e.g. "HTTP 503"
+     * @returns {void}
+     */
+    function _relWriteFailure(cells, masters, detail) {
+        const _mark = td => {
+            td.textContent = '';
+            td.style.backgroundColor = '';
+            delete td.dataset.relDone;
+            delete td.dataset.relLoading;
+            td.dataset.relError = detail || 'the request failed';
+        };
+        cells.forEach(_mark);
+        masters.forEach(_mark);
+    }
+
+    /** Monotonic source of per-row loading tokens — see `_relLoadRow()`. */
+    let _relLoadTokenSeq = 0;
+
+    /**
+     * Loads ONE row's relationships on demand: a click on its cell.
+     *
+     * ── Works in a COLLAPSED table, so it has its own guard ─────────────────
+     *
+     * It deliberately does not go through `_initRelationshipsColumnImpl()` or
+     * its `_relCellWritable()` guard, whose whole job is refusing collapsed
+     * tables. Its guard is a TOKEN instead: every live and master cell of the
+     * entity is stamped `data-rel-loading="<token>"` up front, and the answer is
+     * written only into cells that still carry that exact token. A collapse
+     * clears the attribute (`_relToggleTable()`), so a late answer for an
+     * emptied column is dropped; a newer click re-stamps with a newer token, so
+     * an older answer cannot overwrite a newer one. That is a per-CELL question,
+     * not the rejected per-table epoch, which would cancel a different table's
+     * legitimate fetch.
+     *
+     * The token is on the master rows as well, so a clone made while the
+     * request is in flight still carries it and still receives the answer.
+     *
+     * ── What it shares with the bulk pass ───────────────────────────────────
+     *
+     * Every cell showing this entity is written, in any table, because the
+     * answer is the same data. The request goes through `_relFetchWs2()`, so it
+     * takes a slot on the shared rate gate — which is also how a click on a
+     * queued row gets ahead of the Phase-2 queue, since that queue only ever
+     * holds one reservation — and it shares an in-flight promise with any pass
+     * already asking. `force` (a click on a LOADED cell, the hover ⟳) bypasses
+     * both cache tiers, and the fresh answer then replaces them.
+     *
+     * Never touches `#mb-info-display-rel` or the completion toast:
+     * `waitForRelationshipsComplete()` reads that element as "the column has
+     * settled", and one row does not make that true.
+     *
+     * @param   {HTMLTableCellElement} td
+     * @param   {{force?: boolean}}    [opts]
+     * @returns {Promise<void>}
+     */
+    async function _relLoadRow(td, opts) {
+        const mbid = td && td.dataset.mbid;
+        if (!mbid) return;
+        const force = !!(opts && opts.force);
+        const _table = td.closest('table.tbl');
+        const entityType = (_table && _table.dataset.mbRelEntityType)
+            || (activeInjectedColumns[0] || {}).entityType || 'release';
+        const token = String(++_relLoadTokenSeq);
+        const _sel = `table.tbl tbody td.mb-rel-cell[data-mbid='${mbid}']`;
+        const _live = Array.from(document.querySelectorAll(_sel));
+        [..._live, ..._relMasterCellsFor(mbid, _live)].forEach(c => {
+            c.dataset.relLoading = token;
+            delete c.dataset.relError;
+        });
+        Lib.debug('relationships',
+            `_relLoadRow: ${entityType}:${mbid}${force ? ' (forced reload)' : ''}, token ${token}`);
+        // Both are no-ops once installed/current; a page whose column started
+        // collapsed may never have run a pass that set them up.
+        _initRelTooltipListeners();
+        _initRelMappings();
+
+        const res = await _relFetchWs2(mbid, entityType, _relIncOptionsForEntityType(entityType), force);
+
+        const liveNow = Array.from(document.querySelectorAll(_sel))
+            .filter(c => c.dataset.relLoading === token);
+        const mastersNow = _relMasterCellsFor(mbid, liveNow)
+            .filter(c => c.dataset.relLoading === token);
+        if (!liveNow.length && !mastersNow.length) {
+            Lib.debug('relationships', `_relLoadRow: ${mbid} token ${token} superseded — answer dropped`);
+            return;
+        }
+        if (res.outcome === 'error') _relWriteFailure(liveNow, mastersNow, res.detail);
+        else _relWriteResult(liveNow, mastersNow, mbid, res.data);
+
+        // Same cache hygiene `_relToggleTable()` does: the cell's clean text
+        // changed with no row shown or hidden.
+        const _tables = new Set();
+        liveNow.forEach(c => {
+            if (c.parentElement) _relDropRowTextCache(c.parentElement, c.cellIndex);
+            const _t = c.closest('table.tbl');
+            if (_t) _tables.add(_t);
+        });
+        _tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+    }
+
+    /**
+     * Click delegate for Relationships data cells, hosted on the `<table>` by
+     * `_relEnsureHdrDelegate()`: loads the clicked row (`_relLoadRow()`), or
+     * force-reloads it when it is already loaded — the hover ⟳.
+     *
+     * A click inside one of the cell's icon links is left alone, so the links
+     * keep working. A cell already loading ignores further clicks.
+     *
+     * @param   {MouseEvent} ev
+     * @returns {void}
+     */
+    function _relCellDelegateHandler(ev) {
+        if (Lib.settings.sa_rel_cell_state_glyphs === false) return;
+        const _t = ev.target;
+        if (!_t || !_t.closest || _t.closest('a')) return;
+        const td = _t.closest('td.mb-rel-cell[data-mbid]');
+        if (!td || !td.closest('tbody')) return;
+        if (td.dataset.relLoading) return;
+        _relLoadRow(td, { force: td.dataset.relDone === '1' });
+    }
+
+    /**
+     * Hover delegate that keeps a Relationships data cell's `title` in step
+     * with its load state, so every glyph explains itself.
+     *
+     * Written lazily on hover rather than at render: it costs nothing for the
+     * thousands of cells nobody points at. A `title` is an attribute, so it
+     * survives the re-render clones; snapshots serialise cell `innerHTML`
+     * only, so it never reaches a saved file.
+     *
+     * @param   {MouseEvent} ev
+     * @returns {void}
+     */
+    function _relCellTitleHandler(ev) {
+        if (Lib.settings.sa_rel_cell_state_glyphs === false) return;
+        const _t = ev.target;
+        if (!_t || !_t.closest || _t.closest('a')) return;
+        const td = _t.closest('td.mb-rel-cell[data-mbid]');
+        if (!td || !td.closest('tbody')) return;
+        let _title;
+        if (td.dataset.relLoading) {
+            _title = 'Loading this row’s relationships…';
+        } else if (td.dataset.relError) {
+            _title = `Loading failed (${td.dataset.relError}) — click to try again`;
+        } else if (td.dataset.relDone === '1') {
+            _title = td.firstChild
+                ? 'Click here, outside the icons, to reload this row’s relationships'
+                : 'Nothing with an icon for this row — click to reload';
+        } else {
+            _title = 'Relationships not loaded yet — click to load this row only (one request)';
+        }
+        if (td.title !== _title) td.title = _title;
+    }
+
+    /**
      * Rebuilds the REL_* lookup maps from user-configured GM storage tables.
      * Falls back to the hardcoded default values when a table is empty.
      * Called once at startup and before each initRelationshipsColumn() run so
@@ -65141,12 +65574,16 @@ a { color: #1565c0; }`;
      *
      * ── The two defaults ────────────────────────────────────────────────────
      *
-     * 1. A table that already carries populated cells starts EXPANDED,
-     *    whatever the threshold says. This is the disk-load and cross-tab
-     *    handoff case: save-format 1.1 bakes `mbid`/`relDone` and the icon
-     *    markup into the snapshot, so the data is present at zero cost and
-     *    hiding it would be pure loss. It also keeps every fixture captured
-     *    with relationships populated behaving exactly as before.
+     * 1. A table whose Relationships cells are ALL already populated starts
+     *    EXPANDED, whatever the threshold says. This is the disk-load and
+     *    cross-tab handoff case: save-format 1.1 bakes `mbid`/`relDone` and
+     *    the icon markup into the snapshot, so the data is present at zero
+     *    cost and hiding it would be pure loss. It also keeps every fixture
+     *    captured with relationships populated behaving exactly as before.
+     *    "All" is load-bearing since PERFORMANCE.org Step 36: a PARTLY
+     *    populated table — rows loaded by hand with a cell click, or a page
+     *    saved mid-fetch — falls through to rule 2, or reopening it would
+     *    queue a fetch of every other row.
      * 2. Otherwise: collapsed iff the threshold is enabled and this table's
      *    distinct-entity count exceeds it.
      *
@@ -65172,7 +65609,13 @@ a { color: #1565c0; }`;
             // at all — a diff with no behaviour behind it.
             if (!table.querySelector('tbody td.mb-rel-cell')) return true;
             let _expanded;
-            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) {
+            // Restored data means "start expanded" only when it is COMPLETE.
+            // A partly loaded table — rows loaded by hand with a cell click, or
+            // a page saved mid-fetch — falls through to the threshold, so a
+            // few hand-loaded rows can never turn into a queued fetch of every
+            // other row the moment the snapshot is reopened.
+            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')
+                && !table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])')) {
                 _expanded = true;
             } else {
                 const _raw = Lib.settings.sa_rel_collapse_threshold;
@@ -65215,10 +65658,13 @@ a { color: #1565c0; }`;
             // `:not([data-rel-error])`: a cell whose request FAILED is not done,
             // so without this every filter keystroke would re-request every
             // failure. A failure is retried only on an explicit action — a
-            // re-expand (collapsing clears the marker) or a 🔗⟳ retry button.
-            // Pinned by tests/fixtures/rel-column-fetch-failure.spec.js.
+            // re-expand (collapsing clears the marker), a 🔗⟳ retry button, or
+            // a click on the cell. Pinned by
+            // tests/fixtures/rel-column-fetch-failure.spec.js.
+            // `:not([data-rel-loading])`: a cell whose answer is already on its
+            // way — a click, or a queue step — is not work to start again.
             if (_table.querySelector(
-                'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-error])')) {
+                'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-error]):not([data-rel-loading])')) {
                 return true;
             }
         }
@@ -65317,6 +65763,10 @@ a { color: #1565c0; }`;
             // both skip `data-rel-error` cells, so collapsing and re-expanding
             // is what makes a failed row eligible again.
             delete td.dataset.relError;
+            // And a loading token: `_relLoadRow()` writes only into cells that
+            // still carry its token, so this is what drops a click's late
+            // answer for a column the user just emptied.
+            delete td.dataset.relLoading;
             td.style.backgroundColor = '';
             _cleared++;
         };
@@ -65457,6 +65907,10 @@ a { color: #1565c0; }`;
         if (table.dataset.mbRelHdrDelegate) return;
         table.addEventListener('click', _relHdrDelegateHandler);
         table.addEventListener('keydown', _relHdrDelegateHandler);
+        // The per-cell click-to-load and its state tooltip share this host and
+        // this guard, for the same reason: the tbody rows are clones as well.
+        table.addEventListener('click', _relCellDelegateHandler);
+        table.addEventListener('mouseover', _relCellTitleHandler);
         table.dataset.mbRelHdrDelegate = '1';
         Lib.debug('relationships', '_relEnsureHdrDelegate: header delegate installed on <table>.');
     }
@@ -65948,7 +66402,10 @@ a { color: #1565c0; }`;
                 // release group or work.
                 // A FAILED cell is skipped too, for the reason given at
                 // `_relAnyPendingInExpandedTable()`'s own `:not([data-rel-error])`.
-                if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);
+                // A cell already LOADING (a click, or another pass's step) is
+                // skipped for the same reason.
+                if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError
+                    && !td.dataset.relLoading) allCells.push(td);
             });
         });
         _relInitRunCount++;
@@ -66045,7 +66502,7 @@ a { color: #1565c0; }`;
          *
          * A DETACHED cell (`closest()` → null, i.e. a re-render replaced the
          * row this pass captured) is deliberately treated as WRITABLE, which
-         * is the pre-existing behaviour: `_srcCells` then carries the content
+         * is the pre-existing behaviour: `_relMasterCellsFor()` then carries the content
          * to the master rows and the next render clones it back. Refusing
          * those would strand the data until `runFilter()`'s gate re-triggered.
          *
@@ -66066,189 +66523,17 @@ a { color: #1565c0; }`;
                 _relDbg(`_populateCells: ${mbid} — no writable cell (collapsed), skipped`);
                 return;
             }
-            // Clear loading tint and mark done regardless of data availability.
-            //
-            // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
-            // a cell's icons rather than adding to them, so calling it twice for
-            // the same cell cannot double anything. `_relAppendIcon()` appends,
-            // which is what made the multiplying-icons bug possible at all
-            // (5 copies of one URL in debug/relationships-multiplying.html).
-            //
-            // *Be precise about what this line buys, because the obvious claim
-            // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
-            // reverting it to the old append-only form, and the whole suite
-            // stayed green. The bug is actually prevented upstream, twice over —
-            // `_relCellWritable()` refuses a collapsed table's cells (that
-            // mutation DOES fail the regression test), and
-            // `_relQueueStillWants()`'s `!relDone` check stops a second queue
-            // re-answering an mbid a first one already wrote.
-            //
-            // It is kept anyway, deliberately. Those two guards make overlap
-            // UNREACHABLE; this makes it HARMLESS. `_populateCells()` is the
-            // single authoritative writer for one mbid's cells, and the entire
-            // doubled-icon family in this file's history — the cross-tab
-            // hydrate race, the collapse/expand race — comes from a caller
-            // reaching a non-idempotent writer twice. One assignment is cheap
-            // insurance against the next such caller, and the one path with no
-            // `relDone` guard in front of it is Phase 1: two passes both
-            // resolving the same mbid from IndexedDB would both land here.
-            // (Unreachable today only because the coalescing guard in
-            // `initRelationshipsColumn()` stops two passes sharing a Phase-1
-            // window.)
-            // `relError` is dropped with it: a successful answer supersedes an
-            // earlier failure recorded by `_relMarkCellsFailed()`.
-            cells.forEach(td => {
-                td.textContent = '';
-                td.style.backgroundColor = '';
-                td.dataset.relDone = '1';
-                delete td.dataset.relError;
-            });
-            // Track source-row cells (not in DOM) so icons sync back later
-            const _srcCells = _relMasterCellsFor(mbid, cells);
-            if (!data) {
-                _relDbg(`_populateCells: no data for ${mbid}`);
-                // textContent: same replace-not-append reason as the live cells
-                // above — a master row can also be reached by two overlapping
-                // passes, and this one is the "no relationships" answer.
-                _srcCells.forEach(td => {
-                    td.textContent = '';
-                    td.style.backgroundColor = '';
-                    td.dataset.relDone = '1';
-                    delete td.dataset.relError;
-                });
-                return;
-            }
-            // WS2 JSON format: data.relations[] filtered by target-type
-            const allRels  = data.relations || [];
-            const urlRels  = allRels.filter(r => r['target-type'] === 'url');
-            // Non-URL rels: release-group and release relationships (e.g. 'single from')
-            const nonUrlRels = allRels.filter(r => {
-                const tt = r['target-type'];
-                return tt === 'release_group' || tt === 'release-group' || tt === 'release';
-            });
-            _relDbg(`_populateCells: ${mbid} → ${urlRels.length} url-rels, ` +
-                    `${nonUrlRels.length} non-url-rels, ${cells.length} cell(s)`);
-
-            // ── URL relationships ─────────────────────────────────────────
-            const seen = new Set();
-            for (const rel of urlRels) {
-                const relType = rel.type || '';
-                const tUrl    = rel.url?.resource || '';
-                const ended   = !!rel.ended;
-                if (!tUrl || seen.has(tUrl)) continue;
-                seen.add(tUrl);
-                _relDbg(`_populateCells: rel type='${relType}' url='${tUrl}' ended=${ended}`);
-                if (relType === 'discography entry') {
-                    // Discography entries: use Google favicon (no HEAD probe needed,
-                    // no GM_xmlhttpRequest, no async delay, no ghost).
-                    const gUrl = _relGoogleFaviconUrl(tUrl);
-                    _relDbg(`_populateCells: discography entry favicon ${tUrl} → ${gUrl}`);
-                    cells.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
-                    continue;
-                }
-                // For known service types: filter using REL_*_CLASSES maps,
-                // but render using Google favicons (avoids CSS sprite ghost).
-                const cls = REL_URL_ICON_CLASSES[relType] ||
-                    (['free streaming','streaming','download for free','purchase for download']
-                        .includes(relType)
-                        ? _relFindIconClass(tUrl, REL_STREAMING_CLASSES)
-                        : _relFindIconClass(tUrl, REL_OTHER_DB_CLASSES));
-                _relDbg(`_populateCells: type='${relType}' cls='${cls || 'none'}' url='${tUrl}'`);
-                if (cls) {
-                    const gUrl = _relGoogleFaviconUrl(tUrl);
-                    cells.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
-                }
-            }
-
-            // ── Non-URL relationships (release-group, release) ────────────
-            // Renders icons for relationship types listed in REL_NON_URL_ICONS.
-            // WS2 JSON: target-type uses underscore (release_group);
-            //           nested entity key uses hyphen (release-group).
-            _relDbg(`_populateCells: ${nonUrlRels.length} non-url-rels for ${mbid}`);
-            if (Lib.settings.sa_enable_relationship_debug) {
-                nonUrlRels.forEach((r, i) => {
-                    Lib.debug('relationships',
-                        `  non-url-rel[${i}] type='${r.type}' target-type='${r['target-type']}' ` +
-                        `rg-id='${r['release-group']?.id}' rel-id='${r.release?.id}'`);
-                });
-            }
-            const seenNonUrl = new Set();
-            for (const rel of nonUrlRels) {
-                const relType = rel.type || '';
-                const iconUrl = REL_NON_URL_ICONS[relType];
-                if (!iconUrl) {
-                    _relDbg(`_populateCells: non-url-rel type='${relType}' not in REL_NON_URL_ICONS — skipped`);
-                    continue;
-                }
-                const tt = rel['target-type'] || '';
-                // WS2 uses 'release_group' (underscore) for target-type
-                // but 'release-group' (hyphen) for the nested entity key
-                const isRG = tt.replace('-','_') === 'release_group';
-                // Try both hyphen and underscore key variants defensively
-                const rgEntity = rel['release-group'] || rel['release_group'];
-                const targetId = isRG ? rgEntity?.id : rel.release?.id;
-                if (!targetId) {
-                    _relDbg(`_populateCells: non-url-rel type='${relType}' no targetId — skipped`);
-                    continue;
-                }
-                const href = isRG ? `/release-group/${targetId}` : `/release/${targetId}`;
-                if (seenNonUrl.has(href)) continue;
-                seenNonUrl.add(href);
-                const ended = !!rel.ended;
-                // Build tooltip: 'relType: Title (URL)' using the title from WS2 JSON
-                const _entityTitle = (isRG ? rgEntity?.title : rel.release?.title) || '';
-                const _tooltip = _entityTitle
-                    ? `${relType}: ${_entityTitle}\n${href}`
-                    : href;
-                _relDbg(`_populateCells: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
-                cells.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
-            }
-            // Immediately sync icon HTML to source-row cells so runFilter clones
-            // carry the correct content even when the Phase-2 queue is still mid-flight.
-            const _srcHtml = cells.length ? cells[0].innerHTML : '';
-            _srcCells.forEach(td => {
-                td.innerHTML = _srcHtml;
-                td.style.backgroundColor = '';
-                td.dataset.relDone = '1';
-                delete td.dataset.relError;
-            });
-        }
-
-        /**
-         * Every master-row (`groupedRows`/`allRows`) Relationships cell for
-         * `mbid` that is not already in `exclude` — what `_populateCells()` and
-         * `_relMarkCellsFailed()` mirror onto, so that the next re-render clones
-         * the new state rather than the old one.
-         *
-         * @param   {string}                 mbid
-         * @param   {HTMLTableCellElement[]} exclude  The live cells already written.
-         * @returns {HTMLTableCellElement[]}
-         */
-        function _relMasterCellsFor(mbid, exclude) {
-            const out = [];
-            const _take = r => {
-                const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
-                if (td && !exclude.includes(td)) out.push(td);
-            };
-            if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_take));
-            if (typeof allRows !== 'undefined') allRows.forEach(_take);
-            return out;
+            // The writing itself — idempotent, and mirrored onto the master
+            // rows — lives in the module-level `_relWriteResult()`, which the
+            // per-row click path (`_relLoadRow()`) shares. Read its comment
+            // before changing anything about how cells are cleared.
+            _relWriteResult(cells, _relMasterCellsFor(mbid, cells), mbid, data);
         }
 
         /**
          * Records a FAILED request on every cell of `mbid` this pass may still
-         * write, and on the master rows.
-         *
-         * Deliberately the opposite of `_populateCells()`'s "no data" branch: the
-         * cell is emptied but NOT marked done, and carries `data-rel-error`
-         * instead. `_relAnyPendingInExpandedTable()` and the candidate scan both
-         * skip that marker, so a failure is neither shown as "no relationships"
-         * nor re-requested on every keystroke.
-         *
-         * The master mirror is load-bearing on a multi-table page:
-         * `renderGroupedTable()` always clones, so a marker on the live cell
-         * alone would vanish on the next keystroke, the cell would read as plain
-         * pending again, and `runFilter()`'s gate would re-request it.
+         * write, and on the master rows — the marking is `_relWriteFailure()`'s,
+         * which also explains why the master mirror is load-bearing.
          *
          * @param   {string} mbid
          * @param   {string} detail  e.g. "HTTP 503"
@@ -66257,14 +66542,7 @@ a { color: #1565c0; }`;
         function _relMarkCellsFailed(mbid, detail) {
             const cells = (cellsByMbid.get(mbid) || []).filter(_relCellWritable);
             if (!cells.length) return;
-            const _mark = td => {
-                td.textContent = '';
-                td.style.backgroundColor = '';
-                delete td.dataset.relDone;
-                td.dataset.relError = detail || 'the request failed';
-            };
-            cells.forEach(_mark);
-            _relMasterCellsFor(mbid, cells).forEach(_mark);
+            _relWriteFailure(cells, _relMasterCellsFor(mbid, cells), detail);
         }
 
         // ── Two-phase fetch: IDB hits in parallel, misses throttled (1 req/s) ───
@@ -66338,7 +66616,8 @@ a { color: #1565c0; }`;
             // later overlapping pass either — same exclusion as the candidate
             // scan and `_relAnyPendingInExpandedTable()`.
             return (cellsByMbid.get(mbid) || []).some(
-                td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));
+                td => !td.dataset.relDone && !td.dataset.relError
+                    && !td.dataset.relLoading && _relCellWritable(td));
         }
 
         // Phase 2: throttled network queue for misses only
@@ -66361,6 +66640,10 @@ a { color: #1565c0; }`;
                 // have collapsed the column, or for another pass to have
                 // answered this mbid, while this step was waiting.
                 if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
+                // ◌ for the cells this step is about to answer. Both writers
+                // clear it; a collapse in the meantime clears it too.
+                (cellsByMbid.get(mbid) || []).filter(_relCellWritable)
+                    .forEach(td => { td.dataset.relLoading = 'queue'; });
                 if (_l1Hit) _p2CacheHits++;
                 else _p2NetFetches++;
                 const _res = await _relFetchWs2(mbid, _mbidEt, _mbidInc, false, { slotHeld: !_l1Hit });

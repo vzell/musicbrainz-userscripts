@@ -11219,3 +11219,63 @@ test issues no toggle and its single fetch had already landed, so it does not
 reach the changed code — but it was NOT run against `main`, so "pre-existing"
 is inferred, not established. The new multi-table failure test polls the
 re-render instead of sleeping.
+
+## 2026-09-15 — Relationships per-row load-state glyphs and click-to-load (branch rel-column-batch-and-cell-states)
+
+PERFORMANCE.org Step 36, part 2. Requested in `org/relationships.org` (items
+2-4): show per row whether it has been fetched, and let a click fetch only that
+row, even in a collapsed column. The user picked the link-outline glyph set and
+a hover ⟳ reload.
+
+**Built.** CSS-only glyphs (🔗︎ not loaded, ⋯ queued, ◌ loading, – none, ⚠︎
+failed, hover ⟳), keyed on `data-mbid`/`data-rel-done`/`:empty` and the table's
+`data-mb-rel-expanded`, plus two transient attributes, `data-rel-loading` and
+`data-rel-error`. `_relLoadRow()` loads one row; the icon writer, the failure
+marker and the master-cell lookup moved to module level (`_relWriteResult()`,
+`_relWriteFailure()`, `_relMasterCellsFor()`) so the bulk pass and a click share
+them. New setting `sa_rel_cell_state_glyphs` (default on). The spec
+`tests/fixtures/rel-cell-state-glyphs.spec.js` was written first: 8 of its 9
+original tests failed on the pre-change code (the ninth pins the off switch,
+which cannot fail on code without the feature).
+
+**Four things went differently from the plan, each worth keeping.**
+
+1. *The glyph CSS was first gated by a class on `<html>`.* The snapshot harness
+   (`tests/support/snapshot.js`) serializes the whole `documentElement`, so that
+   class would have become markup drift in every rendered baseline — including
+   pageTypes with no Relationships column at all, the exact drift CLAUDE.md's
+   Relationships section warns about. It is now a separate stylesheet,
+   `#mb-rel-cell-glyph-style`, injected only while the setting is on.
+2. *A clicked row can be filtered out before its answer arrives.* Then there is
+   no live cell, and the first version of the writer mirrored `cells[0].innerHTML`
+   — i.e. `''` — over the master row, which came back marked done with no icon.
+   The writer now renders into the first master when there is no live cell. It
+   was caught while writing the mutation list, not by a report; test "a row
+   hidden by the filter while its answer is in flight still gets its icon"
+   asserts the row really was hidden before the (delayed) answer landed, so it
+   cannot pass trivially.
+3. *No priority lane on the rate gate.* The Phase-2 queue only ever reserves one
+   slot ahead, so a click that simply reserves the next slot is served ahead of
+   the rest of the queue. Test "a queued row shows ⋯, and clicking it fetches it
+   ahead of the queue".
+4. *The partial-snapshot rule was needed now, not later.* `_relTableExpanded()`
+   read ANY `relDone` cell as "restored from a snapshot, start expanded", so a
+   sub-table carrying one hand-loaded row reopened in its own tab expanded and
+   queued the rest. It now defaults to expanded only when every rel cell is
+   done. Driven through the real cross-tab handoff (`tests/support/subtableTab.js`).
+
+**Guards and their mutation results** (`scripts/mutations/rel-cell-state-glyphs.json`,
+`vzell-lap`, 2026-09-15). 9 of 9 expected-fail mutations failed, each at its own
+assertion: the per-cell token filter; collapse clearing the token; the master
+mirror of a hand-loaded row; the delegate ignoring icon-link clicks; the forced
+reload; the writer's `textContent` clear (a reload then appends a second icon —
+the multiplying-icons failure, now reachable by a click, so the clear is no
+longer merely defence in depth); the settings gate on clicks; the
+partial-snapshot rule; and the master fallback for a filtered-out row. The one
+expected-pass entry passed: removing the queue's `data-rel-loading` exclusion is
+invisible to request counts, because the step shares the click's in-flight L1
+promise.
+
+The Step A mutation list (`rel-column-fetch-failure.json`) was re-run after the
+writer refactor, since several of its `find` strings moved: 8 of 8 as expected.
+Userscript restored and hash-verified after both runs.

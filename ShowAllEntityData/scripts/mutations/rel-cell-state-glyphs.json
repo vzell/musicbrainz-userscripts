@@ -1,0 +1,132 @@
+[
+  {
+    "name": "token: late answer written regardless",
+    "why": "_relLoadRow() writes every live cell of the entity even after a collapse cleared its token, so an emptied column is refilled.",
+    "edits": [
+      {
+        "find": "const liveNow = Array.from(document.querySelectorAll(_sel))\n            .filter(c => c.dataset.relLoading === token);",
+        "replace": "const liveNow = Array.from(document.querySelectorAll(_sel));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "collapsing while a hand-loaded row is still in flight",
+    "expect": "fail"
+  },
+  {
+    "name": "collapse: loading token not cleared",
+    "why": "The token survives a collapse, so the late answer still matches it and refills the emptied column.",
+    "edits": [
+      {
+        "find": "            delete td.dataset.relLoading;\n            td.style.backgroundColor = '';\n            _cleared++;",
+        "replace": "            td.style.backgroundColor = '';\n            _cleared++;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "collapsing while a hand-loaded row is still in flight",
+    "expect": "fail"
+  },
+  {
+    "name": "click: no master mirror",
+    "why": "A hand-loaded row in a multi-table page is written to the live clone only; the next re-render clones a master still carrying its loading token and no icon.",
+    "edits": [
+      {
+        "find": "else _relWriteResult(liveNow, mastersNow, mbid, res.data);",
+        "replace": "else _relWriteResult(liveNow, [], mbid, res.data);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "multi-table: a row loaded by hand in a collapsed sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "delegate: icon-link clicks not ignored",
+    "why": "Clicking a relationship icon force-reloads the row instead of just following the link.",
+    "edits": [
+      {
+        "find": "        if (!_t || !_t.closest || _t.closest('a')) return;\n        const td = _t.closest('td.mb-rel-cell[data-mbid]');\n        if (!td || !td.closest('tbody')) return;\n        if (td.dataset.relLoading) return;",
+        "replace": "        if (!_t || !_t.closest) return;\n        const td = _t.closest('td.mb-rel-cell[data-mbid]');\n        if (!td || !td.closest('tbody')) return;\n        if (td.dataset.relLoading) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "clicking one of the row",
+    "expect": "fail"
+  },
+  {
+    "name": "reload: not forced",
+    "why": "A click on a loaded cell is answered from the L1 cache, so the hover ⟳ reload issues no request.",
+    "edits": [
+      {
+        "find": "_relLoadRow(td, { force: td.dataset.relDone === '1' });",
+        "replace": "_relLoadRow(td, { force: false });"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "reload re-requests exactly that row",
+    "expect": "fail"
+  },
+  {
+    "name": "writer: appends instead of replacing",
+    "why": "Without the textContent clear, a reload appends a second copy of every icon — the multiplying-icons failure mode, now reachable by a user click.",
+    "edits": [
+      {
+        "find": "        const _markDone = td => {\n            td.textContent = '';",
+        "replace": "        const _markDone = td => {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "reload re-requests exactly that row",
+    "expect": "fail"
+  },
+  {
+    "name": "setting: click not gated",
+    "why": "With sa_rel_cell_state_glyphs off the glyphs are gone but a click still loads the row.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_rel_cell_state_glyphs === false) return;\n        const _t = ev.target;\n        if (!_t || !_t.closest || _t.closest('a')) return;\n        const td = _t.closest('td.mb-rel-cell[data-mbid]');\n        if (!td || !td.closest('tbody')) return;\n        if (td.dataset.relLoading) return;",
+        "replace": "        const _t = ev.target;\n        if (!_t || !_t.closest || _t.closest('a')) return;\n        const td = _t.closest('td.mb-rel-cell[data-mbid]');\n        if (!td || !td.closest('tbody')) return;\n        if (td.dataset.relLoading) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "with sa_rel_cell_state_glyphs off",
+    "expect": "fail"
+  },
+  {
+    "name": "snapshot: any relDone means expanded",
+    "why": "The pre-Step-36 default: a reopened sub-table with one hand-loaded row starts expanded and queues a fetch of every other row.",
+    "edits": [
+      {
+        "find": "            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done=\"1\"]')\n                && !table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"])')) {",
+        "replace": "            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done=\"1\"]')) {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "a sub-table carrying only hand-loaded rows",
+    "expect": "fail"
+  },
+  {
+    "name": "writer: no master fallback for a filtered-out row",
+    "why": "When the clicked row is hidden by a filter mid-flight there is no live cell, and an empty innerHTML is mirrored over the master — the row comes back done with no icon.",
+    "edits": [
+      {
+        "find": "        const primary = cells.length ? cells : masters.slice(0, 1);\n        const rest    = cells.length ? masters : masters.slice(1);",
+        "replace": "        const primary = cells;\n        const rest    = masters;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "a row hidden by the filter while its answer is in flight",
+    "expect": "fail"
+  },
+  {
+    "name": "queue: no loading exclusion (overlap)",
+    "why": "KNOWN OVERLAP: a queue step reaching a row a click is already loading shares the click's in-flight L1 promise, so no extra request is made and the spec cannot see this. The exclusion saves the step's slot wait and a redundant write. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "td => !td.dataset.relDone && !td.dataset.relError\n                    && !td.dataset.relLoading && _relCellWritable(td));",
+        "replace": "td => !td.dataset.relDone && !td.dataset.relError\n                    && _relCellWritable(td));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-cell-state-glyphs.spec.js",
+    "grep": "a queued row shows",
+    "expect": "pass"
+  }
+]
