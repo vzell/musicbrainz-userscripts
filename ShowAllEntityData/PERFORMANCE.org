@@ -3181,6 +3181,19 @@ Still TODO on ~main~. Landed on ~rel-column-batch-and-cell-states~ so far:
   module-level ~_relWriteResult()~, ~_relWriteFailure()~ and
   ~_relMasterCellsFor()~; the partial-snapshot rule in ~_relTableExpanded()~;
   the setting ~sa_rel_cell_state_glyphs~. Spec ~rel-cell-state-glyphs.spec.js~.
+- *The browse bulk source*: ~features.relBrowse~ on the seven probed pageTypes;
+  ~_relBrowseSource()~, ~_relBrowseFetchPage()~ and ~_relIdbPutMany()~; the
+  impl's browse phase with both stop rules; the kill switch
+  ~sa_rel_browse_batch_enable~. Spec ~rel-column-browse-batch.spec.js~.
+
+*The browse source depended on a bug fix that had to ship first.* Its spec saw
+zero browse requests: release listings without an entityFeatures map had been
+stamped as LABEL tables since 9.99.1086, so ~_relBrowseSource()~ correctly
+refused them — and, live, every release was being looked up as
+~/ws/2/label/<release mbid>~, a 404 per row. Fixed on ~main~ as 9.99.1092
+(DEBUG-NOTES.md 2026-09-15) and merged into this branch. Worth carrying into
+Step 33: any per-table source keyed on the table's entity type inherits
+whatever ~_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()~ stamps.
 
 Two things the plan predicted turned out otherwise while building, recorded so
 they are not re-derived:
@@ -3195,8 +3208,8 @@ they are not re-derived:
   rendered baseline, including pageTypes with no Relationships column. It is a
   conditionally injected stylesheet instead.
 
-Outstanding before merge: the browse source, the header badge, the 📊 section,
-and *the perf gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
+Outstanding before merge: the header badge, the 📊 section, and *the perf
+gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
 in one session, because every pending cell now paints a glyph.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)

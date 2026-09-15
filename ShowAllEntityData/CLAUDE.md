@@ -1549,16 +1549,31 @@ On the branch so far. Neither relaxes a guard listed above:
   `_relMasterCellsFor()` — shared by the bulk pass and `_relLoadRow()`. The
   click and hover delegates are installed by `_relEnsureHdrDelegate()`.
 
-Still to come: the browse-endpoint bulk source (search results carry no
-`relations`; browse matched lookups exactly on 7 pageTypes), the `done/total`
-header badge, and the 📊 load-state section.
+- **A browse-endpoint bulk source** on the seven pageTypes that passed
+  `scripts/probe-rel-batch-endpoints.py` (search results carry no `relations`;
+  browse matched lookups exactly). Declared per pageType as
+  `features.relBrowse: { entity, by }` and resolved by `_relBrowseSource()`,
+  which requires BOTH that the URL's own entity is `by` and that the TABLE's
+  entity type is `entity`. The impl's browse phase runs ahead of the per-row
+  queue; kill switch `sa_rel_browse_batch_enable`.
+
+Still to come: the `done/total` header badge and the 📊 load-state section.
 
 The traps. Every one of them fails silently:
 
-- **inc parity**, for the coming browse source. A browse request must ask for
+- **inc parity.** A browse request must ask for
   exactly `_relIncOptionsForEntityType(entityType)`. Browse answers are cached
   under the lookup's own ckey, so a record missing `release-group-rels` would be
   served as complete forever after, showing fewer icons than a lookup would.
+- **The browse source trusts the table's entity stamp.** Until 9.99.1092,
+  `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` ran its work/label
+  sniff before its release/release-group scan, so every release listing with a
+  "Label" column and no entityFeatures map was stamped `label`: the resolver
+  refused all of them and, live, each release was looked up as a label (a 404
+  per row). Keep the release scan FIRST in that function. Specs that answer
+  every `**/ws/2/**` URL with a relationship cannot see this class of bug — pin
+  the request's entity segment, as `rel-column-release-listing-entity.spec.js`
+  does.
 - **A transport failure is not "no relationships".** Before this branch, a 503
   was stamped `relDone` exactly like an entity with zero relationships, and the
   `null` stayed in `_relWs2Cache` for the session. Cache only a successful
