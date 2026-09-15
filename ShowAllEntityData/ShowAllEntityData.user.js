@@ -58015,19 +58015,24 @@ a { color: #1565c0; }`;
         const bRect = btn.getBoundingClientRect();
         const vw    = window.innerWidth;
         const vh    = window.innerHeight;
-        const synItemCount = (isCollapsableCol
-            ? (emptyCellCount          > 0 ? 1 : 0) +
-              (singleRowCount          > 0 ? 1 : 0) +
-              (multiRowCollapsedCount  > 0 ? 1 : 0) +
-              (multiRowExpandedCount   > 0 ? 1 : 0) +
-              (totalMultiRow > 1         ? 1 : 0)
-            : (emptyCellCount > 0 ? 1 : 0)) +
-            (titleMismatchCount > 0 ? 1 : 0) + (nameVariationCount > 0 ? 1 : 0) +
-            _sortedAttrValues.length + _sortedTaskValues.length + _sortedDateValues.length +
-            _sortedInstrumentValues.length + _sortedAltNameValues.length +
-            _sortedNameValues.length + _sortedCommentValues.length + _sortedAliasValues.length +
-            _sortedRoleValues.length + _sortedRoleTokenValues.length;
-        const dropH = Math.min(maxDropH, (combinedVals.length + synItemCount) * 29 + 50 + 38); // +50 syn header/divider, +38 qf bar
+
+        // The panel's real natural content height, not an estimate — every
+        // synBox section and listBox item was already built and appended
+        // above this point in the function, so scrollHeight reflects the
+        // true rendered height. This replaced a per-row-count formula
+        // ((combinedVals.length + synItemCount) * 29 + 50 + 38) that was
+        // only ever an approximation of actual layout (real row height
+        // varies with wrapped text, flag icons, section dividers, etc.) —
+        // close enough most of the time, but capable of drifting in EITHER
+        // direction: an overestimate wasted space and pushed the panel away
+        // from its button when opening upward (see the "Title" case in the
+        // comment below), while an UNDERestimate capped max-height below
+        // what the viewport actually had room for, forcing a scrollbar that
+        // wasn't necessary. scrollHeight always reflects the full content
+        // height regardless of any max-height/overflow clamp currently
+        // applied (e.g. left over from a previous open), so it's safe to
+        // read before this open's own clamp is set below.
+        const dropH = Math.min(maxDropH, drop.scrollHeight);
         const dropW = drop.offsetWidth || 200;
 
         // Pick whichever side has more room and CLAMP the panel's height to
