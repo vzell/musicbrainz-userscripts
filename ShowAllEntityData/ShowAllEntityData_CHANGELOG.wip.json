@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: the 📊 unique-values dropdown has a new \"Relationships - Load state\" section with four entries — 🔗 not loaded yet, ✓ has relationships, – no relationships, ⚠ request failed — each with its row count. Checking one narrows the table to those rows, so in a large table with only a few relationships you can list the rows still waiting, the ones that actually have icons, or the ones whose request failed. It is offered on a collapsed column too, where the collapsed note now says how many rows are already loaded, and its counts stay current as more rows load."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: the ▶🔗 / ▼🔗 header toggle now shows how far the column has got — e.g. \"340/2301\" distinct entities loaded — updating as rows load by hand, in bulk or one by one, and disappearing once everything is loaded. A request that failed does not count as loaded, and the toggle's tooltip says how many failed."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-09-15",
     "sections": [

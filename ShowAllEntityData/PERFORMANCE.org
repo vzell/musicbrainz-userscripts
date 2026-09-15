@@ -3185,6 +3185,12 @@ Still TODO on ~main~. Landed on ~rel-column-batch-and-cell-states~ so far:
   ~_relBrowseSource()~, ~_relBrowseFetchPage()~ and ~_relIdbPutMany()~; the
   impl's browse phase with both stop rules; the kill switch
   ~sa_rel_browse_batch_enable~. Spec ~rel-column-browse-batch.spec.js~.
+- *The ~done/total~ badge and the 📊 "Relationships - Load state" section*:
+  ~_relTableProgress()~, ~_relCellLoadState()~ and a per-frame coalesced
+  ~_relScheduleProgressRefresh()~ called by both cell writers. Specs
+  ~rel-column-progress-badge.spec.js~ and ~uniq-drop-rel-load-state.spec.js~.
+  The refresh walks one table's rel cells at most once per animation frame,
+  so a hundred-row browse page costs one walk, not a hundred.
 
 *The browse source depended on a bug fix that had to ship first.* Its spec saw
 zero browse requests: release listings without an entityFeatures map had been
@@ -3208,8 +3214,7 @@ they are not re-derived:
   rendered baseline, including pageTypes with no Relationships column. It is a
   conditionally injected stylesheet instead.
 
-Outstanding before merge: the header badge, the 📊 section, and *the perf
-gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
+Outstanding before merge: *the perf gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
 in one session, because every pending cell now paints a glyph.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)

@@ -1217,6 +1217,11 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
       collapse-all, cover-art and Picard page-wide buttons.
     — The ▶🔗 tooltip says what pressing it will cost, in requests and in
       expected time, so it is never a blind choice.
+    — While anything in a table is still unloaded, its ▶🔗 / ▼🔗 button shows
+      how far it has got, e.g. "340/2301" distinct entities loaded — updating
+      as rows load by hand, in bulk or one by one — and the badge disappears
+      once the table is complete.  A failed request does not count as loaded;
+      the button's tooltip says how many failed.
     — Emptying a column KEEPS everything already fetched (memory + the
       IndexedDB cache), so pressing ▶🔗 again is instant and costs no
       requests.  Only the 🔗⟳ Retry buttons clear that data.
@@ -1237,9 +1242,16 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • A COLLAPSED column says so rather than quietly matching nothing.  Its
   column-filter box is tinted and reads "collapsed — press ▶🔗", the 📊
   unique-values dropdown shows a "Collapsed — press ▶🔗 in the column
-  header to load" line instead of an empty "Relationship icons" section,
-  and the status bar reports "🔗Rels: collapsed" rather than a completed
-  load.  Neither the filter box nor the dropdown starts the fetch.
+  header to load" line (or "Collapsed — N of M loaded" once rows have been
+  loaded by hand, whose icons are then listed as usual) instead of an empty
+  "Relationship icons" section, and the status bar reports "🔗Rels:
+  collapsed" rather than a completed load.  Neither the filter box nor the
+  dropdown starts the fetch.
+• The 📊 dropdown's "Relationships - Load state" section — collapsed or
+  expanded — counts the rows in four states: 🔗 not loaded yet, ✓ has
+  relationships, – no relationships, ⚠ request failed.  Checking one narrows
+  the table to those rows: the rows still waiting in a huge table, the few
+  that actually have icons, or the ones whose request failed.
 • EVERY ROW SAYS WHERE IT STANDS — a small, faint glyph in each Relationships
   cell ("Relationships: show a load-state glyph in each cell" in ⚙️ Settings,
   on by default):

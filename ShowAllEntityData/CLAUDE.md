@@ -1557,7 +1557,18 @@ On the branch so far. Neither relaxes a guard listed above:
   entity type is `entity`. The impl's browse phase runs ahead of the per-row
   queue; kill switch `sa_rel_browse_batch_enable`.
 
-Still to come: the `done/total` header badge and the 📊 load-state section.
+- **A `done/total` badge on the ▶🔗/▼🔗 toggle** — CSS `::after { content:
+  attr(data-rel-progress) }`, set by `_relUpdateColHdrBtn()` from
+  `_relTableProgress()` (distinct entities done / total / failed) only while
+  something is unloaded. Both cell writers call `_relScheduleProgressRefresh()`,
+  coalesced to one refresh per animation frame per table.
+- **A 📊 "Relationships - Load state" section** (`relLoadState`): four fixed
+  `rel-state-*` modes — pending / has / none / error — whose counts and whose
+  `_cellMatchesStructureMode()` branch both go through ONE classifier,
+  `_relCellLoadState()`, so a count and the rows its entry filters to cannot
+  disagree. Offered on a collapsed column too.
+
+Still to come before merge: only the perf gate (PERFORMANCE.org Step 36).
 
 The traps. Every one of them fails silently:
 
@@ -1610,6 +1621,18 @@ The traps. Every one of them fails silently:
   snapshot harness serializes the whole `documentElement`, so a page-level class
   drifts every rendered baseline, including pageTypes with no Relationships
   column at all.
+- **The progress badge is `attr()`, never header text**, for the same reason
+  as the toggle's own glyph: this `<th>`'s text feeds `colName` derivation,
+  export and the 📊 dropdown. And its refresh is also where the table's 📊
+  cache is dropped after every write — the cache's signature is the visible
+  row set, which a write does not change, so a dropdown reopened mid-fetch
+  would otherwise show stale load-state counts. `_relLoadRow()` drops it too,
+  which is why the spec cannot see a missing per-write drop (recorded as an
+  `expect: "pass"` overlap in `scripts/mutations/uniq-drop-rel-load-state.json`).
+- **Icon counts for a collapsed column are computed once any cell is loaded.**
+  A collapsed column can hold rows loaded by hand, and their icons are as
+  filterable as an expanded column's; `relIconCounts` used to be skipped
+  whenever the column was collapsed.
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 

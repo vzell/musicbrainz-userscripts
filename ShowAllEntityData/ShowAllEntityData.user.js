@@ -22766,6 +22766,13 @@
             const want = mode.slice(10);
             return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
         }
+        if (mode.startsWith('rel-state-')) {
+            // Fixed-flag modes of openUniqDrop()'s "Relationships - Load state"
+            // section, one per _relCellLoadState() answer — the same
+            // classifier the section's counts use, so a count and the rows its
+            // entry filters to cannot disagree.
+            return _relCellLoadState(cell) === mode.slice('rel-state-'.length);
+        }
         if (mode.startsWith('rel:')) {
             // Compound mode (openUniqDrop()'s "Relationship icons" section) —
             // matches one relationship-icon's own base-URL "domainKey" from
@@ -35663,6 +35670,17 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn[aria-pressed="true"]::before {
             content: '▼🔗︎';   /* expanded: press to empty the column */
         }
+        /* done/total progress badge (PERFORMANCE.org Step 36). Generated
+           content from data-rel-progress, never header text: this th's text
+           is read by many places. _relUpdateColHdrBtn() sets the attribute
+           only while something is still unloaded, so a complete table shows
+           no badge at all. */
+        .mb-rel-col-hdr-btn[data-rel-progress]::after {
+            content: attr(data-rel-progress);
+            margin-left: 4px;
+            font-size: 0.85em;
+            font-variant-numeric: tabular-nums;
+        }
         /* A collapsed column's filter input matches nothing, because its
            .mb-rel-filter-key spans do not exist yet. Tint it so that is
            visible before the user types rather than after — the placeholder
@@ -41218,6 +41236,10 @@ a { color: #1565c0; }`;
         // combination) — see MB_UNIQ_KIND_TO_SECTION's 'role' key.
         roles:         { label: 'Entity info - Role (combined)', glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
+        // Fixed-flag load state of each Relationships cell (not loaded / has /
+        // none / failed) — a different question from which icons it holds, so
+        // its own section. Classified by _relCellLoadState().
+        relLoadState:  { label: 'Relationships - Load state', glyph: '📶' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
         // the free-text image comment are two distinct data facets that
@@ -41472,6 +41494,8 @@ a { color: #1565c0; }`;
         'instrument-has-description': 'instrumentHasDescription',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
+        'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
+        'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
     };
 
     /**
@@ -56551,12 +56575,13 @@ a { color: #1565c0; }`;
             return false;
         })();
 
-        // `_relTableExpanded(table)`: a collapsed column has no
-        // `.mb-rel-filter-key` spans, so this walk of every visible row can only
-        // ever produce an empty Map. Skipping it is both cheaper and what makes
-        // the "Collapsed — press ▶🔗" note below the section's only content.
+        // Walked when the column is expanded OR any of its cells is loaded: a
+        // collapsed column can hold rows loaded by hand with a cell click, and
+        // their icons are just as filterable. A collapsed column with nothing
+        // loaded still skips the walk — it can only produce an empty Map.
         const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts
-            : isRelCellCol && _relTableExpanded(table) ? (() => {
+            : isRelCellCol && (_relTableExpanded(table)
+                || table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -56575,6 +56600,21 @@ a { color: #1565c0; }`;
             counts._iconFor = iconFor;
             return counts;
         })() : new Map();
+
+        // "Relationships - Load state" counts: one fixed flag per visible row,
+        // from _relCellLoadState() — the classifier the rel-state-* matcher
+        // uses too. Collapsed or expanded alike.
+        const relLoadStateCounts = _uniqCacheHit ? _uniqCacheHit.relLoadStateCounts
+            : isRelCellCol ? (() => {
+            const counts = { pending: 0, has: 0, none: 0, error: 0 };
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const st = _relCellLoadState(row.cells[colIndex]);
+                if (st) counts[st]++;
+            }
+            return counts;
+        })() : null;
 
         // Is this the inline-thumbnail column for an addCAA or addEAA feature?
         // Detected by the presence of .mb-caa-inline-ph or .mb-eaa-inline-ph spans
@@ -56648,7 +56688,7 @@ a { color: #1565c0; }`;
                 instrumentHasCommentCount, instrumentHasDescriptionCount,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
-                flagIconMap, isRelCellCol, relIconCounts,
+                flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
@@ -57805,12 +57845,28 @@ a { color: #1565c0; }`;
         if (isRelCellCol && !_relTableExpanded(table)) {
             const _note = document.createElement('div');
             _note.className = 'mb-col-uniq-item mb-uniq-rel-collapsed-note';
-            _note.textContent = '🔗 Collapsed — press ▶🔗 in the column header to load';
-            _note.title = 'This table’s Relationships column has not been fetched, because it '
-                        + `would need ${_relTableUniqueMbidCount(table)} distinct Web Service `
-                        + 'lookups (throttled to 1 per second). Nothing in it can be filtered '
-                        + 'until you load it. Threshold: sa_rel_collapse_threshold.';
+            // Rows loaded by hand (a cell click) are counted, so a partly loaded
+            // collapsed column does not claim that nothing is loaded.
+            const _p = _relTableProgress(table);
+            _note.textContent = _p.done
+                ? `🔗 Collapsed — ${_p.done} of ${_p.total} loaded; press ▶🔗 in the column header to load the rest`
+                : '🔗 Collapsed — press ▶🔗 in the column header to load';
+            _note.title = 'This table’s Relationships column has not been fully fetched, because it '
+                        + `would need ${_p.total} distinct Web Service `
+                        + 'lookups (throttled to 1 per second). Only rows already loaded can be '
+                        + 'filtered until you load the rest. Threshold: sa_rel_collapse_threshold.';
             getOrCreateSynSection('relationships').itemsBox.appendChild(_note);
+        }
+
+        // ── Relationships column: load state (fixed flags) ────────────────────
+        // Offered collapsed or expanded; zero-count entries are omitted, like
+        // every other fixed-flag section. makeSynItem() sets
+        // dataset.mbUniqSynLabel, so the entries stay quickfilter-visible.
+        if (isRelCellCol && relLoadStateCounts) {
+            if (relLoadStateCounts.pending > 0) makeSynItem('rel-state-pending', '🔗 not loaded yet',   relLoadStateCounts.pending);
+            if (relLoadStateCounts.has > 0)     makeSynItem('rel-state-has',     '✓ has relationships', relLoadStateCounts.has);
+            if (relLoadStateCounts.none > 0)    makeSynItem('rel-state-none',    '– no relationships',  relLoadStateCounts.none);
+            if (relLoadStateCounts.error > 0)   makeSynItem('rel-state-error',   '⚠ request failed',    relLoadStateCounts.error);
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -58354,6 +58410,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
+        if (mode === 'rel-state-pending')   return '🔗 not loaded yet';
+        if (mode === 'rel-state-has')       return '✓ has relationships';
+        if (mode === 'rel-state-none')      return '– no relationships';
+        if (mode === 'rel-state-error')     return '⚠ request failed';
         if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
         if (mode === 'editor-any-deleted')      return '🗑️ any deleted editor';
         if (mode === 'changelog-has-message')   return '📜 has changelog message';
@@ -58452,6 +58512,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Entity info - Role (combined)", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
+        if (mode === 'rel-state-pending') return 'This row\'s relationships have not been fetched yet — collapsed, queued or still loading.';
+        if (mode === 'rel-state-has') return 'Fetched, and at least one relationship has an icon in this column.';
+        if (mode === 'rel-state-none') return 'Fetched, and nothing with an icon — shown as – in the cell.';
+        if (mode === 'rel-state-error') return 'The Web Service request failed even after retries — shown as ⚠ in the cell; click it to try again.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';
         if (mode === 'editor-any-deleted') return '🗑️ = this row\'s "Editor" is a deleted-account placeholder (e.g. "Deleted Editor #12345"), whether or not that account was later revived under a new username.';
         if (mode === 'changelog-has-message') return '📜 = this "Version history" row\'s changelog parenthetical is real free text, not MusicBrainz\'s own placeholder.';
@@ -64123,6 +64187,9 @@ a { color: #1565c0; }`;
         const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
         const primary = cells.length ? cells : masters.slice(0, 1);
         const rest    = cells.length ? masters : masters.slice(1);
+        // Badge, filter affordance and 📊 counts follow every write; the refresh
+        // itself runs after this task, once all of its writes have landed.
+        _relScheduleProgressRefreshForCells(cells);
         // Clear loading tint and mark done regardless of data availability.
         //
         // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
@@ -64290,6 +64357,7 @@ a { color: #1565c0; }`;
         };
         cells.forEach(_mark);
         masters.forEach(_mark);
+        _relScheduleProgressRefreshForCells(cells);
     }
 
     /** Monotonic source of per-row loading tokens — see `_relLoadRow()`. */
@@ -65984,19 +66052,132 @@ a { color: #1565c0; }`;
      */
     function _relUpdateColHdrBtn(btn, table, expanded) {
         btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        const _p = _relTableProgress(table);
+        // The done/total badge is CSS `attr(data-rel-progress)`, so the header's
+        // own text never changes. The attribute exists only while something is
+        // still unloaded: a complete table shows no badge at all.
+        if (_p.total > 0 && _p.done < _p.total) {
+            btn.setAttribute('data-rel-progress', `${_p.done}/${_p.total}`);
+        } else {
+            btn.removeAttribute('data-rel-progress');
+        }
+        const _failedNote = _p.failed
+            ? ` — ${_p.failed} failed (click a ⚠ cell to retry)`
+            : '';
         if (expanded) {
             btn.title = 'Empty the Relationships column in this table '
-                      + '(already-fetched data is kept, so re-loading is instant)';
+                      + '(already-fetched data is kept, so re-loading is instant)'
+                      + (_p.done < _p.total ? ` — ${_p.done} of ${_p.total} loaded` : '')
+                      + _failedNote;
             btn.setAttribute('aria-label', 'Empty the Relationships column in this table');
             return;
         }
-        const _n = _relTableUniqueMbidCount(table);
+        const _n = _p.total - _p.done;
         btn.title = 'Load the relationship icons for this table — '
-                  + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} to look up, `
+                  + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} left to look up, `
                   + `about ${_relFormatEta(_n)} at the MusicBrainz rate limit of 1 request/second `
-                  + '(anything already cached is instant)';
+                  + '(anything already cached is instant)'
+                  + (_p.done ? ` — ${_p.done} of ${_p.total} already loaded` : '')
+                  + _failedNote;
         btn.setAttribute('aria-label',
-            `Load the relationship icons for this table, ${_n} entities to look up`);
+            `Load the relationship icons for this table, ${_n} entities left to look up`);
+    }
+
+    /**
+     * Distinct-entity load progress of one table's Relationships column:
+     * how many distinct MBIDs are done, how many there are, and how many have
+     * a failed request and nothing done.
+     *
+     * Counted over the live tbody, the same scope `_relTableUniqueMbidCount()`
+     * and the threshold use. An entity is done when any of its cells is done —
+     * every cell of one entity is written together — and failed when one of its
+     * cells carries `data-rel-error` and none is done.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {{done: number, total: number, failed: number}}
+     */
+    function _relTableProgress(table) {
+        const _all = new Set();
+        const _done = new Set();
+        const _failed = new Set();
+        table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]').forEach(td => {
+            const m = td.dataset.mbid;
+            _all.add(m);
+            if (td.dataset.relDone === '1') _done.add(m);
+            else if (td.dataset.relError) _failed.add(m);
+        });
+        _done.forEach(m => _failed.delete(m));
+        return { done: _done.size, total: _all.size, failed: _failed.size };
+    }
+
+    /**
+     * One Relationships cell's load state, for the 📊 "Relationships - Load
+     * state" section — the single classifier its counts and
+     * `_cellMatchesStructureMode()`'s `rel-state-*` modes share, so the two
+     * cannot disagree.
+     *
+     *   - `'has'`     — fetched, with at least one icon link;
+     *   - `'none'`    — fetched, nothing with an icon (the – glyph);
+     *   - `'error'`   — the request failed (the ⚠ glyph);
+     *   - `'pending'` — not fetched yet: collapsed, queued or loading;
+     *   - `null`      — not a Relationships cell with an entity to load.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?('has'|'none'|'error'|'pending')}
+     */
+    function _relCellLoadState(cell) {
+        if (!cell || !cell.classList || !cell.classList.contains('mb-rel-cell') || !cell.dataset.mbid) {
+            return null;
+        }
+        if (cell.dataset.relDone === '1') return cell.querySelector('a') ? 'has' : 'none';
+        if (cell.dataset.relError) return 'error';
+        return 'pending';
+    }
+
+    /** Tables with a progress refresh already scheduled this frame. */
+    const _relProgressRefreshPending = new WeakSet();
+
+    /**
+     * Schedules one refresh of `table`'s Relationships progress, at most once per
+     * animation frame per table: the header badge and tooltip, the collapsed
+     * filter affordance, and the 📊 dropdown's cached counts.
+     *
+     * Called by both cell writers. Coalesced because a browse page writes up to
+     * a hundred rows in one task, and each refresh walks the table's rel cells.
+     * The uniq-drop cache drop is here rather than only at the end of a bulk
+     * pass because its signature is the visible row set, which a write does not
+     * change — without this, a dropdown reopened mid-fetch shows stale
+     * load-state counts.
+     *
+     * @param   {?HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relScheduleProgressRefresh(table) {
+        if (!table || _relProgressRefreshPending.has(table)) return;
+        _relProgressRefreshPending.add(table);
+        requestAnimationFrame(() => {
+            _relProgressRefreshPending.delete(table);
+            if (!table.isConnected) return;
+            const _btn = table.querySelector('thead .mb-rel-col-hdr-btn');
+            if (_btn) _relUpdateColHdrBtn(_btn, table, _relTableExpanded(table));
+            _relSyncCollapsedFilterAffordance(table);
+            _invalidateUniqDropDataCacheForTable(table);
+        });
+    }
+
+    /**
+     * Schedules a progress refresh for every live table among `cells`.
+     *
+     * @param   {HTMLTableCellElement[]} cells
+     * @returns {void}
+     */
+    function _relScheduleProgressRefreshForCells(cells) {
+        const _tables = new Set();
+        cells.forEach(td => {
+            const _t = td.closest ? td.closest('table.tbl') : null;
+            if (_t) _tables.add(_t);
+        });
+        _tables.forEach(_relScheduleProgressRefresh);
     }
 
     /**

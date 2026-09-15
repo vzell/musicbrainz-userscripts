@@ -1,0 +1,93 @@
+[
+  {
+    "name": "badge attribute never set",
+    "why": "_relUpdateColHdrBtn() never writes data-rel-progress, so a collapsed table shows no 0/N badge.",
+    "edits": [
+      {
+        "find": "            btn.setAttribute('data-rel-progress', `${_p.done}/${_p.total}`);",
+        "replace": "            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a collapsed table shows 0/N",
+    "expect": "fail"
+  },
+  {
+    "name": "badge never removed on completion",
+    "why": "A fully loaded table keeps its last done/total badge instead of dropping it.",
+    "edits": [
+      {
+        "find": "        } else {\n            btn.removeAttribute('data-rel-progress');\n        }",
+        "replace": "        }"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a hand-loaded row moves the badge",
+    "expect": "fail"
+  },
+  {
+    "name": "CSS badge rule draws nothing",
+    "why": "The attribute is set but the ::after rule no longer renders it, so no badge is visible.",
+    "edits": [
+      {
+        "find": "            content: attr(data-rel-progress);",
+        "replace": "            content: none;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a collapsed table shows 0/N",
+    "expect": "fail"
+  },
+  {
+    "name": "result writer does not refresh the badge",
+    "why": "A hand-loaded row is written but the badge stays at 0/N until something else re-renders the header.",
+    "edits": [
+      {
+        "find": "        _relScheduleProgressRefreshForCells(cells);\n        // Clear loading tint and mark done regardless of data availability.",
+        "replace": "        // Clear loading tint and mark done regardless of data availability."
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a hand-loaded row moves the badge",
+    "expect": "fail"
+  },
+  {
+    "name": "failure writer does not refresh the badge (overlap)",
+    "why": "KNOWN OVERLAP: in the spec the failed row is answered first and the later successful writes refresh the badge anyway, so a missing refresh on the failure write alone is invisible. It matters only when a failure is the last write. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "        masters.forEach(_mark);\n        _relScheduleProgressRefreshForCells(cells);",
+        "replace": "        masters.forEach(_mark);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a failed row is not counted as done",
+    "expect": "pass"
+  },
+  {
+    "name": "a failed row counted as done",
+    "why": "_relTableProgress() treats a failed cell as done, so the badge reports a complete table while a row is still failed.",
+    "edits": [
+      {
+        "find": "            if (td.dataset.relDone === '1') _done.add(m);",
+        "replace": "            if (td.dataset.relDone === '1' || td.dataset.relError) _done.add(m);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a failed row is not counted as done",
+    "expect": "fail"
+  },
+  {
+    "name": "tooltip omits the failed count",
+    "why": "The toggle tooltip no longer says how many requests failed.",
+    "edits": [
+      {
+        "find": "            ? ` — ${_p.failed} failed (click a ⚠ cell to retry)`",
+        "replace": "            ? ''"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-progress-badge.spec.js",
+    "grep": "a failed row is not counted as done",
+    "expect": "fail"
+  }
+]

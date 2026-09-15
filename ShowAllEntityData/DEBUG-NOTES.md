@@ -11412,3 +11412,78 @@ reverts the fix. Re-run of the whole list: 15 of 15 as expected, userscript
 restored and hash-verified — and the IndexedDB entry now fails at the assertion
 it was written for ("IndexedDB served every row, browsed or looked up") rather
 than at the L1 one. Browse spec: 8 of 8.
+
+## 2026-09-16 — Relationships done/total badge and 📊 "Load state" section (branch rel-column-batch-and-cell-states)
+
+PERFORMANCE.org Step 36, the last two parts — item 4 of `org/relationships.org`:
+see, without the debug console, whether a huge sparse table still has rows to
+fetch.
+
+**Built.**
+
+- *Badge*: `.mb-rel-col-hdr-btn[data-rel-progress]::after { content:
+  attr(data-rel-progress) }`. `_relUpdateColHdrBtn()` sets `done/total`
+  (distinct entities, from `_relTableProgress()`) only while something is
+  unloaded, and adds "N failed" to the tooltip. Both cell writers call
+  `_relScheduleProgressRefresh()`, coalesced to one refresh per animation frame
+  per table, which also re-syncs the collapsed filter box and drops that
+  table's 📊 cache.
+- *📊 section* `relLoadState`, "Relationships - Load state": four fixed
+  `rel-state-*` modes (pending / has / none / error). The counts and the
+  `_cellMatchesStructureMode()` branch share one classifier,
+  `_relCellLoadState()`. Offered collapsed or expanded; zero counts omitted.
+  The collapsed note now says "N of M loaded", and icon counts are computed for
+  a collapsed column once any of its cells is loaded.
+
+Both specs were written first and failed 8 of 8 on the pre-change code.
+
+**Two mistakes of mine, both in the SPEC, both caught by the first green-ish
+run.**
+
+1. *"3 of 12 loaded" was wrong; the code's "2 of 12" was right.* The test loads
+   a row with relationships, a row with none, and a row whose request fails.
+   The badge, its spec, the changelog and HELP all define a failed request as
+   NOT loaded, so the note must agree with them. The expectation was changed,
+   not the code, with a comment pointing at the badge spec's definition.
+2. *Clicking the 📊 wrap to close the dropdown reopened it.* The failure
+   screenshot showed the header at the very bottom edge of the 720 px viewport,
+   with the panel opened upward. Playwright scrolls an element into view before
+   clicking; the dropdown's scroll handler closes the panel as soon as its
+   owning wrap moves; the click then toggled it OPEN again. A person clicking a
+   visible wrap never triggers that scroll, so this is a harness effect, not a
+   product bug. Escape was no alternative: while the quick-filter box has focus
+   its own key handler takes Escape over. The helper now dispatches a
+   `mousedown` on `document.body`, which reaches the capture-phase
+   outside-press listener — no scroll, no focus dependency, nothing clickable.
+
+**Recorded overlaps** (`expect: "pass"` in the mutation lists, not hidden):
+the failure writer's own refresh is invisible when later successful writes
+refresh the badge anyway; and the per-write 📊 cache drop is invisible to a
+spec that loads rows by clicking, because `_relLoadRow()` drops the cache
+itself — it matters for bulk writes during a fetch, which no spec reopens the
+dropdown during.
+
+**Mutation results** (`vzell-lap`, 2026-09-16 UTC; userscript restored and
+hash-verified after each list):
+
+- `scripts/mutations/rel-column-progress-badge.json`: 7 of 7 as expected. The
+  attribute never set, never removed on completion, drawn by an empty CSS
+  rule, the result writer not refreshing, a failed row counted as done, and the
+  tooltip omitting failures each failed; the failure-writer overlap passed.
+- `scripts/mutations/uniq-drop-rel-load-state.json`: 7 of 7 as expected. A
+  matcher that matches every row, a section that never renders, a zero-count
+  entry shown, a collapsed note ignoring loaded rows, an empty row classified as
+  "has", and icon counts skipped on a collapsed partly-loaded column each failed
+  at their own assertion; the per-write cache-drop overlap passed.
+
+**A third spec weakness, found by reading WHERE a mutation failed.** "A failed
+row counted as done" was caught — but by the tooltip's "1 failed" check, not by
+the badge check meant for it. The test polled the badge until it read `11/12`,
+and that value appears transiently while the failing row is still retrying, so
+the badge assertion could pass without proving anything about failures. The test
+now waits until every other row is done and the failing row is marked failed,
+and only then reads the badge. Re-checked with that single mutation: it now
+fails at the badge's `toBe('11/12')`, not at the tooltip.
+
+**Full fixture suite** on the finished tree: 284 passed (9.9 min, `vzell-lap`,
+2026-09-16 UTC).
