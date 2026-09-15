@@ -274,7 +274,11 @@ which kind of test, and the routing is:
 The existing rule stands and is stricter than the table: **every DOM/rendering
 fix needs a regression test that fails before the fix and passes after.** Verify
 the "fails before" half rather than assuming it — mutation-check by reverting the
-fix, or by planting an early `return`.
+fix, or by planting an early `return`. `scripts/mutation-check.py` runs a JSON
+list of planted defects (`scripts/mutations/*.json`) unattended: each `find`
+must match exactly once, the userscript is restored and hash-verified
+afterwards, and a guard the spec genuinely cannot see because another covers
+for it is recorded as `"expect": "pass"` rather than left unmentioned.
 
 **Name the guarantee precisely, or the test proves something adjacent.** The
 CAA/EAA presence-sorting bug above went unnoticed for the whole visible history

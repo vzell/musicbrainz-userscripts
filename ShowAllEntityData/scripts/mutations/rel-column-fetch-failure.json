@@ -1,0 +1,110 @@
+[
+  {
+    "name": "gate: no data-rel-error exclusion",
+    "why": "runFilter()'s gate treats a failed cell as pending, so a keystroke starts a pass. relInitRuns() must move and the spec must notice.",
+    "edits": [
+      {
+        "find": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"]):not([data-rel-error])')) {",
+        "replace": "'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done=\"1\"])')) {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "fail"
+  },
+  {
+    "name": "scan + stillWants: no relError exclusion",
+    "why": "A pass that does run picks the failed cell up and re-requests it. The forced relRunPass() must catch it.",
+    "edits": [
+      {
+        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);",
+        "replace": "if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);"
+      },
+      {
+        "find": "td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));",
+        "replace": "td => !td.dataset.relDone && _relCellWritable(td));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "fail"
+  },
+  {
+    "name": "scan only: no relError exclusion (overlap)",
+    "why": "KNOWN OVERLAP: _relQueueStillWants() still skips the failed cell, so the spec cannot see this alone. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);",
+        "replace": "if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "pass"
+  },
+  {
+    "name": "stillWants only: no relError exclusion (overlap)",
+    "why": "KNOWN OVERLAP: the candidate scan still skips the failed cell, so the spec cannot see this alone. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));",
+        "replace": "td => !td.dataset.relDone && _relCellWritable(td));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "pass"
+  },
+  {
+    "name": "L1: failure not evicted",
+    "why": "The failed promise stays cached, so re-expanding serves the failure again without a request. Recovery must never arrive.",
+    "edits": [
+      {
+        "find": "if (r.outcome === 'error' && _relWs2Cache.get(ckey) === p) _relWs2Cache.delete(ckey);",
+        "replace": "void r;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "fail"
+  },
+  {
+    "name": "collapse: relError not cleared",
+    "why": "After collapse + expand the cell still carries data-rel-error, the scan skips it, and it is never retried.",
+    "edits": [
+      {
+        "find": "            delete td.dataset.relError;\n            td.style.backgroundColor = '';\n            _cleared++;",
+        "replace": "            td.style.backgroundColor = '';\n            _cleared++;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "fail"
+  },
+  {
+    "name": "retries: a single attempt",
+    "why": "A 503 is called a failure on the first attempt. The 'retried before being called a failure' assertion must catch it.",
+    "edits": [
+      {
+        "find": "const _REL_WS2_TRIES = 3;",
+        "replace": "const _REL_WS2_TRIES = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "a 503 is marked failed",
+    "expect": "fail"
+  },
+  {
+    "name": "failure marker: no master mirror",
+    "why": "Multi-table re-render clones a master without the marker, the gate sees a pending cell, and the failure is re-requested.",
+    "edits": [
+      {
+        "find": "            cells.forEach(_mark);\n            _relMasterCellsFor(mbid, cells).forEach(_mark);",
+        "replace": "            cells.forEach(_mark);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-fetch-failure.spec.js",
+    "grep": "multi-table: the failure marker",
+    "expect": "fail"
+  }
+]

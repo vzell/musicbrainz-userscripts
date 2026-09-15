@@ -18372,33 +18372,71 @@
      * in three while this was being built — and a burst is not a fact about
      * the data.
      *
+     * The retry loop itself lives in `_ws2GetJson()`, shared with the
+     * Relationships column; this function supplies the spacing between attempts.
+     *
      * @param   {string[]} ids  Up to `_MS_BATCH_SIZE` recording MBIDs.
      * @returns {Promise<{ok: boolean, recordings: Array<Object>, detail: string}>}
      */
     async function _msFetchOneBatch(ids) {
         const query = encodeURIComponent(`rid:(${ids.join(' OR ')})`);
         const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
+        const res = await _ws2GetJson(url, {
+            tries: _MS_BATCH_TRIES,
+            beforeRetry: attempt => new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt)),
+            dbg: _msDbg,
+            label: '_msFetchOneBatch',
+        });
+        return res.ok
+            ? { ok: true, recordings: (res.data && res.data.recordings) || [], detail: '' }
+            : { ok: false, recordings: [], detail: res.detail };
+    }
+
+    /**
+     * GETs one same-origin WS/2 URL as JSON, retrying transient failures.
+     *
+     * Shared by the millisecond-Length batch source and the Relationships
+     * column, which meet the Web Service under the same conditions: it returns
+     * 503 in bursts under bot load — roughly one request in three while the
+     * batch source was built, and most requests needed 3-5 attempts during the
+     * 2026-09-15 Relationships probe — and a burst is not a fact about the data.
+     *
+     * The retry policy is exactly the one `_msFetchOneBatch()` had before it was
+     * extracted: a 503, or a thrown request (network failure, unparseable body),
+     * is retried up to `tries` attempts in total; any other non-OK status is
+     * final, since a 4xx will not change. `beforeRetry(attempt)` is awaited
+     * between attempts, so each caller owns its own spacing and rate limiting.
+     *
+     * Never rejects.
+     *
+     * @param   {string} url  Same-origin `/ws/2/...` URL.
+     * @param   {{tries: number, beforeRetry: function(number): Promise<void>,
+     *            dbg: function(...*): void, label: string}} opts
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     *          `status` is the last HTTP status seen, or 0 when no response arrived.
+     */
+    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label }) {
         let detail = '';
-        for (let attempt = 1; attempt <= _MS_BATCH_TRIES; attempt++) {
+        let status = 0;
+        for (let attempt = 1; attempt <= tries; attempt++) {
             try {
                 const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+                status = resp.status;
                 if (resp.ok) {
                     const data = await resp.json();
-                    return { ok: true, recordings: data.recordings || [], detail: '' };
+                    return { ok: true, status, data, detail: '' };
                 }
                 detail = `HTTP ${resp.status}`;
                 // Only a 503 is worth another attempt; a 4xx will not change.
                 if (resp.status !== 503) break;
-                _msDbg(`_msFetchOneBatch: ${detail} on attempt ${attempt}/${_MS_BATCH_TRIES}`);
+                dbg(`${label}: ${detail} on attempt ${attempt}/${tries}`);
             } catch (err) {
                 detail = 'the request failed';
-                _msDbg(`_msFetchOneBatch: ${err.message || String(err)} on attempt ${attempt}`);
+                dbg(`${label}: ${err.message || String(err)} on attempt ${attempt}`);
             }
-            if (attempt < _MS_BATCH_TRIES) {
-                await new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt));
-            }
+            if (attempt < tries) await beforeRetry(attempt);
         }
-        return { ok: false, recordings: [], detail };
+        return { ok: false, status, data: null, detail };
     }
 
     /**
@@ -63797,6 +63835,44 @@ a { color: #1565c0; }`;
         _artIdbPut('rel-ws2', { ckey, data, ts: Date.now() }).catch(() => {});
     }
 
+    /** Milliseconds between Relationships-column network requests — MusicBrainz allows 1 req/s. */
+    const _REL_WS2_SPACING_MS = 1100;
+
+    /** Attempts per Relationships-column request, including the first (see `_ws2GetJson()`). */
+    const _REL_WS2_TRIES = 3;
+
+    /**
+     * Earliest `Date.now()` at which the next Relationships-column network
+     * request may start — the state behind `_relAwaitRateSlot()`.
+     */
+    let _relNextSlotAt = 0;
+
+    /**
+     * Waits for, and reserves, the next Relationships-column network slot.
+     *
+     * One gate for every request the column issues — the Phase-2 queue and the
+     * retries inside `_ws2GetJson()` today, and the browse pages and per-row
+     * clicks PERFORMANCE.org Step 36 adds — so sources running side by side
+     * still add up to one request per `_REL_WS2_SPACING_MS`. It replaces the
+     * Phase-2 queue's unconditional 1100 ms sleep, which spaced only that
+     * queue's own steps and also slept in front of answers that turned out to be
+     * cache hits.
+     *
+     * The slot is RESERVED synchronously, before the wait, so two callers
+     * arriving in the same tick get consecutive slots rather than the same one.
+     * A reserved slot that its caller then decides not to use is simply spent;
+     * that costs at most one spacing interval and never a request.
+     *
+     * @returns {Promise<void>}
+     */
+    function _relAwaitRateSlot() {
+        const _now = Date.now();
+        const _at = Math.max(_now, _relNextSlotAt);
+        _relNextSlotAt = _at + _REL_WS2_SPACING_MS;
+        const _wait = _at - _now;
+        return _wait > 0 ? new Promise(r => setTimeout(r, _wait)) : Promise.resolve();
+    }
+
     /**
      * Fetches WS2 relationship data for one entity using same-origin fetch().
      * /ws/2/... is on the same domain as MusicBrainz, so no @connect or
@@ -63804,13 +63880,37 @@ a { color: #1565c0; }`;
      * (keyed "entityType:mbid") and L2 IndexedDB (rel-ws2 store).
      * forceNetwork=true (or the _relRetryActive flag) bypasses both caches.
      *
+     * ── Resolves an OUTCOME, never a bare null ───────────────────────────────
+     *
+     *   - `{outcome: 'ok', data}` — a real answer. `data` is the parsed entity,
+     *     or `null` for HTTP 404 (no such entity: stable, so it stays in L1 like
+     *     any answer, but there is nothing to write to IndexedDB).
+     *   - `{outcome: 'error', data: null, detail}` — the request still failed
+     *     after `_REL_WS2_TRIES` attempts (a 503 burst, a network error). Cached
+     *     in NEITHER tier: the L1 entry is removed the moment it settles, so the
+     *     next explicit request goes back to the network.
+     *
+     * Before PERFORMANCE.org Step 36 this resolved `null` for both, so the
+     * caller rendered a failure exactly like "no relationships" — and
+     * permanently, since the null promise stayed in L1 for the whole session.
+     * The millisecond-Length feature fixed the same defect for itself ("only a
+     * SUCCESSFUL answer is cached"). Pinned by
+     * tests/fixtures/rel-column-fetch-failure.spec.js.
+     *
+     * A network request waits on `_relAwaitRateSlot()` unless `opts.slotHeld`
+     * says the caller already reserved one. The Phase-2 queue does that, so it
+     * can re-ask `_relQueueStillWants()` AFTER the wait and before the request.
+     *
+     * Never rejects.
+     *
      * @param {string}   mbid
-     * @param {string}   entityType  'release-group' or 'release'
+     * @param {string}   entityType  'release-group' | 'release' | 'work' | 'label'
      * @param {string[]} incOptions  WS2 inc= values, e.g. ['url-rels']
      * @param {boolean}  [forceNetwork=false]
-     * @returns {Promise<Object|null>}
+     * @param {{slotHeld?: boolean}} [opts]
+     * @returns {Promise<{outcome: ('ok'|'error'), data: ?Object, detail: string}>}
      */
-    function _relFetchWs2(mbid, entityType, incOptions, forceNetwork) {
+    function _relFetchWs2(mbid, entityType, incOptions, forceNetwork, opts) {
         const ckey = `${entityType}:${mbid}`;
         const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
         const bypass = forceNetwork || _relRetryActive;
@@ -63818,35 +63918,47 @@ a { color: #1565c0; }`;
             _dbg(`_relFetchWs2: L1 memory hit for ${ckey}`);
             return _relWs2Cache.get(ckey);
         }
+        const slotHeld = !!(opts && opts.slotHeld);
         const wsUrl = `/ws/2/${entityType}/${mbid}?inc=${incOptions.join('+')}&fmt=json`;
         const idbCheck = bypass ? Promise.resolve(null) : _relIdbGet(ckey);
-        const p = idbCheck.then(cached => {
+        const p = idbCheck.then(async cached => {
             if (cached) {
                 _dbg(`_relFetchWs2: L2 IDB hit for ${ckey}`);
-                return cached;
+                return { outcome: 'ok', data: cached, detail: '' };
             }
+            if (!slotHeld) await _relAwaitRateSlot();
             _dbg(`_relFetchWs2: fetching ${wsUrl}`);
-            return fetch(wsUrl, { headers: { Accept: 'application/json' } })
-                .then(r => {
-                    _dbg(`_relFetchWs2: HTTP ${r.status} for ${ckey}`);
-                    if (!r.ok) return null;
-                    return r.json();
-                })
-                .then(data => {
-                    if (data) {
-                        const relCount    = (data.relations || []).length;
-                        const urlRelCount = (data.relations || []).filter(r => r['target-type'] === 'url').length;
-                        _dbg(`_relFetchWs2: ${ckey} → ${relCount} total rels, ${urlRelCount} url-rels`);
-                        _relIdbPut(ckey, data);
-                    }
-                    return data || null;
-                })
-                .catch(err => {
-                    _dbg(`_relFetchWs2: fetch error for ${ckey}:`, err.message || String(err));
-                    return null;
-                });
+            const res = await _ws2GetJson(wsUrl, {
+                tries: _REL_WS2_TRIES,
+                beforeRetry: async attempt => {
+                    await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+                    await _relAwaitRateSlot();
+                },
+                dbg: _dbg,
+                label: `_relFetchWs2 ${ckey}`,
+            });
+            if (res.ok) {
+                const data = res.data || null;
+                const rels = (data && data.relations) || [];
+                _dbg(`_relFetchWs2: ${ckey} → ${rels.length} total rels, ` +
+                     `${rels.filter(r => r['target-type'] === 'url').length} url-rels`);
+                if (data) _relIdbPut(ckey, data);
+                return { outcome: 'ok', data, detail: '' };
+            }
+            if (res.status === 404) {
+                _dbg(`_relFetchWs2: ${ckey} → HTTP 404, no such entity`);
+                return { outcome: 'ok', data: null, detail: 'HTTP 404' };
+            }
+            _dbg(`_relFetchWs2: ${ckey} FAILED (${res.detail}) — not cached`);
+            return { outcome: 'error', data: null, detail: res.detail || 'the request failed' };
         });
         _relWs2Cache.set(ckey, p);
+        // Evict a failure as soon as it settles — but only while this promise is
+        // still the cached one, since a forced re-fetch may already have
+        // replaced it with a newer attempt.
+        p.then(r => {
+            if (r.outcome === 'error' && _relWs2Cache.get(ckey) === p) _relWs2Cache.delete(ckey);
+        });
         return p;
     }
 
@@ -65100,7 +65212,13 @@ a { color: #1565c0; }`;
     function _relAnyPendingInExpandedTable() {
         for (const _table of document.querySelectorAll('table.tbl')) {
             if (!_relTableExpanded(_table)) continue;
-            if (_table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])')) {
+            // `:not([data-rel-error])`: a cell whose request FAILED is not done,
+            // so without this every filter keystroke would re-request every
+            // failure. A failure is retried only on an explicit action — a
+            // re-expand (collapsing clears the marker) or a 🔗⟳ retry button.
+            // Pinned by tests/fixtures/rel-column-fetch-failure.spec.js.
+            if (_table.querySelector(
+                'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-error])')) {
                 return true;
             }
         }
@@ -65194,6 +65312,11 @@ a { color: #1565c0; }`;
             if (_next) return;              // expanding: leave the cell for the fetch
             if (td.firstChild) td.textContent = '';
             delete td.dataset.relDone;
+            // A failure marker is cleared too, and that is the retry path:
+            // `_relAnyPendingInExpandedTable()` and the impl's candidate scan
+            // both skip `data-rel-error` cells, so collapsing and re-expanding
+            // is what makes a failed row eligible again.
+            delete td.dataset.relError;
             td.style.backgroundColor = '';
             _cleared++;
         };
@@ -65823,7 +65946,9 @@ a { color: #1565c0; }`;
                 // mb-rel-cell is always present; data-mbid is not — the
                 // row-build pass stamps it only when the row links a release,
                 // release group or work.
-                if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);
+                // A FAILED cell is skipped too, for the reason given at
+                // `_relAnyPendingInExpandedTable()`'s own `:not([data-rel-error])`.
+                if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError) allCells.push(td);
             });
         });
         _relInitRunCount++;
@@ -65970,25 +66095,16 @@ a { color: #1565c0; }`;
             // (Unreachable today only because the coalescing guard in
             // `initRelationshipsColumn()` stops two passes sharing a Phase-1
             // window.)
+            // `relError` is dropped with it: a successful answer supersedes an
+            // earlier failure recorded by `_relMarkCellsFailed()`.
             cells.forEach(td => {
                 td.textContent = '';
                 td.style.backgroundColor = '';
                 td.dataset.relDone = '1';
+                delete td.dataset.relError;
             });
             // Track source-row cells (not in DOM) so icons sync back later
-            const _srcCells = [];
-            if (typeof groupedRows !== 'undefined') {
-                groupedRows.forEach(g => g.rows.forEach(r => {
-                    const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
-                    if (td && !cells.includes(td)) _srcCells.push(td);
-                }));
-            }
-            if (typeof allRows !== 'undefined') {
-                allRows.forEach(r => {
-                    const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
-                    if (td && !cells.includes(td)) _srcCells.push(td);
-                });
-            }
+            const _srcCells = _relMasterCellsFor(mbid, cells);
             if (!data) {
                 _relDbg(`_populateCells: no data for ${mbid}`);
                 // textContent: same replace-not-append reason as the live cells
@@ -65998,6 +66114,7 @@ a { color: #1565c0; }`;
                     td.textContent = '';
                     td.style.backgroundColor = '';
                     td.dataset.relDone = '1';
+                    delete td.dataset.relError;
                 });
                 return;
             }
@@ -66093,7 +66210,61 @@ a { color: #1565c0; }`;
                 td.innerHTML = _srcHtml;
                 td.style.backgroundColor = '';
                 td.dataset.relDone = '1';
+                delete td.dataset.relError;
             });
+        }
+
+        /**
+         * Every master-row (`groupedRows`/`allRows`) Relationships cell for
+         * `mbid` that is not already in `exclude` — what `_populateCells()` and
+         * `_relMarkCellsFailed()` mirror onto, so that the next re-render clones
+         * the new state rather than the old one.
+         *
+         * @param   {string}                 mbid
+         * @param   {HTMLTableCellElement[]} exclude  The live cells already written.
+         * @returns {HTMLTableCellElement[]}
+         */
+        function _relMasterCellsFor(mbid, exclude) {
+            const out = [];
+            const _take = r => {
+                const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
+                if (td && !exclude.includes(td)) out.push(td);
+            };
+            if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_take));
+            if (typeof allRows !== 'undefined') allRows.forEach(_take);
+            return out;
+        }
+
+        /**
+         * Records a FAILED request on every cell of `mbid` this pass may still
+         * write, and on the master rows.
+         *
+         * Deliberately the opposite of `_populateCells()`'s "no data" branch: the
+         * cell is emptied but NOT marked done, and carries `data-rel-error`
+         * instead. `_relAnyPendingInExpandedTable()` and the candidate scan both
+         * skip that marker, so a failure is neither shown as "no relationships"
+         * nor re-requested on every keystroke.
+         *
+         * The master mirror is load-bearing on a multi-table page:
+         * `renderGroupedTable()` always clones, so a marker on the live cell
+         * alone would vanish on the next keystroke, the cell would read as plain
+         * pending again, and `runFilter()`'s gate would re-request it.
+         *
+         * @param   {string} mbid
+         * @param   {string} detail  e.g. "HTTP 503"
+         * @returns {void}
+         */
+        function _relMarkCellsFailed(mbid, detail) {
+            const cells = (cellsByMbid.get(mbid) || []).filter(_relCellWritable);
+            if (!cells.length) return;
+            const _mark = td => {
+                td.textContent = '';
+                td.style.backgroundColor = '';
+                delete td.dataset.relDone;
+                td.dataset.relError = detail || 'the request failed';
+            };
+            cells.forEach(_mark);
+            _relMasterCellsFor(mbid, cells).forEach(_mark);
         }
 
         // ── Two-phase fetch: IDB hits in parallel, misses throttled (1 req/s) ───
@@ -66111,7 +66282,10 @@ a { color: #1565c0; }`;
             if (cached) {
                 _relDbg(`initRelationshipsColumn: phase1 IDB hit for ${mbid}`);
                 // Also store in L1 memory cache so _relFetchWs2 sees it
-                _relWs2Cache.set(`${_mbidEt}:${mbid}`, Promise.resolve(cached));
+                // Same `{outcome, data}` shape `_relFetchWs2()` resolves, since
+                // a later pass reads this entry back through that function.
+                _relWs2Cache.set(`${_mbidEt}:${mbid}`,
+                    Promise.resolve({ outcome: 'ok', data: cached, detail: '' }));
                 await _populateCells(mbid, cached);
                 return true;   // hit
             }
@@ -66160,28 +66334,42 @@ a { color: #1565c0; }`;
          * @returns {boolean}
          */
         function _relQueueStillWants(mbid) {
+            // `!relError`: a cell that failed earlier is not re-answered by a
+            // later overlapping pass either — same exclusion as the candidate
+            // scan and `_relAnyPendingInExpandedTable()`.
             return (cellsByMbid.get(mbid) || []).some(
-                td => !td.dataset.relDone && _relCellWritable(td));
+                td => !td.dataset.relDone && !td.dataset.relError && _relCellWritable(td));
         }
 
         // Phase 2: throttled network queue for misses only
         let queue = Promise.resolve();
         let _p2CacheHits = 0, _p2NetFetches = 0;
-        let _p2Skipped = 0;
-        _missMbids.forEach((mbid, i) => {
+        let _p2Skipped = 0, _p2Failed = 0;
+        _missMbids.forEach(mbid => {
             queue = queue.then(async () => {
-                // Checked BEFORE the sleep, so a superseded step costs nothing.
-                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
-                if (i > 0) await new Promise(r => setTimeout(r, 1100));
-                // And again AFTER it: 1100 ms is long enough for the user to
-                // have collapsed the column, or for another pass to have
-                // answered this mbid from cache, while this step was asleep.
+                // Checked BEFORE the wait, so a superseded step costs nothing.
                 if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 const _mbidEt  = mbidEntityType.get(mbid) || entityType;
                 const _mbidInc = _relIncOptionsForEntityType(_mbidEt);
-                if (_relWs2Cache.has(`${_mbidEt}:${mbid}`)) _p2CacheHits++;
+                const _l1Hit   = _relWs2Cache.has(`${_mbidEt}:${mbid}`);
+                // Only a step that will reach the network waits for a slot; the
+                // old unconditional 1100 ms sleep stalled L1 hits too. The slot
+                // is reserved HERE rather than inside _relFetchWs2(), so that the
+                // re-check below runs after the wait and before the request.
+                if (!_l1Hit) await _relAwaitRateSlot();
+                // And again AFTER it: a slot wait is long enough for the user to
+                // have collapsed the column, or for another pass to have
+                // answered this mbid, while this step was waiting.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
+                if (_l1Hit) _p2CacheHits++;
                 else _p2NetFetches++;
-                await _populateCells(mbid, await _relFetchWs2(mbid, _mbidEt, _mbidInc));
+                const _res = await _relFetchWs2(mbid, _mbidEt, _mbidInc, false, { slotHeld: !_l1Hit });
+                if (_res.outcome === 'error') {
+                    _p2Failed++;
+                    _relMarkCellsFailed(mbid, _res.detail);
+                } else {
+                    await _populateCells(mbid, _res.data);
+                }
             });
         });
         const _relStartMs = performance.now();
@@ -66217,11 +66405,20 @@ a { color: #1565c0; }`;
             document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
             _relCreateRetryButtons();
             const _relElapsed = performance.now() - _relStartMs;
+            // `failed` counts requests that still failed after every retry —
+            // their cells carry `data-rel-error` rather than being shown as
+            // "no relationships". Reported so a partial load never reads as a
+            // complete one.
             const _tierInfo = {
-                idb:   _hitFlags.filter(Boolean).length,
-                cache: _p2CacheHits,
-                net:   _p2NetFetches,
+                idb:    _hitFlags.filter(Boolean).length,
+                cache:  _p2CacheHits,
+                net:    _p2NetFetches,
+                failed: _p2Failed,
             };
+            if (_p2Failed) {
+                _relDbg(`initRelationshipsColumn: ${_p2Failed} request(s) failed after retries — ` +
+                    'cells marked data-rel-error, not cached; collapse + expand or 🔗⟳ retries them');
+            }
             // A pass whose every remaining step was skipped — the user collapsed
             // the column while it was trickling — must not claim a completed
             // load. `allCells.length`/`uniqueMbids.length` are pass-START
@@ -66249,6 +66446,10 @@ a { color: #1565c0; }`;
                 { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _tierInfo.cache },
                 { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _tierInfo.net   },
             ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+             .concat(_tierInfo.failed
+                 ? [`⚠️ failed: ${_tierInfo.failed} — still failing after retries; `
+                    + 'collapse + expand the column, or use 🔗⟳, to retry']
+                 : [])
              .join('\n');
             if (!_relGlobalStatusDone) {
                 _relGlobalStatusDone = true;
@@ -66269,7 +66470,8 @@ a { color: #1565c0; }`;
      * @param {number} cellCount   Total number of .mb-rel-cell elements processed.
      * @param {number} mbidCount   Number of unique MBIDs fetched.
      * @param {number} elapsedMs   Elapsed time since initRelationshipsColumn() started.
-     * @param {{idb:number, cache:number, net:number}} [tierInfo]  Per-tier fetch counts.
+     * @param {{idb:number, cache:number, net:number, failed?:number}} [tierInfo]  Per-tier fetch
+     *   counts; `failed` = requests that still failed after every retry.
      */
     function _showRelCompletionToast(cellCount, mbidCount, elapsedMs, tierInfo) {
         const _fmtMs = ms => {
@@ -66285,6 +66487,10 @@ a { color: #1565c0; }`;
             { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _ti.cache || 0 },
             { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _ti.net   || 0 },
         ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+         .concat(_ti.failed
+             ? [`⚠️ failed: ${_ti.failed} — still failing after retries; `
+                + 'collapse + expand the column, or use 🔗⟳, to retry']
+             : [])
          .join('\n');
         _setInfoSub(
             'mb-info-display-rel',
@@ -66297,11 +66503,14 @@ a { color: #1565c0; }`;
         if (typeof secs === 'number' && secs <= 0) return;
         const duration = (typeof secs === 'number' ? secs : 8) * 1000;
         const _tierParts = [];
-        if (_ti.idb)   _tierParts.push(`📦 IDB: ${_ti.idb}`);
-        if (_ti.cache) _tierParts.push(`💾 cache: ${_ti.cache}`);
-        if (_ti.net)   _tierParts.push(`🌐 net: ${_ti.net}`);
+        if (_ti.idb)    _tierParts.push(`📦 IDB: ${_ti.idb}`);
+        if (_ti.cache)  _tierParts.push(`💾 cache: ${_ti.cache}`);
+        if (_ti.net)    _tierParts.push(`🌐 net: ${_ti.net}`);
+        if (_ti.failed) _tierParts.push(`⚠️ failed: ${_ti.failed}`);
         const lines = [
-            `🔗 All Relationships loaded`,
+            _ti.failed
+                ? `🔗 Relationships loaded — ${_ti.failed} request${_ti.failed === 1 ? '' : 's'} failed`
+                : `🔗 All Relationships loaded`,
             `   ${mbidCount} entities in ${_fmtMs(elapsedMs)}`,
             `   ${cellCount} cell${cellCount !== 1 ? 's' : ''} populated`,
         ];
@@ -66351,7 +66560,7 @@ a { color: #1565c0; }`;
         }
         mbids.forEach(mbid => {
             document.querySelectorAll(`td.mb-rel-cell[data-mbid='${mbid}']`)
-                .forEach(td => { td.dataset.relDone = ''; td.innerHTML = ''; });
+                .forEach(td => { td.dataset.relDone = ''; delete td.dataset.relError; td.innerHTML = ''; });
         });
         _relRetryActive = true;
         initRelationshipsColumn();
@@ -78465,6 +78674,25 @@ a { color: #1565c0; }`;
                         pending:     t.querySelectorAll(
                             'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])').length,
                     }));
+            },
+
+            /**
+             * Runs one `initRelationshipsColumn()` pass on demand, resolving when
+             * its Phase 1 settles (the Phase-2 queue stays fire-and-forget, as in
+             * production).
+             *
+             * Exposed because a failed cell is excluded in three places —
+             * `_relAnyPendingInExpandedTable()` (whether a keystroke starts a
+             * pass), the impl's candidate scan, and `_relQueueStillWants()` — and
+             * they cover for one another, so a keystroke alone cannot show that
+             * a pass which DID start would still leave the failure alone. A test
+             * pins the gate with `relInitRuns()` and the other two by forcing a
+             * pass through this.
+             *
+             * @returns {Promise<void>}
+             */
+            relRunPass() {
+                return initRelationshipsColumn();
             },
 
             /**

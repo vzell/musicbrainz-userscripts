@@ -11145,3 +11145,77 @@ covers both the header-cloning bug and the Relationships column),
 from the real "wrote work" structure above). All three mutation-checked the
 same way as the 2026-09-14 entry's specs — observed failing before each
 respective fix, passing after.
+
+## 2026-09-15 — a WS/2 503 in the Relationships column read as "no relationships", permanently (fixed, branch rel-column-batch-and-cell-states)
+
+Not reported. Found while designing PERFORMANCE.org Step 36's per-row
+load-state glyphs, where a "none" glyph would have displayed the defect as
+fact.
+
+**Root cause, three parts that compounded.** `_relFetchWs2()` resolved `null`
+for any non-OK status and for a thrown fetch. `_populateCells(mbid, null)` is
+ALSO the "this entity has zero relationships" path, so it stamped `relDone` and
+left the cell empty. And the `null` promise stayed in `_relWs2Cache` for the
+rest of the session, so neither a later pass nor a collapse/expand ever asked
+again — only a 🔗⟳ retry, which evicts, recovered it. The millisecond-Length
+batch source had already fixed the identical defect for itself ("only a
+SUCCESSFUL answer is cached").
+
+**How often it bites.** The Step 36 endpoint probe (host `vzell-lap`,
+2026-09-15 19:30-19:42 UTC) needed 3-5 attempts for most requests. At the old
+single attempt, most of those would have become permanent empty "done" cells.
+
+**Fix.**
+
+- `_ws2GetJson()` extracted from `_msFetchOneBatch()` with identical behaviour
+  (3 attempts, 503 or thrown request retried, other statuses final). All five
+  `*ms-length*.spec.js` fixture specs pass on it.
+- `_relFetchWs2()` resolves `{outcome: 'ok'|'error', data, detail}`. A 404 is
+  `ok` with `null` data. An `error` is evicted from L1 as soon as it settles and
+  is never written to IndexedDB.
+- `_relMarkCellsFailed()` marks `data-rel-error` — never `relDone` — on the
+  live cells and the master rows.
+- A failed cell is skipped by `_relAnyPendingInExpandedTable()`, the impl's
+  candidate scan and `_relQueueStillWants()`. `_relToggleTable()`'s collapse and
+  `_relRetryMbids()` clear the marker; those two are the retry paths.
+- `_relAwaitRateSlot()`: one ≥1100 ms gate for every Relationships request,
+  retries included. It replaces the Phase-2 queue's unconditional sleep, so an
+  L1 hit no longer waits a second. The queue reserves the slot itself and
+  re-asks `_relQueueStillWants()` after the wait, which keeps Step 35's "a
+  superseded queue stops requesting" guarantee
+  (`rel-column-collapse-toggle.spec.js` still passes).
+- The completion toast and status tooltip report the failed count.
+
+**Regression spec** `tests/fixtures/rel-column-fetch-failure.spec.js`. Before
+the fix it failed at `a failed request must not be marked done` (received
+`[true]`).
+
+**Mutation-checked with a new runner**, `scripts/mutation-check.py` fed
+`scripts/mutations/rel-column-fetch-failure.json`: 8 planted defects, run
+unattended, userscript restored and hash-verified afterwards. All 6
+expected-fail mutations failed, each at its own assertion (gate exclusion,
+scan+stillWants exclusion, L1 eviction, collapse clearing the marker, retries,
+master mirror). Both expected-pass mutations passed: removing only the
+candidate-scan exclusion, or only `_relQueueStillWants()`'s, is invisible
+because each covers for the other. The spec pins them as a PAIR and says so in
+its header, rather than implying each is load-bearing.
+
+The first draft of the spec pinned "no retry storm" with a request count after
+a keystroke only. That would have stayed green under the removal of any one of
+the three exclusions, since the other two still prevented the request — the
+"proves something adjacent" trap. It now asserts `relInitRuns()` does not move
+(the gate) and forces a pass through a new `__saTest.relRunPass()` hook (the
+pair).
+
+**Observed, not attributed.** In one parallel 35-test run (this spec +
+`rel-column-collapse-toggle.spec.js` + the five ms-length specs, default
+workers, `vzell-lap`, evening of 2026-09-15 UTC), the collapse spec's
+"multi-table: the threshold is decided per sub-table, and collapsing survives a
+filter" failed its final assertion. `relTableStates()` returned only the
+still-filtered table — `[{expanded: false, pending: 1, uniqueMbids: 1}]` — so
+its fixed `waitForTimeout(1500)` after clearing the filter sampled the page
+before the re-render finished. It passed 3/3 standalone with `--workers=1`. The
+test issues no toggle and its single fetch had already landed, so it does not
+reach the changed code — but it was NOT run against `main`, so "pre-existing"
+is inferred, not established. The new multi-table failure test polls the
+re-render instead of sleeping.

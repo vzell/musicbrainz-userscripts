@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: a failed MusicBrainz Web Service request (an HTTP 503 while the service is shedding load, or a network error) was shown exactly like 'this release has no relationships', and stayed that way for the rest of the session because the failure was cached in memory. A failed request is now retried up to 3 times with a widening backoff and is never cached; the cell is marked failed rather than done; it is not re-requested on every filter keystroke; and it is retried when the column is collapsed and expanded again, or with the 🔗⟳ retry buttons. The completion toast and status bar say how many requests failed.",
+          "Relationships column: every request, including retries, now waits on one shared one-per-second rate limit, and a lookup already answered from the in-memory cache no longer waits a second before being shown. The millisecond Length batch source shares the same retry code, with unchanged behaviour."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-15",
     "sections": [

@@ -1252,6 +1252,14 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Relationship data is cached in IndexedDB (configurable TTL, default 30
   days) to avoid re-fetching on repeated visits.  Retry buttons (⟳) force a
   fresh network fetch with IDB cache invalidation.
+• A request the Web Service REFUSES — it answers "503 Service Unavailable" in
+  bursts when it is busy — is retried up to three times, with a growing pause
+  between attempts.  If it still fails, that row is left FAILED rather than
+  shown as "no relationships", and nothing about it is cached, so it does not
+  stay quietly wrong for the rest of the session.  A filter keystroke does not
+  retry it; collapsing and re-expanding the column (▼🔗 then ▶🔗), or a 🔗⟳
+  Retry button, does.  The completion toast and the status-bar tooltip say how
+  many requests failed.
 • Round-trips through Save-to-Disk/Load-from-Disk with zero network activity
   when every Relationships cell was already fully populated at save time —
   only a row saved mid-fetch triggers a fresh fetch for that row on load.

@@ -3091,8 +3091,8 @@ so per-cell state glyphs show progress whichever source answered.
 **** Why browse, and why not the ⏱ search trick
 
 - *Search* (~/ws/2/release?query=reid:(…)~) returns no ~relations~ and does not
-  honour ~inc=~. Expected, and to be CONFIRMED by
-  ~scripts/probe-rel-batch-endpoints.py~ before anything depends on it.
+  honour ~inc=~. CONFIRMED 2026-09-15 by ~scripts/probe-rel-batch-endpoints.py~:
+  0 of 5 releases carried a ~relations~ key.
 - *Browse* returns the same per-entity ~relations~ arrays a lookup does.
   Already proven for one mapping: ~/ws/2/release?artist=<dylan>&inc=url-rels&limit=100~
   covered 2301/2301 releases in *24 requests* (~scripts/probe-rel-browse-endpoint.py~,
@@ -3105,20 +3105,34 @@ so per-cell state glyphs show progress whichever source answered.
   than the MBIDs still pending, and hands the rest to the per-MBID queue. Worst
   case, one request more than today.
 
-| pageType                              | browse                                      | inc — must equal ~_relIncOptionsForEntityType()~ | status |
-|---------------------------------------+---------------------------------------------+--------------------------------------------------+--------|
-| artist-releases                       | ~release?artist=~                           | url-rels                                         | proven |
-| artist-releasegroups                  | ~release-group?artist=~                     | url-rels + release-group-rels                    | probe  |
-| artist-works                          | ~work?artist=~                              | url-rels + artist-rels                           | probe  |
-| label-releases                        | ~release?label=~                            | url-rels                                         | probe  |
-| releasegroup-releases                 | ~release?release-group=~                    | url-rels                                         | probe  |
-| recording-releases                    | ~release?recording=~                        | url-rels                                         | probe  |
-| collections-releases                  | ~release?collection=~ / ~release-group?collection=~ | per sub-entity                           | probe  |
-| area-releases(-filtered), area-labels | ~release?area=~ / ~label?area=~             | url-rels (+ label-rels)                          | probe  |
+| pageType                 | browse                                              | inc — must equal ~_relIncOptionsForEntityType()~ | probed 2026-09-15                   |
+|--------------------------+-----------------------------------------------------+--------------------------------------------------+-------------------------------------|
+| artist-releases          | ~release?artist=~                                   | url-rels                                         | pass                                |
+| artist-releasegroups     | ~release-group?artist=~                             | url-rels + release-group-rels                    | pass                                |
+| artist-works             | ~work?artist=~                                      | url-rels + artist-rels                           | pass                                |
+| label-releases           | ~release?label=~                                    | url-rels                                         | pass                                |
+| releasegroup-releases    | ~release?release-group=~                            | url-rels                                         | pass                                |
+| recording-releases       | ~release?recording=~                                | url-rels                                         | pass                                |
+| area-labels              | ~label?area=~                                       | url-rels + label-rels                            | pass                                |
+| area-releases(-filtered) | ~release?area=~                                     | url-rels                                         | *not a candidate* — different set   |
+| collections-releases     | ~release?collection=~ / ~release-group?collection=~ | per sub-entity                                   | untested — no qualifying collection |
+
+Parity: 51 entities sampled across the seven passing mappings, up to 27
+relations each, zero mismatches. Full table, host and timing are in
+~tests/MEASUREMENTS.org~. ~area-releases~ is out because browsing releases by
+area returned 0 for New Jersey, while that page lists releases RELATED to the
+area — a different set.
 
 Every other pageType carrying the column has no browse equivalent (series,
 instrument, tags, reports, search, the relationship listings, artist-credit,
 cdtoc, isrc, area-works) and keeps per-MBID lookups, unchanged.
+
+*Comparing page counts is not a sufficient cost rule on its own.* A table can
+hold rows the browse set never contains: ~artist-releasegroups~' "Various
+Artists RGs" button lists release groups the artist is not credited on, which
+~release-group?artist=~ cannot return (expected from the endpoint's semantics;
+not probed). So browsing must also stop once pages stop matching pending MBIDs,
+or it spends the whole catalogue finding nothing.
 
 *inc parity is the load-bearing detail.* Browse answers are cached under the
 lookup's own ckey (~${entityType}:${mbid}~). That is what lets Phase 1, the TTL
