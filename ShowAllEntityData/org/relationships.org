@@ -237,3 +237,41 @@ Currently sorting of the "Relationships" column doesn't seem to do anything.
 
 I want sorting according to the number of relationship icons inside the data cells
 
+
+* TODO analyze additional "Relationships" column enhancements
+
+Analyze additional "Relationships" column enhancements:
+
+1.)
+
+Check if it's possible instead of executing one MusicBrainz API call per row to utilize another API call along the line
+what we do for the "Length" column on 'release-tracks' pageTypes, e.g.
+
+#+begin_example
+<span class="mb-ms-col-hdr-btn" role="button" tabindex="0" aria-pressed="false" title="Show millisecond precision for &quot;Length&quot;" aria-label="Show millisecond precision in the Length column">▶⏱︎</span>
+#+end_example
+
+to get more than one row at the same time
+
+2.)
+
+also analyze if it's somehow possible (with our current implementation) when the "Relationships" column is in the
+collapsed state, to pre-render a glyph (choose some nice not overwhelming visual representation) in each data cell of
+the "Relationships" column and when clicked ONLY the relationships are fetched for that specific row (either replacing
+that glyph or if it's visual more attractive or if we can achieve functionality like reload, change the glyph and render
+the fetched relationship icons).
+
+3.)
+
+Even if 1.) is possible, still check for 2.) and see if they can be combined or used together
+
+4.)
+
+The approach with rendering a specific glyph in each "Relationships" data cell could also be useful for an end-user to
+get an idea which row has already been processed by the row fetch specific API, for very large tables with only a sparse
+rowset having actually relationship icons. Without looking in the debug console, it's sometimes not clear if there are
+still rows left to fetch relationship icons for
+
+5.)
+
+Please also provide a mockup for case 2.)

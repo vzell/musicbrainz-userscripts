@@ -177,6 +177,123 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleReleaseGroups - column "R
 
 Also check potential other pageTypes which are missing the "Relationships" column
 
+* DONE menue problem
+** i
+
+On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd when clicking the "Recording date" column on
+medium 2, the column header unique value pull down opens in the direction to the end of the page but gets truncated, as
+the number of rows in the sub-table itself is lower then the entries in the menu
+See screenshot 
+
+** still bug
+
+It's a different URL now https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc, sub-table for medium 3 "3-CD"
+
+Screenshots:
+#+begin_example
+[Image #9] - unique value drop down of column "Recording date" - dropdown clipping, menu direction with scrollbar to the bottom of the page ("Event-Date" behaves the same, all other "Event-<string> also but without clipping)
+[Image #10] - unique value drop down of column "Title" - NO dropdown clipping, menu direction to the bottom of the page, but located at the top of the visible page (other columns like "#", "Length", "Recording length", "Recording of work" behave the same)
+[Image #11] - unique value drop down of column "Disambiguation" - NO dropdown clipping, menu direction to the bottom of the page, located right at the drop down glyph
+#+end_example
+
+** debug
+
+#+begin_example
+16:44:44.513 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:44:44.513 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:45:05.588 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:05.589 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 6 values 
+16:45:11.303 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=146 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:11.303 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 2 values 
+16:45:13.639 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:13.639 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+16:45:20.867 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=900 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:20.867 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 13 values 
+16:45:22.579 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:22.580 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+16:45:29.982 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=610 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:29.983 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+16:45:39.892 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:39.893 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25: 1 values 
+16:45:41.588 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:41.590 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26: 6 values 
+16:45:43.590 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 27 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:43.592 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 27: 0 values 
+#+end_example
+
+** again
+
+#+begin_example
+16:57:37.448 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:57:40.330 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:57:40.330 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 6 values 
+16:57:43.318 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=465 top=403 
+16:57:43.318 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:57:48.439 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=146 maxDropH=958 dir=down effectiveMaxH=146 top=888 
+16:57:48.441 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 2 values 
+16:57:50.332 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=465 top=403 
+16:57:50.333 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+16:58:05.606 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:58:05.607 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+16:58:16.356 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=610 maxDropH=958 dir=up effectiveMaxH=610 top=258 
+16:58:16.358 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+16:58:25.144 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=120 top=888 
+16:58:25.145 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25: 1 values 
+16:58:27.040 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:58:27.041 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26: 6 values 
+#+end_example
+
+** ok
+
+Seems to work now
+
+#+begin_example
+17:14:00.668 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 0 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:00.668 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 0: 13 values 
+17:14:11.976 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:11.977 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+17:14:15.872 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=185 maxDropH=958 dir=down effectiveMaxH=185 top=888 
+17:14:15.878 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 1 values 
+17:14:18.205 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 3 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=85 maxDropH=958 dir=down effectiveMaxH=120 top=888 
+17:14:18.208 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 3: 2 values 
+17:14:19.951 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=630 maxDropH=958 dir=up effectiveMaxH=630 top=238 
+17:14:19.959 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 13 values 
+17:14:23.979 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:23.981 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+17:14:26.707 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 6 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=787 maxDropH=958 dir=up effectiveMaxH=787 top=81 
+17:14:26.710 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 6: 13 values 
+17:14:33.238 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=568 maxDropH=958 dir=up effectiveMaxH=568 top=300 
+17:14:33.239 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 6 values 
+17:14:36.795 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=764 maxDropH=958 dir=up effectiveMaxH=764 top=104 
+17:14:36.797 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+17:14:42.074 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=657 maxDropH=958 dir=up effectiveMaxH=657 top=211 
+17:14:42.075 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+17:14:44.769 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 10 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=410 maxDropH=958 dir=up effectiveMaxH=410 top=458 
+17:14:44.770 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 10: 6 values 
+17:15:11.739 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=568 maxDropH=958 dir=up effectiveMaxH=568 top=300 
+17:15:11.740 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 6 values 
+#+end_example
+
+** leave the debugging for the unique value drop down menu 
+
+Leave the debugging for the unique value drop down menu in, but additionally add information about the real column and
+sub-table(multi-table)/table(singel-table) name where the click occured. Also make it configurable in the debug section
+with a default of "false"
+
+* DONE remove "Showing all recordings" from the pageType 'artist-recordings'
+
+remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-recordings' at the very end of the table at the final rendered page
+
+#+begin_example
+<p>Showing all recordings<!-- --> <!-- -->(<a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?standalone=1">Show only standalone recordings</a> / <a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?video=1">Show only videos</a>)</p>
+#+end_example
+
+Full raw HTML @debug/artist-recordings-standalone.html
+
+* TODO remove "Search YouTube"-button from the pageType 'release-tracks'
+
+remove "Search YouTube"-button from the pageType 'release-tracks'
+
 
 * TODO add acoustid support
 
@@ -211,19 +328,3 @@ Also check potential other pageTypes which are missing the "Relationships" colum
 #+end_example
 
 
-* TODO menue problem
-
-On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd when clicking the "Recording date" column on
-medium 2, the column header unique value pull down opens in the direction to the end of the page but gets truncated, as
-the number of rows in the sub-table itself is lower then the entries in the menu
-See screenshot 
-
-* TODO remove "Showing all recordings" from the pageType 'artist-recordings'
-
-remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-recordings' at the very end of the table at the final rendered page
-
-#+begin_example
-<p>Showing all recordings<!-- --> <!-- -->(<a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?standalone=1">Show only standalone recordings</a> / <a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?video=1">Show only videos</a>)</p>
-#+end_example
-
-Full raw HTML @debug/artist-recordings-standalone.html
