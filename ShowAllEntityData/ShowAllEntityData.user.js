@@ -58043,14 +58043,16 @@ a { color: #1565c0; }`;
         const spaceBelow = vh - bRect.bottom - 6;
         const spaceAbove = bRect.top - 6;
 
-        let top, effectiveMaxH;
+        let top, effectiveMaxH, _openDir;
         if (dropH <= spaceBelow || spaceBelow >= spaceAbove) {
             // Open downward — also the fallback when neither side has full
             // room, matching the previous default direction.
+            _openDir = 'down';
             top = bRect.bottom + 3;
             effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceBelow - 3));
         } else {
             // Open upward.
+            _openDir = 'up';
             effectiveMaxH = Math.max(120, Math.min(maxDropH, spaceAbove - 3));
             top = bRect.top - effectiveMaxH - 3;
         }
@@ -58063,6 +58065,8 @@ a { color: #1565c0; }`;
 
         drop.style.top  = `${top}px`;
         drop.style.left = `${left}px`;
+
+        Lib.debug('filter', `Uniq-drop col ${colIndex} position: bRect.top=${bRect.top.toFixed(0)} bRect.bottom=${bRect.bottom.toFixed(0)} vh=${vh} spaceAbove=${spaceAbove.toFixed(0)} spaceBelow=${spaceBelow.toFixed(0)} dropH=${dropH} maxDropH=${maxDropH} dir=${_openDir} effectiveMaxH=${effectiveMaxH} top=${top.toFixed(0)}`);
 
         // Snapshot the button's viewport rect the panel was just positioned
         // against, so the close-on-scroll listener can tell a genuine scroll
