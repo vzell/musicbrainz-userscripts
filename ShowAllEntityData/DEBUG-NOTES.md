@@ -11224,3 +11224,110 @@ with `fixtureFile`, so `FIXTURE_SETTINGS_OVERRIDE` forces
 returns on its `!activeInjectedColumns.length` check, before the reordered
 block, in both versions. It is the spec's own documented settle flake, not a
 regression.
+
+## 2026-09-16 — Load-from-Disk restored a Relationships HEADER with no cells (9.99.1086–9.99.1092)
+
+Shipped fix. The discovery context — this surfaced while running the perf gate
+for the batched-Relationships branch — is recorded in that branch's own entry,
+which reaches `main` when it merges; this entry is the fix's.
+
+**Symptom.** Loading a saved file on a pageType that declares the Relationships
+column, where the file had been saved WITHOUT that column populated, produced a
+table with a Relationships `<th>` and no Relationships `<td>`s. So it was not
+"the icons are missing": every cell from that column rightward was **shifted by
+one**, putting the Picard button under the Relationships header. No ▶🔗 toggle
+and no collapsed-column filter hint were built either. Normal (non-disk) page
+loads were never affected.
+
+**Root cause.** `442dd8c`, released as 9.99.1086, moved every gate — including
+the two `initRelationshipsColumn()` call sites and the impl's own entry — onto
+`_relPageHasColumn()`, i.e. `!!document.querySelector('td.mb-rel-cell')`. On the
+LIVE path that is correct and its JSDoc says why. On the Load-from-Disk and
+cross-tab hydrate paths it is a chicken-and-egg test:
+`_hydrateAndRenderFromSnapshotData()` stamps `mb-rel-cell` only on cells whose
+saved payload carried an `mbid`, which `_buildDiskCellData()` writes only for a
+cell that already WAS a rel cell at save time. The cells for a file saved
+without the column are created by `_ensureRelCell()` — inside
+`_initRelationshipsColumnImpl()`, the very function the gate guarded. The gate
+asked for what its own subject creates, so it could only ever be false for
+exactly the files that needed it. The `<th>` is injected from
+`activeInjectedColumns` regardless, which is where the misalignment comes from.
+
+**Bisected** (`vzell-lap`, `scripts/diagnose-rel-expanded-arm.js`, Dylan
+`artist-releases` disk fixture, 2301 rows, rel cache pre-seeded so no network is
+needed):
+
+| Userscript                   | icons | rel cells | `<th>` | `<td>` | `relInitRuns` | WS/2 |
+|------------------------------|------:|----------:|-------:|-------:|--------------:|-----:|
+| `60eab35` (parent)           |  2090 |      2301 |     22 |     22 |             1 |    0 |
+| `442dd8c` (the change)       |     0 |         0 |     22 | **21** |             0 |    0 |
+| `d5bba41` = `main` 9.99.1092 |     0 |         0 |     22 | **21** |             0 |    0 |
+
+**The fix.** A second predicate, `_relPageHasOrNeedsColumn()` — the DOM answer
+OR `activeInjectedColumns.length`, which the hydrate path rebuilds before the
+render tail runs — used at exactly the three sites that CREATE the column:
+`_initRelationshipsColumnImpl()`'s entry, `_relInitColHeaderToggles()`, and the
+Load-from-Disk call site. This restores the pre-9.99.1086 entry condition for
+those three while leaving 9.99.1086's stricter DOM answer everywhere it was
+right: `_relCreateRetryButtons()` (runs 200 ms later, by which time the cells
+exist), `_relPublishCollapsedStatus()`, and the global retry button.
+
+**The live render path's own call site was deliberately NOT widened.** There the
+row-build pass appends the cells before the gate is reached, so the broader test
+buys nothing — and it could let `_ensureRelCell()` add a `<td>` to a table whose
+`<th>` `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` had removed,
+which is the same misalignment in reverse.
+
+**`_relInitColHeaderToggles()` had to move too**, and that is the half a fix
+confined to the impl would have missed: it runs BEFORE
+`initRelationshipsColumn()` on the disk tail, so with only the impl fixed the
+cells appear with no toggle. Safe to widen — `_relInitColHeaderToggle()` returns
+at once for a table with no Relationships `<th>`, and
+`_relInitGlobalColHdrToggle()` is multi-table-only and bails when no header
+button exists.
+
+**Regression spec**: `tests/fixtures/rel-column-disk-load-cells.spec.js`, on the
+`releasegroup-releases` shell plus its v1.0 snapshot — chosen because that file
+has `mbid=0` on all 147 saved cells. Before the fix it failed with `Expected 23,
+Received 22` on alignment, 0 rel cells, and no toggle; after, 3 passed. It needs
+a taller viewport than the project default: the Load-from-Disk dialog is
+`position: fixed` with `max-height: calc(100vh - 40px)` and no `top`, so at 720px
+its confirm button can land below the fold — the pre-existing fragility
+`rel-column-collapse-toggle.spec.js` documents, which the sibling rel specs avoid
+by not using the dialog at all. This spec cannot avoid it: the disk path is its
+subject.
+
+**Mutations** (`scripts/mutations/rel-column-disk-load-cells.json`): 4 of 4 as
+expected, each failing at its own assertion — the predicate reverted (alignment),
+the impl gate reverted (rel cells), the call site reverted (rel cells), the
+toggle gate reverted (toggle). Userscript restored and hash-verified.
+
+**A hole in `scripts/mutation-check.py`, found by this run.** The toggle entry
+first reported `expected fail, got fail — OK` with `Error: No tests found.` — its
+`grep` still named a test title I had renamed. Playwright matching NOTHING is
+scored as a failure, so a stale or mistyped `grep` silently becomes a green
+mutation that proves nothing. Every `expect: "fail"` entry in the existing lists
+is only as trustworthy as its `grep`. Not fixed here (the tool lives on the
+batched-Relationships branch); worth making "no tests selected" an error there.
+
+**Why no existing test caught the defect:**
+
+- `FIXTURE_SETTINGS_OVERRIDE` applies only when `fixtureFile` is passed, so
+  disk-load specs already run with the column ON — the exposure was there.
+- `tests/live/artist-releases-filter-sort.spec.js` does load a disk fixture with
+  the column on and counts 56 populated rel cells, but uses
+  `artist-releases-bodeans.json.gz` — the ONE committed snapshot whose cells
+  carry `mbid`/`relDone` (56 of 56), so its guard is true and it is blind by
+  fixture choice.
+- `tests/live/disk-fixture-load.spec.js` loads the `mbid=0` snapshot on a
+  column-declaring pageType and was hitting this every run, but asserts only row
+  counts and page errors — never header-vs-cell alignment.
+- Of five committed disk fixtures, only `bodeans` carries rel fields
+  (`scripts/check-fixture-rel-cell-fields.js`).
+
+**HELP needed no change, and that is a finding rather than an omission.**
+`ShowAllEntityData_HELP.txt` already stated that a disk round-trip is network-free
+only "when every Relationships cell was already fully populated at save time —
+only a row saved mid-fetch triggers a fresh fetch for that row on load", and that
+saving a collapsed column saves it empty. That describes the restored behaviour
+exactly; 9.99.1086 had made the code contradict the documentation.

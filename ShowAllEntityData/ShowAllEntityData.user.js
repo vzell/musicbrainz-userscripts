@@ -64403,6 +64403,52 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether the page has the Relationships column OR still needs it built —
+     * the predicate for the sites that CREATE the column's cells and toggles,
+     * as opposed to those acting on ones already rendered.
+     *
+     * `_relPageHasColumn()` above is the right answer to "is there anything
+     * rendered to act on", and 9.99.1086 moved every gate onto it for the good
+     * reason its own JSDoc gives. But for the CREATING sites it is a
+     * chicken-and-egg test on the Load-from-Disk and cross-tab hydrate paths.
+     * There the rows are rebuilt from a snapshot, and
+     * `_hydrateAndRenderFromSnapshotData()` stamps `mb-rel-cell` only on cells
+     * whose SAVED payload carried an `mbid` — which `_buildDiskCellData()`
+     * writes only for a cell that already was a rel cell at save time. For a
+     * file saved WITHOUT the column populated, the cells are created by
+     * `_ensureRelCell()`, which lives INSIDE `_initRelationshipsColumnImpl()`,
+     * the very function the gate guards. So the gate asked for what its own
+     * subject creates and could never become true.
+     *
+     * The symptom was not "no icons": the `<th>` is injected from
+     * `activeInjectedColumns` regardless, so such a table restored MISALIGNED
+     * BY ONE COLUMN, with the Picard `<td>` under the Relationships `<th>`.
+     * Measured on the Dylan fixture at 9.99.1092: 22 `<th>` against 21 `<td>`,
+     * against 22/22 one commit earlier. See DEBUG-NOTES.md 2026-09-16 and
+     * `tests/fixtures/rel-column-disk-load-cells.spec.js`.
+     *
+     * `activeInjectedColumns` supplies the missing half: the hydrate path
+     * rebuilds it before the render tail runs, so it answers "should this page
+     * have the column" exactly where the DOM cannot yet. Using it HERE and not
+     * everywhere is the point — this restores the pre-9.99.1086 entry
+     * condition for the three creating sites while leaving 9.99.1086's DOM
+     * answer in place for the acting ones (`_relCreateRetryButtons()`, which
+     * runs 200 ms later, by which time the cells exist;
+     * `_relPublishCollapsedStatus()`; the global retry button). The live
+     * render path's own `initRelationshipsColumn()` call also keeps the DOM
+     * answer deliberately: there the row-build pass appends the cells before
+     * the gate is reached, so the broader test would buy nothing and could let
+     * `_ensureRelCell()` add a `<td>` to a table whose `<th>`
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` had removed —
+     * the same misalignment in reverse.
+     *
+     * @returns {boolean}
+     */
+    function _relPageHasOrNeedsColumn() {
+        return _relPageHasColumn() || !!activeInjectedColumns.length;
+    }
+
+    /**
      * Suppresses the "Relationships" column in `table` when the table's tbody contains
      * no anchor linking to a MusicBrainz /release/<mbid> or /release-group/<mbid> page
      * in the "Title" data cells.
@@ -65402,7 +65448,14 @@ a { color: #1565c0; }`;
      */
     function _relInitColHeaderToggles() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!_relPageHasColumn()) return;
+        // "Has or needs": this runs BEFORE initRelationshipsColumn() on both
+        // render tails, so on a Load-from-Disk restore of a snapshot saved
+        // without the column there is no rel cell yet — and gating on one left
+        // the restored column with no ▶🔗 toggle and no collapsed-filter
+        // affordance. Safe to widen: _relInitColHeaderToggle() returns at once
+        // for a table with no Relationships <th>, and _relInitGlobalColHdrToggle()
+        // is multi-table-only and bails when no header button exists.
+        if (!_relPageHasOrNeedsColumn()) return;
         document.querySelectorAll('table.tbl').forEach(_relInitColHeaderToggle);
         _relInitGlobalColHdrToggle();
     }
@@ -65767,7 +65820,11 @@ a { color: #1565c0; }`;
      */
     async function _initRelationshipsColumnImpl() {
         if (!Lib.settings.sa_enable_relationships_column) return;
-        if (!_relPageHasColumn()) return;
+        // "Has or needs", not "has": _ensureRelCell() below is what builds the
+        // cells for a hydrated snapshot that never carried the column, so
+        // gating this on their presence made it unreachable exactly when it
+        // was needed. See _relPageHasOrNeedsColumn()'s own JSDoc.
+        if (!_relPageHasOrNeedsColumn()) return;
 
         // Ensure body-level delegation for rich tooltips is installed once.
         _initRelTooltipListeners();
@@ -67790,7 +67847,11 @@ a { color: #1565c0; }`;
             // cost, so collapsing it would be pure loss. See
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
-            if (_relPageHasColumn()) initRelationshipsColumn();
+            // "Has or needs": a snapshot saved WITHOUT a populated column has
+            // no rel cell to find here — the cells are built inside the call
+            // below. _relCreateRetryButtons() keeps the plain DOM test because
+            // it runs 200 ms later, by which time they exist.
+            if (_relPageHasOrNeedsColumn()) initRelationshipsColumn();
             setTimeout(_relCreateRetryButtons, 200);
 
             // Inject Picard tagger column AFTER Relationships so Picard is always
