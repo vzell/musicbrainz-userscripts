@@ -1,0 +1,15 @@
+[
+  {
+    "name": "a rel write no longer drops the filter-result cache",
+    "why": "Reverts the fix to the shipped-on-branch behaviour, where _relScheduleProgressRefresh() dropped only the uniq-dropdown cache. _buildFilterKey() hashes filter INPUTS alone, so picking the same 📊 relationship entry after another row has been hand-loaded builds an identical key and _filterResultCache replays the earlier row list — the second row is removed from the DOM rather than re-tested. The spec must fail on the rendered row count (2 expected, 1 rendered) while the dropdown's own count still reads 2, which is what separates a replayed filter result from a stale dropdown.",
+    "edits": [
+      {
+        "find": "            _invalidateFilterCache();\n        });\n    }",
+        "replace": "        });\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/rel-uniq-filter-after-second-row-load.spec.js",
+    "grep": "picking the entry again after loading a second matching row includes both rows",
+    "expect": "fail"
+  }
+]

@@ -66219,6 +66219,29 @@ a { color: #1565c0; }`;
             if (_btn) _relUpdateColHdrBtn(_btn, table, _relTableExpanded(table));
             _relSyncCollapsedFilterAffordance(table);
             _invalidateUniqDropDataCacheForTable(table);
+            // The FILTER-RESULT cache too, and for the same reason one line up:
+            // a write changes cell CONTENT while every input stays as it was.
+            // `_buildFilterKey()` hashes only filter inputs — query, flags, and
+            // each column's valueSet/structureModes — so re-picking the same 📊
+            // relationship entry after another row has loaded produces an
+            // IDENTICAL key and `_filterResultCache` replays the earlier row
+            // list. Reported 2026-09-16: load one row, filter to it, clear,
+            // load a second row with the same URL, filter again — and only the
+            // first row comes back, because the second was never re-tested.
+            // (The removed row is absent from the DOM, not merely unmatched,
+            // which is what distinguishes a replayed result from a failed
+            // match.) Same defect class the length-mismatch flag had when it
+            // was missing from the key; there the fix was to add it, but cell
+            // content cannot be hashed cheaply, so the cache is dropped instead.
+            //
+            // Wholesale rather than `_invalidateFilterCacheForGroups()`: that
+            // one matches keys by GROUP INDEX, which a table element cannot be
+            // mapped back to reliably — merged discography view folds other
+            // groups' rows into the first-occurrence table — and a single-table
+            // page's one `s|…` key would not match it at all. The cost is
+            // bounded by this function's own rAF coalescing, so a hundred-row
+            // browse page pays one clear, not a hundred.
+            _invalidateFilterCache();
         });
     }
 

@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.8",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: loading a single row by clicking its cell, and then choosing that row's relationship from the 📊 unique-values dropdown, filtered correctly — but after loading a SECOND row with the same relationship and choosing it again, only the first row was shown. The dropdown counted both rows; the table did not, because the previous result for that identical choice was remembered and re-used. Loading relationship icons now also discards that remembered result, so the next filter re-examines every row."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.7",
     "date": "2026-09-16",
     "sections": [

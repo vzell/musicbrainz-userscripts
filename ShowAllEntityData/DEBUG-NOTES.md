@@ -11855,3 +11855,60 @@ the filter path. The stack turned an afternoon of hypotheses into one line.
 (`git reset --hard`) because this bug exists. Nothing had been pushed, which is
 the only reason it cost nothing. A green fixture suite is evidence that the
 assertions someone already thought of still hold — not that the feature works.
+
+## 2026-09-16 — The 📊 Relationships filter replayed an old row list after a second row loaded
+
+**Second bug from the same live-testing session, and a different cache.** On a
+COLLAPSED column: hand-load one row whose relationship is
+springsteenlyrics.com/bootlegs.php, pick that entry from the 📊 dropdown — it
+filters to that row correctly. Clear it, hand-load a SECOND row carrying the
+same URL, pick the entry again: **only the first row comes back.**
+
+**Root cause: `_buildFilterKey()` hashes filter INPUTS, and a hand-load changes
+cell CONTENT.** The key covers the global query, the case/regexp/exclude flags,
+`_lenMismatchFilterKind`, pending-edits, and each column filter's `idx` +
+`valueSet` + `structureModes`. Nothing in it describes what is in the cells. So
+the second pick builds a key IDENTICAL to the first pick's, `_filterResultCache`
+hits, and `runFilter()` renders the remembered row array instead of re-testing
+the rows. Exactly the defect class the length-mismatch summary filter had when
+it was missing from the key ("pressing the button again did nothing at all") —
+except cell content cannot be hashed cheaply, so the cache must be dropped
+rather than keyed.
+
+**The captures are what made this unambiguous.** In `rg-r-filtered-3658.html`
+BOTH rows carry their own `.mb-rel-filter-key` (`…?item=3658` and `…?item=1742`),
+so the data was complete when the second pick happened. In
+`rg-r-filtered-3658-uvd.html` the second row is **absent from the DOM**, not
+present-and-unmatched — and a row that was removed was never tested. That single
+observation separates "the filter replayed" from "the filter matched wrongly".
+
+**Fix**: `_relScheduleProgressRefresh()` now drops the filter-result cache
+alongside the uniq-dropdown cache it already dropped. That function is the right
+home because it is coalesced to one call per table per animation frame and BOTH
+cell writers reach it through `_relScheduleProgressRefreshForCells()` — so the
+hand-click path, the Phase-2 queue and the browse bulk source are all covered by
+one line, and a hundred-row browse page pays one clear rather than a hundred.
+
+Wholesale, not `_invalidateFilterCacheForGroups()`: that variant matches keys by
+GROUP INDEX (`^m:[^:]*:(\d+)\|`), and a rel write knows its `<table>`, which
+cannot be mapped back to a group index reliably — merged discography view folds
+other groups' rows into the first-occurrence table, the same reason
+`_findMasterRowByIdx()` exists — while a single-table page's one `s|…` key would
+not match that pattern at all.
+
+**Two caches, one symptom, and why the spec asserts both.** The dropdown's entry
+COUNT comes from the uniq-dropdown cache, which the rel writers already dropped;
+the rendered ROWS come from the filter-result cache, which they did not. Before
+the fix the entry correctly read "2" while exactly one row rendered. A test
+asserting only the rows could not tell that apart from a stale dropdown, so
+`tests/fixtures/rel-uniq-filter-after-second-row-load.spec.js` asserts the count
+and the row set at every pick. Its mutation
+(`scripts/mutations/rel-uniq-filter-after-second-row-load.json`) removes the new
+drop and the spec fails on the row count while the count assertion still passes
+— confirmed by reading WHICH assertion the mutation tripped, not by assuming.
+
+**Worth carrying**: when a feature mutates cell content outside a filter input —
+an async column populating, a per-row load, a bulk fetch — it owes BOTH caches a
+drop. The uniq-dropdown one is already documented as needing it ("the cache's
+signature is the visible row set, which a write does not change"); the
+filter-result cache has exactly the same blind spot and was not.
