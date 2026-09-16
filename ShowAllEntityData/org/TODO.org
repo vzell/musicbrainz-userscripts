@@ -378,31 +378,3 @@ what is the best strategy when bugs in this area show up and implementations are
 as branches from main or from the current branch, given the fact that I still want to live test the current branch in a
 live browser for some time to maybe catch some more bugs.
 
-** Your prompt for the fresh session:
-
-Read AUDIT.md and carry out the audit it describes, on branch
-rel-column-batch-and-cell-states. Start with §3.1, CAA/EAA inline artwork —
-it's the prime suspect: _artSetInlineSortKey() stamps the sentinel that the
-📊 inline-art-yes/no structure modes match, asynchronously, and no cache
-invalidation appears anywhere in that path.
-
-Follow §5's method strictly: reproduce in a fixture spec BEFORE changing any
-code, include a baseline test that does the same action without the suspected
-trigger, assert both the 📊 entry count and the rendered row count, and
-mutation-check every fix by reading which assertion failed. Use the harness
-facts in §6 — especially foreground --shard runs, one at a time.
-
-Follow §9 for where to fix what: most targets are main code, so expect
-hotfix branches off main built in a worktree, not commits on this branch.
-Do not merge anything into main; ask me first.
-
-Two things worth carrying into that session:
-
-- §3.1 is a suspicion, not a confirmed bug. The missing invalidation call is suggestive, but both fixed bugs needed a
-  specific trigger sequence that the obvious minimal one didn't reproduce. "Audited, found sound" is a legitimate
-  outcome for any target, and should be written into the file when it happens — otherwise the next reader re-runs the
-  same hunt.
-- Your live testing is the highest-value input right now. Two real bugs in one session, neither visible to 287 green
-  tests, both found by clicking through a real page. §9's worktree mechanic exists precisely so main-side fixes can
-  ship without disturbing the branch you're testing.
-
