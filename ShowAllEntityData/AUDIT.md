@@ -121,7 +121,23 @@ that reproduces is Case B → hotfix.
 
 ### 3.1 CAA/EAA inline artwork — PRIME SUSPECT
 
-**Status:** suspect (four hypotheses). **Live pre-tests:** §10 L1–L4.
+**Status:** **reproduced** on `main` 9.99.1093, 2026-09-17 (H1, H2, H3, H4). H2b
+behaves as predicted (sound). H4b is not covered. **Live pre-tests:** §10 L1–L4.
+**Hotfix branch:** `fix/art-async-filter-staleness`. **Spec:**
+`tests/fixtures/art-inline-uniq-filter-late-load.spec.js`.
+
+Fixture results against `main`'s userscript (each test run alone):
+
+| Test | Result | What it establishes |
+|---|---|---|
+| single-table baseline (nothing late) | ✅ pass — yes 10/10 rows, no 2/2 | The spec drives the dropdown correctly |
+| multi-table control (ordinary "» country code: AU" entry) | ✅ pass — 3/3 | Same, on the multi-table page |
+| **H1** multi-table, nothing late | ❌ **count 5, rows 0** | Not a timing bug: inline-art entries never match on a multi-table page |
+| **H2** single-table, late thumbnail after a sort | ❌ **count 10, rows 9** | The sort wiped the cache and no key was cached, so this is the source-row gap alone |
+| H2b single-table, late **404** after a sort | ✅ pass — 2/2 | The predicted asymmetry is real: the error path does reach the source cell |
+| **H3** single-table, pick → unpick → late → pick | ❌ **count 10, rows 9** | User-visible symptom; H2 alone explains it — whether a replay is stacked on top is decided by mutation after the fix |
+| **H4** multi-table CAA "» image type: Front", pick → unpick → late → pick | ❌ **count 6, rows 5** | — |
+| H4 isolation: same late metadata, but a sort instead of pick/unpick | ✅ pass — 6/6 | The source-row sync works, so **H4 is purely a replayed `_filterResultCache` entry** |
 
 `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key` (`caa-inline-yes` /
 `caa-inline-no`) **after each fetch settles**, and `_cellMatchesStructureMode()`'s
