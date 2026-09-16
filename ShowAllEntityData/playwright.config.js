@@ -43,6 +43,29 @@ module.exports = defineConfig({
         {
             name: 'chromium-fixtures',
             testMatch: 'fixtures/**/*.spec.js',
+            // Network-free does NOT mean fast. These specs intercept every
+            // request, but the userscript's own Relationships rate gate sleeps
+            // ~1100 ms between WS/2 calls, so a 12-entity table legitimately
+            // takes ~13 s to settle, and the specs that pin mid-fetch behaviour
+            // must then wait inside that window on purpose.
+            //
+            // Playwright's 30 s default was therefore too small for a handful
+            // of them, and it failed as flakiness rather than as a clear
+            // message: three DIFFERENT tests timed out across three
+            // consecutive full-suite runs (285/2, 286/1, 286/1, each ~10-11
+            // min), and every one of them passed 3 of 3 when re-run in
+            // isolation. That is load sensitivity, not a regression — the
+            // suite runs single-worker, so a slower machine simply pushes the
+            // tail of each test past the budget.
+            //
+            // 90 s is the project default rather than a per-spec patch, since
+            // the alternative was patching one spec per run indefinitely.
+            // Outliers still state their own budget where the real floor is
+            // higher (rel-column-collapse-toggle.spec.js's MID-FETCH test sets
+            // 180 s), and a test whose own inner poll is the constraint needs
+            // that poll widened instead — a project timeout cannot help there.
+            // The cost accepted: a genuinely hung test takes 90 s to fail.
+            timeout: 90000,
             use: { ...devices['Desktop Chrome'] },
         },
         {
