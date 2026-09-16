@@ -52,90 +52,193 @@ this is already documented in its own JSDoc. Most async writers do drop it.
 
 ### The asymmetry that IS the audit
 
-As of `d551df6`: **ten** sites drop the uniq-dropdown cache, **four** drop the
-filter-result cache (three of which are wholesale resets: fetch start, sort,
+As of `d551df6`: **eighteen** sites drop the uniq-dropdown cache, **four** drop
+the filter-result cache (three of which are wholesale resets: fetch start, sort,
 disk-load).
+
+> **Correction (2026-09-17).** The first version of this section said "ten", and
+> §3.1 said no `_invalidate*` call appears in the artwork path. Both came from
+> a regeneration command that matched only `_invalidateUniqDropDataCacheForTable(`
+> and silently missed the per-column `_invalidateUniqDropDataCache(` — which the
+> artwork path and the cell-collapse handlers DO call. The command below matches
+> both.
 
 Regenerate the map at any time with:
 
 ```sh
-awk '/^    (async )?function [A-Za-z_]/ { match($0, /function [A-Za-z_0-9]+/); fn=substr($0, RSTART+9, RLENGTH-9) } /_invalidateUniqDropDataCacheForTable\(|_invalidateFilterCache\(|_invalidateFilterCacheForGroups\(/ && !/function _invalidate/ && !/^ *\*/ && !/\/\// { printf "%-6s %-42s %s\n", NR, fn, $0 }' ShowAllEntityData.user.js
+awk '/^    (async )?function [A-Za-z_]/ { match($0, /function [A-Za-z_0-9]+/); fn=substr($0, RSTART+9, RLENGTH-9) } /_invalidateUniqDropDataCache(ForTable)?\(|_invalidateFilterCache\(|_invalidateFilterCacheForGroups\(/ && !/function _invalidate/ && !/^ *\*/ && !/^ *\/\// { printf "%-6s %-42s %s\n", NR, fn, $0 }' ShowAllEntityData.user.js
 ```
 
-Result on 2026-09-16 (after both fixes):
+Result on 2026-09-17 (branch @ `ee65c35`):
 
 | Enclosing function | uniq-drop | filter-result |
 |---|---|---|
-| `_msApplyLengthPrecision` | yes | **no** |
-| `_maybeCorrectAreaFlagRegion` | yes | **no** |
-| `initReleaseEventsColumn` (×2) | yes | **no** |
-| `initPicardTaggerColumn`, `_picardToggleTable` | yes | **no** (probably correct — see below) |
-| `_relLoadRow`, `_relToggleTable`, `_initRelationshipsColumnImpl` | yes | via `_relScheduleProgressRefresh` |
-| `_relScheduleProgressRefresh` | yes | **yes** (the `d551df6` fix) |
+| `_msApplyLengthPrecision` | yes (table) | **no** |
+| `_maybeCorrectAreaFlagRegion` | yes (table) | **no** |
+| `initReleaseEventsColumn` (×2) | yes (table) | **no** |
+| `_artSetInlineSortKey` | yes (column) | **no** |
+| `_artBuildMultiRowArtCell` (×2, REBUILD + FIRST-BUILD) | yes (column) | **no** |
+| `_applyCollapseState` (×2), `ensureCollapseDelegate` (×3) | yes (column) | **no** |
+| `initPicardTaggerColumn`, `_picardToggleTable` | yes (table) | **no** (probably correct — see §3.5) |
+| `_relLoadRow`, `_relToggleTable`, `_initRelationshipsColumnImpl` | yes (table) | via `_relScheduleProgressRefresh` |
+| `_relScheduleProgressRefresh` | yes (table) | **yes** (the `d551df6` fix) |
 | `startFetchingProcess`, `makeTableSortableUnified`, `_hydrateAndRenderFromSnapshotData` | — | yes (wholesale) |
+
+### The structural fact every §3 target turns on
+
+**`runFilter()` matches SOURCE rows** — `testRowMatch(r, ctx, true)` over
+`allRows` / `groupedRows[i].rows`, reading `_cachedColText()` /
+`_cachedFullText()` — while **the 📊 dropdown counts LIVE rows** (`tbody.rows`).
+So there are two independent ways for an async writer to break a filter, and a
+fix for one does not fix the other:
+
+1. **It never writes the source row at all** (only the rendered clone). No cache
+   drop can help: the matcher reads a row that does not carry the new content.
+2. **It writes the source row but leaves a cache stale** — `_filterResultCache`
+   (same key → replayed row list) and/or `_rowTextCache` (stale column/full text
+   for that source row).
+
+The symptom of both is the same — **"📊 count N, fewer rows rendered"** — which is
+why each repro needs a variant that isolates one from the other (§5, and §10's
+L2 vs L3 for the concrete case).
 
 ---
 
 ## 3. What to audit, in priority order
 
 For each: does it mutate text or a sentinel that **filtering, sorting or the 📊
-dropdown can read**? If yes, does it drop **both** caches?
+dropdown can read**? If yes, does it write the **source row**, and does it drop
+**both** caches (see §2's structural fact)?
+
+Every target carries a **Status** (`suspect` / `reproduced` / `found sound`) and a
+pointer to its **live pre-test in §10** — a real URL, exact clicks, and the
+prediction if the bug is real. The live pre-tests can be run in a real browser
+before, and independently of, the fixture specs.
+
+**Case (§9):** every target below lives in code that is **identical on `main`**
+(`git diff main` shows no change to any of them, checked 2026-09-17), so anything
+that reproduces is Case B → hotfix.
 
 ### 3.1 CAA/EAA inline artwork — PRIME SUSPECT
 
+**Status:** suspect (four hypotheses). **Live pre-tests:** §10 L1–L4.
+
 `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key` (`caa-inline-yes` /
 `caa-inline-no`) **after each fetch settles**, and `_cellMatchesStructureMode()`'s
-`inline-art-yes`/`inline-art-no` modes match exactly that sentinel. This is the
-same shape as the Relationships column: asynchronous, per cell, and filterable.
+`inline-art-yes`/`inline-art-no` modes match exactly that sentinel (📊 entries
+"🖼️ front-image available" / "∅ NO front-image available", section
+"Structure - Inline artwork"). Same shape as the Relationships column:
+asynchronous, per cell, and filterable.
 
-**No `_invalidate*` call appears anywhere in the artwork path** — the grep hits
-are all comments. So it looks like *neither* cache is dropped when a late
-artwork load flips a cell from "no" to "yes".
+*Corrected 2026-09-17:* the uniq-dropdown cache **is** dropped here
+(`_invalidateUniqDropDataCache(td.closest('table.tbl'), td.cellIndex)`), and in
+both branches of `_artBuildMultiRowArtCell()`. What is NOT dropped anywhere in
+the artwork path is `_filterResultCache`. And the sentinel is written to the
+**live** `<td>` only:
 
-Also check the CAA/EAA count badges and the `<ul>` building, and
-`_artMirrorIconToSourceRow()` / `_artMirrorInlineThumbToSourceRow()`, which write
-to master rows — remember `_rowTextCache` is keyed on the SOURCE row.
+| # | Mode / trigger | Hypothesis | Predicted symptom |
+|---|---|---|---|
+| H1 | multi-table, nothing late | `renderGroupedTable()` always clones, so the stamp lands on the clone. `_artMirrorInlineThumbToSourceRow()` copies the placeholder `<span>` to the source row but **not** the sort-key span, which is a `<td>` child outside it. No source row ever carries the sentinel. | Both entries render **0 rows** while their counts read Y and N. Not a timing bug at all. |
+| H2 | single-table, a thumbnail settles AFTER a re-render (sort) | On the first render `allRows`' rows ARE the live rows, so early settles reach the source. After any re-render the original loadTask bails on `!ph.isConnected`, and the clone's own re-fetch stamps only the clone. | Rows = thumbnails settled before the re-render; count = all. No cached key is involved, so this isolates the source-row gap. |
+| H2b | same, but the late answer is a 404 | The error path has **no** `isConnected` guard and stamps the closure's detached `<td>`, which on single-table IS the source cell. | "∅ NO front-image available" stays correct: the asymmetry is itself a prediction. |
+| H3 | either mode, settle after a pick/unpick of the same entry | `_filterResultCache` replay — identical key (the `d551df6` shape). | Rows = first pick's rows; late rows **absent from the DOM**. |
+| H4 | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`. | Replay: first pick's rows. |
+| H4b | CAA column, single-table, metadata settles after a re-render | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render. | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column). |
+
+Checked and expected exempt: `_artMirrorIconToSourceRow()` (writes only
+`background-image`; the icon is in `_CLEAN_STRIP_SEL`), and `.mb-caa-sort-key`
+(stamped before the row is ever cloned).
+
+Also note, for whoever fixes H1/H2: `_stripTransientCellState()`'s "sort-key
+spans intentionally NOT removed … removing it from the clone would … match
+nothing" comment predates `runFilter()` matching SOURCE rows. The clone's copy is
+no longer what the matcher reads.
 
 ### 3.2 Millisecond Length toggle (⏱)
 
-`_msApplyLengthPrecision()` rewrites the Length column's **visible text**, which
-is read by filtering, by `getCleanColumnText()`, and by `_compareDurations()` for
-sorting. It drops the uniq-dropdown cache (page-wide) and then `runFilter()` is
-called. Question: with a column filter or a 📊 value-set active on Length, does
-the toggle replay a stale row list? Note the text genuinely changes (`3:12` ↔
-`3:11.666`), so membership can change too.
+**Status:** suspect — strong. **Live pre-test:** §10 L5.
+
+`_msApplyLengthPrecision()` rewrites the Length column's **visible text** on the
+SOURCE rows (`groupedRows`/`allRows`), which is read by filtering, by
+`getCleanColumnText()`, and by `_compareDurations()` for sorting. It drops the
+uniq-dropdown cache (page-wide) and then calls `runFilter()`. The text genuinely
+changes (`3:12` ↔ `3:11.666`), so membership can change too.
+
+It drops **neither** `_filterResultCache` (same key → replayed row list) **nor**
+the rewritten rows' `_rowTextCache` entries. So there are two stacked defects:
+even with the result cache dropped, `_cachedColText()` would still hand back
+`3:12`. A fix must clear `cols[idx]` → `undefined` **and** `full` → `null` (§4),
+because the global filter reads `full`.
 
 Check both `_msToggleLengthPrecision()` and `_msApplyLengthPrecision()`.
 
-### 3.3 Release events column
+### 3.3 Release events column (also covers §3.7)
 
-`initReleaseEventsColumn()` populates `mb-re-cell` content from WS/2, after
-render, and drops the uniq-dropdown cache at two sites. Same question.
+**Status:** suspect. **Live pre-test:** §10 L6.
+
+`initReleaseEventsColumn()` makes ONE page `fetch()` for the page entity
+(`/ws/2/<entity>/<id>?inc=release-rels`). It populates `td.mb-re-cell` in the live
+DOM and syncs `innerHTML` into `groupedRows`/`allRows`, then calls
+`applyInjectedColumnExtractors()`, which fills the "Release country"/"Release
+date" ICE cells on live AND source rows. It drops the uniq-dropdown cache twice.
+It does NOT drop `_filterResultCache`, nor `_rowTextCache` for the source rows it
+rewrites. A filter typed before population therefore caches `''`-derived results
+and text. Used by `place-performances(-filtered)` and
+`label-relationships(-filtered)`.
 
 ### 3.4 `_maybeCorrectAreaFlagRegion`
 
-Rewrites a flag/region in a cell. Confirm whether the rewritten text reaches
-`getCleanColumnText()` (i.e. is it inside `_CLEAN_STRIP_SEL`?) and whether a
-filter could be active on that column.
+**Status:** suspect. **Live pre-test:** §10 L7 (needs the "MusicBrainz: More Flags
+Everywhere" userscript).
+
+Moves a flagged Locality value into Region on the live row AND the master row
+(`_forceLocalityToRegion`), up to ~6 s after render, reacting to a third-party
+userscript's decoration. It drops the uniq-dropdown cache for the table, but not
+`_filterResultCache` or the master row's `_rowTextCache`. The moved text is plain
+area-link text, not inside `_CLEAN_STRIP_SEL`, so it reaches
+`getCleanColumnText()`. Both Locality and Region have filter inputs.
 
 ### 3.5 Picard column — expected EXEMPT, but verify
+
+**Status:** code check pending; no live pre-test (§10 L9).
 
 `CLAUDE.md` states a Picard cell contributes `''` to filtering, sorting and 📊
 (its content is a `<button>` plus an `<img alt="♪">`), which is why its
 uniq-only drop is correct rather than an oversight. Verify that is still true
 before dismissing it.
 
-### 3.6 Live-date flags
+### 3.6 Live-date flags — expected SOUND
+
+**Status:** expected found sound, pending a code confirmation; no live pre-test
+(§10 L9).
 
 `.mb-live-date-flag`'s glyph **is real cell text** (unlike the length-mismatch
-flag, which is attribute-only by design). If anything writes it asynchronously,
-it belongs in this audit.
+flag, which is attribute-only by design). But all four `_appendLiveDateFlag()`
+callers (`applyExtractTrackTitleData`, `_buildRecordedAtPlaceTd`,
+`_buildCreditListItem`, `_buildInstrumentVocalsListItem`) run **synchronously**
+while rows are built, before the first render. No async writer was found.
+Remaining check: confirm nothing re-runs `applyExtractTrackTitleData()` after
+render with different output.
 
-### 3.7 Injected-column extractors / ICE cells
+### 3.7 Injected-column extractors / ICE cells — folded into §3.3
 
-`applyInjectedColumnExtractors()` derives cells from the (asynchronously
-populated) Relationships cells. Check whether it runs again after a late rel
-write, and what it invalidates.
+**Status:** see §3.3. *Corrected 2026-09-17:* the original premise here — that
+`applyInjectedColumnExtractors()` derives cells from the Relationships cells — was
+wrong. Its only caller is `initReleaseEventsColumn()`, and its injected-cell map
+is seeded from `td.mb-re-cell` alone. It is §3.3's second write, and L6's
+"Release country" filter is its live test.
+
+### 3.8 Cell collapse / expand — added 2026-09-17
+
+**Status:** suspect. **Live pre-test:** §10 L8.
+
+`_applyCollapseState()` (column-header and global mass toggles) and
+`ensureCollapseDelegate()` (per-cell ▶N▤ clicks) mutate `expandedCells`, which the
+📊 "▶ collapsed multi-row cells" / "◀ expanded multi-row cells" structure modes
+read in `_cellMatchesStructureMode()`. `_buildFilterKey()` does not include
+`expandedCells`. These sites drop the uniq-dropdown cache per column, never
+`_filterResultCache`. Not asynchronous, but the same defect class: state changes,
+inputs do not.
 
 ---
 
@@ -316,3 +419,208 @@ merged tree — roughly an hour each at current suite times. So batching two or
 three small `main` defects into one hotfix branch is reasonable: one release,
 one suite run. Do **not** batch a risky fix with a trivial one; the trivial one
 then cannot be shipped or reverted independently.
+
+---
+
+## 10. Live pre-tests — real pages, exact clicks, predictions
+
+Added 2026-09-17. Each entry can be run in a real browser **before** any fixture
+spec exists, against the userscript as it is today. It says what a real bug
+looks like and what a sound implementation looks like, so the result means
+something whichever way it comes out. These are the live twins of the fixture
+specs the audit writes. If a live result disagrees with its fixture spec, stop
+and reconcile before fixing anything.
+
+Two readings apply to every entry:
+
+* **Run the control before the trigger.** The control proves the clicks are
+  driven correctly (three wasted repros in one afternoon came from UI driven
+  wrongly, §5.2). It also tells you which value to use as the needle.
+* **A row that is absent from the table was never tested** (§5.4). "📊 says N,
+  fewer rows rendered, and the missing ones are simply gone" is the signature.
+
+### L0 — making something load late, on purpose
+
+GM_xmlhttpRequest traffic runs inside Tampermonkey, and **DevTools cannot
+throttle it**. To slow the artwork paths down:
+
+1. Userscript settings → turn **off** "Enable IndexedDB art image/metadata cache"
+   (`sa_art_idb_enable`). Inline thumbnails then fall back to native `img.src`,
+   and CAA metadata already uses page `fetch()`. Both show up in DevTools and
+   both can be throttled.
+2. DevTools → Network → tick **Disable cache**. In the throttling dropdown,
+   **Add custom profile** with download ≈ 30 kbit/s. Select it **right before**
+   clicking the Show-all button.
+3. On multi-table pages, **expand every sub-section first**. A collapsed
+   sub-table is `display:none`, and its artwork never loads.
+4. Afterwards, turn the IDB setting back on and remove the throttle.
+
+### L1 — §3.1 H1: inline art on a multi-table page, nothing late (no L0)
+
+* **URL:** <https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c>
+  — "Tougher Than the Rest", 7 releases, 2 sub-tables.
+* **Steps:**
+  1. Click **Show all Releases for ReleaseGroup** and expand both sub-sections
+     (they render collapsed).
+  2. Wait until every **Release** cell shows its thumbnail or a blank spacer.
+  3. In the first sub-table, click 📊 on **Release** and find section
+     **"Structure - Inline artwork"**. Note **"🖼️ front-image available (Y)"** and
+     **"∅ NO front-image available (N)"**.
+  4. Click the Y entry and count the rows. Uncheck it, then click the N entry.
+* **Control:** in the same dropdown, pick any ordinary value. The table narrows
+  to that entry's count.
+* **Prediction if real:** **0 rows** for both entries, while the counts still
+  read Y and N.
+* **If sound:** Y rows, then N rows.
+
+### L2 — §3.1 H2/H2b: single-table, thumbnails settle after a sort (L0)
+
+* **URL:** <https://musicbrainz.org/series/aa3694d3-a3d0-48ed-8f07-5b576de87908>
+  — "Bruce Springsteen Studio Collection", 12 releases.
+* **Control:**
+  1. With the L0 throttle, click **Show all Releases for Series**, and wait
+     until all 12 Release cells have settled.
+  2. Sort by any column.
+  3. Click 📊 on **Release**, then **"🖼️ front-image available (Y)"**. Expect Y
+     rows.
+* **Trigger:**
+  1. Reload, keep the throttle on, and click Show-all.
+  2. While thumbnails are still arriving, count the ones already visible (**S**),
+     then sort by any column.
+  3. Wait until every cell has settled. Thumbnails reload after the sort;
+     that's expected with the cache disabled.
+  4. Click 📊 on **Release**, then **"🖼️ front-image available"** — it reads Y.
+     Click it.
+* **Prediction if real:** **S rows** (S < Y). Only the thumbnails that settled
+  before the sort are rendered.
+* **Side prediction (H2b):** **"∅ NO front-image available"** renders exactly its
+  count, even for 404s that arrived late.
+* **If sound:** Y rows.
+
+### L3 — §3.1 H3: pick/unpick replay (L0, same URL as L2)
+
+* **Trigger:**
+  1. Reload, then Show-all with the throttle on.
+  2. While thumbnails are still arriving, click 📊 on **Release**, then
+     **"🖼️ front-image available (Y1)"**. Y1 rows render.
+  3. Click the same entry again to uncheck it. All 12 rows come back.
+  4. Wait until every cell has settled.
+  5. Click 📊 again — the count now reads **Y2 > Y1**. Click the entry.
+* **Prediction if real:** **Y1 rows**. The releases whose thumbnails arrived late
+  are absent from the table.
+* **If sound:** Y2 rows.
+* **Note:** H2 predicts the same number here, so this run shows the user-visible
+  symptom but cannot say which of the two it is. L2 (live) and the fixture spec
+  separate them.
+
+### L4 — §3.1 H4: CAA column metadata, multi-table, pick/unpick replay (L0)
+
+* **URL:** same as L1. The **CAA** column's per-release metadata comes from page
+  `fetch()`, so L0 slows it down.
+* **Control:**
+  1. Show-all, expand the sub-sections, and wait until every CAA cell shows its
+     image-count number.
+  2. In the first sub-table, click 📊 on **CAA**, open section
+     **"CAA info - Type"**, note **"Front (F)"** and click it. Expect F rows.
+* **Trigger:**
+  1. Reload and Show-all with the throttle on. Expand the sub-sections.
+  2. As soon as **some** CAA cells show an image-count number, click 📊 on
+     **CAA**, then **"Front"** — it reads F1. F1 rows render.
+  3. Uncheck it.
+  4. Wait until every CAA cell has its count.
+  5. Click 📊 again — **"Front" reads F2 > F1**. Click it.
+* **Prediction if real:** **F1 rows** (a replay).
+* **If sound:** F2 rows.
+
+### L5 — §3.2 ⏱ millisecond Length toggle (no throttle)
+
+* **URL:** <https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897>
+  — "Born to Run", 8 tracks. "Enable millisecond track lengths" must be on (the
+  default).
+* **Control:**
+  1. Click **Show all Tracks for Release**.
+  2. Click **▶⏱** in the Length header. Cells now read `4:50.160`, `3:11.666`, …
+  3. Click into the **Length** column filter and type `.`. Expect **8 rows**.
+* **Trigger A (seconds → ms):**
+  1. Reload and Show-all.
+  2. Type `.` into the Length filter. Expect **0 rows**, since seconds text has
+     no `.`.
+  3. Click **▶⏱**.
+* **Prediction if real:** **still 0 rows**. The replayed row list is empty, and
+  `_cachedColText()` still returns `3:12`.
+* **If sound:** 8 rows.
+* **Trigger B (ms → seconds), from a fresh reload:** do not chain it onto
+  Trigger A. If A's bug is real, the row-text cache already holds seconds text,
+  and B's own precondition fails.
+  1. Reload, Show-all, click **▶⏱** before typing anything.
+  2. Type `.666`. Expect **1 row** (A2, `3:11.666`).
+  3. Click **▼⏱**.
+* **Prediction if real:** **still 1 row**, now displaying `3:12`.
+* **If sound:** 0 rows.
+
+### L6 — §3.3 + §3.7 Release events / Release country (L0 throttle only; the IDB setting does not matter)
+
+* **URL (candidate):**
+  <https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships>.
+  If the control run shows no populated **Release country** cells, this label
+  is the wrong candidate. Any `place/<id>/performances` or
+  `label/<id>/relationships` page whose Release events cells fill will do.
+* **Control:**
+  1. Click **Show all Relationships for Label** and wait for the **Release
+     events** cells to fill.
+  2. Click 📊 on **Release country** and pick a value, e.g. `US (n)`. That is the
+     needle. Uncheck it and close the dropdown.
+  3. Click into the Release country filter and type the needle. Expect **n
+     rows**.
+* **Trigger:**
+  1. Reload with the throttle on and click Show-all.
+  2. **Before** the Release events cells fill, type the needle. Expect **0 rows**.
+  3. Wait until the cells fill.
+  4. Clear the filter with its ✕ and type the needle again.
+* **Prediction if real:** **0 rows**, while 📊 on Release country shows `US (n)`.
+* **If sound:** n rows.
+
+### L7 — §3.4 area-flag Locality → Region (needs "MusicBrainz: More Flags Everywhere" enabled)
+
+* **URL:** <https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events>
+  — 4174 rows, so it is slow. Any events page with UK/US/CA/AU venues works, and
+  a smaller artist is quicker.
+* **Control:**
+  1. Click **Show all Events for Artist** and open 📊 on **Region** right after
+     render. Note a UK/US/CA/AU value's count.
+  2. Wait ≥ 10 s and reopen 📊. A value whose count **grew** is the needle
+     (final count **n**).
+* **Trigger:**
+  1. Reload and Show-all.
+  2. Within ~2 s of render, type the needle into the **Region** filter. **r1**
+     rows render.
+  3. Wait 10 s.
+  4. Clear with ✕ and type the needle again.
+* **Prediction if real:** **r1 rows**, while 📊 on Region shows n > r1.
+* **If sound:** n rows.
+* **Provisional:** the needle and the timing window are confirmed when §3.4's
+  code is read.
+
+### L8 — §3.8 cell collapse/expand (no throttle)
+
+* **URL:** same as L1. Its sub-tables carry `▶N▤` multi-row toggles.
+* **Trigger:**
+  1. Show-all and expand the sub-sections.
+  2. Pick a column whose header shows a `▶N▤` count. Click its 📊, then
+     **"▶ collapsed multi-row cells (K)"**. Expect **K rows**.
+  3. Click the same entry again to uncheck it.
+  4. Click one cell's own `▶N▤` toggle so that cell shows all its items.
+  5. Reopen 📊. It should now read **"▶ collapsed multi-row cells (K−1)"** and
+     **"◀ expanded multi-row cells (1)"**.
+  6. Click **"▶ collapsed multi-row cells"**.
+* **Prediction if real:** **K rows**, including the cell you just expanded (a
+  replay).
+* **If sound:** K−1 rows.
+
+### L9 — no live pre-test
+
+* **§3.5 Picard:** a code check that `getCleanColumnText()` on
+  `td.mb-picard-cell` is still `''`, and that the column has no filter input and
+  no 📊.
+* **§3.6 live-date flags:** a code check that nothing re-runs
+  `applyExtractTrackTitleData()` after render (see §3.6).
