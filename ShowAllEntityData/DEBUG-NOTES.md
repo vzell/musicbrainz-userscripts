@@ -11463,7 +11463,7 @@ spec that loads rows by clicking, because `_relLoadRow()` drops the cache
 itself — it matters for bulk writes during a fetch, which no spec reopens the
 dropdown during.
 
-**Mutation results** (`vzell-lap`, 2026-09-16 UTC; userscript restored and
+**Mutation results** (`vzell-lap`, 2026-09-15 evening UTC; userscript restored and
 hash-verified after each list):
 
 - `scripts/mutations/rel-column-progress-badge.json`: 7 of 7 as expected. The
@@ -11486,4 +11486,89 @@ and only then reads the badge. Re-checked with that single mutation: it now
 fails at the badge's `toBe('11/12')`, not at the tooltip.
 
 **Full fixture suite** on the finished tree: 284 passed (9.9 min, `vzell-lap`,
-2026-09-16 UTC).
+2026-09-15 evening UTC).
+
+## 2026-09-16 — Load-from-Disk builds a Relationships `<th>` with no `<td>`s (live on `main` since 9.99.1086)
+
+**Not this branch.** Found while running PERFORMANCE.org Step 36's perf gate:
+both `--rel-arm=expanded` arms (branch AND `main`) aborted on the harness's own
+icon floor with *0 icons rendered* against a seed of 2329 url-rels. The same arm
+rendered 2090 at 9.99.1073. The guard did exactly its job — an under-populated
+column would otherwise have been published as a second `--rel-arm=collapsed`
+arm reading "the feature costs nothing".
+
+**Root cause.** `442dd8c` (released as **9.99.1086**) replaced the guard on BOTH
+`initRelationshipsColumn()` call sites:
+
+```
+-            if (activeInjectedColumns.length) initRelationshipsColumn();
++            if (_relPageHasColumn()) initRelationshipsColumn();
+```
+
+`_relPageHasColumn()` is `!!document.querySelector('td.mb-rel-cell')`. On the
+LIVE render path that is right, and its own JSDoc says why: a rel `<td>` "is
+only ever appended when SOME group's own `activeInjectedColumns.length` was true
+at that row's build time", which is the correct per-page answer on pageTypes
+whose sub-tables get a per-group rebuild.
+
+**That premise does not hold on the Load-from-Disk path**, and that is the bug.
+There, rows are rebuilt from the snapshot, and
+`_hydrateAndRenderFromSnapshotData()` stamps `td.mb-rel-cell` only for cells
+whose saved payload carried an `mbid` — which `_buildDiskCellData()` writes only
+for a cell that already WAS a rel cell at save time. The cells for a snapshot
+that never had the column are created by `_ensureRelCell()`, which lives
+*inside* `initRelationshipsColumn()`. So the guard asks for the cells that the
+function it guards is the thing that creates: false for exactly the files that
+need it, and it can never become true.
+
+**The `<th>` is built anyway**, from `activeInjectedColumns` in the header pass
+(`thInj.classList.add('mb-injected-column')`), which the disk path rebuilds at
+`buildActiveInjectedColumns()`. So the restored table is **misaligned by one
+column**, not merely missing icons — every cell from the Relationships index
+rightward shifts, and the Picard `<td>` lands under the Relationships `<th>`.
+
+**Bisected** (`vzell-lap`, 2026-09-16, `scripts/diagnose-rel-expanded-arm.js`,
+Dylan `artist-releases` disk fixture, 2301 rows, rel cache pre-seeded so the
+column needs no network):
+
+| Userscript                   | icons | rel cells | `<th>` | `<td>` | `relInitRuns` | WS/2 |
+|------------------------------|------:|----------:|-------:|-------:|--------------:|-----:|
+| `60eab35` (parent)           |  2090 |      2301 |     22 |     22 |             1 |    0 |
+| `442dd8c` (the change)       |     0 |         0 |     22 | **21** |             0 |    0 |
+| `d5bba41` = `main` 9.99.1092 |     0 |         0 |     22 | **21** |             0 |    0 |
+
+The seed itself is fine in every run: 2301 records written, keys `release:<mbid>`,
+and the table is correctly stamped `mbRelEntityType: release` (so 9.99.1092's
+own hotfix works). Zero WS/2 requests on all three — the column never starts.
+
+**Blast radius.** Any Load-from-Disk of a file saved WITHOUT populated rel cells
+on a pageType that declares the column: no icons, no `▶🔗` toggle, and a
+one-column misalignment. Files saved WITH the column populated are unaffected
+(their cells carry `mbid`, so the guard is true). The cross-tab "Show
+single-table" handoff shares the same hydrate function and the same gate.
+The live "Show all" path is NOT affected — there the row-build pass appends the
+cells before the gate runs.
+
+**Why no test caught it**, which is the part worth fixing alongside:
+
+- `FIXTURE_SETTINGS_OVERRIDE` applies **only when `fixtureFile` is passed**
+  (`loadPage.js`), so fixture specs force the column off and disk-load specs run
+  with it ON — the exposure exists in the suite already.
+- `tests/live/artist-releases-filter-sort.spec.js` DOES load a disk fixture with
+  the column on and counts 56 populated rel cells — but it uses
+  `artist-releases-bodeans.json.gz`, the one committed snapshot whose cells
+  carry `mbid`/`relDone` (56 of 56), so its guard is true and it is blind to
+  this by fixture choice alone.
+- `tests/live/disk-fixture-load.spec.js` loads `releasegroup-releases.json.gz`
+  (v1.0, **`mbid=0`**) on a pageType that declares the column, with the column
+  on — it should be hitting this today, and passes because it asserts only row
+  counts and page errors, never header-vs-cell alignment.
+- Counted with `scripts/check-fixture-rel-cell-fields.js`: of five committed
+  disk fixtures, only `bodeans` carries rel fields; `artist-events`,
+  `artist-releasegroups`, `artist-releases-dylan` and `releasegroup-releases`
+  are all `mbid=0`.
+
+**Not fixed here.** This branch is feature work and the defect is on `main`;
+recorded for a hotfix, which wants a regression assertion on `<th>`-vs-`<td>`
+alignment after a disk load of an `mbid=0` snapshot — the cheapest home is
+`disk-fixture-load.spec.js`, which already loads exactly such a file.

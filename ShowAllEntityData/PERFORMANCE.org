@@ -2960,9 +2960,13 @@ Two results, on 2301 rows carrying 2090 rendered icons:
     metrics — a column that exists, is walked, and has a ~<td>~ in every row
     costs nothing measurable once its cells are empty. Same result Step 32 got
     for Picard, and it is what justifies the shared "keep the ~<td>~, defer the
-    CONTENT" shape. /Re-confirm under Step 36/, which paints a CSS glyph into
-    every pending cell of a collapsed column — no nodes and no text, but not
-    provably zero paint cost.
+    CONTENT" shape. /Re-confirmed under Step 36/ (2026-09-15, =vzell-lap=),
+    which paints a CSS glyph into every pending cell of a collapsed column: the
+    glyph costs nothing measurable on any of the seven metrics, and
+    ~collapsed/absent~ came back 0.90-1.19x on that noisier host against the
+    0.96-1.04x here. See Step 36's own perf-gate subsection for the method —
+    the ~absent~ arm runs identical code on both trees, so it calibrates the
+    noise the other ratios have to clear.
   - *Collapsing saves 7-30%*, as ~1 - collapsed/expanded~: 15% global filter,
     7% column filter, 28% sort, 30% warm uniq-drop, 21% header-count initial,
     22% header-count restore, 6% cold uniq-drop.
@@ -3156,9 +3160,10 @@ ones (~data-rel-loading~, ~data-rel-error~), so there are no nodes and no text:
 filtering, the icon-count sort, 📊, export and Save-to-Disk are unaffected by
 construction. The one new cost is paint — a glyph in every pending cell of a
 collapsed column. *Step 35 measured a collapsed column as free (0.96-1.04x of
-absent); that must be re-measured* with the existing ~--rel-arm=collapsed|expanded~
-harness, ~main~ and branch in one session, before this can merge. A measurable
-regression goes to the user first, per CLAUDE.md.
+absent); that was re-measured* with the existing ~--rel-arm=collapsed~ harness,
+~main~ and branch in one session on =vzell-lap= (2026-09-15): no measurable
+cost, every ratio inside the noise the ~absent~ arm shows on identical code. The
+method and the numbers are in the perf-gate subsection below.
 
 **** What it must not undo
 
@@ -3214,8 +3219,53 @@ they are not re-derived:
   rendered baseline, including pageTypes with no Relationships column. It is a
   conditionally injected stylesheet instead.
 
-Outstanding before merge: *the perf gate* — re-measure ~--rel-arm=collapsed|expanded~ against ~main~
-in one session, because every pending cell now paints a glyph.
+**** The perf gate: measured 2026-09-15, no measurable cost
+
+/=vzell-lap=, four arms interleaved in one session, 22:38-00:03 UTC, median of
+5, both trees at 9.99.1092 (~main~ =d5bba41=, branch =dd52c6a=). Full tables,
+host conditions and the ratios in/ ~tests/MEASUREMENTS.org~.
+
+The gate's question was narrow: a collapsed column now paints a CSS glyph into
+every pending cell, and Step 35 had measured a collapsed column as *free*
+(0.96-1.04x of absent). It still is.
+
+*The =absent= arm is the calibration, and using it is the whole method.* That
+arm disables the column, so ~main~ and the branch run the same code and every
+difference on it is noise by construction. It came back 1.00-1.17x depending on
+the metric. Against that floor:
+
+| Metric                | branch/main =absent= (noise) | branch/main =collapsed= |
+|-----------------------+------------------------------+-------------------------|
+| =globalFilter=        |                        1.00x |                   1.14x |
+| =columnFilter=        |                        1.17x |                   0.89x |
+| =sort=                |                        1.07x |                   1.03x |
+| =uniqDropCold=        |                        1.04x |                   1.01x |
+| =uniqDropWarm=        |                        1.12x |                   1.04x |
+| =headerCountsInitial= |                        1.00x |                   0.99x |
+| =headerCountsRestore= |                        1.02x |                   1.03x |
+
+Every collapsed figure is inside the noise its own metric shows on identical
+code, and three are below 1.00x. The two header-count metrics — the tightest
+instruments here, 1.00x/1.02x on the null arm — read 0.99x and 1.03x. Step 35's
+=collapsed/absent= result re-confirms too: 0.90-1.19x here against 0.96-1.04x on
+the quieter =NB-3641=, the spread being the host rather than the column.
+
+*What it does not cover*: these are filter, sort and dropdown latencies. A glyph
+is painted per pending cell in view, and nothing here measures scrolling or
+first paint, so no claim is made about them.
+
+*The =expanded= arm did not run*, on ~main~ either: the harness's own icon-floor
+guard aborted it with 0 icons rendered against a seed of 2329 url-rels, three
+attempts on each tree. That guard exists to stop exactly this run being
+published as a second =collapsed= arm, and it worked. *Bisected to =442dd8c=,
+released as 9.99.1086, on ~main~ and nothing to do with this branch*: it gated
+the Load-from-Disk path's =initRelationshipsColumn()= on =_relPageHasColumn()=,
+which asks for the =td.mb-rel-cell= that =_ensureRelCell()= — inside that same
+function — is what creates for a snapshot saved without the column. The header
+is still injected, so such a table restores *misaligned by one column*. Numbers
+in ~tests/MEASUREMENTS.org~, root cause in DEBUG-NOTES.md 2026-09-16.
+The gate above stands without it: the branch's new paint cost lives in the
+collapsed column, which is what the =collapsed= arm measures.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
