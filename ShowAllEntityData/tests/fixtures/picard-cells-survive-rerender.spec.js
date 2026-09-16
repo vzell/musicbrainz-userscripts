@@ -310,7 +310,14 @@ test.describe('Picard column header toggle (per sub-table)', () => {
         const input = page.locator('#mb-global-filter-input');
         const scansBefore = await page.evaluate(() => window.__saTest.picardEntityScans());
         await waitForFilterSettled(page, () => input.pressSequentially('e'));
-        await waitForActualRowCount(page, TOTAL_ROWS);
+        // The helper's own default is 30 s, and that is what expired here in a
+        // full-suite run (285 passed, 2 failed, 11.2 min) while this test passed
+        // 3 of 3 in isolation — the test's own budget above was never the
+        // constraint. Overridden at the call site deliberately: the 30 s default
+        // is shared by ~19 specs and its JSDoc justifies it with measured
+        // evidence, so widening it globally to satisfy this page would weaken
+        // every other caller's completion signal.
+        await waitForActualRowCount(page, TOTAL_ROWS, { timeout: 90000 });
 
         // The perf claim, and the only place it is observable: a re-render
         // re-derives the entities of the EXPANDED table's 6 rows and of no

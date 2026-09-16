@@ -488,7 +488,16 @@ test.describe('Relationships column: per-row load-state glyphs and click-to-load
 
             await page.waitForTimeout(Math.max(0, DELAY_MS + 1500 - (Date.now() - clickedAt)));
             await page.fill('#mb-global-filter-input', '');
-            await expect.poll(async () => (await rowMbids(page)).length, { timeout: 15000 }).toBe(SERIES_ROWS);
+            // 45 s, not 15 s, and the project-level timeout does not cover this:
+            // what expires here is this poll, not the test budget. Clearing the
+            // filter rebuilds the tbody WHILE the Phase-2 queue is still in
+            // flight, so the rebuild competes with the fetch pass for the main
+            // thread — the same "status text is final before the DOM insertion
+            // loop has caught up" race that waitForActualRowCount()'s JSDoc
+            // documents. 15 s held in isolation (3 of 3) and did not under
+            // full-suite load, where this came back with 0 rows after 15 s in a
+            // 286-passed/1-failed run.
+            await expect.poll(async () => (await rowMbids(page)).length, { timeout: 45000 }).toBe(SERIES_ROWS);
 
             const after = await cellState(page, slowMbid);
             expect(after.anchors, 'the answer reached the row even though it was hidden').toBe(1);

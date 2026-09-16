@@ -11695,3 +11695,80 @@ drives the LIVE render path, whose call site was deliberately left on
 evaluate identically. `test.setTimeout(90000)` with the arithmetic written out,
 so the next reader sees a stated budget rather than a mystery. After the change:
 2 of 2 (39.1 s).
+
+## 2026-09-16 — The fixture suite's 30 s default was too small, and it failed as flakiness
+
+**Three consecutive full-suite runs, three DIFFERENT tests, every one green in
+isolation.** Found while trying to get a clean run before merging the
+batched-Relationships branch:
+
+| Run    | Result   | Wall   | Failing test                                                    | Re-run alone           |
+|--------|----------|--------|-----------------------------------------------------------------|------------------------|
+| first  | 286 / 1  | 10.6 m | `rel-column-fetch-failure.spec.js:109`                           | 3 of 3                 |
+| second | 285 / 2  | 11.2 m | `rel-column-collapse-toggle.spec.js:371`, `picard-…:268`         | 42 of 42 (both files)  |
+| third  | 286 / 1  | 10.0 m | `rel-cell-state-glyphs.spec.js:460`                              | 33 of 33               |
+
+**Why this family and not others.** These specs intercept every request, so they
+are network-free — but the userscript's own Relationships rate gate sleeps
+~1100 ms between WS/2 calls, so a 12-entity table legitimately takes ~13 s to
+settle, and the specs that pin MID-FETCH behaviour then wait inside that window
+deliberately. Against Playwright's 30 s default that leaves almost no headroom,
+so a few percent of machine load decides the outcome. The suite is
+single-worker, which is why full-suite runs lose and isolated ones win.
+
+**Four fixes, and they are NOT interchangeable — I conflated two of them at
+first and had to correct myself.** What expires matters:
+
+- *The test budget* — `chromium-fixtures` had no `timeout` at all and inherited
+  30 s, while `chromium-live` has set 120 s with a comment for ages. Now 90 s,
+  with the reasoning in the config. This is the systemic half.
+- *A test whose real floor exceeds even that* — `rel-column-collapse-toggle.spec.js`'s
+  MID-FETCH test states `test.setTimeout(180000)`. Its own deliberate waiting is
+  ~32 s (a ≤15 s poll, 300 ms + 4000 ms, then six cycles of 1400 ms + 700 ms)
+  before a final `expect.poll` that asks for 90 s. **A 90 s poll inside a 30 s
+  test can never be honoured**, so that test had always been passing only while
+  its early phases ran fast.
+- *An inner poll* — `rel-cell-state-glyphs.spec.js:491` went 15 s → 45 s. A
+  project timeout cannot help here: what expired was the poll, not the test.
+  Clearing the filter rebuilds the tbody WHILE the Phase-2 queue is in flight,
+  so the rebuild competes with the fetch pass for the main thread.
+- *A helper's own default* — `picard-cells-survive-rerender.spec.js:313` passes
+  `{ timeout: 90000 }` to `waitForActualRowCount()`, whose 30 s default is
+  shared by ~19 specs and justified in its JSDoc by measured evidence. Widening
+  it globally to suit one page would weaken every other caller's completion
+  signal, so the override is at the call site.
+
+**The generalisation worth keeping**: when a spec waits on a rate gate the
+PRODUCT owns, the test's budget has to be derived from that gate, not from a
+framework default. And when one of these fails, read WHICH clock ran out —
+test, poll, or helper — because the fix differs in all three cases and the
+symptom is identical.
+
+**What this cost, and the lesson about masking exit codes.** The first of these
+runs was reported to me as "exit code 0" because the command was
+`npm test > log ; tail -6 log` — the status came from `tail`, not from the
+suite. A red suite looked green. Every later run chained with `&&` instead.
+
+**Correction, from a fourth run: not everything here was a budget.** With the
+three fixes above in, the next full suite came back 286/1 again — this time
+`release-tracks-ms-length-overflow.spec.js:174`, and NOT as a timeout. It failed
+on equality, reading `"4:50"` where it expected `"4:50.160"`: seconds instead of
+milliseconds. Isolation, same standard as the others: 9 of 9 in 44.6 s.
+
+The cause is specific and is a defect in that one test rather than a tight
+budget. Its two siblings in the same file both do
+`click()` → `await expect(firstToggle).toHaveAttribute('aria-pressed', 'true')`
+→ read. The failing one clicked and read immediately, with no settle at all, so
+under load it sampled the Length column while the backfill's response was still
+being stamped. **No project timeout and no `test.setTimeout` could ever have
+fixed it** — a single unretried read has no clock to extend. Fixed by giving it
+the settle its siblings have and polling the value; its `expect(calls).toHaveLength(1)`
+was polled too, being the same race against a live array that merely happened to
+win.
+
+So the tally is three budget problems and one missing wait, presenting with the
+identical symptom — "passes alone, fails in the suite". Worth carrying: after
+establishing that a failure is load-sensitive, still read WHICH clock ran out
+(test, poll, helper — or none at all, for a bare read), because the fix differs
+in every case and the first three answers made the fourth look like more of the
+same.

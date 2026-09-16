@@ -387,6 +387,20 @@ test.describe('Relationships column: collapsed by threshold, loaded on demand', 
             // So every assertion here has to be made WHILE the queue is in
             // flight. 12 entities at 1100 ms apart give ~13 s of window, and
             // each cycle below deliberately lands inside it.
+            //
+            // That window IS the budget, so state it: this test cannot fit the
+            // 30 s default and never could. Its own deliberate waiting is a
+            // poll of up to 15 s, then 300 ms + 4000 ms, then six cycles of
+            // 1400 ms + 700 ms (~12.6 s) — about 32 s before the final settle,
+            // which then asks expect.poll for up to 90 s. A 90 s poll inside a
+            // 30 s test can never be honoured, so the test passed only while
+            // its early phases happened to run fast, and failed in a
+            // full-suite run (285 passed, 2 failed, 11.2 min) while passing
+            // 3 of 3 in isolation. The waiting is the feature's own 1100 ms
+            // rate gate, not slowness, and none of it can be shortened without
+            // destroying what the test pins.
+            test.setTimeout(180000);
+
             const ws2 = [];
             await loadRelPage(page, {
                 url: SERIES_URL,
