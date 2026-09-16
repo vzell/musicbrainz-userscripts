@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: after collapsing the column with ▼🔗 and expanding it again while another column's filter was active, picking an entry from the Relationships 📊 unique-values dropdown no longer marked the matching icons with their red outline — and on some pages stopped narrowing the table at all — for that pick and every later one, until the page was reloaded. Collapsing cleared each row's cached column text using a value the cache did not recognise as \"cleared\", so the next filtering pass read that value back as if it were real text and failed part-way through, skipping the icon-highlighting step that runs after it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-09-16",
     "sections": [

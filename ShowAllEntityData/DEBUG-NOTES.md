@@ -11772,3 +11772,86 @@ establishing that a failure is load-sensitive, still read WHICH clock ran out
 (test, poll, helper — or none at all, for a bare read), because the fix differs
 in every case and the first three answers made the fourth look like more of the
 same.
+
+## 2026-09-16 — A collapse poisoned the row-text cache, and the 📊 Relationships filter stopped highlighting
+
+**Found by a human in a real browser, minutes after 287 fixture tests were
+green.** Reported against a `release-group` page: pick an entry from the
+Relationships 📊 dropdown → it filters, matching icons get the red outline.
+Clear it, type in another column's filter, collapse the Relationships column
+with ▼🔗, expand it again with ▶🔗, then pick the same entry — and nothing
+happens, for that pick and every one after it.
+
+**Root cause: two sentinels that disagree.**
+
+```
+_cachedColText()       if (c.cols[idx] === undefined) c.cols[idx] = getCleanColumnText(...)
+_relDropRowTextCache()     _c.cols[colIdx] = null;      // ← not the same value
+```
+
+`null !== undefined`, so the drop did not invalidate the entry, it **poisoned**
+it. The next `matchOnly` pass read `null` back as though it were cached text and
+`testRowMatch()` threw on `cellText.toLowerCase()` (line 43456), which aborted
+`runFilter()`'s row `.filter()` part-way — so everything after the throw was
+skipped, including `_highlightRelCellIcons()`. Stack, from the reproduction:
+
+```
+testRowMatch      … :43456    const probe = f.isCaseSensitive ? cellText : cellText.toLowerCase();
+runFilter         … :44498    the .filter() over rows
+applyUniqValueSet … :58646    the direct runFilter() after a pick
+_wireStructureCheckbox click … :56979
+```
+
+Branch-local: `_relDropRowTextCache()` is this branch's own code, added so a
+collapse would not leave stale text behind. The comment two lines above it even
+notes that `_rowTextCache` "is never invalidated anywhere (PERFORMANCE.org
+Step 9)" — this was the first code to try, and it picked the wrong sentinel.
+
+**Fix**: `delete _c.cols[colIdx]`, so the write matches the accessor's own
+"not cached" test. Fixed at the WRITE site rather than making the reader tolerate
+`null`: `null` has no meaning anywhere in this cache, and teaching ~5 readers to
+handle it would spread the confusion instead of removing it. Surveyed the only
+other writer (73479) first — it already does `cached.cols[colIdx] = undefined;
+cached.full = null;`, i.e. each field's own correct sentinel — so
+`_relDropRowTextCache()` was the lone outlier and the fix is sufficient, not just
+necessary.
+
+**The symptom was severity-dependent, which is why the report and the fixture
+disagreed in detail.** The throw kills the row loop wherever it happens to be:
+on the fixture the rows had already been filtered, so the reproduction showed
+`visible=2 expected=2 outlined=0` — correct narrowing, no highlight. On the
+reported page it evidently threw earlier, so the narrowing was lost too and the
+filter looked entirely dead. One defect, two appearances.
+
+**Reproduction** (`tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js`),
+and note what it took: the MINIMAL cycle — load, collapse, expand, pick — passes.
+The bug needs **another column's filter active across the cycle**, because that
+is what puts `runFilter()` on the `matchOnly` path that reads the cache at all.
+The spec therefore drives the reported sequence in full: pick, clear, filter
+another column, collapse, expand, pick again. Mutation
+(`scripts/mutations/rel-uniq-filter-after-collapse-cycle.json`) reverts the
+sentinel and the spec fails at the outline assertion.
+
+**Three harness facts this cost, all now written into the spec:**
+
+- `locator.fill()` cannot type into a column filter: the inputs are
+  readonly-until-a-genuine-trusted-interaction (anti-autofill hardening), so it
+  times out with "element is not editable". Click first, then `pressSequentially`.
+- `fill('')` cannot CLEAR one either — `_isGenuineFilterInputEvent()` rejects it
+  and the filter silently never re-runs. Only the ✕ (`columnFilterClear()`) works.
+- A needle for a text filter must be chosen **by frequency across rows**, not
+  taken from row 0. The first attempt used row 0's first word, which occurred in
+  no other row, so the filter matched nothing and the rest of the test measured a
+  blank table. The guard that caught it (`> 0` hits) is now `> 0 && < rowCount`,
+  since a needle matching EVERY row would make the step a silent no-op.
+
+Also added: the spec captures `pageerror.stack`, not just the message.
+`collectPageErrors()` keeps only `err.message`, and "Cannot read properties of
+null" with no stack is indistinguishable among ~40 `.toLowerCase()` call sites on
+the filter path. The stack turned an afternoon of hypotheses into one line.
+
+**The process lesson, now a rule in CLAUDE.md.** This branch had been merged to
+`main` locally on the strength of a green suite; the merge was unwound
+(`git reset --hard`) because this bug exists. Nothing had been pushed, which is
+the only reason it cost nothing. A green fixture suite is evidence that the
+assertions someone already thought of still hold — not that the feature works.

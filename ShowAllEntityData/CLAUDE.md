@@ -379,6 +379,21 @@ which is the reason these baselines are committed.
 
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
+- **NEVER merge an implementation branch into `main` without asking first —
+  even when a green suite was the stated condition, and even when the user
+  earlier said "go ahead".** A passing fixture suite is not evidence that the
+  feature works; it is evidence that the assertions someone already thought of
+  still hold. The `merge-push-remove` skill describes HOW to merge once that
+  decision is made; invoking it is never the decision itself. Ask, and let the
+  user exercise the change in a real browser first.
+  This rule exists because it was broken: on 2026-09-16 the Relationships
+  batch/load-state branch was merged locally on the strength of 287 green
+  fixture tests, and minutes later a human clicking through a real
+  `release-group` page found that filtering from the 📊 dropdown on the
+  Relationships column silently stops working after one collapse/uncollapse
+  cycle — a bug no spec in the suite covered. The merge had to be unwound
+  (`git reset --hard`). Nothing had been pushed, which is the only reason it
+  cost nothing.
 - Every user-visible change requires: version bump in the userscript header, a CHANGELOG entry, and a HELP/docs resync in the same commit.
 - At merge time, re-read `PERFORMANCE.org` for statements your change made false — see "Performance is a priority" above. Flipping a Step's keyword is the easy half; the prose that predicted your change is the half that rots silently.
 - After finishing a task, always commit AND push; then offer to merge `main` into the active perf/feature branch to keep it current.

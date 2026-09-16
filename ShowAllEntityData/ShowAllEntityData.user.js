@@ -65955,7 +65955,18 @@ a { color: #1565c0; }`;
      */
     function _relDropRowTextCache(row, colIdx) {
         const _c = _rowTextCache.get(row);
-        if (_c && _c.cols) _c.cols[colIdx] = null;
+        // `undefined`, NOT `null` — this must match `_cachedColText()`'s own
+        // "not cached yet" sentinel, which is `c.cols[idx] === undefined`.
+        // Writing `null` did not invalidate the entry, it POISONED it: the next
+        // `matchOnly` pass read `null` back as though it were cached text and
+        // `testRowMatch()` threw on `cellText.toLowerCase()`, aborting
+        // `runFilter()`'s row loop part-way. Everything after the throw was
+        // skipped — including `_highlightRelCellIcons()`, so a 📊 relationship
+        // entry picked after a collapse/expand cycle left its matching icons
+        // un-outlined, and depending on which row threw first the narrowing was
+        // lost too. Reported from live testing 2026-09-16; pinned by
+        // `tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js`.
+        if (_c && _c.cols) delete _c.cols[colIdx];
     }
 
     /**
