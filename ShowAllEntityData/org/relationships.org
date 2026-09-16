@@ -243,7 +243,7 @@ Currently sorting of the "Relationships" column doesn't seem to do anything.
 I want sorting according to the number of relationship icons inside the data cells
 
 
-* TODO analyze additional "Relationships" column enhancements
+* DONE analyze additional "Relationships" column enhancements
 
 Analyze additional "Relationships" column enhancements:
 
@@ -363,3 +363,127 @@ Filter input (collapsed):  [ collapsed — 3 of 12 loaded, ▶🔗 loads all ]
 
 Glyphs are faint (about 35 %) until the row is hovered; ⚠︎ is amber; ⟳ appears
 only on hover.
+
+
+* DONE bug when live testing
+
+I tried live testing on the multi-table pageType https://musicbrainz.org/release-group/3986daa8-285e-4f61-8537-fb9b78194607
+
+See the following raw HTML captures in @debug/
+
+#+begin_example
+rg-r-initial.html - initial page
+rg-r-final.html - final rendered page
+#+end_example
+
+The following steps produce the bug:
+
+1.)
+
+Click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php"
+
+#+begin_example
+rg-r-filter-rel-sl.html - filter with "www.springsteenlyrics.com/bootlegs.php"
+#+end_example
+
+This is OK. 3 rows out of 4 get filtered and the "www.springsteenlyrics.com/bootlegs.php" icon get the red surrounded border which shows the filtering is in effect, [Image #2]
+
+Then clear the column filter again
+
+2.)
+
+Now filter in the "MB-Name" column with "barcelona". Three rows still get correctly filtered and "barcelona" is
+background filter highlighted. Still OK.
+
+3.)
+
+Now in the "Relationships" column collapse the relationships icons by clicking the collapse glyph
+
+#+begin_example
+rg-r-filter-barcelona-collapsed.html - "Relationships" column collapsed
+#+end_example
+
+Then uncollapse the relationships icons again
+
+4.)
+
+Click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php" again, see [Image #3]
+
+#+begin_example
+rg-r-filter-barcelona-uncollapsed-rel-filtered-bug.html - "Relationships" column collapsed, filter with "www.springsteenlyrics.com/bootlegs.php"
+#+end_example
+
+There is no filtering in effect for "www.springsteenlyrics.com/bootlegs.php" and now visual red surrounding border
+
+5.)
+
+From then on, it doesn't matter what we choose from the unique value drop down on the "Relationships" columns, filtering
+on the choosen entry has NO effect anymore.
+
+It looks like it's associated to the collapsing/uncollapsing of the "Relationships" column.
+
+6.)
+
+Unwind the local merge (git reset --hard 43d11cf on main), leaving the work only on the branch.
+
+7.)
+
+As you can see there can still be bugs whithout real live testing by a human, I don't want you to automatically merge an
+implementation branch to main (basically what the skill "merge-push-remove" is for) without rechecking with me. Also add
+this with a hint to the skill to CLAUDE.md
+
+
+* TODO another bug when live testing
+
+Another live testing bug on the multi-table pageType https://musicbrainz.org/release-group/3986daa8-285e-4f61-8537-fb9b78194607
+
+To reproduce, first remember which rows have the "www.springsteenlyrics.com/bootlegs.php" icon, to correctly load the
+right relationships icons manually when later clicking the "Load"-glyph.
+
+See the following raw HTML captures in @debug/
+
+1.)
+
+In the "Relationships" column collapse the relationships icons by clicking the collapse glyph
+
+2.)
+
+Load just one cell by clicking the "Load"-glyph which has the "www.springsteenlyrics.com/bootlegs.php" icon (item=1742)
+
+#+begin_example
+rg-r-filtered-1742.html - [Image #5]
+#+end_example
+
+3.)
+
+Now click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php"
+
+The one row with the "www.springsteenlyrics.com/bootlegs.php" just loaded is correctly filtered (item=1742)
+
+#+begin_example
+rg-r-filtered-1742-uvd.html - [Image #6]
+#+end_example
+
+Clear the filter again
+
+4.)
+
+Load another cell with the "www.springsteenlyrics.com/bootlegs.php" by clicking it's glyph (item=3658)
+
+#+begin_example
+rg-r-filtered-3658.html - [Image #7]
+#+end_example
+
+5.)
+
+Now click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php" again
+
+Still ONLY the one row with the "www.springsteenlyrics.com/bootlegs.php" loaded FIRST (item=1742) is correctly filtered, instead of both
+
+#+begin_example
+rg-r-filtered-3658-uvd.html - [Image #8]
+#+end_example
+
+6.)
+
+Can you somehow store the current bug info, so that I can /clear and later start with the bug fix

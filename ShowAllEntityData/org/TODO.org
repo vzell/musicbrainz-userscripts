@@ -328,3 +328,53 @@ remove "Search YouTube"-button from the pageType 'release-tracks'
 #+end_example
 
 
+* AUDIT.md
+** i
+
+Create an "AUDIT.md" file in the current directory with your current information about auditing which should be done
+about "Any other feature that populates cells asynchronously". We currently have filled context/token window too much. I
+want to "/clear" and later start fresh by pointing to the "AUDIT.md" file. Maybe that file also comes in handy later for
+other observations.
+
+Also tell me the exact prompt I should ask when starting all over.
+
+** Private list: nothing to fetch — the file is written and everything in it is already verified. The independent set is empty, so no tool calls this turn.
+
+  AUDIT.md is at ShowAllEntityData/AUDIT.md, uncommitted (say the word and I'll commit it to the branch). It's written to be read cold, with no reliance on this conversation:
+
+  - §1 the defect class and the two fixed instances (a861512, d551df6) as worked examples
+  - §2 the two caches, why _buildFilterKey() can't see content, and the regeneratable awk that produces the ten-vs-four asymmetry table
+  - §3 the targets in priority order — CAA/EAA inline artwork first, with the observation that no _invalidate* call exists anywhere in the artwork path, then ⏱ Length, Release events, area flags, Picard
+    (expected exempt), live-date flags, ICE cells
+  - §4 the _rowTextCache two-sentinel trap (undefined for cols, null for full)
+  - §5 method: reproduce before fixing, always include a baseline test, assert both caches, "a removed row is not an unmatched row", mutation-check and read which assertion failed
+  - §6 the harness facts that each cost a wasted run
+  - §7 exact branch/commit/suite state
+  - §8 parking lot, including the stale-grep audit of the five older mutation lists and the still-missing expanded perf arm
+
+  Your prompt to start fresh:
+
+  Read AUDIT.md and carry out the audit it describes, on branch
+  rel-column-batch-and-cell-states. Start with §3.1, CAA/EAA inline artwork —
+  it's the prime suspect: _artSetInlineSortKey() stamps the sentinel that the
+  📊 inline-art-yes/no structure modes match, asynchronously, and no cache
+  invalidation appears anywhere in that path.
+
+  Follow §5's method strictly: reproduce in a fixture spec BEFORE changing any
+  code, include a baseline test that does the same action without the suspected
+  trigger, assert both the 📊 entry count and the rendered row count, and
+  mutation-check every fix by reading which assertion failed. Use the harness
+  facts in §6 — especially foreground --shard runs, one at a time.
+
+  Do not merge anything into main; ask me first.
+
+  One thing worth saying plainly about scope: §3.1 is a genuine suspicion, not a confirmed bug. The artwork path having no invalidation call is suggestive, but the previous two bugs both needed a specific
+  trigger sequence that the obvious minimal one didn't reproduce — so the fresh session should be prepared for "audited, found sound" as a real outcome for any of these targets, and should record that in the
+  file rather than hunting until something breaks.
+
+** q
+
+what is the best strategy when bugs in this area show up and implementations are neccesary, should they be implemented
+as branches from main or from the current branch, given the fact that I still want to live test the current branch in a
+live browser for some time to maybe catch some more bugs.
+
