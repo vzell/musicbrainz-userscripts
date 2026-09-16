@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the predicate is back to the plain DOM answer",
+    "why": "Reverts the whole fix at its root: _relPageHasOrNeedsColumn() becomes _relPageHasColumn(), which is what 9.99.1086 left the creating sites gated on. A hydrated snapshot with no saved rel cells then never gets the column built, so all three assertions must fail — misaligned rows, no rel cells, no toggle.",
+    "edits": [
+      {
+        "find": "        return _relPageHasColumn() || !!activeInjectedColumns.length;",
+        "replace": "        return _relPageHasColumn();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-disk-load-cells.spec.js",
+    "grep": "every row has as many cells as the header has columns",
+    "expect": "fail"
+  },
+  {
+    "name": "the impl entry gate is back to the DOM answer",
+    "why": "_initRelationshipsColumnImpl()'s own entry gate is the one that made the call-site fix insufficient: _ensureRelCell() lives inside this function, so bailing here is what left the restored table one column short. Pinned separately from the call site because either alone reproduces the defect.",
+    "edits": [
+      {
+        "find": "        // \"Has or needs\", not \"has\": _ensureRelCell() below is what builds the\n        // cells for a hydrated snapshot that never carried the column, so\n        // gating this on their presence made it unreachable exactly when it\n        // was needed. See _relPageHasOrNeedsColumn()'s own JSDoc.\n        if (!_relPageHasOrNeedsColumn()) return;",
+        "replace": "        if (!_relPageHasColumn()) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-disk-load-cells.spec.js",
+    "grep": "every row gets a Relationships cell carrying its own mbid",
+    "expect": "fail"
+  },
+  {
+    "name": "the disk-load call site is back to the DOM answer",
+    "why": "The Load-from-Disk render tail's own gate — the exact line 442dd8c changed. With the impl's gate still widened this alone is enough to keep initRelationshipsColumn() from ever being called on that path.",
+    "edits": [
+      {
+        "find": "            if (_relPageHasOrNeedsColumn()) initRelationshipsColumn();",
+        "replace": "            if (_relPageHasColumn()) initRelationshipsColumn();"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-disk-load-cells.spec.js",
+    "grep": "every row gets a Relationships cell carrying its own mbid",
+    "expect": "fail"
+  },
+  {
+    "name": "the header-toggle gate is back to the DOM answer",
+    "why": "_relInitColHeaderToggles() runs BEFORE initRelationshipsColumn() on the disk tail, so with only this reverted the cells are built but the column has no toggle and no collapsed-filter affordance. This is the half a fix confined to the impl would have missed, and only the third test can see it.",
+    "edits": [
+      {
+        "find": "        // \"Has or needs\": this runs BEFORE initRelationshipsColumn() on both\n        // render tails, so on a Load-from-Disk restore of a snapshot saved\n        // without the column there is no rel cell yet — and gating on one left\n        // the restored column with no ▶🔗 toggle and no collapsed-filter\n        // affordance. Safe to widen: _relInitColHeaderToggle() returns at once\n        // for a table with no Relationships <th>, and _relInitGlobalColHdrToggle()\n        // is multi-table-only and bails when no header button exists.\n        if (!_relPageHasOrNeedsColumn()) return;",
+        "replace": "        if (!_relPageHasColumn()) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-column-disk-load-cells.spec.js",
+    "grep": "the toggle is built, and only the sub-table under the threshold fetches",
+    "expect": "fail"
+  }
+]

@@ -11488,7 +11488,7 @@ fails at the badge's `toBe('11/12')`, not at the tooltip.
 **Full fixture suite** on the finished tree: 284 passed (9.9 min, `vzell-lap`,
 2026-09-15 evening UTC).
 
-## 2026-09-16 — Load-from-Disk builds a Relationships `<th>` with no `<td>`s (live on `main` since 9.99.1086)
+## 2026-09-16 — Load-from-Disk builds a Relationships `<th>` with no `<td>`s (9.99.1086, fixed in 9.99.1093)
 
 **Not this branch.** Found while running PERFORMANCE.org Step 36's perf gate:
 both `--rel-arm=expanded` arms (branch AND `main`) aborted on the harness's own
@@ -11568,7 +11568,59 @@ cells before the gate runs.
   `artist-releasegroups`, `artist-releases-dylan` and `releasegroup-releases`
   are all `mbid=0`.
 
-**Not fixed here.** This branch is feature work and the defect is on `main`;
-recorded for a hotfix, which wants a regression assertion on `<th>`-vs-`<td>`
-alignment after a disk load of an `mbid=0` snapshot — the cheapest home is
-`disk-fixture-load.spec.js`, which already loads exactly such a file.
+**Fixed on `main` the same day, as 9.99.1093**, in a worktree off `main` so this
+branch's in-progress work was never disturbed.
+
+**The fix.** A second predicate, `_relPageHasOrNeedsColumn()` — the DOM answer
+OR `activeInjectedColumns.length`, which the hydrate path rebuilds before the
+render tail runs — used at exactly the three sites that CREATE the column:
+`_initRelationshipsColumnImpl()`'s entry, `_relInitColHeaderToggles()`, and the
+Load-from-Disk call site. This restores the pre-9.99.1086 entry condition for
+those three while leaving 9.99.1086's stricter DOM answer everywhere it was
+right: `_relCreateRetryButtons()` (runs 200 ms later, by which time the cells
+exist), `_relPublishCollapsedStatus()`, and the global retry button.
+
+**The live render path's own call site was deliberately NOT widened.** There the
+row-build pass appends the cells before the gate is reached, so the broader test
+buys nothing — and it could let `_ensureRelCell()` add a `<td>` to a table whose
+`<th>` `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` had removed,
+which is the same misalignment in reverse.
+
+**`_relInitColHeaderToggles()` had to move too**, and that is the half a fix
+confined to the impl would have missed: it runs BEFORE
+`initRelationshipsColumn()` on the disk tail, so with only the impl fixed the
+cells appear with no toggle. Safe to widen — `_relInitColHeaderToggle()` returns
+at once for a table with no Relationships `<th>`, and
+`_relInitGlobalColHdrToggle()` is multi-table-only and bails when no header
+button exists.
+
+**Regression spec**: `tests/fixtures/rel-column-disk-load-cells.spec.js`, on the
+`releasegroup-releases` shell plus its v1.0 snapshot — chosen because that file
+has `mbid=0` on all 147 saved cells. Before the fix it failed with `Expected 23,
+Received 22` on alignment, 0 rel cells, and no toggle; after, 3 passed. It needs
+a taller viewport than the project default: the Load-from-Disk dialog is
+`position: fixed` with `max-height: calc(100vh - 40px)` and no `top`, so at 720px
+its confirm button can land below the fold — the pre-existing fragility
+`rel-column-collapse-toggle.spec.js` documents, which the sibling rel specs avoid
+by not using the dialog at all. This spec cannot avoid it: the disk path is its
+subject.
+
+**Mutations** (`scripts/mutations/rel-column-disk-load-cells.json`): 4 of 4 as
+expected, each failing at its own assertion — the predicate reverted (alignment),
+the impl gate reverted (rel cells), the call site reverted (rel cells), the
+toggle gate reverted (toggle). Userscript restored and hash-verified.
+
+**A hole in `scripts/mutation-check.py`, found by this run.** The toggle entry
+first reported `expected fail, got fail — OK` with `Error: No tests found.` — its
+`grep` still named a test title I had renamed. Playwright matching NOTHING is
+scored as a failure, so a stale or mistyped `grep` silently becomes a green
+mutation that proves nothing. Every `expect: "fail"` entry in the existing lists
+is only as trustworthy as its `grep`. Not fixed here (the tool lives on the
+batched-Relationships branch); worth making "no tests selected" an error there.
+
+**HELP needed no change, and that is a finding rather than an omission.**
+`ShowAllEntityData_HELP.txt` already stated that a disk round-trip is network-free
+only "when every Relationships cell was already fully populated at save time —
+only a row saved mid-fetch triggers a fresh fetch for that row on load", and that
+saving a collapsed column saves it empty. That describes the restored behaviour
+exactly; 9.99.1086 had made the code contradict the documentation.
