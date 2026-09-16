@@ -23,6 +23,10 @@ removal the spec cannot see because another guard covers for it.
 Safety:
   - every `find` must occur EXACTLY once, or that mutation is reported as
     ERROR and not run;
+  - a `grep` that selects NO test is reported as ERROR as well, never as a
+    failure — Playwright exits non-zero for "no tests found" exactly as it does
+    for a real assertion failure, so without this a stale grep silently scores
+    an `expect: "fail"` entry as OK while proving nothing;
   - the original file is copied to `<userscript>.mutation-backup` first, and the
     run refuses to start if that backup already exists (a previous run died
     mid-mutation — inspect and restore it by hand);
@@ -52,14 +56,24 @@ def sha256(path):
 
 
 def run_spec(spec, grep):
-    """Runs one spec filtered by title; returns (passed, tail_of_output)."""
+    """Runs one spec filtered by title.
+
+    Returns `(passed, detail, selected)`. `selected` is False when Playwright
+    matched NO test at all — which it reports by exiting non-zero, exactly as
+    it does for a real assertion failure. Without that third value a stale or
+    mistyped `grep` reads as "expected fail, got fail" and the mutation is
+    scored OK while proving nothing. That is not hypothetical: on 2026-09-16 an
+    entry whose test had been renamed reported OK with `Error: No tests found.`
+    (see DEBUG-NOTES.md).
+    """
     cmd = ['npx', 'playwright', 'test', spec, '--project=chromium-fixtures',
            '--reporter=line', '--workers=1', '-g', grep]
     proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     out = (proc.stdout or '') + (proc.stderr or '')
     lines = [ln for ln in out.splitlines() if ln.strip()]
     first_error = next((ln.strip() for ln in lines if ln.strip().startswith('Error:')), '')
-    return proc.returncode == 0, first_error or (lines[-1].strip() if lines else '')
+    selected = 'no tests found' not in out.lower()
+    return proc.returncode == 0, first_error or (lines[-1].strip() if lines else ''), selected
 
 
 def main():
@@ -101,9 +115,15 @@ def main():
             try:
                 with open(USERSCRIPT, 'w', encoding='utf-8') as fh:
                     fh.write(text)
-                passed, detail = run_spec(m['spec'], m['grep'])
+                passed, detail, selected = run_spec(m['spec'], m['grep'])
             finally:
                 shutil.copyfile(BACKUP, USERSCRIPT)
+            if not selected:
+                problem = (f'grep selected NO tests: {m["grep"]!r} — fix the grep; '
+                           'this result proves nothing either way')
+                results.append((name, m['expect'], 'ERROR', problem))
+                print(f'[{name}] ERROR — {problem}', flush=True)
+                continue
             actual = 'pass' if passed else 'fail'
             verdict = 'OK' if actual == m['expect'] else 'UNEXPECTED'
             results.append((name, m['expect'], actual, verdict if verdict == 'UNEXPECTED' else detail))

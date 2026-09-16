@@ -113,7 +113,24 @@ async function loadFromDiskFixture(page, {
 
     if (beforeRender) await beforeRender(page);
 
-    await page.click('#sa-render-no-filter-confirm');
+    // Dispatched through the DOM rather than via `page.click()`, deliberately.
+    // The dialog is `position: fixed` with `max-height: calc(100vh - 40px)` and
+    // no `top`, so at the project's 1280x720 viewport this button can land
+    // below the fold (measured at y≈1051). Playwright refuses to click an
+    // element outside the viewport and cannot scroll a fixed-position dialog
+    // into view, so it retried until the test timed out — the flake
+    // `rel-column-collapse-toggle.spec.js` documents, which hit
+    // `picard-cells-survive-rerender.spec.js` roughly one run in three and made
+    // `rel-column-disk-load-cells.spec.js` override the viewport to get a
+    // reliable run at all.
+    //
+    // Only the button's POSITION was ever the problem: it is present, visible
+    // and enabled, and its `onclick` is what the flow needs. So this loses no
+    // real coverage — it drops an actionability check that was testing the
+    // dialog's CSS geometry rather than anything the spec is about.
+    const renderBtn = page.locator('#sa-render-no-filter-confirm');
+    await renderBtn.waitFor({ state: 'attached' });
+    await renderBtn.evaluate((el) => el.click());
 }
 
 module.exports = { loadFromDiskFixture };

@@ -108,6 +108,17 @@ test.describe('Relationships column: a failed WS/2 request is not "no relationsh
 
     test('a 503 is marked failed and retried; nothing re-requests it on its own; re-expanding does',
         async ({ page }) => {
+            // The floor here is the FEATURE's own rate gate, not slowness, so
+            // the default 30 s budget is simply too small: Phase 2 walks 12
+            // entities at ~1100 ms each (~13 s), the failing MBID adds three
+            // 503 retries with widening backoff, and section 2 below sleeps
+            // 1.5 s + 3 s + 3 s. That totals ~28 s on a good run, which is why
+            // this timed out once inside a full-suite run (10.6 min, right
+            // after a memory-pressure kill) while passing 3 of 3 standalone at
+            // ~28 s each. Stating the budget beats letting a few percent of
+            // machine load decide it — nothing here is waiting on a bug.
+            test.setTimeout(90000);
+
             const ws2 = [];
             let failMbid = null;
             let failing = true;

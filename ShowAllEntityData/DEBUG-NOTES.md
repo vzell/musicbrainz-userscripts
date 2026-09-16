@@ -11624,3 +11624,74 @@ only "when every Relationships cell was already fully populated at save time —
 only a row saved mid-fetch triggers a fresh fetch for that row on load", and that
 saving a collapsed column saves it empty. That describes the restored behaviour
 exactly; 9.99.1086 had made the code contradict the documentation.
+
+## 2026-09-16 — Three test-harness defects, all found while shipping 9.99.1093
+
+No userscript change and therefore no version bump or changelog entry —
+`CLAUDE.md` excludes `tests/`/`scripts/` tooling from both. Recorded here
+instead, because each one silently weakened evidence the project relies on.
+
+**1. `scripts/mutation-check.py` scored "no tests found" as a pass.**
+`run_spec()` returned `proc.returncode == 0` as "passed", and Playwright exits
+NON-ZERO when `-g` matches nothing — indistinguishable from a real assertion
+failure. So an `expect: "fail"` entry whose `grep` was stale or mistyped
+reported `expected fail, got fail — OK` while proving nothing at all. Found the
+honest way: an entry in the disk-load list still named a test title I had
+renamed mid-session, and reported OK with `Error: No tests found.`
+
+`run_spec()` now returns a third value, `selected`, and a `grep` that matches no
+test is reported as **ERROR**, alongside the existing "find text must occur
+exactly once" ERROR. Proved before and after with a throwaway list whose grep
+names a title that exists nowhere: before, `expected fail, got fail — OK`, exit
+0; after, `ERROR — grep selected NO tests: …`, exit 1. The real 4-entry
+disk-load list still runs 4 of 4 at its own assertions, so the changed return
+did not disturb the normal path. **Every `expect: "fail"` entry written before
+today is only as trustworthy as its `grep` string** — worth a pass over the
+existing lists.
+
+**2. `tests/support/diskFixture.js` clicked a button Playwright could not
+reach.** The Load-from-Disk dialog is `position: fixed` with `max-height:
+calc(100vh - 40px)` and no `top`, so at the project's 1280x720 viewport
+`#sa-render-no-filter-confirm` can sit below the fold (measured at y≈1051).
+Playwright refuses to click an element outside the viewport and cannot scroll a
+fixed-position dialog into view, so it retried to the timeout. This is the
+fragility `rel-column-collapse-toggle.spec.js` documents and the reason both
+sibling rel specs avoid the dialog entirely; it flaked
+`picard-cells-survive-rerender.spec.js` roughly one run in three.
+
+The helper now dispatches the click through the DOM
+(`locator.evaluate((el) => el.click())`). Only the button's POSITION was ever
+the problem — it is present, visible and enabled — so this drops an
+actionability check that was testing the dialog's CSS geometry rather than
+anything a disk-load spec is about. Evidence: `picard-cells-survive-rerender`
+now **12 of 12** with `--repeat-each=3` (58.6 s), where one run in three used to
+fail.
+
+**`rel-column-disk-load-cells.spec.js` lost its viewport override in the same
+change, and that is the point.** It had shipped hours earlier with
+`test.use({ viewport: 1280x1600 })` to dodge the dialog, since unlike its
+siblings it cannot avoid the dialog — the Load-from-Disk path is its subject.
+Keeping that override now would be worse than pointless: at 1600px the
+below-the-fold condition never arises, so the spec would pass without ever
+exercising the helper it depends on, and a revert of the DOM click would go
+unnoticed. At the default viewport it is the spec that would notice. Re-run at
+1280x720 after the change: 3 of 3 (11.2 s).
+
+**3. `rel-column-fetch-failure.spec.js`'s 503 test had no budget for its own
+waiting.** It timed out once inside a full-suite run (286 passed, 1 failed,
+10.6 min, straight after a memory-pressure kill) at a `page.waitForTimeout(3000)`
+— which cannot itself exceed a 30 s budget, so the test had already spent ~27 s.
+It had: Phase 2 walks 12 entities at the feature's hard-coded ~1100 ms rate gate
+(~13 s), the failing MBID adds three 503 retries with widening backoff, then the
+no-retry-storm section sleeps 1.5 s + 3 s + 3 s. That is ~28 s against
+Playwright's 30 s default, i.e. a test whose pass depended on a few percent of
+machine load.
+
+Bisect-before-attributing applied rather than assumed, since this ran on the
+tree that had just merged the 9.99.1093 hotfix: standalone `--repeat-each=3`
+gave 3 of 3 at ~28 s each, and the hotfix cannot reach this spec anyway — it
+drives the LIVE render path, whose call site was deliberately left on
+`_relPageHasColumn()`, and its rel cells exist at render, so the widened gates
+evaluate identically. `test.setTimeout(90000)` with the arithmetic written out,
+so the next reader sees a stated budget rather than a mystery. After the change:
+2 of 2 (39.1 s).
