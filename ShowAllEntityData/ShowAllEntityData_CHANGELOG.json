@@ -1,5 +1,25 @@
 [
   {
+    "version": "9.99.1093",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Load from Disk: restore the Relationships column for a file that was saved without it. Since 9.99.1086 such a table came back with a Relationships header but no Relationships cells — so every cell from that column rightward was shifted by one, putting the Picard button under the Relationships header, and no icons, no ▶🔗 toggle and no collapsed-column filter hint were ever built. Files saved WITH the column already populated were unaffected, as were normal (non-disk) page loads.",
+          "Root cause: the three places that BUILD the column were gated on a Relationships cell already existing in the page, but on the Load-from-Disk and \"Show single-table\" paths those cells are created by the very function being gated — so the check could only ever be false for exactly the files that needed it. The gate now also accepts \"this page type declares the column\", which is what the disk path knows before the cells exist. The places that merely act on an already-rendered column keep the stricter check they were given in 9.99.1086.",
+          "This makes the script agree with its own documentation again: ShowAllEntityData_HELP.txt already stated that a disk round-trip is network-free only when every Relationships cell was fully populated at save time, and that saving a collapsed column saves it empty."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "DEBUG-NOTES.md: dated root-cause entry with the bisect (the parent commit renders 2090 icons and 22 header cells against 22 body cells; the next commit renders 0 and 22 against 21), the blast radius, and why no existing test caught it — the one committed disk fixture that carries relationship data is also the only one any relationship-aware spec loads."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1092",
     "date": "2026-09-15",
     "sections": [
