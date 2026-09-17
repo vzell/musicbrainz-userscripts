@@ -278,8 +278,25 @@ and text. Used by `place-performances(-filtered)` and
 
 ### 3.4 `_maybeCorrectAreaFlagRegion`
 
-**Status:** suspect. **Live pre-test:** §10 L7 (needs the "MusicBrainz: More Flags
-Everywhere" userscript).
+**Status:** **reproduced** on `main` 9.99.1097 and **fixed** on hotfix branch
+`fix/area-flag-region-filter-staleness` (`f12597a`, pushed, **not merged**),
+2026-09-18. **Live pre-test:** §10 L7 (needs the "MusicBrainz: More Flags
+Everywhere" userscript). **Spec:** `tests/fixtures/area-flag-region-filter.spec.js`
+— its fixture is served UNDECORATED and the spec stamps `data-flag-processed` at
+runtime, so the deferred observer path fires rather than the extraction-time one.
+**Mutations:** `scripts/mutations/area-flag-region-filter.json` (6/6 as expected).
+
+| Test | `main` 9.99.1097 | hotfix |
+|---|---|---|
+| control: decorate, then filter Region | ✅ 6/6 | ✅ |
+| **B**: Region needle retyped after the move | ❌ **6 expected, 3** | ✅ |
+| **C**: fresh key (page-wide Case checkbox) after the move | ❌ **6 expected, 3** | ✅ |
+| **D**: Locality filter after the value LEFT that column | ❌ **0 expected, 3 still rendered** | ✅ |
+
+Fix: drop the moved rows' `cols`/`full` entries, drop `_filterResultCache`, and
+re-run an active filter — coalesced per animation frame, since one sweep
+corrects many rows. `_anyFilterActive()` is now shared with §3.3's populator.
+Full fixture suite on the hotfix tree: 99 + 92 + 94 passed.
 
 Moves a flagged Locality value into Region on the live row AND the master row
 (`_forceLocalityToRegion`), up to ~6 s after render, reacting to a third-party
@@ -413,8 +430,8 @@ passes 3/3 standalone. **Update 2026-09-17 (later):** `main` is at 9.99.1096 (H5
 into this branch (`54a6e93`); merged-`main` suite 276 passed, this branch 309
 passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shipped) and merged
 into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
-passed, 0 failed. Still open, in order: §3.4, §3.8, and the §3.5/§3.6 code
-checks. The first-written state below is kept as history.
+passed, 0 failed. Still open, in order: §3.8 and the §3.5/§3.6 code checks (§3.4 is fixed on an
+unmerged hotfix branch). The first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
