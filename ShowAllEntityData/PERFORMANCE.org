@@ -1225,10 +1225,22 @@ an async column finishes loading" into a repeatable action — filter while
 collapsed, expand, and the column filter matches nothing while the icons are
 plainly visible. ~_relToggleTable()~ therefore drops that column's own entry
 per row (~_relDropRowTextCache()~), which is a scoped instance of this fix, not
-this fix. Every OTHER async populator — ~initReleaseEventsColumn()~,
-~_artSetInlineSortKey()~ and friends — still has no invalidation hook at all,
-so *this step is still fully open*; treat the rel case as the worked example of
-what the general version has to do at each site.
+this fix. Every OTHER async populator — ~initReleaseEventsColumn()~ and
+friends — still has no invalidation hook at all, so *this step is still fully
+open*; treat the rel case as the worked example of what the general version has
+to do at each site.
+
+/Corrected 2026-09-17 (async-population audit, AUDIT.md §3.1):/ this step used
+to list ~_artSetInlineSortKey()~ here. It never needed a ~_rowTextCache~ hook —
+its sentinel is in ~_CLEAN_STRIP_SEL~, so no cached column or full text ever
+contains it, and the CAA column's own writer (~_artSyncSearchTextToSourceRow()~)
+already dropped the entry. Its real gaps were different and are fixed: the
+sentinel never reached the SOURCE rows ~runFilter()~ matches, and a late settle
+never dropped ~_filterResultCache~. The fix added ~_invalidateFilterCacheWhere()~,
+a key-predicate invalidator this step's general version can reuse for the
+result-cache half. The audit also found the ⏱ toggle (~_msApplyLengthPrecision()~)
+and ~initReleaseEventsColumn()~ rewriting source-row text without this hook;
+they are its §3.2/§3.3.
 
 *** TODO Step 10: Precompute sort keys before ~sortLargeArray~
 
@@ -1905,6 +1917,13 @@ Three things worth keeping:
 - *Both mirrors use* ~_findMasterRowByIdx()~, not a group-index lookup. Merged
   discography view folds other groups' rows into the first-occurrence table, so
   an index lookup silently misses exactly those rows.
+  /Measured 2026-09-17, not yet acted on:/ that lookup is a linear scan costing
+  *0.69 ms at 4174 rows, 1.89 ms at 10 000* (=vzell-lap=, tests/MEASUREMENTS.org),
+  and ~_artInitInlinePics()~' Case C1 calls ~_artMirrorInlineThumbToSourceRow()~
+  for EVERY settled row on EVERY multi-table re-render — so a keystroke on a big
+  multi-table page with inline art pays it once per row. A candidate Step, not
+  numbered here; the inline-art sentinel fix deliberately avoided adding a
+  second per-settle scan for exactly this reason.
 - *Only a DEFINITIVE absence is negative-cached* (404/410). A 5xx, network
   error or timeout is left uncached on purpose, because the Cover Art Archive
   fails in bursts and caching that would turn a few seconds of upstream trouble

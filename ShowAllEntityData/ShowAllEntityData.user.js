@@ -22553,6 +22553,69 @@
     }
 
     /**
+     * The first artwork-archive entity GUID (release, release group or event)
+     * linked from a cell, or `null`.
+     *
+     * Used only to validate `_inlineArtSettled` entries: a source row and every
+     * clone of it carry identical links, so the GUID is the same on both, while a
+     * `rowIdx` reused by a later fetch names a different entity.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string}
+     */
+    function _cellArtEntityGuid(cell) {
+        if (!cell) return null;
+        for (const a of cell.querySelectorAll('a[href]')) {
+            const m = /\/(?:release-group|release|event)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+                .exec(a.getAttribute('href') || '');
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    /**
+     * The settled inline-thumbnail sentinel for one cell — `'caa-inline-yes'`,
+     * `'caa-inline-no'`, or `null` while its fetch has not settled. The single
+     * answer to that question for everything that MATCHES or COUNTS inline-art
+     * presence: `_cellMatchesStructureMode()`'s `inline-art-yes`/`-no` modes,
+     * `testRowMatch()`'s typed-sentinel bypass, and `openUniqDrop()`'s count
+     * pass, so an entry's count and the rows it filters to cannot disagree.
+     *
+     * ## Why the span alone is not enough
+     *
+     * `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key` on whichever
+     * `<td>` was live when the fetch settled, but `runFilter()` matches SOURCE
+     * rows. On `tableMode: 'multi'` the live row is always a clone, so no source
+     * row ever held the span and both entries filtered to zero rows. On
+     * `tableMode: 'single'` the same happened to any thumbnail settling after the
+     * first re-render. `_inlineArtSettled`, keyed `"rowIdx:colIdx"` like
+     * `expandedCells`, is readable from either row, and resolving it is O(1) —
+     * mirroring the span onto the master row instead would need
+     * `_findMasterRowByIdx()`, measured at ~0.7 ms per lookup on a 4174-row page.
+     *
+     * The map wins over the span because it is the newer fact whenever both
+     * exist. The span stays the fallback: a late 404 on a single-table page
+     * stamps the detached SOURCE cell itself (that error path has no
+     * `isConnected` guard), which is already correct and records nothing in the
+     * map. An entry whose GUID differs from the cell's is ignored — it was
+     * recorded for a previous fetch that reused this `rowIdx`.
+     *
+     * @param {?HTMLTableRowElement}  row
+     * @param {number}                colIdx
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string}
+     */
+    function _inlineArtSentinelFor(row, colIdx, cell) {
+        const rowIdx = row && row.dataset ? row.dataset.mbRowIdx : undefined;
+        if (rowIdx !== undefined) {
+            const entry = _inlineArtSettled.get(`${rowIdx}:${colIdx}`);
+            if (entry && entry.guid === _cellArtEntityGuid(cell)) return entry.value;
+        }
+        const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
+        return sk ? sk.textContent.trim() : null;
+    }
+
+    /**
      * Tests whether a table cell matches a "Cell structure" checkbox mode
      * from `openUniqDrop()`'s synthetic entries (`makeSynItem`/
      * `makeValueSynItem`/`makeInlineArtItem`) — the single source of truth
@@ -22687,11 +22750,13 @@
             return !!cell && _findCellRelIcons(cell).some(r => r.domainKey === want);
         }
         if (mode === 'inline-art-yes' || mode === 'inline-art-no') {
-            // addCAA/addEAA inline-thumbnail presence — .mb-inline-art-sort-key
-            // is the invisible sentinel _artSetInlineSortKey stamps after each
-            // load/error path settles (see openUniqDrop()'s makeInlineArtItem).
-            const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
-            return !!sk && sk.textContent.trim() === (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');
+            // addCAA/addEAA inline-thumbnail presence — the sentinel
+            // _artSetInlineSortKey stamps after each load/error path settles
+            // (see openUniqDrop()'s makeInlineArtItem). Resolved through
+            // _inlineArtSentinelFor(), not the cell's own span: this runs on
+            // SOURCE rows, which do not carry the span — see its JSDoc.
+            return _inlineArtSentinelFor(row, colIdx, cell) ===
+                (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');
         }
         if (mode.startsWith('name:')) {
             // Compound mode — matches one entity's own anchored <bdi> name,
@@ -36397,6 +36462,13 @@ a { color: #1565c0; }`;
     // Updated by every toggle click; read by initCollapsableColumns, testRowMatch,
     // and openUniqDrop so they all agree even after renderFinalTable+init resets the DOM.
     const expandedCells = new Map();
+    // Settled inline-thumbnail state per cell, keyed "rowIdx:colIdx" exactly like
+    // expandedCells, and reset alongside it. Value: {value, guid} — the sentinel
+    // text _artSetInlineSortKey() stamps ('caa-inline-yes'/'caa-inline-no') and
+    // the entity GUID the cell showed when it settled. Exists because runFilter()
+    // matches SOURCE rows while the sentinel span is stamped on whichever row was
+    // live when the fetch settled — see _inlineArtSentinelFor().
+    const _inlineArtSettled = new Map();
     // Tracks which "rowIdx:localityColIdx" pairs have already had their Locality
     // value forced into Region by initAreaFlagRegionObserver() (see near
     // initTreleasesObserver) — an idempotency guard so a row is never corrected
@@ -39576,8 +39648,8 @@ a { color: #1565c0; }`;
         // It MUST be stripped here so that ordinary text filter strings (e.g. "nl"
         // matching "caa-i[nl]ine-yes") do not produce false positives.  The
         // A column filter set to the exact sentinel value 'caa-inline-yes' /
-        // 'caa-inline-no' bypasses getCleanColumnText entirely and uses a direct
-        // querySelector('.mb-inline-art-sort-key').textContent check in testRowMatch.
+        // 'caa-inline-no' bypasses getCleanColumnText entirely: testRowMatch()
+        // resolves the sentinel through _inlineArtSentinelFor().
         '.mb-inline-art-sort-key,' +
         // .mb-caa-sort-key (and analogous .mb-eaa-sort-key) carry the invisible
         // artwork-presence sentinel 'yes' or 'no' used by the CAA/EAA column
@@ -43381,13 +43453,14 @@ a { color: #1565c0; }`;
                     // (they are now in _CLEAN_STRIP_SEL) to prevent sentinel text like
                     // "caa-inline-yes" from leaking into general filter matching.
                     // A column filter set to the exact sentinel value 'caa-inline-yes' /
-                    // 'caa-inline-no' must still work, so we check the span directly.
+                    // 'caa-inline-no' must still work, so we check the sentinel directly
+                    // — via _inlineArtSentinelFor(), since the row tested here is usually
+                    // the SOURCE row, which does not carry the span (see its JSDoc).
                     // This is intentionally skipped for regexp filters (which would be
                     // odd for these sentinel values) and for exclude mode (the negation
                     // is applied later via _fIsExclude).
-                    const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;
-                    if (sk) {
-                        const skVal = sk.textContent.trim();
+                    const skVal = _inlineArtSentinelFor(row, f.idx, cell);
+                    if (skVal !== null) {
                         match = _fIsCase
                             ? skVal === f.val
                             : skVal.toLowerCase() === f.val.toLowerCase();
@@ -43667,6 +43740,68 @@ a { color: #1565c0; }`;
         _incrLastGlobalQuery = '';
         _incrLastPartialKey  = '';
         _incrMatchSet        = null;
+    }
+
+    /**
+     * The content-change counterpart of `_invalidateFilterCacheForGroups()`:
+     * drops only the cached match sets whose KEY says they could read the
+     * content that just changed.
+     *
+     * `_buildFilterKey()` hashes filter INPUTS alone, so a cell whose content
+     * changes asynchronously — with every input unchanged — gets its previous
+     * row list replayed (AUDIT.md §1). Dropping the whole cache is correct but
+     * expensive exactly when these writes happen: while artwork is still
+     * loading, every settle would also throw away the global filter's cached
+     * lists and its incremental-narrowing state, turning each keystroke into a
+     * full scan. A key is a string, so a writer can say precisely which keys
+     * read what it wrote — see `_filterKeyReadsInlineArtSentinel()` and
+     * `_filterKeyReadsArtColumn()`.
+     *
+     * The incremental-filter state is reset only when its own partial key (the
+     * same filter JSON minus the global query) is affected, for the same reason.
+     *
+     * @param {function(string): boolean} affectsKey - Given a cache key, or the
+     *   incremental partial key, returns true when that result could change.
+     */
+    function _invalidateFilterCacheWhere(affectsKey) {
+        for (const key of Array.from(_filterResultCache.keys())) {
+            if (affectsKey(key)) _filterResultCache.delete(key);
+        }
+        if (_incrMatchSet !== null && affectsKey(_incrLastPartialKey)) {
+            _incrLastGlobalQuery = '';
+            _incrLastPartialKey  = '';
+            _incrMatchSet        = null;
+        }
+    }
+
+    /**
+     * Whether a filter key can read the inline-thumbnail sentinel: a checked
+     * `inline-art-yes`/`inline-art-no` 📊 entry (`"sm":["inline-art-…"]`), or a
+     * typed column filter hitting `testRowMatch()`'s exact `caa-inline-yes`/`-no`
+     * bypass. Nothing else can: the span is in `_CLEAN_STRIP_SEL`, so no text a
+     * global or ordinary column filter reads contains it.
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _filterKeyReadsInlineArtSentinel(key) {
+        return key.includes('"inline-art-') || key.toLowerCase().includes('caa-inline-');
+    }
+
+    /**
+     * Returns a predicate for keys that can read one CAA/EAA column's synced
+     * art facts (`_artSyncSearchTextToSourceRow()`): any filter on that column
+     * index, or a regexp global query, which tests every cell's column text.
+     * A plain global query cannot — `getCleanVisibleText()` never includes
+     * `mbArtSearchSync`.
+     *
+     * @param {number} colIdx
+     * @returns {function(string): boolean}
+     */
+    function _filterKeyReadsArtColumn(colIdx) {
+        const colNeedle = `"i":${colIdx},`;
+        return (key) => key.includes(colNeedle) ||
+            (key.includes('"r":true') && !key.includes('"g":""'));
     }
 
     /**
@@ -46322,6 +46457,7 @@ a { color: #1565c0; }`;
         groupedRows = [];
         _seenTopCdStubHrefs = new Set();
         expandedCells.clear();
+        _inlineArtSettled.clear();
         _areaFlagRegionCorrected.clear();
         _editsProseDefaultExpandedCols.clear();
         _mbRowIdxCounter = 0;
@@ -56448,10 +56584,13 @@ a { color: #1565c0; }`;
                 // cosmetic .mb-art-cache-hint-inline badge which is gated behind the
                 // sa_rt_enable/sa_rt_show_inline settings flags and therefore absent
                 // when resource-timing indicators are disabled.
-                const sk = cell.querySelector('.mb-inline-art-sort-key');
-                if (!sk) return; // fetch not yet settled — skip this cell
-                if (sk.textContent === 'caa-inline-yes')     inlineArtYes++;
-                else if (sk.textContent === 'caa-inline-no') inlineArtNo++;
+                // Resolved through _inlineArtSentinelFor() — the same resolver the
+                // inline-art-yes/-no matchers use on the source rows — so the count
+                // an entry shows and the rows it filters to cannot disagree. A cell
+                // whose fetch has not settled yields null and is skipped.
+                const skVal = _inlineArtSentinelFor(row, colIndex, cell);
+                if (skVal === 'caa-inline-yes')     inlineArtYes++;
+                else if (skVal === 'caa-inline-no') inlineArtNo++;
             });
         }
 
@@ -62719,9 +62858,11 @@ a { color: #1565c0; }`;
      *   `querySelector` per anchor, which was the most expensive of the twelve
      *   on any cell containing links.
      * - *`.mb-inline-art-sort-key` is deliberately ABSENT*, matching the
-     *   original's own "intentionally NOT removed here" note: stripping it from
-     *   a clone would make `getCleanColumnText()` see no synthetic value and
-     *   match nothing, silently hiding every row.
+     *   original's own "intentionally NOT removed here" note: a clone's span is
+     *   what `openUniqDrop()`'s inline-art count pass and
+     *   `_artInitInlinePics()`' Case C1 build on. (The note's older reason — that
+     *   `testRowMatch()` matched the clone's span — was wrong: matching runs on
+     *   SOURCE rows and resolves through `_inlineArtSentinelFor()`.)
      * - *Anything added here needs a bucket AND a step*, in the dispatch loop
      *   and in the ordered execution below it. A new arm with no bucket is a
      *   wasted match; a new bucket with no step is a silent no-op.
@@ -63031,13 +63172,13 @@ a { color: #1565c0; }`;
         });
         // NOTE: .mb-inline-art-sort-key spans are intentionally NOT removed here,
         // and are deliberately absent from _STRIP_TRANSIENT_UNION_SEL for the
-        // same reason.
-        // In the multi-table (addCAA) path runFilter() clones rows and calls
-        // _stripTransientCellState() before testRowMatch(); removing the sort-key span
-        // from the clone would cause getCleanColumnText() to see no synthetic value and
-        // match nothing, silently hiding all rows.  The span is idempotent —
-        // _artSetInlineSortKey() updates it in-place after every fetch cycle — so no
-        // explicit removal is ever needed.
+        // same reason: the span a clone carries is what openUniqDrop()'s count
+        // pass and _artInitInlinePics()' Case C1 build on, and it is idempotent —
+        // _artSetInlineSortKey() updates it in place after every fetch cycle — so
+        // no explicit removal is ever needed.
+        // (This note used to say the clone's span was what testRowMatch() matched.
+        // It is not: runFilter() matches the SOURCE rows, which never carried the
+        // span on multi-table pages. Matching goes through _inlineArtSentinelFor().)
 
         // Cache-hint overlays (cosmetic, rebuilt on render) — EXCEPT the CAA/EAA
         // count badge, which _artEnrichIcon's "Resource Timing wrapper adoption"
@@ -67111,6 +67252,7 @@ a { color: #1565c0; }`;
             if (data.tableMode === 'multi' && data.groups) {
                 groupedRows = [];
                 expandedCells.clear();
+                _inlineArtSettled.clear();
                 _areaFlagRegionCorrected.clear();
                 _editsProseDefaultExpandedCols.clear();
                 _mbRowIdxCounter = 0;
@@ -67262,6 +67404,7 @@ a { color: #1565c0; }`;
             } else if (data.rows) {
                 allRows = [];
                 expandedCells.clear();
+                _inlineArtSettled.clear();
                 _areaFlagRegionCorrected.clear();
                 _editsProseDefaultExpandedCols.clear();
                 _mbRowIdxCounter = 0;
@@ -72464,6 +72607,12 @@ a { color: #1565c0; }`;
         const colIdx = liveArtCell.cellIndex;
         const sourceCell = sourceRow.cells[colIdx];
         if (!sourceCell) return;
+        // Snapshot of every synced fact before this write, so the filter-result
+        // cache is dropped below only when one of them actually changes — every
+        // re-render rebuilds every art cell and re-syncs identical values.
+        const _SYNC_KEYS = ['mbArtSearchSync', 'mbArtLiCountSync', 'mbArtItemTextsSync',
+                            'mbArtTypesSync', 'mbArtCommentsSync'];
+        const _before = _SYNC_KEYS.map(k => sourceCell.dataset[k]);
         // Plain dataset attributes on the <td> itself — deliberately NOT a
         // `ul.mb-caa-art-ul` element (see this function's own JSDoc for why
         // that would corrupt the next rebuild once this source row is
@@ -72518,6 +72667,14 @@ a { color: #1565c0; }`;
 
         const cached = _rowTextCache.get(sourceRow);
         if (cached) { cached.cols[colIdx] = undefined; cached.full = null; }
+
+        // The source row now matches differently, but every filter INPUT is
+        // unchanged — so an identical key would replay the row list computed
+        // before this metadata arrived (AUDIT.md §1). Drop only the keys that
+        // can read this column, and only when a synced fact really changed.
+        if (_SYNC_KEYS.some((k, i) => sourceCell.dataset[k] !== _before[i])) {
+            _invalidateFilterCacheWhere(_filterKeyReadsArtColumn(colIdx));
+        }
     }
 
     /** Selector for artwork-icon spans — the same one `_stripTransientCellState()` clears. */
@@ -75775,8 +75932,31 @@ a { color: #1565c0; }`;
      * `_CLEAN_STRIP_SEL`'s named classes, so `getCleanColumnText()` strips it
      * (both via the clone-and-strip pass and the TreeWalker's FILTER_REJECT
      * guard) and never sees this text. It works because `testRowMatch()`
-     * carries an explicit exact-match bypass straight against the span — see
-     * the "Inline-art sort-key bypass" block there.
+     * carries an explicit exact-match bypass — see the "Inline-art sort-key
+     * bypass" block there — which, like the 📊 `inline-art-yes`/`-no` modes,
+     * resolves the sentinel through `_inlineArtSentinelFor()`.
+     *
+     * ## Why this also writes `_inlineArtSentinelFor()`'s map
+     *
+     * The span lands on whichever `<td>` was live when the fetch settled, but
+     * `runFilter()` matches SOURCE rows. On `tableMode: 'multi'` the live row
+     * is always a clone, so before this was added no source row ever held the span
+     * and both 📊 entries filtered to zero rows; on `tableMode: 'single'` the
+     * same happened to any thumbnail settling after the first re-render. The
+     * settle is therefore also recorded in `_inlineArtSettled`, keyed
+     * `"rowIdx:colIdx"` — O(1), where mirroring the span onto the master row
+     * would cost a `_findMasterRowByIdx()` scan per settle (measured ~0.7 ms
+     * each on a 4174-row page, see tests/MEASUREMENTS.org).
+     *
+     * ## Why a change drops part of the filter-result cache
+     *
+     * A settle changes what a source row matches while every filter INPUT stays
+     * the same, so `_filterResultCache` would replay the previous pick's rows
+     * under an identical key. Only on an actual change (Case C1 re-stamps every
+     * cell with its existing value on every render) and only for the keys that
+     * can read this sentinel (`_filterKeyReadsInlineArtSentinel()`), so filter
+     * typing while artwork is still loading keeps its cache and its
+     * incremental narrowing.
      *
      * That bypass is kept deliberately, unlike the CAA/EAA presence one that
      * sat right next to it and was removed: 'caa-inline-yes'/'caa-inline-no'
@@ -75800,14 +75980,46 @@ a { color: #1565c0; }`;
      */
     function _artSetInlineSortKey(ctx, td, loaded) {
         const CLS = 'mb-inline-art-sort-key';
+        const value = loaded ? 'caa-inline-yes' : 'caa-inline-no';
         let sk = td.querySelector('.' + CLS);
+        const spanChanged = !sk || sk.textContent !== value;
         if (!sk) {
             sk = document.createElement('span');
             sk.className   = CLS;
             sk.style.display = 'none';
             td.appendChild(sk);
         }
-        sk.textContent = loaded ? 'caa-inline-yes' : 'caa-inline-no';
+        sk.textContent = value;
+        // ── Make the settle visible to runFilter()'s SOURCE-row matchers ──────
+        // `td` is whichever row was live when the fetch settled — on a
+        // multi-table page always a clone, never the row runFilter() tests. So
+        // record the state where both can read it: `_inlineArtSettled`, keyed
+        // "rowIdx:colIdx" (see _inlineArtSentinelFor()).
+        //
+        // Connected cells only. A detached `td` is either a clone some later
+        // render replaced — its replacement settles on its own — or, on a
+        // single-table page, the source cell itself (a late 404), where the
+        // span just written already IS what the matcher reads. Skipping them
+        // also keeps a fetch from a previous page load, whose rows are gone,
+        // from writing a rowIdx that now names someone else's row.
+        let changed;
+        const rowIdx = td.parentElement && td.parentElement.dataset
+            ? td.parentElement.dataset.mbRowIdx : undefined;
+        if (td.isConnected && rowIdx !== undefined) {
+            const key  = `${rowIdx}:${td.cellIndex}`;
+            const guid = _cellArtEntityGuid(td);
+            const prev = _inlineArtSettled.get(key);
+            changed = !prev || prev.value !== value || prev.guid !== guid;
+            if (changed) _inlineArtSettled.set(key, { value, guid });
+        } else {
+            changed = spanChanged;
+        }
+        // Filter INPUTS did not change, so an identical key would replay the
+        // previous row list (AUDIT.md §1). Only on an actual change: every
+        // re-render re-stamps every settled cell with the value it already had
+        // (_artInitInlinePics() Case C1), and dropping on those would empty the
+        // cache on every keystroke. Only keys that can read this sentinel go.
+        if (changed) _invalidateFilterCacheWhere(_filterKeyReadsInlineArtSentinel);
         // This sentinel is exactly what openUniqDrop()'s inline-art scan pass
         // counts, and it lands asynchronously (from a CAA/EAA fetch-completion
         // callback) with no row show/hide — so the uniq-dropdown cache's

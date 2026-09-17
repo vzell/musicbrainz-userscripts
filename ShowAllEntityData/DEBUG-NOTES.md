@@ -11331,3 +11331,91 @@ only "when every Relationships cell was already fully populated at save time —
 only a row saved mid-fetch triggers a fresh fetch for that row on load", and that
 saving a collapsed column saves it empty. That describes the restored behaviour
 exactly; 9.99.1086 had made the code contradict the documentation.
+
+## 2026-09-17 — Inline-artwork 📊 entries render fewer rows than they count (all 9.99.x with addCAA/addEAA; hotfix, branch fix/art-async-filter-staleness)
+
+Found by the async-cell-population audit (`AUDIT.md` §3.1 on
+`rel-column-batch-and-cell-states`), reproduced in a fixture spec BEFORE any code
+change, on `main` 9.99.1093. Live twins of every test: `AUDIT.md` §10 L1–L4.
+
+**Symptom.** The 📊 "Structure - Inline artwork" entries ("🖼️ front-image
+available" / "∅ NO front-image available") and a typed `caa-inline-yes` column
+filter advertised a correct count but rendered fewer rows — on a multi-table page
+**none at all**. Separately, re-picking a "CAA info - Type" entry after more image
+metadata had loaded replayed the first pick's rows.
+
+**Two independent root causes with one symptom.**
+
+1. *The state never reached the rows the filter tests.* `runFilter()` matches
+   SOURCE rows (`allRows` / `groupedRows[i].rows`); 📊 counts LIVE rows.
+   `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key` on the live `<td>`.
+   `renderGroupedTable()` always inserts clones, and
+   `_artMirrorInlineThumbToSourceRow()` copies the placeholder `<span>` but not the
+   sort-key span (a `<td>` child outside it) — so on multi-table pages no source
+   row ever carried it. On single-table pages the first render MOVES rows, so early
+   settles did reach `allRows`; any settle after the first re-render landed on a
+   clone only (the original loadTask bails on `!ph.isConnected`).
+2. *Replay.* `_buildFilterKey()` hashes filter inputs; a late settle changes what a
+   source row matches with every input unchanged, and nothing in the artwork path
+   dropped `_filterResultCache`. `_artSyncSearchTextToSourceRow()` DID sync the CAA
+   column's facts and drop `_rowTextCache` correctly — the result cache was the
+   only gap there.
+
+A stale comment in `_stripTransientCellState()` asserted the clone's span was what
+`testRowMatch()` matched — true once, before matching moved to source rows — which
+is how (1) stayed invisible.
+
+**Fixture results on `main`** (`tests/fixtures/art-inline-uniq-filter-late-load.spec.js`,
+each test alone, `vzell-lap`, 2026-09-17):
+
+| Test | main | What it establishes |
+|---|---|---|
+| single-table baseline | pass 10/10, 2/2 | the spec drives 📊 correctly |
+| multi-table control ("» country code: AU") | pass 3/3 | same, multi-table |
+| H1 multi, nothing late | **count 5, rows 0** | (1), not a timing bug |
+| H1 typed `caa-inline-yes` | **5 vs 0** | same defect via the typed bypass |
+| H2 single, late thumbnail after a sort | **10 vs 9** | (1) alone — the sort cached no key |
+| H2b single, late 404 after a sort | pass 2/2 | predicted asymmetry: the error path has no `isConnected` guard and stamps the detached SOURCE cell |
+| H3 single, pick/unpick/late/pick | **10 vs 9** | symptom of (1) AND (2) — see mutation 4 |
+| H4 multi CAA "» image type: Front", pick/unpick/late/pick | **6 vs 5** | (2) |
+| H4 isolation: same late metadata, sort instead | pass 6/6 | the sync works; H4 is purely (2) |
+
+Lateness was controlled without network: `GM_xmlhttpRequest` wrapped after load
+(per-mbid 200/404, held until released), and the CAA metadata route gated in Node.
+
+**Fix.**
+- `_inlineArtSettled` (`Map`, `"rowIdx:colIdx"` → `{value, guid}`, reset with
+  `expandedCells`), written by `_artSetInlineSortKey()` for connected cells, read
+  through `_inlineArtSentinelFor()` by the structure modes, the typed bypass, AND
+  `openUniqDrop()`'s count pass. Map first, span as fallback (a single-table late
+  404 stamps the source cell itself). The GUID rejects an entry left by an earlier
+  fetch that reused the `rowIdx`.
+- `_invalidateFilterCacheWhere(affectsKey)`: drops only keys whose JSON can read
+  the changed content — `_filterKeyReadsInlineArtSentinel()` /
+  `_filterKeyReadsArtColumn(colIdx)` — and resets incremental narrowing only when
+  its partial key is affected. Called only on an actual change.
+
+**Why not mirror the span onto the master row**, which is what the other artwork
+mirrors do: `_findMasterRowByIdx()` measured **0.69 ms per lookup at 4174 rows,
+1.89 ms at 10 000** (`scripts/bench-master-row-lookup.js`, `vzell-lap`
+2026-09-16T23:24Z) — seconds per page load when paid per settle. The fix instead
+adds one GUID read per settled cell per render: **6.6 ms per render at 4174 rows**
+(`scripts/bench-art-guid-read.js`, 2026-09-17T00:59Z), ~0.2% of a ~3 s filter pass
+there. Same measurement exposes a pre-existing cost: `_artMirrorInlineThumbToSourceRow()`
+runs that scan per row on EVERY multi-table re-render (Case C1) — noted in AUDIT.md,
+not changed here.
+
+**Mutation check** (`scripts/mutations/art-inline-late-load.json`), 11/11 as
+expected, each failing on its own labelled assertion: matcher → span (H1 0 rows);
+typed bypass → span (H1 typed); map never written (H2 9 rows); settle never drops
+the cache (**H3 still 9 rows with (1) fixed — the replay is real and stacked**);
+predicate misses `"inline-art-` (H3); CAA sync never drops (H4); CAA predicate on
+the wrong column (H4). Recorded as `expect: pass`, KNOWN UNCOVERED: the value/GUID
+change test on an existing entry (needs a retry- or re-fetch-driven fixture), the
+GUID validation, the `isConnected` gate, and the count pass routed through the
+resolver (a construction guarantee; live spans are re-stamped every render).
+
+**Not covered:** a single-table page with a CAA **column** (not inline thumbnail)
+whose metadata settles after a re-render — `_artSyncSearchTextToSourceRow()` still
+returns early for `tableMode !== 'multi'` (AUDIT.md §3.1 H4b). No committed
+single-table shell carries `/cover-art` anchors.

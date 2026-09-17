@@ -209,6 +209,43 @@ while a plain `no` matched presence. `mb-inline-art-sort-key`'s bypass was
 deliberately **kept** — its `caa-inline-yes`/`caa-inline-no` values collide with
 no English word.
 
+**Inline-thumbnail presence is matched through `_inlineArtSentinelFor()`, never
+the cell's own span.** `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key`
+on whichever `<td>` was LIVE when the fetch settled, but `runFilter()` matches
+SOURCE rows. On `tableMode: 'multi'` the live row is always a clone, so the 📊
+"🖼️ front-image available" / "∅ NO front-image available" entries (and a typed
+`caa-inline-yes`) filtered to **zero rows** while counting correctly; on
+`tableMode: 'single'` the same happened to any thumbnail settling after the first
+re-render. The settle is now also recorded in `_inlineArtSettled`, keyed
+`"rowIdx:colIdx"` like `expandedCells` and reset with it, and all three readers —
+the structure modes, the typed bypass and `openUniqDrop()`'s count pass — go
+through the one resolver, so a count and its rows cannot disagree. Three things
+not to undo:
+
+- **Do not "fix" this by mirroring the span onto the master row** with
+  `_findMasterRowByIdx()`: that is a linear scan measured at ~0.7 ms per lookup on
+  4174 rows (1.9 ms at 10 000), paid once per settle — seconds of main-thread time
+  on a big page. See `tests/MEASUREMENTS.org`. (`_artMirrorInlineThumbToSourceRow()`
+  already pays that per row on every multi-table re-render; that is a known,
+  separate cost.)
+- **Record connected cells only, and validate the GUID on read.** A detached `<td>`
+  is either a clone some later render replaced, or a single-table source cell (a
+  late 404), where the span already is what the matcher reads. The GUID check
+  rejects an entry written for a previous fetch that reused the `rowIdx`.
+- **Drop the filter-result cache only on a CHANGE, and only the keys that can read
+  what changed** — `_invalidateFilterCacheWhere()` with
+  `_filterKeyReadsInlineArtSentinel()` (inline art) or
+  `_filterKeyReadsArtColumn(colIdx)` (a CAA/EAA column's synced facts, from
+  `_artSyncSearchTextToSourceRow()`). Case C1 re-stamps every cell with its
+  existing value on every render, so an unconditional drop would empty the cache
+  on every keystroke; a wholesale drop would throw away global-filter caching and
+  incremental narrowing for the whole time artwork is loading.
+
+Covered by `tests/fixtures/art-inline-uniq-filter-late-load.spec.js`, whose
+isolation variants separate "never reached the source row" from "replayed a cached
+row list" (the H3 sequence is both at once). Mutation list:
+`scripts/mutations/art-inline-late-load.json`.
+
 **Surviving a re-render.** `renderFinalTable`/`renderGroupedTable` insert
 `cloneNode(true)` copies, so live artwork has to be mirrored back onto the SOURCE
 rows or it is destroyed and re-fetched on every sort and every filter keystroke:
