@@ -525,18 +525,26 @@ test.describe('Relationships column: collapsed by threshold, loaded on demand', 
             // here. The collapsed table must stay empty and the expanded one
             // must keep its icon.
             await page.fill('#mb-global-filter-input', 'Tunnel');
-            await page.waitForTimeout(1500);
-            const filtered = await readRelShape(page);
-            expect(filtered.toggles).toEqual(['false', 'true']);
+            await expect.poll(async () => (await readRelShape(page)).toggles, {
+                timeout: 20000, message: 'the filtered render settles with both toggles unchanged',
+            }).toEqual(['false', 'true']);
             expect(ws2).toHaveLength(1);
 
+            // Poll the shape rather than sleeping a fixed 1500 ms and reading
+            // once: under full-suite load the re-render is not finished by then,
+            // and the read saw ONE table instead of two (twice on 2026-09-17,
+            // green 2/2 in isolation each time). CLAUDE.md's "settle, don't
+            // sleep" — a fixed wait cannot be made long enough to be right.
             await page.fill('#mb-global-filter-input', '');
-            await page.waitForTimeout(1500);
-            const cleared = await readRelShape(page);
-            expect(cleared.tables).toEqual([
+            await expect.poll(async () => (await readRelShape(page)).tables, {
+                timeout: 20000,
+                message: 'both sub-tables come back, the collapsed one still empty',
+            }).toEqual([
                 { uniqueMbids: 6, expanded: false, pending: 6 },
                 { uniqueMbids: 1, expanded: true, pending: 0 },
             ]);
+            const cleared = await readRelShape(page);
+            expect(cleared.tables).toHaveLength(2);
             expect(ws2).toHaveLength(1);
         });
 

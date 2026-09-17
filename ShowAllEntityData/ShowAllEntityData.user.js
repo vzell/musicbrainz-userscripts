@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1096+2026-09-17
+// @version      9.99.1097+2026-09-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -65072,8 +65072,23 @@ a { color: #1565c0; }`;
         if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_ensureReCell));
         if (typeof allRows    !== 'undefined' && allRows.length) allRows.forEach(_ensureReCell);
 
-        const allCells = Array.from(document.querySelectorAll('td.mb-re-cell'))
+        // Collect from the live DOM AND from the captured source rows.
+        //
+        // The live table is only what is RENDERED at this moment, and
+        // runFilter() REMOVES non-matching rows rather than hiding them. So a
+        // filter typed while this fetch is in flight takes its rows out of this
+        // list — and since this function runs once per fetch, those rows stayed
+        // empty forever, even after the filter was cleared. The same applies to
+        // a sort or a discography-view switch, which re-render from clones: the
+        // cells collected before it are detached by the time the answer lands,
+        // and writing into them updates nothing anyone can see. AUDIT.md §3.3.
+        const _unpopulated = (root) => Array.from(root.querySelectorAll('td.mb-re-cell'))
             .filter(td => td.dataset.mbid && !td.dataset.reDone);
+        const _sourceRows = [];
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => _sourceRows.push(...g.rows));
+        if (typeof allRows !== 'undefined') _sourceRows.push(...allRows);
+        const allCells = _unpopulated(document);
+        _sourceRows.forEach(row => allCells.push(..._unpopulated(row)));
         if (!allCells.length) { _dbg('initReleaseEventsColumn: no unpopulated cells'); return; }
         _dbg(`initReleaseEventsColumn: ${allCells.length} cell(s) to populate`);
 
@@ -65144,6 +65159,21 @@ a { color: #1565c0; }`;
                 initCollapsableColumns(t);
             });
         }
+        // Every filter INPUT is unchanged, but these rows' text is not: the
+        // Release events cells — and, just below, the ICE cells derived from
+        // them — went from empty to populated. Without this, `_filterResultCache`
+        // replays the row list computed before the answer arrived, and
+        // `_cachedColText()`/`_cachedFullText()` keep handing back the empty
+        // text they read then. Both sentinels have to be honoured: `cols` is
+        // "not cached" at `undefined`, `full` at `null` (AUDIT.md §4) — clearing
+        // the whole `cols` array satisfies that for every column at once, which
+        // is what is wanted here since the ICE columns' indices vary per page.
+        _sourceRows.forEach(row => {
+            const cached = _rowTextCache.get(row);
+            if (cached) { cached.cols = []; cached.full = null; }
+        });
+        _invalidateFilterCache();
+
         // Third-pass: derive synthetic columns from the now-populated injected columns
         // (e.g. split 'Release events' into 'Release country' + 'Release date').
         if (activeInjectedColumnExtractors.length) {
@@ -65158,6 +65188,23 @@ a { color: #1565c0; }`;
                 _invalidateUniqDropDataCacheForTable(t);
                 initCollapsableColumns(t);
             });
+        }
+
+        // A filter that was typed while this fetch was in flight was answered
+        // against empty cells. Dropping the caches above only makes the NEXT
+        // pass correct; without re-running one, the user is left looking at a
+        // table filtered on data that had not arrived yet. Same reasoning as
+        // `_msApplyLengthPrecision()`, which re-runs the filter after rewriting
+        // its column. Skipped when nothing is filtering, so a normal page load
+        // pays no extra render.
+        const _filterActive =
+            (typeof filterInput !== 'undefined' && filterInput &&
+                stripFilterPrefix(filterInput.value).trim() !== '') ||
+            Array.from(document.querySelectorAll('.mb-col-filter-input'))
+                .some(inp => stripFilterPrefix(inp.value).trim() !== '');
+        if (_filterActive) {
+            _dbg('initReleaseEventsColumn: re-running the active filter against the populated cells');
+            runFilter();
         }
     }
 

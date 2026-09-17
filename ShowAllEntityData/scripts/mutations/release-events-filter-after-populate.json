@@ -1,0 +1,67 @@
+[
+  {
+    "name": "cells to populate are collected from the live DOM only",
+    "why": "Reverts initReleaseEventsColumn()'s collection pass to document.querySelectorAll alone. runFilter() REMOVES non-matching rows, so a filter active when the answer lands takes its rows out of the list, and the function never runs again — the rows come back empty for good. Must fail on 'A: every row has its Release country, not just the ones live at answer time' (31 expected, 0 populated).",
+    "edits": [
+      {
+        "find": "        const allCells = _unpopulated(document);\n        _sourceRows.forEach(row => allCells.push(..._unpopulated(row)));",
+        "replace": "        const allCells = _unpopulated(document);"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",
+    "grep": "rows filtered out while the answer arrives",
+    "expect": "fail"
+  },
+  {
+    "name": "the populated column no longer drops the filter-result cache",
+    "why": "Removes _invalidateFilterCache() from initReleaseEventsColumn(). The needle typed before the answer cached an empty row list under a key the answer does not change, so retyping it replays that list. Must fail on 'B: the same needle now renders the US rows, not the cached empty list'.",
+    "edits": [
+      {
+        "find": "        _invalidateFilterCache();\n\n        // Third-pass: derive synthetic columns from the now-populated injected columns",
+        "replace": "\n        // Third-pass: derive synthetic columns from the now-populated injected columns"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",
+    "grep": "picking the same filter again",
+    "expect": "fail"
+  },
+  {
+    "name": "the populated rows keep their cached text",
+    "why": "Removes the per-source-row _rowTextCache reset. Even under a FRESH key, testRowMatch() reads the text cached before the answer, which said the column was empty. Must fail on 'C: a fresh key renders the US rows' — the one test no replayed row list can explain.",
+    "edits": [
+      {
+        "find": "        _sourceRows.forEach(row => {\n            const cached = _rowTextCache.get(row);\n            if (cached) { cached.cols = []; cached.full = null; }\n        });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",
+    "grep": "isolation: a NEW filter key",
+    "expect": "fail"
+  },
+  {
+    "name": "an active filter is not re-run after population",
+    "why": "Removes the trailing runFilter(). The caches are still dropped, so retyping works — but a user who typed a filter while the fetch was in flight keeps staring at the rows it matched against empty cells. Must fail on 'D: the still-active filter shows the US rows without being retyped'.",
+    "edits": [
+      {
+        "find": "        if (_filterActive) {\n            _dbg('initReleaseEventsColumn: re-running the active filter against the populated cells');\n            runFilter();\n        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",
+    "grep": "an active filter re-runs",
+    "expect": "fail"
+  },
+  {
+    "name": "the row-text reset writes null into cols[] (the a861512 sentinel trap)",
+    "why": "cols is 'not cached' at undefined; null is a VALUE. _cachedColText() would return null and testRowMatch() throws on .toLowerCase() mid-runFilter(). Must fail — on the isolation test and/or the uncaught-page-error afterEach, whichever trips first.",
+    "edits": [
+      {
+        "find": "            if (cached) { cached.cols = []; cached.full = null; }",
+        "replace": "            if (cached) { cached.cols = cached.cols.map(() => null); cached.full = null; }"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-filter-after-populate.spec.js",
+    "grep": "isolation: a NEW filter key",
+    "expect": "fail"
+  }
+]

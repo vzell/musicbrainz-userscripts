@@ -12143,3 +12143,49 @@ read mid-re-render and saw one table instead of two. A fixed sleep where a poll
 belongs — CLAUDE.md's own "settle, don't sleep". Not changed here, to keep this
 hotfix to its subject: the fix is to poll `readRelShape()` until it matches,
 rather than to widen the sleep.
+
+*Fixed 2026-09-17, later the same day*, after it cost a second suite run (on
+the §3.3 hotfix tree): both fixed sleeps in that test are now `expect.poll()`s
+on `readRelShape()`. Green 10/10 for the file.
+
+## 2026-09-17 — Release events were LOST when a filter ran during the fetch, and its filters went stale (hotfix, branch fix/release-events-filter-staleness)
+
+`AUDIT.md` §3.3 (which absorbed §3.7). Reproduced on `main` 9.99.1096 before any
+code change, with the page the user verified for §10 L6: label `011d1192-…`'s
+relationships page, "Distributed release" sub-table, 31 releases.
+
+**Three defects, one symptom ("the column is empty").**
+
+1. **The data was thrown away.** `initReleaseEventsColumn()` collected the cells
+   to fill from the LIVE DOM, then awaited one WS/2 call. `runFilter()` REMOVES
+   non-matching rows, so a filter typed meanwhile took those rows out of the
+   list; a sort or view switch re-renders from clones, which detaches them just
+   the same. The answer was written into cells no longer in the document, the
+   sync-to-source step only walks `document`, and the function runs once per
+   fetch — so clearing the filter brought the rows back EMPTY, for good.
+2. **`_filterResultCache` replay.** The needle typed before the answer cached an
+   empty row list under a key the answer does not change.
+3. **`_rowTextCache` staleness.** The rewritten source rows still had the text
+   read when the column was empty, so even a FRESH key matched nothing.
+
+**Fixture results** (`tests/fixtures/release-events-filter-after-populate.spec.js`,
+`vzell-lap`, 2026-09-17): control (filter after the answer) passes on `main`;
+A (31 expected, **0** populated), B (3 expected, **0**) and C (fresh key, 3
+expected, **0**) all fail there and pass on the hotfix.
+
+**Fix.** Collect the cells from the source rows as well as the live DOM; reset
+those rows' `cols`/`full` cache entries (the two different sentinels, §4); drop
+`_filterResultCache`; and re-run an active filter once, so the user is not left
+looking at a table filtered against data that had not arrived — the same thing
+`_msApplyLengthPrecision()` does after rewriting its column. That last point is
+its own test (D) rather than an assumption.
+
+**Mutation check** (`scripts/mutations/release-events-filter-after-populate.json`),
+5/5 as expected, each on its own labelled assertion — including the `null`-into-
+`cols[]` sentinel trap from `a861512`, which fails on C.
+
+**Harness note.** The fixture is a real captured page
+(`scripts/capture-page-fixture.js`, new). MusicBrainz's own scripts throw on it
+— `supported-browser-check.js` hits a null node, and a versioned bundle the
+capture references now answers with an HTML error page — so the spec filters
+those two by origin instead of asserting zero page errors blindly.

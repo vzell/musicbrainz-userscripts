@@ -1194,8 +1194,16 @@ RELEASE EVENTS COLUMN  (📅 in ⚙️ Settings)
 --------------------------------------------
 On pages that declare injectedColumns:["Release events"] the script injects
 an extra "Release events" column and populates it asynchronously from the
-MusicBrainz Web Service (one WS2 call per release row).  The column shows
-release event dates and countries after the table renders.
+MusicBrainz Web Service — ONE call for the page's own entity (label, place,
+artist, ...), not one per row.  The column shows release event dates and
+countries after the table renders, and the "Release country"/"Release date"
+columns are split out of it.
+
+You can filter and sort while it is still loading: the rows are filled in
+whether or not a filter is hiding them at that moment, and any filter you
+already typed is re-applied to the new values as soon as they arrive, so the
+table you are looking at is never left filtered on data that had not loaded
+yet.
 
 RELATIONSHIPS COLUMN  (🔗 in ⚙️ Settings)
 --------------------------------------------
