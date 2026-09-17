@@ -278,9 +278,9 @@ and text. Used by `place-performances(-filtered)` and
 
 ### 3.4 `_maybeCorrectAreaFlagRegion`
 
-**Status:** **reproduced** on `main` 9.99.1097 and **fixed** on hotfix branch
-`fix/area-flag-region-filter-staleness` (`f12597a`, pushed, **not merged**),
-2026-09-18. **Live pre-test:** §10 L7 (needs the "MusicBrainz: More Flags
+**Status:** **reproduced** on `main` 9.99.1097 — **SHIPPED in 9.99.1098**
+(hotfix `fix/area-flag-region-filter-staleness`, merged and deleted; merged into
+this branch at `bcb041e`). **Live pre-test:** §10 L7 (needs the "MusicBrainz: More Flags
 Everywhere" userscript). **Spec:** `tests/fixtures/area-flag-region-filter.spec.js`
 — its fixture is served UNDECORATED and the spec stamps `data-flag-processed` at
 runtime, so the deferred observer path fires rather than the extraction-time one.
@@ -430,8 +430,10 @@ passes 3/3 standalone. **Update 2026-09-17 (later):** `main` is at 9.99.1096 (H5
 into this branch (`54a6e93`); merged-`main` suite 276 passed, this branch 309
 passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shipped) and merged
 into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
-passed, 0 failed. Still open, in order: §3.8 and the §3.5/§3.6 code checks (§3.4 is fixed on an
-unmerged hotfix branch). The first-written state below is kept as history.
+passed, 0 failed. **Update 2026-09-18 (later):** `main` is at 9.99.1098 (§3.4 shipped) and merged
+into this branch (`bcb041e`); merged-`main` suite 285 passed, this branch 318
+passed, 0 failed. Still open: §3.8 and the §3.5/§3.6 code checks. The
+first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
@@ -458,6 +460,13 @@ unmerged hotfix branch). The first-written state below is kept as history.
 * The notes there say `bootleg.php`; the real data and the fixtures use
   `bootlegs.php`. Harmless in prose, but it will not match a grep against real
   URLs.
+* **A `▶N▤` column-header toggle and the 📊 "Structure" section can disagree.**
+  On `release-tracks`' dynamically discovered AR columns (e.g. "Instruments" on
+  "Born to Run") the header shows `▶8▤` while the dropdown offers no Structure
+  section — confirmed live by the user, 2026-09-18. `initCollapsableColumns()`/
+  `_initColHeaderGlyph()` and `openUniqDrop()`'s `isCollapsableCol` answer "is
+  this a collapsable column" by different routes. Not examined; it is what made
+  L8's second candidate page unusable.
 * **`_adoptJesus2099MsLength()` also rewrites Length text** (adopting a
   jesus2099-leaked value), possibly after a filter has run. Found while fixing
   §3.2, not examined — a candidate for this audit's defect class, third-party
@@ -753,18 +762,39 @@ throttle it**. To slow the artwork paths down:
 
 ### L8 — §3.8 cell collapse/expand (no throttle)
 
-* **URL:** same as L1. Its sub-tables carry `▶N▤` multi-row toggles.
-* **Trigger:**
-  1. Show-all and expand the sub-sections.
-  2. Pick a column whose header shows a `▶N▤` count. Click its 📊, then
-     **"▶ collapsed multi-row cells (K)"**. Expect **K rows**.
+* **URL:** <https://musicbrainz.org/release-group/c497fc44-ddaf-3cce-a9b4-bfec958a0f3c>
+  — "Greetings From Asbury Park, N.J.", whose **Catalog#** column has a Structure
+  section reading, in the user's own run: empty 4, single-row 87, multi-row 28.
+  **Label** is the same shape.
+* **Two corrections, both from the user's live runs (2026-09-18), and the second
+  is the one worth remembering.**
+  1. This entry first named L1's release group, on the strength of
+     `grep -c mb-cell-collapse-toggle` finding 8 in its rendered baseline. That
+     was noise: the class name also appears in the injected `<style>` block that
+     `snapshot.js` keeps, so EVERY baseline scores 8-9 regardless. Count the `▤`
+     glyph and subtract that floor, or just look at the page.
+  2. It then named "Born to Run"'s **Instruments** column, whose header really
+     does show `▶8▤`. Its 📊 has **no Structure section at all** — only
+     "Credit details - …" and "Entity info - …". *A `▶N▤` header toggle does NOT
+     imply the Structure section*: `openUniqDrop()`'s `isCollapsableCol` and the
+     header glyph are answered separately, and on `release-tracks`' dynamically
+     discovered AR columns they disagree. Verify on the page itself, in the
+     dropdown, before writing a test around it. (Whether that disagreement is
+     itself a defect is §8's own parking-lot entry now.)
+* **Trigger** (the section may start with the cells collapsed or expanded —
+  the user's run showed all 28 **expanded** — so use whichever entry is
+  non-zero and flip one cell the other way):
+  1. Click **Show all Releases for ReleaseGroup** and expand the sub-sections.
+  2. Click 📊 on **Catalog#** → **Structure**. Note "◀ expanded multi-row cells
+     (K)" (or "▶ collapsed multi-row cells (K)"). Click it. Expect **K rows**.
   3. Click the same entry again to uncheck it.
-  4. Click one cell's own `▶N▤` toggle so that cell shows all its items.
-  5. Reopen 📊. It should now read **"▶ collapsed multi-row cells (K−1)"** and
-     **"◀ expanded multi-row cells (1)"**.
-  6. Click **"▶ collapsed multi-row cells"**.
-* **Prediction if real:** **K rows**, including the cell you just expanded (a
-  replay).
+  4. Click ONE of those cells' own toggle, so that one cell flips to the other
+     state.
+  5. Reopen 📊. It should now read **K−1** for the entry you used, and **1** for
+     its opposite.
+  6. Click the same entry again.
+* **Prediction if real:** **K rows** — including the cell you just flipped, which
+  no longer belongs in that set (a replay).
 * **If sound:** K−1 rows.
 
 ### L9 — no live pre-test
