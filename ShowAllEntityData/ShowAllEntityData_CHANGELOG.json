@@ -1,5 +1,24 @@
 [
   {
+    "version": "9.99.1096",
+    "date": "2026-09-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Global filter: typing a cover-art image type or comment — \"Booklet\", \"Back\", \"Matrix/Runout\" — found no rows on multi-table pages (a release group's releases, an artist's release groups, a tag listing, …), while the very same word found them with the Rx box ticked, or when typed into the CAA/EAA column's own filter box. Only the plain (non-regexp) global filter was affected, and only for artwork text; every other column matched normally.",
+          "Root cause: image types and comments are not visible cell text, and the plain global filter looked for them in the rendered copy of a row instead of in the row it actually tests — a distinction that only exists on multi-table pages. All three filter paths now read them through one shared lookup."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "ShowAllEntityData_HELP.txt now states that the global filter box searches image type/comment text too. CLAUDE.md records the resolver and why reading the artwork list element directly is wrong."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1095",
     "date": "2026-09-17",
     "sections": [
