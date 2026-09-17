@@ -1,5 +1,25 @@
 [
   {
+    "version": "9.99.1098",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Locality/Region columns: when a separately-installed flag userscript (\"More Flags Everywhere\" and friends) marks a bare subdivision — a US state, a UK nation — the value moves from \"Locality\" to \"Region\" seconds after the table appears. Filters did not follow it: a \"Region\" filter typed and retyped afterwards still found only the rows that had that value before the move, and even a freshly typed one did, because each row was still being matched against its pre-move text.",
+          "A filter that is active when the move happens is now re-applied on its own, so rows stop being listed under a Locality value the move has taken away from them.",
+          "Only pages with split Locality/Region columns (events, performances, area listings) and only with such a userscript installed were affected."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "ShowAllEntityData_HELP.txt: the Locality/Region split now states that the move can happen seconds after the table appears and that an active filter is re-applied to the new values."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1097",
     "date": "2026-09-18",
     "sections": [
