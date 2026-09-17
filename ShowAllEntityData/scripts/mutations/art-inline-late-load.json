@@ -1,0 +1,145 @@
+[
+  {
+    "name": "structure-mode matcher reads the cell's own span again",
+    "why": "Reverts _cellMatchesStructureMode()'s inline-art branch to cell.querySelector('.mb-inline-art-sort-key'). runFilter() matches SOURCE rows, which on a multi-table page never carry the span, so the spec must fail on 'H1: \"front-image available\" renders as many rows as it counts' (count 5, rows 0) — the original main defect.",
+    "edits": [
+      {
+        "find": "            return _inlineArtSentinelFor(row, colIdx, cell) ===\n                (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');",
+        "replace": "            const sk = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;\n            return !!sk && sk.textContent.trim() === (mode === 'inline-art-yes' ? 'caa-inline-yes' : 'caa-inline-no');"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "multi-table H1 baseline",
+    "expect": "fail"
+  },
+  {
+    "name": "typed caa-inline-yes bypass reads the cell's own span again",
+    "why": "Reverts testRowMatch()'s exact-sentinel bypass to the span. Same source-row blindness as the structure modes, reached through a typed column filter: must fail on 'H1 typed: \"caa-inline-yes\" renders as many rows as \"front-image available\" counts'.",
+    "edits": [
+      {
+        "find": "                    const skVal = _inlineArtSentinelFor(row, f.idx, cell);\n                    if (skVal !== null) {",
+        "replace": "                    const _skEl = cell ? cell.querySelector('.mb-inline-art-sort-key') : null;\n                    const skVal = _skEl ? _skEl.textContent.trim() : null;\n                    if (skVal !== null) {"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "H1, typed",
+    "expect": "fail"
+  },
+  {
+    "name": "a settle is never recorded in _inlineArtSettled",
+    "why": "Removes the map write in _artSetInlineSortKey(). With nothing recorded, a single-table thumbnail that settles after a sort exists only on the live clone again. Must fail on 'H2: all 10 \"front-image available\" rows render, including the late one' (count 10, rows 9) — and H2's sort caches no inline-art key, so a failure here cannot be a replay.",
+    "edits": [
+      {
+        "find": "            if (changed) _inlineArtSettled.set(key, { value, guid });",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "single-table H2:",
+    "expect": "fail"
+  },
+  {
+    "name": "a changed inline-art settle no longer drops the filter-result cache",
+    "why": "Removes the _invalidateFilterCacheWhere() call from _artSetInlineSortKey(). The source-row fix alone is then in place, so this answers whether a replay was STACKED on top of H2 in the pick/unpick sequence: the second pick builds the same key as the first and gets its 9 rows back. Must fail on 'H3: the second pick renders all 10 rows, not the first pick's 9'.",
+    "edits": [
+      {
+        "find": "        if (changed) _invalidateFilterCacheWhere(_filterKeyReadsInlineArtSentinel);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "single-table H3",
+    "expect": "fail"
+  },
+  {
+    "name": "the inline-art key predicate misses checked 📊 structure modes",
+    "why": "Narrows _filterKeyReadsInlineArtSentinel() to the typed-sentinel substring only. A key built from a checked \"front-image available\" entry carries \"sm\":[\"inline-art-yes\"] and no caa-inline- text, so it survives the drop and is replayed. Must fail on the same H3 assertion as the removed call — proving the predicate's content is load-bearing, not just its invocation.",
+    "edits": [
+      {
+        "find": "        return key.includes('\"inline-art-') || key.toLowerCase().includes('caa-inline-');",
+        "replace": "        return key.toLowerCase().includes('caa-inline-');"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "single-table H3",
+    "expect": "fail"
+  },
+  {
+    "name": "a changed CAA-column sync no longer drops the filter-result cache",
+    "why": "Removes the change-gated _invalidateFilterCacheWhere() call from _artSyncSearchTextToSourceRow(). The sync itself still works (H4 isolation passes on main), so only the replay returns: must fail on 'H4: the second pick renders every row, not the first pick's' (count 6, rows 5).",
+    "edits": [
+      {
+        "find": "        if (_SYNC_KEYS.some((k, i) => sourceCell.dataset[k] !== _before[i])) {\n            _invalidateFilterCacheWhere(_filterKeyReadsArtColumn(colIdx));\n        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "multi-table H4: picking",
+    "expect": "fail"
+  },
+  {
+    "name": "the CAA-column key predicate targets the wrong column",
+    "why": "Shifts _filterKeyReadsArtColumn()'s column needle by one. The \"» image type: Front\" key filters the CAA column's own index, so it is no longer dropped and is replayed. Must fail on the same H4 assertion — the predicate's column match is load-bearing.",
+    "edits": [
+      {
+        "find": "        const colNeedle = `\"i\":${colIdx},`;",
+        "replace": "        const colNeedle = `\"i\":${colIdx + 1},`;"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "multi-table H4: picking",
+    "expect": "fail"
+  },
+  {
+    "name": "the value/GUID change test on a known entry is dropped",
+    "why": "Reduces `changed` to 'no entry yet'. Every fixture settle is a first settle for its key, so no spec reaches the retry path (a cache-busted retry flipping no->yes) or a rowIdx reused by a later fetch with the same value. KNOWN UNCOVERED, recorded rather than left unmentioned: covering it needs a retry or re-fetch driven fixture.",
+    "edits": [
+      {
+        "find": "            changed = !prev || prev.value !== value || prev.guid !== guid;",
+        "replace": "            changed = !prev;"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "single-table H3",
+    "expect": "pass"
+  },
+  {
+    "name": "map entries are no longer validated against the cell's entity GUID",
+    "why": "Makes _inlineArtSentinelFor() trust any entry for the rowIdx. Only a rowIdx reused by a later fetch (a second Show-all on the same page) can hold a mismatching GUID, and no fixture re-fetches. KNOWN UNCOVERED.",
+    "edits": [
+      {
+        "find": "            if (entry && entry.guid === _cellArtEntityGuid(cell)) return entry.value;",
+        "replace": "            if (entry) return entry.value;"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "multi-table H1 baseline",
+    "expect": "pass"
+  },
+  {
+    "name": "detached cells are recorded in the map too",
+    "why": "Drops the isConnected gate. The detached cells a fixture produces are the single-table source cell of a late 404 (H2b), which records the same value the span already holds, so matching cannot differ. The gate exists for a previous page load's still-pending fetch, which no fixture creates. KNOWN UNCOVERED.",
+    "edits": [
+      {
+        "find": "        if (td.isConnected && rowIdx !== undefined) {",
+        "replace": "        if (rowIdx !== undefined) {"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "H2b",
+    "expect": "pass"
+  },
+  {
+    "name": "the 📊 count pass reads the live span instead of the shared resolver",
+    "why": "Reverts openUniqDrop()'s inline-art counting to the live span. Live rows get their span re-stamped synchronously on every render (Case C1), so counts cannot diverge in these fixtures; routing the count through the matchers' resolver is a construction guarantee, not an observed fix. Recorded as an overlap.",
+    "edits": [
+      {
+        "find": "                const skVal = _inlineArtSentinelFor(row, colIndex, cell);",
+        "replace": "                const _skEl = cell.querySelector('.mb-inline-art-sort-key');\n                const skVal = _skEl ? _skEl.textContent : null;"
+      }
+    ],
+    "spec": "tests/fixtures/art-inline-uniq-filter-late-load.spec.js",
+    "grep": "multi-table H1 baseline",
+    "expect": "pass"
+  }
+]

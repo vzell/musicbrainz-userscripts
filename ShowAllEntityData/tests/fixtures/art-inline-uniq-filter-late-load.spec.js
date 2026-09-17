@@ -35,7 +35,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors, clickMasterToggleAndExpandAll } = require('../support/liveAssertions');
-const { waitForSortSettled } = require('../support/filterSortAssertions');
+const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 
 const SNAPSHOTS = path.join(__dirname, '..', 'snapshots');
 
@@ -442,6 +442,32 @@ test.describe('Inline artwork 📊: rendered rows match the entry count', () => 
             }).toBe(no);
         }
     });
+    test('multi-table H1, typed: a "caa-inline-yes" column filter renders as many rows as the entry counts', async ({ page }) => {
+        // testRowMatch()'s exact-sentinel bypass reads the same state as the
+        // 📊 structure modes, from the same SOURCE rows — so it failed on
+        // multi-table pages in exactly the same way.
+        const ids = releaseMbids(RELEASE_GROUP.shell);
+        await openWithArtGate(page, RELEASE_GROUP, { noArt: [ids[0], ids[ids.length - 1]], held: [] });
+        await clickMasterToggleAndExpandAll(page);
+        await expect.poll(async () => (await sentinelCounts(page)).page, {
+            timeout: 20000, message: 'all 7 thumbnails settle',
+        }).toBe(7);
+
+        const yes = await entryCount(page, YES);
+        await closeDropdown(page);
+        expect(yes, 'the first sub-table has at least one row with art').toBeGreaterThan(0);
+
+        const colIdx = await page.evaluate((col) => Array.from(
+            window.__artTable(col).querySelectorAll('thead tr:first-child th'))
+            .findIndex((t) => t.dataset.colName === col), ART_COLUMN);
+        const input = columnFilterInput(page, colIdx);
+        await input.click();
+        await input.pressSequentially('caa-inline-yes');
+        await expect.poll(() => renderedRows(page), {
+            timeout: 15000, message: 'H1 typed: "caa-inline-yes" renders as many rows as "front-image available" counts',
+        }).toBe(yes);
+    });
+
     test('multi-table H4: picking a CAA image-type entry again after late metadata includes the late row', async ({ page }) => {
         // CAA column (not the inline thumbnail): _artBuildMultiRowArtCell() ->
         // _artSyncSearchTextToSourceRow() DOES sync the image types onto the
