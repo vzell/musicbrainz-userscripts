@@ -11527,3 +11527,13 @@ type. Both `pressSequentially` callers on the global filter now use it
 
 **Whether a real user can hit the same interleave** — typing within the frame
 after focusing — is unexamined, and would be a userscript fix, not a harness one.
+
+**Second, unfixed harness weakness found in the same suite run** (2026-09-17,
+`vzell-lap`): `rel-column-collapse-toggle.spec.js` › "multi-table: the threshold
+is decided per sub-table, and collapsing survives a filter" failed once under
+full-suite load and passed 2/2 standalone. It clears the filter, sleeps a fixed
+`waitForTimeout(1500)`, then asserts the shape of BOTH sub-tables; under load it
+read mid-re-render and saw one table instead of two. A fixed sleep where a poll
+belongs — CLAUDE.md's own "settle, don't sleep". Not changed here, to keep this
+hotfix to its subject: the fix is to poll `readRelShape()` until it matches,
+rather than to widen the sleep.
