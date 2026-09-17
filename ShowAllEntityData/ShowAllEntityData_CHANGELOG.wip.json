@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "⏱ millisecond Length toggle: an active filter on the Length column — or a global filter for a length value — kept its old answer after pressing the toggle. Filtering \".\" then switching to milliseconds still showed no rows although every length now read e.g. \"3:11.666\"; filtering \".666\" in milliseconds and switching back to seconds still showed the row, now reading \"3:12\". The toggle now makes every active filter re-test the new text."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "CLAUDE.md: the millisecond-precision notes now name all three caches the toggle must drop, and why. DEBUG-NOTES.md: dated root-cause entry with the fixture results and mutation outcomes."
+        ]
+      }
+    ]
+  }
+]

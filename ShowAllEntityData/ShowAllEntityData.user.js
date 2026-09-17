@@ -18718,6 +18718,15 @@
      * it, so it is force-invalidated here (same reason
      * `initReleaseEventsColumn()` does it after populating its own column).
      *
+     * The FILTER side needs the same treatment, twice over, or an active Length
+     * filter keeps its pre-toggle answer (AUDIT.md §3.2): `_filterResultCache`
+     * is keyed on filter inputs, which a toggle does not change, so it would
+     * replay the old row list; and `_rowTextCache` holds each source row's
+     * pre-toggle column and full text, which `testRowMatch()` reads even on a
+     * result-cache miss. Both are dropped here — the result cache wholesale,
+     * which is affordable because this runs once per button press, not per
+     * keystroke.
+     *
      * @param   {boolean} showMs
      * @returns {void}
      */
@@ -18729,7 +18738,18 @@
 
         let changed = 0;
         rows.forEach(row => {
-            row.querySelectorAll('td[data-mb-ms]').forEach(td => { _msSetCellText(td, showMs); changed++; });
+            const cached = _rowTextCache.get(row);
+            let rowChanged = false;
+            row.querySelectorAll('td[data-mb-ms]').forEach(td => {
+                _msSetCellText(td, showMs);
+                changed++;
+                rowChanged = true;
+                // `cols` and `full` have DIFFERENT "not cached" sentinels —
+                // undefined and null (AUDIT.md §4). A null here would make
+                // testRowMatch() throw instead of re-reading the cell.
+                if (cached) cached.cols[td.cellIndex] = undefined;
+            });
+            if (cached && rowChanged) cached.full = null;
             applyIntegerColumnStyling(row, activeIntegerColumns);
         });
         // Re-derive the column's min-widths: the ".mmm" part changes the widest
@@ -18737,6 +18757,7 @@
         finalizeSplitAlignedColumns(rows, activeIntegerColumns);
 
         document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        _invalidateFilterCache();
         _msDbg(`_msApplyLengthPrecision: ${showMs ? 'milliseconds' : 'seconds'} — ${changed} cell(s) rewritten`);
         runFilter();
     }

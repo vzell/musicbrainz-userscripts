@@ -11419,3 +11419,48 @@ resolver (a construction guarantee; live spans are re-stamped every render).
 whose metadata settles after a re-render — `_artSyncSearchTextToSourceRow()` still
 returns early for `tableMode !== 'multi'` (AUDIT.md §3.1 H4b). No committed
 single-table shell carries `/cover-art` anchors.
+
+## 2026-09-17 — ⏱ toggle left an active Length filter stale (hotfix, branch fix/ms-length-filter-staleness)
+
+Found by the async-cell-population audit (`AUDIT.md` §3.2 on
+`rel-column-batch-and-cell-states`), reproduced in a fixture spec on `main`
+9.99.1093 before any code change. Live twin: `AUDIT.md` §10 L5.
+
+**Symptom.** On "Born to Run" (release-tracks, `tableMode: 'multi'`, 8 tracks):
+filter the Length column for `.` (0 rows — seconds have no dot), press ▶⏱ —
+still 0 rows, although every length now reads e.g. `3:11.666`. Reverse: in
+milliseconds filter `.666` (1 row), press ▼⏱ — still 1 row, now reading `3:12`.
+
+**Two stacked causes.** `_msApplyLengthPrecision()` rewrites the SOURCE rows'
+Length text and calls `runFilter()`, dropping only the uniq-dropdown cache.
+1. `_filterResultCache` is keyed on filter inputs; the toggle changes none, so
+   the pre-toggle row list was replayed.
+2. Each source row's `_rowTextCache` entry still held the pre-toggle column and
+   full text, and `testRowMatch()` reads it even on a result-cache miss.
+
+**Fixture results** (`tests/fixtures/ms-length-filter-after-toggle.spec.js`,
+`vzell-lap`, 2026-09-17):
+
+| Test | main | hotfix |
+|---|---|---|
+| control: toggle, then filter `.` | pass 8/8 | pass |
+| A: filter `.`, then toggle | **8 expected, 0** | pass |
+| A isolation: same, then flip the page-wide Case checkbox (new key, same matches) | **0** — cause 2 on its own | pass |
+| B: ms, filter `.666`, toggle back | **0 expected, 1** | pass |
+| C: global filter `11.666`, then toggle (added with the fix) | **fails — nothing rendered** (observed; both causes are present on main — mutation 4 shows the stale full text alone also fails it) | pass |
+
+**Fix.** Per rewritten cell `cols[cellIndex] = undefined`, per changed row
+`full = null` (the two different sentinels — AUDIT.md §4), and a wholesale
+`_invalidateFilterCache()` before `runFilter()`. Wholesale is fine here: it runs
+once per button press, not per keystroke or per async settle.
+
+**Mutation check** (`scripts/mutations/ms-length-filter-after-toggle.json`),
+5/5 as expected: no result-cache drop → A fails while A-isolation still passes
+(the separation holds); no column-text drop → A-isolation fails; no full-text
+drop → C fails; `null` instead of `undefined` in `cols[]` → fails, but EARLIER
+than predicted — the `TypeError` escapes before the toggle repaints, so
+`toggleMs()`'s `aria-pressed` wait is what trips. Recorded as observed.
+
+**Not changed, noted for the audit:** `_adoptJesus2099MsLength()` also rewrites
+Length text (adopting a jesus2099-leaked value), possibly after a filter has run;
+not reproduced or examined here.
