@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the moved rows keep their cached text",
+    "why": "Removes the per-row _rowTextCache reset from _maybeCorrectAreaFlagRegion(). runFilter() matches the MASTER rows through that cache, so even a filter typed fresh after the correction reads the Locality/Region text from before the move. Must fail on 'C: a fresh key finds all six rows' (6 expected, 3 rendered) — the one test no replayed row list can explain.",
+    "edits": [
+      {
+        "find": "            [tr, masterRow].forEach(row => {\n                const cached = row && _rowTextCache.get(row);\n                if (cached) { cached.cols = []; cached.full = null; }\n            });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "C isolation",
+    "expect": "fail"
+  },
+  {
+    "name": "a correction schedules no filter refresh at all",
+    "why": "Removes the _scheduleAreaFlagFilterRefresh() call. Both halves go: the result cache keeps the pre-move row list, and an active filter is never re-run. Must fail on 'B: the retyped needle finds all six rows, not the cached three'.",
+    "edits": [
+      {
+        "find": "            _scheduleAreaFlagFilterRefresh();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "B: the same Region filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the refresh no longer drops the filter-result cache",
+    "why": "Leaves the scheduled re-run in place but removes _invalidateFilterCache() from it, so runFilter() is served the row list cached under the needle's own key. Must fail on the same B assertion — the drop, not just the re-run, is load-bearing.",
+    "edits": [
+      {
+        "find": "            _areaFlagRefreshScheduled = false;\n            _invalidateFilterCache();",
+        "replace": "            _areaFlagRefreshScheduled = false;"
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "B: the same Region filter",
+    "expect": "fail"
+  },
+  {
+    "name": "an active filter is not re-run after a correction",
+    "why": "Keeps the cache drop but never re-runs the filter, so the table goes on showing rows by a Locality value the correction has taken away from them. Must fail on 'D: the corrected rows drop out of a Locality filter they no longer match' (0 expected, 3 still rendered).",
+    "edits": [
+      {
+        "find": "            if (_anyFilterActive()) {\n                Lib.debug('render', '_scheduleAreaFlagFilterRefresh: re-running the active filter after Locality->Region corrections');\n                runFilter();\n            }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "D: a filter active",
+    "expect": "fail"
+  },
+  {
+    "name": "the text reset writes null into cols[] (the a861512 sentinel trap)",
+    "why": "cols is 'not cached' at undefined; null is a VALUE, so _cachedColText() returns it and testRowMatch() throws on .toLowerCase() mid-runFilter(). Must fail — on the isolation test and/or its uncaught-page-error afterEach, whichever trips first.",
+    "edits": [
+      {
+        "find": "                if (cached) { cached.cols = []; cached.full = null; }\n            });\n            // And the result cache",
+        "replace": "                if (cached) { cached.cols = cached.cols.map(() => null); cached.full = null; }\n            });\n            // And the result cache"
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "C isolation",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-frame coalescing guard is dropped",
+    "why": "Without it every corrected row schedules its own refresh, so a sweep re-renders the table once per corrected row instead of once. That is a cost, not a wrong answer, and these fixtures correct only three rows — no assertion can see it. KNOWN UNCOVERED: catching it needs a render counter or a page big enough for the cost to show.",
+    "edits": [
+      {
+        "find": "        if (_areaFlagRefreshScheduled) return;\n        _areaFlagRefreshScheduled = true;",
+        "replace": "        _areaFlagRefreshScheduled = true;"
+      }
+    ],
+    "spec": "tests/fixtures/area-flag-region-filter.spec.js",
+    "grep": "B: the same Region filter",
+    "expect": "pass"
+  }
+]
