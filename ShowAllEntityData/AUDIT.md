@@ -121,23 +121,44 @@ that reproduces is Case B → hotfix.
 
 ### 3.1 CAA/EAA inline artwork — PRIME SUSPECT
 
-**Status:** **reproduced** on `main` 9.99.1093, 2026-09-17 (H1, H2, H3, H4). H2b
-behaves as predicted (sound). H4b is not covered. **Live pre-tests:** §10 L1–L4.
-**Hotfix branch:** `fix/art-async-filter-staleness`. **Spec:**
-`tests/fixtures/art-inline-uniq-filter-late-load.spec.js`.
+**Status:** H1–H4 **reproduced** on `main` 9.99.1093 and **fixed** on hotfix branch
+`fix/art-async-filter-staleness` (`06a8629`, pushed, **not merged** — awaiting the
+merge decision and live pre-tests L1–L4 against the worktree's userscript). H2b
+behaves as predicted (sound). H4b not covered. **H5 suspect, new** (see below,
+live pre-test L4b). **Spec:** `tests/fixtures/art-inline-uniq-filter-late-load.spec.js`.
+**Mutations:** `scripts/mutations/art-inline-late-load.json` (11/11 as expected).
+Root-cause write-up: that branch's `DEBUG-NOTES.md`, 2026-09-17.
 
-Fixture results against `main`'s userscript (each test run alone):
+Fixture results (each test run alone, `vzell-lap`, 2026-09-17):
 
-| Test | Result | What it establishes |
-|---|---|---|
-| single-table baseline (nothing late) | ✅ pass — yes 10/10 rows, no 2/2 | The spec drives the dropdown correctly |
-| multi-table control (ordinary "» country code: AU" entry) | ✅ pass — 3/3 | Same, on the multi-table page |
-| **H1** multi-table, nothing late | ❌ **count 5, rows 0** | Not a timing bug: inline-art entries never match on a multi-table page |
-| **H2** single-table, late thumbnail after a sort | ❌ **count 10, rows 9** | The sort wiped the cache and no key was cached, so this is the source-row gap alone |
-| H2b single-table, late **404** after a sort | ✅ pass — 2/2 | The predicted asymmetry is real: the error path does reach the source cell |
-| **H3** single-table, pick → unpick → late → pick | ❌ **count 10, rows 9** | User-visible symptom; H2 alone explains it — whether a replay is stacked on top is decided by mutation after the fix |
-| **H4** multi-table CAA "» image type: Front", pick → unpick → late → pick | ❌ **count 6, rows 5** | — |
-| H4 isolation: same late metadata, but a sort instead of pick/unpick | ✅ pass — 6/6 | The source-row sync works, so **H4 is purely a replayed `_filterResultCache` entry** |
+| Test | `main` 9.99.1093 | hotfix | What it establishes |
+|---|---|---|---|
+| single-table baseline (nothing late) | ✅ yes 10/10, no 2/2 | ✅ | The spec drives the dropdown correctly |
+| multi-table control (ordinary "» country code: AU" entry) | ✅ 3/3 | ✅ | Same, on the multi-table page |
+| **H1** multi-table, nothing late | ❌ **count 5, rows 0** | ✅ | Not a timing bug: inline-art entries never matched on a multi-table page |
+| **H1 typed** `caa-inline-yes` column filter, multi-table | ❌ **5 vs 0** | ✅ | Same defect through `testRowMatch()`'s typed bypass (test added with the fix; fails on `main`) |
+| **H2** single-table, late thumbnail after a sort | ❌ **count 10, rows 9** | ✅ | The sort wiped the cache and no key was cached, so this is the source-row gap alone |
+| H2b single-table, late **404** after a sort | ✅ 2/2 | ✅ | The predicted asymmetry is real: the error path does reach the source cell |
+| **H3** single-table, pick → unpick → late → pick | ❌ **count 10, rows 9** | ✅ | BOTH causes at once: mutation 4 (source-row fix in, cache drop out) still renders 9 — the replay is real and stacked on H2 |
+| **H4** multi-table CAA "» image type: Front", pick → unpick → late → pick | ❌ **count 6, rows 5** | ✅ | Replay |
+| H4 isolation: same late metadata, but a sort instead of pick/unpick | ✅ 6/6 | ✅ | The source-row sync works, so **H4 is purely a replayed `_filterResultCache` entry** |
+
+Hotfix verification: full fixture suite **267 passed, 0 failed** (shards 96/83/88,
+01:03–01:14Z); live `caa-icon-survives-sort.spec.js` (BoDeans releases, 36/36
+thumbnails painted at insertion, 0 archive fetches) and
+`caa-icon-survives-sort-multi.spec.js` (Tougher Than the Rest, 6/6, 0 fetches)
+both pass.
+
+**How it was fixed, in one paragraph** (details in the hotfix's CLAUDE.md and
+DEBUG-NOTES): a settle is recorded in `_inlineArtSettled` (`"rowIdx:colIdx"` →
+`{value, guid}`, reset with `expandedCells`), and the structure modes, the typed
+bypass and the 📊 count pass all read it through `_inlineArtSentinelFor()`.
+`_invalidateFilterCacheWhere(affectsKey)` drops only the keys that can read what
+changed — `_filterKeyReadsInlineArtSentinel()` or `_filterKeyReadsArtColumn(colIdx)`
+— and only on a real change. Mirroring the span onto master rows was rejected on
+measurement: `_findMasterRowByIdx()` costs 0.69 ms per lookup at 4174 rows. **That
+invalidator is reusable for §3.2, §3.3, §3.4 and §3.8** once the hotfix is on
+`main`.
 
 `_artSetInlineSortKey()` stamps `.mb-inline-art-sort-key` (`caa-inline-yes` /
 `caa-inline-no`) **after each fetch settles**, and `_cellMatchesStructureMode()`'s
@@ -160,6 +181,7 @@ the artwork path is `_filterResultCache`. And the sentinel is written to the
 | H3 | either mode, settle after a pick/unpick of the same entry | `_filterResultCache` replay — identical key (the `d551df6` shape). | Rows = first pick's rows; late rows **absent from the DOM**. |
 | H4 | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`. | Replay: first pick's rows. |
 | H4b | CAA column, single-table, metadata settles after a re-render | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render. | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column). |
+| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17, suspect) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
 
 Checked and expected exempt: `_artMirrorIconToSourceRow()` (writes only
 `background-image`; the icon is in `_CLEAN_STRIP_SEL`), and `.mb-caa-sort-key`
@@ -356,6 +378,14 @@ not clear it — it makes `testRowMatch()` throw.
 * The notes there say `bootleg.php`; the real data and the fixtures use
   `bootlegs.php`. Harmless in prose, but it will not match a grep against real
   URLs.
+* **Pre-existing perf cost found while fixing §3.1 (on `main`, not changed):**
+  `_artInitInlinePics()`' Case C1 calls `_artMirrorInlineThumbToSourceRow()` for
+  EVERY settled row on EVERY multi-table re-render, and that resolves the master
+  row with `_findMasterRowByIdx()` — a linear scan measured at 0.69 ms per lookup
+  at 4174 rows, 1.89 ms at 10 000 (`vzell-lap`, see the hotfix's
+  `tests/MEASUREMENTS.org`). So a keystroke on a big multi-table page with inline
+  art pays it once per row. Recorded in the hotfix's PERFORMANCE.org as a
+  candidate Step, unnumbered.
 * `tests/snapshots/artist-releases-dylan/` holds the 2026-09-15 perf arms
   (`main` vs branch, absent/collapsed). The `expanded` arm could not run: it hit
   the harness's icon-floor guard because of a `main` defect fixed as 9.99.1093,
@@ -547,6 +577,22 @@ throttle it**. To slow the artwork paths down:
   5. Click 📊 again — **"Front" reads F2 > F1**. Click it.
 * **Prediction if real:** **F1 rows** (a replay).
 * **If sound:** F2 rows.
+
+### L4b — §3.1 H5: plain global filter vs. CAA image types, multi-table (no throttle)
+
+* **URL:** same as L1.
+* **Steps:**
+  1. Show-all, expand both sub-sections, and wait until every **CAA** cell shows
+     its image-count number.
+  2. Click 📊 on **CAA** → **"CAA info - Type"**. Note a type that exists but
+     whose word appears nowhere else on those rows, e.g. **"Booklet" (B)** or
+     **"Back" (K)**. Close the dropdown.
+  3. Type that word into the **global** filter, with **Rx unticked**, and count
+     rows.
+  4. Tick **Rx**, same word, and count again.
+* **Prediction if real:** step 3 renders **0 rows** (or only rows where the word
+  happens to be visible text); step 4 renders **B rows**.
+* **If sound:** both steps render the same number, ≥ B.
 
 ### L5 — §3.2 ⏱ millisecond Length toggle (no throttle)
 
