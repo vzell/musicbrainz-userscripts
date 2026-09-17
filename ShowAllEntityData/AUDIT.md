@@ -194,7 +194,29 @@ no longer what the matcher reads.
 
 ### 3.2 Millisecond Length toggle (⏱)
 
-**Status:** suspect — strong. **Live pre-test:** §10 L5.
+**Status:** **reproduced** on `main` 9.99.1093 and **fixed** on hotfix branch
+`fix/ms-length-filter-staleness` (`634e03c`, pushed, **not merged**), 2026-09-17.
+**Live pre-test:** §10 L5. **Spec:** `tests/fixtures/ms-length-filter-after-toggle.spec.js`.
+**Mutations:** `scripts/mutations/ms-length-filter-after-toggle.json` (5/5 as expected).
+Root-cause write-up: that branch's `DEBUG-NOTES.md`, 2026-09-17.
+
+| Test | `main` 9.99.1093 | hotfix |
+|---|---|---|
+| control: ▶⏱, then Length filter `.` | ✅ 8/8 | ✅ |
+| **A**: filter `.`, then ▶⏱ | ❌ **8 expected, 0** | ✅ |
+| **A isolation**: same, then flip the page-wide Case checkbox (new key, same matches) | ❌ **0** — the stale row-text cache on its own | ✅ |
+| **B**: ms, filter `.666`, then ▼⏱ | ❌ **0 expected, 1** (showing `3:12`) | ✅ |
+| **C**: global filter `11.666`, then ▶⏱ (added with the fix) | ❌ nothing rendered | ✅ |
+
+Both predicted causes are real and stacked: removing only the result-cache drop
+fails A while A-isolation stays green. Fix: per rewritten cell
+`cols[cellIndex] = undefined`, per changed row `full = null`, and a wholesale
+`_invalidateFilterCache()` (once per button press, so affordable). Full fixture
+suite on the hotfix tree: 262 passed + 1 known load-sensitive flake
+(`picard-cells-survive-rerender`, the `68f6aff` budget that `main` lacks) that
+passes 2/2 standalone.
+
+Original analysis:
 
 `_msApplyLengthPrecision()` rewrites the Length column's **visible text** on the
 SOURCE rows (`groupedRows`/`allRows`), which is read by filtering, by
@@ -378,6 +400,10 @@ not clear it — it makes `testRowMatch()` throw.
 * The notes there say `bootleg.php`; the real data and the fixtures use
   `bootlegs.php`. Harmless in prose, but it will not match a grep against real
   URLs.
+* **`_adoptJesus2099MsLength()` also rewrites Length text** (adopting a
+  jesus2099-leaked value), possibly after a filter has run. Found while fixing
+  §3.2, not examined — a candidate for this audit's defect class, third-party
+  dependent.
 * **Pre-existing perf cost found while fixing §3.1 (on `main`, not changed):**
   `_artInitInlinePics()`' Case C1 calls `_artMirrorInlineThumbToSourceRow()` for
   EVERY settled row on EVERY multi-table re-render, and that resolves the master
