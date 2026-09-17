@@ -719,7 +719,41 @@ function columnFilterClear(page, colIdx, { tableIndex } = {}) {
         : page.locator('table.tbl').nth(tableIndex).locator(sel).first();
 }
 
+/**
+ * Types into the GLOBAL filter input the way a user does, after letting the
+ * input's decorative focus prefix (`sa_filter_focus_prefix`, default "🔍 ")
+ * land first.
+ *
+ * The prefix is written by the input's own focus handler, which reads the
+ * current value and writes prefix + value back. A character typed between that
+ * read and that write is swallowed into the middle of the result: the input
+ * ends up holding "🔍 e🔍", `stripFilterPrefix()` only removes a LEADING
+ * prefix, and the active query becomes "e🔍 " — which matches nothing. Every
+ * later wait then runs out for a row count that can never arrive, so it
+ * presents as a timeout far from its cause, and no budget can fix it.
+ *
+ * Seen three times under full-suite load on 2026-09-17, at both the 30 s and
+ * the 90 s budget, in two different tests (DEBUG-NOTES.md, "focus-prefix
+ * race"). `fill()` callers are unaffected — it replaces the whole value in one
+ * step — so they are deliberately left alone.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+async function typeGlobalFilter(page, text) {
+    const { expect } = require('@playwright/test'); // same local-require idiom as above
+    const input = page.locator('#mb-global-filter-input');
+    await input.click();
+    await expect.poll(() => input.inputValue(), {
+        timeout: 10000,
+        message: 'the global filter\'s focus prefix settles before typing',
+    }).toMatch(/\u{1F50D}/u);
+    await input.pressSequentially(text);
+}
+
 module.exports = {
+    typeGlobalFilter,
     ensureSubTableVisible,
     waitForFilterSettled,
     waitForSortSettled,

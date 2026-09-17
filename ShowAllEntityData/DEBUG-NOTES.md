@@ -11501,3 +11501,29 @@ control (that channel is what the column filter has always used). Recorded as
 `expect: pass`, KNOWN UNCOVERED: dropping the `<ul>` branch, which only a
 single-table page with a CAA column would notice — the same gap as §3.1 H4b, and
 no committed single-table shell carries `/cover-art` anchors.
+
+## 2026-09-17 — The global filter's focus-prefix race, and the harness fix for it
+
+Not a userscript bug report — a test-harness one, recorded because it cost three
+full-suite runs in a day and presented each time as a timeout far from its cause.
+
+**Symptom.** `picard-cells-survive-rerender.spec.js` failed under full-suite load
+on three different trees (30 s budget, then 90 s with `68f6aff`'s widened
+budget), always passing in isolation. The saved `error-context.md` shows the
+global filter input holding `🔍 e🔍` and the status line `GLOBAL:"e🔍 "` with
+`0 of 6` rows.
+
+**Mechanism.** The input's focus handler writes `prefix + value` back. A
+character typed between that read and that write lands INSIDE the result, and
+`stripFilterPrefix()` removes only a LEADING prefix, so the active query became
+`e🔍 ` — which matches nothing, so `waitForActualRowCount()` then waited out its
+whole budget for a count that could never arrive. No budget can fix that.
+
+**Fix (tests only).** `typeGlobalFilter()` in
+`tests/support/filterSortAssertions.js`: click, wait for the prefix to land, then
+type. Both `pressSequentially` callers on the global filter now use it
+(`picard-cells-survive-rerender.spec.js` ×2, `search-recordings-continuation.spec.js`).
+`fill()` callers are left alone — it replaces the whole value in one step.
+
+**Whether a real user can hit the same interleave** — typing within the frame
+after focusing — is unexamined, and would be a userscript fix, not a harness one.

@@ -40,7 +40,7 @@
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadFromDiskFixture } = require('../support/diskFixture');
-const { waitForFilterSettled, waitForSortSettled, waitForActualRowCount } =
+const { waitForFilterSettled, typeGlobalFilter, waitForSortSettled, waitForActualRowCount } =
     require('../support/filterSortAssertions');
 const { clickMasterToggleAndExpandAll, collectPageErrors } = require('../support/liveAssertions');
 
@@ -148,8 +148,11 @@ test.describe('Picard column survives multi-table re-renders', () => {
         // "e" matches every row, so the row set is unchanged and the counts
         // stay directly comparable — the re-render is the thing under test,
         // not the filtering.
+        // typeGlobalFilter(): focus prefix first — see its JSDoc for the race
+        // that otherwise leaves the query "e🔍 " and 0 rows. `input` is still
+        // needed below, to clear the filter with fill('').
         const input = page.locator('#mb-global-filter-input');
-        await waitForFilterSettled(page, () => input.pressSequentially('e'));
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'e'));
         // Second completion signal, and it is not optional: filterSortAssertions.js
         // documents that #mb-filter-status-display reaches its final text BEFORE
         // the tbody insertion loop has caught up, so a single snapshot read here
@@ -307,9 +310,9 @@ test.describe('Picard column header toggle (per sub-table)', () => {
         // "e" matches every row, so the row set is unchanged and the counts stay
         // directly comparable. waitForActualRowCount is the second, non-optional
         // completion signal — see the first describe block for why.
-        const input = page.locator('#mb-global-filter-input');
         const scansBefore = await page.evaluate(() => window.__saTest.picardEntityScans());
-        await waitForFilterSettled(page, () => input.pressSequentially('e'));
+        // typeGlobalFilter(): focus prefix first — see its JSDoc.
+        await waitForFilterSettled(page, () => typeGlobalFilter(page, 'e'));
         await waitForActualRowCount(page, TOTAL_ROWS);
 
         // The perf claim, and the only place it is observable: a re-render
