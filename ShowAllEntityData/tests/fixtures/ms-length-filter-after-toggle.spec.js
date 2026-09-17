@@ -138,4 +138,19 @@ test.describe('⏱ toggle with an active Length column filter', () => {
             timeout: 15000, message: 'B: after toggling back to seconds, ".666" matches nothing',
         }).toBe(0);
     });
+
+    test('C: a GLOBAL filter for a millisecond value finds its row after the toggle', async ({ page }) => {
+        // The plain global filter reads each source row's cached FULL text
+        // (_cachedFullText), not its column text, so this pins the other half
+        // of the row-text cache drop.
+        await page.fill('#mb-global-filter-input', '11.666');
+        await expect.poll(() => renderedRows(page), {
+            timeout: 15000, message: 'seconds text has no "11.666"',
+        }).toBe(0);
+
+        await toggleMs(page, true);
+        await expect.poll(() => lengthTexts(page), {
+            timeout: 15000, message: 'C: after the toggle, the global filter "11.666" finds A2',
+        }).toEqual(['3:11.666']);
+    });
 });

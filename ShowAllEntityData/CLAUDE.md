@@ -1215,9 +1215,17 @@ It counts TRACKS, not cells — each flagged track marks two.
   silently never injected on `tableMode: 'single'` pages or on a sub-table
   tab. Don't add a fourth per-caller call site; extend the hook.
 - Toggling rewrites the SOURCE rows then calls `runFilter()`; filters, sort
-  order and highlighting come along automatically because every consumer reads
-  the rendered text. The uniq-dropdown cache must be force-invalidated (its
-  key is the visible row set, which does not change).
+  order and highlighting come along because every consumer reads the rendered
+  text — but only because THREE caches are dropped first, none of which can
+  notice a text change on its own: the uniq-dropdown cache (its key is the
+  visible row set), `_filterResultCache` (its key is the filter inputs, so an
+  active Length filter would replay its pre-toggle rows), and each rewritten
+  row's `_rowTextCache` entry (`cols[cellIndex] = undefined`, `full = null` —
+  the two DIFFERENT sentinels, AUDIT.md §4), which `testRowMatch()` reads even
+  on a result-cache miss. The last two were missing until the async-population
+  audit; `tests/fixtures/ms-length-filter-after-toggle.spec.js` pins each one
+  separately (its isolation test flips the key, so it cannot be served a
+  replay).
 - `_msLengthSource()` is the single answer to "where can this page's
   milliseconds come from", checked in cost order: `'embedded'` (release pages —
   already in the page's own `<script type="application/json">` at
