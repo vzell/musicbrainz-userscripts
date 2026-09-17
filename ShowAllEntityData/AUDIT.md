@@ -235,9 +235,9 @@ Check both `_msToggleLengthPrecision()` and `_msApplyLengthPrecision()`.
 
 ### 3.3 Release events column (also covers §3.7)
 
-**Status:** **reproduced** on `main` 9.99.1096 and **fixed** on hotfix branch
-`fix/release-events-filter-staleness` (`f245df4`, pushed, **not merged**),
-2026-09-17. **Live pre-test:** §10 L6 (its URL was replaced — the first
+**Status:** **reproduced** on `main` 9.99.1096 — **SHIPPED in 9.99.1097**
+(hotfix `fix/release-events-filter-staleness`, merged and deleted; merged into
+this branch at `e263a69`). **Live pre-test:** §10 L6 (its URL was replaced — the first
 candidate never populated). **Spec:**
 `tests/fixtures/release-events-filter-after-populate.spec.js`. **Mutations:**
 `scripts/mutations/release-events-filter-after-populate.json` (5/5 as expected).
@@ -411,9 +411,10 @@ fixture suite: 272 passed. This branch after the merge: 304 passed + 1
 load-sensitive flake (see DEBUG-NOTES 2026-09-17, "focus-prefix race") that
 passes 3/3 standalone. **Update 2026-09-17 (later):** `main` is at 9.99.1096 (H5 shipped) and merged
 into this branch (`54a6e93`); merged-`main` suite 276 passed, this branch 309
-passed, 0 failed. Still open, in order: §3.4, §3.8, and the §3.5/§3.6 code checks (§3.3/§3.7 are
-fixed on an unmerged hotfix branch). The first-written state below is kept as
-history.
+passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shipped) and merged
+into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
+passed, 0 failed. Still open, in order: §3.4, §3.8, and the §3.5/§3.6 code
+checks. The first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
