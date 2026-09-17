@@ -49786,6 +49786,62 @@ a { color: #1565c0; }`;
      * @param {HTMLTableRowElement} tr
      * @param {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>} trios
      */
+    /**
+     * Whether the rendered row set is currently narrowed by the global filter or
+     * by any column filter.
+     *
+     * Asked by the async writers that rewrite cell TEXT after the render
+     * (`initReleaseEventsColumn()`, `_maybeCorrectAreaFlagRegion()`): dropping
+     * the caches only makes the NEXT pass correct, so when something IS
+     * filtering they re-run one, and when nothing is they skip the render
+     * entirely.
+     *
+     * Sub-table filters are deliberately not counted: `runFilter()` does not
+     * apply them — `renderGroupedTable()` re-applies each sub-table's own STF
+     * after it — so they neither need nor get a re-run from here.
+     *
+     * @returns {boolean}
+     */
+    function _anyFilterActive() {
+        if (typeof filterInput !== 'undefined' && filterInput &&
+            stripFilterPrefix(filterInput.value).trim() !== '') return true;
+        return Array.from(document.querySelectorAll('.mb-col-filter-input'))
+            .some(inp => stripFilterPrefix(inp.value).trim() !== '');
+    }
+
+    /** Set while an area-flag correction refresh is already queued for this frame. */
+    let _areaFlagRefreshScheduled = false;
+
+    /**
+     * Coalesces the filter-side work owed by `_maybeCorrectAreaFlagRegion()`.
+     *
+     * A correction rewrites two cells — on the live row and on the master row —
+     * while every filter INPUT stays the same, so `_filterResultCache` would
+     * replay the row list from before the move (AUDIT.md §1/§3.4). The per-row
+     * text caches are dropped by the caller, which knows which rows moved; this
+     * drops the result cache and, when something is filtering, re-runs it once.
+     *
+     * Coalesced per animation frame because a single sweep corrects many rows —
+     * `_sweepAreaFlagRegionCorrections()` walks the whole tbody, and the
+     * observer fires again for every batch the flag userscript decorates.
+     * Re-running the filter per row would re-render the table once per corrected
+     * row. Same shape as `_relScheduleProgressRefresh()`.
+     *
+     * @returns {void}
+     */
+    function _scheduleAreaFlagFilterRefresh() {
+        if (_areaFlagRefreshScheduled) return;
+        _areaFlagRefreshScheduled = true;
+        requestAnimationFrame(() => {
+            _areaFlagRefreshScheduled = false;
+            _invalidateFilterCache();
+            if (_anyFilterActive()) {
+                Lib.debug('render', '_scheduleAreaFlagFilterRefresh: re-running the active filter after Locality->Region corrections');
+                runFilter();
+            }
+        });
+    }
+
     function _maybeCorrectAreaFlagRegion(tr, trios) {
         const rowIdx = tr.dataset.mbRowIdx;
         if (rowIdx === undefined) return;
@@ -49830,6 +49886,21 @@ a { color: #1565c0; }`;
             // JSDoc for the general contract, which every other async cell
             // populator already honours and this one did not.
             _invalidateUniqDropDataCacheForTable(tr.closest('table.tbl'));
+            // Two cells' TEXT changed on both the live row and the master row,
+            // and `runFilter()` matches the MASTER rows through `_rowTextCache`.
+            // Without this, `_cachedColText()` keeps handing back the Locality
+            // and Region text from before the move — so even a filter typed
+            // fresh afterwards matches the old values. Both sentinels have to be
+            // honoured: `cols` is "not cached" at `undefined`, `full` at `null`
+            // (AUDIT.md §4). The whole `cols` array goes, which covers both
+            // moved columns at once.
+            [tr, masterRow].forEach(row => {
+                const cached = row && _rowTextCache.get(row);
+                if (cached) { cached.cols = []; cached.full = null; }
+            });
+            // And the result cache, plus a re-run when something is filtering —
+            // coalesced, since a sweep corrects many rows.
+            _scheduleAreaFlagFilterRefresh();
             Lib.debug('render', `_maybeCorrectAreaFlagRegion: moved Locality->Region for rowIdx=${rowIdx} (${countryName})`);
         });
     }
@@ -64442,12 +64513,7 @@ a { color: #1565c0; }`;
         // `_msApplyLengthPrecision()`, which re-runs the filter after rewriting
         // its column. Skipped when nothing is filtering, so a normal page load
         // pays no extra render.
-        const _filterActive =
-            (typeof filterInput !== 'undefined' && filterInput &&
-                stripFilterPrefix(filterInput.value).trim() !== '') ||
-            Array.from(document.querySelectorAll('.mb-col-filter-input'))
-                .some(inp => stripFilterPrefix(inp.value).trim() !== '');
-        if (_filterActive) {
+        if (_anyFilterActive()) {
             _dbg('initReleaseEventsColumn: re-running the active filter against the populated cells');
             runFilter();
         }

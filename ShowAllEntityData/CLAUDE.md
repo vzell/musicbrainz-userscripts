@@ -309,6 +309,44 @@ find the code, grep `btnPrefix`. This is the same trap as the `caa`/`eaa` debug
 channels (see that section): a real, stable identifier that no string search for
 its full name will locate.
 
+## Writing cell text AFTER the render: the four things you owe
+
+Anything that changes a cell's CONTENT once the table exists — an async column
+populator, a toggle that rewrites a column, a correction that reacts to a
+third-party userscript — changes what rows MATCH while every filter INPUT stays
+identical. Four consumers cannot see that on their own, and each has shipped as
+a bug (AUDIT.md §1 has the full history):
+
+1. **The uniq-dropdown/header-count caches** — `_invalidateUniqDropDataCache(table, colIdx)`
+   or `…ForTable(table)`. Their signature is the visible row set, which a
+   content write does not change.
+2. **`_filterResultCache`** — keyed by `_buildFilterKey()`, i.e. filter inputs
+   alone, so the previous row list is REPLAYED under the same key.
+   `_invalidateFilterCache()` wholesale for a one-shot (a button press, one
+   answer), or `_invalidateFilterCacheWhere(affectsKey)` with a key predicate
+   for a stream of writes, so filter typing keeps its cache while artwork loads.
+3. **`_rowTextCache` on the SOURCE row** — `runFilter()` matches source rows,
+   and `_cachedColText()`/`_cachedFullText()` hand back the text read before the
+   write. Clear `cols` (whole array, or the written index) AND `full`, honouring
+   the two DIFFERENT sentinels: `cols` is "not cached" at `undefined`, `full` at
+   `null`. Writing `null` into `cols` makes `testRowMatch()` throw — that is
+   `a861512`.
+4. **The rows on screen right now** — dropping caches only makes the NEXT pass
+   correct. If `_anyFilterActive()`, re-run `runFilter()` once, or the user goes
+   on looking at a table filtered against the old values.
+
+And one that is not a cache at all: **write to the rows the matcher reads.**
+`runFilter()` REMOVES non-matching rows, so a pass that collects its targets
+from the live DOM silently skips whatever is filtered out — and if it runs once
+per fetch, those rows never get the data at all (§3.3, `initReleaseEventsColumn()`).
+Collect from `groupedRows`/`allRows` as well, or mirror onto the master row.
+
+Worked examples, all with fixture specs and mutation lists:
+`_msApplyLengthPrecision()` (⏱, one-shot), `initReleaseEventsColumn()` (one
+answer for many rows), `_maybeCorrectAreaFlagRegion()` (a stream, coalesced per
+frame by `_scheduleAreaFlagFilterRefresh()`), `_artSetInlineSortKey()` /
+`_artSyncSearchTextToSourceRow()` (per-cell, key-predicate invalidation).
+
 ## Testing expectations
 
 **Every implementation ships with test cases. More coverage is always better.**

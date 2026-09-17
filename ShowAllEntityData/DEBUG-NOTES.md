@@ -11583,3 +11583,46 @@ its own test (D) rather than an assumption.
 — `supported-browser-check.js` hits a null node, and a versioned bundle the
 capture references now answers with an HTML error page — so the spec filters
 those two by origin instead of asserting zero page errors blindly.
+
+## 2026-09-18 — The Locality→Region flag correction left every filter on its pre-move answer (hotfix, branch fix/area-flag-region-filter-staleness)
+
+`AUDIT.md` §3.4, live twin §10 L7. Reproduced on `main` 9.99.1097 before any
+code change.
+
+**Symptom.** With a flag userscript installed, a bare subdivision moves from
+Locality to Region up to ~6 s after render. A "Region" filter for that value
+kept finding only the rows that had it BEFORE the move — retyped, and even typed
+fresh under a different cache key — and a "Locality" filter went on listing the
+rows the value had just left.
+
+**Root cause.** `_maybeCorrectAreaFlagRegion()` rewrites two cells on the live
+row and on the master row, and dropped only the uniq-dropdown/header-count
+caches. `runFilter()` matches the MASTER rows via `_rowTextCache`, which still
+held the pre-move text, and `_filterResultCache` still held the row list built
+under the same (unchanged) filter inputs. Nothing re-applied an active filter.
+
+**Fixture results** (`tests/fixtures/area-flag-region-filter.spec.js`,
+`vzell-lap`, 2026-09-18): control (decorate, then filter) passes on `main`;
+B (retyped Region needle: 6 expected, **3**), C (fresh key: 6 expected, **3**)
+and D (Locality filter after the value left: 0 expected, **3** still rendered)
+all fail there and pass on the hotfix.
+
+**Fix.** Drop the moved rows' `cols`/`full` cache entries (the two different
+sentinels, §4), drop `_filterResultCache`, and re-run an active filter —
+coalesced per animation frame by `_scheduleAreaFlagFilterRefresh()`, because one
+sweep corrects many rows and the observer fires per decorated batch. The
+"is anything filtering" test is now a shared `_anyFilterActive()`, used by this
+and by `initReleaseEventsColumn()` (§3.3), which had it inline.
+
+**Fixture note.** `tests/fixtures/area-flag-region-filter.html` is served
+UNDECORATED — as MusicBrainz serves it — and the spec stamps
+`data-flag-processed` at runtime, which is what makes the deferred observer path
+fire rather than the extraction-time one. Three row shapes: city+state+country
+(already Region, so a stale count is visible as one that never grows),
+state+country (the rows that move), and two German rows that must never move.
+
+**Mutation check** (`scripts/mutations/area-flag-region-filter.json`), 6/6 as
+expected, each on its own labelled assertion, including the `null`-into-`cols[]`
+sentinel trap. Recorded as `expect: pass`, KNOWN UNCOVERED: dropping the
+per-frame coalescing guard — a cost, not a wrong answer, and three corrected
+rows cannot show it.
