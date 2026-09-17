@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Events - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        artist-events shell for AUDIT.md §3.4 (live twin §10 L7): the
+        Locality -> Region correction that reacts to the "MusicBrainz: More
+        Flags Everywhere" userscript.
+
+        Deliberately carries NO `data-flag-processed` and no `span.area-icon`:
+        this fixture is the page as MusicBrainz serves it, BEFORE that
+        third-party script has touched it. The spec adds the decoration at
+        runtime, which is what makes the correction fire through
+        initAreaFlagRegionObserver() rather than at extraction time — the
+        deferred path _maybeCorrectAreaFlagRegion() exists for.
+
+        Three row shapes:
+          - rows 1-3  city + state + country: "New York" is the REGION already,
+                      with no flag involved. They are what the needle matches
+                      before any correction, so a stale result is visible as a
+                      count that never grows.
+          - rows 4-6  state + country: "New York" is the LOCALITY until the
+                      flag userscript marks it, then the correction moves it
+                      into Region.
+          - rows 7-8  Germany: not in AREA_FLAG_REGION_SUBDIVISIONS/COUNTRIES,
+                      so they must never move, whatever the filter says.
+    -->
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/events">Events</a></li></ul>
+        </div>
+        <h2>Events</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><a href="/event/00000001-1111-1111-1111-111111111111"><bdi>Three-level show 1</bdi></a> (2020-01-02)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000001"><bdi>Venue 1</bdi></a> in <a href="/area/bbbbbbbb-0000-0000-0000-000000000001"><bdi>Brooklyn</bdi></a>, <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000002-1111-1111-1111-111111111111"><bdi>Three-level show 2</bdi></a> (2020-01-03)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000002"><bdi>Venue 2</bdi></a> in <a href="/area/bbbbbbbb-0000-0000-0000-000000000002"><bdi>Brooklyn</bdi></a>, <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000003-1111-1111-1111-111111111111"><bdi>Three-level show 3</bdi></a> (2020-01-04)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000003"><bdi>Venue 3</bdi></a> in <a href="/area/bbbbbbbb-0000-0000-0000-000000000003"><bdi>Brooklyn</bdi></a>, <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000004-1111-1111-1111-111111111111"><bdi>Two-level show 4</bdi></a> (2020-01-05)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000004"><bdi>Venue 4</bdi></a> in <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000005-1111-1111-1111-111111111111"><bdi>Two-level show 5</bdi></a> (2020-01-06)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000005"><bdi>Venue 5</bdi></a> in <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000006-1111-1111-1111-111111111111"><bdi>Two-level show 6</bdi></a> (2020-01-07)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000006"><bdi>Venue 6</bdi></a> in <a href="/area/75e398a3-5f3f-4224-9cd8-0fe44715bc95"><bdi>New York</bdi></a>, <span class="flag flag-US"><a href="/area/489ce91b-6658-3307-9877-795b68554c98"><bdi>United States</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000007-1111-1111-1111-111111111111"><bdi>German show 7</bdi></a> (2020-01-08)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000007"><bdi>Venue 7</bdi></a> in <a href="/area/cccccccc-0000-0000-0000-000000000007"><bdi>Berlin</bdi></a>, <span class="flag flag-DE"><a href="/area/85752fda-13c4-31a3-bee5-0e5cb1f51dad"><bdi>Germany</bdi></a></span></td></tr>
+                <tr><td><a href="/event/00000008-1111-1111-1111-111111111111"><bdi>German show 8</bdi></a> (2020-01-09)</td><td><a href="/place/aaaaaaaa-0000-0000-0000-000000000008"><bdi>Venue 8</bdi></a> in <a href="/area/cccccccc-0000-0000-0000-000000000008"><bdi>Berlin</bdi></a>, <span class="flag flag-DE"><a href="/area/85752fda-13c4-31a3-bee5-0e5cb1f51dad"><bdi>Germany</bdi></a></span></td></tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

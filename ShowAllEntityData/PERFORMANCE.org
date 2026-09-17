@@ -847,7 +847,10 @@ placeholder presence, and ~openUniqDrop()~'s bundle reads all three and more.
 That closes Step 8's remaining header-count half by construction. It also
 uncovered one site that invalidated *neither* cache —
 ~_maybeCorrectAreaFlagRegion()~, which rewrites two cells' text up to six
-seconds after render — fixed here.
+seconds after render — fixed here. /2026-09-18 (AUDIT.md §3.4):/ that same site
+now also drops ~_filterResultCache~ and the moved rows' ~_rowTextCache~ entries,
+and re-runs an active filter once per frame — the uniq-drop half alone left
+every filter answering from the pre-move text.
 
 ***** Measured, 2026-09-08, same machine / same session, median of 5
 
