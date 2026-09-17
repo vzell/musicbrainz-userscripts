@@ -246,6 +246,19 @@ isolation variants separate "never reached the source row" from "replayed a cach
 row list" (the H3 sequence is both at once). Mutation list:
 `scripts/mutations/art-inline-late-load.json`.
 
+**A CAA/EAA cell's image types and comments are resolved by
+`_artSearchTextFor()`, never by reading `ul.mb-caa-art-ul` directly.** The same
+source-row asymmetry: `_artBuildMultiRowArtCell()` builds that `<ul>` on the
+RENDERED cell, while `_artSyncSearchTextToSourceRow()` mirrors the text onto the
+source `<td>` as `data-mb-art-search-sync`. A reader that knows only the `<ul>`
+therefore finds nothing on every multi-table page, which is what made a PLAIN
+global filter for "Booklet" match no rows while the same query with Rx ticked,
+and the CAA column filter, both matched — they went through
+`getCleanColumnText()`, i.e. through this resolver.
+`tests/fixtures/global-filter-art-search.spec.js` pins all three paths against
+each other, and its regexp/column-filter controls are what tell "the plain path
+is broken" apart from "the fixture has no artwork".
+
 **Surviving a re-render.** `renderFinalTable`/`renderGroupedTable` insert
 `cloneNode(true)` copies, so live artwork has to be mirrored back onto the SOURCE
 rows or it is destroyed and re-fetched on every sort and every filter keystroke:
