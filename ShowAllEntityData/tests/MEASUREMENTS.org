@@ -1568,3 +1568,32 @@ icons. The seed is fine in every run (2301 records, =release:<mbid>= keys, table
 stamped =mbRelEntityType: release=) and no run issues a single WS/2 request —
 the column simply never starts. Full root cause, blast radius and the coverage
 gap: DEBUG-NOTES.md 2026-09-16.
+
+* Master-row lookup vs. a keyed map — the inline-art sentinel fix (2026-09-17)
+
+Decides how `_artSetInlineSortKey()` makes a settle visible to `runFilter()`'s
+SOURCE-row matchers (AUDIT.md §3.1, DEBUG-NOTES 2026-09-17). Synthetic rows in
+headless Chromium via Playwright, not a pageType; sized to =artist-events=
+(4174 rows, =tableMode: 'single'=, Bruce Springsteen's "Events" listing, EAA inline
+posters) and a 10 000-row page.
+
+| Host        | UTC run                  | Probe                                                                  | Rows   | Result                                   |
+|-------------+--------------------------+------------------------------------------------------------------------+--------+------------------------------------------|
+| =vzell-lap= | 2026-09-16 23:24:37–:40  | =scripts/bench-master-row-lookup.js= — one =_findMasterRowByIdx()=-shaped scan per row | 4 174  | 2 883.9 ms total, *0.69 ms per lookup*   |
+| =vzell-lap= | 2026-09-16 23:24:41–:25:00 | same                                                                 | 10 000 | 18 862.9 ms total, *1.89 ms per lookup*  |
+| =vzell-lap= | 2026-09-17 00:59:56–:56  | =scripts/bench-art-guid-read.js= — =_cellArtEntityGuid()= over every cell, median of 20 passes | 4 174  | *6.6 ms per pass*, 1.58 µs per cell      |
+
+** What these establish
+
+- Mirroring the sentinel span onto the master row, the pattern the other artwork
+  mirrors use, would cost one linear scan per settle: ~2.9 s of main-thread time
+  over a 4174-row page's artwork load, ~19 s at 10 000. Rejected in favour of a
+  map keyed ="rowIdx:colIdx"= (O(1)).
+- What the fix does add — a GUID read per settled cell per render, via Case C1 —
+  is ~6.6 ms per render at 4174 rows, about 0.2% of that page's ~3 s filter pass
+  (CLAUDE.md reference point). Not a perf-gate case.
+- The committed interaction baselines cannot see either cost:
+  =loadPage.js='s =FIXTURE_SETTINGS_OVERRIDE= forces =sa_enable_caa_pics= off.
+- Pre-existing, unchanged: =_artMirrorInlineThumbToSourceRow()= does the 0.69 ms
+  scan per row on EVERY multi-table re-render (Case C1), i.e. on the order of
+  N × 0.35–0.7 ms per keystroke on a page with inline art.

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the ⏱ toggle no longer drops the filter-result cache",
+    "why": "Removes _invalidateFilterCache() from _msApplyLengthPrecision(). The toggle builds the same key as the filter typed before it, so the pre-toggle (empty) row list is replayed. Must fail on 'A: after the toggle, \".\" matches every millisecond Length' (8 expected, 0 rendered).",
+    "edits": [
+      {
+        "find": "        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));\n        _invalidateFilterCache();",
+        "replace": "        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));"
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "A: filter",
+    "expect": "fail"
+  },
+  {
+    "name": "same mutation, seen from the isolation test",
+    "why": "The isolation test flips the page-wide Case checkbox after the toggle, which changes the key, so it can never be served a replay: with only the result-cache drop removed it must still PASS. Recorded so the separation the spec claims is itself checked, not assumed.",
+    "edits": [
+      {
+        "find": "        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));\n        _invalidateFilterCache();",
+        "replace": "        document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));"
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "A isolation",
+    "expect": "pass"
+  },
+  {
+    "name": "the rewritten cells' cached COLUMN text is kept",
+    "why": "Removes the per-cell cols[cellIndex] = undefined drop. Even on a fresh key, _cachedColText() returns the pre-toggle seconds text, so a Length column filter reads 3:12. Must fail on 'A isolation: a fresh key after the toggle matches every millisecond Length' — the one test no replay can explain.",
+    "edits": [
+      {
+        "find": "                if (cached) cached.cols[td.cellIndex] = undefined;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "A isolation",
+    "expect": "fail"
+  },
+  {
+    "name": "the rewritten rows' cached FULL text is kept",
+    "why": "Removes the full = null drop. The plain global filter reads _cachedFullText(), so a global query for a millisecond value still sees seconds text. Must fail on 'C: after the toggle, the global filter \"11.666\" finds A2'.",
+    "edits": [
+      {
+        "find": "            if (cached && rowChanged) cached.full = null;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "C: a GLOBAL",
+    "expect": "fail"
+  },
+  {
+    "name": "the column entry is cleared with null (the a861512 sentinel trap)",
+    "why": "Writes null instead of undefined into cols[]. _cachedColText() treats only undefined as 'not cached', so it returns null and testRowMatch() throws on .toLowerCase() — exactly AUDIT.md §4. OBSERVED (2026-09-17), and earlier than first predicted: the throw escapes runFilter() inside _msApplyLengthPrecision(), so _msToggleLengthPrecision() never repaints the button and the spec fails on toggleMs()'s aria-pressed wait, before it reaches the isolation assertion. Still a failure of this test, for the reason named.",
+    "edits": [
+      {
+        "find": "                if (cached) cached.cols[td.cellIndex] = undefined;\n",
+        "replace": "                if (cached) cached.cols[td.cellIndex] = null;\n"
+      }
+    ],
+    "spec": "tests/fixtures/ms-length-filter-after-toggle.spec.js",
+    "grep": "A isolation",
+    "expect": "fail"
+  }
+]
