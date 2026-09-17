@@ -181,7 +181,7 @@ the artwork path is `_filterResultCache`. And the sentinel is written to the
 | H3 | either mode, settle after a pick/unpick of the same entry | `_filterResultCache` replay — identical key (the `d551df6` shape). | Rows = first pick's rows; late rows **absent from the DOM**. |
 | H4 | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`. | Replay: first pick's rows. |
 | H4b | CAA column, single-table, metadata settles after a re-render | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render. | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column). |
-| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17; **confirmed live via L4b, not yet fixed**) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
+| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17; confirmed live via L4b — **SHIPPED in 9.99.1096**, fix `_artSearchTextFor()`, spec `tests/fixtures/global-filter-art-search.spec.js`, mutations 3/3) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
 
 Checked and expected exempt: `_artMirrorIconToSourceRow()` (writes only
 `background-image`; the icon is in `_CLEAN_STRIP_SEL`), and `.mb-caa-sort-key`
@@ -380,8 +380,10 @@ not clear it — it makes `testRowMatch()` throw.
 as 9.99.1095) and has been merged into this branch (`4f3d094`). Merged-`main`
 fixture suite: 272 passed. This branch after the merge: 304 passed + 1
 load-sensitive flake (see DEBUG-NOTES 2026-09-17, "focus-prefix race") that
-passes 3/3 standalone. Still open, in order: H5, §3.3/§3.7, §3.4, §3.8, and
-the §3.5/§3.6 code checks. The first-written state below is kept as history.
+passes 3/3 standalone. **Update 2026-09-17 (later):** `main` is at 9.99.1096 (H5 shipped) and merged
+into this branch (`54a6e93`); merged-`main` suite 276 passed, this branch 309
+passed, 0 failed. Still open, in order: §3.3/§3.7, §3.4, §3.8, and the
+§3.5/§3.6 code checks. The first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
@@ -656,20 +658,24 @@ throttle it**. To slow the artwork paths down:
 
 ### L6 — §3.3 + §3.7 Release events / Release country (L0 throttle only; the IDB setting does not matter)
 
-* **URL (candidate):**
-  <https://musicbrainz.org/label/0b805b9c-ea03-4fc1-b50d-6dcef76433e0/relationships>.
-  If the control run shows no populated **Release country** cells, this label
-  is the wrong candidate. Any `place/<id>/performances` or
-  `label/<id>/relationships` page whose Release events cells fill will do.
+* **URL:** <https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/relationships>
+  — verified by the user on 2026-09-17 to populate its Release events cells.
+  (The first candidate, label `0b805b9c-…`, does **not**: its "Release country"
+  column stays empty, so it cannot show this bug either way.)
+* **The page is multi-table and renders its sub-sections COLLAPSED**, so expand
+  them all first. Use the **"Distributed release"** sub-table, which the user
+  identified as the one with usable data, and count rows in THAT sub-table: a
+  column filter narrows only its own sub-table, so a page-wide count would also
+  count every other sub-table's untouched rows.
 * **Control:**
-  1. Click **Show all Relationships for Label** and wait for the **Release
-     events** cells to fill.
-  2. Click 📊 on **Release country** and pick a value, e.g. `US (n)`. That is the
-     needle. Uncheck it and close the dropdown.
-  3. Click into the Release country filter and type the needle. Expect **n
-     rows**.
+  1. Click **Show all Relationships for Label**, expand all sub-sections, and
+     wait for the "Distributed release" **Release events** cells to fill.
+  2. Click 📊 on that sub-table's **Release country** and pick a value, e.g.
+     `US (n)`. That is the needle. Uncheck it and close the dropdown.
+  3. Click into the same sub-table's Release country filter and type the needle.
+     Expect **n rows in that sub-table**.
 * **Trigger:**
-  1. Reload with the throttle on and click Show-all.
+  1. Reload with the throttle on, click Show-all, expand all sub-sections.
   2. **Before** the Release events cells fill, type the needle. Expect **0 rows**.
   3. Wait until the cells fill.
   4. Clear the filter with its ✕ and type the needle again.
