@@ -235,7 +235,36 @@ Check both `_msToggleLengthPrecision()` and `_msApplyLengthPrecision()`.
 
 ### 3.3 Release events column (also covers §3.7)
 
-**Status:** suspect. **Live pre-test:** §10 L6.
+**Status:** **reproduced** on `main` 9.99.1096 and **fixed** on hotfix branch
+`fix/release-events-filter-staleness` (`f245df4`, pushed, **not merged**),
+2026-09-17. **Live pre-test:** §10 L6 (its URL was replaced — the first
+candidate never populated). **Spec:**
+`tests/fixtures/release-events-filter-after-populate.spec.js`. **Mutations:**
+`scripts/mutations/release-events-filter-after-populate.json` (5/5 as expected).
+
+**It was worse than "the caches go stale", and that is the finding.** The data
+itself was thrown away:
+
+| # | Defect | `main` 9.99.1096 |
+|---|---|---|
+| A | `initReleaseEventsColumn()` collects the cells to fill from the LIVE DOM, then awaits one WS/2 call. `runFilter()` REMOVES non-matching rows, and a sort or view switch re-renders from clones — either way the collected cells are detached when the answer lands. It writes into them, the sync-to-source step only walks `document`, and the function runs once per fetch. | The rows come back from a cleared filter with an **empty** Release events column, permanently: **0 of 31** |
+| B | `_filterResultCache` replay under the needle's own key | retyping renders **0** rows, not 3 |
+| C | `_rowTextCache` still holds the text read while the column was empty | even a FRESH key renders **0** |
+| D | Nothing re-applies an active filter to the values that arrive | the table stays filtered against data that had not loaded |
+
+Control (filter AFTER the answer) passes on `main`, so the spec drives the page
+correctly. Fix: collect from the source rows too; reset those rows' `cols`/`full`
+entries; drop `_filterResultCache`; and re-run an active filter once, as
+`_msApplyLengthPrecision()` does. Full fixture suite on the hotfix tree: 95 + 98
++ 88 passed.
+
+**Two harness fixes came out of this**, both committed: the
+`rel-column-collapse-toggle` filter test polls instead of sleeping (it had cost
+two suite runs), and `scripts/capture-page-fixture.js` (new) redacts
+credential-shaped strings — the captured MusicBrainz page embeds a Mapbox token
+and GitHub push protection rejected the first push, correctly.
+
+Original analysis:
 
 `initReleaseEventsColumn()` makes ONE page `fetch()` for the page entity
 (`/ws/2/<entity>/<id>?inc=release-rels`). It populates `td.mb-re-cell` in the live
@@ -382,8 +411,9 @@ fixture suite: 272 passed. This branch after the merge: 304 passed + 1
 load-sensitive flake (see DEBUG-NOTES 2026-09-17, "focus-prefix race") that
 passes 3/3 standalone. **Update 2026-09-17 (later):** `main` is at 9.99.1096 (H5 shipped) and merged
 into this branch (`54a6e93`); merged-`main` suite 276 passed, this branch 309
-passed, 0 failed. Still open, in order: §3.3/§3.7, §3.4, §3.8, and the
-§3.5/§3.6 code checks. The first-written state below is kept as history.
+passed, 0 failed. Still open, in order: §3.4, §3.8, and the §3.5/§3.6 code checks (§3.3/§3.7 are
+fixed on an unmerged hotfix branch). The first-written state below is kept as
+history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
