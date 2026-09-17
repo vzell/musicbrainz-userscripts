@@ -39701,6 +39701,39 @@ a { color: #1565c0; }`;
         '.mb-cell-collapse-toggle';
 
     /**
+     * A CAA/EAA cell's art search index — image types and per-image comments,
+     * built by `_artBuildSearchText()` — or `''` when the cell has none.
+     *
+     * The single resolver for that question, because the value lives in two
+     * places and which one exists depends on WHICH ROW is being read:
+     *
+     * - `ul.mb-caa-art-ul`'s own `dataset.mbArtSearch`, on a rendered cell that
+     *   `_artBuildMultiRowArtCell()` has built; and
+     * - the `<td>`'s `dataset.mbArtSearchSync`, which
+     *   `_artSyncSearchTextToSourceRow()` mirrors onto the SOURCE row — the only
+     *   channel a `tableMode: 'multi'` source row has, since the `<ul>` is only
+     *   ever built on the rendered clone.
+     *
+     * `runFilter()` matches source rows, so a reader that knows only the `<ul>`
+     * silently matches nothing on every multi-table page. That was the plain
+     * global filter's own art fallback until AUDIT.md §3.1 H5; the column filter
+     * and the regexp global path were unaffected because both already came
+     * through `getCleanColumnText()`, i.e. through here.
+     *
+     * @param   {Element} element - A `<td>`, or any element inside one.
+     * @returns {string}
+     */
+    function _artSearchTextFor(element) {
+        if (!element) return '';
+        const artSearchUl = element.querySelector('ul.mb-caa-art-ul');
+        if (artSearchUl && artSearchUl.dataset.mbArtSearch) return artSearchUl.dataset.mbArtSearch;
+        // Deliberately NOT another `ul.mb-caa-art-ul` on the source row: that
+        // would look "already built" to `_artBuildMultiRowArtCell()`'s own
+        // first-build/rebuild detection the next time the row is cloned.
+        return (element.dataset && element.dataset.mbArtSearchSync) || '';
+    }
+
+    /**
      * Extracts visible text from `element` for column filtering, skipping
      * decorative elements, script/style subtrees, and injected UI elements.
      *
@@ -39852,19 +39885,8 @@ a { color: #1565c0; }`;
         // which is a dataset attribute and not a text node, is always found even
         // when root is a clone (dataset attrs ARE preserved by cloneNode(true),
         // but querying the live element is simpler and avoids any edge cases).
-        const artSearchUl = element.querySelector('ul.mb-caa-art-ul');
-        if (artSearchUl && artSearchUl.dataset.mbArtSearch) {
-            textParts.push(artSearchUl.dataset.mbArtSearch);
-        } else if (element.dataset && element.dataset.mbArtSearchSync) {
-            // `tableMode: 'multi'` source rows (see `_artSyncSearchTextToSourceRow()`)
-            // never get the real `ul.mb-caa-art-ul` built on them — only the
-            // rendered clone does — so this plain dataset attribute is their
-            // only channel for the same search text. Deliberately NOT another
-            // `ul.mb-caa-art-ul` (which would falsely look "already built" to
-            // `_artBuildMultiRowArtCell()`'s own first-build/rebuild detection
-            // the next time this row is cloned for a fresh render).
-            textParts.push(element.dataset.mbArtSearchSync);
-        }
+        const artSearchText = _artSearchTextFor(element);
+        if (artSearchText) textParts.push(artSearchText);
 
         return normalizeExtractedText(textParts.join(' '));
     }
@@ -43335,16 +43357,21 @@ a { color: #1565c0; }`;
                             : relText.toLowerCase().includes(globalQuery);
                     });
                 }
-                // getCleanVisibleText also does not include ul.dataset.mbArtSearch
-                // (image types and comments stored by _artBuildMultiRowArtCell), so
-                // filtering for e.g. "Front" or "Booklet" via the global plain-text
-                // filter never matches a CAA/EAA art cell even though the column
-                // filter and global regexp filter do.  Add the same targeted fallback.
+                // getCleanVisibleText also does not include the CAA/EAA art search
+                // index (image types and comments stored by
+                // _artBuildMultiRowArtCell), so filtering for e.g. "Front" or
+                // "Booklet" via the global plain-text filter never matches a
+                // CAA/EAA art cell even though the column filter and global regexp
+                // filter do.  Add the same targeted fallback — through
+                // _artSearchTextFor(), the same resolver getCleanColumnText() uses,
+                // because the row tested here is usually the SOURCE row: on
+                // `tableMode: 'multi'` it carries the synced dataset attribute and
+                // never the `<ul>` this used to read, so the plain global query
+                // matched nothing at all (AUDIT.md §3.1 H5).
                 if (!matchFound) {
                     matchFound = Array.from(row.cells).some(cell => {
-                        const artUl = cell.querySelector(':scope > ul.mb-caa-art-ul');
-                        if (!artUl || !artUl.dataset.mbArtSearch) return false;
-                        const artText = artUl.dataset.mbArtSearch;
+                        const artText = _artSearchTextFor(cell);
+                        if (!artText) return false;
                         return isCaseSensitive
                             ? artText.includes(globalQuery)
                             : artText.toLowerCase().includes(globalQuery);

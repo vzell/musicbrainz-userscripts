@@ -4,6 +4,7 @@ const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { typeGlobalFilter } = require('../support/filterSortAssertions');
 
 // MusicBrainz's recording search paginates by RECORDING but renders one <tr>
 // per (recording, release) pair: the recording's own four columns appear only
@@ -310,7 +311,7 @@ test('search?type=recording: the Picard column ships collapsed and fills on dema
     // has nothing to tag. A filter keystroke re-renders every row and re-runs
     // the whole Picard pass; while collapsed it must not scan a single row.
     const scansBeforeFilter = await page.evaluate(() => window.__saTest.picardEntityScans());
-    await page.locator('#mb-global-filter-input').pressSequentially('e');
+    await typeGlobalFilter(page, 'e'); // focus prefix first — see its JSDoc
     await expect(rows).toHaveCount(3);
     await expect(page.locator('button.mb-picard-btn')).toHaveCount(0);
     expect(await page.evaluate(() => window.__saTest.picardEntityScans()))

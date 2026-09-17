@@ -1,0 +1,41 @@
+[
+  {
+    "name": "the plain-global art fallback reads the <ul> again",
+    "why": "Reverts testRowMatch()'s fallback to cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch. runFilter() matches SOURCE rows, which on a multi-table page carry the synced dataset attribute and never that <ul>, so a plain global query for an image type matches nothing. Must fail on 'H5: the plain global filter narrows to the one \"Back\" row' (1 expected, 0 rendered), while the regexp and column-filter controls stay green — they already went through getCleanColumnText().",
+    "edits": [
+      {
+        "find": "                        const artText = _artSearchTextFor(cell);\n                        if (!artText) return false;",
+        "replace": "                        const artUl = cell.querySelector(':scope > ul.mb-caa-art-ul');\n                        if (!artUl || !artUl.dataset.mbArtSearch) return false;\n                        const artText = artUl.dataset.mbArtSearch;"
+      }
+    ],
+    "spec": "tests/fixtures/global-filter-art-search.spec.js",
+    "grep": "H5: a plain global filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the resolver drops the source row's synced attribute",
+    "why": "Removes the mbArtSearchSync branch, leaving only the <ul>. This is the pre-existing channel _artSyncSearchTextToSourceRow() writes, so the CAA COLUMN filter — which reads the source row through getCleanColumnText() — loses its text too. Must fail on 'control: the column filter narrows its sub-table to the one \"Back\" row', which is what makes that control a guard and not decoration.",
+    "edits": [
+      {
+        "find": "        return (element.dataset && element.dataset.mbArtSearchSync) || '';",
+        "replace": "        return '';"
+      }
+    ],
+    "spec": "tests/fixtures/global-filter-art-search.spec.js",
+    "grep": "control: the CAA column filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the resolver drops the rendered <ul> branch",
+    "why": "Leaves only the synced attribute. On a multi-table page every source row has that attribute, so these tests cannot see the loss; it would show on a single-table page, where the <ul> is the only channel (allRows' rows ARE the rendered rows) and nothing syncs. KNOWN UNCOVERED: no committed single-table shell carries /cover-art anchors, which is the same gap AUDIT.md §3.1 H4b records.",
+    "edits": [
+      {
+        "find": "        const artSearchUl = element.querySelector('ul.mb-caa-art-ul');\n        if (artSearchUl && artSearchUl.dataset.mbArtSearch) return artSearchUl.dataset.mbArtSearch;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/global-filter-art-search.spec.js",
+    "grep": "H5: a plain global filter",
+    "expect": "pass"
+  }
+]
