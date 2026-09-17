@@ -12045,3 +12045,28 @@ than predicted — the `TypeError` escapes before the toggle repaints, so
 **Not changed, noted for the audit:** `_adoptJesus2099MsLength()` also rewrites
 Length text (adopting a jesus2099-leaked value), possibly after a filter has run;
 not reproduced or examined here.
+
+## 2026-09-17 — A second load-sensitive mechanism in picard-cells-survive-rerender: the global filter's focus-prefix race
+
+`picard-cells-survive-rerender.spec.js` › "expanding one sub-table leaves the other
+collapsed, across a filter and a sort" failed in two full-suite runs on
+`vzell-lap` the same day — once on a `main`-based hotfix tree (01:29–01:34Z,
+30 s helper budget) and once on this branch after merging `main` 9.99.1095
+(11:32–11:37Z, **90 s**, i.e. WITH `68f6aff`'s widened budget). It passed 2/2
+and 3/3 standalone respectively, and passed inside the merged-`main` suite run
+in between.
+
+**Not the `68f6aff` budget mechanism, and a budget cannot fix it.** The
+`error-context.md` snapshot shows the global filter input holding `🔍 e🔍` and
+the status line `GLOBAL:"e🔍 "` with `0 of 6` rows: the character typed by
+`pressSequentially('e')` interleaved with the input's decorative focus prefix, so
+the ACTIVE query was `e🔍 `, which matches nothing. `waitForActualRowCount()`
+then waits for a row count that can never arrive, whatever its timeout.
+
+Read the clock: the helper's own `waitForFunction` expired — but the page had
+settled long before, on the wrong query. Candidate fixes, not applied: wait for
+the focus decoration to settle before typing (e.g. poll the input value for the
+prefix), or assert the status line's `GLOBAL:"e"` before waiting on rows, which
+would turn a 90 s timeout into an immediate, self-explaining failure. Whether a
+real user can hit the same interleave (typing within the first frame after
+focusing) is unexamined.

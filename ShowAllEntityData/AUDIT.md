@@ -121,9 +121,9 @@ that reproduces is Case B → hotfix.
 
 ### 3.1 CAA/EAA inline artwork — PRIME SUSPECT
 
-**Status:** H1–H4 **reproduced** on `main` 9.99.1093 and **fixed** on hotfix branch
-`fix/art-async-filter-staleness` (`06a8629`, pushed, **not merged** — awaiting the
-merge decision and live pre-tests L1–L4 against the worktree's userscript). H2b
+**Status:** H1–H4 **reproduced** on `main` 9.99.1093 (and confirmed live, L1–L4,
+2026-09-17) — **SHIPPED in 9.99.1094** (hotfix `fix/art-async-filter-staleness`,
+merged and deleted; merged into this branch at `4f3d094`). H2b
 behaves as predicted (sound). H4b not covered. **H5 suspect, new** (see below,
 live pre-test L4b). **Spec:** `tests/fixtures/art-inline-uniq-filter-late-load.spec.js`.
 **Mutations:** `scripts/mutations/art-inline-late-load.json` (11/11 as expected).
@@ -181,7 +181,7 @@ the artwork path is `_filterResultCache`. And the sentinel is written to the
 | H3 | either mode, settle after a pick/unpick of the same entry | `_filterResultCache` replay — identical key (the `d551df6` shape). | Rows = first pick's rows; late rows **absent from the DOM**. |
 | H4 | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`. | Replay: first pick's rows. |
 | H4b | CAA column, single-table, metadata settles after a re-render | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render. | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column). |
-| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17, suspect) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
+| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17; **confirmed live via L4b, not yet fixed**) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
 
 Checked and expected exempt: `_artMirrorIconToSourceRow()` (writes only
 `background-image`; the icon is in `_CLEAN_STRIP_SEL`), and `.mb-caa-sort-key`
@@ -194,8 +194,9 @@ no longer what the matcher reads.
 
 ### 3.2 Millisecond Length toggle (⏱)
 
-**Status:** **reproduced** on `main` 9.99.1093 and **fixed** on hotfix branch
-`fix/ms-length-filter-staleness` (`634e03c`, pushed, **not merged**), 2026-09-17.
+**Status:** **reproduced** on `main` 9.99.1093 (and confirmed live, L5, 2026-09-17)
+— **SHIPPED in 9.99.1095** (hotfix `fix/ms-length-filter-staleness`, merged and
+deleted; merged into this branch at `4f3d094`).
 **Live pre-test:** §10 L5. **Spec:** `tests/fixtures/ms-length-filter-after-toggle.spec.js`.
 **Mutations:** `scripts/mutations/ms-length-filter-after-toggle.json` (5/5 as expected).
 Root-cause write-up: that branch's `DEBUG-NOTES.md`, 2026-09-17.
@@ -374,6 +375,13 @@ not clear it — it makes `testRowMatch()` throw.
 ---
 
 ## 7. State when this file was written
+
+**Update 2026-09-17:** `main` is at 9.99.1095 (§3.1 shipped as 9.99.1094, §3.2
+as 9.99.1095) and has been merged into this branch (`4f3d094`). Merged-`main`
+fixture suite: 272 passed. This branch after the merge: 304 passed + 1
+load-sensitive flake (see DEBUG-NOTES 2026-09-17, "focus-prefix race") that
+passes 3/3 standalone. Still open, in order: H5, §3.3/§3.7, §3.4, §3.8, and
+the §3.5/§3.6 code checks. The first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
 * `main` @ `43d11cf` (9.99.1093), untouched. An earlier local merge was unwound
