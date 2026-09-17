@@ -1230,6 +1230,13 @@ friends — still has no invalidation hook at all, so *this step is still fully
 open*; treat the rel case as the worked example of what the general version has
 to do at each site.
 
+/Corrected again 2026-09-17 (AUDIT.md §3.3):/ ~initReleaseEventsColumn()~ now
+drops both caches too — the rewritten source rows' ~_rowTextCache~ entries and
+~_filterResultCache~ — and collects the cells to fill from the source rows as
+well as the live DOM, so a filter or sort mid-fetch no longer loses the column
+outright. What remains of this step is the GENERAL version: every future async
+populator needs the same treatment, and nothing enforces it.
+
 /Corrected 2026-09-17 (async-population audit, AUDIT.md §3.1):/ this step used
 to list ~_artSetInlineSortKey()~ here. It never needed a ~_rowTextCache~ hook —
 its sentinel is in ~_CLEAN_STRIP_SEL~, so no cached column or full text ever
