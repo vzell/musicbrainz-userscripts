@@ -1,5 +1,26 @@
 [
   {
+    "version": "9.99.1094",
+    "date": "2026-09-17",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "📊 \"Structure - Inline artwork\": on multi-table pages (a release group's releases, an artist's release groups, …) \"🖼️ front-image available\" and \"∅ NO front-image available\" filtered to ZERO rows while showing the right count. A typed \"caa-inline-yes\"/\"caa-inline-no\" column filter did the same. The thumbnail's settled state was only ever written to the rendered copy of a row, never to the row the filter actually tests.",
+          "On single-table pages the same entries silently missed every row whose thumbnail finished loading AFTER you had sorted or filtered once — the entry counted it, the table did not show it.",
+          "Picking the same inline-artwork entry again, or the same \"CAA info - Type\" entry (e.g. \"» image type: Front\"), after more artwork had loaded replayed the first pick's row list instead of re-testing: rows whose thumbnail or image metadata arrived in between were left out.",
+          "Root cause and fix: a settled thumbnail is now also recorded where the filter can read it (keyed by row and column, like the per-cell expand state), and the dropdown's counts read the same record, so a count and the rows it filters to cannot disagree. When artwork arrives late, only the cached filter results that can read artwork are dropped — typing an ordinary filter while artwork is still loading keeps its cache."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "CLAUDE.md: CAA/EAA section records why inline-art presence is matched through one resolver and not the cell's span, and the three guards not to undo. DEBUG-NOTES.md: dated root-cause entry with the fixture results and mutation outcomes. tests/MEASUREMENTS.org: the per-settle master-row lookup cost that ruled out mirroring the span, and the per-row cost the fix does add."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1093",
     "date": "2026-09-16",
     "sections": [
