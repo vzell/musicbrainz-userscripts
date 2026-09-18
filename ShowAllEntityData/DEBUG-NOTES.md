@@ -12409,3 +12409,58 @@ check that cries wolf gets ignored.
 well-formed, correctly cross-referenced, and simply not true any more. No parser
 sees that. The scripts remove the bookkeeping excuses so the re-read is about
 meaning; they are not the re-read.
+
+## 2026-09-18 — The live-date flag scan: 87 654 fruitless queries per keystroke (branch perf/live-date-flag-scan-gate)
+
+PERFORMANCE.org Step 25's cost half, the part left open when its correctness
+half shipped as 9.99.1100. Not a bug report — nothing misbehaved — so the
+numbers are the whole argument.
+
+`_countLiveDateFlags()` runs on every filter pass, from
+`updateFilterButtonsVisibility()`. It ran `cell.querySelectorAll('.mb-live-date-flag')`
+per CELL, and those spans are built only by `applyExtractTrackTitleData()`, i.e.
+only on `release-tracks`. Every other pageType therefore paid a full walk to be
+told "none".
+
+Measured on the 4174-row `artist-events` disk fixture (`vzell-lap`, 2026-09-18
+08:27 UTC, median of 5, `scripts/measure-live-date-flag-scan.js`):
+
+| Shape                            | Queries | Median |
+|----------------------------------|---------|--------|
+| per cell — what shipped before   | 87 654  | 64.0 ms |
+| per row — the new first pass     | 4 174   | 4.6 ms  |
+| gated — every later pass         | 0       | 0 ms    |
+
+Step 25's estimate of "~87 700" was right to three figures. Against that page's
+~3033 ms global filter it is ~2% — the reason to fix it is that it is pure waste
+on every pageType but one, not that it dominates anything.
+
+**The trap, and it is a sharp one.** The obvious gate —
+`document.querySelector('.mb-live-date-flag')` — is wrong in a way that only
+shows up under a filter. `runFilter()` REMOVES non-matching rows, so that query
+answers "no" the moment a filter excludes the flagged rows, the tally returns 0,
+and `_updateLiveDateFlagButtons()` HIDES a button whose count is 0. That is
+exactly the §3.6 vanishing-button bug, re-entered through the optimisation. The
+gate is keyed on two non-DOM facts instead: `_appendLiveDateFlag()` having built
+one, and a tally over the CAPTURED rows coming back empty.
+
+Two further edges, both of which would fail silently:
+
+- **`false` is cached only from the captured-rows branch.** The pre-capture
+  fallback's "found nothing" means "no rows yet", not "no flags", and would
+  stick for the life of the page.
+- **Hydration resets it.** `_hydrateAndRenderFromSnapshotData()` restores rows
+  whose stored HTML already contains the flags, with `_appendLiveDateFlag()`
+  never running — so a page that had concluded "none" would show no ⚠️/❌
+  buttons at all on a restored tracklist. No fixture drives Load-from-Disk into
+  a flagged release, so this is recorded as an `expect: "pass"` mutation rather
+  than claimed as covered.
+
+The spec has to assert both directions. On a flagless page the scan counter
+(`__saTest.liveDateFlagRowScans()`, exposed for the same reason as
+`picardEntityScans()` — "walked 4174 rows and found nothing" and "did not walk"
+produce identical DOM) must stop moving; on a flagged page the button must still
+count the data under a filter that hides every flagged row. Without the second
+half, `return result` at the top of the function passes the first half perfectly
+— which is what the "the gate closes on a page that HAS flags" mutation exists
+to prove.
