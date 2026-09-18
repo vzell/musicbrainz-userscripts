@@ -12585,3 +12585,25 @@ what is already there. Catching it would need a source row that lacks its
 thumbnail at C1 time, which no fixture arranges. Recorded as `expect: "pass"`
 with that explanation rather than engineered around — the three failed attempts
 are the evidence that the path is masked, not that the tests are weak.
+
+### Two more instances of the same family, during the 9.99.1111 merge (2026-09-18)
+
+Recorded because two flakes in one suite run is new, and the pair is worth
+seeing together. Both failed once on the merged tree and passed immediately
+afterwards — standalone AND on a plain re-run of the same shard:
+
+| Spec                                                                | Standalone | Shard re-run |
+|---------------------------------------------------------------------|------------|--------------|
+| `live-date-flag-button-counts` › "C: clearing the filter restores …"  | 5/5        | 116 passed   |
+| `rel-column-fetch-failure` › "multi-table: the failure marker …"      | 2/2        | 110 passed   |
+
+The second one mattered more than the first: it is about a MULTI-TABLE
+RE-RENDER, which is exactly what 9.99.1111 changed, so it could not be waved off
+as load. It was still load — the run before it, on the same userscript code plus
+one `@version` comment line, was 116 + 110 + 113 green, and the host had just
+had a background task killed for memory pressure.
+
+The lesson is the one already in this file: **re-run before believing a
+full-suite failure**, and re-run the SHARD as well as the spec. A spec that
+passes standalone but keeps failing in its shard is a different finding from one
+that passes both ways, and only the second is load.
