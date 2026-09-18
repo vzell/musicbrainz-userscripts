@@ -1,0 +1,67 @@
+{
+  "pageType": "artist-releases-dylan",
+  "url": "https://musicbrainz.org/artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 2301,
+  "picardArm": null,
+  "relArm": "absent",
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": 8000,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false
+  },
+  "branch": "main-rel-absent",
+  "gitBranch": "main",
+  "capturedAt": "2026-09-18",
+  "startedAt": "2026-09-18T14:31:39.298Z",
+  "finishedAt": "2026-09-18T14:46:18.763Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 56.1,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 2.6
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1111+2026-09-18",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 1096,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 1398,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 2197,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 51156,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 467,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 1299,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 4003,
+      "samples": 5
+    }
+  }
+}

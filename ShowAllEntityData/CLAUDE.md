@@ -474,7 +474,12 @@ much, and what the alternative would be.
   captured 2026-09-08 at 9.99.1048: global filter ~3033 ms, column filter
   ~3295 ms, sort ~6410 ms, uniq-dropdown ~45 996 ms cold / ~1676 ms warm,
   header counts ~8033 ms initial / ~12 319 ms restore. Re-measure rather than
-  trusting these if a decision hinges on them.
+  trusting these if a decision hinges on them. That arm is `petri`; the
+  current-version one is **`NB-3641`, 9.99.1111, 2026-09-18**: global filter
+  ~1759 ms, column filter ~1802 ms, sort ~3697 ms, uniq-dropdown ~30 972 ms cold
+  / ~803 ms warm, header counts ~5663 ms initial / ~5501 ms restore. The two are
+  DIFFERENT HOSTS and are not comparable to each other — that is the point of
+  the next bullet, not an exception to it.
 - **Never quote an absolute across versions or sessions — capture your own
   `main` arm alongside your branch's, in one session.** `main` measured
   1735/1730/3968/31149/863 at 9.99.1045 and roughly twice that at 9.99.1048,

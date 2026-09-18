@@ -12607,3 +12607,47 @@ The lesson is the one already in this file: **re-run before believing a
 full-suite failure**, and re-run the SHARD as well as the spec. A spec that
 passes standalone but keeps failing in its shard is a different finding from one
 that passes both ways, and only the second is load.
+
+## 2026-09-18 — Fewer Playwright workers made the flaky family WORSE, which the "load sensitivity" attribution does not predict (NB-3641 re-runs, main)
+
+Found while re-running this repo's measurements on `NB-3641` (28 cores, 31 GB)
+because every recent arm had been captured on `vzell-lap` (4 cores, 16 GB). Six
+full fixture-suite runs on `main` at 9.99.1111, machine otherwise idle:
+
+| Workers      | Runs | Green | Wall      | Failing spec, when red                                                    |
+|--------------|------|-------|-----------|---------------------------------------------------------------------------|
+| 14 (default) | 3    | 2/3   | 1.7-1.8 m | `rel-column-fetch-failure.spec.js:109`                                    |
+| 4            | 3    | 1/3   | 4.4-4.5 m | `rel-cell-state-glyphs.spec.js:328`, `area-flag-region-filter.spec.js:142` |
+
+**Two separate findings, and only the first is settled.**
+
+**Sharding is a memory workaround, and the memory half is host-specific.** 339
+tests run unsharded here in 1.7 min with ~24 GB free, backgrounded — against the
+~10-11 min of three hand-run shards on the smaller hosts, and against AUDIT.md
+§6's three memory kills, which did not reproduce. §6 now carries the host
+qualifier rather than the bare claim.
+
+**What did NOT go away is the flaky family, and cutting parallelism made it
+worse.** Playwright's default worker count is half the cores — 14 here, 2 on
+`vzell-lap` — so "unsharded on a big box" is *more* concurrency per run, not
+less. If load were the mechanism, dropping to 4 workers should have helped. It
+produced twice as many red runs, on two specs that had not failed at 14, and
+cost 2.6x wall clock.
+
+Three distinct specs across six runs, every one a poll or a fixed
+`waitForTimeout` racing the userscript's own 1100 ms Relationships rate gate.
+A hypothesis that fits the direction, recorded as a hypothesis and **not acted
+on**: those waits were tuned on the slow host, and giving each test *more* CPU
+finishes the userscript's async work sooner relative to a fixed sleep, so the
+sample lands at the wrong point — under which reading contention is what had
+been keeping them green, and the fix is a settle-condition, not a bigger budget
+and not fewer workers. N=6 across three specs: enough to refute "more
+parallelism is what breaks it", not enough to publish a mechanism.
+
+Nothing was changed in response. The practical rule is unchanged and is the one
+already in this file: **re-run before believing a full-suite failure.** What
+changes is that on this host you can re-run the whole suite in 1.7 min instead
+of re-running a shard.
+
+Numbers, host conditions and the per-arm detail: `tests/MEASUREMENTS.org`,
+"Unsharded vs. worker count — NB-3641, 2026-09-18".

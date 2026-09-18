@@ -481,9 +481,15 @@ not clear it — it makes `testRowMatch()` throw.
 * **`collectPageErrors()` keeps only `err.message`.** Add a local
   `page.on('pageerror', e => …e.stack)` when diagnosing — "Cannot read properties
   of null" with no stack is indistinguishable among ~40 `.toLowerCase()` sites.
-* **Background suite runs were memory-killed three times**; foreground
-  `--shard=1/3`, `2/3`, `3/3`, run **one at a time**, completed reliably
-  (~8 min each). Never run two Playwright processes concurrently here.
+* **Background suite runs were memory-killed three times** on `vzell-lap`/
+  `petri`; foreground `--shard=1/3`, `2/3`, `3/3`, run **one at a time**,
+  completed reliably (~8 min each). Never run two Playwright processes
+  concurrently here. **The memory half is host-specific and did not reproduce
+  on `NB-3641`** (28 cores / 31 GB): 339 fixture tests run *unsharded* in
+  1.7 min with ~24 GB free, backgrounded, 2026-09-18. What did NOT go away is
+  the flaky family — and cutting `--workers` from the default 14 to 4 made it
+  *worse* (1/3 green vs 2/3) and 2.6x slower, so parallelism is not the
+  mechanism. Numbers and the hypothesis in `tests/MEASUREMENTS.org`.
 * `mutation-check.py` used to score "no tests found" as a pass; fixed this
   session to report ERROR. **The older mutation lists were written before that
   fix** — see the parking lot.

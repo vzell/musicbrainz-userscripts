@@ -3069,8 +3069,18 @@ pre-bracket idle so the three are comparable, and records ~relSettleMs~ so that
 can be checked rather than trusted. It came back 3001/3002/*6479* — the seeded
 arm's settle overran the cap, so ~expanded~ entered every bracket with ~3.5 s
 more idle than its comparators, which biases it FASTER. It is slower on all
-seven metrics regardless. The cap has been raised to clear the measured value;
-a re-run would turn these bounds into values.
+seven metrics regardless. The cap was raised to 8000 to clear that value.
+
+*Re-run on 2026-09-18* (=NB-3641=, 9.99.1111, median of 5, one session) — and
+the bounds are STILL bounds. ~relSettleMs~ came back 8000/8003/*10876*: the
+seeded arm overran the raised cap exactly as it overran the old one, so
+~expanded~ again entered every bracket with ~2.9 s more idle than its
+comparators. It is slower on all seven metrics regardless, so the bounds hold,
+and the re-run's own savings are larger on most metrics (33% global filter,
+15% column filter, 30% sort, 37% warm uniq-drop, 42% header-count initial,
+20% header-count restore, 0.8% cold uniq-drop). *Turning these into values
+needs the cap above 10876 first* — 15000 would leave headroom. Full table in
+~tests/MEASUREMENTS.org~.
 
 **** Threshold, not a flat default — and why
 
@@ -3335,9 +3345,9 @@ the quieter =NB-3641=, the spread being the host rather than the column.
 is painted per pending cell in view, and nothing here measures scrolling or
 first paint, so no claim is made about them.
 
-*The =expanded= arm did not run*, on ~main~ either: the harness's own icon-floor
-guard aborted it with 0 icons rendered against a seed of 2329 url-rels, three
-attempts on each tree. That guard exists to stop exactly this run being
+*The =expanded= arm did not run at the time*, on ~main~ either: the harness's own
+icon-floor guard aborted it with 0 icons rendered against a seed of 2329
+url-rels, three attempts on each tree. That guard exists to stop exactly this run being
 published as a second =collapsed= arm, and it worked. *Bisected to =442dd8c=,
 released as 9.99.1086, on ~main~ and nothing to do with this branch*: it gated
 the Load-from-Disk path's =initRelationshipsColumn()= on =_relPageHasColumn()=,
@@ -3347,6 +3357,12 @@ is still injected, so such a table restores *misaligned by one column*. Numbers
 in ~tests/MEASUREMENTS.org~, root cause in DEBUG-NOTES.md 2026-09-16.
 The gate above stands without it: the branch's new paint cost lives in the
 collapsed column, which is what the =collapsed= arm measures.
+
+*It runs again as of 9.99.1093.* Re-captured 2026-09-18 on =NB-3641= at
+9.99.1111, rendering *2090* icons — identical to 9.99.1073, against the 0 that
+aborted it here (~tests/MEASUREMENTS.org~). That confirms from the measurement
+side what the bisect above found, and closes the hole. The gate's conclusion is
+unchanged either way, for the reason just given.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 

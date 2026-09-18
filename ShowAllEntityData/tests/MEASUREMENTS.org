@@ -644,6 +644,42 @@ during a busy session; on an idle machine those same five run in *6.7-7.8 s
 each*. They were starved by concurrent perf captures, not marginal. Do not raise
 that file's timeout.
 
+** Unsharded vs. worker count — =NB-3641=, 2026-09-18
+
+=NB-3641= (28 cores, 31 GB, uptime 2 d 7 h, one resident =claude= session),
+=main= at 9.99.1111, 339 chromium-fixtures tests, machine otherwise idle,
+14:00-14:20 UTC. Playwright's default worker count here is 14 (half the cores);
+on =vzell-lap= it is 2.
+
+| Workers      | Runs | Green | Wall clock | Failing spec, when red                                                |
+|--------------+------+-------+------------+-----------------------------------------------------------------------|
+| 14 (default) |    3 |   2/3 | 1.7-1.8 m  | =rel-column-fetch-failure.spec.js:109=                                |
+|            4 |    3 |   1/3 | 4.4-4.5 m  | =rel-cell-state-glyphs.spec.js:328=, =area-flag-region-filter.spec.js:142= |
+
+*Sharding is not needed on this host, and not for the reason it was introduced.*
+339 tests run unsharded in 1.7 m with ~24 GB free throughout. AUDIT.md §6's
+"background suite runs were memory-killed three times" is a =vzell-lap=/=petri=
+observation and did not reproduce here; the three hand-run shards cost ~10-11 m
+on those hosts against 1.7 m here.
+
+*Fewer workers made the suite LESS reliable, not more.* That contradicts the
+"load sensitivity on a single-worker suite" attribution this flaky family
+currently carries in DEBUG-NOTES. Six runs produced three DISTINCT failing
+specs, every one of them a poll or a fixed =waitForTimeout= racing the
+userscript's own 1100 ms Relationships rate gate.
+
+A hypothesis that fits the direction, offered as a hypothesis and not acted on:
+those waits were tuned on =vzell-lap=, and giving each test MORE CPU (4 workers
+across 28 cores) finishes the userscript's async work sooner relative to a fixed
+sleep, so the sample lands at the wrong point. Under that reading contention is
+what had been keeping them green, and the fix is a settle-condition rather than
+a bigger budget or a smaller worker count. N=6 across three specs — enough to
+refute "more parallelism is what breaks it", not enough to publish a mechanism.
+
+What follows practically: run the fixture suite *unsharded* on this host and
+re-run a failure before believing it, exactly as DEBUG-NOTES already prescribes.
+Do NOT pin =workers= — it cost 2.6x wall clock and bought nothing.
+
 ** Per-test durations — =artist-events-interactions.spec.js=
 
 Serially on an idle =petri=, and the reason that file carries a file-level
@@ -1672,3 +1708,93 @@ This arm reads *0.354 ms per scan* at 4174 rows where the 2026-09-17 arm read
 the host, and it is exactly the 1.5-2x environment variance CLAUDE.md warns
 about. What is comparable is the RATIO within this session — 389x and 926x — not
 the absolute against a figure captured on another day.
+
+* NB-3641 re-runs at 9.99.1111 (2026-09-18)
+
+Everything below ran on =NB-3641= (28 cores, 31 GB, node v24.19.0, playwright
+1.62.1), =main= at 9.99.1111, median of 5, 14:20-15:21 UTC, uptime 55.9-56.9 h
+with one resident =claude= session. The whole point of the batch was that the
+newest arm on this host was 9.99.1073 and the newest arm anywhere was
+=vzell-lap= at 9.99.1092.
+
+** =artist-events=, single-table, 4174 rows — a current =main= reference point
+
+=interaction-perf-main-9.99.1111-2026-09-18-NB-3641.json=. Page: Bruce
+Springsteen =/events=, pageType =artist-events=, =tableMode: single=.
+
+| Metric                | 9.99.1111 | 9.99.1049 on this host (n=3) |
+|-----------------------+-----------+------------------------------|
+| =globalFilter=        |      1759 | 1664-1996                    |
+| =columnFilter=        |      1802 | 1660-1757                    |
+| =sort=                |      3697 | 3391-4392                    |
+| =uniqDropCold=        |     30972 | 29531-30469                  |
+| =uniqDropWarm=        |       803 | 823-985                      |
+| =headerCountsInitial= |      5663 | 4334-4704                    |
+| =headerCountsRestore= |      5501 | 5260-5689                    |
+
+Six of seven sit in or beside the 9.99.1049 band on the same host.
+=headerCountsInitial= is ~20% above the highest earlier value and is recorded
+here as *worth a look, not as a regression*: 62 versions and 10 days separate
+the two, and this arm ran at *55.9 h uptime* against 0.2-7.2 h for the others —
+the confound the "what changed on =petri=" open question in this file is still
+about. Per CLAUDE.md only within-session ratios are quotable, and this is not
+one.
+
+** =artist-releases-dylan=, 2301 rows — the three Relationships arms
+
+One session, back to back, seeded from
+=tests/fixtures/saved-data/rel-ws2-artist-releases-dylan.json.gz= so no live
+request sits inside a bracket. Page: Bob Dylan =/releases=, pageType
+=artist-releases=, =tableMode: single=.
+
+| Metric                | absent | collapsed | expanded | coll/abs | 1-coll/exp |
+|-----------------------+--------+-----------+----------+----------+------------|
+| =globalFilter=        |   1096 |      1117 |     1667 |    1.02x |      33.0% |
+| =columnFilter=        |   1398 |      1529 |     1807 |    1.09x |      15.4% |
+| =sort=                |   2197 |      2323 |     3317 |    1.06x |      30.0% |
+| =uniqDropCold=        |  51156 |     55636 |    56071 |    1.09x |       0.8% |
+| =uniqDropWarm=        |    467 |       388 |      614 |    0.83x |      36.8% |
+| =headerCountsInitial= |   1299 |      1299 |     2251 |    1.00x |      42.3% |
+| =headerCountsRestore= |   4003 |      4143 |     5183 |    1.03x |      20.1% |
+
+*The =expanded= arm RAN, for the first time.* It rendered *2090* icons —
+identical to 9.99.1073, and against the *0* that aborted it on both trees at
+9.99.1092. That confirms from the measurement side what DEBUG-NOTES 2026-09-16
+bisected: the =442dd8c= / 9.99.1086 Load-from-Disk defect, fixed in 9.99.1093,
+was the whole cause. PERFORMANCE.org Step 36's "the =expanded= arm did not run"
+is now false.
+
+*A collapsed column is still free.* =collapsed/absent= is 0.83-1.09x here,
+against 0.96-1.04x at 9.99.1073 on this host and 0.90-1.19x on =vzell-lap=.
+
+*The savings are still LOWER BOUNDS, and Step 35's "a re-run would turn these
+bounds into values" is still false.* =relSettleMs= came back
+*8000 / 8003 / 10876*: the seeded arm overran the 8000 ms cap exactly as it
+overran the 3000 ms one at 9.99.1073, so =expanded= again entered every bracket
+with ~2.9 s more idle than its comparators, which biases it FASTER. It is
+slower on all seven metrics regardless, so the bounds hold. Turning them into
+values needs the cap raised above 10876 first — 15000 would leave headroom.
+
+*The settle itself grew, and this is an observation, not an attribution*:
+*6479 ms at 9.99.1073 -> 10876 ms here*, same host, same 2301 rows, same 2090
+icons, cache pre-seeded so neither arm touches the network. The batched browse
+source (Step 36, 9.99.1101-1108) landed between the two and should reduce work,
+not add it. Nothing here identifies a cause; it is recorded so the next reader
+has the pair.
+
+** =artist-releasegroups= — =perf-baseline.json= re-captured
+
+| Arm                          |   Items | Median wall | fetch   | render |
+|------------------------------+---------+-------------+---------+--------|
+| 9.99.1045, 2026-09-07, host unknown |    2143 |     26378 ms | 16692.4 |    533 |
+| 9.99.1111, 2026-09-18, =NB-3641=    |    2144 |     28000 ms | 18773.0 |  608.4 |
+
+Verdict =ok= against the outgoing baseline. *This metric is fetch-dominated* —
+18.8 s of the 28 s is the live page fetch — so it measures MusicBrainz's
+response time at least as much as this script's, and the two rows are on
+different hosts at different versions. Do not read the 6% as a code change.
+
+The outgoing file had *no archival copy*, and =--perf= overwrites the mutable
+one, so it was preserved by hand as
+=perf-baseline-9.99.1045-2026-09-07.json= before the run. Its host is genuinely
+unrecorded and is therefore omitted from the name rather than guessed.
