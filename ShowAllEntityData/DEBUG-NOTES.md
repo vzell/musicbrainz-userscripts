@@ -12500,10 +12500,10 @@ happened to have empty cells, which take a different branch.
 **Root cause.** Two readers answer "is this a collapsable column", and they
 resolved the column's NAME differently:
 
-| Reader                     | Resolution                                                 |
-|----------------------------|------------------------------------------------------------|
-| `initCollapsableColumns()` | `_cleanColHeaderText(th)` → prefers `th.dataset.colName`    |
-| `openUniqDrop()`           | `th.textContent.replace(/[⇅▲▼…▶◀▤0-9]/g,'').trim()`         |
+| Reader                     | Resolution                                               |
+|----------------------------|----------------------------------------------------------|
+| `initCollapsableColumns()` | `_cleanColHeaderText(th)` → prefers `th.dataset.colName` |
+| `openUniqDrop()`           | `th.textContent.replace(/[⇅▲▼…▶◀▤0-9]/g,'').trim()`      |
 
 `_initColHeaderGlyph()` gives each AR column an entity glyph, and
 `_guardGlyphAgainstEmptySelectorHiding()` appends U+200B to that span so it is
@@ -12521,13 +12521,13 @@ place.
 
 Measured on the captured fixture (5 collapsable AR columns):
 
-| Column             | Header | 📊 before          | 📊 after                     |
-|--------------------|--------|--------------------|------------------------------|
-| Recorded at place  | ▶3▤    | empty cells (1)    | collapsed (3) + single + empty |
-| Vocals             | ▶10▤   | no section         | collapsed (10)               |
-| Instruments        | ▶9▤    | empty cells (3)    | collapsed (9)                |
-| Recording engineer | ▶2▤    | no section         | collapsed (2)                |
-| Engineer           | ▶14▤   | no section         | collapsed (14)               |
+| Column             | Header | 📊 before       | 📊 after                       |
+|--------------------|--------|-----------------|--------------------------------|
+| Recorded at place  | ▶3▤    | empty cells (1) | collapsed (3) + single + empty |
+| Vocals             | ▶10▤   | no section      | collapsed (10)                 |
+| Instruments        | ▶9▤    | empty cells (3) | collapsed (9)                  |
+| Recording engineer | ▶2▤    | no section      | collapsed (2)                  |
+| Engineer           | ▶14▤   | no section      | collapsed (14)                 |
 
 **A mutation caught a vacuous test, and it is worth recording.** The spec pins
 the trap itself — that U+200B survives the strip — by looping over the
@@ -12592,10 +12592,10 @@ Recorded because two flakes in one suite run is new, and the pair is worth
 seeing together. Both failed once on the merged tree and passed immediately
 afterwards — standalone AND on a plain re-run of the same shard:
 
-| Spec                                                                | Standalone | Shard re-run |
-|---------------------------------------------------------------------|------------|--------------|
-| `live-date-flag-button-counts` › "C: clearing the filter restores …"  | 5/5        | 116 passed   |
-| `rel-column-fetch-failure` › "multi-table: the failure marker …"      | 2/2        | 110 passed   |
+| Spec                                                                 | Standalone | Shard re-run |
+|----------------------------------------------------------------------|------------|--------------|
+| `live-date-flag-button-counts` › "C: clearing the filter restores …" | 5/5        | 116 passed   |
+| `rel-column-fetch-failure` › "multi-table: the failure marker …"     | 2/2        | 110 passed   |
 
 The second one mattered more than the first: it is about a MULTI-TABLE
 RE-RENDER, which is exactly what 9.99.1111 changed, so it could not be waved off
