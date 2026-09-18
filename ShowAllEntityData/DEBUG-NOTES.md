@@ -12737,3 +12737,38 @@ running it rather than assuming:
 and 2 expect-pass. Perf gate in `tests/MEASUREMENTS.org`: the cell grew from one
 node per event to four, costing +0.9 ms per pass at 2000 cells with one event
 and +5.6 ms with three — 0.08% and 0.51% of this host's own 1096 ms filter pass.
+
+### Follow-up, same day: the date ran into the flag, and CSS could not fix it
+
+Found by exercising the real page rather than by a test — the fixture suite was
+green and had nothing to say about it. With "Right Side Flags Everywhere"
+installed the cell and the dropdown both rendered `US<flag>2005-12-20`, the date
+jammed against the flag.
+
+**Not a native-markup faithfulness problem.** MusicBrainz's own
+`.release-event` puts `.release-country` and `.release-date` adjacent with no
+whitespace node between them, and this column now reproduces that exactly. The
+crowding comes from the flag userscript: it gives its `<img>`
+`margin-left: 0.40em` but `margin-right: 0.05em`, which is correct on every
+surface where its flag is the last thing in the cell — and this column is the
+one where something follows it.
+
+**The separator has to be TEXT, and that is the non-obvious half.** A margin
+rule on `.release-date` was the obvious fix and would have been wrong: the 📊
+dropdown rebuilds an entry from `flagIconMap` segments as
+`[text][cloned icon][text]` and never clones the `.release-date` element at all,
+so CSS would have spaced the table cell and left the dropdown exactly as
+crammed. The space is a leading character on the date span's own text, and the
+spec asserts it in BOTH places for that reason.
+
+Conditional on a country actually preceding the date: with none, the date is the
+cell's first visible text and a leading space would simply indent it. Nothing
+downstream sees it either way — `_findCellReleaseEventParts()` and
+`ColumnDataExtractor.splitCountryDate()` both `.trim()`, and
+`normalizeExtractedText()` collapses — so no extracted value, filter key or sort
+order moves.
+
+`padForAlignment` became `injectedColumn` in the same edit. Two options now hang
+off it, and they are one fact rather than two: an injected cell is not native
+markup sitting in MusicBrainz's own CSS context, so it pads its own alignment
+spans AND supplies its own separator.

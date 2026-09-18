@@ -43,7 +43,7 @@
     "why": "Removes the date half of the alignment padding. splitCountryDate() pushes one <li> into its Date output per `.release-date`, so an event with a country and NO date contributes none and the two derived columns drift apart in a multi-event cell. Seen only by the DATELESS-row test — the countryless-row test stays green, which is why both exist.",
     "edits": [
       {
-        "find": "        if (dateText || padForAlignment) {",
+        "find": "        if (dateText || injectedColumn) {",
         "replace": "        if (dateText) {"
       }
     ],
@@ -56,7 +56,7 @@
     "why": "The mirror of the previous mutation: an event with a date and no country contributes no <li> to the Country column.",
     "edits": [
       {
-        "find": "        } else if (padForAlignment) {",
+        "find": "        } else if (injectedColumn) {",
         "replace": "        } else if (false) {"
       }
     ],
@@ -144,6 +144,19 @@
     ],
     "spec": "tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js",
     "grep": "exactly one dropdown icon",
+    "expect": "fail"
+  },
+  {
+    "name": "the date loses its leading space in the injected column",
+    "why": "Removes the separator between the country and the date. \"Right Side Flags Everywhere\" gives its <img> margin-left 0.40em but margin-right 0.05em, assuming nothing follows the flag — so without this the cell and the dropdown entry both render \"US<flag>2005-12-20\" with the date jammed against the flag. It has to be text rather than CSS: the dropdown rebuilds an entry as [text][cloned icon][text] and never clones the .release-date element, so a margin rule would fix the cell only. Must fail on the spacing test.",
+    "edits": [
+      {
+        "find": "            if (dateText) dateSpan.textContent = (injectedColumn && code ? ' ' : '') + dateText;",
+        "replace": "            if (dateText) dateSpan.textContent = dateText;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "space between the country and the date",
     "expect": "fail"
   }
 ]

@@ -62810,15 +62810,17 @@ a { color: #1565c0; }`;
      * @param {?string} ev.name          area name, for the `<abbr>` tooltip
      * @param {?string} ev.gid           area MBID; the `<abbr>` is left unlinked without it
      * @param {?string} ev.dateText      already-formatted "YYYY[-MM[-DD]]"
-     * @param {boolean} [ev.padForAlignment=false]  emit an EMPTY
-     *   `<span class="release-country no-country">` when there is no `code`,
-     *   and an empty `<span class="release-date">` when there is no
-     *   `dateText`. `_rePopulateCell()` needs both and `buildLi()`
-     *   deliberately wants neither — see the note in the body.
+     * @param {boolean} [ev.injectedColumn=false]  this `<li>` belongs to the
+     *   SCRIPT-BUILT column rather than to a native MusicBrainz cell, which
+     *   changes two things — alignment padding, and the space before the date.
+     *   Both follow from the same fact: an injected cell is not native markup
+     *   sitting in MusicBrainz's own CSS context, so it has to be
+     *   self-contained. `_rePopulateCell()` passes true, `buildLi()` false.
+     *   See the two notes in the body.
      * @returns {?HTMLLIElement} null only when there is nothing at all to render
      */
-    function _buildReleaseEventLi(doc, { code, name, gid, dateText, padForAlignment = false }) {
-        if (!code && !dateText && !padForAlignment) return null;
+    function _buildReleaseEventLi(doc, { code, name, gid, dateText, injectedColumn = false }) {
+        if (!code && !dateText && !injectedColumn) return null;
 
         const li = doc.createElement('li');
         li.setAttribute('aria-label', 'Release event');
@@ -62839,7 +62841,7 @@ a { color: #1565c0; }`;
                 span.appendChild(abbr);
             }
             li.appendChild(span);
-        } else if (padForAlignment) {
+        } else if (injectedColumn) {
             // Alignment, and ONLY for the injected column.
             // `ColumnDataExtractor.splitCountryDate()` pushes one `<li>` into
             // its Country output per `.release-country` it finds and one into
@@ -62866,10 +62868,30 @@ a { color: #1565c0; }`;
             li.appendChild(span);
         }
 
-        if (dateText || padForAlignment) {
+        if (dateText || injectedColumn) {
             const dateSpan = doc.createElement('span');
             dateSpan.className = 'release-date';
-            if (dateText) dateSpan.textContent = dateText;
+            // The space between the country and the date has to live in the
+            // TEXT, and CSS would otherwise be the obvious choice. It cannot
+            // be: the 📊 dropdown rebuilds an entry as [text][cloned icon][text]
+            // and never clones the `.release-date` element, so a margin rule
+            // would space the table cell and leave the dropdown crammed.
+            //
+            // Native cells are left alone — they sit in MusicBrainz's own
+            // stylesheet, and a reconstructed <li> has to match the real ones
+            // beside it. An injected cell has neither guarantee, and a flag
+            // userscript makes it worse rather than better: "Right Side Flags
+            // Everywhere" gives its <img> margin-left 0.40em but margin-right
+            // 0.05em, on the assumption that nothing follows the flag. Here a
+            // date does, so it rendered as "US<flag>2005-12-20".
+            //
+            // Only when a country precedes it: with none, the date is the
+            // cell's first visible text and a leading space would just indent
+            // it. Every reader trims (`_findCellReleaseEventParts()`,
+            // `ColumnDataExtractor.splitCountryDate()`) or collapses
+            // (`normalizeExtractedText()`), so no extracted value, filter key
+            // or sort order changes.
+            if (dateText) dateSpan.textContent = (injectedColumn && code ? ' ' : '') + dateText;
             li.appendChild(dateSpan);
         }
 
@@ -63013,7 +63035,7 @@ a { color: #1565c0; }`;
 
                 // Markup lives in _buildReleaseEventLi(); this only maps
                 // MusicBrainz's own embedded-JSON field names onto it.
-                // `padForAlignment` stays false because this path reconstructs
+                // `injectedColumn` stays false because this path reconstructs
                 // cells whose OTHER <li>s are real native markup — padding them
                 // with empty spans the native ones do not have would make one
                 // cell internally inconsistent. The one behaviour change: a
@@ -63028,7 +63050,7 @@ a { color: #1565c0; }`;
                     name: country ? (country.name || country.primaryAlias || '') : '',
                     gid:  country ? (country.gid || '') : '',
                     dateText,
-                    padForAlignment: false,  // native fidelity: no empty padding spans
+                    injectedColumn: false,  // native cell: no padding, no added space
                 });
             }
         }
@@ -65233,7 +65255,7 @@ a { color: #1565c0; }`;
      * collapsed to one through `normalizeExtractedText()` — so existing typed
      * filters and sort order carry over.
      *
-     * `padForAlignment: true` keeps one `<li>` per event in BOTH derived
+     * `injectedColumn: true` keeps one `<li>` per event in BOTH derived
      * columns even when an event is missing its country or its date, which is
      * what holds "Release country" and "Release date" in row alignment with
      * each other. See the builder's own note.
@@ -65263,7 +65285,7 @@ a { color: #1565c0; }`;
                 name: area ? (area.name || '') : '',
                 gid:  area ? (area.id || '') : '',
                 dateText: ev.date || '',
-                padForAlignment: true,
+                injectedColumn: true,
             });
             if (li) ul.appendChild(li);
         }

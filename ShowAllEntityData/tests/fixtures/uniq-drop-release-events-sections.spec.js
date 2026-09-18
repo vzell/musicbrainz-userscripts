@@ -261,3 +261,60 @@ test('Release events: its dropdown entries carry flag icons', async ({ page }) =
         expect(e.flags, `"${e.text}" carries a flag icon`).toBeGreaterThan(0);
     }
 });
+
+test('there is a space between the country and the date, in the cell AND the dropdown', async ({ page }) => {
+    await setup(page);
+
+    // "Right Side Flags Everywhere" gives its <img> margin-left 0.40em but
+    // margin-right 0.05em — it assumes nothing follows the flag. In this column
+    // a date does, so the two ran together as "US<flag>2005-12-20".
+    //
+    // Asserted in BOTH places on purpose: the separator cannot be CSS, because
+    // the dropdown rebuilds an entry as [text][cloned icon][text] and never
+    // clones the `.release-date` element, so a margin rule would space the cell
+    // and leave the entry crammed. Only a text-level separator reaches both.
+    const cell = await page.evaluate(() => {
+        const td = document.querySelector('td.mb-re-cell[data-mbid="11111111-1111-1111-1111-111111111111"]');
+        return {
+            raw: td.textContent,
+            date: td.querySelector('span.release-date').textContent,
+        };
+    });
+    expect(cell.date, 'the date span carries the leading space').toBe(' 2005-12-20');
+    expect(cell.raw, 'the cell reads "US 2005-12-20"').toContain('US 2005-12-20');
+
+    await page.evaluate(() => {
+        const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+            .find((t) => t.dataset.colName === 'Release events');
+        th.querySelector('.mb-col-uniq-wrap').click();
+    });
+    await page.waitForSelector('#mb-col-uniq-dropdown');
+
+    const entry = await page.evaluate(() => {
+        const drop = document.getElementById('mb-col-uniq-dropdown');
+        const item = Array.from(drop.querySelectorAll('.mb-col-uniq-item'))
+            .filter((el) => !el.querySelector('.mb-uniq-syn-label-text'))
+            .find((el) => /US\b/.test(el.textContent) && /2005-12-20/.test(el.textContent));
+        if (!item) return null;
+        // Text either side of the icon, as rendered — an icon between two text
+        // nodes is what the cell's flag becomes here.
+        return Array.from(item.childNodes)
+            .map((n) => (n.nodeType === Node.TEXT_NODE ? n.nodeValue : `<${n.nodeName.toLowerCase()}>`))
+            .join('');
+    });
+
+    expect(entry, 'the US 2005-12-20 entry exists').toBeTruthy();
+    expect(entry, 'the dropdown entry keeps the space before the date').toMatch(/\s2005-12-20/);
+});
+
+// The counterpart, and the reason the separator is conditional on a country:
+// with none, the date is the cell's first visible text and a leading space
+// would simply indent it.
+test('a date with no country gains no leading space', async ({ page }) => {
+    await setup(page);
+    const date = await page.evaluate(() => {
+        const td = document.querySelector('td.mb-re-cell[data-mbid="33333333-3333-3333-3333-333333333333"]');
+        return td.querySelector('span.release-date').textContent;
+    });
+    expect(date).toBe('2008-06-25');
+});
