@@ -12134,6 +12134,15 @@ type. Both `pressSequentially` callers on the global filter now use it
 **Whether a real user can hit the same interleave** — typing within the frame
 after focusing — is unexamined, and would be a userscript fix, not a harness one.
 
+**A third, environmental one, for completeness** (2026-09-18, `vzell-lap`): a
+full-suite shard failed with `page.addScriptTag: Failed to load script at
+https://cdn.jsdelivr.net/npm/@jaames/iro@5`. `loadPage.js` pulls iro and pako
+from their CDNs on every fixture load, so a network blip fails whichever test
+happens to be loading at that moment — here `tag-value-entity-column-leak`,
+which passed 8/8 standalone straight afterwards. Nothing to fix in the spec; the
+standing option, if it recurs, is vendoring those two files, which `loadPage.js`'s
+own comment already weighs and declines.
+
 **Second, unfixed harness weakness found in the same suite run** (2026-09-17,
 `vzell-lap`): `rel-column-collapse-toggle.spec.js` › "multi-table: the threshold
 is decided per sub-table, and collapsing survives a filter" failed once under
