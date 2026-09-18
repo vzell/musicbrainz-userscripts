@@ -1655,14 +1655,12 @@ text-glyph hazard does not apply (CSS `::before` is used anyway, so
 toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 `initCollapsableColumns()` self-deletion trap as Picard's.
 
-### IN PROGRESS: batched source + per-row load states (branch `rel-column-batch-and-cell-states`)
+### Batched source + per-row load states (9.99.1101-9.99.1108)
 
-**Partly landed on the branch, not on `main`.** When the branch merges, rewrite
-this subsection to describe what shipped and drop "IN PROGRESS". Plan, probe
-results and status: `PERFORMANCE.org` Step 36. Decisions and the mockup:
-`org/relationships.org`'s 2026-09-15 answer.
+**Shipped 2026-09-18.** Plan, probe results and the perf gate: `PERFORMANCE.org`
+Step 36. Decisions and the mockup: `org/relationships.org`'s 2026-09-15 answer.
 
-On the branch so far. Neither relaxes a guard listed above:
+What shipped. None of it relaxes a guard listed above:
 
 - **A failure is its own outcome.** `_relFetchWs2()` resolves
   `{outcome: 'ok'|'error', data, detail}`, retries through `_ws2GetJson()`
@@ -1694,7 +1692,15 @@ On the branch so far. Neither relaxes a guard listed above:
   `_relCellLoadState()`, so a count and the rows its entry filters to cannot
   disagree. Offered on a collapsed column too.
 
-Still to come before merge: only the perf gate (PERFORMANCE.org Step 36).
+**The perf gate passed before the merge, and its question was narrow**: a
+collapsed column now paints a CSS glyph into every pending cell, and Step 35 had
+measured a collapsed column as free. It still is — every `collapsed` ratio sits
+inside the noise its own metric shows on the `absent` arm, where both trees run
+identical code (2026-09-15, `vzell-lap`, four arms in one session, median of 5).
+What it does NOT cover: these are filter, sort and dropdown latencies, so no
+claim is made about scrolling or first paint. The `expanded` arm never ran — the
+harness's own icon-floor guard aborted it on `main` too, over an unrelated
+9.99.1086 defect (`PERFORMANCE.org` Step 36, DEBUG-NOTES 2026-09-16).
 
 The traps. Every one of them fails silently:
 
