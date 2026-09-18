@@ -33,18 +33,21 @@
             ]
         },
         {
-            "id": "more-flags-everywhere",
-            "file": "MusicBrainz_More_Flags_Everywhere.user.js",
+            "id": "right-side-flags-everywhere",
+            "file": "MusicBrainz_Right_Side_Flags_Everywhere.user.js",
             "author": "Lotheric",
-            "version": "2026-09-05.2048",
-            "when": "now",
+            "version": "2026-09-16.1151",
+            "when": "init",
             "touches": [
-                "Installs a MutationObserver on document.body ({childList:true, subtree:true}, ~50ms debounce) that scans every newly-added DOM node for any 'a[href*=\"/area/\"]' link.",
-                "Inserts a small <span class=\"flag-custom-region\"><img></span> flag icon immediately before each matched area link it hasn't already marked (dataset.flagProcessed guard) — applies inside area/place columns and credited-area chains in ShowAllEntityData's own rendered tables too.",
-                "Also processes <h1> entity headers the same way, adding a flag icon there.",
-                "Because it re-scans on every DOM mutation, expect it to re-decorate ShowAllEntityData's tables again after every filter/sort re-render (cloneNode(true) rebuild), not just the initial one.",
-                "Non-visual: fetches flag images from commons.wikimedia.org/upload.wikimedia.org via GM_xmlhttpRequest.",
-                "Non-visual: caches fetched flag images in IndexedDB, and clears any old localStorage flag cache on startup."
+                "Replaces MusicBrainz's native CSS-sprite country flags with Wikimedia SVG <img> elements placed on the RIGHT of the text. processFlags() selects '.flag:not([data-hq-processed]):not([data-hq-skip])' — ANY tag, so it matches ShowAllEntityData's own '<li class=\"flag flag-XX\">' (Release events) and '<span class=\"flag flag-XX\">' (Release country) cells, not just native markup.",
+                "Two DIFFERENT shapes, and which one you get depends on whether the .flag element contains an 'a[href*=\"/area/\"]'. WITH a link (native Country/Date, and any area chain): the flag is only neutralized and the img goes into a new 'span.mfe-flag-wrapper' around the anchor. WITHOUT a link (ShowAllEntityData's injected Release events/Release country cells): 'el.appendChild(img)' puts 'img.mb-hq-flag-img' INSIDE the .flag element itself, after its text. Only the first shape is excluded by openUniqDrop()'s iconSel ':not(:has(span.mfe-flag-wrapper))' guard.",
+                "Neutralizes the element it processes with inline '!important' styles (background-image:none, padding-left:0, background-position/size/repeat) and stamps 'data-hq-processed=\"true\"' + 'data-hq-code=\"XX\"'. The injected img carries class 'mb-hq-flag-img', 'data-hq-flag=\"XX\"', alt=\"\" and aria-hidden — so it contributes NO text and cannot affect filter/sort text.",
+                "Injects a '<style id=\"mfe-loading-style\">' whose first rule is '.flag:not([data-hq-processed]):not([data-hq-skip]) { background-image: none !important; }'. An author '!important' rule beats a normal inline declaration, so it blanks ANY .flag-classed node that lacks those two attributes — including a clone ShowAllEntityData bakes into its 📊 dropdown, which the observer below then decorates with a second flag.",
+                "insertFlags() separately scans 'a[href*=\"/area/\"]' and '<h1>' headings, wrapping the anchor in 'span.mfe-flag-wrapper' and adding 'class=\"arealink\"' plus 'data-mb-flag' — the shape _findAreaLinkIcon()/AREA_ICON_WRAPPER_SEL already recognize.",
+                "Installs a MutationObserver on document.documentElement ({childList:true, subtree:true}, 100 ms debounce) running processFlags + insertFlags + cleanupOrphanedFlags — so it re-decorates after EVERY ShowAllEntityData re-render (each filter keystroke, each sort, each cloneNode(true) rebuild), and also decorates DOM ShowAllEntityData appends to document.body such as the unique-values dropdown panel.",
+                "Non-visual: fetches flag SVGs from commons.wikimedia.org / upload.wikimedia.org via GM_xmlhttpRequest.",
+                "Non-visual: caches flag data in an IndexedDB database 'MusicBrainzRightSideFlags', and clears any legacy 'mb_hq_flag_cache_*' localStorage keys at startup.",
+                "Non-visual: exposes window.MBHQ_processFlags. Harness-compatible — classic GM_* only (no GM.* dot syntax) and no top-level await."
             ]
         },
         {
@@ -66,8 +69,8 @@
     ],
     "combinations": {
         "jesus2099-only": ["jesus2099-inline-stuff", "jesus2099-supermind"],
-        "more-flags-only": ["more-flags-everywhere"],
+        "right-side-flags-only": ["right-side-flags-everywhere"],
         "sanojjonas-only": ["sanojjonas-visualise"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "more-flags-everywhere", "sanojjonas-visualise"]
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise"]
     }
 }
