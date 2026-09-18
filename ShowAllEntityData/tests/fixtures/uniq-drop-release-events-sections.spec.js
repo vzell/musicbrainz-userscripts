@@ -384,3 +384,72 @@ test('a "Release events - Country" entry reads like an area-name entry: generic 
     expect(shape.leadingHasFlag, 'the flag is NOT in the leading slot').toBe(false);
     expect(shape.trailingHasFlag, 'the flag follows the label').toBe(true);
 });
+
+test('"Country details - Name" entries carry the flag too, not just "- Code"', async ({ page }) => {
+    await setup(page);
+    await page.evaluate(() => {
+        const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+            .find((t) => t.dataset.colName === 'Release country');
+        th.querySelector('.mb-col-uniq-wrap').click();
+    });
+    await page.waitForSelector('#mb-col-uniq-dropdown');
+
+    // A "Country" cell renders both halves of ONE value — "United States (US)" —
+    // so both sections describe the same flagged entity. Only the code half ever
+    // got a flag: `countryCodeFlagMap` existed and was passed to
+    // makeValueSynItem(), and there was simply no name-keyed equivalent.
+    const byKind = await page.evaluate(() => {
+        const drop = document.getElementById('mb-col-uniq-dropdown');
+        const out = { name: [], code: [] };
+        Array.from(drop.querySelectorAll('.mb-col-uniq-item')).forEach((item) => {
+            const label = item.dataset.mbUniqSynLabel
+                || item.querySelector('.mb-uniq-syn-label-text')?.textContent || '';
+            const m = /^» country (name|code): (.+)$/.exec(label);
+            if (!m) return;
+            out[m[1]].push({ value: m[2], flags: item.querySelectorAll('[class*="flag-"]').length });
+        });
+        return out;
+    });
+
+    expect(byKind.code.length, 'the Code section has entries').toBeGreaterThan(0);
+    expect(byKind.name.length, 'the Name section has entries').toBeGreaterThan(0);
+    for (const e of byKind.code) {
+        expect(e.flags, `code "${e.value}" has a flag`).toBeGreaterThan(0);
+    }
+    for (const e of byKind.name) {
+        expect(e.flags, `name "${e.value}" has a flag`).toBeGreaterThan(0);
+    }
+});
+
+test('the date-spacing rule matches MusicBrainz\'s OWN native Country/Date markup', async ({ page }) => {
+    await setup(page);
+
+    // The injected column's own spacing is asserted above, but the same defect
+    // exists on every NATIVE "Country/Date" column — markup this script does not
+    // build. Rather than assume one stylesheet rule covers both, this pins the
+    // selector against MusicBrainz's exact bytes, copied verbatim from
+    // debug/flag-spacing.html (an artist-releases page), injected into a rendered
+    // table so the real rule in the real stylesheet is what resolves.
+    const margins = await page.evaluate(() => {
+        const NATIVE = '<div class="release-events-container"><ul aria-label="Release events" '
+            + 'class="release-events abbreviated"><li aria-label="Release event" '
+            + 'class="release-event"><span class="flag flag-US release-country">'
+            + '<a href="/area/489ce91b-6658-3307-9877-795b68554c98">'
+            + '<abbr title="United States">US</abbr></a></span>'
+            + '<span class="release-date">1986-05</span></li>'
+            // …and the countryless shape MusicBrainz renders beside it.
+            + '<li aria-label="Release event" class="release-event">'
+            + '<span class="release-country no-country" title="Missing country">-</span>'
+            + '<span class="release-date">2016</span></li></ul></div>';
+        const host = document.querySelector('table.tbl tbody td');
+        host.insertAdjacentHTML('beforeend', NATIVE);
+        const dates = host.querySelectorAll('li.release-event > span.release-date');
+        return {
+            withCountry: parseFloat(getComputedStyle(dates[0]).marginLeft),
+            noCountry: parseFloat(getComputedStyle(dates[1]).marginLeft),
+        };
+    });
+
+    expect(margins.withCountry, 'native date is spaced off its country').toBeGreaterThan(0);
+    expect(margins.noCountry, 'native countryless date is not indented').toBe(0);
+});

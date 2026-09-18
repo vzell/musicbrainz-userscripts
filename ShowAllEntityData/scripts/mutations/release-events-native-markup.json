@@ -151,7 +151,7 @@
     "why": "Restores `marker.className = glyphClass` for the country kinds, putting the real flag back where the generic glyph belongs. The same decision was made once already for 'name' entries — which used to render '[flag] » area name: Spain' and now render '[glyph] » area name: Spain [flag]' — and the country kinds were never brought along, so one panel showed both conventions at once. Fails on 'leading slot keeps a generic glyph' rather than on 'the flag is NOT in the leading slot' — the marker becomes `flag flag-US`, so the missing generic glyph is what trips first. Both assertions cover the same relocation.",
     "edits": [
       {
-        "find": "                marker.className = (kind === 'revcountry' || kind === 'countrycode')\n                    ? 'arealink' : glyphClass;",
+        "find": "                marker.className = (kind === 'revcountry' || kind === 'countrycode'\n                                    || kind === 'countryname')\n                    ? 'arealink' : glyphClass;",
         "replace": "                marker.className = glyphClass;"
       }
     ],
@@ -164,7 +164,7 @@
     "why": "The other half: without `_trailingFlagClass` the country entries render a generic glyph and no flag at all, rather than moving it. Pins that the flag was RELOCATED and not merely removed from the leading slot — a mutation on the marker alone cannot tell those two outcomes apart.",
     "edits": [
       {
-        "find": "                    (kind === 'revcountry' || kind === 'countrycode') ? glyphClass : null;",
+        "find": "                    (kind === 'revcountry' || kind === 'countrycode' || kind === 'countryname')\n                        ? glyphClass : null;",
         "replace": "                    null;"
       }
     ],
@@ -209,6 +209,32 @@
     ],
     "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
     "grep": "separated, in the cell AND the dropdown",
+    "expect": "fail"
+  },
+  {
+    "name": "country NAME entries get no flag map",
+    "why": "Stops populating countryNameFlagMap. A \"Country\" cell renders both halves of one value — \"United States (US)\" — so both dropdown sections describe the same flagged entity, but only the code half ever had a map. Fails on the Name section while the Code section stays green, which is what shows the two are wired independently.",
+    "edits": [
+      {
+        "find": "                        if (!countryNameFlagMap.has(p.name)) countryNameFlagMap.set(p.name, p.flagClass ? `flag ${p.flagClass}` : null);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "carry the flag too",
+    "expect": "fail"
+  },
+  {
+    "name": "the native Country/Date markup loses its date spacing",
+    "why": "Narrows the stylesheet rule to this script's own injected cells, so MusicBrainz's native <li class=\"release-event\"> no longer matches. The defect was reported against artist-releases' own Country/Date column and the spec pins the selector against that page's exact bytes, so a rule covering only the injected column must fail.",
+    "edits": [
+      {
+        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {",
+        "replace": "            table.tbl td.mb-re-cell li.release-event > .release-country:not(.no-country) + .release-date {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "OWN native Country/Date markup",
     "expect": "fail"
   }
 ]

@@ -12854,3 +12854,41 @@ what fires.
 written with backticks, inside the `GM_addStyle` template literal. `node --check`
 reported `missing ) after argument list` 15 lines away. Third time recorded;
 the replacement comment says in-line why it uses none.
+
+### Follow-up 4: the snapshot that "showed the bug still there" predated the fix
+
+Reported as the date/flag spacing still being broken on `artist-releases`, with
+`debug/flag-spacing.html` as evidence. The snapshot does not contain the fix:
+`release-country:not(.no-country)` appears **0** times in it, so it was captured
+from the installed 9.99.1111 build rather than this branch. It also carries
+**0** `data-hq-processed` and **0** `mb-hq-flag-img`, i.e. no flag userscript was
+active either — those flags are MusicBrainz's own sprites.
+
+Worth keeping rather than discarding, because it is the first real capture of
+the NATIVE shape this fix has to cover, and it settled the open question
+directly: the selector is now asserted against that page's exact bytes, injected
+into a rendered table so the real stylesheet resolves them —
+`tests/fixtures/uniq-drop-release-events-sections.spec.js`, "the date-spacing
+rule matches MusicBrainz's OWN native Country/Date markup". It passes, and a
+mutation narrowing the rule to `td.mb-re-cell` fails it. So the rule was already
+right; only the evidence was stale.
+
+**The lesson for the next report: check whether the snapshot contains the change
+before diagnosing.** One grep for a distinctive string from the fix answers it,
+and answering it first would have saved re-deriving a defect that was already
+fixed.
+
+### Follow-up 5: only half of a "Country" cell's value got a flag
+
+Same report, second half. A "Country" cell renders both halves of ONE value —
+`United States (US)` — and the dropdown lists them as two sections, "Country
+details - Name" and "- Code". Only the code half was decorated: `countryCodeFlagMap`
+existed, was populated from `_findCellCountryNameParts()`'s own `flagClass`, and
+was passed to `makeValueSynItem()`; there was simply no name-keyed equivalent,
+and the `'countryname'` kind was absent from the marker/trailing-flag lists.
+
+`countryNameFlagMap` now sits beside it, populated in the same pass and — the
+part that is easy to miss — **cached alongside it in `_setUniqDropDataCache()`**.
+Without that a cold dropdown would show the flags and a warm one would not,
+which is the sort of split that reads as a rendering race rather than a missing
+map.

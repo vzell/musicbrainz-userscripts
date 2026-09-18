@@ -55401,6 +55401,11 @@ a { color: #1565c0; }`;
         const countryNameValueCounts = _uniqCacheHit ? _uniqCacheHit.countryNameValueCounts : new Map();
         const countryCodeValueCounts = _uniqCacheHit ? _uniqCacheHit.countryCodeValueCounts : new Map();
         const countryCodeFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryCodeFlagMap     : new Map();
+        // Same, keyed by country NAME. A "Country" cell renders both halves
+        // of one value — "United States (US)" — so both its dropdown sections
+        // describe the same flagged entity and both should show the flag.
+        // Only the code half ever did.
+        const countryNameFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryNameFlagMap     : new Map();
         // Distinct "Tracks" cell per-medium track-count values (e.g. "6")
         // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
         // (isTracksCol below).
@@ -55828,6 +55833,7 @@ a { color: #1565c0; }`;
                         // Same "flag flag-XX" combined-string convention as
                         // revCountryFlagMap above.
                         if (!countryCodeFlagMap.has(p.code)) countryCodeFlagMap.set(p.code, p.flagClass ? `flag ${p.flagClass}` : null);
+                        if (!countryNameFlagMap.has(p.name)) countryNameFlagMap.set(p.name, p.flagClass ? `flag ${p.flagClass}` : null);
                     });
                     _rowCountryNameValues.forEach(t => countryNameValueCounts.set(t, (countryNameValueCounts.get(t) || 0) + 1));
                     _rowCountryCodeValues.forEach(t => countryCodeValueCounts.set(t, (countryCodeValueCounts.get(t) || 0) + 1));
@@ -57170,7 +57176,7 @@ a { color: #1565c0; }`;
                 recAttrValueCounts, workAttrIdValueCounts,
                 titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
-                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
+                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
@@ -57691,7 +57697,8 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode') && glyphClass) {
+            if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode'
+                 || kind === 'countryname') && glyphClass) {
                 // Fixed-width, centered slot so the label text right after
                 // it (starting with "» ") always starts at the same
                 // horizontal position across entries, regardless of which
@@ -57720,7 +57727,8 @@ a { color: #1565c0; }`;
                 // disagreed — "🇬🇧 » country: GB" beside "🌐 » area name:
                 // California 🏞" in the same panel.
                 const marker = document.createElement('span');
-                marker.className = (kind === 'revcountry' || kind === 'countrycode')
+                marker.className = (kind === 'revcountry' || kind === 'countrycode'
+                                    || kind === 'countryname')
                     ? 'arealink' : glyphClass;
                 _guardGlyphAgainstEmptySelectorHiding(marker);
                 markerSlot.appendChild(marker);
@@ -57810,7 +57818,8 @@ a { color: #1565c0; }`;
                 // cloning one. Same slot, same position, so every flag-bearing
                 // entry in the panel reads alike.
                 const _trailingFlagClass =
-                    (kind === 'revcountry' || kind === 'countrycode') ? glyphClass : null;
+                    (kind === 'revcountry' || kind === 'countrycode' || kind === 'countryname')
+                        ? glyphClass : null;
                 if ((kind === 'name' && flagNode) || _trailingFlagClass) {
                     // Real country flag, when this entry has one — rendered
                     // AFTER the name rather than replacing the generic glyph in
@@ -58233,7 +58242,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
-            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
@@ -58339,7 +58348,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
-            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
