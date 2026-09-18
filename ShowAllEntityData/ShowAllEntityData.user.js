@@ -36156,38 +36156,6 @@ a { color: #1565c0; }`;
             td.mb-re-cell a::after {
                 content: none !important;
             }
-            /* A release event renders "<country><flag><date>" with NOTHING
-               between the two spans — that is MusicBrainz's own markup, and
-               this script's injected column reproduces it. It reads fine while
-               the flag is a background sprite ON the country span, and badly
-               once a flag userscript puts a real <img> there: "Right Side Flags
-               Everywhere" gives its image margin-left 0.40em but margin-right
-               0.05em, correct on every surface where its flag ends the cell,
-               and this is the one where a date follows.
-               The gap goes on the DATE, not the image: that script sets its
-               margins inline WITH !important, which no stylesheet rule can
-               outrank. Skipping .no-country keeps a date with no country
-               flush left instead of indenting it. The panel needs its own
-               fix -- see spaceAfter in _buildFlagSegmentsForRoot() -- because
-               it rebuilds an entry from segments and never clones this
-               element.
-               !important because this is markup this script does NOT own,
-               sitting in a cell shared with musicbrainz.org's own stylesheet
-               and any number of third-party ones (jesus2099's SUPER-MIND
-               injects global table.tbl CSS, for one). The rule resolves to
-               4.2px on the live page at its 12px root font, confirmed from
-               the console, so neither the selector nor the cascade was ever
-               the problem: 0.35em was simply too subtle beside the flag.
-               0.4em is not a taste call either — it is exactly the margin-left
-               that flag userscript gives its own image, so the flag ends up
-               evenly spaced between the country code and the date instead of
-               hugging one side.
-               NOTE: no backticks in this comment, deliberately; it lives
-               inside a GM_addStyle template literal, where one would terminate
-               the string and break the whole script. */
-            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {
-                margin-left: 0.4em !important;
-            }
             td.mb-rel-cell a,
             td.mb-rel-cell img,
             td.mb-re-cell a,
@@ -62962,14 +62930,15 @@ a { color: #1565c0; }`;
         if (dateText || injectedColumn) {
             const dateSpan = doc.createElement('span');
             dateSpan.className = 'release-date';
-            // No separator baked into the text. The gap between the country
-            // and the date is supplied for EVERY release-event cell — this
-            // column's and MusicBrainz's own "Country/Date" — by the
-            // `.release-country:not(.no-country) + .release-date` rule in the
-            // stylesheet, and in the 📊 panel by `_buildFlagSegmentsForRoot()`'s
-            // `spaceAfter` flag. Keeping it out of the text is what lets one
-            // mechanism cover both, and keeps this builder producing markup
-            // byte-identical to MusicBrainz's.
+            // No separator baked into the text, and none added anywhere else
+            // either: this cell is left at MusicBrainz's OWN rendering, which
+            // puts nothing between the country and the date. Three attempts to
+            // add a gap in CSS were reverted — see DEBUG-NOTES 2026-09-18 — so
+            // the markup here stays byte-identical to MusicBrainz's.
+            // The 📊 panel is a different surface and DOES add one, via
+            // `_buildFlagSegmentsForRoot()`'s `spaceAfter`, because rebuilding
+            // an entry from segments otherwise reads "US2005-12-20" — worse
+            // than before this column was rewritten.
             if (dateText) dateSpan.textContent = dateText;
             li.appendChild(dateSpan);
         }

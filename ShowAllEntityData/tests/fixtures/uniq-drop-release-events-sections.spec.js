@@ -263,45 +263,26 @@ test('Release events: its dropdown entries carry flag icons', async ({ page }) =
     }
 });
 
-test('the country and the date are separated, in the cell AND the dropdown', async ({ page }) => {
+test('the dropdown separates a release-event flag from its date', async ({ page }) => {
     await setup(page);
 
-    // A release event is "<country><flag><date>" with NOTHING between the two
-    // spans — MusicBrainz's own markup, which this column now reproduces. It
-    // reads fine while the flag is a background sprite, and badly once a flag
-    // userscript puts a real <img> there: "Right Side Flags Everywhere" gives
-    // its image margin-left 0.40em but margin-right 0.05em, correct wherever
-    // its flag ends the cell, and this is the one place a date follows it.
+    // CELL spacing is deliberately NOT asserted, and deliberately not attempted:
+    // musicbrainz.org renders "<country><flag><date>" with nothing between the
+    // two spans, and this column reproduces that markup exactly. Three CSS
+    // attempts to add a gap there were reverted — see DEBUG-NOTES 2026-09-18 —
+    // and the column is left at its natural rendering.
     //
-    // TWO mechanisms, because neither reaches both surfaces, and that is the
-    // point of asserting both here:
-    //   cell     a stylesheet rule on `.release-date` — NOT on the image, whose
-    //            margins that userscript sets inline with !important, which no
-    //            stylesheet rule can outrank
-    //   dropdown `spaceAfter` in the segment builder — the panel rebuilds an
-    //            entry as [text][cloned icon][text] and never clones the
-    //            `.release-date` element at all, so CSS cannot reach it
-    const cell = await page.evaluate(() => {
-        const td = document.querySelector('td.mb-re-cell[data-mbid="11111111-1111-1111-1111-111111111111"]');
-        const date = td.querySelector('span.release-date');
-        return {
-            text: date.textContent,
-            marginLeft: parseFloat(getComputedStyle(date).marginLeft),
-        };
-    });
-    // Deliberately NOT baked into the text: that would double up with the
-    // segment-level space in the panel, and would make this column's markup
-    // differ from MusicBrainz's own.
-    expect(cell.text, 'the date text is untouched').toBe('2005-12-20');
-    expect(cell.marginLeft, 'the date is spaced off the country').toBeGreaterThan(0);
-
-    // The dropdown half only reproduces with a flag userscript active, and
-    // that is not a detail of the fixture — it is the mechanism. With no
-    // image, the walker keeps "US" and the date in ONE text segment and
-    // `textParts.join(' ')` supplies the space by itself, so this assertion
-    // would pass with `spaceAfter` removed entirely. Mutation-testing caught
-    // exactly that. The image splits the run in two, and segments are
-    // concatenated with no separator.
+    // The DROPDOWN is a separate surface and a separate mechanism. It rebuilds
+    // an entry from `flagIconMap` segments as [text][cloned icon][text], and
+    // splitting the run at the flag loses the join that would otherwise have
+    // spaced the halves. Without `spaceAfter` the entry reads "US2005-12-20" —
+    // WORSE than before this branch, when the cell was one text node and
+    // `textParts.join(' ')` spaced it for free. So this one stays.
+    //
+    // Only reproduces with a flag userscript active: with no image the walker
+    // keeps both halves in ONE segment and the join supplies the space itself,
+    // which is what made an earlier version of this test pass with `spaceAfter`
+    // removed entirely.
     await injectThirdPartyScript(page, 'rsfe-flags', { when: 'now' });
     await expect.poll(
         () => page.locator('td.mb-re-cell img.mb-hq-flag-img').count(),
@@ -320,9 +301,8 @@ test('the country and the date are separated, in the cell AND the dropdown', asy
         const item = Array.from(drop.querySelectorAll('.mb-col-uniq-item'))
             .filter((el) => !el.querySelector('.mb-uniq-syn-label-text'))
             // No \b after US: without the separator the entry reads
-            // "US2005-12-20", and a word-boundary finder would fail to locate
-            // it at all — reporting "entry missing" for what is really a
-            // spacing defect.
+            // "US2005-12-20", and a word-boundary finder would report it
+            // missing rather than unspaced.
             .find((el) => /US/.test(el.textContent) && /2005-12-20/.test(el.textContent));
         return item ? item.textContent : null;
     });
@@ -330,20 +310,6 @@ test('the country and the date are separated, in the cell AND the dropdown', asy
     expect(entry, 'the US 2005-12-20 entry exists').toBeTruthy();
     expect(entry, 'the dropdown entry separates the flag from the date').toMatch(/\s2005-12-20/);
 });
-
-test('a date with no country is not indented', async ({ page }) => {
-    await setup(page);
-
-    // The counterpart, and the reason the stylesheet rule excludes
-    // `.no-country`: with no country the date is the cell's first visible
-    // thing, and spacing it off an EMPTY span would just indent it.
-    const marginLeft = await page.evaluate(() => {
-        const td = document.querySelector('td.mb-re-cell[data-mbid="33333333-3333-3333-3333-333333333333"]');
-        return parseFloat(getComputedStyle(td.querySelector('span.release-date')).marginLeft);
-    });
-    expect(marginLeft).toBe(0);
-});
-
 test('a "Release events - Country" entry reads like an area-name entry: generic glyph, label, THEN the flag', async ({ page }) => {
     await setup(page);
     await page.evaluate(() => {
@@ -421,35 +387,3 @@ test('"Country details - Name" entries carry the flag too, not just "- Code"', a
     }
 });
 
-test('the date-spacing rule matches MusicBrainz\'s OWN native Country/Date markup', async ({ page }) => {
-    await setup(page);
-
-    // The injected column's own spacing is asserted above, but the same defect
-    // exists on every NATIVE "Country/Date" column — markup this script does not
-    // build. Rather than assume one stylesheet rule covers both, this pins the
-    // selector against MusicBrainz's exact bytes, copied verbatim from
-    // debug/flag-spacing.html (an artist-releases page), injected into a rendered
-    // table so the real rule in the real stylesheet is what resolves.
-    const margins = await page.evaluate(() => {
-        const NATIVE = '<div class="release-events-container"><ul aria-label="Release events" '
-            + 'class="release-events abbreviated"><li aria-label="Release event" '
-            + 'class="release-event"><span class="flag flag-US release-country">'
-            + '<a href="/area/489ce91b-6658-3307-9877-795b68554c98">'
-            + '<abbr title="United States">US</abbr></a></span>'
-            + '<span class="release-date">1986-05</span></li>'
-            // …and the countryless shape MusicBrainz renders beside it.
-            + '<li aria-label="Release event" class="release-event">'
-            + '<span class="release-country no-country" title="Missing country">-</span>'
-            + '<span class="release-date">2016</span></li></ul></div>';
-        const host = document.querySelector('table.tbl tbody td');
-        host.insertAdjacentHTML('beforeend', NATIVE);
-        const dates = host.querySelectorAll('li.release-event > span.release-date');
-        return {
-            withCountry: parseFloat(getComputedStyle(dates[0]).marginLeft),
-            noCountry: parseFloat(getComputedStyle(dates[1]).marginLeft),
-        };
-    });
-
-    expect(margins.withCountry, 'native date is spaced off its country').toBeGreaterThan(0);
-    expect(margins.noCountry, 'native countryless date is not indented').toBe(0);
-});

@@ -12930,3 +12930,54 @@ lesson, not the CSS.**
 
 Both are the same habit. The snapshot-based check that WOULD have worked is a
 DOM-visible marker, never a stylesheet one.
+
+
+### Follow-up 7: the Country/Date cell gap was REVERTED — root cause found, fix abandoned
+
+Three CSS attempts, all reverted at the user's call. The column is left at
+MusicBrainz's own rendering, which puts nothing between the country and the
+date. Recorded because the root cause WAS found, and anyone tempted to try
+again should start from it rather than from the margin.
+
+**The root cause.** Two numbers from the live page, together, are the whole
+story:
+
+    computed margin-left: 4.8px      rendered gap: 0.59px
+
+Both true at once only if the date is laid out after `.release-country`'s box
+EDGE while the flag image overflows that box. musicbrainz.org's own `.flag`
+rule makes that span a fixed-width 16px inline-block holding a background
+sprite; "Right Side Flags Everywhere" zeroes its `background-image`, `padding`
+and `margin` — but NOT its `width` — so its ~21px image overflows, and any
+margin on the date lands inside the overflow. Reproduced at 0.66px against the
+live 0.59px, and releasing the width gave 5.39px.
+
+So `width: auto !important` on `.release-country:has(img)` did work in the lab.
+It was still reverted: the user reported it as not working on the real page, and
+after three rounds the honest read is that something further up that page's
+cascade is not reproducible here. Leaving a rule that is unverifiable in a
+fixture and unconfirmed in the browser is worse than leaving the column alone.
+
+**What was NOT reverted, and why.** `_buildFlagSegmentsForRoot()`'s `spaceAfter`
+stays. That is the 📊 panel, not the cell, and it is not cosmetic there: the
+panel rebuilds an entry as `[text][cloned icon][text]` with no separator between
+segments, so without it an entry reads "US2005-12-20" — WORSE than before this
+column was rewritten, when the cell was a single text node and
+`textParts.join(' ')` spaced it for free. Reverting it would introduce a
+regression rather than restore a baseline.
+
+**Four rounds of my own diagnosis were wrong, in the same way each time**, and
+that is the reusable part:
+
+| Claimed | Actually |
+|---|---|
+| the snapshot predates the fix (rule text absent) | these captures strip `<style>` entirely — a CSS rule's absence says nothing |
+| the live cascade must be overriding it | it was not; the rule computed 4.8px |
+| 18/18 mutations green | 17 OK, 1 UNEXPECTED — read off a `tail -3` |
+| the flag and date overlap (gap -20px) | the line had WRAPPED in a narrow test column |
+
+Every one came from measuring the wrong thing and reporting it with more
+confidence than the measurement carried. The check that finally worked was
+geometry on the live page — `getBoundingClientRect()` — asked for in one console
+expression. **For anything about visual spacing, measure rects, not computed
+styles, and measure them where the bug is.**

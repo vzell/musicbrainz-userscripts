@@ -1,24 +1,12 @@
 [
   {
-    "version": "WIP.6",
-    "date": "2026-09-18",
-    "sections": [
-      {
-        "label": "🐛 Fix",
-        "items": [
-          "In the 📊 unique-values dropdown, the \"Country details - Name\" entries showed no country flag while the \"Country details - Code\" entries right below them did — the same countries, listed twice, decorated once. A \"Country\" cell renders both halves of one value (\"United States (US)\"), so both sections now show the flag."
-        ]
-      }
-    ]
-  },
-  {
     "version": "WIP.5",
     "date": "2026-09-18",
     "sections": [
       {
         "label": "🐛 Fix",
         "items": [
-          "With a flag userscript installed (\"MusicBrainz: Right Side Flags Everywhere\"), a release event's date ran straight into the country flag — \"US<flag>1986-05\" — in the \"Country/Date\" column on every release listing, and in that column's 📊 unique-values dropdown. The flag image is positioned assuming nothing follows it, which is true everywhere except this one column, where the date does. There is now a gap on both."
+          "In the 📊 unique-values dropdown, the \"Country details - Name\" entries showed no country flag while the \"Country details - Code\" entries right below them did — the same countries, listed twice, decorated once. A \"Country\" cell renders both halves of one value (\"United States (US)\"), so both sections now show the flag."
         ]
       }
     ]

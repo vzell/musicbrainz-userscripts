@@ -173,34 +173,8 @@
     "expect": "fail"
   },
   {
-    "name": "the stylesheet no longer spaces the date off the country",
-    "why": "Removes the rule that separates a release event's date from its country. A flag userscript's image sets margin-right 0.05em INLINE with !important, which no stylesheet rule can outrank, so the gap has to go on .release-date instead — and without it the cell reads \"US<flag>2005-12-20\". Affects MusicBrainz's own Country/Date column as well as this injected one; both carry the same markup.",
-    "edits": [
-      {
-        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {\n                margin-left: 0.4em !important;\n            }\n",
-        "replace": ""
-      }
-    ],
-    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
-    "grep": "separated, in the cell AND the dropdown",
-    "expect": "fail"
-  },
-  {
-    "name": "the date spacing stops skipping a countryless event",
-    "why": "Drops the :not(.no-country) qualifier, so a date with no country is spaced off an EMPTY span and simply indented. Seen only by the not-indented test; the main spacing test stays green, which is why both exist.",
-    "edits": [
-      {
-        "find": ".release-country:not(.no-country) + .release-date {",
-        "replace": ".release-country + .release-date {"
-      }
-    ],
-    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
-    "grep": "no country is not indented",
-    "expect": "fail"
-  },
-  {
     "name": "dropdown segments lose the space after a release-country flag",
-    "why": "Clears spaceAfter. The panel rebuilds an entry as [text][cloned icon][text] with no separator between segments, so splitting the run at the flag loses the join that would have spaced the date — and the stylesheet cannot help, because the panel never clones the .release-date element. Scoped to a flag inside a .release-country precisely so an area chain, where the icon decorates the text that FOLLOWS it, keeps its flags tight against their names.",
+    "why": "Clears spaceAfter. The 📊 panel rebuilds an entry as [text][cloned icon][text] with no separator between segments, so splitting the run at the flag loses the join that would otherwise have spaced the date — the entry reads \"US2005-12-20\", WORSE than before this column was rewritten, when the cell was one text node and textParts.join(' ') spaced it for free. The CELL is deliberately left at MusicBrainz's own rendering (no gap); this is the panel only. Scoped to a flag inside a .release-country so an area chain, where the icon decorates the text that FOLLOWS it, keeps its flags tight.",
     "edits": [
       {
         "find": "                                    spaceAfter: !!node.closest('.release-country'),",
@@ -208,7 +182,7 @@
       }
     ],
     "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
-    "grep": "separated, in the cell AND the dropdown",
+    "grep": "dropdown separates a release-event flag",
     "expect": "fail"
   },
   {
@@ -222,19 +196,6 @@
     ],
     "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
     "grep": "carry the flag too",
-    "expect": "fail"
-  },
-  {
-    "name": "the native Country/Date markup loses its date spacing",
-    "why": "Narrows the stylesheet rule to this script's own injected cells, so MusicBrainz's native <li class=\"release-event\"> no longer matches. The defect was reported against artist-releases' own Country/Date column and the spec pins the selector against that page's exact bytes, so a rule covering only the injected column must fail.",
-    "edits": [
-      {
-        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {",
-        "replace": "            table.tbl td.mb-re-cell li.release-event > .release-country:not(.no-country) + .release-date {"
-      }
-    ],
-    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
-    "grep": "OWN native Country/Date markup",
     "expect": "fail"
   }
 ]
