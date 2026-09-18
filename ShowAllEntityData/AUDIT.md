@@ -488,7 +488,8 @@ into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
 passed, 0 failed. **Update 2026-09-18 (later):** `main` is at 9.99.1098 (§3.4 shipped) and merged
 into this branch (`bcb041e`); merged-`main` suite 285 passed, this branch 318
 passed, 0 failed. **Update 2026-09-18 (§3.8 shipped):** `main` is at 9.99.1099 and merged into this
-branch. §3.5 is audited and found sound; §3.6's flags are sound too, but that
+branch (merged-`main` suite 289 passed; this branch 322 passed — 114 + 107 + 101,
+0 failed). §3.5 is audited and found sound; §3.6's flags are sound too, but that
 check turned up a NEW defect in their ⚠️/❌ summary buttons (live-DOM counting,
 the trap the length-mismatch pair already avoids) — unfixed, unreproduced, and
 waiting on a page that has those flags (§10 L10). Every original §3 target is now
