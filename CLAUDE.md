@@ -59,10 +59,18 @@ At merge time (on `main`):
 4. Bump `// @version` to the highest assigned number.
 5. Set each folded entry's `date` to the SHIP date — the day the merge lands on
    `main` — not the day the WIP entry was written. It must match the
-   `+YYYY-MM-DD` stamp in `// @version`, which is what every existing entry
-   does. A branch that took three days to write still ships on one of them, and
-   `scripts/fold-wip-changelog.py` carries the WIP file's authoring date
-   through, so this is a real step and not an automatic one.
+   `+YYYY-MM-DD` stamp in `// @version`. A branch that took three days to write
+   still ships on one of them.
+   **`scripts/fold-wip-changelog.py` does this itself as of 2026-09-18**, and
+   its dry run lists every re-dating, so read that line rather than redoing the
+   work. It used to carry the authoring date through, with this step described
+   here as a hand correction — and a hand step that changes nothing visible is
+   exactly the kind that gets skipped. It was: whole folded batches carry the
+   day they were written, and three entries (9.99.1005, 9.99.955, 9.99.755) are
+   dated BEFORE the release below them. Those are left alone, because the
+   published dates are what release notes already show; they are allowlisted by
+   name in `scripts/audit-changelog.py`, which now fails on a NEW one, and on a
+   newest entry whose date disagrees with the header's stamp.
 6. Delete `<project>_CHANGELOG.wip.json`.
 7. Re-read `<project>_HELP.txt` against what actually shipped, and reconcile it.
    Not "did I remember to update HELP" — read the sections the change touches

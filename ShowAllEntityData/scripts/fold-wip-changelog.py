@@ -22,8 +22,22 @@ names, in order:
      reference is a hard error rather than a silent pass-through.
      A backtick-quoted token is a literal and is left alone — see
      `rewrite_refs()` for why that distinction is load-bearing.
-  3. Prepend the folded entries newest-first, keeping each one's own `date`
-     verbatim — a WIP entry is dated when it was written, not when it ships.
+  3. Prepend the folded entries newest-first, and set every entry's `date`
+     to the SHIP date — the day the merge lands on `main`, which is the same
+     stamp step 4 writes into `@version`. CLAUDE.md's "At merge time (on
+     `main`)" list is explicit: a branch that took three days to write still
+     ships on one of them.
+
+     This script used to keep each entry's authoring date instead, and
+     CLAUDE.md documented that as a hand step to do afterwards. It was
+     skipped, because a step that exists only in prose and changes nothing
+     visible is exactly the kind that gets skipped: whole folded batches are
+     dated when they were written (9.99.1005-1009 read 2026-09-04, though
+     the fold commit c2cf44a landed 2026-09-05). Where such a batch reaches
+     back past the release below it the file contradicts itself outright —
+     9.99.1005, 9.99.955 and 9.99.755 each carry a date older than the
+     version beneath them. Those three are the visible tip; the leak is
+     wider. Doing it here makes it automatic and reviewable in the dry run.
   4. Bump `// @version` in the userscript header to the highest assigned
      number, formatted `M.MM.NNN+YYYY-MM-DD`.
   5. Delete `ShowAllEntityData_CHANGELOG.wip.json`.
@@ -163,7 +177,8 @@ def main():
     parser.add_argument('--apply', action='store_true',
                         help='write the changes (default: preview only)')
     parser.add_argument('--date', default=None,
-                        help='date for the @version suffix (default: today)')
+                        help='ship date: the @version suffix AND every folded '
+                             'entry\'s date (default: today)')
     parser.add_argument('--project-dir', default=None,
                         help='project directory (default: the script\'s parent)')
     args = parser.parse_args()
@@ -208,16 +223,27 @@ def main():
     # Step 2 — rewrite cross-references, then stamp the real version.
     ref_log = []
     folded = []
+    redated = []
     for (num, entry), version in zip(ordered, assigned):
         # The entry's OWN `version` field is replaced outright, never counted
         # as a cross-reference — otherwise every entry inflates the tally by
         # one and the interesting number (references buried in prose) is lost
         # in the noise. Key order is preserved so the diff stays minimal.
+        # `date` is replaced outright like `version`, for the reason in step 3
+        # of the module docstring. Key order is preserved so the diff stays
+        # minimal, and a WIP entry that already carries the ship date — the
+        # common case when a branch is merged the day it was finished — is
+        # not reported as a change.
         rewritten = {
-            key: version if key == 'version' else rewrite_refs(val, mapping, ref_log)
+            key: version if key == 'version'
+            else stamp if key == 'date'
+            else rewrite_refs(val, mapping, ref_log)
             for key, val in entry.items()
         }
         rewritten.setdefault('version', version)
+        rewritten.setdefault('date', stamp)
+        if entry.get('date') != stamp:
+            redated.append((version, entry.get('date')))
         folded.append(rewritten)
 
     highest = assigned[-1]
@@ -232,6 +258,12 @@ def main():
             print(f'  {key} -> {version}')
     else:
         print('cross-references rewritten in entry text: none')
+    if redated:
+        print(f'entry dates set to the ship date {stamp}: {len(redated)}')
+        for version, authored in redated:
+            print(f'  {version}  {authored or "(missing)"} -> {stamp}')
+    else:
+        print(f'entry dates: all already the ship date {stamp}')
     print(f'{USERSCRIPT}:{line_no + 1}  @version {header_version} -> {highest}+{stamp}')
 
     if not args.apply:

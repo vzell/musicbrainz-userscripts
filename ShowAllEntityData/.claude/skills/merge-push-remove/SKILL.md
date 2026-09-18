@@ -59,13 +59,14 @@ python3 scripts/fold-wip-changelog.py --apply
 ```
 
 The dry run prints the whole plan — the `WIP.N` → version mapping, every
-cross-reference it will rewrite, and the `@version` bump. **Read it before
-passing `--apply`**, particularly the mapping's direction: `WIP.1` must come
-out as the LOWEST new version. It exits 0 with an explanatory message when
-there is no WIP file at all, so it is safe to run unconditionally.
+cross-reference it will rewrite, every entry it will re-date, and the
+`@version` bump. **Read it before passing `--apply`**, particularly the
+mapping's direction: `WIP.1` must come out as the LOWEST new version. It exits
+0 with an explanatory message when there is no WIP file at all, so it is safe
+to run unconditionally.
 
 The five steps it implements are CLAUDE.md's "At merge time (on `main`)"
-list; its module docstring explains each and why. The two that are easy to
+list; its module docstring explains each and why. The three that are easy to
 get wrong by hand, and the reason this is a script:
 
 - **Ordering.** The WIP file is stored newest-first (`WIP.10` at the top),
@@ -84,6 +85,14 @@ get wrong by hand, and the reason this is a script:
   it DOES contain is silently turned into a version, so a sentence about a
   placeholder becomes a false claim about a release.
 
+- **The ship date.** Every folded entry is re-dated to the day the merge
+  lands, matching the `+YYYY-MM-DD` the same run writes into `@version`. The
+  script has only done this since 2026-09-18; before that CLAUDE.md named it
+  as a hand step afterwards, and it was skipped often enough that three
+  shipped entries are dated before the release below them. Read the
+  `entry dates set to the ship date` line in the dry run; there is nothing
+  left to do by hand.
+
 Then sanity-check the result before committing:
 
 ```bash
@@ -92,9 +101,11 @@ head -20 ShowAllEntityData_CHANGELOG.json
 python3 scripts/audit-changelog.py     # must exit 0
 ```
 
-Not a `grep`. The audit checks six things at once — missing, non-numeric,
-duplicate and out-of-order versions, missing dates, and unrewritten `WIP.N`
-citations — and every one of them is a defect this file actually had. The
+Not a `grep`. The audit checks eight things at once — missing, non-numeric,
+duplicate and out-of-order versions, missing dates, a newest entry whose date
+disagrees with the header's `+YYYY-MM-DD` stamp, a date running backwards, and
+unrewritten `WIP.N` citations — and every one of them is a defect this file
+actually had. The
 last is why a regex is not enough: an entry explaining the placeholder
 mechanism quotes the tokens as backticked literals (9.99.1016 does), which
 are correct, and `` `"WIP.26"` `` sits inside a backtick span whose adjacent
@@ -110,14 +121,31 @@ to resync it, and this is the last chance to notice it didn't.
 
 ## 4. Verify on `main`
 
-Both, on the merged tree — not on the branch, where they were last green:
+All of these on the merged tree — not on the branch, where they were last green:
 
 ```bash
 node --check ShowAllEntityData.user.js
 npm test                  # chromium-fixtures, the CI-safe suite
+python3 scripts/audit-docs.py          # must exit 0
 ```
 
 Report the pass count. Do not push a red tree.
+
+`audit-docs.py` is the mechanical half of the merge-time re-read CLAUDE.md asks
+for ("re-read `PERFORMANCE.org` for what your change made FALSE"). It catches
+three things: a `DONE set is exactly Steps …` sentence that disagrees with the
+keywords, a step whose keyword reads DONE while its own body still says "Still
+TODO on `main`", and an "IN PROGRESS" section naming a branch that no longer
+exists. **It does not replace the read.** Most rot is semantic — a step whose
+bug description is simply no longer true — and only a human notices that. The
+merge of `rel-column-batch-and-cell-states` is the worked example: the script
+would have caught the two `IN PROGRESS` sections, and nothing but reading caught
+Step 25, which still described a bug that 9.99.1100 had fixed four commits
+earlier.
+
+Flip the keyword of any Step this merge lands, rewrite its status prose, and
+re-derive the DONE-set sentence — the script tells you if you got the last one
+wrong, which it has been wrong twice before, in both directions.
 
 ## 5. Commit the fold
 

@@ -415,7 +415,13 @@ much, and what the alternative would be.
   order-INDEPENDENT key and Step 4 cannot have one. None of that surfaces from
   flipping a keyword.
 - **Derive the "DONE set is exactly Steps …" sentence from the keywords, never
-  by hand.** It has drifted twice, in both directions.
+  by hand.** It has drifted twice, in both directions. `scripts/audit-docs.py`
+  derives it and fails on a mismatch, so run that rather than counting; it also
+  catches a step whose keyword reads DONE while its body still says "Still TODO
+  on `main`", and an "IN PROGRESS" section naming a branch that is gone. It is
+  the mechanical half of the re-read only — a step whose bug description is no
+  longer true reads perfectly well to a script (Step 25 did, for four commits
+  after 9.99.1100 fixed it).
 - **Record the machine and the wall-clock time. Every timing, every time.**
   `capture-interaction-perf.js` and `capture-snapshots.js` write a `machine`
   block (hostname, cores, node and Playwright versions, plus `uptimeHours` and

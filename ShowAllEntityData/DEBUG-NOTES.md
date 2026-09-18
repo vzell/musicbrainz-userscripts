@@ -12352,3 +12352,60 @@ is long enough — the same shape as the focus-prefix and fixed-sleep cases abov
 observe: the honest wait is the thing it actually asserts (the WS/2 request
 count staying put, or the row set settling), not a text transition. Recorded so
 the next reader does not re-diagnose it as flakiness with no mechanism.
+
+## 2026-09-18 — Two merge-time hand steps that were documented, skipped, and are now enforced (branch tooling/fold-ship-date-and-doc-audits)
+
+Found while merging `rel-column-batch-and-cell-states` (9.99.1101-9.99.1108),
+not by a failure — both defects are invisible unless someone goes looking.
+
+**1. The changelog ship date.** `CLAUDE.md`'s "At merge time (on `main`)" list
+said to set each folded entry's `date` to the day the merge lands, matching
+`@version`'s `+YYYY-MM-DD`, and noted that `fold-wip-changelog.py` carries the
+WIP file's AUTHORING date through — "so this is a real step and not an automatic
+one". The script's own docstring asserted the opposite policy in the same words:
+"a WIP entry is dated when it was written, not when it ships". Two documents,
+one file, opposite rules.
+
+The hand step lost. Evidence, from the shipped changelog:
+
+| Entry     | Dated      | Fold commit that introduced it | Really shipped |
+|-----------|------------|--------------------------------|----------------|
+| 9.99.1005 | 2026-09-04 | `c2cf44a`                      | 2026-09-05     |
+| 9.99.955  | 2026-08-24 | `066096e`                      | 2026-08-28     |
+| 9.99.755  | 2026-08-01 | `a6738b4`                      | 2026-08-05     |
+
+Those three are only the entries where the leak crosses a release boundary and
+the file contradicts itself — a newer version dated BEFORE the one below it.
+The leak is wider: 9.99.1005-1009 all read 2026-09-04 though the whole batch
+landed on the 05th, and 9.99.952-958 read 08-24..26 against a fold on the 28th.
+
+Fixed at the source: the fold sets the ship date itself, reports every re-dating
+in the dry run, and `--date` now governs both the entries and the header. The
+three published dates are NOT corrected — release notes already show them, and
+repairing only the visible three would imply the rest had been cleaned up. They
+are allowlisted by name in `audit-changelog.py`, which now also fails on a new
+inversion and on a newest entry whose date disagrees with the header stamp.
+Mutation-checked: both new checks fail on a planted defect and the known
+inversions still pass.
+
+**2. "Re-read PERFORMANCE.org for what your change made FALSE."** Also
+documented, also skipped — by me, one merge earlier. 9.99.1100 fixed
+`_countLiveDateFlags()` to tally source rows (AUDIT.md §3.6), and Step 25 went
+on describing that as an open bug for four commits, through a merge whose own
+checklist says to look. Its cost half is genuinely still open, which is what
+makes this the easy kind to miss: the step legitimately stays TODO, so nothing
+about it looks stale.
+
+`scripts/audit-docs.py` now catches the three mechanical kinds — a DONE-set
+sentence disagreeing with the keywords (has drifted twice), a step whose keyword
+reads DONE while its body still says "Still TODO on `main`", and an "IN
+PROGRESS" section naming a branch that no longer exists. Verified against the
+pre-merge docs at `6420cc4`: it flags both real `IN PROGRESS` sections and
+nothing else. Its first draft also flagged `~release-tracks~`, a pageType six
+lines down an org table — the window is now the heading line plus one, because a
+check that cries wolf gets ignored.
+
+**What neither script can do.** Step 25's rot is semantic: the prose was
+well-formed, correctly cross-referenced, and simply not true any more. No parser
+sees that. The scripts remove the bookkeeping excuses so the re-read is about
+meaning; they are not the re-read.
