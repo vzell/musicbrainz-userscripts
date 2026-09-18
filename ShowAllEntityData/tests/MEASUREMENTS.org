@@ -906,11 +906,59 @@ decision, so re-measure before changing one.
 | MB WS2 =rid:= at 150       | accepted but SILENTLY capped by the endpoint's own =limit= | same probe — the failure mode that makes 100 a hard ceiling |
 | MB WS2 =rid:= at 200       | =HTTP 414 URI Too Long=                                    | same probe                                                  |
 | MB WS2 browse (=?artist==) | 746 requests for Bruce Springsteen                         | =recording-count: 74540=, paged at 100                      |
+| MB WS2 search + =inc=url-rels= | carries NO =relations= (0 of 5 releases)               | =scripts/probe-rel-batch-endpoints.py=, see below           |
+| MB WS2 browse + =inc=…-rels=   | =limit=100= honoured; =relations= identical to a lookup | same probe, 7 mappings, see below                           |
 
-The last row is why the millisecond-length feature uses the SEARCH endpoint and
-not browse: browse costs =ceil(the artist's whole catalogue / 100)= whether the
-page shows ten rows or ten thousand, and cannot serve instrument/isrc/search at
-all. Search costs =ceil(rendered rows / 100)=.
+The browse-with-=?artist== row is why the millisecond-length feature uses the
+SEARCH endpoint and not browse: browse costs =ceil(the artist's whole catalogue
+/ 100)= whether the page shows ten rows or ten thousand, and cannot serve
+instrument/isrc/search at all. Search costs =ceil(rendered rows / 100)=.
+
+** Relationships batch-source probe (PERFORMANCE.org Step 36), 2026-09-15
+
+Host =vzell-lap=, 19:30:08 -> 19:42:31 UTC, 190 requests. Pure WS/2, no
+userscript involved. Raw JSON: =debug/probe-rel-batch-endpoints-2026-09-15-vzell-lap.json=
+(gitignored). Re-run: =python3 scripts/probe-rel-batch-endpoints.py=.
+
+*Question 1 — can the ⏱ feature's search trick serve relationships?* No.
+=/ws/2/release?query=reid:(5 MBIDs)&inc=url-rels= returned all 5 releases, and
+none carried a =relations= key.
+
+*Question 2 — does browse return what a lookup returns?* For each mapping, browse
+page 1 (=limit=100=) was compared with individual lookups of 8 entities from that
+page (all 3 for recording-releases), always including the ones with the most
+relations, using exactly the =inc= set =_relIncOptionsForEntityType()= uses.
+Relations were compared as multisets of (type, type-id, target type, direction,
+target id, ended, begin, end, attributes).
+
+| pageType (=tableMode=)        | Entity browsed              | browse                   | inc                         | total | page | sampled | mismatches | verdict  |
+|-------------------------------+-----------------------------+--------------------------+-----------------------------+-------+------+---------+------------+----------|
+| artist-releases (single)      | Bruce Springsteen           | =release?artist==        | url-rels                    |  8126 |  100 |       8 |          0 | pass     |
+| artist-releasegroups (multi)  | Bruce Springsteen           | =release-group?artist==  | url-rels+release-group-rels |  2144 |  100 |       8 |          0 | pass     |
+| artist-works (single)         | Bruce Springsteen           | =work?artist==           | url-rels+artist-rels        |  1588 |  100 |       8 |          0 | pass     |
+| label-releases (single)       | Columbia                    | =release?label==         | url-rels                    | 42880 |  100 |       8 |          0 | pass     |
+| releasegroup-releases (multi) | Born to Run (release group) | =release?release-group== | url-rels                    |   104 |  100 |       8 |          0 | pass     |
+| recording-releases (multi)    | Born to Run (recording)     | =release?recording==     | url-rels                    |     3 |    3 |       3 |          0 | pass     |
+| area-labels (single)          | New Jersey                  | =label?area==            | url-rels+label-rels         |   394 |  100 |       8 |          0 | pass     |
+| area-releases (single/multi)  | New Jersey                  | =release?area==          | url-rels                    |     0 |    0 |       — |          — | *empty*  |
+| collections-releases          | —                           | =…?collection==          | per sub-entity              |     — |    — |       — |          — | untested |
+
+The heaviest entities sampled were release groups with 24-27 relations and labels
+with 11. No truncation showed up.
+
+What this means for the design:
+
+- *area-releases is not a browse candidate.* Browsing releases by New Jersey
+  returned 0, while =/area/<NJ>/releases= lists releases related to the area by
+  relationship — a different set. Not declared.
+- *collections-releases stays undeclared until probed.* Discovery via
+  =/ws/2/collection?editor=vzell= found no public release or release-group
+  collection with at least 5 entities.
+- *The Web Service was shedding load throughout*: most requests needed 3-5
+  attempts at 1.1 s spacing plus a widening backoff, which is why 190 requests
+  took 12 minutes. That is the condition the column's retry and ⚠︎ state have to
+  survive — and one browse page that needs five attempts still beats 100 lookups
+  that each might.
 
 * Waits that do not fire, and how long they do not fire for
 
@@ -951,6 +999,18 @@ in isolation (3.2-4.0 s against a 30 s budget), on both =main= and a feature
 branch. Unlike the =pending-edits-filter= five, an idle machine does not make it
 go away — it just makes it rarer. Re-run the file alone before believing it
 caught anything; if it starts reproducing, that is new information worth a look.
+
+*Known intermittent, seen once under parallel load*:
+=rel-column-collapse-toggle.spec.js='s "multi-table: the threshold is decided per
+sub-table, and collapsing survives a filter" failed its final assertion in a
+35-test parallel run on =vzell-lap= (2026-09-15, evening UTC, branch
+=rel-column-batch-and-cell-states=). The page was still showing the filtered
+state 1500 ms after the filter was cleared. It passed 3/3 standalone with
+=--workers=1=. Its fixed =waitForTimeout(1500)= is the likely cause, but it was
+not run against =main=, so a branch contribution is unexcluded rather than
+disproved. Full account in =DEBUG-NOTES.md= (2026-09-15). Polling the
+re-rendered row count, as =rel-column-fetch-failure.spec.js= does, would remove
+the fixed wait.
 
 That outage is what prompted =capture-interaction-perf.js='s per-sample retry,
 and it exposed a documentation error worth keeping visible: =loadFromDiskFixture()=
@@ -1399,6 +1459,115 @@ moved =headerCountsInitial= *7875 ms -> 1603 ms*. The fix was to charge every
 rel arm the same idle; the discarded run's JSONs were deleted rather than
 committed, since their ratios are artefacts of the harness and not of the
 feature.
+
+* Interaction latency — =artist-releases-dylan=, ~main~ vs ~rel-column-batch-and-cell-states~ (2026-09-15)
+
+PERFORMANCE.org Step 36's perf gate. The question it exists to answer is narrow:
+*Step 35 measured a collapsed column as free (0.96-1.04x of absent); does that
+survive the branch, where every pending cell of a collapsed column now paints a
+CSS =::before= glyph?* Four arms, interleaved, one host, one session.
+
+| pageType              | tableMode | page title | URL                                                        |
+|-----------------------+-----------+------------+------------------------------------------------------------|
+| artist-releases-dylan | single    | Bob Dylan  | /artist/72c536dc-7137-4477-a521-567eeb840fa8/releases?va=0 |
+
+2301 rows x 21 columns, the committed disk fixture, median of 5, fresh page per
+sample. =node tests/support/capture-interaction-perf.js
+--pageType=artist-releases-dylan --rel-arm=<arm> --label=<label>=.
+
+*Both trees report =scriptVersion= 9.99.1092*, and that is correct rather than a
+mix-up: version bumps live on ~main~ only, so a feature branch carries ~main~'s
+last version until it merges. The arms are told apart by the JSON's own
+=branch=/=gitBranch= fields, not by the version in the filename — ~main~ ran
+from a detached worktree at =d5bba41=, the branch from =dd52c6a=.
+
+** Results
+
+All times in ms. Times are UTC and mark when the run STARTED.
+
+| Date       | Time (UTC) | Host        | Code   | Arm         | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+-------------+--------+-------------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-09-15 |      22:38 | =vzell-lap= | main   | =absent=    |   2061 |   2000 | 4367 |     92179 |       893 |     1338 |        6459 |
+| 2026-09-15 |      22:59 | =vzell-lap= | branch | =absent=    |   2058 |   2349 | 4658 |     95646 |      1001 |     1335 |        6620 |
+| 2026-09-15 |      23:19 | =vzell-lap= | main   | =collapsed= |   1884 |   2376 | 4367 |     96674 |       985 |     1347 |        6474 |
+| 2026-09-15 |      23:41 | =vzell-lap= | branch | =collapsed= |   2152 |   2105 | 4487 |     97919 |      1019 |     1338 |        6656 |
+
+Host conditions moved only as far as the session itself: =uptimeHours=
+4.6/5.0/5.3/5.7 across the four arms, =claudeResident= =count: 1= throughout,
+=relSettleMs= 8001-8003 on every arm (the cap holds now — see the 2026-09-11
+section, where the seeded arm overran it at 6479 against a 3000 cap).
+
+These absolutes are ~2x the 2026-09-11 ones on =NB-3641= (4 cores here against
+28). Per CLAUDE.md, only within-session ratios are quoted from either.
+
+** The null arm is the noise floor, and it is large
+
+=absent= disables the column outright, so ~main~ and the branch execute the
+same code on that arm. *Every difference in the =branch/main absent= column
+below is therefore measurement noise, by construction* — nothing else can
+produce it. Read the collapsed column against it, not against 1.00x.
+
+| Metric                | branch/main =absent= (noise) | branch/main =collapsed= | main coll/abs | branch coll/abs |
+|-----------------------+------------------------------+-------------------------+---------------+-----------------|
+| =globalFilter=        |                        1.00x |                   1.14x |         0.91x |           1.05x |
+| =columnFilter=        |                        1.17x |                   0.89x |         1.19x |           0.90x |
+| =sort=                |                        1.07x |                   1.03x |         1.00x |           0.96x |
+| =uniqDropCold=        |                        1.04x |                   1.01x |         1.05x |           1.02x |
+| =uniqDropWarm=        |                        1.12x |                   1.04x |         1.10x |           1.02x |
+| =headerCountsInitial= |                        1.00x |                   0.99x |         1.01x |           1.00x |
+| =headerCountsRestore= |                        1.02x |                   1.03x |         1.00x |           1.01x |
+
+*Verdict: no measurable cost.* Every =branch/main collapsed= figure sits inside
+the noise the null arm shows for the same metric, and three of them sit BELOW
+1.00x. The two header-count metrics are the tightest instruments here — 1.00x
+and 1.02x on the null arm — and they read 0.99x and 1.03x on the collapsed
+column. The filter metrics are the loosest: =columnFilter= disagrees by 17% with
+itself on identical code, and its collapsed reading (0.89x) is the branch
+looking FASTER by more than the glyph could plausibly cost either way.
+
+*Step 35's "a collapsed column is free" also re-confirms on this host*, from the
+two =coll/abs= columns: 0.91-1.19x on ~main~ and 0.90-1.05x on the branch,
+against Step 35's 0.96-1.04x on a quieter machine. The spread is wider because
+the host is noisier, not because the column got dearer.
+
+*What this does NOT measure*: a glyph is painted per PENDING cell, and a cell
+only pauses to paint one when it is in view. The arms measure filter, sort and
+dropdown latency on a 2301-row table, not scroll or first-paint. Nothing here
+claims a scroll cost of zero; it claims the seven measured interactions do not
+move.
+
+** The =expanded= arm did not run, and the reason is not this branch
+
+Both =expanded= arms (~main~ and branch) aborted in =loadPage()=, three attempts
+each, on the harness's own guard:
+
+: seeded rel arm rendered only 0 icons against 2329 url-rels in the seed (floor 1164)
+
+That guard exists precisely so an under-populated column cannot be published as
+a second copy of =--rel-arm=collapsed= reading "the feature costs nothing" — it
+did its job. *It reproduces on ~main~ at 9.99.1092, so it is not a branch
+regression*; the same arm rendered 2090 icons at 9.99.1073 on =NB-3641=
+(2026-09-11 section above).
+
+*Bisected the same day* with =scripts/diagnose-rel-expanded-arm.js= (=vzell-lap=,
+same disk fixture and pre-seeded cache, so the column needs no network). The
+defect is =442dd8c=, released as *9.99.1086*: it gated the disk-load path's
+=initRelationshipsColumn()= on =_relPageHasColumn()=, i.e. on a =td.mb-rel-cell=
+already existing — while =_ensureRelCell()=, inside that very function, is what
+creates those cells for a snapshot that never carried the column.
+
+| Userscript                   | icons | rel cells | =<th>= | =<td>= | =relInitRuns= | WS/2 |
+|------------------------------+-------+-----------+--------+--------+---------------+------|
+| =60eab35= (parent)           |  2090 |      2301 |     22 |     22 |             1 |    0 |
+| =442dd8c= (the change)       |     0 |         0 |     22 |     21 |             0 |    0 |
+| =d5bba41= = ~main~ 9.99.1092 |     0 |         0 |     22 |     21 |             0 |    0 |
+
+Note the =<td>= column: the header is injected from =activeInjectedColumns=
+regardless, so a restored table is *misaligned by one column*, not just missing
+icons. The seed is fine in every run (2301 records, =release:<mbid>= keys, table
+stamped =mbRelEntityType: release=) and no run issues a single WS/2 request —
+the column simply never starts. Full root cause, blast radius and the coverage
+gap: DEBUG-NOTES.md 2026-09-16.
 
 * Master-row lookup vs. a keyed map — the inline-art sentinel fix (2026-09-17)
 

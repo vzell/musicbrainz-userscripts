@@ -177,6 +177,123 @@ https://musicbrainz.org/report/DiscogsLinksWithMultipleReleaseGroups - column "R
 
 Also check potential other pageTypes which are missing the "Relationships" column
 
+* DONE menue problem
+** i
+
+On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd when clicking the "Recording date" column on
+medium 2, the column header unique value pull down opens in the direction to the end of the page but gets truncated, as
+the number of rows in the sub-table itself is lower then the entries in the menu
+See screenshot 
+
+** still bug
+
+It's a different URL now https://musicbrainz.org/release/f50fcf09-4339-4e1c-91cd-e1d2a7b3a7bc, sub-table for medium 3 "3-CD"
+
+Screenshots:
+#+begin_example
+[Image #9] - unique value drop down of column "Recording date" - dropdown clipping, menu direction with scrollbar to the bottom of the page ("Event-Date" behaves the same, all other "Event-<string> also but without clipping)
+[Image #10] - unique value drop down of column "Title" - NO dropdown clipping, menu direction to the bottom of the page, but located at the top of the visible page (other columns like "#", "Length", "Recording length", "Recording of work" behave the same)
+[Image #11] - unique value drop down of column "Disambiguation" - NO dropdown clipping, menu direction to the bottom of the page, located right at the drop down glyph
+#+end_example
+
+** debug
+
+#+begin_example
+16:44:44.513 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:44:44.513 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:45:05.588 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:05.589 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 6 values 
+16:45:11.303 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=146 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:11.303 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 2 values 
+16:45:13.639 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:13.639 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+16:45:20.867 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=900 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:20.867 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 13 values 
+16:45:22.579 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:22.580 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+16:45:29.982 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=610 maxDropH=958 dir=up effectiveMaxH=862.03125 top=6 
+16:45:29.983 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+16:45:39.892 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:39.893 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25: 1 values 
+16:45:41.588 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:41.590 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26: 6 values 
+16:45:43.590 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 27 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=364.03125 top=888 
+16:45:43.592 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 27: 0 values 
+#+end_example
+
+** again
+
+#+begin_example
+16:57:37.448 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:57:40.330 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:57:40.330 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 6 values 
+16:57:43.318 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=465 top=403 
+16:57:43.318 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+16:57:48.439 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=146 maxDropH=958 dir=down effectiveMaxH=146 top=888 
+16:57:48.441 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 2 values 
+16:57:50.332 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=465 maxDropH=958 dir=up effectiveMaxH=465 top=403 
+16:57:50.333 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+16:58:05.606 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:58:05.607 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+16:58:16.356 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=610 maxDropH=958 dir=up effectiveMaxH=610 top=258 
+16:58:16.358 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+16:58:25.144 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=117 maxDropH=958 dir=down effectiveMaxH=120 top=888 
+16:58:25.145 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 25: 1 values 
+16:58:27.040 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=262 maxDropH=958 dir=down effectiveMaxH=262 top=888 
+16:58:27.041 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 26: 6 values 
+#+end_example
+
+** ok
+
+Seems to work now
+
+#+begin_example
+17:14:00.668 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 0 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:00.668 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 0: 13 values 
+17:14:11.976 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:11.977 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 1: 13 values 
+17:14:15.872 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=185 maxDropH=958 dir=down effectiveMaxH=185 top=888 
+17:14:15.878 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 2: 1 values 
+17:14:18.205 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 3 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=85 maxDropH=958 dir=down effectiveMaxH=120 top=888 
+17:14:18.208 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 3: 2 values 
+17:14:19.951 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=630 maxDropH=958 dir=up effectiveMaxH=630 top=238 
+17:14:19.959 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 4: 13 values 
+17:14:23.979 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=360 maxDropH=958 dir=down effectiveMaxH=360 top=888 
+17:14:23.981 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 5: 13 values 
+17:14:26.707 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 6 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=787 maxDropH=958 dir=up effectiveMaxH=787 top=81 
+17:14:26.710 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 6: 13 values 
+17:14:33.238 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=568 maxDropH=958 dir=up effectiveMaxH=568 top=300 
+17:14:33.239 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 6 values 
+17:14:36.795 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=764 maxDropH=958 dir=up effectiveMaxH=764 top=104 
+17:14:36.797 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 8: 6 values 
+17:14:42.074 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=657 maxDropH=958 dir=up effectiveMaxH=657 top=211 
+17:14:42.075 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 9: 6 values 
+17:14:44.769 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 10 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=410 maxDropH=958 dir=up effectiveMaxH=410 top=458 
+17:14:44.770 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 10: 6 values 
+17:15:11.739 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7 position: bRect.top=871 bRect.bottom=885 vh=1258 spaceAbove=865 spaceBelow=367 dropH=568 maxDropH=958 dir=up effectiveMaxH=568 top=300 
+17:15:11.740 [VZ-ShowAllEntityData: release-tracks] 🔍 Uniq-drop col 7: 6 values 
+#+end_example
+
+** leave the debugging for the unique value drop down menu 
+
+Leave the debugging for the unique value drop down menu in, but additionally add information about the real column and
+sub-table(multi-table)/table(singel-table) name where the click occured. Also make it configurable in the debug section
+with a default of "false"
+
+* DONE remove "Showing all recordings" from the pageType 'artist-recordings'
+
+remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-recordings' at the very end of the table at the final rendered page
+
+#+begin_example
+<p>Showing all recordings<!-- --> <!-- -->(<a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?standalone=1">Show only standalone recordings</a> / <a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?video=1">Show only videos</a>)</p>
+#+end_example
+
+Full raw HTML @debug/artist-recordings-standalone.html
+
+* TODO remove "Search YouTube"-button from the pageType 'release-tracks'
+
+remove "Search YouTube"-button from the pageType 'release-tracks'
+
 
 * TODO add acoustid support
 
@@ -211,19 +328,53 @@ Also check potential other pageTypes which are missing the "Relationships" colum
 #+end_example
 
 
-* TODO menue problem
+* AUDIT.md
+** i
 
-On https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd when clicking the "Recording date" column on
-medium 2, the column header unique value pull down opens in the direction to the end of the page but gets truncated, as
-the number of rows in the sub-table itself is lower then the entries in the menu
-See screenshot 
+Create an "AUDIT.md" file in the current directory with your current information about auditing which should be done
+about "Any other feature that populates cells asynchronously". We currently have filled context/token window too much. I
+want to "/clear" and later start fresh by pointing to the "AUDIT.md" file. Maybe that file also comes in handy later for
+other observations.
 
-* TODO remove "Showing all recordings" from the pageType 'artist-recordings'
+Also tell me the exact prompt I should ask when starting all over.
 
-remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-recordings' at the very end of the table at the final rendered page
+** Private list: nothing to fetch — the file is written and everything in it is already verified. The independent set is empty, so no tool calls this turn.
 
-#+begin_example
-<p>Showing all recordings<!-- --> <!-- -->(<a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?standalone=1">Show only standalone recordings</a> / <a href="/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings?video=1">Show only videos</a>)</p>
-#+end_example
+  AUDIT.md is at ShowAllEntityData/AUDIT.md, uncommitted (say the word and I'll commit it to the branch). It's written to be read cold, with no reliance on this conversation:
 
-Full raw HTML @debug/artist-recordings-standalone.html
+  - §1 the defect class and the two fixed instances (a861512, d551df6) as worked examples
+  - §2 the two caches, why _buildFilterKey() can't see content, and the regeneratable awk that produces the ten-vs-four asymmetry table
+  - §3 the targets in priority order — CAA/EAA inline artwork first, with the observation that no _invalidate* call exists anywhere in the artwork path, then ⏱ Length, Release events, area flags, Picard
+    (expected exempt), live-date flags, ICE cells
+  - §4 the _rowTextCache two-sentinel trap (undefined for cols, null for full)
+  - §5 method: reproduce before fixing, always include a baseline test, assert both caches, "a removed row is not an unmatched row", mutation-check and read which assertion failed
+  - §6 the harness facts that each cost a wasted run
+  - §7 exact branch/commit/suite state
+  - §8 parking lot, including the stale-grep audit of the five older mutation lists and the still-missing expanded perf arm
+
+  Your prompt to start fresh:
+
+  Read AUDIT.md and carry out the audit it describes, on branch
+  rel-column-batch-and-cell-states. Start with §3.1, CAA/EAA inline artwork —
+  it's the prime suspect: _artSetInlineSortKey() stamps the sentinel that the
+  📊 inline-art-yes/no structure modes match, asynchronously, and no cache
+  invalidation appears anywhere in that path.
+
+  Follow §5's method strictly: reproduce in a fixture spec BEFORE changing any
+  code, include a baseline test that does the same action without the suspected
+  trigger, assert both the 📊 entry count and the rendered row count, and
+  mutation-check every fix by reading which assertion failed. Use the harness
+  facts in §6 — especially foreground --shard runs, one at a time.
+
+  Do not merge anything into main; ask me first.
+
+  One thing worth saying plainly about scope: §3.1 is a genuine suspicion, not a confirmed bug. The artwork path having no invalidation call is suggestive, but the previous two bugs both needed a specific
+  trigger sequence that the obvious minimal one didn't reproduce — so the fresh session should be prepared for "audited, found sound" as a real outcome for any of these targets, and should record that in the
+  file rather than hunting until something breaks.
+
+** q
+
+what is the best strategy when bugs in this area show up and implementations are neccesary, should they be implemented
+as branches from main or from the current branch, given the fact that I still want to live test the current branch in a
+live browser for some time to maybe catch some more bugs.
+

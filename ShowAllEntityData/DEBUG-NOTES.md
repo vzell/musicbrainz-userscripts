@@ -11146,6 +11146,140 @@ from the real "wrote work" structure above). All three mutation-checked the
 same way as the 2026-09-14 entry's specs — observed failing before each
 respective fix, passing after.
 
+## 2026-09-15 — a WS/2 503 in the Relationships column read as "no relationships", permanently (fixed, branch rel-column-batch-and-cell-states)
+
+Not reported. Found while designing PERFORMANCE.org Step 36's per-row
+load-state glyphs, where a "none" glyph would have displayed the defect as
+fact.
+
+**Root cause, three parts that compounded.** `_relFetchWs2()` resolved `null`
+for any non-OK status and for a thrown fetch. `_populateCells(mbid, null)` is
+ALSO the "this entity has zero relationships" path, so it stamped `relDone` and
+left the cell empty. And the `null` promise stayed in `_relWs2Cache` for the
+rest of the session, so neither a later pass nor a collapse/expand ever asked
+again — only a 🔗⟳ retry, which evicts, recovered it. The millisecond-Length
+batch source had already fixed the identical defect for itself ("only a
+SUCCESSFUL answer is cached").
+
+**How often it bites.** The Step 36 endpoint probe (host `vzell-lap`,
+2026-09-15 19:30-19:42 UTC) needed 3-5 attempts for most requests. At the old
+single attempt, most of those would have become permanent empty "done" cells.
+
+**Fix.**
+
+- `_ws2GetJson()` extracted from `_msFetchOneBatch()` with identical behaviour
+  (3 attempts, 503 or thrown request retried, other statuses final). All five
+  `*ms-length*.spec.js` fixture specs pass on it.
+- `_relFetchWs2()` resolves `{outcome: 'ok'|'error', data, detail}`. A 404 is
+  `ok` with `null` data. An `error` is evicted from L1 as soon as it settles and
+  is never written to IndexedDB.
+- `_relMarkCellsFailed()` marks `data-rel-error` — never `relDone` — on the
+  live cells and the master rows.
+- A failed cell is skipped by `_relAnyPendingInExpandedTable()`, the impl's
+  candidate scan and `_relQueueStillWants()`. `_relToggleTable()`'s collapse and
+  `_relRetryMbids()` clear the marker; those two are the retry paths.
+- `_relAwaitRateSlot()`: one ≥1100 ms gate for every Relationships request,
+  retries included. It replaces the Phase-2 queue's unconditional sleep, so an
+  L1 hit no longer waits a second. The queue reserves the slot itself and
+  re-asks `_relQueueStillWants()` after the wait, which keeps Step 35's "a
+  superseded queue stops requesting" guarantee
+  (`rel-column-collapse-toggle.spec.js` still passes).
+- The completion toast and status tooltip report the failed count.
+
+**Regression spec** `tests/fixtures/rel-column-fetch-failure.spec.js`. Before
+the fix it failed at `a failed request must not be marked done` (received
+`[true]`).
+
+**Mutation-checked with a new runner**, `scripts/mutation-check.py` fed
+`scripts/mutations/rel-column-fetch-failure.json`: 8 planted defects, run
+unattended, userscript restored and hash-verified afterwards. All 6
+expected-fail mutations failed, each at its own assertion (gate exclusion,
+scan+stillWants exclusion, L1 eviction, collapse clearing the marker, retries,
+master mirror). Both expected-pass mutations passed: removing only the
+candidate-scan exclusion, or only `_relQueueStillWants()`'s, is invisible
+because each covers for the other. The spec pins them as a PAIR and says so in
+its header, rather than implying each is load-bearing.
+
+The first draft of the spec pinned "no retry storm" with a request count after
+a keystroke only. That would have stayed green under the removal of any one of
+the three exclusions, since the other two still prevented the request — the
+"proves something adjacent" trap. It now asserts `relInitRuns()` does not move
+(the gate) and forces a pass through a new `__saTest.relRunPass()` hook (the
+pair).
+
+**Observed, not attributed.** In one parallel 35-test run (this spec +
+`rel-column-collapse-toggle.spec.js` + the five ms-length specs, default
+workers, `vzell-lap`, evening of 2026-09-15 UTC), the collapse spec's
+"multi-table: the threshold is decided per sub-table, and collapsing survives a
+filter" failed its final assertion. `relTableStates()` returned only the
+still-filtered table — `[{expanded: false, pending: 1, uniqueMbids: 1}]` — so
+its fixed `waitForTimeout(1500)` after clearing the filter sampled the page
+before the re-render finished. It passed 3/3 standalone with `--workers=1`. The
+test issues no toggle and its single fetch had already landed, so it does not
+reach the changed code — but it was NOT run against `main`, so "pre-existing"
+is inferred, not established. The new multi-table failure test polls the
+re-render instead of sleeping.
+
+## 2026-09-15 — Relationships per-row load-state glyphs and click-to-load (branch rel-column-batch-and-cell-states)
+
+PERFORMANCE.org Step 36, part 2. Requested in `org/relationships.org` (items
+2-4): show per row whether it has been fetched, and let a click fetch only that
+row, even in a collapsed column. The user picked the link-outline glyph set and
+a hover ⟳ reload.
+
+**Built.** CSS-only glyphs (🔗︎ not loaded, ⋯ queued, ◌ loading, – none, ⚠︎
+failed, hover ⟳), keyed on `data-mbid`/`data-rel-done`/`:empty` and the table's
+`data-mb-rel-expanded`, plus two transient attributes, `data-rel-loading` and
+`data-rel-error`. `_relLoadRow()` loads one row; the icon writer, the failure
+marker and the master-cell lookup moved to module level (`_relWriteResult()`,
+`_relWriteFailure()`, `_relMasterCellsFor()`) so the bulk pass and a click share
+them. New setting `sa_rel_cell_state_glyphs` (default on). The spec
+`tests/fixtures/rel-cell-state-glyphs.spec.js` was written first: 8 of its 9
+original tests failed on the pre-change code (the ninth pins the off switch,
+which cannot fail on code without the feature).
+
+**Four things went differently from the plan, each worth keeping.**
+
+1. *The glyph CSS was first gated by a class on `<html>`.* The snapshot harness
+   (`tests/support/snapshot.js`) serializes the whole `documentElement`, so that
+   class would have become markup drift in every rendered baseline — including
+   pageTypes with no Relationships column at all, the exact drift CLAUDE.md's
+   Relationships section warns about. It is now a separate stylesheet,
+   `#mb-rel-cell-glyph-style`, injected only while the setting is on.
+2. *A clicked row can be filtered out before its answer arrives.* Then there is
+   no live cell, and the first version of the writer mirrored `cells[0].innerHTML`
+   — i.e. `''` — over the master row, which came back marked done with no icon.
+   The writer now renders into the first master when there is no live cell. It
+   was caught while writing the mutation list, not by a report; test "a row
+   hidden by the filter while its answer is in flight still gets its icon"
+   asserts the row really was hidden before the (delayed) answer landed, so it
+   cannot pass trivially.
+3. *No priority lane on the rate gate.* The Phase-2 queue only ever reserves one
+   slot ahead, so a click that simply reserves the next slot is served ahead of
+   the rest of the queue. Test "a queued row shows ⋯, and clicking it fetches it
+   ahead of the queue".
+4. *The partial-snapshot rule was needed now, not later.* `_relTableExpanded()`
+   read ANY `relDone` cell as "restored from a snapshot, start expanded", so a
+   sub-table carrying one hand-loaded row reopened in its own tab expanded and
+   queued the rest. It now defaults to expanded only when every rel cell is
+   done. Driven through the real cross-tab handoff (`tests/support/subtableTab.js`).
+
+**Guards and their mutation results** (`scripts/mutations/rel-cell-state-glyphs.json`,
+`vzell-lap`, 2026-09-15). 9 of 9 expected-fail mutations failed, each at its own
+assertion: the per-cell token filter; collapse clearing the token; the master
+mirror of a hand-loaded row; the delegate ignoring icon-link clicks; the forced
+reload; the writer's `textContent` clear (a reload then appends a second icon —
+the multiplying-icons failure, now reachable by a click, so the clear is no
+longer merely defence in depth); the settings gate on clicks; the
+partial-snapshot rule; and the master fallback for a filtered-out row. The one
+expected-pass entry passed: removing the queue's `data-rel-loading` exclusion is
+invisible to request counts, because the step shares the click's in-flight L1
+promise.
+
+The Step A mutation list (`rel-column-fetch-failure.json`) was re-run after the
+writer refactor, since several of its `find` strings moved: 8 of 8 as expected.
+Userscript restored and hash-verified after both runs.
+
 ## 2026-09-15 — release listings looked every row up as a LABEL: no Relationships icons at all (hotfix, branch fix/rel-release-listings-label-entity)
 
 Not reported by a user. Found while building the Relationships browse source
@@ -11225,43 +11359,217 @@ returns on its `!activeInjectedColumns.length` check, before the reordered
 block, in both versions. It is the spec's own documented settle flake, not a
 regression.
 
-## 2026-09-16 — Load-from-Disk restored a Relationships HEADER with no cells (9.99.1086–9.99.1092)
+## 2026-09-15 — Relationships browse endpoint as a bulk source (branch rel-column-batch-and-cell-states)
 
-Shipped fix. The discovery context — this surfaced while running the perf gate
-for the batched-Relationships branch — is recorded in that branch's own entry,
-which reaches `main` when it merges; this entry is the fix's.
+PERFORMANCE.org Step 36, part 3 — item 1 of `org/relationships.org`: fetch more
+than one row per request.
 
-**Symptom.** Loading a saved file on a pageType that declares the Relationships
-column, where the file had been saved WITHOUT that column populated, produced a
-table with a Relationships `<th>` and no Relationships `<td>`s. So it was not
-"the icons are missing": every cell from that column rightward was **shifted by
-one**, putting the Picard button under the Relationships header. No ▶🔗 toggle
-and no collapsed-column filter hint were built either. Normal (non-disk) page
-loads were never affected.
+**Built.** `features.relBrowse: { entity, by }` on the seven pageTypes
+`scripts/probe-rel-batch-endpoints.py` cleared; `_relBrowseSource()` resolves it
+only when the URL's own entity is `by` AND the table's entity type is
+`entity`. The impl's browse phase is the first link of the fire-and-forget
+fetch chain: a lone pending row is left to a lookup; page 1 is always fetched
+otherwise; browsing stops on a page that matched nothing still pending, when
+the pages left are no fewer than the rows still pending, on the last page, or
+on a failed page. Every entity on a page is cached under its lookup key (L1,
+plus one IndexedDB transaction per page via `_relIdbPutMany()`). Kill switch
+`sa_rel_browse_batch_enable`.
 
-**Root cause.** `442dd8c`, released as 9.99.1086, moved every gate — including
-the two `initRelationshipsColumn()` call sites and the impl's own entry — onto
-`_relPageHasColumn()`, i.e. `!!document.querySelector('td.mb-rel-cell')`. On the
-LIVE path that is correct and its JSDoc says why. On the Load-from-Disk and
-cross-tab hydrate paths it is a chicken-and-egg test:
-`_hydrateAndRenderFromSnapshotData()` stamps `mb-rel-cell` only on cells whose
-saved payload carried an `mbid`, which `_buildDiskCellData()` writes only for a
-cell that already WAS a rel cell at save time. The cells for a file saved
-without the column are created by `_ensureRelCell()` — inside
-`_initRelationshipsColumnImpl()`, the very function the gate guarded. The gate
-asked for what its own subject creates, so it could only ever be false for
-exactly the files that needed it. The `<th>` is injected from
-`activeInjectedColumns` regardless, which is where the misalignment comes from.
+**First run: zero browse requests — a bug on `main`, not in this code.**
+Release listings were stamped as label tables (see the hotfix entry above), so
+`_relBrowseSource()` correctly refused every one. Fixed on `main` as 9.99.1092
+and merged into this branch; `rel-column-browse-batch.spec.js` went 0/6 →
+7/7 on the merged tree with no change to the browse code.
 
-**Bisected** (`vzell-lap`, `scripts/diagnose-rel-expanded-arm.js`, Dylan
-`artist-releases` disk fixture, 2301 rows, rel cache pre-seeded so no network is
-needed):
+**Mutation run** (`scripts/mutations/rel-column-browse-batch.json`, `vzell-lap`,
+2026-09-15 evening UTC): 14 of 14 as expected, userscript restored and
+hash-verified.
+
+- An early `return` in the browse phase — the pre-Step-36 code — failed all six
+  browse-exercising tests, one entry each, which is the "fails before" proof.
+- Removing the zero-match stop, removing the page-count stop, browsing a lone
+  pending row, ignoring the kill switch, and asking for a wrong `inc` set each
+  failed their own test.
+- Two documented passes: a hard-coded `url-rels` (the spec only covers the
+  release mapping, whose inc set is `url-rels` alone — a real coverage gap for
+  release-group/work/label), and not putting browse answers into L1 (IndexedDB
+  covers the re-expand).
+
+**One mutation failed at the WRONG assertion, and that was a finding.**
+"Browse page not written to IndexedDB" was meant to fail at the fresh-page L2
+check, but failed earlier, at "the L1 cache served the re-expand". With the IDB
+write gone, the re-expand's Phase 1 misses every row, and `_relBrowsePhase()`
+then fetched a whole page again — it never consults `_relWs2Cache`, although
+every answer was already there. Live, that is one wasted request per expand
+whenever IndexedDB does not serve the rows (`sa_rels_idb_enable` off, or a
+failed write).
+
+**Fixed.** The browse phase now leaves L1-answerable rows out of its pending
+set, so the per-MBID steps serve them for free. Pinned by a new test, "with
+IndexedDB off, re-expanding a browsed sub-table is served from memory, not
+re-browsed", and a fifteenth mutation entry, "browse phase ignores L1", which
+reverts the fix. Re-run of the whole list: 15 of 15 as expected, userscript
+restored and hash-verified — and the IndexedDB entry now fails at the assertion
+it was written for ("IndexedDB served every row, browsed or looked up") rather
+than at the L1 one. Browse spec: 8 of 8.
+
+## 2026-09-16 — Relationships done/total badge and 📊 "Load state" section (branch rel-column-batch-and-cell-states)
+
+PERFORMANCE.org Step 36, the last two parts — item 4 of `org/relationships.org`:
+see, without the debug console, whether a huge sparse table still has rows to
+fetch.
+
+**Built.**
+
+- *Badge*: `.mb-rel-col-hdr-btn[data-rel-progress]::after { content:
+  attr(data-rel-progress) }`. `_relUpdateColHdrBtn()` sets `done/total`
+  (distinct entities, from `_relTableProgress()`) only while something is
+  unloaded, and adds "N failed" to the tooltip. Both cell writers call
+  `_relScheduleProgressRefresh()`, coalesced to one refresh per animation frame
+  per table, which also re-syncs the collapsed filter box and drops that
+  table's 📊 cache.
+- *📊 section* `relLoadState`, "Relationships - Load state": four fixed
+  `rel-state-*` modes (pending / has / none / error). The counts and the
+  `_cellMatchesStructureMode()` branch share one classifier,
+  `_relCellLoadState()`. Offered collapsed or expanded; zero counts omitted.
+  The collapsed note now says "N of M loaded", and icon counts are computed for
+  a collapsed column once any of its cells is loaded.
+
+Both specs were written first and failed 8 of 8 on the pre-change code.
+
+**Two mistakes of mine, both in the SPEC, both caught by the first green-ish
+run.**
+
+1. *"3 of 12 loaded" was wrong; the code's "2 of 12" was right.* The test loads
+   a row with relationships, a row with none, and a row whose request fails.
+   The badge, its spec, the changelog and HELP all define a failed request as
+   NOT loaded, so the note must agree with them. The expectation was changed,
+   not the code, with a comment pointing at the badge spec's definition.
+2. *Clicking the 📊 wrap to close the dropdown reopened it.* The failure
+   screenshot showed the header at the very bottom edge of the 720 px viewport,
+   with the panel opened upward. Playwright scrolls an element into view before
+   clicking; the dropdown's scroll handler closes the panel as soon as its
+   owning wrap moves; the click then toggled it OPEN again. A person clicking a
+   visible wrap never triggers that scroll, so this is a harness effect, not a
+   product bug. Escape was no alternative: while the quick-filter box has focus
+   its own key handler takes Escape over. The helper now dispatches a
+   `mousedown` on `document.body`, which reaches the capture-phase
+   outside-press listener — no scroll, no focus dependency, nothing clickable.
+
+**Recorded overlaps** (`expect: "pass"` in the mutation lists, not hidden):
+the failure writer's own refresh is invisible when later successful writes
+refresh the badge anyway; and the per-write 📊 cache drop is invisible to a
+spec that loads rows by clicking, because `_relLoadRow()` drops the cache
+itself — it matters for bulk writes during a fetch, which no spec reopens the
+dropdown during.
+
+**Mutation results** (`vzell-lap`, 2026-09-15 evening UTC; userscript restored and
+hash-verified after each list):
+
+- `scripts/mutations/rel-column-progress-badge.json`: 7 of 7 as expected. The
+  attribute never set, never removed on completion, drawn by an empty CSS
+  rule, the result writer not refreshing, a failed row counted as done, and the
+  tooltip omitting failures each failed; the failure-writer overlap passed.
+- `scripts/mutations/uniq-drop-rel-load-state.json`: 7 of 7 as expected. A
+  matcher that matches every row, a section that never renders, a zero-count
+  entry shown, a collapsed note ignoring loaded rows, an empty row classified as
+  "has", and icon counts skipped on a collapsed partly-loaded column each failed
+  at their own assertion; the per-write cache-drop overlap passed.
+
+**A third spec weakness, found by reading WHERE a mutation failed.** "A failed
+row counted as done" was caught — but by the tooltip's "1 failed" check, not by
+the badge check meant for it. The test polled the badge until it read `11/12`,
+and that value appears transiently while the failing row is still retrying, so
+the badge assertion could pass without proving anything about failures. The test
+now waits until every other row is done and the failing row is marked failed,
+and only then reads the badge. Re-checked with that single mutation: it now
+fails at the badge's `toBe('11/12')`, not at the tooltip.
+
+**Full fixture suite** on the finished tree: 284 passed (9.9 min, `vzell-lap`,
+2026-09-15 evening UTC).
+
+## 2026-09-16 — Load-from-Disk builds a Relationships `<th>` with no `<td>`s (9.99.1086, fixed in 9.99.1093)
+
+**Not this branch.** Found while running PERFORMANCE.org Step 36's perf gate:
+both `--rel-arm=expanded` arms (branch AND `main`) aborted on the harness's own
+icon floor with *0 icons rendered* against a seed of 2329 url-rels. The same arm
+rendered 2090 at 9.99.1073. The guard did exactly its job — an under-populated
+column would otherwise have been published as a second `--rel-arm=collapsed`
+arm reading "the feature costs nothing".
+
+**Root cause.** `442dd8c` (released as **9.99.1086**) replaced the guard on BOTH
+`initRelationshipsColumn()` call sites:
+
+```
+-            if (activeInjectedColumns.length) initRelationshipsColumn();
++            if (_relPageHasColumn()) initRelationshipsColumn();
+```
+
+`_relPageHasColumn()` is `!!document.querySelector('td.mb-rel-cell')`. On the
+LIVE render path that is right, and its own JSDoc says why: a rel `<td>` "is
+only ever appended when SOME group's own `activeInjectedColumns.length` was true
+at that row's build time", which is the correct per-page answer on pageTypes
+whose sub-tables get a per-group rebuild.
+
+**That premise does not hold on the Load-from-Disk path**, and that is the bug.
+There, rows are rebuilt from the snapshot, and
+`_hydrateAndRenderFromSnapshotData()` stamps `td.mb-rel-cell` only for cells
+whose saved payload carried an `mbid` — which `_buildDiskCellData()` writes only
+for a cell that already WAS a rel cell at save time. The cells for a snapshot
+that never had the column are created by `_ensureRelCell()`, which lives
+*inside* `initRelationshipsColumn()`. So the guard asks for the cells that the
+function it guards is the thing that creates: false for exactly the files that
+need it, and it can never become true.
+
+**The `<th>` is built anyway**, from `activeInjectedColumns` in the header pass
+(`thInj.classList.add('mb-injected-column')`), which the disk path rebuilds at
+`buildActiveInjectedColumns()`. So the restored table is **misaligned by one
+column**, not merely missing icons — every cell from the Relationships index
+rightward shifts, and the Picard `<td>` lands under the Relationships `<th>`.
+
+**Bisected** (`vzell-lap`, 2026-09-16, `scripts/diagnose-rel-expanded-arm.js`,
+Dylan `artist-releases` disk fixture, 2301 rows, rel cache pre-seeded so the
+column needs no network):
 
 | Userscript                   | icons | rel cells | `<th>` | `<td>` | `relInitRuns` | WS/2 |
 |------------------------------|------:|----------:|-------:|-------:|--------------:|-----:|
 | `60eab35` (parent)           |  2090 |      2301 |     22 |     22 |             1 |    0 |
 | `442dd8c` (the change)       |     0 |         0 |     22 | **21** |             0 |    0 |
 | `d5bba41` = `main` 9.99.1092 |     0 |         0 |     22 | **21** |             0 |    0 |
+
+The seed itself is fine in every run: 2301 records written, keys `release:<mbid>`,
+and the table is correctly stamped `mbRelEntityType: release` (so 9.99.1092's
+own hotfix works). Zero WS/2 requests on all three — the column never starts.
+
+**Blast radius.** Any Load-from-Disk of a file saved WITHOUT populated rel cells
+on a pageType that declares the column: no icons, no `▶🔗` toggle, and a
+one-column misalignment. Files saved WITH the column populated are unaffected
+(their cells carry `mbid`, so the guard is true). The cross-tab "Show
+single-table" handoff shares the same hydrate function and the same gate.
+The live "Show all" path is NOT affected — there the row-build pass appends the
+cells before the gate runs.
+
+**Why no test caught it**, which is the part worth fixing alongside:
+
+- `FIXTURE_SETTINGS_OVERRIDE` applies **only when `fixtureFile` is passed**
+  (`loadPage.js`), so fixture specs force the column off and disk-load specs run
+  with it ON — the exposure exists in the suite already.
+- `tests/live/artist-releases-filter-sort.spec.js` DOES load a disk fixture with
+  the column on and counts 56 populated rel cells — but it uses
+  `artist-releases-bodeans.json.gz`, the one committed snapshot whose cells
+  carry `mbid`/`relDone` (56 of 56), so its guard is true and it is blind to
+  this by fixture choice alone.
+- `tests/live/disk-fixture-load.spec.js` loads `releasegroup-releases.json.gz`
+  (v1.0, **`mbid=0`**) on a pageType that declares the column, with the column
+  on — it should be hitting this today, and passes because it asserts only row
+  counts and page errors, never header-vs-cell alignment.
+- Counted with `scripts/check-fixture-rel-cell-fields.js`: of five committed
+  disk fixtures, only `bodeans` carries rel fields; `artist-events`,
+  `artist-releasegroups`, `artist-releases-dylan` and `releasegroup-releases`
+  are all `mbid=0`.
+
+**Fixed on `main` the same day, as 9.99.1093**, in a worktree off `main` so this
+branch's in-progress work was never disturbed.
 
 **The fix.** A second predicate, `_relPageHasOrNeedsColumn()` — the DOM answer
 OR `activeInjectedColumns.length`, which the hydrate path rebuilds before the
@@ -11310,27 +11618,300 @@ mutation that proves nothing. Every `expect: "fail"` entry in the existing lists
 is only as trustworthy as its `grep`. Not fixed here (the tool lives on the
 batched-Relationships branch); worth making "no tests selected" an error there.
 
-**Why no existing test caught the defect:**
-
-- `FIXTURE_SETTINGS_OVERRIDE` applies only when `fixtureFile` is passed, so
-  disk-load specs already run with the column ON — the exposure was there.
-- `tests/live/artist-releases-filter-sort.spec.js` does load a disk fixture with
-  the column on and counts 56 populated rel cells, but uses
-  `artist-releases-bodeans.json.gz` — the ONE committed snapshot whose cells
-  carry `mbid`/`relDone` (56 of 56), so its guard is true and it is blind by
-  fixture choice.
-- `tests/live/disk-fixture-load.spec.js` loads the `mbid=0` snapshot on a
-  column-declaring pageType and was hitting this every run, but asserts only row
-  counts and page errors — never header-vs-cell alignment.
-- Of five committed disk fixtures, only `bodeans` carries rel fields
-  (`scripts/check-fixture-rel-cell-fields.js`).
-
 **HELP needed no change, and that is a finding rather than an omission.**
 `ShowAllEntityData_HELP.txt` already stated that a disk round-trip is network-free
 only "when every Relationships cell was already fully populated at save time —
 only a row saved mid-fetch triggers a fresh fetch for that row on load", and that
 saving a collapsed column saves it empty. That describes the restored behaviour
 exactly; 9.99.1086 had made the code contradict the documentation.
+
+## 2026-09-16 — Three test-harness defects, all found while shipping 9.99.1093
+
+No userscript change and therefore no version bump or changelog entry —
+`CLAUDE.md` excludes `tests/`/`scripts/` tooling from both. Recorded here
+instead, because each one silently weakened evidence the project relies on.
+
+**1. `scripts/mutation-check.py` scored "no tests found" as a pass.**
+`run_spec()` returned `proc.returncode == 0` as "passed", and Playwright exits
+NON-ZERO when `-g` matches nothing — indistinguishable from a real assertion
+failure. So an `expect: "fail"` entry whose `grep` was stale or mistyped
+reported `expected fail, got fail — OK` while proving nothing at all. Found the
+honest way: an entry in the disk-load list still named a test title I had
+renamed mid-session, and reported OK with `Error: No tests found.`
+
+`run_spec()` now returns a third value, `selected`, and a `grep` that matches no
+test is reported as **ERROR**, alongside the existing "find text must occur
+exactly once" ERROR. Proved before and after with a throwaway list whose grep
+names a title that exists nowhere: before, `expected fail, got fail — OK`, exit
+0; after, `ERROR — grep selected NO tests: …`, exit 1. The real 4-entry
+disk-load list still runs 4 of 4 at its own assertions, so the changed return
+did not disturb the normal path. **Every `expect: "fail"` entry written before
+today is only as trustworthy as its `grep` string** — worth a pass over the
+existing lists.
+
+**2. `tests/support/diskFixture.js` clicked a button Playwright could not
+reach.** The Load-from-Disk dialog is `position: fixed` with `max-height:
+calc(100vh - 40px)` and no `top`, so at the project's 1280x720 viewport
+`#sa-render-no-filter-confirm` can sit below the fold (measured at y≈1051).
+Playwright refuses to click an element outside the viewport and cannot scroll a
+fixed-position dialog into view, so it retried to the timeout. This is the
+fragility `rel-column-collapse-toggle.spec.js` documents and the reason both
+sibling rel specs avoid the dialog entirely; it flaked
+`picard-cells-survive-rerender.spec.js` roughly one run in three.
+
+The helper now dispatches the click through the DOM
+(`locator.evaluate((el) => el.click())`). Only the button's POSITION was ever
+the problem — it is present, visible and enabled — so this drops an
+actionability check that was testing the dialog's CSS geometry rather than
+anything a disk-load spec is about. Evidence: `picard-cells-survive-rerender`
+now **12 of 12** with `--repeat-each=3` (58.6 s), where one run in three used to
+fail.
+
+**`rel-column-disk-load-cells.spec.js` lost its viewport override in the same
+change, and that is the point.** It had shipped hours earlier with
+`test.use({ viewport: 1280x1600 })` to dodge the dialog, since unlike its
+siblings it cannot avoid the dialog — the Load-from-Disk path is its subject.
+Keeping that override now would be worse than pointless: at 1600px the
+below-the-fold condition never arises, so the spec would pass without ever
+exercising the helper it depends on, and a revert of the DOM click would go
+unnoticed. At the default viewport it is the spec that would notice. Re-run at
+1280x720 after the change: 3 of 3 (11.2 s).
+
+**3. `rel-column-fetch-failure.spec.js`'s 503 test had no budget for its own
+waiting.** It timed out once inside a full-suite run (286 passed, 1 failed,
+10.6 min, straight after a memory-pressure kill) at a `page.waitForTimeout(3000)`
+— which cannot itself exceed a 30 s budget, so the test had already spent ~27 s.
+It had: Phase 2 walks 12 entities at the feature's hard-coded ~1100 ms rate gate
+(~13 s), the failing MBID adds three 503 retries with widening backoff, then the
+no-retry-storm section sleeps 1.5 s + 3 s + 3 s. That is ~28 s against
+Playwright's 30 s default, i.e. a test whose pass depended on a few percent of
+machine load.
+
+Bisect-before-attributing applied rather than assumed, since this ran on the
+tree that had just merged the 9.99.1093 hotfix: standalone `--repeat-each=3`
+gave 3 of 3 at ~28 s each, and the hotfix cannot reach this spec anyway — it
+drives the LIVE render path, whose call site was deliberately left on
+`_relPageHasColumn()`, and its rel cells exist at render, so the widened gates
+evaluate identically. `test.setTimeout(90000)` with the arithmetic written out,
+so the next reader sees a stated budget rather than a mystery. After the change:
+2 of 2 (39.1 s).
+
+## 2026-09-16 — The fixture suite's 30 s default was too small, and it failed as flakiness
+
+**Three consecutive full-suite runs, three DIFFERENT tests, every one green in
+isolation.** Found while trying to get a clean run before merging the
+batched-Relationships branch:
+
+| Run    | Result   | Wall   | Failing test                                                    | Re-run alone           |
+|--------|----------|--------|-----------------------------------------------------------------|------------------------|
+| first  | 286 / 1  | 10.6 m | `rel-column-fetch-failure.spec.js:109`                           | 3 of 3                 |
+| second | 285 / 2  | 11.2 m | `rel-column-collapse-toggle.spec.js:371`, `picard-…:268`         | 42 of 42 (both files)  |
+| third  | 286 / 1  | 10.0 m | `rel-cell-state-glyphs.spec.js:460`                              | 33 of 33               |
+
+**Why this family and not others.** These specs intercept every request, so they
+are network-free — but the userscript's own Relationships rate gate sleeps
+~1100 ms between WS/2 calls, so a 12-entity table legitimately takes ~13 s to
+settle, and the specs that pin MID-FETCH behaviour then wait inside that window
+deliberately. Against Playwright's 30 s default that leaves almost no headroom,
+so a few percent of machine load decides the outcome. The suite is
+single-worker, which is why full-suite runs lose and isolated ones win.
+
+**Four fixes, and they are NOT interchangeable — I conflated two of them at
+first and had to correct myself.** What expires matters:
+
+- *The test budget* — `chromium-fixtures` had no `timeout` at all and inherited
+  30 s, while `chromium-live` has set 120 s with a comment for ages. Now 90 s,
+  with the reasoning in the config. This is the systemic half.
+- *A test whose real floor exceeds even that* — `rel-column-collapse-toggle.spec.js`'s
+  MID-FETCH test states `test.setTimeout(180000)`. Its own deliberate waiting is
+  ~32 s (a ≤15 s poll, 300 ms + 4000 ms, then six cycles of 1400 ms + 700 ms)
+  before a final `expect.poll` that asks for 90 s. **A 90 s poll inside a 30 s
+  test can never be honoured**, so that test had always been passing only while
+  its early phases ran fast.
+- *An inner poll* — `rel-cell-state-glyphs.spec.js:491` went 15 s → 45 s. A
+  project timeout cannot help here: what expired was the poll, not the test.
+  Clearing the filter rebuilds the tbody WHILE the Phase-2 queue is in flight,
+  so the rebuild competes with the fetch pass for the main thread.
+- *A helper's own default* — `picard-cells-survive-rerender.spec.js:313` passes
+  `{ timeout: 90000 }` to `waitForActualRowCount()`, whose 30 s default is
+  shared by ~19 specs and justified in its JSDoc by measured evidence. Widening
+  it globally to suit one page would weaken every other caller's completion
+  signal, so the override is at the call site.
+
+**The generalisation worth keeping**: when a spec waits on a rate gate the
+PRODUCT owns, the test's budget has to be derived from that gate, not from a
+framework default. And when one of these fails, read WHICH clock ran out —
+test, poll, or helper — because the fix differs in all three cases and the
+symptom is identical.
+
+**What this cost, and the lesson about masking exit codes.** The first of these
+runs was reported to me as "exit code 0" because the command was
+`npm test > log ; tail -6 log` — the status came from `tail`, not from the
+suite. A red suite looked green. Every later run chained with `&&` instead.
+
+**Correction, from a fourth run: not everything here was a budget.** With the
+three fixes above in, the next full suite came back 286/1 again — this time
+`release-tracks-ms-length-overflow.spec.js:174`, and NOT as a timeout. It failed
+on equality, reading `"4:50"` where it expected `"4:50.160"`: seconds instead of
+milliseconds. Isolation, same standard as the others: 9 of 9 in 44.6 s.
+
+The cause is specific and is a defect in that one test rather than a tight
+budget. Its two siblings in the same file both do
+`click()` → `await expect(firstToggle).toHaveAttribute('aria-pressed', 'true')`
+→ read. The failing one clicked and read immediately, with no settle at all, so
+under load it sampled the Length column while the backfill's response was still
+being stamped. **No project timeout and no `test.setTimeout` could ever have
+fixed it** — a single unretried read has no clock to extend. Fixed by giving it
+the settle its siblings have and polling the value; its `expect(calls).toHaveLength(1)`
+was polled too, being the same race against a live array that merely happened to
+win.
+
+So the tally is three budget problems and one missing wait, presenting with the
+identical symptom — "passes alone, fails in the suite". Worth carrying: after
+establishing that a failure is load-sensitive, still read WHICH clock ran out
+(test, poll, helper — or none at all, for a bare read), because the fix differs
+in every case and the first three answers made the fourth look like more of the
+same.
+
+## 2026-09-16 — A collapse poisoned the row-text cache, and the 📊 Relationships filter stopped highlighting
+
+**Found by a human in a real browser, minutes after 287 fixture tests were
+green.** Reported against a `release-group` page: pick an entry from the
+Relationships 📊 dropdown → it filters, matching icons get the red outline.
+Clear it, type in another column's filter, collapse the Relationships column
+with ▼🔗, expand it again with ▶🔗, then pick the same entry — and nothing
+happens, for that pick and every one after it.
+
+**Root cause: two sentinels that disagree.**
+
+```
+_cachedColText()       if (c.cols[idx] === undefined) c.cols[idx] = getCleanColumnText(...)
+_relDropRowTextCache()     _c.cols[colIdx] = null;      // ← not the same value
+```
+
+`null !== undefined`, so the drop did not invalidate the entry, it **poisoned**
+it. The next `matchOnly` pass read `null` back as though it were cached text and
+`testRowMatch()` threw on `cellText.toLowerCase()` (line 43456), which aborted
+`runFilter()`'s row `.filter()` part-way — so everything after the throw was
+skipped, including `_highlightRelCellIcons()`. Stack, from the reproduction:
+
+```
+testRowMatch      … :43456    const probe = f.isCaseSensitive ? cellText : cellText.toLowerCase();
+runFilter         … :44498    the .filter() over rows
+applyUniqValueSet … :58646    the direct runFilter() after a pick
+_wireStructureCheckbox click … :56979
+```
+
+Branch-local: `_relDropRowTextCache()` is this branch's own code, added so a
+collapse would not leave stale text behind. The comment two lines above it even
+notes that `_rowTextCache` "is never invalidated anywhere (PERFORMANCE.org
+Step 9)" — this was the first code to try, and it picked the wrong sentinel.
+
+**Fix**: `delete _c.cols[colIdx]`, so the write matches the accessor's own
+"not cached" test. Fixed at the WRITE site rather than making the reader tolerate
+`null`: `null` has no meaning anywhere in this cache, and teaching ~5 readers to
+handle it would spread the confusion instead of removing it. Surveyed the only
+other writer (73479) first — it already does `cached.cols[colIdx] = undefined;
+cached.full = null;`, i.e. each field's own correct sentinel — so
+`_relDropRowTextCache()` was the lone outlier and the fix is sufficient, not just
+necessary.
+
+**The symptom was severity-dependent, which is why the report and the fixture
+disagreed in detail.** The throw kills the row loop wherever it happens to be:
+on the fixture the rows had already been filtered, so the reproduction showed
+`visible=2 expected=2 outlined=0` — correct narrowing, no highlight. On the
+reported page it evidently threw earlier, so the narrowing was lost too and the
+filter looked entirely dead. One defect, two appearances.
+
+**Reproduction** (`tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js`),
+and note what it took: the MINIMAL cycle — load, collapse, expand, pick — passes.
+The bug needs **another column's filter active across the cycle**, because that
+is what puts `runFilter()` on the `matchOnly` path that reads the cache at all.
+The spec therefore drives the reported sequence in full: pick, clear, filter
+another column, collapse, expand, pick again. Mutation
+(`scripts/mutations/rel-uniq-filter-after-collapse-cycle.json`) reverts the
+sentinel and the spec fails at the outline assertion.
+
+**Three harness facts this cost, all now written into the spec:**
+
+- `locator.fill()` cannot type into a column filter: the inputs are
+  readonly-until-a-genuine-trusted-interaction (anti-autofill hardening), so it
+  times out with "element is not editable". Click first, then `pressSequentially`.
+- `fill('')` cannot CLEAR one either — `_isGenuineFilterInputEvent()` rejects it
+  and the filter silently never re-runs. Only the ✕ (`columnFilterClear()`) works.
+- A needle for a text filter must be chosen **by frequency across rows**, not
+  taken from row 0. The first attempt used row 0's first word, which occurred in
+  no other row, so the filter matched nothing and the rest of the test measured a
+  blank table. The guard that caught it (`> 0` hits) is now `> 0 && < rowCount`,
+  since a needle matching EVERY row would make the step a silent no-op.
+
+Also added: the spec captures `pageerror.stack`, not just the message.
+`collectPageErrors()` keeps only `err.message`, and "Cannot read properties of
+null" with no stack is indistinguishable among ~40 `.toLowerCase()` call sites on
+the filter path. The stack turned an afternoon of hypotheses into one line.
+
+**The process lesson, now a rule in CLAUDE.md.** This branch had been merged to
+`main` locally on the strength of a green suite; the merge was unwound
+(`git reset --hard`) because this bug exists. Nothing had been pushed, which is
+the only reason it cost nothing. A green fixture suite is evidence that the
+assertions someone already thought of still hold — not that the feature works.
+
+## 2026-09-16 — The 📊 Relationships filter replayed an old row list after a second row loaded
+
+**Second bug from the same live-testing session, and a different cache.** On a
+COLLAPSED column: hand-load one row whose relationship is
+springsteenlyrics.com/bootlegs.php, pick that entry from the 📊 dropdown — it
+filters to that row correctly. Clear it, hand-load a SECOND row carrying the
+same URL, pick the entry again: **only the first row comes back.**
+
+**Root cause: `_buildFilterKey()` hashes filter INPUTS, and a hand-load changes
+cell CONTENT.** The key covers the global query, the case/regexp/exclude flags,
+`_lenMismatchFilterKind`, pending-edits, and each column filter's `idx` +
+`valueSet` + `structureModes`. Nothing in it describes what is in the cells. So
+the second pick builds a key IDENTICAL to the first pick's, `_filterResultCache`
+hits, and `runFilter()` renders the remembered row array instead of re-testing
+the rows. Exactly the defect class the length-mismatch summary filter had when
+it was missing from the key ("pressing the button again did nothing at all") —
+except cell content cannot be hashed cheaply, so the cache must be dropped
+rather than keyed.
+
+**The captures are what made this unambiguous.** In `rg-r-filtered-3658.html`
+BOTH rows carry their own `.mb-rel-filter-key` (`…?item=3658` and `…?item=1742`),
+so the data was complete when the second pick happened. In
+`rg-r-filtered-3658-uvd.html` the second row is **absent from the DOM**, not
+present-and-unmatched — and a row that was removed was never tested. That single
+observation separates "the filter replayed" from "the filter matched wrongly".
+
+**Fix**: `_relScheduleProgressRefresh()` now drops the filter-result cache
+alongside the uniq-dropdown cache it already dropped. That function is the right
+home because it is coalesced to one call per table per animation frame and BOTH
+cell writers reach it through `_relScheduleProgressRefreshForCells()` — so the
+hand-click path, the Phase-2 queue and the browse bulk source are all covered by
+one line, and a hundred-row browse page pays one clear rather than a hundred.
+
+Wholesale, not `_invalidateFilterCacheForGroups()`: that variant matches keys by
+GROUP INDEX (`^m:[^:]*:(\d+)\|`), and a rel write knows its `<table>`, which
+cannot be mapped back to a group index reliably — merged discography view folds
+other groups' rows into the first-occurrence table, the same reason
+`_findMasterRowByIdx()` exists — while a single-table page's one `s|…` key would
+not match that pattern at all.
+
+**Two caches, one symptom, and why the spec asserts both.** The dropdown's entry
+COUNT comes from the uniq-dropdown cache, which the rel writers already dropped;
+the rendered ROWS come from the filter-result cache, which they did not. Before
+the fix the entry correctly read "2" while exactly one row rendered. A test
+asserting only the rows could not tell that apart from a stale dropdown, so
+`tests/fixtures/rel-uniq-filter-after-second-row-load.spec.js` asserts the count
+and the row set at every pick. Its mutation
+(`scripts/mutations/rel-uniq-filter-after-second-row-load.json`) removes the new
+drop and the spec fails on the row count while the count assertion still passes
+— confirmed by reading WHICH assertion the mutation tripped, not by assuming.
+
+**Worth carrying**: when a feature mutates cell content outside a filter input —
+an async column populating, a per-row load, a bulk fetch — it owes BOTH caches a
+drop. The uniq-dropdown one is already documented as needing it ("the cache's
+signature is the visible row set, which a write does not change"); the
+filter-result cache has exactly the same blind spot and was not.
 
 ## 2026-09-17 — Inline-artwork 📊 entries render fewer rows than they count (all 9.99.x with addCAA/addEAA; hotfix, branch fix/art-async-filter-staleness)
 
@@ -11465,6 +12046,31 @@ than predicted — the `TypeError` escapes before the toggle repaints, so
 Length text (adopting a jesus2099-leaked value), possibly after a filter has run;
 not reproduced or examined here.
 
+## 2026-09-17 — A second load-sensitive mechanism in picard-cells-survive-rerender: the global filter's focus-prefix race
+
+`picard-cells-survive-rerender.spec.js` › "expanding one sub-table leaves the other
+collapsed, across a filter and a sort" failed in two full-suite runs on
+`vzell-lap` the same day — once on a `main`-based hotfix tree (01:29–01:34Z,
+30 s helper budget) and once on this branch after merging `main` 9.99.1095
+(11:32–11:37Z, **90 s**, i.e. WITH `68f6aff`'s widened budget). It passed 2/2
+and 3/3 standalone respectively, and passed inside the merged-`main` suite run
+in between.
+
+**Not the `68f6aff` budget mechanism, and a budget cannot fix it.** The
+`error-context.md` snapshot shows the global filter input holding `🔍 e🔍` and
+the status line `GLOBAL:"e🔍 "` with `0 of 6` rows: the character typed by
+`pressSequentially('e')` interleaved with the input's decorative focus prefix, so
+the ACTIVE query was `e🔍 `, which matches nothing. `waitForActualRowCount()`
+then waits for a row count that can never arrive, whatever its timeout.
+
+Read the clock: the helper's own `waitForFunction` expired — but the page had
+settled long before, on the wrong query. Candidate fixes, not applied: wait for
+the focus decoration to settle before typing (e.g. poll the input value for the
+prefix), or assert the status line's `GLOBAL:"e"` before waiting on rows, which
+would turn a 90 s timeout into an immediate, self-explaining failure. Whether a
+real user can hit the same interleave (typing within the first frame after
+focusing) is unexamined.
+
 ## 2026-09-17 — A plain global filter could not see CAA image types on multi-table pages (hotfix, branch fix/global-filter-art-search)
 
 `AUDIT.md` §3.1 H5, found while fixing H1–H4 and confirmed in a live browser via
@@ -11527,6 +12133,15 @@ type. Both `pressSequentially` callers on the global filter now use it
 
 **Whether a real user can hit the same interleave** — typing within the frame
 after focusing — is unexamined, and would be a userscript fix, not a harness one.
+
+**A third, environmental one, for completeness** (2026-09-18, `vzell-lap`): a
+full-suite shard failed with `page.addScriptTag: Failed to load script at
+https://cdn.jsdelivr.net/npm/@jaames/iro@5`. `loadPage.js` pulls iro and pako
+from their CDNs on every fixture load, so a network blip fails whichever test
+happens to be loading at that moment — here `tag-value-entity-column-leak`,
+which passed 8/8 standalone straight afterwards. Nothing to fix in the spec; the
+standing option, if it recurs, is vendoring those two files, which `loadPage.js`'s
+own comment already weighs and declines.
 
 **Second, unfixed harness weakness found in the same suite run** (2026-09-17,
 `vzell-lap`): `rel-column-collapse-toggle.spec.js` › "multi-table: the threshold
@@ -11716,3 +12331,24 @@ multi-table) and the pre-capture fallback.
 **One thing this does NOT change:** clicking ⚠️ still filters by typing the glyph
 into the global filter, so the ROWS it shows are the flagged ones. Only the
 counts and the buttons' availability now describe the data.
+
+## 2026-09-18 — A fourth load-sensitive spec: waiting for a status text that never changes
+
+`artist-recordings-ms-batch.spec.js` › "answers are cached: sorting, filtering
+and re-toggling never re-request" failed once in a full-suite run on the feature
+branch (shard 1, 118 passed + 1 failed) and passed **7/7 three times** standalone
+straight afterwards, on the same tree. Not a regression from the 9.99.1100 merge.
+
+**Read which clock ran out.** `_runAndWaitForSettledText` timed out waiting for
+`#mb-filter-status-display` to settle *to a NEW value*, and its message names the
+problem precisely: baseline and last-seen were the same string —
+`✓ Filtered 9 rows in 22ms [1 COLUMN FILTER ['⏱︎Length':"1:0"]]`. So the wait can
+only succeed if the triggered action produces text that DIFFERS. Under load the
+re-filter can finish with an identical line (same row count, same query, and the
+"in 22ms" figure is not unique enough to force a difference), and then no timeout
+is long enough — the same shape as the focus-prefix and fixed-sleep cases above.
+
+**Not changed here**, because the right fix depends on what that test means to
+observe: the honest wait is the thing it actually asserts (the WS/2 request
+count staying put, or the row set settling), not a text transition. Recorded so
+the next reader does not re-diagnose it as flakiness with no mechanism.

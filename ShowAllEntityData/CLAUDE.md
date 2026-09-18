@@ -377,7 +377,11 @@ which kind of test, and the routing is:
 The existing rule stands and is stricter than the table: **every DOM/rendering
 fix needs a regression test that fails before the fix and passes after.** Verify
 the "fails before" half rather than assuming it — mutation-check by reverting the
-fix, or by planting an early `return`.
+fix, or by planting an early `return`. `scripts/mutation-check.py` runs a JSON
+list of planted defects (`scripts/mutations/*.json`) unattended: each `find`
+must match exactly once, the userscript is restored and hash-verified
+afterwards, and a guard the spec genuinely cannot see because another covers
+for it is recorded as `"expect": "pass"` rather than left unmentioned.
 
 **Name the guarantee precisely, or the test proves something adjacent.** The
 CAA/EAA presence-sorting bug above went unnoticed for the whole visible history
@@ -478,6 +482,21 @@ which is the reason these baselines are committed.
 
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
+- **NEVER merge an implementation branch into `main` without asking first —
+  even when a green suite was the stated condition, and even when the user
+  earlier said "go ahead".** A passing fixture suite is not evidence that the
+  feature works; it is evidence that the assertions someone already thought of
+  still hold. The `merge-push-remove` skill describes HOW to merge once that
+  decision is made; invoking it is never the decision itself. Ask, and let the
+  user exercise the change in a real browser first.
+  This rule exists because it was broken: on 2026-09-16 the Relationships
+  batch/load-state branch was merged locally on the strength of 287 green
+  fixture tests, and minutes later a human clicking through a real
+  `release-group` page found that filtering from the 📊 dropdown on the
+  Relationships column silently stops working after one collapse/uncollapse
+  cycle — a bug no spec in the suite covered. The merge had to be unwound
+  (`git reset --hard`). Nothing had been pushed, which is the only reason it
+  cost nothing.
 - Every user-visible change requires: version bump in the userscript header, a CHANGELOG entry, and a HELP/docs resync in the same commit.
 - At merge time, re-read `PERFORMANCE.org` for statements your change made false — see "Performance is a priority" above. Flipping a Step's keyword is the easy half; the prose that predicted your change is the half that rots silently.
 - After finishing a task, always commit AND push; then offer to merge `main` into the active perf/feature branch to keep it current.
@@ -561,8 +580,7 @@ here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
   Relationships column (off ⇒ no `<th>`, no `<td>`, nothing);
   `sa_rel_collapse_threshold` (default **200** distinct entities, `0` = never)
   decides only which tables START collapsed — the `▶🔗` toggle is always
-  present. Its own description is stale and names 4 pageTypes; 26 declare the
-  column. See the Relationships section below
+  present. See the Relationships section below
 
 ## Debug channels (`Lib.debug('channel', …)`)
 
@@ -1636,6 +1654,111 @@ text-glyph hazard does not apply (CSS `::before` is used anyway, so
 `aria-pressed` stays the single state representation). And do NOT name the
 toggle `.mb-caa-col-hdr-btn` or `.mb-col-collapse-hdr-btn` — same
 `initCollapsableColumns()` self-deletion trap as Picard's.
+
+### IN PROGRESS: batched source + per-row load states (branch `rel-column-batch-and-cell-states`)
+
+**Partly landed on the branch, not on `main`.** When the branch merges, rewrite
+this subsection to describe what shipped and drop "IN PROGRESS". Plan, probe
+results and status: `PERFORMANCE.org` Step 36. Decisions and the mockup:
+`org/relationships.org`'s 2026-09-15 answer.
+
+On the branch so far. Neither relaxes a guard listed above:
+
+- **A failure is its own outcome.** `_relFetchWs2()` resolves
+  `{outcome: 'ok'|'error', data, detail}`, retries through `_ws2GetJson()`
+  (shared with the ⏱ batch source), never caches an error, and every request
+  waits on one rate gate, `_relAwaitRateSlot()`.
+- **CSS-only per-cell load-state glyphs, and click-to-load ONE row** — also in a
+  COLLAPSED table: 🔗︎ not loaded, ⋯ queued, ◌ loading, – none, ⚠︎ failed,
+  hover ⟳ reload. `sa_rel_cell_state_glyphs` turns both off. The writers are
+  module-level — `_relWriteResult()`, `_relWriteFailure()`,
+  `_relMasterCellsFor()` — shared by the bulk pass and `_relLoadRow()`. The
+  click and hover delegates are installed by `_relEnsureHdrDelegate()`.
+
+- **A browse-endpoint bulk source** on the seven pageTypes that passed
+  `scripts/probe-rel-batch-endpoints.py` (search results carry no `relations`;
+  browse matched lookups exactly). Declared per pageType as
+  `features.relBrowse: { entity, by }` and resolved by `_relBrowseSource()`,
+  which requires BOTH that the URL's own entity is `by` and that the TABLE's
+  entity type is `entity`. The impl's browse phase runs ahead of the per-row
+  queue; kill switch `sa_rel_browse_batch_enable`.
+
+- **A `done/total` badge on the ▶🔗/▼🔗 toggle** — CSS `::after { content:
+  attr(data-rel-progress) }`, set by `_relUpdateColHdrBtn()` from
+  `_relTableProgress()` (distinct entities done / total / failed) only while
+  something is unloaded. Both cell writers call `_relScheduleProgressRefresh()`,
+  coalesced to one refresh per animation frame per table.
+- **A 📊 "Relationships - Load state" section** (`relLoadState`): four fixed
+  `rel-state-*` modes — pending / has / none / error — whose counts and whose
+  `_cellMatchesStructureMode()` branch both go through ONE classifier,
+  `_relCellLoadState()`, so a count and the rows its entry filters to cannot
+  disagree. Offered on a collapsed column too.
+
+Still to come before merge: only the perf gate (PERFORMANCE.org Step 36).
+
+The traps. Every one of them fails silently:
+
+- **inc parity.** A browse request must ask for
+  exactly `_relIncOptionsForEntityType(entityType)`. Browse answers are cached
+  under the lookup's own ckey, so a record missing `release-group-rels` would be
+  served as complete forever after, showing fewer icons than a lookup would.
+- **The browse source trusts the table's entity stamp.** Until 9.99.1092,
+  `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` ran its work/label
+  sniff before its release/release-group scan, so every release listing with a
+  "Label" column and no entityFeatures map was stamped `label`: the resolver
+  refused all of them and, live, each release was looked up as a label (a 404
+  per row). Keep the release scan FIRST in that function. Specs that answer
+  every `**/ws/2/**` URL with a relationship cannot see this class of bug — pin
+  the request's entity segment, as `rel-column-release-listing-entity.spec.js`
+  does.
+- **A transport failure is not "no relationships".** Before this branch, a 503
+  was stamped `relDone` exactly like an entity with zero relationships, and the
+  `null` stayed in `_relWs2Cache` for the session. Cache only a successful
+  answer — the millisecond feature's lesson, verbatim.
+- **A failed or loading cell is skipped in three places** —
+  `_relAnyPendingInExpandedTable()`, the impl's candidate scan, and
+  `_relQueueStillWants()` — or every filter keystroke re-requests every failure.
+  The scan's and `_relQueueStillWants()`'s exclusions cover for each other, so a
+  spec can only pin them as a PAIR; the mutation files under
+  `scripts/mutations/` record that as `"expect": "pass"` entries.
+- **`_relLoadRow()` must not reuse `_relCellWritable()`.** That guard exists to
+  refuse collapsed tables, which is exactly where a click has to write. A click
+  writes only into cells, live AND master, that still carry its own
+  `data-rel-loading` token. `_relToggleTable()`'s collapse clears the token, so
+  a late answer for an emptied column is dropped. A per-cell question, not the
+  rejected per-table epoch.
+- **When the clicked row is filtered out mid-flight, render into a master.**
+  With no live cell, `_relWriteResult()` uses the first master as its primary.
+  Mirroring an empty `innerHTML` over the masters instead would bring the row
+  back marked done with no icons.
+- **A partly loaded snapshot must not restore as expanded.**
+  `_relTableExpanded()` defaults to expanded only when EVERY rel cell is done;
+  a partly populated table goes by the threshold, or one hand-loaded row turns
+  into a queued fetch of every other row when the snapshot is reopened.
+- **Progress never goes to `#mb-info-display-rel`.**
+  `waitForRelationshipsComplete()` resolves on that element's VISIBILITY, so
+  live progress there would let every test settle early. `_relLoadRow()` never
+  touches it.
+- **The glyph is `::before`/`::after`, never text**, so `getCleanColumnText()`,
+  the icon-count sort, 📊, export and Save-to-Disk (`innerHTML`) cannot see it.
+  `td.mb-rel-cell` sets `font-size: 0; line-height: 0`, so each pseudo-element
+  sizes itself. The stylesheet, `#mb-rel-cell-glyph-style`, is injected only
+  while the setting is on. **Never gate it with a class on `<html>`**: the
+  snapshot harness serializes the whole `documentElement`, so a page-level class
+  drifts every rendered baseline, including pageTypes with no Relationships
+  column at all.
+- **The progress badge is `attr()`, never header text**, for the same reason
+  as the toggle's own glyph: this `<th>`'s text feeds `colName` derivation,
+  export and the 📊 dropdown. And its refresh is also where the table's 📊
+  cache is dropped after every write — the cache's signature is the visible
+  row set, which a write does not change, so a dropdown reopened mid-fetch
+  would otherwise show stale load-state counts. `_relLoadRow()` drops it too,
+  which is why the spec cannot see a missing per-write drop (recorded as an
+  `expect: "pass"` overlap in `scripts/mutations/uniq-drop-rel-load-state.json`).
+- **Icon counts for a collapsed column are computed once any cell is loaded.**
+  A collapsed column can hold rows loaded by hand, and their icons are as
+  filterable as an expanded column's; `relIconCounts` used to be skipped
+  whenever the column was collapsed.
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 

@@ -83,22 +83,21 @@ const readShape = (page) => page.evaluate(() =>
         };
     }));
 
-// A TALLER VIEWPORT THAN THE PROJECT'S 1280x720, and it is not cosmetic.
-// `rel-column-collapse-toggle.spec.js` records the fragility at length: the
-// Load-from-Disk dialog is `position: fixed` with `max-height: calc(100vh -
-// 40px)` and no `top`, so at 720px its `#sa-render-no-filter-confirm` can land
-// below the fold (measured at y≈1051) and Playwright refuses to click an
-// element outside the viewport. It flakes `picard-cells-survive-rerender.spec.js`
-// roughly one run in three on `main`.
+// RUNS AT THE PROJECT'S DEFAULT 1280x720, deliberately.
 //
-// Both sibling rel specs avoid the dialog entirely by loading through "Show
-// all" instead. This one cannot: the Load-from-Disk path IS its subject — the
-// defect does not exist on the live render path, where the row-build pass
-// appends the rel cells before any gate runs. So the dialog has to be clicked,
-// and the cheapest reliable way is to give it room. Spec-local on purpose:
-// making `diskFixture.js` click through the DOM would retire that flake for
-// every disk spec, but that is shared-harness surgery, not this fix's business.
-test.use({ viewport: { width: 1280, height: 1600 } });
+// This spec first shipped with a taller viewport, because the Load-from-Disk
+// dialog is `position: fixed` with `max-height: calc(100vh - 40px)` and no
+// `top`, so at 720px its `#sa-render-no-filter-confirm` lands below the fold
+// (measured at y≈1051) and Playwright refuses to click an element outside the
+// viewport — the fragility `rel-column-collapse-toggle.spec.js` documents,
+// which also flaked `picard-cells-survive-rerender.spec.js` about one run in
+// three. `diskFixture.js` now dispatches that click through the DOM, so the
+// override is gone.
+//
+// Keeping it would have been worse than pointless: at 1600px the below-the-fold
+// condition never arises, so this spec would pass without ever exercising the
+// helper it depends on, and a revert of that helper would go unnoticed here.
+// At the default viewport, this spec is also the thing that would notice.
 
 test.describe('Load-from-Disk: the Relationships column is built for a snapshot that never had it', () => {
     let pageErrors;

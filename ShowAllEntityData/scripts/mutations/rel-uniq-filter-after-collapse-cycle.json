@@ -1,0 +1,15 @@
+[
+  {
+    "name": "row-text cache dropped with null instead of undefined",
+    "why": "Reverts the fix to exactly the shipped-on-branch code. _cachedColText() treats `undefined` as 'not cached' and recomputes; _relDropRowTextCache() wrote `null`, which is not the same value, so a collapse POISONED the entry instead of invalidating it. The next matchOnly pass then read `null` back as though it were cached text and testRowMatch() threw on cellText.toLowerCase(), aborting runFilter()'s row loop part-way — so _highlightRelCellIcons() never ran and a 📊 relationship entry picked after a collapse/expand cycle left its icons un-outlined. The spec must fail at the outline assertion and on the uncaught page error.",
+    "edits": [
+      {
+        "find": "        if (_c && _c.cols) delete _c.cols[colIdx];",
+        "replace": "        if (_c && _c.cols) _c.cols[colIdx] = null;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js",
+    "grep": "the reported sequence: pick, clear, filter another column, collapse, expand, pick again",
+    "expect": "fail"
+  }
+]

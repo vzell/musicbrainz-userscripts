@@ -63,7 +63,15 @@ test.describe('Relationships column on a release listing looks up RELEASES', () 
                 testMode: true,
                 // loadPage.js forces the column off for fixture specs. Threshold
                 // above the 6 + 1 rows, so both sub-tables fetch at render.
-                settingsOverride: { sa_enable_relationships_column: true, sa_rel_collapse_threshold: 50 },
+                // The browse bulk source is switched off: this spec counts and
+                // classifies per-row LOOKUPS, and on this shell one browse page
+                // would answer the 6-row sub-table. The browse request's own
+                // entity is pinned by rel-column-browse-batch.spec.js.
+                settingsOverride: {
+                    sa_enable_relationships_column: true,
+                    sa_rel_collapse_threshold: 50,
+                    sa_rel_browse_batch_enable: false,
+                },
             });
             await page.route('**/ws/2/**', (route) => {
                 ws2.push(route.request().url());

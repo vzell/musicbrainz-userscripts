@@ -174,10 +174,22 @@ test.describe('release-tracks: embedded-payload backfill via WS2', () => {
     test('a row already stamped by the embedded payload is never re-sent to the network', async ({ page }) => {
         const calls = await setup(page);
         await firstToggle(page).click();
-        expect(calls).toHaveLength(1);
+        // Settle before reading, exactly as the two tests above already do.
+        // This was the ONLY one of the three that clicked and then read the
+        // column with no wait of any kind, which is why it was the one that
+        // lost under full-suite load: it sampled the Length cells while the
+        // backfill's response was still being stamped and saw seconds
+        // ("4:50") where it expected milliseconds ("4:50.160"). Not a budget
+        // problem — no timeout can help a single unretried read — and it
+        // passed 3 of 3 in isolation while failing a 286/1 suite run.
+        await expect(firstToggle(page)).toHaveAttribute('aria-pressed', 'true');
+        // `calls` is a live array the route handler pushes to, so assert it the
+        // retrying way too. The plain form happened to pass here, but it is the
+        // same race as the read below and would fail the same way.
+        await expect.poll(() => calls.length).toBe(1);
         // The mocked response includes A1-A4 too (a real one naturally would),
         // proving the backfill's own idempotency guard — not this test's
         // request log — is what keeps their already-stamped values untouched.
-        expect(await lengthValues(page)).toEqual(MILLIS);
+        await expect.poll(() => lengthValues(page)).toEqual(MILLIS);
     });
 });

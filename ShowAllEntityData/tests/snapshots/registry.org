@@ -91,6 +91,21 @@ Not affected, and worth knowing so the diff is not over-read:
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 
+** Relationships per-cell glyph stylesheet (branch rel-column-batch-and-cell-states)
+
+A script change, not upstream movement — recorded here so that a re-capture
+diff is not mistaken for one. Every =rendered.html= gains one
+=<style id="mb-rel-cell-glyph-style">= block holding the per-cell load-state
+glyph rules, because it is injected on every page while
+=sa_rel_cell_state_glyphs= is on, which is the default.
+
+There is NO markup change. The glyphs are CSS generated content keyed on
+attributes the cells already carried, the stylesheet is deliberately not gated
+by a class on =<html>= (the harness serializes the whole =documentElement=), and
+the per-cell =title= is only written on hover. =data-rel-loading= and
+=data-rel-error= are transient: they appear only if a capture lands mid-fetch
+or on a failed request.
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not

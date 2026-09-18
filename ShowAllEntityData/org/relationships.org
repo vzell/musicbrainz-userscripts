@@ -35,6 +35,11 @@ decisions and the things worth not re-deriving.
    the column filter or opening its 📊 dropdown surfaces "collapsed — press
    ▶🔗" rather than starting the run. A glance at a dropdown must not be able
    to queue a throttled multi-minute fetch.
+4. /Added 2026-09-15./ *Clicking a cell loads that ONE row*, including in a
+   collapsed table — an explicit, one-request action, so it is consistent with
+   decision 3. The filter box and the 📊 dropdown still never start a fetch.
+   Glyph set: link outline (🔗︎ ⋯ ◌ – ⚠︎). Reloading a loaded row: a hover ⟳.
+   See "analyze additional Relationships column enhancements" below.
 
 ** The asymmetry with Picard, which is what drove the design
 
@@ -154,10 +159,10 @@ Full account in ~DEBUG-NOTES.md~'s 2026-09-11 entry.
 - ~_relRetryMbids()~ sets and clears ~_relRetryActive~ synchronously around a
   fire-and-forget async call, so the flag is dead by the time Phase 2 reads it.
   Harmless only because the caches are deleted first. Recorded, not fixed.
-- Two pre-existing doc drifts left for a separate commit:
-  ~sa_enable_relationships_column~'s description names 4 pageTypes when 26
-  declare the column, and the Statistics panel says "7-day TTL" against a
-  30-day default.
+- /Fixed 2026-09-15 on/ ~rel-column-batch-and-cell-states~ (WIP.1): the two
+  pre-existing doc drifts — ~sa_enable_relationships_column~'s description
+  named 4 pageTypes when 26 declare the column, and the Statistics panel said
+  "7-day TTL" against a 30-day default (it now shows the configured value).
 
 
 * DONE bug
@@ -237,3 +242,248 @@ Currently sorting of the "Relationships" column doesn't seem to do anything.
 
 I want sorting according to the number of relationship icons inside the data cells
 
+
+* DONE analyze additional "Relationships" column enhancements
+
+Analyze additional "Relationships" column enhancements:
+
+1.)
+
+Check if it's possible instead of executing one MusicBrainz API call per row to utilize another API call along the line
+what we do for the "Length" column on 'release-tracks' pageTypes, e.g.
+
+#+begin_example
+<span class="mb-ms-col-hdr-btn" role="button" tabindex="0" aria-pressed="false" title="Show millisecond precision for &quot;Length&quot;" aria-label="Show millisecond precision in the Length column">▶⏱︎</span>
+#+end_example
+
+to get more than one row at the same time
+
+2.)
+
+also analyze if it's somehow possible (with our current implementation) when the "Relationships" column is in the
+collapsed state, to pre-render a glyph (choose some nice not overwhelming visual representation) in each data cell of
+the "Relationships" column and when clicked ONLY the relationships are fetched for that specific row (either replacing
+that glyph or if it's visual more attractive or if we can achieve functionality like reload, change the glyph and render
+the fetched relationship icons).
+
+3.)
+
+Even if 1.) is possible, still check for 2.) and see if they can be combined or used together
+
+4.)
+
+The approach with rendering a specific glyph in each "Relationships" data cell could also be useful for an end-user to
+get an idea which row has already been processed by the row fetch specific API, for very large tables with only a sparse
+rowset having actually relationship icons. Without looking in the debug console, it's sometimes not clear if there are
+still rows left to fetch relationship icons for
+
+5.)
+
+Please also provide a mockup for case 2.)
+
+** Answer, 2026-09-15: all four are possible, and they combine
+
+Implementation is planned as PERFORMANCE.org *Step 36*, on branch
+~rel-column-batch-and-cell-states~. CLAUDE.md carries the design and its traps
+under "IN PROGRESS: batched source + per-row load states". Decisions taken with
+the user are decision 4 in the list at the top of this file.
+
+*** 1.) Batching — yes, but via BROWSE, not the ⏱ search trick
+
+- The ⏱ Length feature batches 100 MBIDs into one ~rid:~ SEARCH request. Search
+  results carry no ~relations~, so that trick does not transfer (a probe
+  confirms it before anything relies on it).
+- The BROWSE endpoint does carry them, and one mapping is already proven:
+  ~/ws/2/release?artist=<mbid>&inc=url-rels&limit=100~ covered all 2301 of Bob
+  Dylan's releases in *24 requests instead of 2301* (~42 min -> ~30 s).
+- Browse costs the page entity's WHOLE catalogue rather than the rows shown, so
+  a run decides from browse page 1's total count whether continuing is cheaper
+  than per-row lookups, and falls back to them for whatever is left.
+- Only some pageTypes have a browse equivalent (artist/label/area/release-group/
+  recording release listings, artist release groups and works, collections).
+  Series, instrument, tag, report, search and the relationship listings keep
+  per-row lookups.
+
+*** 2.) Per-row glyph + click — yes, if the glyph is pure CSS
+
+The glyph is a ~::before~ on the cell, never text, so filtering, sorting, the 📊
+dropdown, export and Save-to-Disk cannot see it. A click loads only that row,
+also inside a collapsed table. Four things in today's code had to be answered
+first:
+
+- The load-bearing multiplying-icons guard, ~_relCellWritable()~, refuses to
+  write into collapsed tables — so a click gets its own per-cell guard.
+- *A failed request (HTTP 503) currently looks exactly like "no
+  relationships"*, and stays cached for the session. The "none" glyph would
+  display that as fact, so failures get their own ⚠︎ state and are never cached.
+- Failed rows must not be retried on every filter keystroke.
+- A saved page with a few hand-loaded rows must not reload as fully expanded
+  and queue a fetch of all the others.
+
+*** 3.) Combined
+
+Every source — cache, browse page, per-row lookup, a click — goes through one
+writer and one shared 1-request-per-second gate, so the glyphs show progress
+whichever source answered. A click on a queued row jumps the queue.
+
+*** 4.) Visibility
+
+Per row: the glyphs. Per table: a ~done/total~ badge on the ▶🔗 toggle. For
+finding the few rows that have icons in a huge table: a "Relationships - Load
+state" section in the 📊 dropdown (not loaded / has relationships / none /
+failed).
+
+*** 5.) Mockup (chosen: link outline glyphs, hover ⟳ reload)
+
+#+begin_example
+Relationships column, COLLAPSED table
+                                          header:  ▶🔗 3/12     (badge drawn by CSS)
+ Title                    Format   Relationships
+ ───────────────────────  ───────  ─────────────────────────
+ Born to Run              CD       [D][W][♫][A]            loaded
+ Born to Run (hovered)    CD       [D][W][♫][A] ⟳          click outside icons = reload row
+ Darkness on the Edge…    LP       ◌                        loading (spins)
+ The River                2×LP     🔗︎                       not loaded, click = load this row
+ Nebraska                 CD       –                        loaded, no relationships
+ Tunnel of Love           CD       ⚠︎                        failed (HTTP 503), click = retry
+ Human Touch              CD       🔗︎                       not loaded
+ Lucky Town               CD                                row links no entity, no glyph
+
+EXPANDED table while the bulk fetch runs:     header:  ▼🔗 340/2301
+ Greetings From Asbury…   LP       ⋯                        queued, click = fetch now
+
+Filter input (collapsed):  [ collapsed — 3 of 12 loaded, ▶🔗 loads all ]
+
+📊 dropdown, section "Relationships - Load state"
+   ☐ 🔗︎ not loaded        9
+   ☐ ✓  has relationships  2
+   ☐ –  none               1
+   ☐ ⚠︎ failed             0
+#+end_example
+
+Glyphs are faint (about 35 %) until the row is hovered; ⚠︎ is amber; ⟳ appears
+only on hover.
+
+
+* DONE bug when live testing
+
+I tried live testing on the multi-table pageType https://musicbrainz.org/release-group/3986daa8-285e-4f61-8537-fb9b78194607
+
+See the following raw HTML captures in @debug/
+
+#+begin_example
+rg-r-initial.html - initial page
+rg-r-final.html - final rendered page
+#+end_example
+
+The following steps produce the bug:
+
+1.)
+
+Click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php"
+
+#+begin_example
+rg-r-filter-rel-sl.html - filter with "www.springsteenlyrics.com/bootlegs.php"
+#+end_example
+
+This is OK. 3 rows out of 4 get filtered and the "www.springsteenlyrics.com/bootlegs.php" icon get the red surrounded border which shows the filtering is in effect, [Image #2]
+
+Then clear the column filter again
+
+2.)
+
+Now filter in the "MB-Name" column with "barcelona". Three rows still get correctly filtered and "barcelona" is
+background filter highlighted. Still OK.
+
+3.)
+
+Now in the "Relationships" column collapse the relationships icons by clicking the collapse glyph
+
+#+begin_example
+rg-r-filter-barcelona-collapsed.html - "Relationships" column collapsed
+#+end_example
+
+Then uncollapse the relationships icons again
+
+4.)
+
+Click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php" again, see [Image #3]
+
+#+begin_example
+rg-r-filter-barcelona-uncollapsed-rel-filtered-bug.html - "Relationships" column collapsed, filter with "www.springsteenlyrics.com/bootlegs.php"
+#+end_example
+
+There is no filtering in effect for "www.springsteenlyrics.com/bootlegs.php" and now visual red surrounding border
+
+5.)
+
+From then on, it doesn't matter what we choose from the unique value drop down on the "Relationships" columns, filtering
+on the choosen entry has NO effect anymore.
+
+It looks like it's associated to the collapsing/uncollapsing of the "Relationships" column.
+
+6.)
+
+Unwind the local merge (git reset --hard 43d11cf on main), leaving the work only on the branch.
+
+7.)
+
+As you can see there can still be bugs whithout real live testing by a human, I don't want you to automatically merge an
+implementation branch to main (basically what the skill "merge-push-remove" is for) without rechecking with me. Also add
+this with a hint to the skill to CLAUDE.md
+
+
+* TODO another bug when live testing
+
+Another live testing bug on the multi-table pageType https://musicbrainz.org/release-group/3986daa8-285e-4f61-8537-fb9b78194607
+
+To reproduce, first remember which rows have the "www.springsteenlyrics.com/bootlegs.php" icon, to correctly load the
+right relationships icons manually when later clicking the "Load"-glyph.
+
+See the following raw HTML captures in @debug/
+
+1.)
+
+In the "Relationships" column collapse the relationships icons by clicking the collapse glyph
+
+2.)
+
+Load just one cell by clicking the "Load"-glyph which has the "www.springsteenlyrics.com/bootlegs.php" icon (item=1742)
+
+#+begin_example
+rg-r-filtered-1742.html - [Image #5]
+#+end_example
+
+3.)
+
+Now click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php"
+
+The one row with the "www.springsteenlyrics.com/bootlegs.php" just loaded is correctly filtered (item=1742)
+
+#+begin_example
+rg-r-filtered-1742-uvd.html - [Image #6]
+#+end_example
+
+Clear the filter again
+
+4.)
+
+Load another cell with the "www.springsteenlyrics.com/bootlegs.php" by clicking it's glyph (item=3658)
+
+#+begin_example
+rg-r-filtered-3658.html - [Image #7]
+#+end_example
+
+5.)
+
+Now click the "Relationships" column unique value drop down and choose "www.springsteenlyrics.com/bootlegs.php" again
+
+Still ONLY the one row with the "www.springsteenlyrics.com/bootlegs.php" loaded FIRST (item=1742) is correctly filtered, instead of both
+
+#+begin_example
+rg-r-filtered-3658-uvd.html - [Image #8]
+#+end_example
+
+6.)
+
+Can you somehow store the current bug info, so that I can /clear and later start with the bug fix

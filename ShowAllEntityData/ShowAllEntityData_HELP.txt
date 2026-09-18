@@ -1234,11 +1234,19 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
       collapse-all, cover-art and Picard page-wide buttons.
     — The ▶🔗 tooltip says what pressing it will cost, in requests and in
       expected time, so it is never a blind choice.
+    — While anything in a table is still unloaded, its ▶🔗 / ▼🔗 button shows
+      how far it has got, e.g. "340/2301" distinct entities loaded — updating
+      as rows load by hand, in bulk or one by one — and the badge disappears
+      once the table is complete.  A failed request does not count as loaded;
+      the button's tooltip says how many failed.
     — Emptying a column KEEPS everything already fetched (memory + the
       IndexedDB cache), so pressing ▶🔗 again is instant and costs no
       requests.  Only the 🔗⟳ Retry buttons clear that data.
-    — A table restored from a saved snapshot always starts EXPANDED, whatever
-      the threshold says: its icons are already in the file.
+    — A table restored from a saved snapshot starts EXPANDED, whatever the
+      threshold says, when every row's icons are already in the file.  A
+      partly loaded one — rows you loaded by hand, or a page saved mid-fetch —
+      goes by the threshold instead, so reopening it never starts fetching
+      every other row.
     — Set the threshold to 0 to never auto-collapse.  The ▶🔗/▼🔗 button is
       always available either way — the setting chooses only the starting
       state.
@@ -1251,9 +1259,44 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • A COLLAPSED column says so rather than quietly matching nothing.  Its
   column-filter box is tinted and reads "collapsed — press ▶🔗", the 📊
   unique-values dropdown shows a "Collapsed — press ▶🔗 in the column
-  header to load" line instead of an empty "Relationship icons" section,
-  and the status bar reports "🔗Rels: collapsed" rather than a completed
-  load.  Neither the filter box nor the dropdown starts the fetch.
+  header to load" line (or "Collapsed — N of M loaded" once rows have been
+  loaded by hand, whose icons are then listed as usual) instead of an empty
+  "Relationship icons" section, and the status bar reports "🔗Rels:
+  collapsed" rather than a completed load.  Neither the filter box nor the
+  dropdown starts the fetch.
+• The 📊 dropdown's "Relationships - Load state" section — collapsed or
+  expanded — counts the rows in four states: 🔗 not loaded yet, ✓ has
+  relationships, – no relationships, ⚠ request failed.  Checking one narrows
+  the table to those rows: the rows still waiting in a huge table, the few
+  that actually have icons, or the ones whose request failed.
+• EVERY ROW SAYS WHERE IT STANDS — a small, faint glyph in each Relationships
+  cell ("Relationships: show a load-state glyph in each cell" in ⚙️ Settings,
+  on by default):
+    🔗  not loaded yet — click the cell to load just that row (one request),
+        even while the column is collapsed; the rest of the table is left
+        alone
+    ⋯   queued — the column is fetching and has not reached this row yet;
+        clicking it fetches it straight away
+    ◌   loading
+    –   loaded, but nothing with an icon
+    ⚠   the request failed — click to try again
+  Hovering a loaded cell shows ⟳: clicking the cell anywhere outside its
+  icons re-fetches that row, bypassing the cache.  Hover any cell for a
+  tooltip that says the same in words.  The glyphs are drawn purely by CSS,
+  so filters, sorting, the 📊 dropdown, exports and Save to Disk never see
+  them.  Rows loaded by hand survive filtering and sorting; pressing ▼🔗
+  empties them along with everything else.
+• BULK FETCHING — on an artist's releases, release groups and works, a label's
+  releases, a release group's or recording's releases, and an area's labels,
+  the column asks for up to 100 rows per request instead of one per row: a
+  2 300-release artist page needs about 24 requests (under a minute when the
+  Web Service is not busy) instead of about 42 minutes.  Rows the bulk answer
+  does not include — a "Various Artists" view, for example — are still looked
+  up one by one, and bulk fetching stops by itself as soon as one-by-one would
+  be cheaper.  Bulk answers go into the same cache as single ones, so other
+  pages listing the same releases get them for free.  Clicking a single cell
+  still loads just that row.  "Relationships: fetch whole pages at once where
+  MusicBrainz allows it" in ⚙️ Settings (on by default) switches it off.
 • Rich filter-aware tooltip — when a filter is active and it matches content
   in a Relationships cell, hovering an icon in that cell opens a rich HTML
   tooltip showing the full URL.  The tooltip is suppressed when no active
@@ -1261,19 +1304,28 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
   browsing.
 • Sortable by icon count — clicking the column header's ▲/▼ orders rows by
   how many relationship icons appear in that row's cell (fewest first
-  ascending).  A COLLAPSED cell has 0 icons until you press ▶🔗, so sorting
-  a collapsed column does nothing until it is expanded.
+  ascending).  A row that has not been loaded has 0 icons, so in a collapsed
+  column only the rows you loaded by hand sort apart from the rest.
 • Filter match highlighting — when a filter expression matches a URL in the
   Relationships cell, the corresponding relationship icon is highlighted with
   a coloured border/background so the match is immediately visible.
 • Relationship data is cached in IndexedDB (configurable TTL, default 30
   days) to avoid re-fetching on repeated visits.  Retry buttons (⟳) force a
   fresh network fetch with IDB cache invalidation.
+• A request the Web Service REFUSES — it answers "503 Service Unavailable" in
+  bursts when it is busy — is retried up to three times, with a growing pause
+  between attempts.  If it still fails, that row is left FAILED rather than
+  shown as "no relationships", and nothing about it is cached, so it does not
+  stay quietly wrong for the rest of the session.  A filter keystroke does not
+  retry it; collapsing and re-expanding the column (▼🔗 then ▶🔗), or a 🔗⟳
+  Retry button, does.  The completion toast and the status-bar tooltip say how
+  many requests failed.
 • Round-trips through Save-to-Disk/Load-from-Disk with zero network activity
   when every Relationships cell was already fully populated at save time —
   only a row saved mid-fetch triggers a fresh fetch for that row on load.
-  Saving a page whose column was COLLAPSED naturally saves it empty, so
-  press ▶🔗 first if the point of the file is to keep the icons.
+  Saving a page whose column was COLLAPSED saves only the rows you loaded
+  by hand, so press ▶🔗 first if the point of the file is to keep every
+  icon.
 • The 🔗 Relationship icons section in the unique-values dropdown supports
   multi-select filtering, like every other section there (see UNIQUE-VALUES
   COLUMN DROPDOWN above).
@@ -1726,6 +1778,11 @@ labels and descriptions.  Major setting groups:
     — Auto-collapse threshold in unique entities (default 200; 0 = never) —
       a bigger table starts collapsed and fetches nothing until you press
       ▶🔗 in its column header
+    — Show a load-state glyph in each cell (default ON) — also switches
+      click-to-load a single row on or off
+    — Fetch whole pages at once where MusicBrainz allows it (default ON) —
+      up to 100 rows per request on artist, label, release-group, recording
+      and area listings
     — Related settings for entity types and tooltips
 
 • ↔️ COLUMN RESIZE FEATURE

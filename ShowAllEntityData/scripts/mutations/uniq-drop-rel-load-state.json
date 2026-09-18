@@ -1,0 +1,93 @@
+[
+  {
+    "name": "matcher ignores the load state",
+    "why": "The rel-state-* branch matches every row, so checking \"request failed\" does not narrow the table — the skill's silently-dead-entry failure mode.",
+    "edits": [
+      {
+        "find": "            return _relCellLoadState(cell) === mode.slice('rel-state-'.length);",
+        "replace": "            return true;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "narrows the table to exactly the failed row",
+    "expect": "fail"
+  },
+  {
+    "name": "section never rendered",
+    "why": "The load-state entries are never added to the dropdown.",
+    "edits": [
+      {
+        "find": "        if (isRelCellCol && relLoadStateCounts) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "lists all four states with their counts",
+    "expect": "fail"
+  },
+  {
+    "name": "zero-count entry shown",
+    "why": "A fully loaded table still offers a \"not loaded yet\" entry with a count of 0.",
+    "edits": [
+      {
+        "find": "            if (relLoadStateCounts.pending > 0) makeSynItem(",
+        "replace": "            if (relLoadStateCounts.pending >= 0) makeSynItem("
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "offers no \"not loaded\" entry",
+    "expect": "fail"
+  },
+  {
+    "name": "collapsed note ignores loaded rows",
+    "why": "A partly loaded collapsed column still says nothing is loaded.",
+    "edits": [
+      {
+        "find": "            _note.textContent = _p.done",
+        "replace": "            _note.textContent = false"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "lists all four states with their counts",
+    "expect": "fail"
+  },
+  {
+    "name": "classifier reports an empty row as having relationships",
+    "why": "_relCellLoadState() says 'has' for a fetched row with no icon, so the counts merge two different states.",
+    "edits": [
+      {
+        "find": "        if (cell.dataset.relDone === '1') return cell.querySelector('a') ? 'has' : 'none';",
+        "replace": "        if (cell.dataset.relDone === '1') return 'has';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "lists all four states with their counts",
+    "expect": "fail"
+  },
+  {
+    "name": "icon counts skipped on a collapsed but partly loaded column",
+    "why": "A row loaded by hand in a collapsed column has an icon, but the \"Relationship icons\" section does not list it.",
+    "edits": [
+      {
+        "find": "            : isRelCellCol && (_relTableExpanded(table)\n                || table.querySelector('tbody td.mb-rel-cell[data-rel-done=\"1\"]')) ? (() => {",
+        "replace": "            : isRelCellCol && _relTableExpanded(table) ? (() => {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "lists all four states with their counts",
+    "expect": "fail"
+  },
+  {
+    "name": "writers do not drop the uniq-drop cache (overlap)",
+    "why": "KNOWN OVERLAP: the spec loads rows by clicking, and _relLoadRow() drops the table's uniq-drop cache itself after its write, so removing the per-write drop in _relScheduleProgressRefresh() is invisible there. It matters for bulk writes during a fetch, which the spec does not reopen the dropdown during. Recorded, not hidden.",
+    "edits": [
+      {
+        "find": "            _relSyncCollapsedFilterAffordance(table);\n            _invalidateUniqDropDataCacheForTable(table);",
+        "replace": "            _relSyncCollapsedFilterAffordance(table);"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-rel-load-state.spec.js",
+    "grep": "counts follow a later load",
+    "expect": "pass"
+  }
+]

@@ -1324,9 +1324,12 @@
             description: 'When enabled and the page type declares injectedColumns:["Relationships"], '
                          + 'a synthetic "Relationships" column is injected and populated '
                          + 'asynchronously with favicon icon links from the MusicBrainz Web Service '
-                         + '(url-rels for each release-group or release). '
-                         + 'Applies to: artist-releasegroups, artist-releases, label-releases, '
-                         + 'releasegroup-releases. Disable to suppress the column entirely. '
+                         + '(the URL relationships of each row\'s release, release group, label '
+                         + 'or work, plus release and release-group relationships that have an '
+                         + 'icon, e.g. "single from"). Applies to every page type that declares '
+                         + 'the column: artist, label, area, release-group and recording release '
+                         + 'listings, collections, series, tag pages, reports and search results '
+                         + 'among them. Disable to suppress the column entirely. '
                          + 'Adapted from "Display shortcut for relationships on MusicBrainz" '
                          + 'by Aurelien Mino <aurelien.mino@gmail.com>'
         },
@@ -1348,6 +1351,32 @@
                          + 'The toggle is always available either way, and a table restored '
                          + 'from a saved snapshot always starts expanded because its data is '
                          + 'already there.'
+        },
+
+        sa_rel_cell_state_glyphs: {
+            label: 'Relationships: show a load-state glyph in each cell',
+            type: 'checkbox',
+            default: true,
+            description: 'Draws a small, faint glyph in every Relationships cell saying where that row '
+                         + 'stands: 🔗 not loaded yet (click it to load just that row, one request), '
+                         + '⋯ queued, ◌ loading, – loaded but nothing with an icon, ⚠ the request failed '
+                         + '(click to retry). Hovering a loaded cell shows ⟳: clicking the cell outside '
+                         + 'its icons re-fetches that row. The glyphs are drawn by CSS, so filtering, '
+                         + 'sorting and exports never see them. Disable to hide the glyphs and turn '
+                         + 'click-to-load off.'
+        },
+
+        sa_rel_browse_batch_enable: {
+            label: 'Relationships: fetch whole pages at once where MusicBrainz allows it',
+            type: 'checkbox',
+            default: true,
+            description: 'On an artist\'s releases, release groups or works, a label\'s releases, a release '
+                         + 'group\'s or recording\'s releases, and an area\'s labels, the Relationships '
+                         + 'column asks the Web Service for up to 100 entities per request instead of one '
+                         + 'per row — about 24 requests instead of 2 300 for a large discography. Rows the '
+                         + 'bulk answer does not cover are still looked up one by one, and bulk fetching '
+                         + 'stops on its own when one-by-one would be cheaper. Disable to always look rows '
+                         + 'up one at a time.'
         },
 
         sa_rels_idb_enable: {
@@ -15450,7 +15479,11 @@
                 integerColumns: [ {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'}, {sourceColumn: 'B-DD', align: 'R'}, {sourceColumn: 'B-MM', align: 'R'}, {sourceColumn: 'B-YYYY', align: 'C'}, {sourceColumn: 'E-DD', align: 'R'}, {sourceColumn: 'E-MM', align: 'R'}, {sourceColumn: 'E-YYYY', align: 'C'} ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Label',
-                stickyColumn: 'Label'
+                stickyColumn: 'Label',
+                // Relationships bulk source, see _relBrowseSource(). Not
+                // declared for area-releases: browsing releases BY area returns a
+                // different set than that page lists (0 for New Jersey).
+                relBrowse: { entity: 'label', by: 'area' }
             },
             tableMode: 'single'
         },
@@ -15920,6 +15953,8 @@
                 injectedColumns: [ 'Relationships' ],
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'CAA' ],
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', 'Catalog#', 'Barcode' ],
+                // Relationships bulk source, see _relBrowseSource().
+                relBrowse: { entity: 'release', by: 'label' },
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
                 stickyColumn: 'Release'
@@ -16074,6 +16109,11 @@
                 ],
                 injectedColumns: [ 'Relationships' ],
                 integerColumns: [ {sourceColumn: 'Year', align: 'C'}, {sourceColumn: 'Releases', align: 'R'} ],
+                // Relationships bulk source, see _relBrowseSource(). The "Various
+                // Artists RGs" view lists release groups the artist is not
+                // credited on, which this browse cannot return — the cost rule's
+                // zero-match stop hands those rows to per-row lookups.
+                relBrowse: { entity: 'release-group', by: 'artist' },
                 collapsableColumns: [ 'CAA' ],
                 tooltipColumns: [ 'Title', 'Artist', '---', ['Year', '(', 'Releases', ')'] ],
                 addCAA: 'Title',
@@ -16118,7 +16158,10 @@
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', ['Label', '-', 'Catalog#'], 'Barcode' ],
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
-                stickyColumn: 'Release'
+                stickyColumn: 'Release',
+                // Relationships bulk source, see _relBrowseSource(). Probed:
+                // scripts/probe-rel-batch-endpoints.py (tests/MEASUREMENTS.org).
+                relBrowse: { entity: 'release', by: 'artist' }
             },
             tableMode: 'single'
         },
@@ -16158,6 +16201,10 @@
             buttons: [ { label: 'Show all Works for Artist' } ],
             features: {
                 collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'ISWC', 'Lyrics languages', 'Attributes' ],
+                // Relationships bulk source, see _relBrowseSource(). `match` also
+                // accepts non-artist /works paths; the resolver only uses this on
+                // an /artist/<mbid> URL.
+                relBrowse: { entity: 'work', by: 'artist' },
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Work',
                 stickyColumn: 'Work'
@@ -16193,7 +16240,10 @@
                 tooltipColumns: [ 'MB-Name', 'italic:Comment', 'Artist', '---', ['Format', '(', 'Tracks', ')'], 'Country/Date', ['Label', '-', 'Catalog#'], 'Barcode' ],
                 addCAA: 'Release',
                 extractMainColumn: 'Release',
-                stickyColumn: 'Release'
+                stickyColumn: 'Release',
+                // Relationships bulk source, see _relBrowseSource(). A release
+                // group's releases usually fit one browse page.
+                relBrowse: { entity: 'release', by: 'release-group' }
             },
             tableMode: 'multi',
             non_paginated: false
@@ -16336,6 +16386,8 @@
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'CAA' ],
                 tooltipColumns: [ 'Release title', 'italic:Comment', 'Release Artist', 'Release group type', '---', ['#', 'Title', '(', 'Length', ')'], 'Track artist', 'Country/Date', ['Label', '-', 'Catalog#'] ],
                 addCAA: 'Release title',
+                // Relationships bulk source, see _relBrowseSource().
+                relBrowse: { entity: 'release', by: 'recording' },
                 extractMainColumn: 'Release title',
                 stickyColumn: 'Title'
             },
@@ -18369,33 +18421,71 @@
      * in three while this was being built — and a burst is not a fact about
      * the data.
      *
+     * The retry loop itself lives in `_ws2GetJson()`, shared with the
+     * Relationships column; this function supplies the spacing between attempts.
+     *
      * @param   {string[]} ids  Up to `_MS_BATCH_SIZE` recording MBIDs.
      * @returns {Promise<{ok: boolean, recordings: Array<Object>, detail: string}>}
      */
     async function _msFetchOneBatch(ids) {
         const query = encodeURIComponent(`rid:(${ids.join(' OR ')})`);
         const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
+        const res = await _ws2GetJson(url, {
+            tries: _MS_BATCH_TRIES,
+            beforeRetry: attempt => new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt)),
+            dbg: _msDbg,
+            label: '_msFetchOneBatch',
+        });
+        return res.ok
+            ? { ok: true, recordings: (res.data && res.data.recordings) || [], detail: '' }
+            : { ok: false, recordings: [], detail: res.detail };
+    }
+
+    /**
+     * GETs one same-origin WS/2 URL as JSON, retrying transient failures.
+     *
+     * Shared by the millisecond-Length batch source and the Relationships
+     * column, which meet the Web Service under the same conditions: it returns
+     * 503 in bursts under bot load — roughly one request in three while the
+     * batch source was built, and most requests needed 3-5 attempts during the
+     * 2026-09-15 Relationships probe — and a burst is not a fact about the data.
+     *
+     * The retry policy is exactly the one `_msFetchOneBatch()` had before it was
+     * extracted: a 503, or a thrown request (network failure, unparseable body),
+     * is retried up to `tries` attempts in total; any other non-OK status is
+     * final, since a 4xx will not change. `beforeRetry(attempt)` is awaited
+     * between attempts, so each caller owns its own spacing and rate limiting.
+     *
+     * Never rejects.
+     *
+     * @param   {string} url  Same-origin `/ws/2/...` URL.
+     * @param   {{tries: number, beforeRetry: function(number): Promise<void>,
+     *            dbg: function(...*): void, label: string}} opts
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     *          `status` is the last HTTP status seen, or 0 when no response arrived.
+     */
+    async function _ws2GetJson(url, { tries, beforeRetry, dbg, label }) {
         let detail = '';
-        for (let attempt = 1; attempt <= _MS_BATCH_TRIES; attempt++) {
+        let status = 0;
+        for (let attempt = 1; attempt <= tries; attempt++) {
             try {
                 const resp = await fetch(url, { headers: { Accept: 'application/json' } });
+                status = resp.status;
                 if (resp.ok) {
                     const data = await resp.json();
-                    return { ok: true, recordings: data.recordings || [], detail: '' };
+                    return { ok: true, status, data, detail: '' };
                 }
                 detail = `HTTP ${resp.status}`;
                 // Only a 503 is worth another attempt; a 4xx will not change.
                 if (resp.status !== 503) break;
-                _msDbg(`_msFetchOneBatch: ${detail} on attempt ${attempt}/${_MS_BATCH_TRIES}`);
+                dbg(`${label}: ${detail} on attempt ${attempt}/${tries}`);
             } catch (err) {
                 detail = 'the request failed';
-                _msDbg(`_msFetchOneBatch: ${err.message || String(err)} on attempt ${attempt}`);
+                dbg(`${label}: ${err.message || String(err)} on attempt ${attempt}`);
             }
-            if (attempt < _MS_BATCH_TRIES) {
-                await new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt));
-            }
+            if (attempt < tries) await beforeRetry(attempt);
         }
-        return { ok: false, recordings: [], detail };
+        return { ok: false, status, data: null, detail };
     }
 
     /**
@@ -22759,6 +22849,13 @@
             // `_splitArtistRoleTokens()` — see its own JSDoc.
             const want = mode.slice(10);
             return !!cell && _findCellArtistRoles(cell).some(r => _splitArtistRoleTokens(r.roles).includes(want));
+        }
+        if (mode.startsWith('rel-state-')) {
+            // Fixed-flag modes of openUniqDrop()'s "Relationships - Load state"
+            // section, one per _relCellLoadState() answer — the same
+            // classifier the section's counts use, so a count and the rows its
+            // entry filters to cannot disagree.
+            return _relCellLoadState(cell) === mode.slice('rel-state-'.length);
         }
         if (mode.startsWith('rel:')) {
             // Compound mode (openUniqDrop()'s "Relationship icons" section) —
@@ -29325,7 +29422,7 @@ ${sections.join('\n')}
                     value:   String(_relIdbTtlEvictCount),
                     comment: _relIdbTtlEvictCount > 0
                         ? `${_relIdbTtlEvictCount} rel-ws2 record(s) found expired during reads and deleted`
-                        : 'Records silently removed when a cached record is read after its 7-day TTL',
+                        : `Records silently removed when a cached record is read after its ${Lib.settings.sa_rel_idb_ttl_days || 30}-day TTL (sa_rel_idb_ttl_days)`,
                     _id:     null,
                 },
                 {
@@ -35684,6 +35781,17 @@ a { color: #1565c0; }`;
         .mb-rel-col-hdr-btn[aria-pressed="true"]::before {
             content: '▼🔗︎';   /* expanded: press to empty the column */
         }
+        /* done/total progress badge (PERFORMANCE.org Step 36). Generated
+           content from data-rel-progress, never header text: this th's text
+           is read by many places. _relUpdateColHdrBtn() sets the attribute
+           only while something is still unloaded, so a complete table shows
+           no badge at all. */
+        .mb-rel-col-hdr-btn[data-rel-progress]::after {
+            content: attr(data-rel-progress);
+            margin-left: 4px;
+            font-size: 0.85em;
+            font-variant-numeric: tabular-nums;
+        }
         /* A collapsed column's filter input matches nothing, because its
            .mb-rel-filter-key spans do not exist yet. Tint it so that is
            visible before the user types rather than after — the placeholder
@@ -36078,6 +36186,70 @@ a { color: #1565c0; }`;
             }
         `);
         _rs.id = 'mb-rel-column-style';
+
+        // ── Per-cell load-state glyphs (PERFORMANCE.org Step 36) ─────────────
+        // Injected only while sa_rel_cell_state_glyphs is on. Deliberately NOT
+        // gated by a class on <html>: the snapshot harness serializes the whole
+        // documentElement, so a page-level class would put markup drift into
+        // every rendered baseline — including every pageType with no
+        // Relationships column at all. Click-to-load reads the same setting.
+        if (Lib.settings.sa_rel_cell_state_glyphs !== false) {
+            const _gs = GM_addStyle(`
+                /* Generated content only, keyed on attributes, so filtering,
+                   sorting, the unique-values dropdown, export and Save-to-Disk
+                   never see a glyph. The cell itself is font-size 0 and
+                   line-height 0, so every pseudo-element sizes itself. */
+                table.tbl tbody td.mb-rel-cell[data-mbid] {
+                    cursor: pointer;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid]::before,
+                table.tbl tbody td.mb-rel-cell[data-mbid]::after {
+                    display: inline-block;
+                    vertical-align: middle;
+                    font-size: 12px;
+                    line-height: 16px;
+                    min-width: 14px;
+                    text-align: center;
+                    opacity: 0.35;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid]:hover::before {
+                    opacity: 1;
+                }
+                table.tbl[data-mb-rel-expanded="0"] tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-loading]):not([data-rel-error])::before {
+                    content: "🔗︎";
+                }
+                table.tbl[data-mb-rel-expanded="1"] tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-loading]):not([data-rel-error])::before {
+                    content: "⋯";
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-loading]::before {
+                    content: "◌";
+                    opacity: 0.8;
+                    animation: mb-rel-cell-spin 1s linear infinite;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-done="1"]:empty:not([data-rel-loading])::before {
+                    content: "–";
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-error]:not([data-rel-loading])::before {
+                    content: "⚠︎";
+                    color: #c77700;
+                    opacity: 0.9;
+                }
+                table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-done="1"]:not([data-rel-loading]):hover::after {
+                    content: "⟳";
+                    margin-left: 2px;
+                    opacity: 0.6;
+                }
+                @keyframes mb-rel-cell-spin {
+                    to { transform: rotate(360deg); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    table.tbl tbody td.mb-rel-cell[data-mbid][data-rel-loading]::before {
+                        animation: none;
+                    }
+                }
+            `);
+            _gs.id = 'mb-rel-cell-glyph-style';
+        }
     })();
 
     if (Lib.settings.sa_enable_count_stat_tooltip) {
@@ -41204,6 +41376,10 @@ a { color: #1565c0; }`;
         // combination) — see MB_UNIQ_KIND_TO_SECTION's 'role' key.
         roles:         { label: 'Entity info - Role (combined)', glyph: '🎭' },
         relationships: { label: 'Relationship icons', glyph: '🔗' },
+        // Fixed-flag load state of each Relationships cell (not loaded / has /
+        // none / failed) — a different question from which icons it holds, so
+        // its own section. Classified by _relCellLoadState().
+        relLoadState:  { label: 'Relationships - Load state', glyph: '📶' },
         // "CAA info"/"EAA info" each split into "- Type"/"- Comment" —
         // the image-type badge (controlled vocabulary, e.g. "Front") and
         // the free-text image comment are two distinct data facets that
@@ -41458,6 +41634,8 @@ a { color: #1565c0; }`;
         'instrument-has-description': 'instrumentHasDescription',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
+        'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
+        'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
     };
 
     /**
@@ -56749,12 +56927,13 @@ a { color: #1565c0; }`;
             return false;
         })();
 
-        // `_relTableExpanded(table)`: a collapsed column has no
-        // `.mb-rel-filter-key` spans, so this walk of every visible row can only
-        // ever produce an empty Map. Skipping it is both cheaper and what makes
-        // the "Collapsed — press ▶🔗" note below the section's only content.
+        // Walked when the column is expanded OR any of its cells is loaded: a
+        // collapsed column can hold rows loaded by hand with a cell click, and
+        // their icons are just as filterable. A collapsed column with nothing
+        // loaded still skips the walk — it can only produce an empty Map.
         const relIconCounts = _uniqCacheHit ? _uniqCacheHit.relIconCounts
-            : isRelCellCol && _relTableExpanded(table) ? (() => {
+            : isRelCellCol && (_relTableExpanded(table)
+                || table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) ? (() => {
             const counts  = new Map(); // domainKey → row count
             const iconFor = new Map(); // domainKey → display URL (for label + favicon)
             if (!tbody) return counts;
@@ -56773,6 +56952,21 @@ a { color: #1565c0; }`;
             counts._iconFor = iconFor;
             return counts;
         })() : new Map();
+
+        // "Relationships - Load state" counts: one fixed flag per visible row,
+        // from _relCellLoadState() — the classifier the rel-state-* matcher
+        // uses too. Collapsed or expanded alike.
+        const relLoadStateCounts = _uniqCacheHit ? _uniqCacheHit.relLoadStateCounts
+            : isRelCellCol ? (() => {
+            const counts = { pending: 0, has: 0, none: 0, error: 0 };
+            if (!tbody) return counts;
+            for (const row of tbody.rows) {
+                if (row.style.display === 'none') continue;
+                const st = _relCellLoadState(row.cells[colIndex]);
+                if (st) counts[st]++;
+            }
+            return counts;
+        })() : null;
 
         // Is this the inline-thumbnail column for an addCAA or addEAA feature?
         // Detected by the presence of .mb-caa-inline-ph or .mb-eaa-inline-ph spans
@@ -56849,7 +57043,7 @@ a { color: #1565c0; }`;
                 instrumentHasCommentCount, instrumentHasDescriptionCount,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
-                flagIconMap, isRelCellCol, relIconCounts,
+                flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
                 inlineArtType, inlineArtYes, inlineArtNo,
             });
         }
@@ -58006,12 +58200,28 @@ a { color: #1565c0; }`;
         if (isRelCellCol && !_relTableExpanded(table)) {
             const _note = document.createElement('div');
             _note.className = 'mb-col-uniq-item mb-uniq-rel-collapsed-note';
-            _note.textContent = '🔗 Collapsed — press ▶🔗 in the column header to load';
-            _note.title = 'This table’s Relationships column has not been fetched, because it '
-                        + `would need ${_relTableUniqueMbidCount(table)} distinct Web Service `
-                        + 'lookups (throttled to 1 per second). Nothing in it can be filtered '
-                        + 'until you load it. Threshold: sa_rel_collapse_threshold.';
+            // Rows loaded by hand (a cell click) are counted, so a partly loaded
+            // collapsed column does not claim that nothing is loaded.
+            const _p = _relTableProgress(table);
+            _note.textContent = _p.done
+                ? `🔗 Collapsed — ${_p.done} of ${_p.total} loaded; press ▶🔗 in the column header to load the rest`
+                : '🔗 Collapsed — press ▶🔗 in the column header to load';
+            _note.title = 'This table’s Relationships column has not been fully fetched, because it '
+                        + `would need ${_p.total} distinct Web Service `
+                        + 'lookups (throttled to 1 per second). Only rows already loaded can be '
+                        + 'filtered until you load the rest. Threshold: sa_rel_collapse_threshold.';
             getOrCreateSynSection('relationships').itemsBox.appendChild(_note);
+        }
+
+        // ── Relationships column: load state (fixed flags) ────────────────────
+        // Offered collapsed or expanded; zero-count entries are omitted, like
+        // every other fixed-flag section. makeSynItem() sets
+        // dataset.mbUniqSynLabel, so the entries stay quickfilter-visible.
+        if (isRelCellCol && relLoadStateCounts) {
+            if (relLoadStateCounts.pending > 0) makeSynItem('rel-state-pending', '🔗 not loaded yet',   relLoadStateCounts.pending);
+            if (relLoadStateCounts.has > 0)     makeSynItem('rel-state-has',     '✓ has relationships', relLoadStateCounts.has);
+            if (relLoadStateCounts.none > 0)    makeSynItem('rel-state-none',    '– no relationships',  relLoadStateCounts.none);
+            if (relLoadStateCounts.error > 0)   makeSynItem('rel-state-error',   '⚠ request failed',    relLoadStateCounts.error);
         }
 
         // ── Relationships column: unique icon entries ─────────────────────────────────────────────
@@ -58555,6 +58765,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return `» role: ${mode.slice(10)}`;
         if (mode.startsWith('arttype:'))    return `» image type: ${mode.slice(8)}`;
         if (mode.startsWith('artcomment:')) return `» image comment: ${mode.slice(11)}`;
+        if (mode === 'rel-state-pending')   return '🔗 not loaded yet';
+        if (mode === 'rel-state-has')       return '✓ has relationships';
+        if (mode === 'rel-state-none')      return '– no relationships';
+        if (mode === 'rel-state-error')     return '⚠ request failed';
         if (mode.startsWith('rel:'))        return `🔗 ${mode.slice(4)}`;
         if (mode === 'editor-any-deleted')      return '🗑️ any deleted editor';
         if (mode === 'changelog-has-message')   return '📜 has changelog message';
@@ -58653,6 +58867,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('roletoken:')) return 'One atomic role word decomposed from this artist\'s own combined credited-role text — unlike "Entity info - Role (combined)", this matches even when the role appears alongside others (e.g. selecting "composer" also matches an artist credited as "composer, lyricist").';
         if (mode.startsWith('arttype:')) return 'One of this CAA/EAA image\'s own type-badge pill labels (Front/Back/Booklet/…).';
         if (mode.startsWith('artcomment:')) return 'One of this CAA/EAA image\'s own free-text comment.';
+        if (mode === 'rel-state-pending') return 'This row\'s relationships have not been fetched yet — collapsed, queued or still loading.';
+        if (mode === 'rel-state-has') return 'Fetched, and at least one relationship has an icon in this column.';
+        if (mode === 'rel-state-none') return 'Fetched, and nothing with an icon — shown as – in the cell.';
+        if (mode === 'rel-state-error') return 'The Web Service request failed even after retries — shown as ⚠ in the cell; click it to try again.';
         if (mode.startsWith('rel:')) return 'A relationship target URL\'s base (host + path) — matches regardless of query string.';
         if (mode === 'editor-any-deleted') return '🗑️ = this row\'s "Editor" is a deleted-account placeholder (e.g. "Deleted Editor #12345"), whether or not that account was later revived under a new username.';
         if (mode === 'changelog-has-message') return '📜 = this "Version history" row\'s changelog parenthetical is real free text, not MusicBrainz\'s own placeholder.';
@@ -64136,6 +64354,44 @@ a { color: #1565c0; }`;
         _artIdbPut('rel-ws2', { ckey, data, ts: Date.now() }).catch(() => {});
     }
 
+    /** Milliseconds between Relationships-column network requests — MusicBrainz allows 1 req/s. */
+    const _REL_WS2_SPACING_MS = 1100;
+
+    /** Attempts per Relationships-column request, including the first (see `_ws2GetJson()`). */
+    const _REL_WS2_TRIES = 3;
+
+    /**
+     * Earliest `Date.now()` at which the next Relationships-column network
+     * request may start — the state behind `_relAwaitRateSlot()`.
+     */
+    let _relNextSlotAt = 0;
+
+    /**
+     * Waits for, and reserves, the next Relationships-column network slot.
+     *
+     * One gate for every request the column issues — the Phase-2 queue and the
+     * retries inside `_ws2GetJson()` today, and the browse pages and per-row
+     * clicks PERFORMANCE.org Step 36 adds — so sources running side by side
+     * still add up to one request per `_REL_WS2_SPACING_MS`. It replaces the
+     * Phase-2 queue's unconditional 1100 ms sleep, which spaced only that
+     * queue's own steps and also slept in front of answers that turned out to be
+     * cache hits.
+     *
+     * The slot is RESERVED synchronously, before the wait, so two callers
+     * arriving in the same tick get consecutive slots rather than the same one.
+     * A reserved slot that its caller then decides not to use is simply spent;
+     * that costs at most one spacing interval and never a request.
+     *
+     * @returns {Promise<void>}
+     */
+    function _relAwaitRateSlot() {
+        const _now = Date.now();
+        const _at = Math.max(_now, _relNextSlotAt);
+        _relNextSlotAt = _at + _REL_WS2_SPACING_MS;
+        const _wait = _at - _now;
+        return _wait > 0 ? new Promise(r => setTimeout(r, _wait)) : Promise.resolve();
+    }
+
     /**
      * Fetches WS2 relationship data for one entity using same-origin fetch().
      * /ws/2/... is on the same domain as MusicBrainz, so no @connect or
@@ -64143,13 +64399,37 @@ a { color: #1565c0; }`;
      * (keyed "entityType:mbid") and L2 IndexedDB (rel-ws2 store).
      * forceNetwork=true (or the _relRetryActive flag) bypasses both caches.
      *
+     * ── Resolves an OUTCOME, never a bare null ───────────────────────────────
+     *
+     *   - `{outcome: 'ok', data}` — a real answer. `data` is the parsed entity,
+     *     or `null` for HTTP 404 (no such entity: stable, so it stays in L1 like
+     *     any answer, but there is nothing to write to IndexedDB).
+     *   - `{outcome: 'error', data: null, detail}` — the request still failed
+     *     after `_REL_WS2_TRIES` attempts (a 503 burst, a network error). Cached
+     *     in NEITHER tier: the L1 entry is removed the moment it settles, so the
+     *     next explicit request goes back to the network.
+     *
+     * Before PERFORMANCE.org Step 36 this resolved `null` for both, so the
+     * caller rendered a failure exactly like "no relationships" — and
+     * permanently, since the null promise stayed in L1 for the whole session.
+     * The millisecond-Length feature fixed the same defect for itself ("only a
+     * SUCCESSFUL answer is cached"). Pinned by
+     * tests/fixtures/rel-column-fetch-failure.spec.js.
+     *
+     * A network request waits on `_relAwaitRateSlot()` unless `opts.slotHeld`
+     * says the caller already reserved one. The Phase-2 queue does that, so it
+     * can re-ask `_relQueueStillWants()` AFTER the wait and before the request.
+     *
+     * Never rejects.
+     *
      * @param {string}   mbid
-     * @param {string}   entityType  'release-group' or 'release'
+     * @param {string}   entityType  'release-group' | 'release' | 'work' | 'label'
      * @param {string[]} incOptions  WS2 inc= values, e.g. ['url-rels']
      * @param {boolean}  [forceNetwork=false]
-     * @returns {Promise<Object|null>}
+     * @param {{slotHeld?: boolean}} [opts]
+     * @returns {Promise<{outcome: ('ok'|'error'), data: ?Object, detail: string}>}
      */
-    function _relFetchWs2(mbid, entityType, incOptions, forceNetwork) {
+    function _relFetchWs2(mbid, entityType, incOptions, forceNetwork, opts) {
         const ckey = `${entityType}:${mbid}`;
         const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
         const bypass = forceNetwork || _relRetryActive;
@@ -64157,36 +64437,511 @@ a { color: #1565c0; }`;
             _dbg(`_relFetchWs2: L1 memory hit for ${ckey}`);
             return _relWs2Cache.get(ckey);
         }
+        const slotHeld = !!(opts && opts.slotHeld);
         const wsUrl = `/ws/2/${entityType}/${mbid}?inc=${incOptions.join('+')}&fmt=json`;
         const idbCheck = bypass ? Promise.resolve(null) : _relIdbGet(ckey);
-        const p = idbCheck.then(cached => {
+        const p = idbCheck.then(async cached => {
             if (cached) {
                 _dbg(`_relFetchWs2: L2 IDB hit for ${ckey}`);
-                return cached;
+                return { outcome: 'ok', data: cached, detail: '' };
             }
+            if (!slotHeld) await _relAwaitRateSlot();
             _dbg(`_relFetchWs2: fetching ${wsUrl}`);
-            return fetch(wsUrl, { headers: { Accept: 'application/json' } })
-                .then(r => {
-                    _dbg(`_relFetchWs2: HTTP ${r.status} for ${ckey}`);
-                    if (!r.ok) return null;
-                    return r.json();
-                })
-                .then(data => {
-                    if (data) {
-                        const relCount    = (data.relations || []).length;
-                        const urlRelCount = (data.relations || []).filter(r => r['target-type'] === 'url').length;
-                        _dbg(`_relFetchWs2: ${ckey} → ${relCount} total rels, ${urlRelCount} url-rels`);
-                        _relIdbPut(ckey, data);
-                    }
-                    return data || null;
-                })
-                .catch(err => {
-                    _dbg(`_relFetchWs2: fetch error for ${ckey}:`, err.message || String(err));
-                    return null;
-                });
+            const res = await _ws2GetJson(wsUrl, {
+                tries: _REL_WS2_TRIES,
+                beforeRetry: async attempt => {
+                    await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+                    await _relAwaitRateSlot();
+                },
+                dbg: _dbg,
+                label: `_relFetchWs2 ${ckey}`,
+            });
+            if (res.ok) {
+                const data = res.data || null;
+                const rels = (data && data.relations) || [];
+                _dbg(`_relFetchWs2: ${ckey} → ${rels.length} total rels, ` +
+                     `${rels.filter(r => r['target-type'] === 'url').length} url-rels`);
+                if (data) _relIdbPut(ckey, data);
+                return { outcome: 'ok', data, detail: '' };
+            }
+            if (res.status === 404) {
+                _dbg(`_relFetchWs2: ${ckey} → HTTP 404, no such entity`);
+                return { outcome: 'ok', data: null, detail: 'HTTP 404' };
+            }
+            _dbg(`_relFetchWs2: ${ckey} FAILED (${res.detail}) — not cached`);
+            return { outcome: 'error', data: null, detail: res.detail || 'the request failed' };
         });
         _relWs2Cache.set(ckey, p);
+        // Evict a failure as soon as it settles — but only while this promise is
+        // still the cached one, since a forced re-fetch may already have
+        // replaced it with a newer attempt.
+        p.then(r => {
+            if (r.outcome === 'error' && _relWs2Cache.get(ckey) === p) _relWs2Cache.delete(ckey);
+        });
         return p;
+    }
+
+    /**
+     * Every master-row (`groupedRows`/`allRows`) Relationships cell for `mbid`
+     * that is not already in `exclude` — what the writers below mirror onto, so
+     * that the next re-render clones the new state rather than the old one.
+     *
+     * Module-level since PERFORMANCE.org Step 36 (it used to live inside
+     * `_initRelationshipsColumnImpl()`), because the per-row click path writes
+     * cells without ever entering that function.
+     *
+     * @param   {string}                 mbid
+     * @param   {HTMLTableCellElement[]} exclude  Cells already being written.
+     * @returns {HTMLTableCellElement[]}
+     */
+    function _relMasterCellsFor(mbid, exclude) {
+        const out = [];
+        const _take = r => {
+            const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
+            if (td && !exclude.includes(td)) out.push(td);
+        };
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_take));
+        if (typeof allRows !== 'undefined') allRows.forEach(_take);
+        return out;
+    }
+
+    /**
+     * Writes one entity's WS/2 answer into `cells` and mirrors the result onto
+     * `masters` — the single authoritative writer of relationship icons,
+     * shared by the bulk pass (`_populateCells()`) and the per-row click path
+     * (`_relLoadRow()`).
+     *
+     * `data === null` is the "no relationships" answer: the cells are emptied
+     * and marked done, which the CSS draws as the – glyph.
+     *
+     * When `cells` is empty — a click whose row the active filter has since
+     * hidden, so only master rows still carry its token — the icons are
+     * rendered into the first master and copied to the rest, rather than
+     * mirroring an empty string over a real answer.
+     *
+     * @param   {HTMLTableCellElement[]} cells    Live cells to render into.
+     * @param   {HTMLTableCellElement[]} masters  Master-row cells to mirror onto.
+     * @param   {string}                 mbid
+     * @param   {?Object}                data     Parsed WS/2 entity, or null.
+     * @returns {void}
+     */
+    function _relWriteResult(cells, masters, mbid, data) {
+        const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
+        const primary = cells.length ? cells : masters.slice(0, 1);
+        const rest    = cells.length ? masters : masters.slice(1);
+        // Badge, filter affordance and 📊 counts follow every write; the refresh
+        // itself runs after this task, once all of its writes have landed.
+        _relScheduleProgressRefreshForCells(cells);
+        // Clear loading tint and mark done regardless of data availability.
+        //
+        // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
+        // a cell's icons rather than adding to them, so calling it twice for
+        // the same cell cannot double anything. `_relAppendIcon()` appends,
+        // which is what made the multiplying-icons bug possible at all
+        // (5 copies of one URL in debug/relationships-multiplying.html).
+        //
+        // *Be precise about what this line buys, because the obvious claim
+        // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
+        // reverting it to the old append-only form, and the whole suite
+        // stayed green. The bug is actually prevented upstream, twice over —
+        // `_relCellWritable()` refuses a collapsed table's cells (that
+        // mutation DOES fail the regression test), and
+        // `_relQueueStillWants()`'s `!relDone` check stops a second queue
+        // re-answering an mbid a first one already wrote.
+        //
+        // It is kept anyway, deliberately. Those two guards make overlap
+        // UNREACHABLE; this makes it HARMLESS. This is the single
+        // authoritative writer for one mbid's cells, and the entire
+        // doubled-icon family in this file's history — the cross-tab
+        // hydrate race, the collapse/expand race — comes from a caller
+        // reaching a non-idempotent writer twice. It also matters more now
+        // that a second caller exists: the ⟳ reload writes into cells that
+        // already hold icons.
+        //
+        // `relError` and `relLoading` go with it: a successful answer
+        // supersedes an earlier failure, and ends the loading state.
+        const _markDone = td => {
+            td.textContent = '';
+            td.style.backgroundColor = '';
+            td.dataset.relDone = '1';
+            delete td.dataset.relError;
+            delete td.dataset.relLoading;
+        };
+        primary.forEach(_markDone);
+        if (!data) {
+            _dbg(`_relWriteResult: no data for ${mbid}`);
+            rest.forEach(_markDone);
+            return;
+        }
+        // WS2 JSON format: data.relations[] filtered by target-type
+        const allRels  = data.relations || [];
+        const urlRels  = allRels.filter(r => r['target-type'] === 'url');
+        // Non-URL rels: release-group and release relationships (e.g. 'single from')
+        const nonUrlRels = allRels.filter(r => {
+            const tt = r['target-type'];
+            return tt === 'release_group' || tt === 'release-group' || tt === 'release';
+        });
+        _dbg(`_relWriteResult: ${mbid} → ${urlRels.length} url-rels, ` +
+             `${nonUrlRels.length} non-url-rels, ${primary.length} cell(s)`);
+
+        // ── URL relationships ─────────────────────────────────────────
+        const seen = new Set();
+        for (const rel of urlRels) {
+            const relType = rel.type || '';
+            const tUrl    = rel.url?.resource || '';
+            const ended   = !!rel.ended;
+            if (!tUrl || seen.has(tUrl)) continue;
+            seen.add(tUrl);
+            _dbg(`_relWriteResult: rel type='${relType}' url='${tUrl}' ended=${ended}`);
+            if (relType === 'discography entry') {
+                // Discography entries: use Google favicon (no HEAD probe needed,
+                // no GM_xmlhttpRequest, no async delay, no ghost).
+                const gUrl = _relGoogleFaviconUrl(tUrl);
+                _dbg(`_relWriteResult: discography entry favicon ${tUrl} → ${gUrl}`);
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+                continue;
+            }
+            // For known service types: filter using REL_*_CLASSES maps,
+            // but render using Google favicons (avoids CSS sprite ghost).
+            const cls = REL_URL_ICON_CLASSES[relType] ||
+                (['free streaming','streaming','download for free','purchase for download']
+                    .includes(relType)
+                    ? _relFindIconClass(tUrl, REL_STREAMING_CLASSES)
+                    : _relFindIconClass(tUrl, REL_OTHER_DB_CLASSES));
+            _dbg(`_relWriteResult: type='${relType}' cls='${cls || 'none'}' url='${tUrl}'`);
+            if (cls) {
+                const gUrl = _relGoogleFaviconUrl(tUrl);
+                primary.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
+            }
+        }
+
+        // ── Non-URL relationships (release-group, release) ────────────
+        // Renders icons for relationship types listed in REL_NON_URL_ICONS.
+        // WS2 JSON: target-type uses underscore (release_group);
+        //           nested entity key uses hyphen (release-group).
+        _dbg(`_relWriteResult: ${nonUrlRels.length} non-url-rels for ${mbid}`);
+        if (Lib.settings.sa_enable_relationship_debug) {
+            nonUrlRels.forEach((r, i) => {
+                Lib.debug('relationships',
+                    `  non-url-rel[${i}] type='${r.type}' target-type='${r['target-type']}' ` +
+                    `rg-id='${r['release-group']?.id}' rel-id='${r.release?.id}'`);
+            });
+        }
+        const seenNonUrl = new Set();
+        for (const rel of nonUrlRels) {
+            const relType = rel.type || '';
+            const iconUrl = REL_NON_URL_ICONS[relType];
+            if (!iconUrl) {
+                _dbg(`_relWriteResult: non-url-rel type='${relType}' not in REL_NON_URL_ICONS — skipped`);
+                continue;
+            }
+            const tt = rel['target-type'] || '';
+            // WS2 uses 'release_group' (underscore) for target-type
+            // but 'release-group' (hyphen) for the nested entity key
+            const isRG = tt.replace('-','_') === 'release_group';
+            // Try both hyphen and underscore key variants defensively
+            const rgEntity = rel['release-group'] || rel['release_group'];
+            const targetId = isRG ? rgEntity?.id : rel.release?.id;
+            if (!targetId) {
+                _dbg(`_relWriteResult: non-url-rel type='${relType}' no targetId — skipped`);
+                continue;
+            }
+            const href = isRG ? `/release-group/${targetId}` : `/release/${targetId}`;
+            if (seenNonUrl.has(href)) continue;
+            seenNonUrl.add(href);
+            const ended = !!rel.ended;
+            // Build tooltip: 'relType: Title (URL)' using the title from WS2 JSON
+            const _entityTitle = (isRG ? rgEntity?.title : rel.release?.title) || '';
+            const _tooltip = _entityTitle
+                ? `${relType}: ${_entityTitle}\n${href}`
+                : href;
+            _dbg(`_relWriteResult: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
+            primary.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
+        }
+        // Immediately sync icon HTML to source-row cells so runFilter clones
+        // carry the correct content even when the Phase-2 queue is still mid-flight.
+        const _srcHtml = primary.length ? primary[0].innerHTML : '';
+        rest.forEach(td => {
+            td.innerHTML = _srcHtml;
+            td.style.backgroundColor = '';
+            td.dataset.relDone = '1';
+            delete td.dataset.relError;
+            delete td.dataset.relLoading;
+        });
+    }
+
+    /**
+     * Records a FAILED request on `cells` and on `masters`.
+     *
+     * Deliberately the opposite of `_relWriteResult()`'s "no data" branch: the
+     * cell is emptied but NOT marked done, and carries `data-rel-error`
+     * instead. `_relAnyPendingInExpandedTable()`, the impl's candidate scan and
+     * `_relQueueStillWants()` all skip that marker, so a failure is neither
+     * shown as "no relationships" nor re-requested on every keystroke.
+     *
+     * The master mirror is load-bearing on a multi-table page:
+     * `renderGroupedTable()` always clones, so a marker on the live cell alone
+     * would vanish on the next keystroke, the cell would read as plain pending
+     * again, and `runFilter()`'s gate would re-request it.
+     *
+     * @param   {HTMLTableCellElement[]} cells
+     * @param   {HTMLTableCellElement[]} masters
+     * @param   {string}                 detail  e.g. "HTTP 503"
+     * @returns {void}
+     */
+    function _relWriteFailure(cells, masters, detail) {
+        const _mark = td => {
+            td.textContent = '';
+            td.style.backgroundColor = '';
+            delete td.dataset.relDone;
+            delete td.dataset.relLoading;
+            td.dataset.relError = detail || 'the request failed';
+        };
+        cells.forEach(_mark);
+        masters.forEach(_mark);
+        _relScheduleProgressRefreshForCells(cells);
+    }
+
+    /** Monotonic source of per-row loading tokens — see `_relLoadRow()`. */
+    let _relLoadTokenSeq = 0;
+
+    /**
+     * Loads ONE row's relationships on demand: a click on its cell.
+     *
+     * ── Works in a COLLAPSED table, so it has its own guard ─────────────────
+     *
+     * It deliberately does not go through `_initRelationshipsColumnImpl()` or
+     * its `_relCellWritable()` guard, whose whole job is refusing collapsed
+     * tables. Its guard is a TOKEN instead: every live and master cell of the
+     * entity is stamped `data-rel-loading="<token>"` up front, and the answer is
+     * written only into cells that still carry that exact token. A collapse
+     * clears the attribute (`_relToggleTable()`), so a late answer for an
+     * emptied column is dropped; a newer click re-stamps with a newer token, so
+     * an older answer cannot overwrite a newer one. That is a per-CELL question,
+     * not the rejected per-table epoch, which would cancel a different table's
+     * legitimate fetch.
+     *
+     * The token is on the master rows as well, so a clone made while the
+     * request is in flight still carries it and still receives the answer.
+     *
+     * ── What it shares with the bulk pass ───────────────────────────────────
+     *
+     * Every cell showing this entity is written, in any table, because the
+     * answer is the same data. The request goes through `_relFetchWs2()`, so it
+     * takes a slot on the shared rate gate — which is also how a click on a
+     * queued row gets ahead of the Phase-2 queue, since that queue only ever
+     * holds one reservation — and it shares an in-flight promise with any pass
+     * already asking. `force` (a click on a LOADED cell, the hover ⟳) bypasses
+     * both cache tiers, and the fresh answer then replaces them.
+     *
+     * Never touches `#mb-info-display-rel` or the completion toast:
+     * `waitForRelationshipsComplete()` reads that element as "the column has
+     * settled", and one row does not make that true.
+     *
+     * @param   {HTMLTableCellElement} td
+     * @param   {{force?: boolean}}    [opts]
+     * @returns {Promise<void>}
+     */
+    async function _relLoadRow(td, opts) {
+        const mbid = td && td.dataset.mbid;
+        if (!mbid) return;
+        const force = !!(opts && opts.force);
+        const _table = td.closest('table.tbl');
+        const entityType = (_table && _table.dataset.mbRelEntityType)
+            || (activeInjectedColumns[0] || {}).entityType || 'release';
+        const token = String(++_relLoadTokenSeq);
+        const _sel = `table.tbl tbody td.mb-rel-cell[data-mbid='${mbid}']`;
+        const _live = Array.from(document.querySelectorAll(_sel));
+        [..._live, ..._relMasterCellsFor(mbid, _live)].forEach(c => {
+            c.dataset.relLoading = token;
+            delete c.dataset.relError;
+        });
+        Lib.debug('relationships',
+            `_relLoadRow: ${entityType}:${mbid}${force ? ' (forced reload)' : ''}, token ${token}`);
+        // Both are no-ops once installed/current; a page whose column started
+        // collapsed may never have run a pass that set them up.
+        _initRelTooltipListeners();
+        _initRelMappings();
+
+        const res = await _relFetchWs2(mbid, entityType, _relIncOptionsForEntityType(entityType), force);
+
+        const liveNow = Array.from(document.querySelectorAll(_sel))
+            .filter(c => c.dataset.relLoading === token);
+        const mastersNow = _relMasterCellsFor(mbid, liveNow)
+            .filter(c => c.dataset.relLoading === token);
+        if (!liveNow.length && !mastersNow.length) {
+            Lib.debug('relationships', `_relLoadRow: ${mbid} token ${token} superseded — answer dropped`);
+            return;
+        }
+        if (res.outcome === 'error') _relWriteFailure(liveNow, mastersNow, res.detail);
+        else _relWriteResult(liveNow, mastersNow, mbid, res.data);
+
+        // Same cache hygiene `_relToggleTable()` does: the cell's clean text
+        // changed with no row shown or hidden.
+        const _tables = new Set();
+        liveNow.forEach(c => {
+            if (c.parentElement) _relDropRowTextCache(c.parentElement, c.cellIndex);
+            const _t = c.closest('table.tbl');
+            if (_t) _tables.add(_t);
+        });
+        _tables.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+    }
+
+    /**
+     * Click delegate for Relationships data cells, hosted on the `<table>` by
+     * `_relEnsureHdrDelegate()`: loads the clicked row (`_relLoadRow()`), or
+     * force-reloads it when it is already loaded — the hover ⟳.
+     *
+     * A click inside one of the cell's icon links is left alone, so the links
+     * keep working. A cell already loading ignores further clicks.
+     *
+     * @param   {MouseEvent} ev
+     * @returns {void}
+     */
+    function _relCellDelegateHandler(ev) {
+        if (Lib.settings.sa_rel_cell_state_glyphs === false) return;
+        const _t = ev.target;
+        if (!_t || !_t.closest || _t.closest('a')) return;
+        const td = _t.closest('td.mb-rel-cell[data-mbid]');
+        if (!td || !td.closest('tbody')) return;
+        if (td.dataset.relLoading) return;
+        _relLoadRow(td, { force: td.dataset.relDone === '1' });
+    }
+
+    /**
+     * Hover delegate that keeps a Relationships data cell's `title` in step
+     * with its load state, so every glyph explains itself.
+     *
+     * Written lazily on hover rather than at render: it costs nothing for the
+     * thousands of cells nobody points at. A `title` is an attribute, so it
+     * survives the re-render clones; snapshots serialise cell `innerHTML`
+     * only, so it never reaches a saved file.
+     *
+     * @param   {MouseEvent} ev
+     * @returns {void}
+     */
+    function _relCellTitleHandler(ev) {
+        if (Lib.settings.sa_rel_cell_state_glyphs === false) return;
+        const _t = ev.target;
+        if (!_t || !_t.closest || _t.closest('a')) return;
+        const td = _t.closest('td.mb-rel-cell[data-mbid]');
+        if (!td || !td.closest('tbody')) return;
+        let _title;
+        if (td.dataset.relLoading) {
+            _title = 'Loading this row’s relationships…';
+        } else if (td.dataset.relError) {
+            _title = `Loading failed (${td.dataset.relError}) — click to try again`;
+        } else if (td.dataset.relDone === '1') {
+            _title = td.firstChild
+                ? 'Click here, outside the icons, to reload this row’s relationships'
+                : 'Nothing with an icon for this row — click to reload';
+        } else {
+            _title = 'Relationships not loaded yet — click to load this row only (one request)';
+        }
+        if (td.title !== _title) td.title = _title;
+    }
+
+    /**
+     * Entities per browse page — the Web Service's maximum `limit`, confirmed
+     * honoured with `inc=…-rels` by scripts/probe-rel-batch-endpoints.py.
+     */
+    const _REL_BROWSE_LIMIT = 100;
+
+    /**
+     * The WS/2 browse source this page offers for one table entity type, or
+     * `null`.
+     *
+     * Declared per pageType as `features.relBrowse: { entity, by }` — e.g. an
+     * artist's releases are `/ws/2/release?artist=<mbid>`. Only mappings that
+     * passed scripts/probe-rel-batch-endpoints.py are declared: browse returned
+     * the same `relations` a lookup does for every sampled entity. Deliberately
+     * absent: area-releases (browsing releases by area is a different set from
+     * the one that page lists) and collections (unprobed).
+     *
+     * Three guards, each needed:
+     *   - `entity` must equal the TABLE's entity type — a pageType can hold
+     *     sub-tables of another kind, and a browse answer is cached under the
+     *     lookup key, so a mismatch would poison the cache;
+     *   - the URL's own entity must be `by` — some `match()` functions are
+     *     looser than the page they are named for (artist-works matches any
+     *     `/works` path);
+     *   - `sa_rel_browse_batch_enable` must not be off.
+     *
+     * @param   {string} entityType  The table's WS/2 entity type.
+     * @returns {?{entity: string, by: string, byMbid: string}}
+     */
+    function _relBrowseSource(entityType) {
+        if (Lib.settings.sa_rel_browse_batch_enable === false) return null;
+        const decl = activeDefinition && activeDefinition.features && activeDefinition.features.relBrowse;
+        if (!decl || decl.entity !== entityType) return null;
+        const m = window.location.pathname.match(
+            /^\/(artist|label|release-group|recording|area)\/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        if (!m || m[1] !== decl.by) return null;
+        return { entity: decl.entity, by: decl.by, byMbid: m[2] };
+    }
+
+    /**
+     * Fetches one browse page for `src`, on the shared rate gate, with the same
+     * retry policy as a lookup.
+     *
+     * The `inc` set is `_relIncOptionsForEntityType(src.entity)` — exactly the
+     * lookup's, and that parity is load-bearing: every entity on the page is
+     * cached under the LOOKUP's key, so a thinner `inc` would be served as a
+     * complete answer for the whole cache TTL.
+     *
+     * Never rejects.
+     *
+     * @param   {{entity: string, by: string, byMbid: string}} src
+     * @param   {number} offset
+     * @returns {Promise<{ok: boolean, items: Array<Object>, total: ?number, detail: string}>}
+     */
+    async function _relBrowseFetchPage(src, offset) {
+        const _dbg = (...a) => { if (Lib.settings.sa_enable_relationship_debug) Lib.debug('relationships', ...a); };
+        const inc = _relIncOptionsForEntityType(src.entity).join('+');
+        const url = `/ws/2/${src.entity}?${src.by}=${src.byMbid}&inc=${inc}`
+                  + `&limit=${_REL_BROWSE_LIMIT}&offset=${offset}&fmt=json`;
+        await _relAwaitRateSlot();
+        _dbg(`_relBrowseFetchPage: ${url}`);
+        const res = await _ws2GetJson(url, {
+            tries: _REL_WS2_TRIES,
+            beforeRetry: async attempt => {
+                await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+                await _relAwaitRateSlot();
+            },
+            dbg: _dbg,
+            label: `_relBrowseFetchPage ${src.entity}?${src.by}`,
+        });
+        const items = res.ok && res.data ? res.data[`${src.entity}s`] : null;
+        if (!Array.isArray(items)) {
+            return { ok: false, items: [], total: null, detail: res.detail || 'unexpected response shape' };
+        }
+        const total = res.data[`${src.entity}-count`];
+        return { ok: true, items, total: typeof total === 'number' ? total : null, detail: '' };
+    }
+
+    /**
+     * Writes one browse page's entities to the `rel-ws2` store in ONE
+     * transaction, under each entity's lookup key.
+     *
+     * Deliberately not a loop over `_relIdbPut()`, which opens a transaction per
+     * call — a hundred per page. Same record shape (`{ckey, data, ts}`), so
+     * `_relIdbGet()`, the TTL sweep, retry eviction and the Statistics counts
+     * read it exactly like a lookup's. Mirrors `_msIdbPutLengths()`.
+     *
+     * Never rejects: the cache is an optimisation.
+     *
+     * @param   {Array<[string, Object]>} entries  `[ckey, data]` pairs.
+     * @returns {void}
+     */
+    function _relIdbPutMany(entries) {
+        if (!Lib.settings.sa_rels_idb_enable || !entries.length) return;
+        _artOpenIdb().then(db => {
+            const tx = db.transaction('rel-ws2', 'readwrite');
+            const store = tx.objectStore('rel-ws2');
+            const ts = Date.now();
+            entries.forEach(([ckey, data]) => store.put({ ckey, data, ts }));
+        }).catch(() => {});
     }
 
     /**
@@ -65467,12 +66222,16 @@ a { color: #1565c0; }`;
      *
      * ── The two defaults ────────────────────────────────────────────────────
      *
-     * 1. A table that already carries populated cells starts EXPANDED,
-     *    whatever the threshold says. This is the disk-load and cross-tab
-     *    handoff case: save-format 1.1 bakes `mbid`/`relDone` and the icon
-     *    markup into the snapshot, so the data is present at zero cost and
-     *    hiding it would be pure loss. It also keeps every fixture captured
-     *    with relationships populated behaving exactly as before.
+     * 1. A table whose Relationships cells are ALL already populated starts
+     *    EXPANDED, whatever the threshold says. This is the disk-load and
+     *    cross-tab handoff case: save-format 1.1 bakes `mbid`/`relDone` and
+     *    the icon markup into the snapshot, so the data is present at zero
+     *    cost and hiding it would be pure loss. It also keeps every fixture
+     *    captured with relationships populated behaving exactly as before.
+     *    "All" is load-bearing since PERFORMANCE.org Step 36: a PARTLY
+     *    populated table — rows loaded by hand with a cell click, or a page
+     *    saved mid-fetch — falls through to rule 2, or reopening it would
+     *    queue a fetch of every other row.
      * 2. Otherwise: collapsed iff the threshold is enabled and this table's
      *    distinct-entity count exceeds it.
      *
@@ -65498,7 +66257,13 @@ a { color: #1565c0; }`;
             // at all — a diff with no behaviour behind it.
             if (!table.querySelector('tbody td.mb-rel-cell')) return true;
             let _expanded;
-            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')) {
+            // Restored data means "start expanded" only when it is COMPLETE.
+            // A partly loaded table — rows loaded by hand with a cell click, or
+            // a page saved mid-fetch — falls through to the threshold, so a
+            // few hand-loaded rows can never turn into a queued fetch of every
+            // other row the moment the snapshot is reopened.
+            if (table.querySelector('tbody td.mb-rel-cell[data-rel-done="1"]')
+                && !table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])')) {
                 _expanded = true;
             } else {
                 const _raw = Lib.settings.sa_rel_collapse_threshold;
@@ -65538,7 +66303,16 @@ a { color: #1565c0; }`;
     function _relAnyPendingInExpandedTable() {
         for (const _table of document.querySelectorAll('table.tbl')) {
             if (!_relTableExpanded(_table)) continue;
-            if (_table.querySelector('tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])')) {
+            // `:not([data-rel-error])`: a cell whose request FAILED is not done,
+            // so without this every filter keystroke would re-request every
+            // failure. A failure is retried only on an explicit action — a
+            // re-expand (collapsing clears the marker), a 🔗⟳ retry button, or
+            // a click on the cell. Pinned by
+            // tests/fixtures/rel-column-fetch-failure.spec.js.
+            // `:not([data-rel-loading])`: a cell whose answer is already on its
+            // way — a click, or a queue step — is not work to start again.
+            if (_table.querySelector(
+                'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"]):not([data-rel-error]):not([data-rel-loading])')) {
                 return true;
             }
         }
@@ -65565,7 +66339,18 @@ a { color: #1565c0; }`;
      */
     function _relDropRowTextCache(row, colIdx) {
         const _c = _rowTextCache.get(row);
-        if (_c && _c.cols) _c.cols[colIdx] = null;
+        // `undefined`, NOT `null` — this must match `_cachedColText()`'s own
+        // "not cached yet" sentinel, which is `c.cols[idx] === undefined`.
+        // Writing `null` did not invalidate the entry, it POISONED it: the next
+        // `matchOnly` pass read `null` back as though it were cached text and
+        // `testRowMatch()` threw on `cellText.toLowerCase()`, aborting
+        // `runFilter()`'s row loop part-way. Everything after the throw was
+        // skipped — including `_highlightRelCellIcons()`, so a 📊 relationship
+        // entry picked after a collapse/expand cycle left its matching icons
+        // un-outlined, and depending on which row threw first the narrowing was
+        // lost too. Reported from live testing 2026-09-16; pinned by
+        // `tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js`.
+        if (_c && _c.cols) delete _c.cols[colIdx];
     }
 
     /**
@@ -65632,6 +66417,15 @@ a { color: #1565c0; }`;
             if (_next) return;              // expanding: leave the cell for the fetch
             if (td.firstChild) td.textContent = '';
             delete td.dataset.relDone;
+            // A failure marker is cleared too, and that is the retry path:
+            // `_relAnyPendingInExpandedTable()` and the impl's candidate scan
+            // both skip `data-rel-error` cells, so collapsing and re-expanding
+            // is what makes a failed row eligible again.
+            delete td.dataset.relError;
+            // And a loading token: `_relLoadRow()` writes only into cells that
+            // still carry its token, so this is what drops a click's late
+            // answer for a column the user just emptied.
+            delete td.dataset.relLoading;
             td.style.backgroundColor = '';
             _cleared++;
         };
@@ -65699,19 +66493,155 @@ a { color: #1565c0; }`;
      */
     function _relUpdateColHdrBtn(btn, table, expanded) {
         btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        const _p = _relTableProgress(table);
+        // The done/total badge is CSS `attr(data-rel-progress)`, so the header's
+        // own text never changes. The attribute exists only while something is
+        // still unloaded: a complete table shows no badge at all.
+        if (_p.total > 0 && _p.done < _p.total) {
+            btn.setAttribute('data-rel-progress', `${_p.done}/${_p.total}`);
+        } else {
+            btn.removeAttribute('data-rel-progress');
+        }
+        const _failedNote = _p.failed
+            ? ` — ${_p.failed} failed (click a ⚠ cell to retry)`
+            : '';
         if (expanded) {
             btn.title = 'Empty the Relationships column in this table '
-                      + '(already-fetched data is kept, so re-loading is instant)';
+                      + '(already-fetched data is kept, so re-loading is instant)'
+                      + (_p.done < _p.total ? ` — ${_p.done} of ${_p.total} loaded` : '')
+                      + _failedNote;
             btn.setAttribute('aria-label', 'Empty the Relationships column in this table');
             return;
         }
-        const _n = _relTableUniqueMbidCount(table);
+        const _n = _p.total - _p.done;
         btn.title = 'Load the relationship icons for this table — '
-                  + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} to look up, `
+                  + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} left to look up, `
                   + `about ${_relFormatEta(_n)} at the MusicBrainz rate limit of 1 request/second `
-                  + '(anything already cached is instant)';
+                  + '(anything already cached is instant)'
+                  + (_p.done ? ` — ${_p.done} of ${_p.total} already loaded` : '')
+                  + _failedNote;
         btn.setAttribute('aria-label',
-            `Load the relationship icons for this table, ${_n} entities to look up`);
+            `Load the relationship icons for this table, ${_n} entities left to look up`);
+    }
+
+    /**
+     * Distinct-entity load progress of one table's Relationships column:
+     * how many distinct MBIDs are done, how many there are, and how many have
+     * a failed request and nothing done.
+     *
+     * Counted over the live tbody, the same scope `_relTableUniqueMbidCount()`
+     * and the threshold use. An entity is done when any of its cells is done —
+     * every cell of one entity is written together — and failed when one of its
+     * cells carries `data-rel-error` and none is done.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {{done: number, total: number, failed: number}}
+     */
+    function _relTableProgress(table) {
+        const _all = new Set();
+        const _done = new Set();
+        const _failed = new Set();
+        table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]').forEach(td => {
+            const m = td.dataset.mbid;
+            _all.add(m);
+            if (td.dataset.relDone === '1') _done.add(m);
+            else if (td.dataset.relError) _failed.add(m);
+        });
+        _done.forEach(m => _failed.delete(m));
+        return { done: _done.size, total: _all.size, failed: _failed.size };
+    }
+
+    /**
+     * One Relationships cell's load state, for the 📊 "Relationships - Load
+     * state" section — the single classifier its counts and
+     * `_cellMatchesStructureMode()`'s `rel-state-*` modes share, so the two
+     * cannot disagree.
+     *
+     *   - `'has'`     — fetched, with at least one icon link;
+     *   - `'none'`    — fetched, nothing with an icon (the – glyph);
+     *   - `'error'`   — the request failed (the ⚠ glyph);
+     *   - `'pending'` — not fetched yet: collapsed, queued or loading;
+     *   - `null`      — not a Relationships cell with an entity to load.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?('has'|'none'|'error'|'pending')}
+     */
+    function _relCellLoadState(cell) {
+        if (!cell || !cell.classList || !cell.classList.contains('mb-rel-cell') || !cell.dataset.mbid) {
+            return null;
+        }
+        if (cell.dataset.relDone === '1') return cell.querySelector('a') ? 'has' : 'none';
+        if (cell.dataset.relError) return 'error';
+        return 'pending';
+    }
+
+    /** Tables with a progress refresh already scheduled this frame. */
+    const _relProgressRefreshPending = new WeakSet();
+
+    /**
+     * Schedules one refresh of `table`'s Relationships progress, at most once per
+     * animation frame per table: the header badge and tooltip, the collapsed
+     * filter affordance, and the 📊 dropdown's cached counts.
+     *
+     * Called by both cell writers. Coalesced because a browse page writes up to
+     * a hundred rows in one task, and each refresh walks the table's rel cells.
+     * The uniq-drop cache drop is here rather than only at the end of a bulk
+     * pass because its signature is the visible row set, which a write does not
+     * change — without this, a dropdown reopened mid-fetch shows stale
+     * load-state counts.
+     *
+     * @param   {?HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relScheduleProgressRefresh(table) {
+        if (!table || _relProgressRefreshPending.has(table)) return;
+        _relProgressRefreshPending.add(table);
+        requestAnimationFrame(() => {
+            _relProgressRefreshPending.delete(table);
+            if (!table.isConnected) return;
+            const _btn = table.querySelector('thead .mb-rel-col-hdr-btn');
+            if (_btn) _relUpdateColHdrBtn(_btn, table, _relTableExpanded(table));
+            _relSyncCollapsedFilterAffordance(table);
+            _invalidateUniqDropDataCacheForTable(table);
+            // The FILTER-RESULT cache too, and for the same reason one line up:
+            // a write changes cell CONTENT while every input stays as it was.
+            // `_buildFilterKey()` hashes only filter inputs — query, flags, and
+            // each column's valueSet/structureModes — so re-picking the same 📊
+            // relationship entry after another row has loaded produces an
+            // IDENTICAL key and `_filterResultCache` replays the earlier row
+            // list. Reported 2026-09-16: load one row, filter to it, clear,
+            // load a second row with the same URL, filter again — and only the
+            // first row comes back, because the second was never re-tested.
+            // (The removed row is absent from the DOM, not merely unmatched,
+            // which is what distinguishes a replayed result from a failed
+            // match.) Same defect class the length-mismatch flag had when it
+            // was missing from the key; there the fix was to add it, but cell
+            // content cannot be hashed cheaply, so the cache is dropped instead.
+            //
+            // Wholesale rather than `_invalidateFilterCacheForGroups()`: that
+            // one matches keys by GROUP INDEX, which a table element cannot be
+            // mapped back to reliably — merged discography view folds other
+            // groups' rows into the first-occurrence table — and a single-table
+            // page's one `s|…` key would not match it at all. The cost is
+            // bounded by this function's own rAF coalescing, so a hundred-row
+            // browse page pays one clear, not a hundred.
+            _invalidateFilterCache();
+        });
+    }
+
+    /**
+     * Schedules a progress refresh for every live table among `cells`.
+     *
+     * @param   {HTMLTableCellElement[]} cells
+     * @returns {void}
+     */
+    function _relScheduleProgressRefreshForCells(cells) {
+        const _tables = new Set();
+        cells.forEach(td => {
+            const _t = td.closest ? td.closest('table.tbl') : null;
+            if (_t) _tables.add(_t);
+        });
+        _tables.forEach(_relScheduleProgressRefresh);
     }
 
     /**
@@ -65772,6 +66702,10 @@ a { color: #1565c0; }`;
         if (table.dataset.mbRelHdrDelegate) return;
         table.addEventListener('click', _relHdrDelegateHandler);
         table.addEventListener('keydown', _relHdrDelegateHandler);
+        // The per-cell click-to-load and its state tooltip share this host and
+        // this guard, for the same reason: the tbody rows are clones as well.
+        table.addEventListener('click', _relCellDelegateHandler);
+        table.addEventListener('mouseover', _relCellTitleHandler);
         table.dataset.mbRelHdrDelegate = '1';
         Lib.debug('relationships', '_relEnsureHdrDelegate: header delegate installed on <table>.');
     }
@@ -66272,7 +67206,12 @@ a { color: #1565c0; }`;
                 // mb-rel-cell is always present; data-mbid is not — the
                 // row-build pass stamps it only when the row links a release,
                 // release group or work.
-                if (td.dataset.mbid && !td.dataset.relDone) allCells.push(td);
+                // A FAILED cell is skipped too, for the reason given at
+                // `_relAnyPendingInExpandedTable()`'s own `:not([data-rel-error])`.
+                // A cell already LOADING (a click, or another pass's step) is
+                // skipped for the same reason.
+                if (td.dataset.mbid && !td.dataset.relDone && !td.dataset.relError
+                    && !td.dataset.relLoading) allCells.push(td);
             });
         });
         _relInitRunCount++;
@@ -66369,7 +67308,7 @@ a { color: #1565c0; }`;
          *
          * A DETACHED cell (`closest()` → null, i.e. a re-render replaced the
          * row this pass captured) is deliberately treated as WRITABLE, which
-         * is the pre-existing behaviour: `_srcCells` then carries the content
+         * is the pre-existing behaviour: `_relMasterCellsFor()` then carries the content
          * to the master rows and the next render clones it back. Refusing
          * those would strand the data until `runFilter()`'s gate re-triggered.
          *
@@ -66390,159 +67329,26 @@ a { color: #1565c0; }`;
                 _relDbg(`_populateCells: ${mbid} — no writable cell (collapsed), skipped`);
                 return;
             }
-            // Clear loading tint and mark done regardless of data availability.
-            //
-            // `td.textContent = ''` makes this function IDEMPOTENT: it replaces
-            // a cell's icons rather than adding to them, so calling it twice for
-            // the same cell cannot double anything. `_relAppendIcon()` appends,
-            // which is what made the multiplying-icons bug possible at all
-            // (5 copies of one URL in debug/relationships-multiplying.html).
-            //
-            // *Be precise about what this line buys, because the obvious claim
-            // is wrong.* It is DEFENCE IN DEPTH, not the fix: mutation-tested by
-            // reverting it to the old append-only form, and the whole suite
-            // stayed green. The bug is actually prevented upstream, twice over —
-            // `_relCellWritable()` refuses a collapsed table's cells (that
-            // mutation DOES fail the regression test), and
-            // `_relQueueStillWants()`'s `!relDone` check stops a second queue
-            // re-answering an mbid a first one already wrote.
-            //
-            // It is kept anyway, deliberately. Those two guards make overlap
-            // UNREACHABLE; this makes it HARMLESS. `_populateCells()` is the
-            // single authoritative writer for one mbid's cells, and the entire
-            // doubled-icon family in this file's history — the cross-tab
-            // hydrate race, the collapse/expand race — comes from a caller
-            // reaching a non-idempotent writer twice. One assignment is cheap
-            // insurance against the next such caller, and the one path with no
-            // `relDone` guard in front of it is Phase 1: two passes both
-            // resolving the same mbid from IndexedDB would both land here.
-            // (Unreachable today only because the coalescing guard in
-            // `initRelationshipsColumn()` stops two passes sharing a Phase-1
-            // window.)
-            cells.forEach(td => {
-                td.textContent = '';
-                td.style.backgroundColor = '';
-                td.dataset.relDone = '1';
-            });
-            // Track source-row cells (not in DOM) so icons sync back later
-            const _srcCells = [];
-            if (typeof groupedRows !== 'undefined') {
-                groupedRows.forEach(g => g.rows.forEach(r => {
-                    const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
-                    if (td && !cells.includes(td)) _srcCells.push(td);
-                }));
-            }
-            if (typeof allRows !== 'undefined') {
-                allRows.forEach(r => {
-                    const td = r.querySelector(`td.mb-rel-cell[data-mbid='${mbid}']`);
-                    if (td && !cells.includes(td)) _srcCells.push(td);
-                });
-            }
-            if (!data) {
-                _relDbg(`_populateCells: no data for ${mbid}`);
-                // textContent: same replace-not-append reason as the live cells
-                // above — a master row can also be reached by two overlapping
-                // passes, and this one is the "no relationships" answer.
-                _srcCells.forEach(td => {
-                    td.textContent = '';
-                    td.style.backgroundColor = '';
-                    td.dataset.relDone = '1';
-                });
-                return;
-            }
-            // WS2 JSON format: data.relations[] filtered by target-type
-            const allRels  = data.relations || [];
-            const urlRels  = allRels.filter(r => r['target-type'] === 'url');
-            // Non-URL rels: release-group and release relationships (e.g. 'single from')
-            const nonUrlRels = allRels.filter(r => {
-                const tt = r['target-type'];
-                return tt === 'release_group' || tt === 'release-group' || tt === 'release';
-            });
-            _relDbg(`_populateCells: ${mbid} → ${urlRels.length} url-rels, ` +
-                    `${nonUrlRels.length} non-url-rels, ${cells.length} cell(s)`);
+            // The writing itself — idempotent, and mirrored onto the master
+            // rows — lives in the module-level `_relWriteResult()`, which the
+            // per-row click path (`_relLoadRow()`) shares. Read its comment
+            // before changing anything about how cells are cleared.
+            _relWriteResult(cells, _relMasterCellsFor(mbid, cells), mbid, data);
+        }
 
-            // ── URL relationships ─────────────────────────────────────────
-            const seen = new Set();
-            for (const rel of urlRels) {
-                const relType = rel.type || '';
-                const tUrl    = rel.url?.resource || '';
-                const ended   = !!rel.ended;
-                if (!tUrl || seen.has(tUrl)) continue;
-                seen.add(tUrl);
-                _relDbg(`_populateCells: rel type='${relType}' url='${tUrl}' ended=${ended}`);
-                if (relType === 'discography entry') {
-                    // Discography entries: use Google favicon (no HEAD probe needed,
-                    // no GM_xmlhttpRequest, no async delay, no ghost).
-                    const gUrl = _relGoogleFaviconUrl(tUrl);
-                    _relDbg(`_populateCells: discography entry favicon ${tUrl} → ${gUrl}`);
-                    cells.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
-                    continue;
-                }
-                // For known service types: filter using REL_*_CLASSES maps,
-                // but render using Google favicons (avoids CSS sprite ghost).
-                const cls = REL_URL_ICON_CLASSES[relType] ||
-                    (['free streaming','streaming','download for free','purchase for download']
-                        .includes(relType)
-                        ? _relFindIconClass(tUrl, REL_STREAMING_CLASSES)
-                        : _relFindIconClass(tUrl, REL_OTHER_DB_CLASSES));
-                _relDbg(`_populateCells: type='${relType}' cls='${cls || 'none'}' url='${tUrl}'`);
-                if (cls) {
-                    const gUrl = _relGoogleFaviconUrl(tUrl);
-                    cells.forEach(td => _relAppendIcon(td, tUrl, gUrl, ended));
-                }
-            }
-
-            // ── Non-URL relationships (release-group, release) ────────────
-            // Renders icons for relationship types listed in REL_NON_URL_ICONS.
-            // WS2 JSON: target-type uses underscore (release_group);
-            //           nested entity key uses hyphen (release-group).
-            _relDbg(`_populateCells: ${nonUrlRels.length} non-url-rels for ${mbid}`);
-            if (Lib.settings.sa_enable_relationship_debug) {
-                nonUrlRels.forEach((r, i) => {
-                    Lib.debug('relationships',
-                        `  non-url-rel[${i}] type='${r.type}' target-type='${r['target-type']}' ` +
-                        `rg-id='${r['release-group']?.id}' rel-id='${r.release?.id}'`);
-                });
-            }
-            const seenNonUrl = new Set();
-            for (const rel of nonUrlRels) {
-                const relType = rel.type || '';
-                const iconUrl = REL_NON_URL_ICONS[relType];
-                if (!iconUrl) {
-                    _relDbg(`_populateCells: non-url-rel type='${relType}' not in REL_NON_URL_ICONS — skipped`);
-                    continue;
-                }
-                const tt = rel['target-type'] || '';
-                // WS2 uses 'release_group' (underscore) for target-type
-                // but 'release-group' (hyphen) for the nested entity key
-                const isRG = tt.replace('-','_') === 'release_group';
-                // Try both hyphen and underscore key variants defensively
-                const rgEntity = rel['release-group'] || rel['release_group'];
-                const targetId = isRG ? rgEntity?.id : rel.release?.id;
-                if (!targetId) {
-                    _relDbg(`_populateCells: non-url-rel type='${relType}' no targetId — skipped`);
-                    continue;
-                }
-                const href = isRG ? `/release-group/${targetId}` : `/release/${targetId}`;
-                if (seenNonUrl.has(href)) continue;
-                seenNonUrl.add(href);
-                const ended = !!rel.ended;
-                // Build tooltip: 'relType: Title (URL)' using the title from WS2 JSON
-                const _entityTitle = (isRG ? rgEntity?.title : rel.release?.title) || '';
-                const _tooltip = _entityTitle
-                    ? `${relType}: ${_entityTitle}\n${href}`
-                    : href;
-                _relDbg(`_populateCells: non-url rel type='${relType}' href='${href}' title='${_entityTitle}' ended=${ended}`);
-                cells.forEach(td => _relAppendIcon(td, href, iconUrl, ended, _tooltip));
-            }
-            // Immediately sync icon HTML to source-row cells so runFilter clones
-            // carry the correct content even when the Phase-2 queue is still mid-flight.
-            const _srcHtml = cells.length ? cells[0].innerHTML : '';
-            _srcCells.forEach(td => {
-                td.innerHTML = _srcHtml;
-                td.style.backgroundColor = '';
-                td.dataset.relDone = '1';
-            });
+        /**
+         * Records a FAILED request on every cell of `mbid` this pass may still
+         * write, and on the master rows — the marking is `_relWriteFailure()`'s,
+         * which also explains why the master mirror is load-bearing.
+         *
+         * @param   {string} mbid
+         * @param   {string} detail  e.g. "HTTP 503"
+         * @returns {void}
+         */
+        function _relMarkCellsFailed(mbid, detail) {
+            const cells = (cellsByMbid.get(mbid) || []).filter(_relCellWritable);
+            if (!cells.length) return;
+            _relWriteFailure(cells, _relMasterCellsFor(mbid, cells), detail);
         }
 
         // ── Two-phase fetch: IDB hits in parallel, misses throttled (1 req/s) ───
@@ -66560,7 +67366,10 @@ a { color: #1565c0; }`;
             if (cached) {
                 _relDbg(`initRelationshipsColumn: phase1 IDB hit for ${mbid}`);
                 // Also store in L1 memory cache so _relFetchWs2 sees it
-                _relWs2Cache.set(`${_mbidEt}:${mbid}`, Promise.resolve(cached));
+                // Same `{outcome, data}` shape `_relFetchWs2()` resolves, since
+                // a later pass reads this entry back through that function.
+                _relWs2Cache.set(`${_mbidEt}:${mbid}`,
+                    Promise.resolve({ outcome: 'ok', data: cached, detail: '' }));
                 await _populateCells(mbid, cached);
                 return true;   // hit
             }
@@ -66609,28 +67418,166 @@ a { color: #1565c0; }`;
          * @returns {boolean}
          */
         function _relQueueStillWants(mbid) {
+            // `!relError`: a cell that failed earlier is not re-answered by a
+            // later overlapping pass either — same exclusion as the candidate
+            // scan and `_relAnyPendingInExpandedTable()`.
             return (cellsByMbid.get(mbid) || []).some(
-                td => !td.dataset.relDone && _relCellWritable(td));
+                td => !td.dataset.relDone && !td.dataset.relError
+                    && !td.dataset.relLoading && _relCellWritable(td));
         }
 
+        /**
+         * Phase 1.5 — answers as many of `missMbids` as a browse source can,
+         * cheaper than one lookup each (PERFORMANCE.org Step 36).
+         *
+         * Grouped per entity type, since one page can hold several, and used
+         * only where `_relBrowseSource()` finds a declared, matching source.
+         *
+         * ── The cost rule ───────────────────────────────────────────────────
+         *
+         * A browse page costs one request whatever it returns; a lookup costs
+         * one request per row. So:
+         *   - fewer than 2 rows pending → no browsing (a page can only tie);
+         *   - page 1 is always fetched otherwise — its `*-count` is what says
+         *     how big the catalogue is, so the worst case is ONE request more
+         *     than lookups alone;
+         *   - stop when a page matched NOTHING still pending (the zero-match
+         *     rule): those rows are not in this browse set at all — a
+         *     "Various Artists" view is the real case;
+         *   - stop when the pages left are no fewer than the rows still pending
+         *     (the page-count rule): a 5 000-release catalogue is not browsed to
+         *     find three rows;
+         *   - stop on the last page, and on a failed page.
+         * Whatever is still pending afterwards falls through to the per-MBID
+         * steps below, which skip — at no cost, via `_relQueueStillWants()` —
+         * every row a page already answered.
+         *
+         * Every entity on a page is cached (L1, and IndexedDB in one
+         * transaction) under its LOOKUP key, including ones not on this page:
+         * the data is identical, and another pageType listing them gets it free.
+         * An L1 entry already present (an in-flight lookup, say) is left alone.
+         *
+         * Matched rows are written through `_populateCells()`, so the
+         * collapsed-table guard (`_relCellWritable()`) holds for browse answers
+         * exactly as for lookups.
+         *
+         * Never rejects.
+         *
+         * @param   {string[]} missMbids  Phase 1's IndexedDB misses.
+         * @returns {Promise<{requests: number, rows: number}>}
+         */
+        async function _relBrowsePhase(missMbids) {
+            const out = { requests: 0, rows: 0 };
+            const byType = new Map();
+            missMbids.forEach(mbid => {
+                const et = mbidEntityType.get(mbid) || entityType;
+                if (!byType.has(et)) byType.set(et, []);
+                byType.get(et).push(mbid);
+            });
+            for (const [et, mbids] of byType) {
+                const src = _relBrowseSource(et);
+                if (!src) continue;
+                let offset = 0;
+                let total = null;
+                for (;;) {
+                    // A row whose answer is already in L1 is NOT pending for
+                    // browsing: the per-MBID steps below serve it for free. Without
+                    // this, a re-expand whose Phase 1 missed IndexedDB (setting off,
+                    // or a failed write) fetched a whole page again although every
+                    // answer was already in memory — found when a mutation meant to
+                    // fail the IndexedDB assertion failed the L1 one instead.
+                    const pending = mbids.filter(m => _relQueueStillWants(m)
+                        && !_relWs2Cache.has(`${et}:${m}`));
+                    if (pending.length < 2) break;
+                    if (total !== null) {
+                        if (offset >= total) break;
+                        const pagesLeft = Math.ceil((total - offset) / _REL_BROWSE_LIMIT);
+                        if (pagesLeft >= pending.length) {
+                            _relDbg(`browse ${et}?${src.by}: stop — ${pagesLeft} page(s) left for ` +
+                                `${pending.length} row(s), lookups are cheaper`);
+                            break;
+                        }
+                    }
+                    const page = await _relBrowseFetchPage(src, offset);
+                    out.requests++;
+                    if (!page.ok) {
+                        _relDbg(`browse ${et}?${src.by}: page at offset ${offset} failed ` +
+                            `(${page.detail}) — per-row lookups take over`);
+                        break;
+                    }
+                    total = page.total !== null ? page.total : offset + page.items.length;
+                    const pendingSet = new Set(pending);
+                    const toStore = [];
+                    let matched = 0;
+                    for (const ent of page.items) {
+                        if (!ent || !ent.id) continue;
+                        const data = { relations: ent.relations || [] };
+                        const ckey = `${et}:${ent.id}`;
+                        toStore.push([ckey, data]);
+                        if (!_relWs2Cache.has(ckey)) {
+                            _relWs2Cache.set(ckey, Promise.resolve({ outcome: 'ok', data, detail: '' }));
+                        }
+                        if (pendingSet.has(ent.id) && _relQueueStillWants(ent.id)) {
+                            matched++;
+                            await _populateCells(ent.id, data);
+                        }
+                    }
+                    _relIdbPutMany(toStore);
+                    out.rows += matched;
+                    _relDbg(`browse ${et}?${src.by}: offset ${offset}, ${page.items.length} entities, ` +
+                        `${matched} matched, total ${total}`);
+                    offset += _REL_BROWSE_LIMIT;
+                    if (matched === 0) {
+                        _relDbg(`browse ${et}?${src.by}: stop — the page matched no pending row`);
+                        break;
+                    }
+                    if (page.items.length < _REL_BROWSE_LIMIT) break;
+                }
+            }
+            return out;
+        }
+
+        // Phase 1.5: browse pages, where this page has a browse source. It is
+        // the FIRST link of the same fire-and-forget chain, so the per-MBID
+        // steps below run after it and skip every row it answered.
+        let _p15Requests = 0, _p15Rows = 0;
+        let queue = _relBrowsePhase(_missMbids).then(r => {
+            _p15Requests = r.requests;
+            _p15Rows = r.rows;
+        });
+
         // Phase 2: throttled network queue for misses only
-        let queue = Promise.resolve();
         let _p2CacheHits = 0, _p2NetFetches = 0;
-        let _p2Skipped = 0;
-        _missMbids.forEach((mbid, i) => {
+        let _p2Skipped = 0, _p2Failed = 0;
+        _missMbids.forEach(mbid => {
             queue = queue.then(async () => {
-                // Checked BEFORE the sleep, so a superseded step costs nothing.
-                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
-                if (i > 0) await new Promise(r => setTimeout(r, 1100));
-                // And again AFTER it: 1100 ms is long enough for the user to
-                // have collapsed the column, or for another pass to have
-                // answered this mbid from cache, while this step was asleep.
+                // Checked BEFORE the wait, so a superseded step costs nothing.
                 if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
                 const _mbidEt  = mbidEntityType.get(mbid) || entityType;
                 const _mbidInc = _relIncOptionsForEntityType(_mbidEt);
-                if (_relWs2Cache.has(`${_mbidEt}:${mbid}`)) _p2CacheHits++;
+                const _l1Hit   = _relWs2Cache.has(`${_mbidEt}:${mbid}`);
+                // Only a step that will reach the network waits for a slot; the
+                // old unconditional 1100 ms sleep stalled L1 hits too. The slot
+                // is reserved HERE rather than inside _relFetchWs2(), so that the
+                // re-check below runs after the wait and before the request.
+                if (!_l1Hit) await _relAwaitRateSlot();
+                // And again AFTER it: a slot wait is long enough for the user to
+                // have collapsed the column, or for another pass to have
+                // answered this mbid, while this step was waiting.
+                if (!_relQueueStillWants(mbid)) { _p2Skipped++; return; }
+                // ◌ for the cells this step is about to answer. Both writers
+                // clear it; a collapse in the meantime clears it too.
+                (cellsByMbid.get(mbid) || []).filter(_relCellWritable)
+                    .forEach(td => { td.dataset.relLoading = 'queue'; });
+                if (_l1Hit) _p2CacheHits++;
                 else _p2NetFetches++;
-                await _populateCells(mbid, await _relFetchWs2(mbid, _mbidEt, _mbidInc));
+                const _res = await _relFetchWs2(mbid, _mbidEt, _mbidInc, false, { slotHeld: !_l1Hit });
+                if (_res.outcome === 'error') {
+                    _p2Failed++;
+                    _relMarkCellsFailed(mbid, _res.detail);
+                } else {
+                    await _populateCells(mbid, _res.data);
+                }
             });
         });
         const _relStartMs = performance.now();
@@ -66666,11 +67613,22 @@ a { color: #1565c0; }`;
             document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
             _relCreateRetryButtons();
             const _relElapsed = performance.now() - _relStartMs;
+            // `failed` counts requests that still failed after every retry —
+            // their cells carry `data-rel-error` rather than being shown as
+            // "no relationships". Reported so a partial load never reads as a
+            // complete one.
             const _tierInfo = {
-                idb:   _hitFlags.filter(Boolean).length,
-                cache: _p2CacheHits,
-                net:   _p2NetFetches,
+                idb:    _hitFlags.filter(Boolean).length,
+                cache:  _p2CacheHits,
+                net:    _p2NetFetches,
+                failed: _p2Failed,
+                browseRows:     _p15Rows,
+                browseRequests: _p15Requests,
             };
+            if (_p2Failed) {
+                _relDbg(`initRelationshipsColumn: ${_p2Failed} request(s) failed after retries — ` +
+                    'cells marked data-rel-error, not cached; collapse + expand or 🔗⟳ retries them');
+            }
             // A pass whose every remaining step was skipped — the user collapsed
             // the column while it was trickling — must not claim a completed
             // load. `allCells.length`/`uniqueMbids.length` are pass-START
@@ -66698,6 +67656,14 @@ a { color: #1565c0; }`;
                 { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _tierInfo.cache },
                 { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _tierInfo.net   },
             ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+             .concat(_tierInfo.browseRequests
+                 ? [`📚 browse: ${_tierInfo.browseRows} row(s) in ${_tierInfo.browseRequests} `
+                    + 'bulk request(s), up to 100 entities each']
+                 : [])
+             .concat(_tierInfo.failed
+                 ? [`⚠️ failed: ${_tierInfo.failed} — still failing after retries; `
+                    + 'collapse + expand the column, or use 🔗⟳, to retry']
+                 : [])
              .join('\n');
             if (!_relGlobalStatusDone) {
                 _relGlobalStatusDone = true;
@@ -66718,7 +67684,11 @@ a { color: #1565c0; }`;
      * @param {number} cellCount   Total number of .mb-rel-cell elements processed.
      * @param {number} mbidCount   Number of unique MBIDs fetched.
      * @param {number} elapsedMs   Elapsed time since initRelationshipsColumn() started.
-     * @param {{idb:number, cache:number, net:number}} [tierInfo]  Per-tier fetch counts.
+     * @param {{idb:number, cache:number, net:number, failed?:number,
+     *          browseRows?:number, browseRequests?:number}} [tierInfo]  Per-tier fetch
+     *   counts; `failed` = requests that still failed after every retry;
+     *   `browseRows`/`browseRequests` = rows answered by bulk browse pages, and
+     *   how many pages that took.
      */
     function _showRelCompletionToast(cellCount, mbidCount, elapsedMs, tierInfo) {
         const _fmtMs = ms => {
@@ -66734,6 +67704,14 @@ a { color: #1565c0; }`;
             { emoji: '💾', label: 'cache', desc: 'memory cache (same session)',              count: _ti.cache || 0 },
             { emoji: '🌐', label: 'net',   desc: 'live WS2 API fetch (throttled 1 req/s)',  count: _ti.net   || 0 },
         ].map(t => `${t.emoji} ${t.label}: ${t.count} — ${t.desc}`)
+         .concat(_ti.browseRequests
+             ? [`📚 browse: ${_ti.browseRows} row(s) in ${_ti.browseRequests} `
+                + 'bulk request(s), up to 100 entities each']
+             : [])
+         .concat(_ti.failed
+             ? [`⚠️ failed: ${_ti.failed} — still failing after retries; `
+                + 'collapse + expand the column, or use 🔗⟳, to retry']
+             : [])
          .join('\n');
         _setInfoSub(
             'mb-info-display-rel',
@@ -66746,11 +67724,15 @@ a { color: #1565c0; }`;
         if (typeof secs === 'number' && secs <= 0) return;
         const duration = (typeof secs === 'number' ? secs : 8) * 1000;
         const _tierParts = [];
-        if (_ti.idb)   _tierParts.push(`📦 IDB: ${_ti.idb}`);
-        if (_ti.cache) _tierParts.push(`💾 cache: ${_ti.cache}`);
-        if (_ti.net)   _tierParts.push(`🌐 net: ${_ti.net}`);
+        if (_ti.idb)    _tierParts.push(`📦 IDB: ${_ti.idb}`);
+        if (_ti.cache)  _tierParts.push(`💾 cache: ${_ti.cache}`);
+        if (_ti.net)    _tierParts.push(`🌐 net: ${_ti.net}`);
+        if (_ti.browseRequests) _tierParts.push(`📚 browse: ${_ti.browseRows} in ${_ti.browseRequests} req`);
+        if (_ti.failed) _tierParts.push(`⚠️ failed: ${_ti.failed}`);
         const lines = [
-            `🔗 All Relationships loaded`,
+            _ti.failed
+                ? `🔗 Relationships loaded — ${_ti.failed} request${_ti.failed === 1 ? '' : 's'} failed`
+                : `🔗 All Relationships loaded`,
             `   ${mbidCount} entities in ${_fmtMs(elapsedMs)}`,
             `   ${cellCount} cell${cellCount !== 1 ? 's' : ''} populated`,
         ];
@@ -66800,7 +67782,7 @@ a { color: #1565c0; }`;
         }
         mbids.forEach(mbid => {
             document.querySelectorAll(`td.mb-rel-cell[data-mbid='${mbid}']`)
-                .forEach(td => { td.dataset.relDone = ''; td.innerHTML = ''; });
+                .forEach(td => { td.dataset.relDone = ''; delete td.dataset.relError; td.innerHTML = ''; });
         });
         _relRetryActive = true;
         initRelationshipsColumn();
@@ -78989,6 +79971,25 @@ a { color: #1565c0; }`;
                         pending:     t.querySelectorAll(
                             'tbody td.mb-rel-cell[data-mbid]:not([data-rel-done="1"])').length,
                     }));
+            },
+
+            /**
+             * Runs one `initRelationshipsColumn()` pass on demand, resolving when
+             * its Phase 1 settles (the Phase-2 queue stays fire-and-forget, as in
+             * production).
+             *
+             * Exposed because a failed cell is excluded in three places —
+             * `_relAnyPendingInExpandedTable()` (whether a keystroke starts a
+             * pass), the impl's candidate scan, and `_relQueueStillWants()` — and
+             * they cover for one another, so a keystroke alone cannot show that
+             * a pass which DID start would still leave the failure alone. A test
+             * pins the gate with `relInitRuns()` and the other two by forcing a
+             * pass through this.
+             *
+             * @returns {Promise<void>}
+             */
+            relRunPass() {
+                return initRelationshipsColumn();
             },
 
             /**

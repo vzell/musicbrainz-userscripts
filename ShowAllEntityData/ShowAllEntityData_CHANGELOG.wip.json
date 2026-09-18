@@ -1,0 +1,109 @@
+[
+  {
+    "version": "WIP.8",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: loading a single row by clicking its cell, and then choosing that row's relationship from the 📊 unique-values dropdown, filtered correctly — but after loading a SECOND row with the same relationship and choosing it again, only the first row was shown. The dropdown counted both rows; the table did not, because the previous result for that identical choice was remembered and re-used. Loading relationship icons now also discards that remembered result, so the next filter re-examines every row."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.7",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: after collapsing the column with ▼🔗 and expanding it again while another column's filter was active, picking an entry from the Relationships 📊 unique-values dropdown no longer marked the matching icons with their red outline — and on some pages stopped narrowing the table at all — for that pick and every later one, until the page was reloaded. Collapsing cleared each row's cached column text using a value the cache did not recognise as \"cleared\", so the next filtering pass read that value back as if it were real text and failed part-way through, skipping the icon-highlighting step that runs after it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: the 📊 unique-values dropdown has a new \"Relationships - Load state\" section with four entries — 🔗 not loaded yet, ✓ has relationships, – no relationships, ⚠ request failed — each with its row count. Checking one narrows the table to those rows, so in a large table with only a few relationships you can list the rows still waiting, the ones that actually have icons, or the ones whose request failed. It is offered on a collapsed column too, where the collapsed note now says how many rows are already loaded, and its counts stay current as more rows load."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-09-16",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Relationships column: the ▶🔗 / ▼🔗 header toggle now shows how far the column has got — e.g. \"340/2301\" distinct entities loaded — updating as rows load by hand, in bulk or one by one, and disappearing once everything is loaded. A request that failed does not count as loaded, and the toggle's tooltip says how many failed."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.4",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Relationships column: on an artist's releases, release groups and works, a label's releases, a release group's and a recording's releases, and an area's labels, the column now asks MusicBrainz's Web Service for up to 100 rows per request instead of one request per row — about 24 requests instead of 2 300 for a large discography, i.e. under a minute instead of about 42 minutes when the service is not busy. The bulk answers carry the same relationships as per-row lookups (checked on 51 entities across these 7 page types) and go into the same cache, so other pages listing the same entities get them for free. Rows a bulk answer does not contain, such as a Various Artists view, are still looked up one by one, and bulk fetching stops by itself as soon as one-by-one would be cheaper. The completion toast says how many rows came from bulk requests.",
+          "New setting 'Relationships: fetch whole pages at once where MusicBrainz allows it' (sa_rel_browse_batch_enable, default on) switches bulk fetching off."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Relationships column: every cell now shows a small, faint glyph saying where that row stands — 🔗 not loaded yet, ⋯ queued (the column is still fetching), ◌ loading, – loaded but nothing with an icon, ⚠ the request failed. In a huge table where only a few rows have relationships, you can now see at a glance which rows have been looked up and which are still waiting, without the debug console.",
+          "Relationships column: click a cell to load just that row — one request — even while the column is collapsed; the rest of the table stays collapsed and untouched. Clicking a queued row while the column is still fetching gets it ahead of the queue, and clicking a failed (⚠) row retries it. On a loaded cell, hovering shows ⟳: clicking the cell outside its icons re-fetches that row, bypassing the cache. Rows loaded by hand survive filtering, sorting and multi-table re-renders, and emptying the column (▼🔗) while a row is still loading discards its late answer.",
+          "New setting 'Relationships: show a load-state glyph in each cell' (sa_rel_cell_state_glyphs, default on) hides the glyphs and turns click-to-load off. The glyphs are drawn purely by CSS, so filters, sorting, the 📊 dropdown, exports and Save to Disk never see them."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Relationships column: the icon writer and the failure marker moved out of the column's fetch pass into shared module-level functions (_relWriteResult, _relWriteFailure, _relMasterCellsFor), so a bulk pass and a single-row load write cells through the same idempotent code."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Relationships column: a failed MusicBrainz Web Service request (an HTTP 503 while the service is shedding load, or a network error) was shown exactly like 'this release has no relationships', and stayed that way for the rest of the session because the failure was cached in memory. A failed request is now retried up to 3 times with a widening backoff and is never cached; the cell is marked failed rather than done; it is not re-requested on every filter keystroke; and it is retried when the column is collapsed and expanded again, or with the 🔗⟳ retry buttons. The completion toast and status bar say how many requests failed.",
+          "Relationships column: every request, including retries, now waits on one shared one-per-second rate limit, and a lookup already answered from the in-memory cache no longer waits a second before being shown. The millisecond Length batch source shares the same retry code, with unchanged behaviour."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-15",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Settings: the 'Enable Relationships column' description no longer claims the column applies only to four page types (artist-releasegroups, artist-releases, label-releases, releasegroup-releases) — it applies to every page type that declares it, including collections, series, tag pages, reports and search results — and now says what the icons come from (URL relationships of the row's release, release group, label or work, plus release/release-group relationships that have an icon).",
+          "Statistics panel: the 'Rel WS2 TTL evictions' row said cached relationship records expire after a '7-day TTL'; the default has been 30 days all along. It now shows the configured 'Relationships IDB cache TTL (days)' (sa_rel_idb_ttl_days) value."
+        ]
+      }
+    ]
+  }
+]

@@ -543,6 +543,7 @@ harder on ~_rowTextCache~.
 |-------------+-------------------------------------------------------------------------------------------------------|
 | 5 (+7, +12) | Large but artwork-only, and a fresh reimplementation. *Step 33 must reuse its observer, not add one.* |
 | 33          | Take after 5, and RE-ESTIMATE first — Step 35 took the large half (a big table now fetches nothing until asked). What is left is under-threshold tables and deliberately-expanded ones. |
+| 36          | IN PROGRESS on ~rel-column-batch-and-cell-states~. A request-COUNT win (Dylan: 2301 -> ~24), probe-gated per pageType. Its one DOM cost is a CSS glyph per pending cell, which must be measured before merge. |
 | 1/2         | Re-judge only after Tier 1 and Step 30 — see "Why Steps 1/2 are not first" above.                     |
 | 15/16       | A port from a 290-commit-behind branch, not a design. Artwork pages only.                             |
 | 11          | ~release-tracks~ only; ~10-15 full-table scans collapse to one.                                       |
@@ -2787,11 +2788,13 @@ scan is now per table and gated on ~_relTableExpanded()~
 through it. An observer must extend that gate, not add a second answer to "is
 this cell a candidate".
 
-Separately worth probing: the millisecond-Length feature batches 100 MBIDs into
-one ~rid:~ SEARCH request, measured in ~tests/MEASUREMENTS.org~. Whether that
-endpoint can serve ~inc=…-rels~ too is unknown and untested —
-~scripts/probe-ms-rid-batch-size.py~ and ~scripts/probe-ms-browse-endpoints.py~
-are the model for finding out before assuming it.
+Separately worth probing — *now taken up as Step 36* (2026-09-15): the
+millisecond-Length feature batches 100 MBIDs into one ~rid:~ SEARCH request.
+Search results carry no ~relations~, so that endpoint is not expected to serve
+this column; Step 36's probe confirms that rather than assuming it. The BROWSE
+endpoint does carry them, and was already proven for one mapping when Step 35's
+perf seed was captured. Batching changes how MANY requests an expanded table
+costs; this step is still about WHEN they start, and the two compose.
 
 *** DONE Step 34: Collapse ~_stripTransientCellState~'s twelve per-cell scans into one
 
@@ -2990,7 +2993,13 @@ Two results, on 2301 rows carrying 2090 rendered icons:
     metrics — a column that exists, is walked, and has a ~<td>~ in every row
     costs nothing measurable once its cells are empty. Same result Step 32 got
     for Picard, and it is what justifies the shared "keep the ~<td>~, defer the
-    CONTENT" shape.
+    CONTENT" shape. /Re-confirmed under Step 36/ (2026-09-15, =vzell-lap=),
+    which paints a CSS glyph into every pending cell of a collapsed column: the
+    glyph costs nothing measurable on any of the seven metrics, and
+    ~collapsed/absent~ came back 0.90-1.19x on that noisier host against the
+    0.96-1.04x here. See Step 36's own perf-gate subsection for the method —
+    the ~absent~ arm runs identical code on both trees, so it calibrates the
+    noise the other ratios have to clear.
   - *Collapsing saves 7-30%*, as ~1 - collapsed/expanded~: 15% global filter,
     7% column filter, 28% sort, 30% warm uniq-drop, 21% header-count initial,
     22% header-count restore, 6% cold uniq-drop.
@@ -3103,6 +3112,193 @@ per row, expand, and the icons are visible while the filter matches nothing.
   finding — the first version of the mirror test collapsed a NEVER-POPULATED
   table and stayed green under the mirror's removal, which is the
   "proves something adjacent" trap this file and CLAUDE.md both warn about.
+
+*** TODO Step 36: Batched Relationships source + per-row load states
+
+/Planned 2026-09-15 on branch/ ~rel-column-batch-and-cell-states~. /User
+decisions and the mockup are in/ ~org/relationships.org~ /(2026-09-15 answer).
+TODO until it is on/ ~main~.
+
+Step 35 decides WHETHER an expanded table fetches, and Step 33 WHEN. This step
+changes HOW MANY requests that costs, and lets a user fetch one row at a time.
+One mechanism serves all of it: every source — an IDB hit, a browse page, a
+per-MBID lookup, a click — writes through one writer and waits on one rate gate,
+so per-cell state glyphs show progress whichever source answered.
+
+**** Why browse, and why not the ⏱ search trick
+
+- *Search* (~/ws/2/release?query=reid:(…)~) returns no ~relations~ and does not
+  honour ~inc=~. CONFIRMED 2026-09-15 by ~scripts/probe-rel-batch-endpoints.py~:
+  0 of 5 releases carried a ~relations~ key.
+- *Browse* returns the same per-entity ~relations~ arrays a lookup does.
+  Already proven for one mapping: ~/ws/2/release?artist=<dylan>&inc=url-rels&limit=100~
+  covered 2301/2301 releases in *24 requests* (~scripts/probe-rel-browse-endpoint.py~,
+  ~scripts/capture-rel-ws2-seed.py~, DEBUG-NOTES 2026-09-11).
+- *The cost model is the inverse of the ⏱ feature's.* That feature rejected
+  browse because it costs the page entity's whole catalogue (746 requests for
+  Springsteen's recordings, whatever the table shows). Here the table is often
+  the catalogue itself. So nothing is assumed per pageType: a run fetches browse
+  page 1, reads its ~*-count~, continues only while the pages left are fewer
+  than the MBIDs still pending, and hands the rest to the per-MBID queue. Worst
+  case, one request more than today.
+
+| pageType                 | browse                                              | inc — must equal ~_relIncOptionsForEntityType()~ | probed 2026-09-15                   |
+|--------------------------+-----------------------------------------------------+--------------------------------------------------+-------------------------------------|
+| artist-releases          | ~release?artist=~                                   | url-rels                                         | pass                                |
+| artist-releasegroups     | ~release-group?artist=~                             | url-rels + release-group-rels                    | pass                                |
+| artist-works             | ~work?artist=~                                      | url-rels + artist-rels                           | pass                                |
+| label-releases           | ~release?label=~                                    | url-rels                                         | pass                                |
+| releasegroup-releases    | ~release?release-group=~                            | url-rels                                         | pass                                |
+| recording-releases       | ~release?recording=~                                | url-rels                                         | pass                                |
+| area-labels              | ~label?area=~                                       | url-rels + label-rels                            | pass                                |
+| area-releases(-filtered) | ~release?area=~                                     | url-rels                                         | *not a candidate* — different set   |
+| collections-releases     | ~release?collection=~ / ~release-group?collection=~ | per sub-entity                                   | untested — no qualifying collection |
+
+Parity: 51 entities sampled across the seven passing mappings, up to 27
+relations each, zero mismatches. Full table, host and timing are in
+~tests/MEASUREMENTS.org~. ~area-releases~ is out because browsing releases by
+area returned 0 for New Jersey, while that page lists releases RELATED to the
+area — a different set.
+
+Every other pageType carrying the column has no browse equivalent (series,
+instrument, tags, reports, search, the relationship listings, artist-credit,
+cdtoc, isrc, area-works) and keeps per-MBID lookups, unchanged.
+
+*Comparing page counts is not a sufficient cost rule on its own.* A table can
+hold rows the browse set never contains: ~artist-releasegroups~' "Various
+Artists RGs" button lists release groups the artist is not credited on, which
+~release-group?artist=~ cannot return (expected from the endpoint's semantics;
+not probed). So browsing must also stop once pages stop matching pending MBIDs,
+or it spends the whole catalogue finding nothing.
+
+*inc parity is the load-bearing detail.* Browse answers are cached under the
+lookup's own ckey (~${entityType}:${mbid}~). That is what lets Phase 1, the TTL
+sweep, retry eviction and the Statistics counts work untouched — and it is also
+why a browse record missing one relationship family would be served as complete
+forever after.
+
+**** A defect this found on ~main~
+
+~_relFetchWs2()~ resolves ~null~ on any HTTP failure, ~_populateCells(mbid, null)~
+stamps ~relDone~, and the null promise stays in ~_relWs2Cache~ for the session.
+So a 503 is indistinguishable from "this entity has no relationships", and it
+sticks until a 🔗⟳ retry. The millisecond feature fixed exactly this for itself
+("only a SUCCESSFUL answer is cached"). Fixing it is a prerequisite for the
+glyphs, which would otherwise display the failure as fact.
+
+**** Per-row states, and the one cost that must be measured
+
+The glyph is a CSS ~::before~ keyed on existing attributes plus two transient
+ones (~data-rel-loading~, ~data-rel-error~), so there are no nodes and no text:
+filtering, the icon-count sort, 📊, export and Save-to-Disk are unaffected by
+construction. The one new cost is paint — a glyph in every pending cell of a
+collapsed column. *Step 35 measured a collapsed column as free (0.96-1.04x of
+absent); that was re-measured* with the existing ~--rel-arm=collapsed~ harness,
+~main~ and branch in one session on =vzell-lap= (2026-09-15): no measurable
+cost, every ratio inside the noise the ~absent~ arm shows on identical code. The
+method and the numbers are in the perf-gate subsection below.
+
+**** What it must not undo
+
+Every Step 35 guard stands: ~_relCellWritable()~ still gates the bulk passes, the
+queue still re-checks ~_relQueueStillWants()~ before and after waiting, and
+~_populateCells()~ still replaces rather than appends. The per-row path gets its
+own guard (a ~data-rel-loading~ token that a collapse clears) instead of
+bypassing the bulk one. A failed cell is excluded from
+~_relAnyPendingInExpandedTable()~, or Step 35's per-keystroke gate becomes a
+per-keystroke retry storm.
+
+**** Status on the branch (2026-09-15)
+
+Still TODO on ~main~. Landed on ~rel-column-batch-and-cell-states~ so far:
+
+- *Failure handling* (~0952e1d~): the ~_relFetchWs2()~ outcome, retries via
+  ~_ws2GetJson()~, and one rate gate, ~_relAwaitRateSlot()~. Regression spec
+  ~rel-column-fetch-failure.spec.js~, mutation-checked.
+- *Per-row glyphs and click-to-load*: ~_relLoadRow()~ with its per-cell token;
+  module-level ~_relWriteResult()~, ~_relWriteFailure()~ and
+  ~_relMasterCellsFor()~; the partial-snapshot rule in ~_relTableExpanded()~;
+  the setting ~sa_rel_cell_state_glyphs~. Spec ~rel-cell-state-glyphs.spec.js~.
+- *The browse bulk source*: ~features.relBrowse~ on the seven probed pageTypes;
+  ~_relBrowseSource()~, ~_relBrowseFetchPage()~ and ~_relIdbPutMany()~; the
+  impl's browse phase with both stop rules; the kill switch
+  ~sa_rel_browse_batch_enable~. Spec ~rel-column-browse-batch.spec.js~.
+- *The ~done/total~ badge and the 📊 "Relationships - Load state" section*:
+  ~_relTableProgress()~, ~_relCellLoadState()~ and a per-frame coalesced
+  ~_relScheduleProgressRefresh()~ called by both cell writers. Specs
+  ~rel-column-progress-badge.spec.js~ and ~uniq-drop-rel-load-state.spec.js~.
+  The refresh walks one table's rel cells at most once per animation frame,
+  so a hundred-row browse page costs one walk, not a hundred.
+
+*The browse source depended on a bug fix that had to ship first.* Its spec saw
+zero browse requests: release listings without an entityFeatures map had been
+stamped as LABEL tables since 9.99.1086, so ~_relBrowseSource()~ correctly
+refused them — and, live, every release was being looked up as
+~/ws/2/label/<release mbid>~, a 404 per row. Fixed on ~main~ as 9.99.1092
+(DEBUG-NOTES.md 2026-09-15) and merged into this branch. Worth carrying into
+Step 33: any per-table source keyed on the table's entity type inherits
+whatever ~_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()~ stamps.
+
+Two things the plan predicted turned out otherwise while building, recorded so
+they are not re-derived:
+
+- *A click needs no "priority slot" on the rate gate.* The Phase-2 queue only
+  ever holds ONE reservation ahead, so a click that reserves the next slot is
+  served within about two spacing intervals. The spec's "clicking a queued row
+  fetches it ahead of the queue" test pins that the clicked row is requested
+  well before the queue would reach it.
+- *The glyph CSS cannot be gated by a class on* ~<html>~. The snapshot harness
+  serializes the whole ~documentElement~, so that would have drifted every
+  rendered baseline, including pageTypes with no Relationships column. It is a
+  conditionally injected stylesheet instead.
+
+**** The perf gate: measured 2026-09-15, no measurable cost
+
+/=vzell-lap=, four arms interleaved in one session, 22:38-00:03 UTC, median of
+5, both trees at 9.99.1092 (~main~ =d5bba41=, branch =dd52c6a=). Full tables,
+host conditions and the ratios in/ ~tests/MEASUREMENTS.org~.
+
+The gate's question was narrow: a collapsed column now paints a CSS glyph into
+every pending cell, and Step 35 had measured a collapsed column as *free*
+(0.96-1.04x of absent). It still is.
+
+*The =absent= arm is the calibration, and using it is the whole method.* That
+arm disables the column, so ~main~ and the branch run the same code and every
+difference on it is noise by construction. It came back 1.00-1.17x depending on
+the metric. Against that floor:
+
+| Metric                | branch/main =absent= (noise) | branch/main =collapsed= |
+|-----------------------+------------------------------+-------------------------|
+| =globalFilter=        |                        1.00x |                   1.14x |
+| =columnFilter=        |                        1.17x |                   0.89x |
+| =sort=                |                        1.07x |                   1.03x |
+| =uniqDropCold=        |                        1.04x |                   1.01x |
+| =uniqDropWarm=        |                        1.12x |                   1.04x |
+| =headerCountsInitial= |                        1.00x |                   0.99x |
+| =headerCountsRestore= |                        1.02x |                   1.03x |
+
+Every collapsed figure is inside the noise its own metric shows on identical
+code, and three are below 1.00x. The two header-count metrics — the tightest
+instruments here, 1.00x/1.02x on the null arm — read 0.99x and 1.03x. Step 35's
+=collapsed/absent= result re-confirms too: 0.90-1.19x here against 0.96-1.04x on
+the quieter =NB-3641=, the spread being the host rather than the column.
+
+*What it does not cover*: these are filter, sort and dropdown latencies. A glyph
+is painted per pending cell in view, and nothing here measures scrolling or
+first paint, so no claim is made about them.
+
+*The =expanded= arm did not run*, on ~main~ either: the harness's own icon-floor
+guard aborted it with 0 icons rendered against a seed of 2329 url-rels, three
+attempts on each tree. That guard exists to stop exactly this run being
+published as a second =collapsed= arm, and it worked. *Bisected to =442dd8c=,
+released as 9.99.1086, on ~main~ and nothing to do with this branch*: it gated
+the Load-from-Disk path's =initRelationshipsColumn()= on =_relPageHasColumn()=,
+which asks for the =td.mb-rel-cell= that =_ensureRelCell()= — inside that same
+function — is what creates for a snapshot saved without the column. The header
+is still injected, so such a table restores *misaligned by one column*. Numbers
+in ~tests/MEASUREMENTS.org~, root cause in DEBUG-NOTES.md 2026-09-16.
+The gate above stands without it: the branch's new paint cost lives in the
+collapsed column, which is what the =collapsed= arm measures.
 
 ** Session summary: measured comparison, ~main~ vs ~perf-steps-1-4~ (2026-08-24)
 
