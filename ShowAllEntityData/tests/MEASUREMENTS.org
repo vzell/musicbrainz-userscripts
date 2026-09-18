@@ -1832,3 +1832,28 @@ nothing about layout or paint of the richer DOM, and nothing about a table far
 larger than 2000 rows — the real =place-performances= page is ~16 rows, and
 =label-relationships= for a major label is the case that would justify Stage 2
 if one is ever wanted.
+
+** 2026-09-18 — does WS/2's =cover-art-archive= block predict "no CAA index"?
+
+Host =vzell-lap=, 22:10-22:16 UTC, =scripts/probe-caa-presence-from-browse.py=.
+Not a timing: a correctness probe for skipping coverartarchive.org requests for
+releases whose block says =count: 0=. Only false negatives (count 0 but the
+archive has images) would make skipping unsafe. pageType: none — these are
+plain =/ws/2/release?artist=<mbid>&limit=100= browse pages, no table involved.
+
+| Artist (browse offset)    | Block on page | count 0 | count > 0 | Archive checked (0 / >0) | False negatives | Count mismatches |
+|---------------------------+---------------+---------+-----------+--------------------------+-----------------+------------------|
+| Bob Dylan (0)             | 100 / 100     | 31      | 69        | 15 / 15 -> 404 / index   | 0               | 0                |
+| Bruce Springsteen (4000)  | 100 / 100     | 0       | 100       | 0 / 30 -> - / index      | n/a             | 0                |
+| Bruce Springsteen (8000)  | 100 / 100     | 10      | 90        | 10 / 30 -> 404 / index   | 0               | 0                |
+
+Release-group browse carried the block on 0 of 5 groups, both artists, so this
+is release-only. *Read as*: 25 count-0 releases checked, all 404 at the archive;
+60 count>0 releases checked, all with an index whose image count equalled
+=count=. That is evidence, not proof — 25 zero-count samples from two artists.
+The Springsteen (4000) row had no zero-count release and so tested nothing
+about false negatives (the first version of the script printed "SAFE" for it;
+fixed to say INCONCLUSIVE). The docs page for the archive API does not describe
+this block at all, so the rule rests on these probes alone. One transient
+archive.org HTTP 500 hit an earlier run and crashed it; the script now retries
+500 and records a persistent failure as ERROR.

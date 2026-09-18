@@ -4,6 +4,36 @@
 
 Root directory for Tampermonkey userscripts.
 
+## MusicBrainz API documentation
+
+Before writing or changing any code that calls a MusicBrainz web service
+(`/ws/2/…` lookup, browse or search), consult the official documentation first
+and derive behaviour from it rather than from memory:
+
+- Web service overview, `inc=` parameters, browse/search/lookup semantics:
+  https://musicbrainz.org/doc/MusicBrainz_API
+- Search syntax and indexed fields (Lucene):
+  https://musicbrainz.org/doc/MusicBrainz_API/Search
+- Rate limiting (about 1 request/second per client; expect HTTP 503 under load):
+  https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
+
+Cover Art Archive (`coverartarchive.org`, `eventartarchive.org`) has its own API:
+https://musicbrainz.org/doc/Cover_Art_Archive/API — read it before touching
+artwork fetching. As documented (checked 2026-09-19): no rate limiting rules
+are published for coverartarchive.org, there are no batch or bulk endpoints
+(one request per release/release-group), each image carries an `approved`
+boolean, and the page says nothing about the `cover-art-archive` block
+(`count`/`front`/`back`/`artwork`/`darkened`) that MusicBrainz's own release
+JSON carries — that block is undocumented there, so any use of it must rest on
+a probe (`scripts/probe-caa-presence-from-browse.py`), not on the docs.
+
+Then verify against the live endpoint with a probe script (see the
+`scripts/probe-*.py` files in `ShowAllEntityData/`) — the docs describe intent,
+and several endpoints behave differently from what they suggest (e.g. search
+results omit `relations`; a browse endpoint's cost scales with the parent
+entity's whole catalogue, not the rows shown). Record the probe result next to
+the code that depends on it.
+
 ---
 
 ## Commit message conventions
