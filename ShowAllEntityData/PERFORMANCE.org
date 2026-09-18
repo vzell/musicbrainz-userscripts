@@ -12,7 +12,7 @@ is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
 keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21,
-22, 32, 34, 35 and 36.
+22, 25, 32, 34, 35 and 36.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -2423,15 +2423,14 @@ and shrinks substantially (87 738 attributes on ~artist-events~, 19 287 on
 ~tests/snapshots/registry.org~'s "Expected drift" section needs an entry, or
 the next reader will read the shrink as a regression.
 
-*** TODO Step 25: ~_countLiveDateFlags~ always walks every cell of every row
+*** DONE Step 25: ~_countLiveDateFlags~ always walks every cell of every row
 
 Two problems in one function (~:32881-32901~), reached from
 ~updateFilterButtonsVisibility()~ → ~_updateLiveDateFlagButtons()~ (~:33509~)
 on every filter pass.
 
-*Correctness — FIXED, shipped 9.99.1100 (2026-09-18).* The half of this step
-that was a bug is gone; only the cost below is still open, which is why the
-keyword stays TODO. It used to walk the live ~tbody~, and ~runFilter~ REMOVES
+*Correctness — FIXED, shipped 9.99.1100 (2026-09-18).* It used to walk the live
+~tbody~, and ~runFilter~ REMOVES
 non-matching rows rather than hiding them, so under an active filter the
 WARNING/ERROR buttons reported only the surviving subset — and a button whose
 count reaches 0 is HIDDEN, so filtering to ⚠️ removed the only way back to the
@@ -2441,8 +2440,7 @@ header of its own) and falling back to live rows before capture. Found by the
 ~AUDIT.md~ §3.6 sweep, same shape as ~_countLengthMismatchRows~/~_msSourceRows()~;
 ~tests/fixtures/live-date-flag-button-counts.spec.js~ pins it.
 
-*Cost — implemented on branch* ~perf/live-date-flag-scan-gate~, /TODO until it
-is on/ ~main~.
+*Cost — FIXED, shipped 9.99.1109 (2026-09-18).*
 
 It ran ~cell.querySelectorAll('.mb-live-date-flag')~ for every cell of every row
 of every ~table.tbl~. The buttons it feeds are created unconditionally in
@@ -2477,6 +2475,13 @@ stops moving on a flagless page, AND the ⚠️ button still counts the data on 
 page that has flags. Without the second, an early ~return~ passes the first.
 Mutation list ~scripts/mutations/live-date-flag-scan-gate.json~ (7, three of them
 ~expect: "pass"~ for the snapshot/re-fetch resets no fixture reaches).
+
+*The snapshot reset was confirmed by hand before the merge*, since no fixture
+drives Load-from-Disk into a flagged release: a release tracklist saved to disk
+and reopened still shows its ⚠️ button. Two filter cases were checked live at
+the same time — one excluding BOTH flagged tracks, one excluding just one — and
+the button kept its count in both. It remains uncovered by automation, which is
+what the ~expect: "pass"~ entries say; this records that it is not unverified.
 
 *** TODO Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
 

@@ -12464,3 +12464,21 @@ count the data under a filter that hides every flagged row. Without the second
 half, `return result` at the top of the function passes the first half perfectly
 — which is what the "the gate closes on a page that HAS flags" mutation exists
 to prove.
+
+### Live confirmation before the merge (2026-09-18)
+
+The two edges the fixture suite cannot reach were checked by hand on the real
+site before 9.99.1109 was merged, and both behaved:
+
+- **Load-from-Disk into a flagged tracklist.** A release tracklist saved to disk
+  and reopened still shows its ⚠️ button — i.e. the
+  `_hydrateAndRenderFromSnapshotData()` reset works. This is the sharp edge: a
+  hydrated row carries its flags as stored HTML with `_appendLiveDateFlag()`
+  never running, so without the reset a restored tracklist would show no buttons
+  at all.
+- **Filters that hide the flagged rows.** Both a filter excluding BOTH flagged
+  tracks and one excluding just one; the button kept `(2)` in each case.
+
+They stay `expect: "pass"` in the mutation list, because that field describes
+what the SPECS cover and nothing changed about that. Recorded here so the next
+reader knows the gap was closed by a person rather than left open.
