@@ -177,7 +177,7 @@
     "why": "Removes the rule that separates a release event's date from its country. A flag userscript's image sets margin-right 0.05em INLINE with !important, which no stylesheet rule can outrank, so the gap has to go on .release-date instead — and without it the cell reads \"US<flag>2005-12-20\". Affects MusicBrainz's own Country/Date column as well as this injected one; both carry the same markup.",
     "edits": [
       {
-        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {\n                margin-left: 0.35em;\n            }\n",
+        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {\n                margin-left: 0.4em !important;\n            }\n",
         "replace": ""
       }
     ],

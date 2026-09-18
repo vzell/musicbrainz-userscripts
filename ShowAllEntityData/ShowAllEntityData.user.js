@@ -36175,14 +36175,18 @@ a { color: #1565c0; }`;
                sitting in a cell shared with musicbrainz.org's own stylesheet
                and any number of third-party ones (jesus2099's SUPER-MIND
                injects global table.tbl CSS, for one). The rule resolves to
-               5.6px in a fixture carrying the real page's exact RSFE-processed
-               bytes, so the selector is not the question — what competes with
-               it on a live page is, and a fixture cannot load that.
+               4.2px on the live page at its 12px root font, confirmed from
+               the console, so neither the selector nor the cascade was ever
+               the problem: 0.35em was simply too subtle beside the flag.
+               0.4em is not a taste call either — it is exactly the margin-left
+               that flag userscript gives its own image, so the flag ends up
+               evenly spaced between the country code and the date instead of
+               hugging one side.
                NOTE: no backticks in this comment, deliberately; it lives
                inside a GM_addStyle template literal, where one would terminate
                the string and break the whole script. */
             table.tbl li.release-event > .release-country:not(.no-country) + .release-date {
-                margin-left: 0.35em !important;
+                margin-left: 0.4em !important;
             }
             td.mb-rel-cell a,
             td.mb-rel-cell img,

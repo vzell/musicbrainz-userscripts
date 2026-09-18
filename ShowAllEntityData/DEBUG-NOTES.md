@@ -12892,3 +12892,41 @@ part that is easy to miss — **cached alongside it in `_setUniqDropDataCache()`
 Without that a cold dropdown would show the flags and a warm one would not,
 which is the sort of split that reads as a rendering race rather than a missing
 map.
+
+### Follow-up 6: the rule was applying the whole time — it was 4.2px, not 0
+
+Settled from the live page rather than from another snapshot. One console
+expression returned everything at once:
+
+    ruleInAnyStylesheet: true    selectorMatches: 469
+    marginLeft: "4.2px"          fontSize: "12px"
+
+So neither the selector nor the cascade was ever the problem. `0.35em` against
+musicbrainz.org's 12px root font is 4.2px; the fixture that "proved" the rule
+works runs at 16px and produced 5.6px, which is why it read as fine there and
+tight on the real page. **A gap sized in `em` and verified only in a fixture is
+verified at the wrong font size.**
+
+The value is now `0.4em`, chosen rather than guessed: it is exactly the
+`margin-left` that flag userscript gives its own image, so the flag sits evenly
+between the country code and the date instead of hugging one side.
+
+`!important` stays, but it fixed nothing and the code comment no longer implies
+it did.
+
+**Two reporting failures on my side, recorded because they are the reusable
+lesson, not the CSS.**
+
+1. *A truncated read reported as a whole result.* The mutation run was checked
+   with `tail -3`, which showed three `OK` lines, and reported as "18/18". One
+   entry was `UNEXPECTED`: the `!important` edit had invalidated its `find`
+   anchor and `mutation-check.py` correctly refused it as `ERROR`. Counting
+   outcomes explicitly — `grep -c` on `^        OK`, `^UNEXPECTED` and `ERROR` —
+   is the fix, and is cheap.
+2. *A conclusion stated firmer than its evidence.* `debug/flag-spacing.html` was
+   declared to predate the fix because the rule's text was absent from it. These
+   captures contain **zero** `<style>` blocks, so a CSS rule's absence says
+   nothing at all about the build.
+
+Both are the same habit. The snapshot-based check that WOULD have worked is a
+DOM-visible marker, never a stylesheet one.
