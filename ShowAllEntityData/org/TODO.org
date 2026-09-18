@@ -435,6 +435,28 @@ Your Load-from-Disk test covered the one thing I couldn't. A hydrated row carrie
 _appendLiveDateFlag() never running, so a wrong gate there would have hidden the ⚠️ button on every reopened tracklist —
 silently, and only for people who use Save to Disk. No fixture drives that path;
 #+end_example
+
 * DONE per-row master scan
 
 After the test, suite merge it. Then tackle the "the _artMirrorInlineThumbToSourceRow()'s per-row master scan (0.69 ms/row on every multi-table re-render — the largest remaining number I know of)"
+
+* flag rendering mismatch
+
+1.)
+
+The latest implementations and tests all have been done on 
+
+2.)
+
+On e.g. https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances there is a flag rendering
+("MusicBrainz: Right Side Flags Everywhere" thir-party userscript) mismatch in the unique value drop-down column menu of
+the columns "Release events" and "Release country" compared to other pageTypes which have columns which render country and area flags e.g. [Image #3]
+
+#+begin_example
+"Release events" column is missing the sections with area and country info and flags - "Release country" - [Image #1]
+"Release country" column double flags, befor and after country name - [Image #2]
+#+end_example
+
+#+begin_example
+@debug/right-flags-release-events.html - raw HTML of final rendered https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances with all sub-tables uncollapased
+#+end_example

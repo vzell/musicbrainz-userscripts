@@ -1613,11 +1613,11 @@ coming back 1.5-1.85x apart across hosts. That noise is an order of magnitude
 larger than what is being measured, so a filter-latency A/B would have said
 nothing either way.
 
-| Host        | UTC run                 | Shape                                                    | Queries | Median of 5 |
-|-------------+-------------------------+----------------------------------------------------------+---------+-------------|
-| =vzell-lap= | 2026-09-18 08:27:26–:52 | per CELL — what shipped before                           |  87 654 | *64.0 ms*   |
-| =vzell-lap= | 2026-09-18 08:27:26–:52 | per ROW — the new first pass, column read from the =<td>= |   4 174 | *4.6 ms*    |
-| =vzell-lap= | 2026-09-18 08:27:26–:52 | gated — every later pass                                 |       0 | *0 ms*      |
+| Host        | UTC run                 | Shape                                                     | Queries | Median of 5 |
+|-------------+-------------------------+-----------------------------------------------------------+---------+-------------|
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | per CELL — what shipped before                            | 87 654  | *64.0 ms*   |
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | per ROW — the new first pass, column read from the =<td>= | 4 174   | *4.6 ms*    |
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | gated — every later pass                                  | 0       | *0 ms*      |
 
 =scripts/measure-live-date-flag-scan.js=, node v24.11.1, 4 cores, uptime 61.5 h.
 
@@ -1645,10 +1645,10 @@ that one measured ONE lookup per settle, this one measures N lookups in one
 pass. `scripts/bench-master-row-index.js`, =vzell-lap=, node v24.11.1, 4 cores,
 uptime 61.5 h.
 
-| Host        | UTC run          | Rows   | N scans     | Build + N lookups | Ratio |
-|-------------+------------------+--------+-------------+-------------------+-------|
-| =vzell-lap= | 2026-09-18 10:06 |  4 174 | *1 479 ms*  | 2.4 + 1.4 = 3.8 ms | 389x  |
-| =vzell-lap= | 2026-09-18 10:06 | 10 000 | *13 152 ms* | 7.3 + 6.9 = 14.2 ms | 926x |
+| Host        | UTC run          | Rows   | N scans     | Build + N lookups   | Ratio |
+|-------------+------------------+--------+-------------+---------------------+-------|
+| =vzell-lap= | 2026-09-18 10:06 | 4 174  | *1 479 ms*  | 2.4 + 1.4 = 3.8 ms  |  389x |
+| =vzell-lap= | 2026-09-18 10:06 | 10 000 | *13 152 ms* | 7.3 + 6.9 = 14.2 ms |  926x |
 
 ** What these establish
 
