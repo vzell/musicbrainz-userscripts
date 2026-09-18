@@ -225,9 +225,18 @@ not to undo:
 - **Do not "fix" this by mirroring the span onto the master row** with
   `_findMasterRowByIdx()`: that is a linear scan measured at ~0.7 ms per lookup on
   4174 rows (1.9 ms at 10 000), paid once per settle — seconds of main-thread time
-  on a big page. See `tests/MEASUREMENTS.org`. (`_artMirrorInlineThumbToSourceRow()`
-  already pays that per row on every multi-table re-render; that is a known,
-  separate cost.)
+  on a big page. See `tests/MEASUREMENTS.org`.
+  (`_artMirrorInlineThumbToSourceRow()` used to pay that per row on every
+  multi-table re-render — 1479 ms at 4174 rows, 13 152 ms at 10 000. Fixed in
+  the version the `// @version` header names: `_artInitInlinePics()` builds ONE
+  `_buildMasterRowIndex()` per pass, lazily, and hands it to `_artResolveSourceCell()`
+  as an optional argument. **Only the SYNCHRONOUS Case C1 call site may pass
+  one.** The four deferred mirrors — an image `load`, a `.then()` — keep the
+  scan, because a pass-scoped map is stale by the time they run, which
+  `_buildMasterRowIndex()`'s own JSDoc forbids. The icon mirror
+  `_artMirrorIconToSourceRow()` is deferred at both its call sites and still
+  scans once per painted icon; that is the remaining half, measured as 7 of the
+  14 scans a keystroke used to cost on the `releasegroup-releases` fixture.)
 - **Record connected cells only, and validate the GUID on read.** A detached `<td>`
   is either a clone some later render replaced, or a single-table source cell (a
   late 404), where the span already is what the matcher reads. The GUID check

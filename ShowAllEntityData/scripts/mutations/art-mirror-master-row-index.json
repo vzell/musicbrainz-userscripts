@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the C1 mirror goes back to scanning per row",
+    "why": "Passes null instead of the pass-scoped index, which is exactly the state before this change: one _findMasterRowByIdx() linear scan per painted thumbnail, on every multi-table re-render. Measured on this fixture as 14 scans per keystroke against 7 after. Must fail on the cost test.",
+    "edits": [
+      {
+        "find": "                                _artMirrorInlineThumbToSourceRow(existingPh, ctx, _passMasterIdx());",
+        "replace": "                                _artMirrorInlineThumbToSourceRow(existingPh, ctx, null);"
+      }
+    ],
+    "spec": "tests/fixtures/art-mirror-master-row-index.spec.js",
+    "grep": "does not scan once per painted thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "the resolver ignores the index it was handed",
+    "why": "Keeps every caller intact but makes _artResolveSourceCell() fall through to the scan regardless. Same observable as above, listed separately because the two halves break independently — a refactor can keep the plumbing and lose the use.",
+    "edits": [
+      {
+        "find": "        const entry = masterIdx ? masterIdx.get(rowIdx) : null;",
+        "replace": "        const entry = null;"
+      }
+    ],
+    "spec": "tests/fixtures/art-mirror-master-row-index.spec.js",
+    "grep": "does not scan once per painted thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "the index resolves the wrong row",
+    "why": "Makes every lookup answer with SOME master row rather than the matching one. Predicted to fail a guarantee test; it does NOT, and the reason is worth more than the prediction was. By the time Case C1 runs — on a RE-render — the DEFERRED mirrors (image load, .then()) have already written each thumbnail onto its correct source row during the initial paint. C1 is therefore idempotent maintenance, not the primary writer, and a wrong row is simply overwritten with what is already there. Reproducing it would need a source row that lacks its thumbnail at C1 time, which no fixture arranges. KNOWN UNCOVERED, and recorded rather than engineered around: three successive attempts to make a guarantee test catch it (count of thumbnails, frozen network, the SET of rows carrying one) all passed, which is the evidence that the path is masked rather than that the tests are weak.",
+    "edits": [
+      {
+        "find": "        const entry = masterIdx ? masterIdx.get(rowIdx) : null;",
+        "replace": "        const entry = masterIdx ? masterIdx.values().next().value : null;"
+      }
+    ],
+    "spec": "tests/fixtures/art-mirror-master-row-index.spec.js",
+    "grep": "the same ROWS come back",
+    "expect": "pass"
+  },
+  {
+    "name": "the index is built eagerly on every pass",
+    "why": "Removes the laziness, so every _artInitInlinePics() pass walks every source row even when it mirrors nothing — a single-table page, a page whose artwork has not painted, a pageType with no artwork. Nothing here can see it: the fixture always has artwork to mirror, and the cost is an O(N) walk rather than a wrong answer. KNOWN UNCOVERED, recorded because it is the part most likely to be 'simplified' away.",
+    "edits": [
+      {
+        "find": "        let _masterIdxForPass = null;\n        const _passMasterIdx = () => {\n            if (!_masterIdxForPass) _masterIdxForPass = _buildMasterRowIndex();\n            return _masterIdxForPass;\n        };",
+        "replace": "        const _masterIdxForPass = _buildMasterRowIndex();\n        const _passMasterIdx = () => _masterIdxForPass;"
+      }
+    ],
+    "spec": "tests/fixtures/art-mirror-master-row-index.spec.js",
+    "grep": "does not scan once per painted thumbnail",
+    "expect": "pass"
+  }
+]
