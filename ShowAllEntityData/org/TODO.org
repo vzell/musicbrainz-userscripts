@@ -378,3 +378,6 @@ what is the best strategy when bugs in this area show up and implementations are
 as branches from main or from the current branch, given the fact that I still want to live test the current branch in a
 live browser for some time to maybe catch some more bugs.
 
+* Parking lot in AUDIT.org
+
+the ▶N▤/Structure-section mismatch, the per-row master-row scan on multi-table re-renders, and _adoptJesus2099MsLength() — none of them examined yet, and none urgent.
