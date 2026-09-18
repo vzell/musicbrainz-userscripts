@@ -307,17 +307,55 @@ area-link text, not inside `_CLEAN_STRIP_SEL`, so it reaches
 
 ### 3.5 Picard column — expected EXEMPT, but verify
 
-**Status:** code check pending; no live pre-test (§10 L9).
+**Status:** **AUDITED, FOUND SOUND** (code check, 2026-09-18). No live pre-test
+(§10 L9).
 
-`CLAUDE.md` states a Picard cell contributes `''` to filtering, sorting and 📊
-(its content is a `<button>` plus an `<img alt="♪">`), which is why its
-uniq-only drop is correct rather than an oversight. Verify that is still true
-before dismissing it.
+What was checked, and what each answer rests on:
+
+- **A Picard cell has no text at all.** `_picardFillCell()` builds
+  `<ul><li><button class="mb-picard-btn"><img alt="♪"></button></li>…</ul>` and
+  nothing else; `_picardCreateButton()` sets `title` (an attribute) and an `<img>`
+  whose `alt` is not a text node. So `getCleanColumnText()` returns `''` — for the
+  multi-entity shape as well as the single-button one, which is the case
+  `CLAUDE.md`'s wording did not explicitly cover.
+- **Nothing can select it anyway.** That `<th>` carries no `.mb-col-uniq-wrap`,
+  so `openUniqDrop()` is unreachable for the column, and the 📊 structure modes
+  with it.
+- **Its uniq-only invalidation is therefore right**, and the collapse/expand of
+  a multi-button Picard cell is covered by §3.8's fix like any other column:
+  `_picardRegisterCollapsableColumn()` gives those cells real `▶N▤` toggles, and
+  every `expandedCells` write now goes through `_applyExpandedCellState()`.
+
+The one thing NOT claimed: this says the Picard column cannot make a filter
+stale. It says nothing about the column's own correctness, which
+`tests/fixtures/picard-cells-survive-rerender.spec.js` covers.
 
 ### 3.6 Live-date flags — expected SOUND
 
-**Status:** expected found sound, pending a code confirmation; no live pre-test
-(§10 L9).
+**Status:** the flags themselves are **SOUND**, but the check turned up a
+**NEW, UNFIXED defect of a different class** in their summary buttons — see
+below. **New live pre-test: §10 L10.**
+
+*Sound part (code check, 2026-09-18):* all four `_appendLiveDateFlag()` callers
+run synchronously while rows are built, inside `applyExtractTrackTitleData()`,
+whose only call site is `startFetchingProcess()`'s pre-processing — before the
+first render, and never again. So no flag is ever written after a filter has run,
+and this target is not an instance of §1's defect class.
+
+*The defect found instead:* `_countLiveDateFlags()` tallies the ⚠️/❌ summary
+buttons by walking `document.querySelectorAll('table.tbl')`'s **live** rows, and
+`_updateLiveDateFlagButtons()` — called from `updateFilterButtonsVisibility()`,
+i.e. after every filter pass — HIDES a button whose count is 0. `runFilter()`
+REMOVES non-matching rows, so filtering to ⚠️ (the WARNING button types its glyph
+into the global filter) should drop the ❌ count to 0 and make that button vanish,
+leaving no way back to the ❌ rows except clearing the filter.
+
+That is the SAME trap `CLAUDE.md` already documents for the length-mismatch
+buttons, and the sibling function got it right: `_countLengthMismatchRows()`
+walks `_msSourceRows()`. Only this one reads the live DOM. **Predicted, not yet
+reproduced** — no committed fixture or snapshot carries a `.mb-live-date-flag`
+(a release whose tracks have recording dates AND dated credits is needed), so
+L10 is written to be run on a real page first.
 
 `.mb-live-date-flag`'s glyph **is real cell text** (unlike the length-mismatch
 flag, which is attribute-only by design). But all four `_appendLiveDateFlag()`
@@ -449,8 +487,12 @@ passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shi
 into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
 passed, 0 failed. **Update 2026-09-18 (later):** `main` is at 9.99.1098 (§3.4 shipped) and merged
 into this branch (`bcb041e`); merged-`main` suite 285 passed, this branch 318
-passed, 0 failed. Still open: the §3.5/§3.6 code checks (§3.8 is fixed on an unmerged hotfix
-branch). The
+passed, 0 failed. **Update 2026-09-18 (§3.8 shipped):** `main` is at 9.99.1099 and merged into this
+branch. §3.5 is audited and found sound; §3.6's flags are sound too, but that
+check turned up a NEW defect in their ⚠️/❌ summary buttons (live-DOM counting,
+the trap the length-mismatch pair already avoids) — unfixed, unreproduced, and
+waiting on a page that has those flags (§10 L10). Every original §3 target is now
+either shipped or answered. The
 first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
@@ -814,6 +856,23 @@ throttle it**. To slow the artwork paths down:
 * **Prediction if real:** **K rows** — including the cell you just flipped, which
   no longer belongs in that set (a replay).
 * **If sound:** K−1 rows.
+
+### L10 — §3.6 the ⚠️/❌ live-date summary buttons (no throttle)
+
+* **URL:** *needed* — a `release-tracks` page whose tracks are live recordings
+  with dated credits, so the toolbar shows the ⚠️ and/or ❌ live-date buttons.
+  No committed fixture has one, and "Born to Run" (the release-tracks snapshot)
+  is a studio album with none.
+* **Steps:**
+  1. Click **Show all Tracks for Release**. Both **(N) ⚠️** and **(M) ❌**
+     buttons should be visible in the toolbar.
+  2. Click the **⚠️** button. It filters to the warning rows.
+  3. Look at the **❌** button.
+* **Prediction if real:** the ❌ button has **disappeared** — its count is taken
+  from the rows still on screen, and the ⚠️ filter removed every ❌ row. Getting
+  back to them means clearing the filter first.
+* **If sound:** the ❌ button stays visible with its original count, exactly as
+  the length-mismatch ⚠️/❌ pair does (that one counts the captured source rows).
 
 ### L9 — no live pre-test
 
