@@ -1255,7 +1255,19 @@ from every "Entity info - Area name" entry — caught by
 `uniq-drop-area-name-flag-position.spec.js`. Key on the userscript's own
 `data-hq-processed` marker instead.
 
-**Every `.flag` clone the panel emits carries `data-hq-skip`.** RSFE's own rule
+**A real flag NEVER goes in a dropdown entry's leading marker slot.** That slot
+holds a generic entity glyph (`arealink` and friends); the flag is appended
+AFTER the label, so an entry reads `[glyph] » area name: Spain [flag]`. This
+was settled once for `'name'` entries and then drifted, because `'revcountry'`/
+`'countrycode'` arrive by a different route — they pass their flag as a CLASS
+STRING in `glyphClass` while `'name'` passes a baked NODE in `flagNode`, and the
+marker slot rendered whatever `glyphClass` held. One panel showed both
+conventions at once. A new flag-bearing kind must pick the trailing slot.
+
+**Every `.flag` clone BAKED FROM A CELL carries `data-hq-skip`.** The class-only
+glyph spans above deliberately do not: they have no inline background to
+protect and are painted by the page's own stylesheet or by the flag userscript
+itself, so opting them out would leave an empty span. RSFE's own rule
 `.flag:not([data-hq-processed]):not([data-hq-skip]) { background-image: none
 !important }` beats a normal-priority inline background (author `!important`
 outranks normal inline in the cascade), and its MutationObserver watches

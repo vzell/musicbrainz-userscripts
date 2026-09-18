@@ -158,5 +158,31 @@
     "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
     "grep": "space between the country and the date",
     "expect": "fail"
+  },
+  {
+    "name": "the country flag goes back into the leading marker slot",
+    "why": "Restores `marker.className = glyphClass` for the country kinds, putting the real flag back where the generic glyph belongs. The same decision was made once already for 'name' entries — which used to render '[flag] » area name: Spain' and now render '[glyph] » area name: Spain [flag]' — and the country kinds were never brought along, so one panel showed both conventions at once. Fails on 'leading slot keeps a generic glyph' rather than on 'the flag is NOT in the leading slot' — the marker becomes `flag flag-US`, so the missing generic glyph is what trips first. Both assertions cover the same relocation.",
+    "edits": [
+      {
+        "find": "                marker.className = (kind === 'revcountry' || kind === 'countrycode')\n                    ? 'arealink' : glyphClass;",
+        "replace": "                marker.className = glyphClass;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "reads like an area-name entry",
+    "expect": "fail"
+  },
+  {
+    "name": "the country kinds emit no trailing flag",
+    "why": "The other half: without `_trailingFlagClass` the country entries render a generic glyph and no flag at all, rather than moving it. Pins that the flag was RELOCATED and not merely removed from the leading slot — a mutation on the marker alone cannot tell those two outcomes apart.",
+    "edits": [
+      {
+        "find": "                    (kind === 'revcountry' || kind === 'countrycode') ? glyphClass : null;",
+        "replace": "                    null;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "reads like an area-name entry",
+    "expect": "fail"
   }
 ]

@@ -57663,18 +57663,24 @@ a { color: #1565c0; }`;
                 markerSlot.style.width          = '16px';
                 markerSlot.style.marginRight    = '4px';
                 markerSlot.style.verticalAlign  = 'middle';
-                // For 'revcountry'/'countrycode', glyphClass is the
-                // combined `flag flag-XX` class string (both native
-                // classes together, matching the native `class="flag
-                // flag-XX"` shape) — see the two country-code
-                // aggregation call sites in openUniqDrop(). For 'name',
-                // this is always the entity's own generic native glyph
-                // (e.g. 'arealink') — a real country flag, when one
-                // exists (`flagNode`), is appended AFTER the label below
-                // instead of taking this slot's place, so both are visible
-                // together: "[glyph] » area name: Spain [flag]".
+                // This slot always holds a GENERIC entity glyph, never a real
+                // flag. For 'name' that is the entity's own native class (e.g.
+                // 'arealink'); for 'revcountry'/'countrycode' `glyphClass` is
+                // instead the combined `flag flag-XX` string, which is rendered
+                // AFTER the label by the trailing slot below — so those two
+                // kinds borrow the same 'arealink' glyph here, a country being
+                // an area.
+                //
+                // Keeping the real flag out of this slot is a settled decision,
+                // not a detail: it was made once already for 'name' entries,
+                // which used to render "[flag] » area name: Spain" and now
+                // render "[glyph] » area name: Spain [flag]". The country kinds
+                // were simply never brought along, so the two sections
+                // disagreed — "🇬🇧 » country: GB" beside "🌐 » area name:
+                // California 🏞" in the same panel.
                 const marker = document.createElement('span');
-                marker.className = glyphClass;
+                marker.className = (kind === 'revcountry' || kind === 'countrycode')
+                    ? 'arealink' : glyphClass;
                 _guardGlyphAgainstEmptySelectorHiding(marker);
                 markerSlot.appendChild(marker);
                 item.appendChild(markerSlot);
@@ -57757,18 +57763,41 @@ a { color: #1565c0; }`;
                 if (kind === 'entitycancelled' || kind === 'eventcancelled') {
                     _labelSpan.classList.add('cancelled');
                 }
-                if (kind === 'name' && flagNode) {
-                    // Real country flag, when this area name has one —
-                    // rendered AFTER the name rather than replacing the
-                    // generic glyph in markerSlot above (see that slot's
-                    // comment): "[glyph] » area name: Spain [flag]".
+                // The country kinds carry their flag as a CLASS STRING rather
+                // than a baked node — see the two aggregation call sites in
+                // openUniqDrop() — so they build the span here instead of
+                // cloning one. Same slot, same position, so every flag-bearing
+                // entry in the panel reads alike.
+                const _trailingFlagClass =
+                    (kind === 'revcountry' || kind === 'countrycode') ? glyphClass : null;
+                if ((kind === 'name' && flagNode) || _trailingFlagClass) {
+                    // Real country flag, when this entry has one — rendered
+                    // AFTER the name rather than replacing the generic glyph in
+                    // markerSlot above (see that slot's comment):
+                    // "[glyph] » area name: Spain [flag]".
                     const trailingFlagSlot = document.createElement('span');
                     trailingFlagSlot.setAttribute('aria-hidden', 'true');
                     trailingFlagSlot.style.display       = 'inline-flex';
                     trailingFlagSlot.style.alignItems    = 'center';
                     trailingFlagSlot.style.marginLeft    = '4px';
                     trailingFlagSlot.style.verticalAlign = 'middle';
-                    trailingFlagSlot.appendChild(flagNode.cloneNode(true));
+                    if (flagNode) {
+                        trailingFlagSlot.appendChild(flagNode.cloneNode(true));
+                    } else {
+                        // Class-only, exactly as this span was when it sat in
+                        // the marker slot: it is painted by MusicBrainz's own
+                        // `.flag` stylesheet, or by a flag userscript that
+                        // replaces it. Deliberately NOT given `data-hq-skip` —
+                        // that marker belongs on clones `_bakeFlagIconNode()`
+                        // resolves from a live cell, where an inline background
+                        // is already baked and must survive. Here there is
+                        // nothing to protect, and opting out would leave an
+                        // empty span.
+                        const _flagGlyph = document.createElement('span');
+                        _flagGlyph.className = _trailingFlagClass;
+                        _guardGlyphAgainstEmptySelectorHiding(_flagGlyph);
+                        trailingFlagSlot.appendChild(_flagGlyph);
+                    }
                     item.appendChild(trailingFlagSlot);
                 }
             }

@@ -318,3 +318,44 @@ test('a date with no country gains no leading space', async ({ page }) => {
     });
     expect(date).toBe('2008-06-25');
 });
+
+test('a "Release events - Country" entry reads like an area-name entry: generic glyph, label, THEN the flag', async ({ page }) => {
+    await setup(page);
+    await page.evaluate(() => {
+        const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+            .find((t) => t.dataset.colName === 'Release events');
+        th.querySelector('.mb-col-uniq-wrap').click();
+    });
+    await page.waitForSelector('#mb-col-uniq-dropdown');
+
+    // The same shape uniq-drop-area-name-flag-position.spec.js pins for
+    // "Entity info - Area name", which had this exact fix applied to it long
+    // ago: the leading slot keeps a GENERIC entity glyph and the real flag is
+    // appended after the label. The country kinds were never brought along, so
+    // one panel could show "[flag] » country: GB" directly above
+    // "[glyph] » area name: California [flag]".
+    const shape = await page.evaluate(() => {
+        const drop = document.getElementById('mb-col-uniq-dropdown');
+        const item = Array.from(drop.querySelectorAll('.mb-col-uniq-item')).find((el) => (
+            (el.dataset.mbUniqSynLabel
+                || el.querySelector('.mb-uniq-syn-label-text')?.textContent) === '» country: US'
+        ));
+        if (!item) return null;
+        const children = Array.from(item.children);
+        const labelIdx = children.findIndex((c) => c.classList.contains('mb-uniq-syn-label-text'));
+        const before = children.slice(0, labelIdx);
+        const after = children.slice(labelIdx + 1);
+        const hasFlag = (el) => /\bflag-/.test(el.className) || !!el.querySelector('[class*="flag-"]');
+        const hasGeneric = (el) => el.classList.contains('arealink') || !!el.querySelector('.arealink');
+        return {
+            leadingHasGenericGlyph: before.some(hasGeneric),
+            leadingHasFlag: before.some(hasFlag),
+            trailingHasFlag: after.some(hasFlag),
+        };
+    });
+
+    expect(shape, 'the "» country: US" entry exists').toBeTruthy();
+    expect(shape.leadingHasGenericGlyph, 'leading slot keeps a generic glyph').toBe(true);
+    expect(shape.leadingHasFlag, 'the flag is NOT in the leading slot').toBe(false);
+    expect(shape.trailingHasFlag, 'the flag follows the label').toBe(true);
+});

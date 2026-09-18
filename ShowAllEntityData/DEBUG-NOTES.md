@@ -12772,3 +12772,36 @@ order moves.
 off it, and they are one fact rather than two: an injected cell is not native
 markup sitting in MusicBrainz's own CSS context, so it pads its own alignment
 spans AND supplies its own separator.
+
+### Follow-up 2: the country sections put the flag before the name, the area sections after it
+
+Also found by looking at a real panel. One dropdown showed both conventions at
+once:
+
+    🇬🇧 » country: GB                    <- "Release events - Country"
+    🌐 » area name: California 🏞        <- "Entity info - Area name"
+
+**The decision had already been made — for one kind only.** `'name'` entries
+used to render `[flag] » area name: Spain` and were changed to
+`[glyph] » area name: Spain [flag]`, with `uniq-drop-area-name-flag-position.spec.js`
+written to pin it. `'revcountry'` and `'countrycode'` were never brought along,
+because they reach `makeValueSynItem()` by a different route: they pass their
+flag as a CLASS STRING in `glyphClass` (the combined `flag flag-XX`), where
+`'name'` passes a baked NODE in `flagNode`. The marker slot rendered whatever
+`glyphClass` held, so for the country kinds that was the flag itself.
+
+Both kinds now put a generic `arealink` glyph in the marker slot — a country is
+an area — and render the flag after the label. The trailing slot builds a span
+from the class string when there is no node to clone; same slot, same position,
+so every flag-bearing entry in the panel reads alike.
+
+**The class-only span deliberately does NOT get `data-hq-skip`.** That marker
+belongs on clones `_bakeFlagIconNode()` resolves from a live cell, which carry
+an inline background that has to survive a flag userscript's `!important`
+blanking rule. This span has no inline background to protect — it is painted by
+MusicBrainz's own `.flag` stylesheet, or by whichever userscript replaces it —
+so opting it out would leave an empty span rather than protect anything.
+
+Two mutations, because the marker alone cannot distinguish "the flag moved" from
+"the flag is gone": one puts it back in the leading slot, the other removes the
+trailing one.
