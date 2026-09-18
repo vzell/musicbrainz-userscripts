@@ -352,10 +352,24 @@ leaving no way back to the ❌ rows except clearing the filter.
 
 That is the SAME trap `CLAUDE.md` already documents for the length-mismatch
 buttons, and the sibling function got it right: `_countLengthMismatchRows()`
-walks `_msSourceRows()`. Only this one reads the live DOM. **Predicted, not yet
-reproduced** — no committed fixture or snapshot carries a `.mb-live-date-flag`
-(a release whose tracks have recording dates AND dated credits is needed), so
-L10 is written to be run on a real page first.
+walks `_msSourceRows()`. Only this one reads the live DOM. **REPRODUCED and FIXED**, 2026-09-18, on hotfix branch
+`fix/live-date-flag-button-counts` (`cb66e46`, pushed, **not merged**), after the
+user supplied a page that has the flags (§10 L10's URL). **Spec:**
+`tests/fixtures/live-date-flag-button-counts.spec.js`. **Mutations:**
+`scripts/mutations/live-date-flag-button-counts.json` (4/4 as expected).
+
+| Test | `main` 9.99.1099 | hotfix |
+|---|---|---|
+| control: the tooltip breaks the count down by column | ✅ | ✅ |
+| control: the ⚠️ button filters to its own rows | ✅ 2/2 | ✅ |
+| **A**: a filter hiding every flagged row | ❌ **the button is hidden** | ✅ stays, "(2)" |
+| **B**: a filter hiding one of the two | ❌ **label reads "(1)"** | ✅ "(2)" |
+| C: clearing the filter restores it | ✅ | ✅ |
+
+Fix: tally the captured source rows, resolving column names from the rendered
+table (`groupedRows[i]` ↔ `tables[i]`), with a fallback for the pre-capture case.
+Note the ROWS the ⚠️ button shows were always right — it filters by typing its
+glyph — so only the counts and the buttons' availability changed.
 
 `.mb-live-date-flag`'s glyph **is real cell text** (unlike the length-mismatch
 flag, which is attribute-only by design). But all four `_appendLiveDateFlag()`
@@ -860,20 +874,25 @@ throttle it**. To slow the artwork paths down:
 
 ### L10 — §3.6 the ⚠️/❌ live-date summary buttons (no throttle)
 
-* **URL:** *needed* — a `release-tracks` page whose tracks are live recordings
-  with dated credits, so the toolbar shows the ⚠️ and/or ❌ live-date buttons.
-  No committed fixture has one, and "Born to Run" (the release-tracks snapshot)
-  is a studio album with none.
+* **URL:** <https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185>
+  — supplied by the user, 2026-09-18: 2 mediums, 27 tracks, **2 ⚠️ rows and no
+  ❌**. ("Born to Run", the release-tracks snapshot, is a studio album with no
+  flags at all.)
+* **Note the shape of this page.** With no ❌ rows, the original steps below
+  ("click ⚠️, watch ❌ vanish") cannot show anything — clicking ⚠️ leaves both
+  flagged rows on screen, so the ⚠️ count stays right. The exposing action is a
+  filter that hides the flagged rows, which is what the steps now use.
 * **Steps:**
-  1. Click **Show all Tracks for Release**. Both **(N) ⚠️** and **(M) ❌**
-     buttons should be visible in the toolbar.
-  2. Click the **⚠️** button. It filters to the warning rows.
-  3. Look at the **❌** button.
-* **Prediction if real:** the ❌ button has **disappeared** — its count is taken
-  from the rows still on screen, and the ⚠️ filter removed every ❌ row. Getting
-  back to them means clearing the filter first.
-* **If sound:** the ❌ button stays visible with its original count, exactly as
-  the length-mismatch ⚠️/❌ pair does (that one counts the captured source rows).
+  1. Click **Show all Tracks for Release**. The toolbar shows **(2) WARNING ⚠️**.
+  2. Type `Rendezvous` — a medium-1 track, not flagged — into the GLOBAL filter.
+  3. Look at the ⚠️ button.
+  4. Clear the filter, then type `with band` (one of the two flagged tracks).
+  5. Look at the ⚠️ button again.
+* **Prediction if real:** at step 3 the button has **disappeared** (its count
+  came from the rows still on screen, and none of them is flagged); at step 5 it
+  reads **(1)** instead of (2).
+* **If sound:** it stays visible and reads **(2)** throughout — the count
+  describes the tracklist, exactly as the length-mismatch ⚠️/❌ pair does.
 
 ### L9 — no live pre-test
 
