@@ -341,6 +341,15 @@ so one toggle changes which rows they match with every input unchanged. All five
 writers now go through `_applyExpandedCellState()`, which owes items 1, 2 and 4
 above (item 3 does not apply — those modes read the map, not the row's text).
 
+**A summary COUNT owes the same "read the source rows" rule**, for the same
+reason and with a nastier symptom: `_updateLengthMismatchButtons()` and
+`_updateLiveDateFlagButtons()` hide a button whose count is 0, so a tally taken
+from the live DOM makes the button disappear exactly when a filter excludes its
+rows — removing the only way back to them. `_countLengthMismatchRows()` walks
+`_msSourceRows()`; `_countLiveDateFlags()` did not until AUDIT.md §3.6, and it
+resolves column names from the RENDERED table because a source row has no header
+of its own (`groupedRows[i]` ↔ `tables[i]`).
+
 And one that is not a cache at all: **write to the rows the matcher reads.**
 `runFilter()` REMOVES non-matching rows, so a pass that collects its targets
 from the live DOM silently skips whatever is filtered out — and if it runs once

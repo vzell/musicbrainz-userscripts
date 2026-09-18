@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1099+2026-09-18
+// @version      9.99.1100+2026-09-18
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -34029,10 +34029,25 @@ a { color: #1565c0; }`;
             warning: { total: 0, byColumn: new Map() },
             error:   { total: 0, byColumn: new Map() }
         };
-        document.querySelectorAll('table.tbl').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead tr:first-child th'))
-                .map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
-            table.querySelectorAll('tbody tr').forEach(row => {
+        // Counts the CAPTURED SOURCE rows, not the rendered ones: `runFilter()`
+        // REMOVES non-matching rows, and `_updateLiveDateFlagButtons()` hides a
+        // button whose count is 0 — so a live-DOM tally made the ⚠️/❌ buttons
+        // disappear as soon as a filter excluded their rows, taking away the
+        // only way back to them (AUDIT.md §3.6). `_countLengthMismatchRows()`
+        // walks `_msSourceRows()` for exactly this reason; this one did not.
+        //
+        // Headers still come from the RENDERED table, since a source row has no
+        // header of its own: `groupedRows[i]` is rendered as `tables[i]` (the
+        // same pairing `_artSyncSearchTextToSourceRow()` relies on), and a
+        // single-table page's `allRows` belong to the one table.
+        const tables = Array.from(document.querySelectorAll('table.tbl'));
+        const headersOf = (table) => (table
+            ? Array.from(table.querySelectorAll('thead tr:first-child th'))
+                .map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim())
+            : []);
+        const tally = (rows, table) => {
+            const headers = headersOf(table);
+            rows.forEach(row => {
                 Array.from(row.cells).forEach((cell, colIdx) => {
                     cell.querySelectorAll('.mb-live-date-flag').forEach(flag => {
                         const bucket = flag.textContent.includes('⚠️') ? result.warning
@@ -34044,7 +34059,17 @@ a { color: #1565c0; }`;
                     });
                 });
             });
-        });
+        };
+        const _grouped = (typeof groupedRows !== 'undefined' && groupedRows.length) ? groupedRows : [];
+        const _all     = (typeof allRows !== 'undefined' && allRows.length) ? allRows : [];
+        if (_grouped.length || _all.length) {
+            _grouped.forEach((g, i) => tally(g.rows, tables[i]));
+            if (_all.length) tally(_all, tables[0]);
+        } else {
+            // Nothing captured yet (called before the fetch, or on a page the
+            // script only decorated): the rendered rows are all there is.
+            tables.forEach(table => tally(Array.from(table.querySelectorAll('tbody tr')), table));
+        }
         Lib.debug('filter', `_countLiveDateFlags(): ${result.warning.total} warning(s), ${result.error.total} error(s) — ` +
             `warning by column: ${JSON.stringify(Array.from(result.warning.byColumn.entries()))}, ` +
             `error by column: ${JSON.stringify(Array.from(result.error.byColumn.entries()))}.`);

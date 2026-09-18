@@ -12285,3 +12285,49 @@ the real page the user verified, captured with `scripts/capture-page-fixture.js`
 (which redacts credential-shaped strings). Its page-1 shell is served for page 2
 as well, so rows appear twice — harmless here, since every expectation is read
 from the dropdown rather than hard-coded.
+
+## 2026-09-18 — The ⚠️/❌ live-date summary buttons counted the filtered view (hotfix, branch fix/live-date-flag-button-counts)
+
+`AUDIT.md` §3.6, live twin §10 L10. Found by CODE READING during that section's
+check — the flags themselves are sound (all four `_appendLiveDateFlag()` writers
+run synchronously inside `applyExtractTrackTitleData()`, before the first render
+and never again), so this is a different defect that the check happened to walk
+into.
+
+**Symptom.** `_countLiveDateFlags()` tallied `document.querySelectorAll('table.tbl')`'s
+LIVE rows, and `_updateLiveDateFlagButtons()` — called after every filter pass —
+hides a button whose count is 0. `runFilter()` REMOVES non-matching rows, so any
+filter excluding the flagged tracks made the ⚠️ button disappear, and with it the
+only affordance for getting back to those rows. A filter hiding SOME of them
+understated the count instead.
+
+**Precedent, and why this is not a matter of taste.** The sibling pair
+(`_countLengthMismatchRows()` / `_updateLengthMismatchButtons()`) walks
+`_msSourceRows()` for exactly this reason: "filtering to ⚠️ made the ❌ button
+vanish" is a shipped bug `CLAUDE.md` already records. Only the live-date tally
+read the live DOM.
+
+**Fixture** (`tests/fixtures/release-tracks-live-date-flags.html`): the real live
+album the user supplied for L10 — 2 mediums, 27 tracks, 2 ⚠️ rows, no ❌.
+Captured with the new `--strip-json` flag: MusicBrainz's embedded payload was
+978 KB of 1.1 MB and feeds only the millisecond-length features, which this spec
+does not exercise; the fixture is 124 KB with it gone.
+
+**Results** (`tests/fixtures/live-date-flag-button-counts.spec.js`, `vzell-lap`,
+2026-09-18): both controls pass on `main`; A (filter hides the flagged rows →
+button **hidden**) and B (filter hides one of them → label says **(1)**, not (2))
+fail there and pass on the hotfix.
+
+**Fix.** Tally the captured source rows (`groupedRows`/`allRows`), resolving
+column names from the RENDERED table since a source row has no header of its own
+(`groupedRows[i]` ↔ `tables[i]`, the pairing `_artSyncSearchTextToSourceRow()`
+also relies on), with a fallback to the live rows for the pre-capture case.
+
+**Mutation check** (`scripts/mutations/live-date-flag-button-counts.json`), 4/4
+as expected. Two are `expect: pass`, KNOWN UNCOVERED and deliberately defensive:
+the `allRows` arm (live-date flags exist only on `release-tracks`, which is always
+multi-table) and the pre-capture fallback.
+
+**One thing this does NOT change:** clicking ⚠️ still filters by typing the glyph
+into the global filter, so the ROWS it shows are the flagged ones. Only the
+counts and the buttons' availability now describe the data.
