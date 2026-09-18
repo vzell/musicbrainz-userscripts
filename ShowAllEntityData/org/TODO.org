@@ -388,3 +388,27 @@ unchanged: Step 25's cost half — _countLiveDateFlags() running querySelectorAl
 artist-events, on every pageType including the majority with no live-date flags at all. The fix has a stated shape already (gate the walk behind one table-wide querySelector, as _updateAllColHeaderCounts
 does for its inline-art probe), and it's real userscript work: fixture spec, mutation list, and a measured A/B in one session. Also still untouched are the ▶N▤-vs-Structure-section mismatch your screenshot
 found, _artMirrorInlineThumbToSourceRow()'s per-row master scan, and the two recorded harness weaknesses.
+
+Your Load-from-Disk test covered the one thing I couldn't. A hydrated row carries its flags as stored HTML with
+_appendLiveDateFlag() never running, so a wrong gate there would have hidden the ⚠️ button on every reopened tracklist —
+silently, and only for people who use Save to Disk. No fixture drives that path;
+  
+Still open, all unrequested: the ▶N▤-vs-Structure-section mismatch from your screenshot,
+_artMirrorInlineThumbToSourceRow()'s per-row master scan (0.69 ms/row on every multi-table re-render — the largest
+remaining number I know of), Step 26's memoization, and the two recorded harness weaknesses.
+      
+* DONE test I did
+
+- I filtered to something that excludes both flagged tracks and confirmed "(2)  WARNING ⚠️ "is still there with its number.
+- Same for something that excludes just one flagged track and confirmed "(2)  WARNING ⚠️ "is still there with its number.
+- I saved a release tracklist to disk and reopened it, the ⚠️ button should still DID appear.
+
+So merge it
+
+* ▶N▤-vs-Structure-section mismatch
+
+Now the ▶N▤-vs-Structure-section mismatch:
+
+Actually the "Structure" section gets rendered when there are 'empty cells', see the screenshot for release
+https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+      
