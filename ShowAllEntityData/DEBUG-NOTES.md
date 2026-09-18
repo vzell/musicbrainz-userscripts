@@ -12331,3 +12331,24 @@ multi-table) and the pre-capture fallback.
 **One thing this does NOT change:** clicking ⚠️ still filters by typing the glyph
 into the global filter, so the ROWS it shows are the flagged ones. Only the
 counts and the buttons' availability now describe the data.
+
+## 2026-09-18 — A fourth load-sensitive spec: waiting for a status text that never changes
+
+`artist-recordings-ms-batch.spec.js` › "answers are cached: sorting, filtering
+and re-toggling never re-request" failed once in a full-suite run on the feature
+branch (shard 1, 118 passed + 1 failed) and passed **7/7 three times** standalone
+straight afterwards, on the same tree. Not a regression from the 9.99.1100 merge.
+
+**Read which clock ran out.** `_runAndWaitForSettledText` timed out waiting for
+`#mb-filter-status-display` to settle *to a NEW value*, and its message names the
+problem precisely: baseline and last-seen were the same string —
+`✓ Filtered 9 rows in 22ms [1 COLUMN FILTER ['⏱︎Length':"1:0"]]`. So the wait can
+only succeed if the triggered action produces text that DIFFERS. Under load the
+re-filter can finish with an identical line (same row count, same query, and the
+"in 22ms" figure is not unique enough to force a difference), and then no timeout
+is long enough — the same shape as the focus-prefix and fixed-sleep cases above.
+
+**Not changed here**, because the right fix depends on what that test means to
+observe: the honest wait is the thing it actually asserts (the WS/2 request
+count staying put, or the row set settling), not a text transition. Recorded so
+the next reader does not re-diagnose it as flakiness with no mechanism.
