@@ -1849,12 +1849,12 @@ header the user recoloured via `sa_ui_thead_th_bg` /
 
 **Glyph presentation differs per button, and the reason is per button:**
 
-| Button | Glyph comes from | Text presentation |
-|---|---|---|
-| `.mb-rel-col-hdr-btn` | CSS `::before` | 🔗 + **U+FE0E** |
-| `.mb-picard-col-hdr-btn` | CSS `::before` | ♪ is already a text char — no selector needed |
-| `.mb-ms-col-hdr-btn` | **element text**, `_msUpdateColHdrBtn()` | ⏱ + **U+FE0E**, in that function's strings |
-| `.mb-caa-col-hdr-btn` | child `<span>` + a real `<img>` | no emoji at all |
+| Button                   | Glyph comes from                         | Text presentation                             |
+|--------------------------|------------------------------------------|-----------------------------------------------|
+| `.mb-rel-col-hdr-btn`    | CSS `::before`                           | 🔗 + **U+FE0E**                               |
+| `.mb-picard-col-hdr-btn` | CSS `::before`                           | ♪ is already a text char — no selector needed |
+| `.mb-ms-col-hdr-btn`     | **element text**, `_msUpdateColHdrBtn()` | ⏱ + **U+FE0E**, in that function's strings    |
+| `.mb-caa-col-hdr-btn`    | child `<span>` + a real `<img>`          | no emoji at all                               |
 
 U+FE0E (VARIATION SELECTOR-15) forces an emoji to render as a monochrome
 outline in the header's own colour. It is why ♪ never had the legibility

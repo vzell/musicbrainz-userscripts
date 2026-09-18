@@ -19,10 +19,10 @@ stale, silently, and usually permanently for that exact filter.
 Two confirmed instances, both found by a human clicking through a real page
 *after* a 287-test fixture suite was green, and both now fixed on this branch:
 
-| Commit | Defect | Symptom |
-|---|---|---|
+| Commit    | Defect                                                                                                                                                                                                 | Symptom                                                                                                                                                                                                                   |
+|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `a861512` | `_relDropRowTextCache()` invalidated the row-text cache by writing `null`, but `_cachedColText()`'s "not cached" sentinel is `undefined` — so a collapse **poisoned** the entry instead of clearing it | `testRowMatch()` threw `TypeError: … (reading 'toLowerCase')` mid-`runFilter()`, aborting the row loop; the 📊 relationship filter stopped outlining matches, and where the throw landed earlier it stopped narrowing too |
-| `d551df6` | A rel write dropped the uniq-dropdown cache but **not** `_filterResultCache` | Picking the same 📊 entry again after another row loaded replayed the first pick's row list; the second matching row was *removed from the DOM*, never re-tested |
+| `d551df6` | A rel write dropped the uniq-dropdown cache but **not** `_filterResultCache`                                                                                                                           | Picking the same 📊 entry again after another row loaded replayed the first pick's row list; the second matching row was *removed from the DOM*, never re-tested                                                          |
 
 Both are the same shape. The audit is to find the rest.
 
@@ -71,18 +71,18 @@ awk '/^    (async )?function [A-Za-z_]/ { match($0, /function [A-Za-z_0-9]+/); f
 
 Result on 2026-09-17 (branch @ `ee65c35`):
 
-| Enclosing function | uniq-drop | filter-result |
-|---|---|---|
-| `_msApplyLengthPrecision` | yes (table) | **no** |
-| `_maybeCorrectAreaFlagRegion` | yes (table) | **no** |
-| `initReleaseEventsColumn` (×2) | yes (table) | **no** |
-| `_artSetInlineSortKey` | yes (column) | **no** |
-| `_artBuildMultiRowArtCell` (×2, REBUILD + FIRST-BUILD) | yes (column) | **no** |
-| `_applyCollapseState` (×2), `ensureCollapseDelegate` (×3) | yes (column) | **no** |
-| `initPicardTaggerColumn`, `_picardToggleTable` | yes (table) | **no** (probably correct — see §3.5) |
-| `_relLoadRow`, `_relToggleTable`, `_initRelationshipsColumnImpl` | yes (table) | via `_relScheduleProgressRefresh` |
-| `_relScheduleProgressRefresh` | yes (table) | **yes** (the `d551df6` fix) |
-| `startFetchingProcess`, `makeTableSortableUnified`, `_hydrateAndRenderFromSnapshotData` | — | yes (wholesale) |
+| Enclosing function                                                                      | uniq-drop    | filter-result                        |
+|-----------------------------------------------------------------------------------------|--------------|--------------------------------------|
+| `_msApplyLengthPrecision`                                                               | yes (table)  | **no**                               |
+| `_maybeCorrectAreaFlagRegion`                                                           | yes (table)  | **no**                               |
+| `initReleaseEventsColumn` (×2)                                                          | yes (table)  | **no**                               |
+| `_artSetInlineSortKey`                                                                  | yes (column) | **no**                               |
+| `_artBuildMultiRowArtCell` (×2, REBUILD + FIRST-BUILD)                                  | yes (column) | **no**                               |
+| `_applyCollapseState` (×2), `ensureCollapseDelegate` (×3)                               | yes (column) | **no**                               |
+| `initPicardTaggerColumn`, `_picardToggleTable`                                          | yes (table)  | **no** (probably correct — see §3.5) |
+| `_relLoadRow`, `_relToggleTable`, `_initRelationshipsColumnImpl`                        | yes (table)  | via `_relScheduleProgressRefresh`    |
+| `_relScheduleProgressRefresh`                                                           | yes (table)  | **yes** (the `d551df6` fix)          |
+| `startFetchingProcess`, `makeTableSortableUnified`, `_hydrateAndRenderFromSnapshotData` | —            | yes (wholesale)                      |
 
 ### The structural fact every §3 target turns on
 
@@ -131,17 +131,17 @@ Root-cause write-up: that branch's `DEBUG-NOTES.md`, 2026-09-17.
 
 Fixture results (each test run alone, `vzell-lap`, 2026-09-17):
 
-| Test | `main` 9.99.1093 | hotfix | What it establishes |
-|---|---|---|---|
-| single-table baseline (nothing late) | ✅ yes 10/10, no 2/2 | ✅ | The spec drives the dropdown correctly |
-| multi-table control (ordinary "» country code: AU" entry) | ✅ 3/3 | ✅ | Same, on the multi-table page |
-| **H1** multi-table, nothing late | ❌ **count 5, rows 0** | ✅ | Not a timing bug: inline-art entries never matched on a multi-table page |
-| **H1 typed** `caa-inline-yes` column filter, multi-table | ❌ **5 vs 0** | ✅ | Same defect through `testRowMatch()`'s typed bypass (test added with the fix; fails on `main`) |
-| **H2** single-table, late thumbnail after a sort | ❌ **count 10, rows 9** | ✅ | The sort wiped the cache and no key was cached, so this is the source-row gap alone |
-| H2b single-table, late **404** after a sort | ✅ 2/2 | ✅ | The predicted asymmetry is real: the error path does reach the source cell |
-| **H3** single-table, pick → unpick → late → pick | ❌ **count 10, rows 9** | ✅ | BOTH causes at once: mutation 4 (source-row fix in, cache drop out) still renders 9 — the replay is real and stacked on H2 |
-| **H4** multi-table CAA "» image type: Front", pick → unpick → late → pick | ❌ **count 6, rows 5** | ✅ | Replay |
-| H4 isolation: same late metadata, but a sort instead of pick/unpick | ✅ 6/6 | ✅ | The source-row sync works, so **H4 is purely a replayed `_filterResultCache` entry** |
+| Test                                                                      | `main` 9.99.1093        | hotfix | What it establishes                                                                                                        |
+|---------------------------------------------------------------------------|-------------------------|--------|----------------------------------------------------------------------------------------------------------------------------|
+| single-table baseline (nothing late)                                      | ✅ yes 10/10, no 2/2    | ✅     | The spec drives the dropdown correctly                                                                                     |
+| multi-table control (ordinary "» country code: AU" entry)                 | ✅ 3/3                  | ✅     | Same, on the multi-table page                                                                                              |
+| **H1** multi-table, nothing late                                          | ❌ **count 5, rows 0**  | ✅     | Not a timing bug: inline-art entries never matched on a multi-table page                                                   |
+| **H1 typed** `caa-inline-yes` column filter, multi-table                  | ❌ **5 vs 0**           | ✅     | Same defect through `testRowMatch()`'s typed bypass (test added with the fix; fails on `main`)                             |
+| **H2** single-table, late thumbnail after a sort                          | ❌ **count 10, rows 9** | ✅     | The sort wiped the cache and no key was cached, so this is the source-row gap alone                                        |
+| H2b single-table, late **404** after a sort                               | ✅ 2/2                  | ✅     | The predicted asymmetry is real: the error path does reach the source cell                                                 |
+| **H3** single-table, pick → unpick → late → pick                          | ❌ **count 10, rows 9** | ✅     | BOTH causes at once: mutation 4 (source-row fix in, cache drop out) still renders 9 — the replay is real and stacked on H2 |
+| **H4** multi-table CAA "» image type: Front", pick → unpick → late → pick | ❌ **count 6, rows 5**  | ✅     | Replay                                                                                                                     |
+| H4 isolation: same late metadata, but a sort instead of pick/unpick       | ✅ 6/6                  | ✅     | The source-row sync works, so **H4 is purely a replayed `_filterResultCache` entry**                                       |
 
 Hotfix verification: full fixture suite **267 passed, 0 failed** (shards 96/83/88,
 01:03–01:14Z); live `caa-icon-survives-sort.spec.js` (BoDeans releases, 36/36
@@ -173,15 +173,15 @@ both branches of `_artBuildMultiRowArtCell()`. What is NOT dropped anywhere in
 the artwork path is `_filterResultCache`. And the sentinel is written to the
 **live** `<td>` only:
 
-| # | Mode / trigger | Hypothesis | Predicted symptom |
-|---|---|---|---|
-| H1 | multi-table, nothing late | `renderGroupedTable()` always clones, so the stamp lands on the clone. `_artMirrorInlineThumbToSourceRow()` copies the placeholder `<span>` to the source row but **not** the sort-key span, which is a `<td>` child outside it. No source row ever carries the sentinel. | Both entries render **0 rows** while their counts read Y and N. Not a timing bug at all. |
-| H2 | single-table, a thumbnail settles AFTER a re-render (sort) | On the first render `allRows`' rows ARE the live rows, so early settles reach the source. After any re-render the original loadTask bails on `!ph.isConnected`, and the clone's own re-fetch stamps only the clone. | Rows = thumbnails settled before the re-render; count = all. No cached key is involved, so this isolates the source-row gap. |
-| H2b | same, but the late answer is a 404 | The error path has **no** `isConnected` guard and stamps the closure's detached `<td>`, which on single-table IS the source cell. | "∅ NO front-image available" stays correct: the asymmetry is itself a prediction. |
-| H3 | either mode, settle after a pick/unpick of the same entry | `_filterResultCache` replay — identical key (the `d551df6` shape). | Rows = first pick's rows; late rows **absent from the DOM**. |
-| H4 | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`. | Replay: first pick's rows. |
-| H4b | CAA column, single-table, metadata settles after a re-render | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render. | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column). |
-| H5 | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17; confirmed live via L4b — **SHIPPED in 9.99.1096**, fix `_artSearchTextFor()`, spec `tests/fixtures/global-filter-art-search.spec.js`, mutations 3/3) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
+| #   | Mode / trigger                                                                                                                                                                                                                                           | Hypothesis                                                                                                                                                                                                                                                                                                                                                                   | Predicted symptom                                                                                                                                                               |
+|-----|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| H1  | multi-table, nothing late                                                                                                                                                                                                                                | `renderGroupedTable()` always clones, so the stamp lands on the clone. `_artMirrorInlineThumbToSourceRow()` copies the placeholder `<span>` to the source row but **not** the sort-key span, which is a `<td>` child outside it. No source row ever carries the sentinel.                                                                                                    | Both entries render **0 rows** while their counts read Y and N. Not a timing bug at all.                                                                                        |
+| H2  | single-table, a thumbnail settles AFTER a re-render (sort)                                                                                                                                                                                               | On the first render `allRows`' rows ARE the live rows, so early settles reach the source. After any re-render the original loadTask bails on `!ph.isConnected`, and the clone's own re-fetch stamps only the clone.                                                                                                                                                          | Rows = thumbnails settled before the re-render; count = all. No cached key is involved, so this isolates the source-row gap.                                                    |
+| H2b | same, but the late answer is a 404                                                                                                                                                                                                                       | The error path has **no** `isConnected` guard and stamps the closure's detached `<td>`, which on single-table IS the source cell.                                                                                                                                                                                                                                            | "∅ NO front-image available" stays correct: the asymmetry is itself a prediction.                                                                                               |
+| H3  | either mode, settle after a pick/unpick of the same entry                                                                                                                                                                                                | `_filterResultCache` replay — identical key (the `d551df6` shape).                                                                                                                                                                                                                                                                                                           | Rows = first pick's rows; late rows **absent from the DOM**.                                                                                                                    |
+| H4  | CAA column, multi-table, metadata settles after pick/unpick of a "CAA info - Type" entry                                                                                                                                                                 | `_artSyncSearchTextToSourceRow()` DOES sync the facts to the source row and drops that row's `_rowTextCache` correctly (`cols[i] = undefined; full = null`), but never `_filterResultCache`.                                                                                                                                                                                 | Replay: first pick's rows.                                                                                                                                                      |
+| H4b | CAA column, single-table, metadata settles after a re-render                                                                                                                                                                                             | `_artSyncSearchTextToSourceRow()` returns early for `tableMode !== 'multi'` on the premise "allRows' rows ARE the live rows" — true only until the first re-render.                                                                                                                                                                                                          | Late metadata never reaches `allRows`. Not yet covered by a §10 entry (needs a single-table page with a CAA column).                                                            |
+| H5  | CAA column, multi-table, **plain global** filter for an image type, nothing late (added 2026-09-17; confirmed live via L4b — **SHIPPED in 9.99.1096**, fix `_artSearchTextFor()`, spec `tests/fixtures/global-filter-art-search.spec.js`, mutations 3/3) | `testRowMatch()`'s plain-global fallback for art text reads only `cell.querySelector(':scope > ul.mb-caa-art-ul').dataset.mbArtSearch`. Multi-table source rows never carry that `<ul>` — they carry `td[data-mb-art-search-sync]`, which only `getCleanColumnText()` reads. The regexp global path and a column filter go through `getCleanColumnText()`, so they do match. | Plain global "Booklet"/"Front" finds **no** CAA-only matches on a multi-table page; the same query with **Rx** ticked finds them. Structural twin of H1. Live pre-test §10 L4b. |
 
 Checked and expected exempt: `_artMirrorIconToSourceRow()` (writes only
 `background-image`; the icon is in `_CLEAN_STRIP_SEL`), and `.mb-caa-sort-key`
@@ -201,13 +201,13 @@ deleted; merged into this branch at `4f3d094`).
 **Mutations:** `scripts/mutations/ms-length-filter-after-toggle.json` (5/5 as expected).
 Root-cause write-up: that branch's `DEBUG-NOTES.md`, 2026-09-17.
 
-| Test | `main` 9.99.1093 | hotfix |
-|---|---|---|
-| control: ▶⏱, then Length filter `.` | ✅ 8/8 | ✅ |
-| **A**: filter `.`, then ▶⏱ | ❌ **8 expected, 0** | ✅ |
-| **A isolation**: same, then flip the page-wide Case checkbox (new key, same matches) | ❌ **0** — the stale row-text cache on its own | ✅ |
-| **B**: ms, filter `.666`, then ▼⏱ | ❌ **0 expected, 1** (showing `3:12`) | ✅ |
-| **C**: global filter `11.666`, then ▶⏱ (added with the fix) | ❌ nothing rendered | ✅ |
+| Test                                                                                 | `main` 9.99.1093                               | hotfix |
+|--------------------------------------------------------------------------------------|------------------------------------------------|--------|
+| control: ▶⏱, then Length filter `.`                                                  | ✅ 8/8                                         | ✅     |
+| **A**: filter `.`, then ▶⏱                                                           | ❌ **8 expected, 0**                           | ✅     |
+| **A isolation**: same, then flip the page-wide Case checkbox (new key, same matches) | ❌ **0** — the stale row-text cache on its own | ✅     |
+| **B**: ms, filter `.666`, then ▼⏱                                                    | ❌ **0 expected, 1** (showing `3:12`)          | ✅     |
+| **C**: global filter `11.666`, then ▶⏱ (added with the fix)                          | ❌ nothing rendered                            | ✅     |
 
 Both predicted causes are real and stacked: removing only the result-cache drop
 fails A while A-isolation stays green. Fix: per rewritten cell
@@ -245,12 +245,13 @@ candidate never populated). **Spec:**
 **It was worse than "the caches go stale", and that is the finding.** The data
 itself was thrown away:
 
-| # | Defect | `main` 9.99.1096 |
-|---|---|---|
+| # | Defect                                                                                                                                                                                                                                                                                                                                                                        | `main` 9.99.1096                                                                                           |
+|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
 | A | `initReleaseEventsColumn()` collects the cells to fill from the LIVE DOM, then awaits one WS/2 call. `runFilter()` REMOVES non-matching rows, and a sort or view switch re-renders from clones — either way the collected cells are detached when the answer lands. It writes into them, the sync-to-source step only walks `document`, and the function runs once per fetch. | The rows come back from a cleared filter with an **empty** Release events column, permanently: **0 of 31** |
-| B | `_filterResultCache` replay under the needle's own key | retyping renders **0** rows, not 3 |
-| C | `_rowTextCache` still holds the text read while the column was empty | even a FRESH key renders **0** |
-| D | Nothing re-applies an active filter to the values that arrive | the table stays filtered against data that had not loaded |
+| B | `_filterResultCache` replay under the needle's own key                                                                                                                                                                                                                                                                                                                        | retyping renders **0** rows, not 3                                                                         |
+| C | `_rowTextCache` still holds the text read while the column was empty                                                                                                                                                                                                                                                                                                          | even a FRESH key renders **0**                                                                             |
+| D | Nothing re-applies an active filter to the values that arrive                                                                                                                                                                                                                                                                                                                 | the table stays filtered against data that had not loaded                                                  |
+|   |                                                                                                                                                                                                                                                                                                                                                                               |                                                                                                            |
 
 Control (filter AFTER the answer) passes on `main`, so the spec drives the page
 correctly. Fix: collect from the source rows too; reset those rows' `cols`/`full`
@@ -286,12 +287,12 @@ Everywhere" userscript). **Spec:** `tests/fixtures/area-flag-region-filter.spec.
 runtime, so the deferred observer path fires rather than the extraction-time one.
 **Mutations:** `scripts/mutations/area-flag-region-filter.json` (6/6 as expected).
 
-| Test | `main` 9.99.1097 | hotfix |
-|---|---|---|
-| control: decorate, then filter Region | ✅ 6/6 | ✅ |
-| **B**: Region needle retyped after the move | ❌ **6 expected, 3** | ✅ |
-| **C**: fresh key (page-wide Case checkbox) after the move | ❌ **6 expected, 3** | ✅ |
-| **D**: Locality filter after the value LEFT that column | ❌ **0 expected, 3 still rendered** | ✅ |
+| Test                                                      | `main` 9.99.1097                    | hotfix |
+|-----------------------------------------------------------|-------------------------------------|--------|
+| control: decorate, then filter Region                     | ✅ 6/6                              | ✅     |
+| **B**: Region needle retyped after the move               | ❌ **6 expected, 3**                | ✅     |
+| **C**: fresh key (page-wide Case checkbox) after the move | ❌ **6 expected, 3**                | ✅     |
+| **D**: Locality filter after the value LEFT that column   | ❌ **0 expected, 3 still rendered** | ✅     |
 
 Fix: drop the moved rows' `cols`/`full` entries, drop `_filterResultCache`, and
 re-run an active filter — coalesced per animation frame, since one sweep
@@ -358,13 +359,13 @@ a page that has the flags (§10 L10's URL). **Spec:**
 `tests/fixtures/live-date-flag-button-counts.spec.js`. **Mutations:**
 `scripts/mutations/live-date-flag-button-counts.json` (4/4 as expected).
 
-| Test | `main` 9.99.1099 | hotfix |
-|---|---|---|
-| control: the tooltip breaks the count down by column | ✅ | ✅ |
-| control: the ⚠️ button filters to its own rows | ✅ 2/2 | ✅ |
-| **A**: a filter hiding every flagged row | ❌ **the button is hidden** | ✅ stays, "(2)" |
-| **B**: a filter hiding one of the two | ❌ **label reads "(1)"** | ✅ "(2)" |
-| C: clearing the filter restores it | ✅ | ✅ |
+| Test                                                 | `main` 9.99.1099            | hotfix          |
+|------------------------------------------------------|-----------------------------|-----------------|
+| control: the tooltip breaks the count down by column | ✅                          | ✅              |
+| control: the ⚠️ button filters to its own rows        | ✅ 2/2                      | ✅              |
+| **A**: a filter hiding every flagged row             | ❌ **the button is hidden** | ✅ stays, "(2)" |
+| **B**: a filter hiding one of the two                | ❌ **label reads "(1)"**    | ✅ "(2)"        |
+| C: clearing the filter restores it                   | ✅                          | ✅              |
 
 Fix: tally the captured source rows, resolving column names from the rendered
 table (`groupedRows[i]` ↔ `tables[i]`), with a fallback for the pre-capture case.
@@ -395,12 +396,12 @@ pushed, **not merged**), 2026-09-18. **Spec:**
 `tests/fixtures/collapse-state-filter-staleness.spec.js`. **Mutations:**
 `scripts/mutations/collapse-state-filter-staleness.json` (6/6 as expected).
 
-| Test | `main` 9.99.1098 | hotfix |
-|---|---|---|
-| control: the entry filters to exactly the cells it counts | ✅ 46/46 | ✅ |
-| **B**: pick, uncheck, expand one cell, pick again | ❌ **45 expected, 46** | ✅ |
-| **C** isolation: a fresh key after expanding one cell | ✅ 45 — **passes on main** | ✅ |
-| **D**: expand a cell while the entry is filtering | ❌ **45 expected, 46** | ✅ |
+| Test                                                      | `main` 9.99.1098           | hotfix |
+|-----------------------------------------------------------|----------------------------|--------|
+| control: the entry filters to exactly the cells it counts | ✅ 46/46                   | ✅     |
+| **B**: pick, uncheck, expand one cell, pick again         | ❌ **45 expected, 46**     | ✅     |
+| **C** isolation: a fresh key after expanding one cell     | ✅ 45 — **passes on main** | ✅     |
+| **D**: expand a cell while the entry is filtering         | ❌ **45 expected, 46**     | ✅     |
 
 C passing on `main` is the point: a key never used before sees the expanded cell
 at once, so this is a replayed row list, not stale state. Fix: the five writers
@@ -509,17 +510,17 @@ into this branch (merged-`main` suite 289 passed; this branch 322 passed —
 is at **9.99.1100**, merged into this branch at `c00cd13`; merged-`main` suite
 294 passed. Every §3 target is now shipped or answered:
 
-| Target | Outcome |
-|---|---|
-| §3.1 CAA/EAA inline artwork (H1-H4) | 9.99.1094 |
-| §3.2 ⏱ millisecond Length toggle | 9.99.1095 |
-| §3.1 H5 (plain global filter vs. image types) | 9.99.1096 |
-| §3.3 + §3.7 Release events / ICE cells | 9.99.1097 |
-| §3.4 area-flag Locality→Region | 9.99.1098 |
-| §3.8 cell collapse/expand | 9.99.1099 |
-| §3.6 live-date summary buttons | 9.99.1100 |
-| §3.5 Picard | audited, found sound |
-| §3.6 live-date FLAGS themselves | audited, found sound |
+| Target                                        | Outcome              |
+|-----------------------------------------------|----------------------|
+| §3.1 CAA/EAA inline artwork (H1-H4)           | 9.99.1094            |
+| §3.2 ⏱ millisecond Length toggle              | 9.99.1095            |
+| §3.1 H5 (plain global filter vs. image types) | 9.99.1096            |
+| §3.3 + §3.7 Release events / ICE cells        | 9.99.1097            |
+| §3.4 area-flag Locality→Region                | 9.99.1098            |
+| §3.8 cell collapse/expand                     | 9.99.1099            |
+| §3.6 live-date summary buttons                | 9.99.1100            |
+| §3.5 Picard                                   | audited, found sound |
+| §3.6 live-date FLAGS themselves               | audited, found sound |
 
 Three of those (H5, §3.8, §3.6's buttons) were not on the original list — they
 turned up while working the ones that were. Two were worse than the "stale

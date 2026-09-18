@@ -7833,11 +7833,11 @@ so every sub-table but the last abandoned itself before writing a single badge �
 silently, because an unwritten badge is an empty `<span>`, not an error. It is
 sitting in the committed baselines:
 
-| Baseline                                        | uniq badges | populated |
-|-------------------------------------------------|-------------|-----------|
-| `artist-releasegroups/rendered.html` (47 tables) |         423 |         1 |
-| `releasegroup-releases/rendered.html` (2 tables) |          42 |        14 |
-| `artist-events/rendered.html` (1 table)          |          21 |         1 |
+| Baseline                                         | uniq badges | populated |
+|--------------------------------------------------|-------------|-----------|
+| `artist-releasegroups/rendered.html` (47 tables) | 423         | 1         |
+| `releasegroup-releases/rendered.html` (2 tables) | 42          | 14        |
+| `artist-events/rendered.html` (1 table)          | 21          | 1         |
 
 The `artist-events` row is a different, benign case: one table, nothing to
 cancel — `captureOne()` simply snapshots while the scan is still working through
@@ -8800,13 +8800,13 @@ shipped 9.99.1057 default), `expanded` (pre-9.99.1057) — one session, one host
 
 | metric              | coll/abs | exp/coll | saved by collapsing |
 |---------------------|----------|----------|---------------------|
-| globalFilter        | 1.01×    | 1.24×    | 19% |
-| columnFilter        | 1.00×    | 1.08×    | 7% |
-| sort                | 1.05×    | 1.15×    | 13% |
-| uniqDropCold        | 1.08×    | 1.07×    | 6% |
-| uniqDropWarm        | 1.10×    | 1.05×    | 5% |
-| headerCountsInitial | 1.01×    | 1.07×    | 6% |
-| headerCountsRestore | 1.01×    | 1.26×    | 21% |
+| globalFilter        | 1.01×    | 1.24×    | 19%                 |
+| columnFilter        | 1.00×    | 1.08×    | 7%                  |
+| sort                | 1.05×    | 1.15×    | 13%                 |
+| uniqDropCold        | 1.08×    | 1.07×    | 6%                  |
+| uniqDropWarm        | 1.10×    | 1.05×    | 5%                  |
+| headerCountsInitial | 1.01×    | 1.07×    | 6%                  |
+| headerCountsRestore | 1.01×    | 1.26×    | 21%                 |
 
 Both of Step 32's predictions hold. `collapsed` vs `absent` — the column merely
 existing in the five O(rows × columns) walks — is 1.00-1.10× against that
@@ -8869,12 +8869,12 @@ uncommitted changes) via a disposable Playwright script reusing
 then trigger a re-render four different ways and re-check both the row count
 and the per-row `<li>` shape:
 
-| Trigger                                    | Rows before | Rows after | Merge survived?         |
-|---------------------------------------------|-------------|------------|--------------------------|
-| Global filter, real keystroke "e" (matches everything) | 3 | 3 | yes — 3/2/1 `<li>` intact |
-| Global filter, "Springsteen" (narrows to 1) | 3           | 1          | yes                      |
-| Column filter on "Release"                  | 3           | 3          | yes                      |
-| Click "Name" header to sort                 | 3           | 3          | yes                      |
+| Trigger                                                | Rows before | Rows after | Merge survived?           |
+|--------------------------------------------------------|-------------|------------|---------------------------|
+| Global filter, real keystroke "e" (matches everything) | 3           | 3          | yes — 3/2/1 `<li>` intact |
+| Global filter, "Springsteen" (narrows to 1)            | 3           | 1          | yes                       |
+| Column filter on "Release"                             | 3           | 3          | yes                       |
+| Click "Name" header to sort                            | 3           | 3          | yes                       |
 
 None of the four reproduced the "6 rows" symptom — row count and per-row
 `<li>` counts held in every case, checked out to 4 s after the triggering
@@ -9152,14 +9152,14 @@ on a page that sorted perfectly well.
 Diagnosed with a new `scripts/probe-multitable-metric-targets.js` rather than
 guessed:
 
-| Element | Measured |
-|---|---|
-| `.mb-master-toggle` | `data-state="expanded"`, "Hide all sub-sections" |
-| `table.tbl` visibility | **45 of 47 `display:none`** |
-| sub-table 29 `<table>` | `display:none` |
-| sub-table 29 `<h3>` | visible 1570x31 |
-| its filter input / ✕ / sort / 📊 | **0x0** |
-| after a DOM-level `<h3>` click | visible 1570x26142; all four clickable |
+| Element                          | Measured                                         |
+|----------------------------------|--------------------------------------------------|
+| `.mb-master-toggle`              | `data-state="expanded"`, "Hide all sub-sections" |
+| `table.tbl` visibility           | **45 of 47 `display:none`**                      |
+| sub-table 29 `<table>`           | `display:none`                                   |
+| sub-table 29 `<h3>`              | visible 1570x31                                  |
+| its filter input / ✕ / sort / 📊 | **0x0**                                          |
+| after a DOM-level `<h3>` click   | visible 1570x26142; all four clickable           |
 
 This is CLAUDE.md's "do not trust `.mb-master-toggle`'s `data-state`" with
 numbers on it. `clickMasterToggleAndExpandAll()` cannot drive this page — it
@@ -9296,10 +9296,10 @@ context and would keep the per-cell form.
 `NB-3641`) rather than against the three-versions-old committed file. Full
 tables in `tests/MEASUREMENTS.org`.
 
-| Arm | `filterClear` `querySelectorAll` | Change |
-|---|---|---|
-| `artist-events` (single, 87 654 cells) | 1 079 876 → 83 680 | **−92.3%** |
-| `artist-releasegroups` (multi, 19 287 cells) | 323 422 → 107 099 | **−66.9%** |
+| Arm                                          | `filterClear` `querySelectorAll` | Change     |
+|----------------------------------------------|----------------------------------|------------|
+| `artist-events` (single, 87 654 cells)       | 1 079 876 → 83 680               | **−92.3%** |
+| `artist-releasegroups` (multi, 19 287 cells) | 323 422 → 107 099                | **−66.9%** |
 
 `initialRender` −84.4% and −66.9%; `querySelector` on the clear −75.5% and
 −37.7%. This function's share of the phase went 97.5% → 65% (single) and 71% →
@@ -9513,12 +9513,12 @@ a full pass ran and found nothing or no pass ran at all.
 
 Mutation-verified, four mutations:
 
-| Mutation | Fails |
-|---|---|
-| `_expanded = true` (never collapse) | 6 of 9 |
-| restore the old page-wide `runFilter` gate | exactly the keystroke test |
-| drop the `_thr === 0` carve-out | exactly the threshold test |
-| remove the master-row mirroring | exactly the populated-collapse test |
+| Mutation                                   | Fails                               |
+|--------------------------------------------|-------------------------------------|
+| `_expanded = true` (never collapse)        | 6 of 9                              |
+| restore the old page-wide `runFilter` gate | exactly the keystroke test          |
+| drop the `_thr === 0` carve-out            | exactly the threshold test          |
+| remove the master-row mirroring            | exactly the populated-collapse test |
 
 **One thing the threshold test does NOT cover, recorded so it is not mistaken
 for covered:** reading the setting as `Lib.settings.x || 200` — the falsy-zero
@@ -9789,11 +9789,11 @@ queue there too. Same family as the doubled-icon bug
 Recorded this way round on purpose, because the intuitive ranking is wrong and
 the mutation run said so:
 
-| Change | Reverting it fails |
-|---|---|
+| Change                                                                        | Reverting it fails      |
+|-------------------------------------------------------------------------------|-------------------------|
 | `_relCellWritable()` — refuse to write into a table whose column is collapsed | **the regression test** |
-| `_populateCells()` replaces instead of appending (`td.textContent = ''`) | nothing |
-| `_relQueueStillWants()`'s PRE-sleep skip | nothing |
+| `_populateCells()` replaces instead of appending (`td.textContent = ''`)      | nothing                 |
+| `_relQueueStillWants()`'s PRE-sleep skip                                      | nothing                 |
 
 - **`_relCellWritable()` is the fix.** One check, applied inside
   `_populateCells()` so every writer — Phase 1's IDB hits and Phase 2's network
@@ -9884,12 +9884,12 @@ hand-picked glyph colour could.
 Glyph presentation had to be handled per button, because the four differ more
 than they look:
 
-| Button | Glyph from | Treatment |
-|---|---|---|
-| `.mb-rel-col-hdr-btn` | CSS `::before` | 🔗 + U+FE0E |
-| `.mb-picard-col-hdr-btn` | CSS `::before` | none needed — ♪ is already text |
-| `.mb-ms-col-hdr-btn` | element text, `_msUpdateColHdrBtn()` | ⏱ + U+FE0E, in the JS strings |
-| `.mb-caa-col-hdr-btn` | child `<span>` + real 16px `<img>` | no emoji at all |
+| Button                   | Glyph from                           | Treatment                       |
+|--------------------------|--------------------------------------|---------------------------------|
+| `.mb-rel-col-hdr-btn`    | CSS `::before`                       | 🔗 + U+FE0E                     |
+| `.mb-picard-col-hdr-btn` | CSS `::before`                       | none needed — ♪ is already text |
+| `.mb-ms-col-hdr-btn`     | element text, `_msUpdateColHdrBtn()` | ⏱ + U+FE0E, in the JS strings   |
+| `.mb-caa-col-hdr-btn`    | child `<span>` + real 16px `<img>`   | no emoji at all                 |
 
 The `.mb-caa-col-hdr-btn` comment claiming `▶🖼/▼🖼` was **wrong** and has been
 corrected: that button has never contained an emoji, it contains a thumbnail.
@@ -10078,10 +10078,10 @@ throwing. Worst case is a missing right cap, not a broken control.
 **Mutated separately, which changed what the spec claims.** A combined mutation
 failed two tests, so the two halves were mutated independently:
 
-| Mutation | Fails |
-|---|---|
-| only `:first-of-type` | **test 3 alone** (prefixed Length column) |
-| only `:last-of-type` | tests 1 and 3 — `.mb-col-uniq-wrap` always follows, so ▼ is never `:last-of-type` on ANY column |
+| Mutation              | Fails                                                                                           |
+|-----------------------|-------------------------------------------------------------------------------------------------|
+| only `:first-of-type` | **test 3 alone** (prefixed Length column)                                                       |
+| only `:last-of-type`  | tests 1 and 3 — `.mb-col-uniq-wrap` always follows, so ▼ is never `:last-of-type` on ANY column |
 
 The spec's header comment originally said the Length test was the only one
 either mutation broke. That was wrong; the decomposition above replaced the
@@ -10121,13 +10121,13 @@ attributes being *added*; it missed an attribute whose **value** moves.
 padding and borders inside the flex row, so the number goes up. Measured,
 committed `release-tracks` baseline vs a fresh render of this branch:
 
-| column | baseline | now | delta |
-|---|---|---|---|
-| `#` | 71 | 125 | +54 |
-| `Title` | 87 | 149 | +62 |
-| `Artist` | 94 | 157 | +63 |
-| `Rating` | 99 | 163 | +64 |
-| `Length` | 128 | 206 | +78 |
+| column   | baseline | now | delta |
+|----------|----------|-----|-------|
+| `#`      | 71       | 125 | +54   |
+| `Title`  | 87       | 149 | +62   |
+| `Artist` | 94       | 157 | +63   |
+| `Rating` | 99       | 163 | +64   |
+| `Length` | 128      | 206 | +78   |
 
 **Cumulative across the whole series**, not this commit alone — the baselines
 have not been re-captured since before any of it. Recorded in
@@ -10171,10 +10171,10 @@ rightmost control overflowed into the next column.
 Quantified against the user's own captured header, re-rendered under the current
 stylesheet and compared to each column's true `max-content` width:
 
-| | |
-|---|---|
-| user's real page | **20 of 21** columns had a floor below their own header; worst 126 px (`CAA`), `Relationships` 76 px, the reported `Country/Date` **37 px** |
-| fresh render of the current build | **6 of 21**; `Relationships` 43 px, four others 4-6 px |
+|                                   |                                                                                                                                             |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| user's real page                  | **20 of 21** columns had a floor below their own header; worst 126 px (`CAA`), `Relationships` 76 px, the reported `Country/Date` **37 px** |
+| fresh render of the current build | **6 of 21**; `Relationships` 43 px, four others 4-6 px                                                                                      |
 
 The two figures differ for a reason worth keeping: the first reproduction
 attempt used a fixture where `loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces
@@ -10628,10 +10628,10 @@ A fixture is a saved HTML file and musicbrainz.org's stylesheet is not loaded, s
 browser defaults apply — and they differ in exactly the two properties this bug
 turns on:
 
-|                        | live  | fixture (bare)              |
-|------------------------|-------|-----------------------------|
-| `td ul` `padding-left` | 0px   | 40px (the `<ul>` default)   |
-| `td` `padding-left`    | 4.8px | 1px                         |
+|                        | live  | fixture (bare)            |
+|------------------------|-------|---------------------------|
+| `td ul` `padding-left` | 0px   | 40px (the `<ul>` default) |
+| `td` `padding-left`    | 4.8px | 1px                       |
 
 With a 40 px list indent the per-pass error is comfortably NEGATIVE: the value
 converges after one pass and the fixture reports stable, plausible, entirely
@@ -10649,11 +10649,11 @@ properties the bug depends on have been compared against a live measurement.
 network-free. Mutation-checked against three separate reverts
 (`scripts/mutate-collapse-minwidth.py`):
 
-| mutation                          | 1 sorts/auto-on | 2 sorts/auto-off | 3 narrows again | 4 not inflated |
-|-----------------------------------|-----------------|------------------|-----------------|----------------|
-| A — measurement back to scrollWidth | **fail**      | pass             | pass            | **fail**       |
-| B — cleanup reset removed           | pass          | pass             | **fail**        | pass           |
-| C — both (the shipped pre-fix code) | **fail**      | **fail**         | **fail**        | **fail**       |
+| mutation                            | 1 sorts/auto-on | 2 sorts/auto-off | 3 narrows again | 4 not inflated |
+|-------------------------------------|-----------------|------------------|-----------------|----------------|
+| A — measurement back to scrollWidth | **fail**        | pass             | pass            | **fail**       |
+| B — cleanup reset removed           | pass            | pass             | **fail**        | pass           |
+| C — both (the shipped pre-fix code) | **fail**        | **fail**         | **fail**        | **fail**       |
 
 B is why test 3 exists at all: with the max-content measurement in place the
 "only ever raised" half is otherwise invisible, since on this data the
@@ -11344,10 +11344,10 @@ releasegroup-releases shell this fix touches, so it was A/B'd on `vzell-lap`,
 2026-09-15 evening UTC, running that one test with `--workers=1
 --repeat-each` on the userscript stashed back to `main` and on the fix:
 
-| Code        | Runs | Failed |
-|-------------+------+--------|
-| `main`      |   18 |      2 |
-| this fix    |   22 |      4 |
+| Code     | Runs | Failed |
+|----------|------|--------|
+| `main`   | 18   | 2      |
+| this fix | 22   | 4      |
 
 The same timeout on unfixed `main`, at a comparable rate. The code rules the fix
 out entirely, too: that spec loads a disk fixture through `loadUserscriptPage()`
@@ -11702,11 +11702,11 @@ so the next reader sees a stated budget rather than a mystery. After the change:
 isolation.** Found while trying to get a clean run before merging the
 batched-Relationships branch:
 
-| Run    | Result   | Wall   | Failing test                                                    | Re-run alone           |
-|--------|----------|--------|-----------------------------------------------------------------|------------------------|
-| first  | 286 / 1  | 10.6 m | `rel-column-fetch-failure.spec.js:109`                           | 3 of 3                 |
-| second | 285 / 2  | 11.2 m | `rel-column-collapse-toggle.spec.js:371`, `picard-…:268`         | 42 of 42 (both files)  |
-| third  | 286 / 1  | 10.0 m | `rel-cell-state-glyphs.spec.js:460`                              | 33 of 33               |
+| Run    | Result  | Wall   | Failing test                                             | Re-run alone          |
+|--------|---------|--------|----------------------------------------------------------|-----------------------|
+| first  | 286 / 1 | 10.6 m | `rel-column-fetch-failure.spec.js:109`                   | 3 of 3                |
+| second | 285 / 2 | 11.2 m | `rel-column-collapse-toggle.spec.js:371`, `picard-…:268` | 42 of 42 (both files) |
+| third  | 286 / 1 | 10.0 m | `rel-cell-state-glyphs.spec.js:460`                      | 33 of 33              |
 
 **Why this family and not others.** These specs intercept every request, so they
 are network-free — but the userscript's own Relationships rate gate sleeps
@@ -11949,17 +11949,17 @@ is how (1) stayed invisible.
 **Fixture results on `main`** (`tests/fixtures/art-inline-uniq-filter-late-load.spec.js`,
 each test alone, `vzell-lap`, 2026-09-17):
 
-| Test | main | What it establishes |
-|---|---|---|
-| single-table baseline | pass 10/10, 2/2 | the spec drives 📊 correctly |
-| multi-table control ("» country code: AU") | pass 3/3 | same, multi-table |
-| H1 multi, nothing late | **count 5, rows 0** | (1), not a timing bug |
-| H1 typed `caa-inline-yes` | **5 vs 0** | same defect via the typed bypass |
-| H2 single, late thumbnail after a sort | **10 vs 9** | (1) alone — the sort cached no key |
-| H2b single, late 404 after a sort | pass 2/2 | predicted asymmetry: the error path has no `isConnected` guard and stamps the detached SOURCE cell |
-| H3 single, pick/unpick/late/pick | **10 vs 9** | symptom of (1) AND (2) — see mutation 4 |
-| H4 multi CAA "» image type: Front", pick/unpick/late/pick | **6 vs 5** | (2) |
-| H4 isolation: same late metadata, sort instead | pass 6/6 | the sync works; H4 is purely (2) |
+| Test                                                      | main                | What it establishes                                                                                |
+|-----------------------------------------------------------|---------------------|----------------------------------------------------------------------------------------------------|
+| single-table baseline                                     | pass 10/10, 2/2     | the spec drives 📊 correctly                                                                       |
+| multi-table control ("» country code: AU")                | pass 3/3            | same, multi-table                                                                                  |
+| H1 multi, nothing late                                    | **count 5, rows 0** | (1), not a timing bug                                                                              |
+| H1 typed `caa-inline-yes`                                 | **5 vs 0**          | same defect via the typed bypass                                                                   |
+| H2 single, late thumbnail after a sort                    | **10 vs 9**         | (1) alone — the sort cached no key                                                                 |
+| H2b single, late 404 after a sort                         | pass 2/2            | predicted asymmetry: the error path has no `isConnected` guard and stamps the detached SOURCE cell |
+| H3 single, pick/unpick/late/pick                          | **10 vs 9**         | symptom of (1) AND (2) — see mutation 4                                                            |
+| H4 multi CAA "» image type: Front", pick/unpick/late/pick | **6 vs 5**          | (2)                                                                                                |
+| H4 isolation: same late metadata, sort instead            | pass 6/6            | the sync works; H4 is purely (2)                                                                   |
 
 Lateness was controlled without network: `GM_xmlhttpRequest` wrapped after load
 (per-mbid 200/404, held until released), and the CAA metadata route gated in Node.
@@ -12022,13 +12022,13 @@ Length text and calls `runFilter()`, dropping only the uniq-dropdown cache.
 **Fixture results** (`tests/fixtures/ms-length-filter-after-toggle.spec.js`,
 `vzell-lap`, 2026-09-17):
 
-| Test | main | hotfix |
-|---|---|---|
-| control: toggle, then filter `.` | pass 8/8 | pass |
-| A: filter `.`, then toggle | **8 expected, 0** | pass |
-| A isolation: same, then flip the page-wide Case checkbox (new key, same matches) | **0** — cause 2 on its own | pass |
-| B: ms, filter `.666`, toggle back | **0 expected, 1** | pass |
-| C: global filter `11.666`, then toggle (added with the fix) | **fails — nothing rendered** (observed; both causes are present on main — mutation 4 shows the stale full text alone also fails it) | pass |
+| Test                                                                             | main                                                                                                                                | hotfix |
+|----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|--------|
+| control: toggle, then filter `.`                                                 | pass 8/8                                                                                                                            | pass   |
+| A: filter `.`, then toggle                                                       | **8 expected, 0**                                                                                                                   | pass   |
+| A isolation: same, then flip the page-wide Case checkbox (new key, same matches) | **0** — cause 2 on its own                                                                                                          | pass   |
+| B: ms, filter `.666`, toggle back                                                | **0 expected, 1**                                                                                                                   | pass   |
+| C: global filter `11.666`, then toggle (added with the fix)                      | **fails — nothing rendered** (observed; both causes are present on main — mutation 4 shows the stale full text alone also fails it) | pass   |
 
 **Fix.** Per rewritten cell `cols[cellIndex] = undefined`, per changed row
 `full = null` (the two different sentinels — AUDIT.md §4), and a wholesale

@@ -175,13 +175,13 @@ typing pause over ~300 ms — and every backspace — pays it again in full.
 
 With ~M~ = matching rows and ~C~ = columns, ~runFilter()~ (~:42388-43190~) does:
 
-| # | Walk                                                | Per-cell cost                      | Reached from                                    |
-|---+-----------------------------------------------------+------------------------------------+-------------------------------------------------|
+| # | Walk                                                | Per-cell cost                                                                                                                 | Reached from                                    |
+|---+-----------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------|
 | 1 | ~cloneNode(true)~ + ~_stripTransientCellState(td)~  | *1* ~querySelectorAll~/cell, and none at all for a cell with no element children — was *12* until Step 34 landed at 9.99.1059 | ~:42814~ single, ~:42620~ multi                 |
-| 2 | ~testRowMatch(clone, ctx)~ + ~highlightText(…, -1)~ | ~normalize()~ + text-node TreeWalk | ~:42854~ → ~:41688~, ~:38622~, ~:38785~         |
-| 3 | ~applyStickyColumn~ hover-background snapshot       | style write → ~getComputedStyle~   | ~:19262-19268~, via ~_applyPostRenderRowPasses~ |
-| 4 | ~_countLiveDateFlags()~                             | one failing ~querySelectorAll~     | ~:32881~, via ~updateFilterButtonsVisibility~   |
-| 5 | ~_updateAllColHeaderCounts~                         | ~getCleanColumnText~ per cell      | ~:57088~, via ~initCollapsableColumns~ ~:42910~ |
+| 2 | ~testRowMatch(clone, ctx)~ + ~highlightText(…, -1)~ | ~normalize()~ + text-node TreeWalk                                                                                            | ~:42854~ → ~:41688~, ~:38622~, ~:38785~         |
+| 3 | ~applyStickyColumn~ hover-background snapshot       | style write → ~getComputedStyle~                                                                                              | ~:19262-19268~, via ~_applyPostRenderRowPasses~ |
+| 4 | ~_countLiveDateFlags()~                             | one failing ~querySelectorAll~                                                                                                | ~:32881~, via ~updateFilterButtonsVisibility~   |
+| 5 | ~_updateAllColHeaderCounts~                         | ~getCleanColumnText~ per cell                                                                                                 | ~:57088~, via ~initCollapsableColumns~ ~:42910~ |
 
 Walks 2 and 5 re-extract text that walk 1's own cached ~matchOnly~ pass
 (~_rowTextCache~, ~:35148~) already extracted and has sitting in a ~WeakMap~.
@@ -307,14 +307,14 @@ is outside what any committed measurement observes. Recorded in that file too.
 Six working deferrals now exist. Any new one should follow the closest of them
 rather than invent a seventh shape.
 
-| Feature                  | How it defers                                                                                       | Reusable as                                      |
-|--------------------------+-----------------------------------------------------------------------------------------------------+--------------------------------------------------|
-| Millisecond Length       | Opt-in per page via a header button; fetches lazily on first press; five button states              | the model for any "offer it, don't do it" column |
-| CAA/EAA big-image strips | ~sa_caa_pics_initially_collapsed~ defaults *true* — loads nothing until toggled                     | threshold-free deferral of a whole subsystem     |
-| Auto-resize columns      | ~sa_auto_resize_columns_threshold~ (default 2000 rows) skips it entirely, plus a button             | the row-count-threshold idiom                    |
-| Unique-values dropdown   | Computed on open, then memoized per (table, column, row set) — Step 4                               | compute-on-demand + cache                        |
-| Picard column            | Cell CONTENT deferred per table behind ▶♪/▼♪; ~<th>~ and ~<td>~ always exist — Step 32              | deferral with NO index churn                     |
-| Relationships column     | Same shape, but the threshold decides the start state and what defers is the NETWORK — Step 35       | the two combined, for a column that costs requests |
+| Feature                  | How it defers                                                                                  | Reusable as                                        |
+|--------------------------+------------------------------------------------------------------------------------------------+----------------------------------------------------|
+| Millisecond Length       | Opt-in per page via a header button; fetches lazily on first press; five button states         | the model for any "offer it, don't do it" column   |
+| CAA/EAA big-image strips | ~sa_caa_pics_initially_collapsed~ defaults *true* — loads nothing until toggled                | threshold-free deferral of a whole subsystem       |
+| Auto-resize columns      | ~sa_auto_resize_columns_threshold~ (default 2000 rows) skips it entirely, plus a button        | the row-count-threshold idiom                      |
+| Unique-values dropdown   | Computed on open, then memoized per (table, column, row set) — Step 4                          | compute-on-demand + cache                          |
+| Picard column            | Cell CONTENT deferred per table behind ▶♪/▼♪; ~<th>~ and ~<td>~ always exist — Step 32         | deferral with NO index churn                       |
+| Relationships column     | Same shape, but the threshold decides the start state and what defers is the NETWORK — Step 35 | the two combined, for a column that costs requests |
 
 The last two are one idiom with two settings shapes, and the choice between
 them is not stylistic: *flat-collapsed is right when the column is
@@ -539,16 +539,16 @@ harder on ~_rowTextCache~.
 
 *** Tier 4 — bigger bets, judged afterwards
 
-| Step        | Standing                                                                                              |
-|-------------+-------------------------------------------------------------------------------------------------------|
-| 5 (+7, +12) | Large but artwork-only, and a fresh reimplementation. *Step 33 must reuse its observer, not add one.* |
-| 33          | Take after 5, and RE-ESTIMATE first — Step 35 took the large half (a big table now fetches nothing until asked). What is left is under-threshold tables and deliberately-expanded ones. |
+| Step        | Standing                                                                                                                                                                                                       |
+|-------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 5 (+7, +12) | Large but artwork-only, and a fresh reimplementation. *Step 33 must reuse its observer, not add one.*                                                                                                          |
+| 33          | Take after 5, and RE-ESTIMATE first — Step 35 took the large half (a big table now fetches nothing until asked). What is left is under-threshold tables and deliberately-expanded ones.                        |
 | 36          | DONE, shipped 9.99.1101-9.99.1108. A request-COUNT win (Dylan: 2301 -> ~24), probe-gated per pageType. Its one DOM cost, a CSS glyph per pending cell, measured as free on all seven metrics before the merge. |
-| 1/2         | Re-judge only after Tier 1 and Step 30 — see "Why Steps 1/2 are not first" above.                     |
-| 15/16       | A port from a 290-commit-behind branch, not a design. Artwork pages only.                             |
-| 11          | ~release-tracks~ only; ~10-15 full-table scans collapse to one.                                       |
-| 13, 20      | Nit; already mitigated by Step 19.                                                                    |
-| 17          | Validated manually and FAILED on ~<tr>~. Blocked — read that step's gate before spending time here.   |
+| 1/2         | Re-judge only after Tier 1 and Step 30 — see "Why Steps 1/2 are not first" above.                                                                                                                              |
+| 15/16       | A port from a 290-commit-behind branch, not a design. Artwork pages only.                                                                                                                                      |
+| 11          | ~release-tracks~ only; ~10-15 full-table scans collapse to one.                                                                                                                                                |
+| 13, 20      | Nit; already mitigated by Step 19.                                                                                                                                                                             |
+| 17          | Validated manually and FAILED on ~<tr>~. Blocked — read that step's gate before spending time here.                                                                                                            |
 
 *** The original Steps 1-22, consolidated
 
@@ -575,10 +575,10 @@ Interleaved with the new steps, in the tiers above:
 
 | Order | Step | Sits in | Note                                                                       |
 |-------+------+---------+----------------------------------------------------------------------------|
-|     1 | 6    | Tier 2  | One function. Makes the 📊 warm cache survive a sort.                      |
-|     2 | 9    | Tier 3  | Do it WITH Step 29, not after — see below.                                 |
-|     3 | 10   | Tier 3  | Sort only, self-contained, ~10-20x fewer comparator text extractions.      |
-|     4 | 1/2  | Tier 4  | Re-judge only after Tier 1 and Step 30, and see the Step 34 overlap below. |
+|     1 |    6 | Tier 2  | One function. Makes the 📊 warm cache survive a sort.                      |
+|     2 |    9 | Tier 3  | Do it WITH Step 29, not after — see below.                                 |
+|     3 |   10 | Tier 3  | Sort only, self-contained, ~10-20x fewer comparator text extractions.      |
+|     4 |  1/2 | Tier 4  | Re-judge only after Tier 1 and Step 30, and see the Step 34 overlap below. |
 
 *Step 9 pairs with Step 29 rather than following it.* Today a stale
 ~_rowTextCache~ entry only mis-matches a row. Step 29 feeds that same cache
@@ -860,15 +860,15 @@ every filter answering from the pre-move text.
 the SHIPPED configuration — committed as ~interaction-perf-main-9.99.1048-2026-09-08.json~ and
 ~interaction-perf-perf-step-3-header-count-cache-9.99.1048-2026-09-08.json~.
 
-| Interaction            |   ~main~ | this branch |        Δ |
+| Interaction            | ~main~   | this branch |        Δ |
 |------------------------+----------+-------------+----------|
-| Global filter          |  3033 ms |     3168 ms |    +4.5% |
-| Column filter          |  3295 ms |     3337 ms |    +1.3% |
-| Sort                   |  6410 ms |     6469 ms |    +0.9% |
-| Uniq-dropdown, cold    | 45996 ms |    46516 ms |    +1.1% |
-| Uniq-dropdown, warm    |  1676 ms |     1747 ms |    +4.2% |
-| Header counts, initial |  8033 ms |     7980 ms |    -0.7% |
-| Header counts, restore | 12319 ms |     8977 ms | *-27.1%* |
+| Global filter          | 3033 ms  | 3168 ms     |    +4.5% |
+| Column filter          | 3295 ms  | 3337 ms     |    +1.3% |
+| Sort                   | 6410 ms  | 6469 ms     |    +0.9% |
+| Uniq-dropdown, cold    | 45996 ms | 46516 ms    |    +1.1% |
+| Uniq-dropdown, warm    | 1676 ms  | 1747 ms     |    +4.2% |
+| Header counts, initial | 8033 ms  | 7980 ms     |    -0.7% |
+| Header counts, restore | 12319 ms | 8977 ms     | *-27.1%* |
 
 *These are NOT comparable to the 9.99.1045 figures earlier in this file*, which
 read 1735/1730/3968/31149/863 — roughly half of what the same ~main~ produces
@@ -1801,10 +1801,10 @@ than switching branches — via
 ~tests/live/caa-icon-survives-sort-multi.spec.js~ with ~MULTI_CAA_URL~ /
 ~MULTI_CAA_BUTTON~, reading the sub-table's own ~.mb-sort-status~ text.
 
-| Arm      | Rows re-inserted | Sort duration (3 runs) | Median  |
-|----------+------------------+------------------------+---------|
-| Unscoped |              123 | 108 / 116 / 114 ms     |  114 ms |
-| Scoped   |               61 | 77 / 85 / 83 ms        |   83 ms |
+| Arm      | Rows re-inserted | Sort duration (3 runs) | Median |
+|----------+------------------+------------------------+--------|
+| Unscoped |              123 | 108 / 116 / 114 ms     | 114 ms |
+| Scoped   |               61 | 77 / 85 / 83 ms        | 83 ms  |
 
 ~27% faster, and half the rows touched. The gain scales with how much of
 the page is NOT the sorted section: on a 124-row release group whose sorted
@@ -2184,15 +2184,15 @@ original roster; the last three were missing from it and from ~CLAUDE.md~'s
 until 2026-09-10 (see correction 1 below), and ~CLAUDE.md~'s roster is now the
 correct one.
 
-| Grep for                        | What it does per pass                                                                                                             | Guard                                          |
-|---------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------|
-| ~initPicardTaggerColumn~        | ~_picardExtractRowEntities~, then rebuild ~<ul><li><button><img>~ per row — *unless collapsed, the default since 9.99.1057*        | ~sa_enable_picard_tagger~ + a ~/release/~ link |
-| ~initExpandRGsFeature~          | strips every ~[data-erg-btn]~ and re-injects a fresh button per release link                                                      | ~sa_enable_expand_rgs~ + links exist           |
-| ~_rewireNestedTableH2Toggles~   | ~document.querySelectorAll('table.tbl h2')~                                                                                       | cheap unless the page has nested ~<h2>~s       |
-| ~_cdtocInitTracklistToggles~    | early-returns unless ~pageType === 'cdtoc'~                                                                                       | already effectively free                       |
-| ~applyStickyColumn~             | per-row ~mouseenter~/~mouseleave~ + ~tr._mbStickyEnter~/~_mbStickyLeave~ — *8358 ~addEventListener~ per pass, the largest member*  | ~sa_enable_sticky_columns~                     |
-| ~barcodeProcessTable~           | per-cell ~removeEventListener~/~addEventListener~; named module handler, module state, cleanly delegatable                        | ~sa_enable_barcode_highlight~ + a checkbox     |
-| ~initAnnotationCompareRadios~   | *not a listener* — ~cloneNode(true)~ re-applies MusicBrainz's pristine ~disabled~ attribute, so *delegation cannot fix it*         | ~pageType === 'annotations'~                   |
+| Grep for                      | What it does per pass                                                                                                             | Guard                                          |
+|-------------------------------+-----------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------|
+| ~initPicardTaggerColumn~      | ~_picardExtractRowEntities~, then rebuild ~<ul><li><button><img>~ per row — *unless collapsed, the default since 9.99.1057*       | ~sa_enable_picard_tagger~ + a ~/release/~ link |
+| ~initExpandRGsFeature~        | strips every ~[data-erg-btn]~ and re-injects a fresh button per release link                                                      | ~sa_enable_expand_rgs~ + links exist           |
+| ~_rewireNestedTableH2Toggles~ | ~document.querySelectorAll('table.tbl h2')~                                                                                       | cheap unless the page has nested ~<h2>~s       |
+| ~_cdtocInitTracklistToggles~  | early-returns unless ~pageType === 'cdtoc'~                                                                                       | already effectively free                       |
+| ~applyStickyColumn~           | per-row ~mouseenter~/~mouseleave~ + ~tr._mbStickyEnter~/~_mbStickyLeave~ — *8358 ~addEventListener~ per pass, the largest member* | ~sa_enable_sticky_columns~                     |
+| ~barcodeProcessTable~         | per-cell ~removeEventListener~/~addEventListener~; named module handler, module state, cleanly delegatable                        | ~sa_enable_barcode_highlight~ + a checkbox     |
+| ~initAnnotationCompareRadios~ | *not a listener* — ~cloneNode(true)~ re-applies MusicBrainz's pristine ~disabled~ attribute, so *delegation cannot fix it*        | ~pageType === 'annotations'~                   |
 
 *On a default-configured release listing it is ERG and sticky that pay*, not
 Picard. Collapsed, ~initPicardTaggerColumn(true)~ still walks every table and
@@ -2353,13 +2353,13 @@ Picard header toggle and asserts three real buttons with exact titles.
 
 Required before any conversion lands:
 
-| Target                | Assertion needed                                                                                        |
-|-----------------------+---------------------------------------------------------------------------------------------------------|
+| Target                 | Assertion needed                                                                                                                                                                                    |
+|------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ~button.mb-picard-btn~ | click after a global filter AND after a scoped sort → observable effect. ~_picardGetPort()~ resolves falsy under test and sets ~title = 'Picard not found…'~, which is a clean network-free witness |
-| ~[data-erg-btn]~       | click after a filter and a sort → the row expands; plus an element-count guard, in BOTH table modes    |
-| ~h2.mb-toggle-h2~      | click after a re-render, AND ~typeof h2._mbToggle === 'function'~ (the contract five call sites read)   |
-| row hover (sticky)     | ~.hover()~ a row past index ~500 after a filter clear → background swaps and restores                  |
-| barcode cell           | needs a fixture carrying ~input[name="add-to-merge"]~ — *no committed fixture has one*, so the handler is currently unreachable in every baseline |
+| ~[data-erg-btn]~       | click after a filter and a sort → the row expands; plus an element-count guard, in BOTH table modes                                                                                                 |
+| ~h2.mb-toggle-h2~      | click after a re-render, AND ~typeof h2._mbToggle === 'function'~ (the contract five call sites read)                                                                                               |
+| row hover (sticky)     | ~.hover()~ a row past index ~500 after a filter clear → background swaps and restores                                                                                                               |
+| barcode cell           | needs a fixture carrying ~input[name="add-to-merge"]~ — *no committed fixture has one*, so the handler is currently unreachable in every baseline                                                   |
 
 Then the mechanical consequences: Picard and ERG buttons gain ~data-*~
 attributes in every ~rendered.html~ that carries them, so those baselines
@@ -2895,10 +2895,10 @@ Full tables in ~tests/MEASUREMENTS.org~. Each arm compared against a ~main~ arm
 captured minutes earlier at the SAME script version (9.99.1058, ~NB-3641~),
 rather than against the three-versions-old committed file.
 
-| Arm                             |   ~filterClear~ ~querySelectorAll~ |  Change |
-|---------------------------------+------------------------------------+---------|
-| ~artist-events~ (single, 87 654 cells)     |            1 079 876 -> 83 680 | *-92.3%* |
-| ~artist-releasegroups~ (multi, 19 287 cells) |              323 422 -> 107 099 | *-66.9%* |
+| Arm                                          | ~filterClear~ ~querySelectorAll~ | Change   |
+|----------------------------------------------+----------------------------------+----------|
+| ~artist-events~ (single, 87 654 cells)       | 1 079 876 -> 83 680              | *-92.3%* |
+| ~artist-releasegroups~ (multi, 19 287 cells) | 323 422 -> 107 099               | *-66.9%* |
 
 ~initialRender~ moved -84.4% and -66.9%; ~querySelector~ on the clear -75.5%
 and -37.7%, since the jesus2099 sweep no longer walks every ~<a>~ in the cell.
@@ -2969,10 +2969,10 @@ Picard.
 Phase 2 strictly serialised with a hard-coded 1100 ms sleep. Unique-MBID count
 ≈ row count on these pageTypes, so:
 
-| Page                                    | Distinct entities | Cold Phase-2 wall clock |
-|-----------------------------------------+-------------------+-------------------------|
-| ~artist-releases~ (Dylan, 2301 rows)    |             ~2301 | *~42 min*               |
-| ~artist-releasegroups~ (Springsteen)    |             ~2142 | ~39 min                 |
+| Page                                 | Distinct entities | Cold Phase-2 wall clock |
+|--------------------------------------+-------------------+-------------------------|
+| ~artist-releases~ (Dylan, 2301 rows) | ~2301             | *~42 min*               |
+| ~artist-releasegroups~ (Springsteen) | ~2142             | ~39 min                 |
 
 It fired unconditionally from the render tail, before the user had scrolled.
 Plus a second cost nothing else in the file has: every icon is a cross-origin
