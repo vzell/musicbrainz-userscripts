@@ -1857,3 +1857,36 @@ fixed to say INCONCLUSIVE). The docs page for the archive API does not describe
 this block at all, so the rule rests on these probes alone. One transient
 archive.org HTTP 500 hit an earlier run and crashed it; the script now retries
 500 and records a persistent failure as ERROR.
+
+** 2026-09-18 — gate for "seed CAA counts from WS/2": how many archive metadata requests are 404s?
+
+Host =vzell-lap= (uptime 75.5 h), 22:33:53-22:37:16 UTC, one run of
+=tests/support/measure-caa-metadata-404s.js= (JSON in
+=tests/snapshots/caa-404-share/=). Counts page-side =fetch()= to
+coverartarchive.org =/release|release-group/<guid>= by final status; image bytes
+are not observable and are not counted. Every sub-table expanded, the global
+strip toggled and *asserted*, settled = no new request for 30 s.
+
+| Page                                   | pageType              | mode   | Rows | Native anchors / =blank-icon= | Metadata requests | 404 | Share |
+|----------------------------------------+-----------------------+--------+------+-------------------------------+-------------------+-----+-------|
+| BoDeans =/releases= (56 rows)          | =artist-releases=     | single | 56   | 37 / *19*                     | 56                | *19* | *33.9%* |
+| "Greetings From Asbury Park" RG        | =releasegroup-releases= | multi  | 7    | 7 / 0                         | 7                 | 0   | 0%    |
+| BoDeans =/relationships=               | =artist-relationships= | multi  | 3    | 0 / 0                         | 1                 | 0   | 0%    |
+
+*Read as*: on the one page that has count-0 rows, the number of blank-icons
+MusicBrainz rendered (19), the number of synthetic anchors the =caa= extractor
+made (19) and the number of archive 404s (19) are the same number. The
+extractor deletes =span.blank-icon= and then Path C synthesises a =/cover-art=
+anchor for any row left without one, so every artwork-less row on a native
+listing costs one request that can only 404. This *falsifies* the earlier
+reading that native listings already skip such rows. It also means the WS/2
+=count= is not needed for those pages at all: MusicBrainz's own markup already
+says "no artwork" — the extractor just throws it away.
+
+*What it does not cover*: one page with count-0 rows (56 rows). The other two
+are too small to say anything (7 rows all with art; 3 rows). The relationships
+page is Path C by design but its 3 rows are release-group/other entities.
+Greetings has 7 releases, not the ~124 that CLAUDE.md and the older spec prose
+suggest. The blank-icon = no-artwork equivalence rests on this single page
+plus the 25-sample WS/2 probe above, not on a large sample; darkened artwork
+and MusicBrainz's own cover-art-presence lag are untested.
