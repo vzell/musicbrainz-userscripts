@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the ⚠️/❌ tally reads the live rows again",
+    "why": "Reverts _countLiveDateFlags() to walking the rendered tables. runFilter() REMOVES non-matching rows and _updateLiveDateFlagButtons() hides a button whose count is 0, so a filter that excludes the flagged rows takes the button away. Must fail on 'A: the ⚠️ button survives a filter that hides its rows' (visible expected, hidden).",
+    "edits": [
+      {
+        "find": "        const _grouped = (typeof groupedRows !== 'undefined' && groupedRows.length) ? groupedRows : [];\n        const _all     = (typeof allRows !== 'undefined' && allRows.length) ? allRows : [];\n        if (_grouped.length || _all.length) {\n            _grouped.forEach((g, i) => tally(g.rows, tables[i]));\n            if (_all.length) tally(_all, tables[0]);\n        } else {",
+        "replace": "        if (false) {\n        } else {"
+      }
+    ],
+    "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",
+    "grep": "A: a filter that hides",
+    "expect": "fail"
+  },
+  {
+    "name": "the count is right but the breakdown loses its column names",
+    "why": "Makes every flag fall into the positional `Col N` bucket instead of the header name. The totals and the buttons' visibility are unaffected — only the tooltip changes — so this is what the per-column control test is for. Must fail on 'the tooltip breaks the count down by column'.",
+    "edits": [
+      {
+        "find": "                        const colName = headers[colIdx] || `Col ${colIdx}`;",
+        "replace": "                        const colName = `Col ${colIdx}`;"
+      }
+    ],
+    "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",
+    "grep": "control: the button names the column",
+    "expect": "fail"
+  },
+  {
+    "name": "single-table pages' captured rows are not tallied",
+    "why": "Drops the allRows arm. Live-date flags are written only by applyExtractTrackTitleData(), i.e. only on release-tracks, which is always tableMode 'multi' — so allRows is empty there and no assertion here can see the loss. KNOWN UNCOVERED, and deliberately defensive: the arm exists so the tally does not silently depend on a pageType fact that could change.",
+    "edits": [
+      {
+        "find": "            if (_all.length) tally(_all, tables[0]);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",
+    "grep": "A: a filter that hides",
+    "expect": "pass"
+  },
+  {
+    "name": "the pre-capture fallback is dropped",
+    "why": "Removes the else-branch that tallies the rendered rows when nothing has been captured yet. By the time these buttons exist the rows are always captured, so no assertion here can see it; it guards the ordering rather than a reachable state. KNOWN UNCOVERED.",
+    "edits": [
+      {
+        "find": "            tables.forEach(table => tally(Array.from(table.querySelectorAll('tbody tr')), table));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",
+    "grep": "control: the button filters",
+    "expect": "pass"
+  }
+]

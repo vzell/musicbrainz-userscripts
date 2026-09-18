@@ -1393,7 +1393,10 @@ standard filterable/sortable multi-table view (one sub-table per medium).
   ❌ (date present but differs) icon with an explanatory tooltip when they
   disagree with Recording date. Two summary buttons, "(N) WARNING ⚠️" and
   "(N) ERROR ❌", appear in the Tracklist header — clicking one filters to
-  just those rows.
+  just those rows.  Their counts describe the whole tracklist, not the rows
+  a filter currently leaves on screen, so both buttons stay available (and
+  keep their numbers) while you filter — including after clicking the other
+  one.
 • AcoustIDs / ISRCs columns (both off by default) — one row per entry,
   native unlink/suggested-link actions preserved; late-arriving data from
   third-party lookups is picked up reactively.
