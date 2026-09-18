@@ -56439,10 +56439,18 @@ a { color: #1565c0; }`;
             const headers = table.querySelectorAll('thead tr:first-child th');
             const th = headers[colIndex];
             if (!th) return false;
-            const clean = th.textContent
-                .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '')
-                .trim().replace(/\s+/g, ' ');
-            return cols.includes(clean);
+            // `_cleanColHeaderText()`, NOT a textContent regex strip — the same
+            // resolver `initCollapsableColumns()` uses to decide the very thing
+            // this gate is asking about, and for the same reason: an AR
+            // column's entity glyph (`_initColHeaderGlyph()`) carries a U+200B
+            // that is not JS whitespace, so it survives both the character
+            // class and `.trim()`. Comparing "Instruments​" against the
+            // declared list said "not collapsable" for every glyph-bearing
+            // column, while the header right above it showed its ▶N▤ toggle —
+            // so the 📊 dropdown silently dropped the "collapsed"/"expanded"
+            // entries, leaving a Structure section of "empty cells" alone, or
+            // no Structure section at all on a column with no empty cells.
+            return cols.includes(_cleanColHeaderText(th));
         })();
 
         // Is this a CAA or EAA column?  Both embed an invisible mb-caa-sort-key
@@ -59842,8 +59850,9 @@ a { color: #1565c0; }`;
             // isCaaOrEaaCol name-based gates (no extra per-row scan) — good
             // enough to decide whether the 📊 tooltip below should mention the
             // section; exact per-row entry counting is openUniqDrop()'s own job.
-            const _cleanColName = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            // Both now go through `_cleanColHeaderText()`, so a glyph-bearing
+            // header cannot make them disagree (see that gate's own comment).
+            const _cleanColName = _cleanColHeaderText(th);
             const _isCollapsableCol = !!(activeDefinition && activeDefinition.features &&
                 Array.isArray(activeDefinition.features.collapsableColumns) &&
                 activeDefinition.features.collapsableColumns.includes(_cleanColName));

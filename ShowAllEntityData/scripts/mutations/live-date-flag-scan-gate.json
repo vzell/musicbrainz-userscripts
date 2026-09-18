@@ -66,16 +66,16 @@
   },
   {
     "name": "a hydrated snapshot inherits the previous answer",
-    "why": "Drops the reset in _hydrateAndRenderFromSnapshotData(). Hydrated rows carry their flags as stored HTML without _appendLiveDateFlag() ever running, so a page that had concluded 'no flags' would keep both buttons hidden. No fixture spec drives Load-from-Disk into a flagged release, so this is KNOWN UNCOVERED — and it is the gate's sharpest edge, recorded here rather than left implicit.",
+    "why": "Drops the reset in _hydrateAndRenderFromSnapshotData(). Hydrated rows carry their flags as stored HTML without _appendLiveDateFlag() ever running, so a page that had already concluded 'no flags' keeps both buttons hidden on the restored tracklist. Covered since live-date-flags-survive-disk-roundtrip.spec.js — flow B renders and filters a FLAGLESS release first (which is what caches the false), then loads the flagged snapshot into that same page session. Flow A cannot see this: a fresh page starts with the gate unset, so the tally runs anyway.",
     "edits": [
       {
         "find": "        _liveDateFlagsPresent = null;\n        const {\n            file = null,",
         "replace": "        const {\n            file = null,"
       }
     ],
-    "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
-    "grep": "keeps counting under a filter",
-    "expect": "pass"
+    "spec": "tests/fixtures/live-date-flags-survive-disk-roundtrip.spec.js",
+    "grep": "after a flagless page has already been filtered",
+    "expect": "fail"
   },
   {
     "name": "the per-row scan loses the flag's own column",

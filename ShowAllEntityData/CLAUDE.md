@@ -998,6 +998,24 @@ and `showStatsPanel`'s per-column multi-row count. A new call site with its
 own hand-rolled `ul > li` count is exactly how this bug came back twice
 already — don't reintroduce it.
 
+**The column's NAME has the same rule, and a nastier reason: resolve it with
+`_cleanColHeaderText(th)`, never a `th.textContent` regex strip.**
+`_initColHeaderGlyph()` gives a column an entity glyph, and
+`_guardGlyphAgainstEmptySelectorHiding()` appends **U+200B** to that span so it
+is never an empty selector target. U+200B is **not JS whitespace** — neither
+`\s` nor `.trim()` touches it — so a strip that removes the glyph CHARACTERS
+still yields `"Instruments​"`, which matches nothing in
+`collapsableColumns`. `initCollapsableColumns()` knew this and used the
+resolver; `openUniqDrop()`'s `isCollapsableCol` hand-rolled the strip, decided
+every glyph-bearing column was not collapsable, and silently dropped the 📊
+"▶ collapsed"/"◀ expanded multi-row cells" entries — while the header directly
+above showed its `▶9▤` toggle. It looked like two different bugs, because a
+column WITH empty cells still got a Structure section (containing only
+"○ empty cells") and a column without got none at all. Fixed in the version the
+`// @version` header names; `tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js`
+pins the header count and the dropdown count against each other, and asserts the
+U+200B trap itself so the guard's reason cannot evaporate unnoticed.
+
 ## `release-tracks`: dynamic AR-column classification
 
 `release-tracks` does NOT use the generic `columnExtractors`/

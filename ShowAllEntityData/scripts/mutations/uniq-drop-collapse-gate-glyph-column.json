@@ -1,0 +1,54 @@
+[
+  {
+    "name": "openUniqDrop re-derives the column name with its own strip",
+    "why": "Reverts isCollapsableCol to the textContent regex it used before. An AR column's entity glyph appends U+200B, which is not JS whitespace and survives both the character class and .trim(), so 'Instruments\\u200B' fails to match the declared collapsableColumns and the dropdown drops its collapsed/expanded entries while the header still shows ▶9▤. Must fail on 'every ▶N▤ column offers \"collapsed multi-row cells\" with the same count'.",
+    "edits": [
+      {
+        "find": "            return cols.includes(_cleanColHeaderText(th));",
+        "replace": "            const clean = th.textContent\n                .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '')\n                .trim().replace(/\\s+/g, ' ');\n            return cols.includes(clean);"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js",
+    "grep": "with the same count",
+    "expect": "fail"
+  },
+  {
+    "name": "the glyph stops appending its zero-width space",
+    "why": "Removes the U+200B that makes this whole class of bug possible. The spec pins the trap explicitly, so that guard must notice — otherwise the 'why' of the fix quietly evaporates and the next hand-rolled strip looks harmless. Must fail on 'the trap itself'. (It would also make the count test pass for the wrong reason, which is exactly why the trap is asserted separately.)",
+    "edits": [
+      {
+        "find": "        glyphSpan.appendChild(document.createTextNode('\\u200B'));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js",
+    "grep": "the trap itself",
+    "expect": "fail"
+  },
+  {
+    "name": "the entry is offered but counts the wrong cells",
+    "why": "Makes the collapsed-cells count include single-row cells too. The entry still appears, so the gate looks fixed; only the NUMBER is wrong. This is what separates 'the dropdown offers the entry' from 'the dropdown agrees with the header', which is the actual guarantee. Must fail on the count comparison.",
+    "edits": [
+      {
+        "find": "        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||",
+        "replace": "        totalMultiRow += singleRowCount;\n        if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js",
+    "grep": "with the same count",
+    "expect": "fail"
+  },
+  {
+    "name": "the header-count tooltip re-derives the name without dataset.colName",
+    "why": "_updateAllColHeaderCounts() decides whether the 📊 tooltip mentions the collapsable section. It preferred th.dataset.colName all along, so it never had this bug; it now shares _cleanColHeaderText() with the gate so the two cannot drift apart again. Nothing asserts the tooltip's wording, so this is KNOWN UNCOVERED — recorded rather than left silent.",
+    "edits": [
+      {
+        "find": "            const _cleanColName = _cleanColHeaderText(th);",
+        "replace": "            const _cleanColName = th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\\s+/g, ' ');"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js",
+    "grep": "with the same count",
+    "expect": "pass"
+  }
+]
