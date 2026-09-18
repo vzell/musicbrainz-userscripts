@@ -36170,11 +36170,19 @@ a { color: #1565c0; }`;
                flush left instead of indenting it. The panel needs its own
                fix -- see spaceAfter in _buildFlagSegmentsForRoot() -- because
                it rebuilds an entry from segments and never clones this
-               element. NOTE: no backticks in this comment, deliberately; it
-               lives inside a GM_addStyle template literal, where one would
-               terminate the string and break the whole script. */
+               element.
+               !important because this is markup this script does NOT own,
+               sitting in a cell shared with musicbrainz.org's own stylesheet
+               and any number of third-party ones (jesus2099's SUPER-MIND
+               injects global table.tbl CSS, for one). The rule resolves to
+               5.6px in a fixture carrying the real page's exact RSFE-processed
+               bytes, so the selector is not the question — what competes with
+               it on a live page is, and a fixture cannot load that.
+               NOTE: no backticks in this comment, deliberately; it lives
+               inside a GM_addStyle template literal, where one would terminate
+               the string and break the whole script. */
             table.tbl li.release-event > .release-country:not(.no-country) + .release-date {
-                margin-left: 0.35em;
+                margin-left: 0.35em !important;
             }
             td.mb-rel-cell a,
             td.mb-rel-cell img,
