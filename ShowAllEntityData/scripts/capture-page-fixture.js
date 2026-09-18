@@ -11,7 +11,14 @@
  * use as a `loadUserscriptPage({ fixtureFile })` shell.
  *
  * Standalone Node script (not a Playwright test):
- *   node scripts/capture-page-fixture.js <url> <output-path>
+ *   node scripts/capture-page-fixture.js <url> <output-path> [--strip-json]
+ *
+ * `--strip-json` drops MusicBrainz's embedded `<script type="application/json">`
+ * payloads. On a release page that one element is most of the file — 978 KB of
+ * 1.1 MB for the live-album capture below — and only the millisecond-length
+ * features read it (`_msStampReleaseTrackLengths()`,
+ * `_buildReleaseRecordingLengthMap()`). Strip it when the fixture's subject is
+ * the rendered markup; keep it when the fixture is about track lengths.
  *
  * Example:
  *   node scripts/capture-page-fixture.js \
@@ -49,7 +56,9 @@ function sanitize(html) {
 }
 
 (async () => {
-    const [url, out] = process.argv.slice(2);
+    const args = process.argv.slice(2);
+    const stripJson = args.includes('--strip-json');
+    const [url, out] = args.filter(a => !a.startsWith('--'));
     if (!url || !out) {
         console.error('usage: node scripts/capture-page-fixture.js <url> <output-path>');
         process.exit(2);
@@ -62,12 +71,16 @@ function sanitize(html) {
         await browser.close();
         process.exit(1);
     }
-    const html = sanitize(await page.content());
+    let html = sanitize(await page.content());
+    if (stripJson) {
+        html = html.replace(/<script type="application\/json"[\s\S]*?<\/script>/g,
+            '<!-- embedded JSON payload stripped by capture-page-fixture.js --strip-json -->');
+    }
     await browser.close();
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, html, 'utf8');
     console.log(JSON.stringify({
-        url, out, bytes: html.length,
+        url, out, bytes: html.length, stripJson,
         capturedAt: new Date().toISOString(),
     }, null, 2));
 })();
