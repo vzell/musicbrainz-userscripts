@@ -12482,3 +12482,58 @@ site before 9.99.1109 was merged, and both behaved:
 They stay `expect: "pass"` in the mutation list, because that field describes
 what the SPECS cover and nothing changed about that. Recorded here so the next
 reader knows the gap was closed by a person rather than left open.
+
+## 2026-09-18 — A zero-width space made most 📊 Structure sections lose their collapsed/expanded entries (branch fix/uniq-drop-collapse-gate-glyph-column)
+
+The parking-lot item from the 9.99.1098 session, and it was one cause with two
+faces — which is why it read as two unrelated observations:
+
+- "Born to Run"'s Instruments column shows `▶8▤` in its header but has NO
+  Structure section in its 📊 dropdown.
+- This release's Instruments column shows `▶9▤` AND a Structure section — but
+  the section contains only `○ empty cells (3)`.
+
+Both are the same failure. The collapsed/expanded entries were never emitted;
+whether a Structure section appeared at all depended only on whether the column
+happened to have empty cells, which take a different branch.
+
+**Root cause.** Two readers answer "is this a collapsable column", and they
+resolved the column's NAME differently:
+
+| Reader                     | Resolution                                                 |
+|----------------------------|------------------------------------------------------------|
+| `initCollapsableColumns()` | `_cleanColHeaderText(th)` → prefers `th.dataset.colName`    |
+| `openUniqDrop()`           | `th.textContent.replace(/[⇅▲▼…▶◀▤0-9]/g,'').trim()`         |
+
+`_initColHeaderGlyph()` gives each AR column an entity glyph, and
+`_guardGlyphAgainstEmptySelectorHiding()` appends U+200B to that span so it is
+never an empty selector target. **U+200B is not JS whitespace** — it is matched
+by neither `\s` nor `String.prototype.trim()` — so the second reader compared
+`"Instruments​"` against `collapsableColumns` and concluded the column was
+not collapsable, while the first had already built its `▶9▤` toggle.
+
+The sting: `initCollapsableColumns()` already carries a comment explaining this
+exact trap and why it must use `_cleanColHeaderText()`. The knowledge was
+written down at one call site while another re-derived the answer — the
+"hand-rolled check at a new call site" failure CLAUDE.md documents for
+`_classifyCollapseCell()` and `_findCellListItems()`, a third time, in a third
+place.
+
+Measured on the captured fixture (5 collapsable AR columns):
+
+| Column             | Header | 📊 before          | 📊 after                     |
+|--------------------|--------|--------------------|------------------------------|
+| Recorded at place  | ▶3▤    | empty cells (1)    | collapsed (3) + single + empty |
+| Vocals             | ▶10▤   | no section         | collapsed (10)               |
+| Instruments        | ▶9▤    | empty cells (3)    | collapsed (9)                |
+| Recording engineer | ▶2▤    | no section         | collapsed (2)                |
+| Engineer           | ▶14▤   | no section         | collapsed (14)               |
+
+**A mutation caught a vacuous test, and it is worth recording.** The spec pins
+the trap itself — that U+200B survives the strip — by looping over the
+glyph-bearing headers. The mutation "the glyph stops appending its zero-width
+space" was predicted to fail it and PASSED: with no glyph, the filter returns an
+empty array and a `for` loop over nothing asserts nothing. The guard now asserts
+the set is non-empty first. A test that iterates a filtered collection needs to
+assert the collection is not empty, or its premise disappearing looks like
+success.
