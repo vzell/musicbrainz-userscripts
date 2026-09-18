@@ -12537,3 +12537,51 @@ empty array and a `for` loop over nothing asserts nothing. The guard now asserts
 the set is non-empty first. A test that iterates a filtered collection needs to
 assert the collection is not empty, or its premise disappearing looks like
 success.
+
+## 2026-09-18 — The inline-thumbnail mirror searched the whole table once per thumbnail (branch perf/art-mirror-master-row-index)
+
+The largest remaining known cost, recorded as "known and separate" when the
+AUDIT.md §3.1 work rejected span-mirroring. `_artInitInlinePics()`'s Case C1
+mirrors every already-painted thumbnail onto its source row, runs on EVERY
+multi-table re-render, and resolved each row with `_findMasterRowByIdx()` — a
+linear scan of `allRows` plus every `groupedRows` entry. O(N²) per keystroke.
+
+Measured (`scripts/bench-master-row-index.js`, `vzell-lap`, 2026-09-18 10:06
+UTC): **1479 ms at 4174 rows** and **13 152 ms at 10 000**, against 3.8 ms and
+14.2 ms for building one index and looking up in it — 389x and 926x. Full table
+and the caveat about the per-scan figure in `tests/MEASUREMENTS.org`.
+
+**Only the synchronous half is fixed, and that boundary is the whole design.**
+Of the five mirror call sites, one (C1) runs synchronously inside the pass; the
+other four are deferred — an image `load`, a `.then()`. A pass-scoped index
+handed to a deferred caller would answer with rows that no longer exist, which
+is precisely what `_buildMasterRowIndex()`'s JSDoc forbids ("build per call, use
+per call, discard"). So the index is threaded as an OPTIONAL argument and only
+C1 passes one. Measured on the fixture: a keystroke went from 14 scans to 7, the
+remaining 7 being `_artMirrorIconToSourceRow()`, whose two call sites are both
+deferred. That half stays, and is now recorded rather than implied.
+
+The index is built LAZILY. Most passes mirror nothing — a single-table page, a
+page whose artwork has not painted, a pageType with no artwork — and must not
+walk every source row for an index nobody reads.
+
+**Three tests were written before one of them tested anything.** The cost half
+is easy (`__saTest.masterRowScans()` counts scans; a keystroke must not add one
+per thumbnail) but it is satisfiable by a mirror that resolves nothing, so the
+guarantee half has to be real. A mutation that makes every lookup return the
+WRONG master row was predicted to fail it. It passed — three times, against
+three successively stronger assertions:
+
+1. the COUNT of painted thumbnails after a re-render;
+2. the same count with the artwork network FROZEN, so nothing could be repainted
+   by a re-fetch;
+3. the SET of `data-mb-row-idx` values carrying a thumbnail, not the count.
+
+All three passed, and the third is what made the reason clear: **C1 is not the
+primary writer.** By the time it runs — on a re-render — the deferred mirrors
+have already written each thumbnail onto its correct source row during the
+initial paint. C1 is idempotent maintenance, so a wrong row is overwritten with
+what is already there. Catching it would need a source row that lacks its
+thumbnail at C1 time, which no fixture arranges. Recorded as `expect: "pass"`
+with that explanation rather than engineered around — the three failed attempts
+are the evidence that the path is masked, not that the tests are weak.

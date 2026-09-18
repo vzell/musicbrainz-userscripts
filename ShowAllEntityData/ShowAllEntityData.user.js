@@ -49870,6 +49870,7 @@ a { color: #1565c0; }`;
      * @returns {HTMLTableRowElement|null}
      */
     function _findMasterRowByIdx(rowIdx) {
+        _masterRowScanCount++;
         const fromSingle = allRows.find(r => r.dataset.mbRowIdx === rowIdx);
         if (fromSingle) return fromSingle;
         for (const group of groupedRows) {
@@ -49902,6 +49903,13 @@ a { color: #1565c0; }`;
      *
      * @returns {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>}
      */
+    /**
+     * How many linear master-row scans have run since the page loaded.
+     * Read by `__saTest.masterRowScans()`; see its JSDoc for why the effect of
+     * sharing one index cannot be asserted from the DOM.
+     */
+    let _masterRowScanCount = 0;
+
     function _buildMasterRowIndex() {
         const idx = new Map();
         if (typeof groupedRows !== 'undefined') {
@@ -74035,13 +74043,20 @@ a { color: #1565c0; }`;
      * @returns {{sourceRow: HTMLTableRowElement, liveCell: HTMLTableCellElement,
      *           sourceCell: HTMLTableCellElement}|null}
      */
-    function _artResolveSourceCell(liveEl) {
+    function _artResolveSourceCell(liveEl, masterIdx = null) {
         if (!activeDefinition || activeDefinition.tableMode !== 'multi') return null;
         const liveRow = liveEl.closest('tr');
         if (!liveRow) return null;
         const rowIdx = liveRow.dataset.mbRowIdx;
         if (rowIdx === undefined) return null;
-        const sourceRow = _findMasterRowByIdx(rowIdx);
+        // `masterIdx` is a `_buildMasterRowIndex()` map the CALLER built for
+        // this pass. Only a caller that resolves every row synchronously may
+        // pass one — see `_artMirrorInlineThumbToSourceRow()`'s own note. A
+        // deferred caller must leave it null and take the scan, because the
+        // rows a map captured are not the rows that exist by the time an image
+        // `load` or a `.then()` fires.
+        const entry = masterIdx ? masterIdx.get(rowIdx) : null;
+        const sourceRow = entry ? entry.row : _findMasterRowByIdx(rowIdx);
         // Same node on single-table pages (allRows' rows ARE the live rows), so
         // there is nothing to mirror and no work to do.
         if (!sourceRow || sourceRow === liveRow) return null;
@@ -74148,9 +74163,9 @@ a { color: #1565c0; }`;
      *   span whose `<img>` has just become visible.
      * @param {Object} ctx  CAA_CTX or EAA_CTX.
      */
-    function _artMirrorInlineThumbToSourceRow(livePh, ctx) {
+    function _artMirrorInlineThumbToSourceRow(livePh, ctx, masterIdx = null) {
         if (!livePh || !_artInlinePhIsLiveBlob(livePh)) return;
-        const resolved = _artResolveSourceCell(livePh);
+        const resolved = _artResolveSourceCell(livePh, masterIdx);
         if (!resolved) return;
         const { liveCell, sourceCell } = resolved;
 
@@ -77567,6 +77582,33 @@ a { color: #1565c0; }`;
             Lib.debug(ctx.key, `init${ctx.key.toUpperCase()}InlinePics: ${ctx.addFeature} column = "${caaFormatColNameForLog(colName)}"`);
         }
 
+        // One master-row index for this pass, built on first use.
+        //
+        // Case C1 below mirrors every already-painted placeholder onto its
+        // source row, and it used to resolve each one with
+        // `_findMasterRowByIdx()` — a linear scan — making the pass O(N²) on
+        // every multi-table re-render, i.e. on every filter keystroke of a page
+        // with inline artwork. Measured at 1479 ms (4174 rows) and 13 152 ms
+        // (10 000) against 3.8 ms and 14.2 ms for build-once-then-look-up:
+        // `scripts/bench-master-row-index.js`, tests/MEASUREMENTS.org.
+        //
+        // LAZY on purpose. Most passes mirror nothing — a single-table page, a
+        // page whose artwork has not painted yet, a pageType with no artwork at
+        // all — and they must not pay to walk every source row for an index
+        // nobody reads.
+        //
+        // PASS-SCOPED on purpose, and this is the part not to "improve": it is
+        // discarded when the pass returns, exactly as `_buildMasterRowIndex()`'s
+        // own JSDoc requires ("build per call, use per call, discard"). Hoisting
+        // it to a module-level cache would serve stale rows to the next render,
+        // and handing it to one of the DEFERRED mirrors (an image `load`, a
+        // `.then()`) would serve stale rows within this one.
+        let _masterIdxForPass = null;
+        const _passMasterIdx = () => {
+            if (!_masterIdxForPass) _masterIdxForPass = _buildMasterRowIndex();
+            return _masterIdxForPass;
+        };
+
         const tables = document.querySelectorAll('table.tbl');
         if (!tables.length) {
             if (Lib.settings.sa_enable_art_fetch_debug_logging) {
@@ -77731,7 +77773,19 @@ a { color: #1565c0; }`;
                                 // re-render's clone arrives with the thumbnail already
                                 // showing — see _artMirrorInlineThumbToSourceRow().
                                 // No-op on single-table pages and for dead blob URLs.
-                                _artMirrorInlineThumbToSourceRow(existingPh, ctx);
+                                //
+                                // This is the ONE call site that may hand over a
+                                // pass-scoped master-row index, and the only one that
+                                // needs to: C1 runs for every already-painted
+                                // placeholder on every multi-table re-render, so the
+                                // per-row linear scan it used to do made the pass
+                                // O(N²) — 1479 ms at 4174 rows, 13 152 ms at 10 000
+                                // (scripts/bench-master-row-index.js). It is safe here
+                                // and nowhere else because it runs SYNCHRONOUSLY
+                                // inside this pass; the four deferred mirrors keep the
+                                // scan. Built on first use, so a page with no painted
+                                // artwork never pays for it.
+                                _artMirrorInlineThumbToSourceRow(existingPh, ctx, _passMasterIdx());
                                 skippedDone++;
                                 // Update (or inject) the cache-hint overlay to 'memory' —
                                 // the blob is alive in _artIdbBlobUrls which means it was
@@ -80015,6 +80069,26 @@ a { color: #1565c0; }`;
              */
             liveDateFlagRowScans() {
                 return _liveDateFlagRowScans;
+            },
+
+            /**
+             * How many times `_findMasterRowByIdx()` — a linear scan of
+             * `allRows` plus every `groupedRows` entry — has run since the page
+             * loaded.
+             *
+             * Exposed for the same reason as `picardEntityScans()` above.
+             * `_artInitInlinePics()`'s Case C1 mirrors every painted thumbnail
+             * onto its source row on every multi-table re-render, and whether
+             * it resolved those rows one scan at a time or through one shared
+             * index is invisible in the DOM: the thumbnails look identical
+             * either way, the only difference being seconds of main-thread
+             * time. A test paints the artwork, types one filter keystroke, and
+             * asserts this did not climb with the row count.
+             *
+             * @returns {number}
+             */
+            masterRowScans() {
+                return _masterRowScanCount;
             },
 
             /**
