@@ -352,9 +352,9 @@ leaving no way back to the ❌ rows except clearing the filter.
 
 That is the SAME trap `CLAUDE.md` already documents for the length-mismatch
 buttons, and the sibling function got it right: `_countLengthMismatchRows()`
-walks `_msSourceRows()`. Only this one reads the live DOM. **REPRODUCED and FIXED**, 2026-09-18, on hotfix branch
-`fix/live-date-flag-button-counts` (`cb66e46`, pushed, **not merged**), after the
-user supplied a page that has the flags (§10 L10's URL). **Spec:**
+walks `_msSourceRows()`. Only this one reads the live DOM. **REPRODUCED** on `main` 9.99.1099 — **SHIPPED in 9.99.1100** (hotfix
+`fix/live-date-flag-button-counts`, merged and deleted), after the user supplied
+a page that has the flags (§10 L10's URL). **Spec:**
 `tests/fixtures/live-date-flag-button-counts.spec.js`. **Mutations:**
 `scripts/mutations/live-date-flag-button-counts.json` (4/4 as expected).
 
@@ -501,9 +501,31 @@ passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shi
 into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
 passed, 0 failed. **Update 2026-09-18 (later):** `main` is at 9.99.1098 (§3.4 shipped) and merged
 into this branch (`bcb041e`); merged-`main` suite 285 passed, this branch 318
-passed, 0 failed. **Update 2026-09-18 (§3.8 shipped):** `main` is at 9.99.1099 and merged into this
-branch (merged-`main` suite 289 passed; this branch 322 passed — 114 + 107 + 101,
-0 failed). §3.5 is audited and found sound; §3.6's flags are sound too, but that
+passed, 0 failed. **Update 2026-09-18 (§3.8 shipped):** `main` reached 9.99.1099 and was merged
+into this branch (merged-`main` suite 289 passed; this branch 322 passed —
+114 + 107 + 101, 0 failed).
+
+**Update 2026-09-18 (§3.6 shipped, and the audit's §3 list is closed):** `main`
+is at **9.99.1100**, merged into this branch at `c00cd13`; merged-`main` suite
+294 passed. Every §3 target is now shipped or answered:
+
+| Target | Outcome |
+|---|---|
+| §3.1 CAA/EAA inline artwork (H1-H4) | 9.99.1094 |
+| §3.2 ⏱ millisecond Length toggle | 9.99.1095 |
+| §3.1 H5 (plain global filter vs. image types) | 9.99.1096 |
+| §3.3 + §3.7 Release events / ICE cells | 9.99.1097 |
+| §3.4 area-flag Locality→Region | 9.99.1098 |
+| §3.8 cell collapse/expand | 9.99.1099 |
+| §3.6 live-date summary buttons | 9.99.1100 |
+| §3.5 Picard | audited, found sound |
+| §3.6 live-date FLAGS themselves | audited, found sound |
+
+Three of those (H5, §3.8, §3.6's buttons) were not on the original list — they
+turned up while working the ones that were. Two were worse than the "stale
+filter" this audit set out to find: §3.3 lost the column's data outright, and
+§3.6 took away the only affordance for reaching the flagged rows. What remains is
+§8's parking lot, none of it examined. §3.5 is audited and found sound; §3.6's flags are sound too, but that
 check turned up a NEW defect in their ⚠️/❌ summary buttons (live-DOM counting,
 the trap the length-mismatch pair already avoids) — unfixed, unreproduced, and
 waiting on a page that has those flags (§10 L10). Every original §3 target is now
