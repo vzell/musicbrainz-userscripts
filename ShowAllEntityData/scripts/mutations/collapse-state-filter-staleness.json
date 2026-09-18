@@ -1,0 +1,80 @@
+[
+  {
+    "name": "a collapse-state change schedules no filter refresh",
+    "why": "Removes the _scheduleCollapseStateFilterRefresh() call from _applyExpandedCellState(). The 📊 counts still keep up (the uniq-drop cache is dropped either way), but picking the same Structure entry again replays the row list from before the toggle. Must fail on 'B: the second pick renders one row fewer, not the first pick's row list' (45 expected, 46 rendered).",
+    "edits": [
+      {
+        "find": "        if (was !== expanded) _scheduleCollapseStateFilterRefresh();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "B: picking it again",
+    "expect": "fail"
+  },
+  {
+    "name": "the refresh no longer drops any cached row list",
+    "why": "Keeps the scheduled re-run but removes _invalidateFilterCacheWhere(), so runFilter() is served the list cached under the entry's own key. Must fail on the same B assertion — the drop, not just the re-run, is load-bearing.",
+    "edits": [
+      {
+        "find": "            _collapseRefreshScheduled = false;\n            _invalidateFilterCacheWhere(_filterKeyReadsCollapseState);",
+        "replace": "            _collapseRefreshScheduled = false;"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "B: picking it again",
+    "expect": "fail"
+  },
+  {
+    "name": "the key predicate misses the collapsed mode",
+    "why": "Narrows _filterKeyReadsCollapseState() to the expanded mode alone. A key built from '▶ collapsed multi-row cells' then survives the drop and is replayed. Must fail on B — the predicate's content matters, not just its existence.",
+    "edits": [
+      {
+        "find": "        return key.includes('\"collapsed\"') || key.includes('\"expanded\"');",
+        "replace": "        return key.includes('\"expanded\"');"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "B: picking it again",
+    "expect": "fail"
+  },
+  {
+    "name": "an active filter is not re-run after a toggle",
+    "why": "Keeps the cache drop but never re-runs, so a row expanded while 'collapsed multi-row cells' is filtering stays on screen under a state it no longer has. Must fail on 'D: the expanded row leaves a collapsed-cells filter it no longer matches'.",
+    "edits": [
+      {
+        "find": "            if (_anyFilterActive()) {\n                Lib.debug('filter', '_scheduleCollapseStateFilterRefresh: re-running the active filter after a collapse-state change');\n                runFilter();\n            }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "D: expanding a cell",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-op gate is dropped (state written that was already there)",
+    "why": "Without `was !== expanded`, every write schedules a refresh even when the state did not change — e.g. the mass-toggle pass re-asserting the state cells already have. That is wasted work, not a wrong answer, so no assertion here can see it. KNOWN UNCOVERED: catching it needs a render or filter-pass counter.",
+    "edits": [
+      {
+        "find": "        if (was !== expanded) _scheduleCollapseStateFilterRefresh();",
+        "replace": "        _scheduleCollapseStateFilterRefresh();"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "B: picking it again",
+    "expect": "pass"
+  },
+  {
+    "name": "the per-frame coalescing guard is dropped",
+    "why": "Every toggled cell would then schedule its own refresh, so a column-header or global mass toggle re-runs the filter once per cell instead of once. A cost, not a wrong answer. KNOWN UNCOVERED, same reason as the gate above.",
+    "edits": [
+      {
+        "find": "        if (_collapseRefreshScheduled) return;\n        _collapseRefreshScheduled = true;",
+        "replace": "        _collapseRefreshScheduled = true;"
+      }
+    ],
+    "spec": "tests/fixtures/collapse-state-filter-staleness.spec.js",
+    "grep": "B: picking it again",
+    "expect": "pass"
+  }
+]

@@ -223,7 +223,10 @@ every distinct non-empty value currently visible in that column.
   a plain click vs. Ctrl+Click will do:
     — 🔠 Structure   — empty / single / collapsed / expanded / multi-row cell
                        state, each with its own glyph (▶/◀/✗/✓ — explained
-                       in its own tooltip).  On a CAA/EAA column these two
+                       in its own tooltip).  The collapsed/expanded entries
+                       follow the ▶/◀ toggles live: expanding or collapsing a
+                       cell while one of them is filtering re-applies it, so a
+                       row never stays listed under a state it no longer has.  On a CAA/EAA column these two
                        read "✓ has artwork" / "✗ no artwork" and are the ONLY
                        way to filter by artwork presence — typing "yes"/"no"
                        into that column's own filter box searches the real

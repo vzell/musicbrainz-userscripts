@@ -49809,6 +49809,78 @@ a { color: #1565c0; }`;
             .some(inp => stripFilterPrefix(inp.value).trim() !== '');
     }
 
+    /** Set while a collapse-state filter refresh is already queued for this frame. */
+    let _collapseRefreshScheduled = false;
+
+    /**
+     * Records one cell's expand/collapse state and tells everything that reads
+     * it — the single place that writes `expandedCells`.
+     *
+     * Five call sites used to do the same three steps by hand (`_applyCollapseState()`
+     * twice, `ensureCollapseDelegate()`'s list, prose and CAA/EAA branches), and
+     * each had the uniq-dropdown drop but not the filter side, so the 📊
+     * "Structure" counts kept up while the rows did not.
+     *
+     * `expandedCells` is not cell CONTENT, but the 📊 `collapsed`/`expanded`
+     * structure modes match on it (`_cellMatchesStructureMode()`), so a toggle
+     * changes which rows those entries match while every filter INPUT stays the
+     * same — the same defect class as an async content write (AUDIT.md §1/§3.8).
+     *
+     * @param {?HTMLTableElement} table    - the cell's table, for the uniq-drop cache
+     * @param {number}            colIdx   - the cell's column index
+     * @param {string}            key      - `"rowIdx:colIdx"`
+     * @param {boolean}           expanded
+     * @returns {void}
+     */
+    function _applyExpandedCellState(table, colIdx, key, expanded) {
+        const was = expandedCells.get(key) === true;
+        if (expanded) expandedCells.set(key, true);
+        else          expandedCells.delete(key);
+        _invalidateUniqDropDataCache(table, colIdx);
+        if (was !== expanded) _scheduleCollapseStateFilterRefresh();
+    }
+
+    /**
+     * Coalesces the filter-side work owed by a collapse-state change: drops the
+     * cached row lists that can read it, and re-runs an active filter once so a
+     * row stops being listed under a state it no longer has.
+     *
+     * Only the keys whose own JSON mentions those modes go — everything else
+     * (a typed query, another column's values) is unaffected by a toggle, and a
+     * mass toggle would otherwise empty the whole cache.
+     *
+     * Coalesced per animation frame because the column-header and global
+     * mass-toggle buttons walk every cell of a column. Same shape as
+     * `_scheduleAreaFlagFilterRefresh()`.
+     *
+     * @returns {void}
+     */
+    function _scheduleCollapseStateFilterRefresh() {
+        if (_collapseRefreshScheduled) return;
+        _collapseRefreshScheduled = true;
+        requestAnimationFrame(() => {
+            _collapseRefreshScheduled = false;
+            _invalidateFilterCacheWhere(_filterKeyReadsCollapseState);
+            if (_anyFilterActive()) {
+                Lib.debug('filter', '_scheduleCollapseStateFilterRefresh: re-running the active filter after a collapse-state change');
+                runFilter();
+            }
+        });
+    }
+
+    /**
+     * Whether a filter key can read `expandedCells`: a checked "▶ collapsed
+     * multi-row cells" or "◀ expanded multi-row cells" 📊 entry, which appear in
+     * the key as structure modes. `empty`/`single`/`any` describe a cell's SHAPE
+     * and never change when it is toggled.
+     *
+     * @param {string} key
+     * @returns {boolean}
+     */
+    function _filterKeyReadsCollapseState(key) {
+        return key.includes('"collapsed"') || key.includes('"expanded"');
+    }
+
     /** Set while an area-flag correction refresh is already queued for this frame. */
     let _areaFlagRefreshScheduled = false;
 
@@ -58818,10 +58890,7 @@ a { color: #1565c0; }`;
                 if (rowIdx !== undefined) {
                     const colIdx = Array.from(tr.cells).indexOf(td);
                     if (colIdx >= 0) {
-                        const key = `${rowIdx}:${colIdx}`;
-                        if (expand) expandedCells.set(key, true);
-                        else        expandedCells.delete(key);
-                        _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
+                        _applyExpandedCellState(td.closest('table.tbl'), colIdx, `${rowIdx}:${colIdx}`, expand);
                     }
                 }
 
@@ -58870,10 +58939,7 @@ a { color: #1565c0; }`;
         if (rowIdx !== undefined) {
             const colIdx = Array.from(tr.cells).indexOf(td);
             if (colIdx >= 0) {
-                const key = `${rowIdx}:${colIdx}`;
-                if (expand) expandedCells.set(key, true);
-                else        expandedCells.delete(key);
-                _invalidateUniqDropDataCache(td.closest('table.tbl'), colIdx);
+                _applyExpandedCellState(td.closest('table.tbl'), colIdx, `${rowIdx}:${colIdx}`, expand);
             }
         }
 
@@ -59043,10 +59109,7 @@ a { color: #1565c0; }`;
                 if (rowIdx !== undefined) {
                     const colIdx = Array.from(tr.cells).indexOf(td);
                     if (colIdx >= 0) {
-                        const key = `${rowIdx}:${colIdx}`;
-                        if (nowExpanding) expandedCells.set(key, true);
-                        else              expandedCells.delete(key);
-                        _invalidateUniqDropDataCache(table, colIdx);
+                        _applyExpandedCellState(table, colIdx, `${rowIdx}:${colIdx}`, nowExpanding);
                     }
                 }
                 return;
@@ -59085,10 +59148,7 @@ a { color: #1565c0; }`;
                 if (_pRowIdx !== undefined) {
                     const _pColIdx = Array.from(_pTr.cells).indexOf(td);
                     if (_pColIdx >= 0) {
-                        const _pKey = `${_pRowIdx}:${_pColIdx}`;
-                        if (proseExpanding) expandedCells.set(_pKey, true);
-                        else                 expandedCells.delete(_pKey);
-                        _invalidateUniqDropDataCache(table, _pColIdx);
+                        _applyExpandedCellState(table, _pColIdx, `${_pRowIdx}:${_pColIdx}`, proseExpanding);
                     }
                 }
 
@@ -59149,10 +59209,7 @@ a { color: #1565c0; }`;
                 if (rowIdx !== undefined) {
                     const colIdx = td ? Array.from(tr.cells).indexOf(td) : -1;
                     if (colIdx >= 0) {
-                        const key = `${rowIdx}:${colIdx}`;
-                        if (nowExpanding) expandedCells.set(key, true);
-                        else             expandedCells.delete(key);
-                        _invalidateUniqDropDataCache(table, colIdx);
+                        _applyExpandedCellState(table, colIdx, `${rowIdx}:${colIdx}`, nowExpanding);
                     }
                 }
             }

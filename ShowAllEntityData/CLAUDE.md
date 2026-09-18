@@ -335,6 +335,12 @@ a bug (AUDIT.md §1 has the full history):
    correct. If `_anyFilterActive()`, re-run `runFilter()` once, or the user goes
    on looking at a table filtered against the old values.
 
+**The same applies to STATE the modes read, not just text.** `expandedCells`
+(keyed `"rowIdx:colIdx"`) is what the 📊 `collapsed`/`expanded` entries match on,
+so one toggle changes which rows they match with every input unchanged. All five
+writers now go through `_applyExpandedCellState()`, which owes items 1, 2 and 4
+above (item 3 does not apply — those modes read the map, not the row's text).
+
 And one that is not a cache at all: **write to the rows the matcher reads.**
 `runFilter()` REMOVES non-matching rows, so a pass that collects its targets
 from the live DOM silently skips whatever is filtered out — and if it runs once
