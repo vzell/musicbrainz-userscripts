@@ -1223,6 +1223,52 @@ below, which mixed unrelated topics under one header.
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                      |
 | next      | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
 
+## Flags in the dropdown: two third-party shapes, and what "hollow" means
+
+`hasFlagIcons` is a column-NAME whitelist and `iconSel` is a SHAPE selector.
+Both have to recognise a column before any flag reaches the 📊 panel, and each
+has been the sole reason a column showed none.
+
+**"Right Side Flags Everywhere" has TWO shapes and picks by whether the `.flag`
+element wraps an `a[href*="/area/"]`.** This is the whole of the double-flag
+story and is not obvious from the script's name:
+
+- **With an anchor** — it neutralizes the sprite in place and puts its `<img>`
+  in a sibling `span.mfe-flag-wrapper`. Excluded by `iconSel` since the Israel
+  fix.
+- **Without one** — `el.appendChild(img)` puts the `<img>` INSIDE the flag
+  element and leaves the hollow element in the DOM. Both then matched
+  `iconSel`, so one cell icon rendered as two dropdown icons, one before the
+  name and one after.
+
+Anything this script BUILDS is the anchorless case unless it emits a real
+`<a>`, which is why the injected "Release country" column hit it and native
+markup never did.
+
+**Never infer "a userscript neutralized this flag" from the absence of a
+paintable background.** They are different facts, and conflating them breaks a
+working guarantee: a native flag paints from MusicBrainz's sprite stylesheet,
+which is **absent in every fixture** and briefly absent on a slow real page, so
+`resolveFlagVisual()` legitimately returns null for a perfectly good flag.
+Keyed on that absence alone, `_bakeFlagIconNode()` stripped the trailing flag
+from every "Entity info - Area name" entry — caught by
+`uniq-drop-area-name-flag-position.spec.js`. Key on the userscript's own
+`data-hq-processed` marker instead.
+
+**Every `.flag` clone the panel emits carries `data-hq-skip`.** RSFE's own rule
+`.flag:not([data-hq-processed]):not([data-hq-skip]) { background-image: none
+!important }` beats a normal-priority inline background (author `!important`
+outranks normal inline in the cascade), and its MutationObserver watches
+`document.documentElement` while the panel is appended to `document.body` — so
+an unmarked clone is blanked and then redecorated with a foreign image.
+
+**`iconSel` and the bake guard cover for each other, in both directions.**
+Mutating either one alone leaves `uniq-drop-hollow-flag-double-icon.spec.js`
+green; only removing both reproduces the defect, and
+`scripts/mutations/release-events-native-markup.json` records that as one
+combined entry plus two `expect: "pass"` singles. Do not "tidy" either guard
+away on the evidence that its own mutation passes.
+
 ## Track length precision (`Length` column) and the `treleases` trap
 
 **`treleases` is a NATIVE MusicBrainz class**, not a jesus2099 marker. A

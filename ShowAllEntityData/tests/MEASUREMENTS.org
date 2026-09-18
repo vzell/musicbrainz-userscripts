@@ -1798,3 +1798,37 @@ The outgoing file had *no archival copy*, and =--perf= overwrites the mutable
 one, so it was preserved by hand as
 =perf-baseline-9.99.1045-2026-09-07.json= before the run. Its host is genuinely
 unrecorded and is therefore omitted from the name rather than guessed.
+
+* Release-event cell shape — the native-markup gate (2026-09-18)
+
+=scripts/bench-release-event-cell-clone.js=, =NB-3641=, 2026-09-18 16:01 UTC,
+median of 5, uptime 57.4 h. Probing the ONE quantity the native-markup change
+moves: the injected "Release events" cell went from one node per event to four,
+and every re-render clones the cell while every filter and sort pass walks its
+text.
+
+Not an end-to-end A/B, deliberately. No harness arm covers the four pageTypes
+that inject this column — =capture-interaction-perf.js= is hardcoded to
+=artist-events= and =artist-releases-dylan=, =--perf= to =artist-releasegroups=
+— and CLAUDE.md records the same =main= arm landing 1.5-1.85x apart across
+hosts, an order of magnitude more noise than the effect. Same reasoning as
+commit =4e282ad=.
+
+| Cells x events | nodes/cell | clone old -> new | text old -> new | added/pass |
+|----------------+------------+------------------+-----------------+------------|
+| 2000 x 1       | 2 -> 6     | 2.1 -> 2.5 ms    | 0.9 -> 1.4 ms   | +0.9 ms    |
+| 2000 x 3       | 4 -> 16    | 3.1 -> 6.6 ms    | 1.6 -> 3.7 ms   | +5.6 ms    |
+
+*The gate passed.* Its threshold was stated before the run — escalate to a real
+=label-relationships= end-to-end arm at 2% of a comparable filter pass. Against
+this host's own =artist-releases-dylan= =globalFilter= of 1096 ms, measured the
+same day, the added cost is *0.08%* at one event per cell and *0.51%* at three.
+The ratios (1.19-2.13x) look larger than the effect is, which is the reason the
+absolute and the denominator are both recorded here: 2.13x of 3.1 ms is still
+3.5 ms.
+
+*What it does not cover*: clone and text-walk only, on synthetic cells. It says
+nothing about layout or paint of the richer DOM, and nothing about a table far
+larger than 2000 rows — the real =place-performances= page is ~16 rows, and
+=label-relationships= for a major label is the case that would justify Stage 2
+if one is ever wanted.

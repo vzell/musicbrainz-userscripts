@@ -12651,3 +12651,89 @@ of re-running a shard.
 
 Numbers, host conditions and the per-arm detail: `tests/MEASUREMENTS.org`,
 "Unsharded vs. worker count — NB-3641, 2026-09-18".
+
+## 2026-09-18 — The injected Release-events column was built in a shape nothing could read (branch fix/release-events-native-markup)
+
+Reported as a flag problem on
+`https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances`
+with "MusicBrainz: Right Side Flags Everywhere" installed: the 📊 dropdown for
+"Release events" showed no flags and none of its usual sections, and "Release
+country" showed two flags per entry, one before the name and one after.
+
+**Four independent defects, and only ONE of them was the flag userscript's
+doing.** Root-caused from `debug/right-flags-release-events.html`, the real
+rendered DOM, rather than from the screenshots — and cross-checked against
+`debug/label-rels-final.html`, the same pipeline with the flag userscript
+absent (`mb-hq-flag-img` count: 0), which is what showed three of the four
+reproduce with no third-party script at all.
+
+**The shared cause.** `release-country`, `release-date` and `release-event`
+appear **0 times** in that 1.3 MB page. `_rePopulateCell()` was building
+
+    <li class="flag flag-US" title="United States (US)">US  2005-12-20</li>
+
+where MusicBrainz builds `.release-event` > `.release-country` + `.release-date`.
+Every consumer that reads structure rather than pixels scopes on those classes:
+
+| Consumer | scopes on | found |
+|---|---|---|
+| `_findCellReleaseEventParts()` | `.release-event` | nothing |
+| `_findCellCountryNameParts()` | `.release-country` | nothing |
+| `openUniqDrop()`'s `iconSel` | `span.flag` | nothing — the class was on the `<li>`, which is ALSO the walk root and so never returned by `querySelectorAll()` |
+| `hasFlagIcons` | a column-NAME whitelist | 'Release events' explicitly excluded |
+
+The column rendered perfectly, which is exactly why this survived: nothing was
+missing on screen, only in the dropdown. `_rePopulateCell()` now goes through a
+shared `_buildReleaseEventLi()` that also serves the show-all JSON
+reconstruction, so the two producers cannot drift again, and
+`SyntheticColumnDataExtractor.splitCountryDate` is a pass-through to the native
+extractor instead of re-parsing a two-space separator out of the `<li>`'s text.
+
+**The double flag was downstream of that same shape, not a separate bug.**
+RSFE picks its shape by whether the `.flag` element wraps an
+`a[href*="/area/"]`: with one it neutralizes in place and puts its `<img>` in a
+sibling `span.mfe-flag-wrapper`; without one it appends the `<img>` INSIDE the
+element. Our script-built spans had no anchor, so they got the second shape —
+and only the first was excluded from `iconSel`, so the hollow span and the img
+both matched. Now that these cells emit anchored native markup, RSFE takes the
+first branch there anyway; the guard is kept and pinned separately because any
+anchorless flag span reaches the same path.
+
+**One correction to my own fix, caught by an existing spec.** The first version
+dropped the dropdown icon whenever `resolveFlagVisual()` found nothing
+paintable, reasoning "invisible in the cell ⇒ invisible in the dropdown". Those
+are different facts. A native flag paints from MusicBrainz's sprite stylesheet,
+which is **absent in every fixture** and briefly absent on a slow real page, so
+the resolver legitimately returns null for a perfectly good flag. That stripped
+the trailing flag from every "Entity info - Area name" entry and failed
+`uniq-drop-area-name-flag-position.spec.js`, which exists for exactly that
+guarantee. The guard now keys on the userscript's own `data-hq-processed`
+marker — positive evidence of neutralization — and never on absence of paint.
+
+**A pre-existing bug the new fixture exposed.** `_rePopulateCell()` did
+`cell.appendChild(ul)` with no clear, so two passes reaching one cell before
+either stamped `data-re-done` rendered every event twice, in the cell and in
+both derived columns. WS/2 latency hides it live; a stubbed fetch that answers
+instantly reproduces it every time. The identical unguarded `appendChild` is
+visible in this change's own diff, so it is not a regression from it. Fixed the
+way `_populateCells()` already does it — replace, never append.
+
+**Mutation testing changed the work three times**, which is the argument for
+running it rather than assuming:
+
+- The alignment test only inspected the countryless row, so removing the
+  DATE-side padding left it green. A mirror test for the dateless row now exists.
+- "Remove the `<a>`" passed: `ColumnDataExtractor.splitCountryDate()` rebuilds
+  the anchor itself from the `<abbr>`, so it is not load-bearing for the
+  Country-details sections. Recorded as `expect: "pass"` rather than dropped.
+- **The two hollow-flag guards cover for each other in BOTH directions.**
+  Removing `iconSel`'s exclusion alone passes (the bake guard catches it);
+  removing the bake guard alone passes (the selector catches it). Either one
+  recorded as `expect: "fail"` would have been false. A combined mutation
+  removing both now fails with `RSFE direct-append shape: one icon, not two` —
+  that, not the individual entries, is what shows the pair is load-bearing.
+
+`scripts/mutations/release-events-native-markup.json`, 11 entries, 9 expect-fail
+and 2 expect-pass. Perf gate in `tests/MEASUREMENTS.org`: the cell grew from one
+node per event to four, costing +0.9 ms per pass at 2000 cells with one event
+and +5.6 ms with three — 0.08% and 0.51% of this host's own 1096 ms filter pass.

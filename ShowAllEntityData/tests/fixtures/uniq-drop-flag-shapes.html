@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Events - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        One artist-events page whose "Location" column carries the THREE flag
+        shapes a cell can hold, one per row, so the unique-values dropdown's
+        icon rendering can be asserted against all of them at once.
+
+        "Location" is used because `hasFlagIcons` already recognises it by name
+        and the column needs no async population — the shapes are the subject,
+        not the pipeline that produces them.
+
+          ES  native, untouched          — one `span.flag` with a real sprite
+          FR  RSFE's WRAPPER shape       — the flag span still wraps the area
+                                           anchor, so the script neutralized it
+                                           in place and put its <img> in a
+                                           sibling `span.mfe-flag-wrapper`
+          IT  RSFE's DIRECT-APPEND shape — the flag span has NO anchor, so the
+                                           script appended its <img> INSIDE the
+                                           span and left the hollow span there
+
+        Only the first of RSFE's two shapes was excluded from `iconSel`. The
+        second yielded TWO icon segments for one visible cell icon — the hollow
+        span AND the img — which is the "flag before and after the name" this
+        pins. The neutralizing inline styles and the data-hq-* markers are
+        copied from the real script (v2026-09-16.1151): the markers are what
+        `_bakeFlagIconNode()` keys on, deliberately NOT the absence of a
+        background, which is also true of every perfectly good flag in a fixture
+        because MusicBrainz's sprite stylesheet is not loaded here.
+    -->
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/events">Events</a></li></ul>
+        </div>
+        <h2>Events</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Location</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="/event/11111111-1111-1111-1111-111111111111"><bdi>Clean Native Concert</bdi></a> (2020-01-01)</td>
+                    <td><a href="/place/21111111-1111-1111-1111-111111111111">Sala Apolo</a> in <span class="flag flag-ES"><a href="/area/31111111-1111-1111-1111-111111111111"><bdi>Spain</bdi></a></span></td>
+                </tr>
+                <tr>
+                    <td><a href="/event/12222222-2222-2222-2222-222222222222"><bdi>Wrapper Shape Concert</bdi></a> (2020-02-02)</td>
+                    <td><a href="/place/22222222-2222-2222-2222-222222222222">Le Zenith</a> in <span class="flag flag-FR" data-hq-processed="true" data-hq-code="FR" style="padding-left: 0px !important; background-image: none !important;"><span class="mfe-flag-wrapper" style="white-space: nowrap;"><a href="/area/32222222-2222-2222-2222-222222222222"><bdi>France</bdi></a><img class="mb-hq-flag-img" data-hq-flag="FR" alt="" aria-hidden="true" data-hq-processed="true" data-hq-code="FR"></span></span></td>
+                </tr>
+                <tr>
+                    <td><a href="/event/13333333-3333-3333-3333-333333333333"><bdi>Direct Append Concert</bdi></a> (2020-03-03)</td>
+                    <td><a href="/place/23333333-3333-3333-3333-333333333333">Alcatraz</a> in <span class="flag flag-IT" data-hq-processed="true" data-hq-code="IT" style="padding-left: 0px !important; background-image: none !important;">Italy (IT)<img class="mb-hq-flag-img" data-hq-flag="IT" alt="" aria-hidden="true" data-hq-processed="true" data-hq-code="IT"></span></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

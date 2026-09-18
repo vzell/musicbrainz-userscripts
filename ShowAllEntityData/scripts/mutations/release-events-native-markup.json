@@ -1,0 +1,149 @@
+[
+  {
+    "name": "the injected release-event <li> loses its native class",
+    "why": "Drops `release-event` from _buildReleaseEventLi()'s <li>. That class is the ONLY thing _findCellReleaseEventParts() scopes on, and it is exactly what the old bespoke `<li class=\"flag flag-XX\">XX  date</li>` lacked — so the 'Release events - Country' and '- Date' sections disappear again. The original main defect.",
+    "edits": [
+      {
+        "find": "        li.className = 'release-event';",
+        "replace": "        li.className = '';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "Country and Date sections",
+    "expect": "fail"
+  },
+  {
+    "name": "the country span loses its native release-country class",
+    "why": "Both `_findCellCountryNameParts()` and ColumnDataExtractor.splitCountryDate()'s `ev.querySelector('.release-country')` scope on this class, so without it the derived 'Release country' column is never built and the 'Country details - Name'/'- Code' sections vanish — the second half of what the bespoke shape lost.",
+    "edits": [
+      {
+        "find": "            span.className = `flag flag-${code} release-country`;",
+        "replace": "            span.className = `flag flag-${code}`;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "Country details sections",
+    "expect": "fail"
+  },
+  {
+    "name": "the country <abbr> is no longer wrapped in its area anchor",
+    "why": "EXPECTED TO PASS, recorded so the anchor is not mistaken for load-bearing. ColumnDataExtractor.splitCountryDate() rebuilds the anchor itself — `countryHref` falls back to '#' and the visible text comes from the <abbr>'s title and textContent — so the derived column still reads 'Name (XX)' inside an <a> either way. The anchor is kept for fidelity with native markup (and so area-decorating userscripts see a link), not because any assertion depends on it.",
+    "edits": [
+      {
+        "find": "            if (gid) {\n                const a = doc.createElement('a');\n                a.href = `/area/${gid}`;",
+        "replace": "            if (false) {\n                const a = doc.createElement('a');\n                a.href = `/area/${gid}`;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "Country details sections",
+    "expect": "pass"
+  },
+  {
+    "name": "a dateless event emits no empty .release-date",
+    "why": "Removes the date half of the alignment padding. splitCountryDate() pushes one <li> into its Date output per `.release-date`, so an event with a country and NO date contributes none and the two derived columns drift apart in a multi-event cell. Seen only by the DATELESS-row test — the countryless-row test stays green, which is why both exist.",
+    "edits": [
+      {
+        "find": "        if (dateText || padForAlignment) {",
+        "replace": "        if (dateText) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "dateless event keeps its row aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "a countryless event emits no empty .release-country",
+    "why": "The mirror of the previous mutation: an event with a date and no country contributes no <li> to the Country column.",
+    "edits": [
+      {
+        "find": "        } else if (padForAlignment) {",
+        "replace": "        } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "country-less event keeps its row aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "_rePopulateCell appends instead of replacing",
+    "why": "Restores the unguarded `cell.appendChild(ul)` this function shipped with. Two passes can reach one cell before either stamps data-re-done, appending a SECOND <ul> so every event renders twice, in the cell and in both derived columns. WS/2 latency hides it live; a stubbed fetch reproduces it every time, which is how the spec found it.",
+    "edits": [
+      {
+        "find": "        cell.textContent = '';\n        const ul = document.createElement('ul');",
+        "replace": "        const ul = document.createElement('ul');"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "country-less event keeps its row aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "'Release events' is dropped from the hasFlagIcons name gate",
+    "why": "hasFlagIcons is a column-NAME whitelist that deliberately excluded this column. Without the name, flagIconMap is never built and no entry gets a flag even though the markup now supports it — the half of the fix the shape change alone does not deliver.",
+    "edits": [
+      {
+        "find": "                name === 'Release events' ||\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "carry flag icons",
+    "expect": "fail"
+  },
+  {
+    "name": "iconSel stops excluding a flag with a third-party img inside it",
+    "why": "EXPECTED TO PASS. Reverting this alone leaves the hollowed span matching iconSel again, but _bakeFlagIconNode() then returns null for it — it carries data-hq-processed and has no paintable visual — so no second segment is emitted. See the combined mutation below, which removes BOTH and does fail: that is what shows the pair is load-bearing rather than the spec proving nothing. The selector is kept because it is cheaper (no bake at all) and matches the precedent set by the wrapper-shape exclusion.",
+    "edits": [
+      {
+        "find": ":not(:has(${AREA_ICON_WRAPPER_SEL})):not(:has(${AREA_ICON_TRAILING_IMG_SEL}))",
+        "replace": ":not(:has(${AREA_ICON_WRAPPER_SEL}))"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js",
+    "grep": "exactly one dropdown icon",
+    "expect": "pass"
+  },
+  {
+    "name": "a neutralized flag is baked as a class-only clone again",
+    "why": "EXPECTED TO PASS, and the symmetric half of the entry above. Removing the bake's null return alone changes nothing on this shape, because iconSel excludes the hollowed span before _bakeFlagIconNode() is ever reached. Neither guard is individually visible to this spec; the combined mutation below is what pins them. This one still earns its place: it is the guard that acts on any FUTURE shape the selector does not anticipate, which is precisely the case no fixture can be written for in advance.",
+    "edits": [
+      {
+        "find": "            if (!visual && el.hasAttribute('data-hq-processed')) return null;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js",
+    "grep": "exactly one dropdown icon",
+    "expect": "pass"
+  },
+  {
+    "name": "baked flag clones no longer opt out of third-party re-decoration",
+    "why": "Removes the data-hq-skip marker. RSFE's own rule `.flag:not([data-hq-processed]):not([data-hq-skip])` blanks such a clone with !important — beating our normal-priority inline background — and its MutationObserver then decorates it, inside a panel appended to document.body.",
+    "edits": [
+      {
+        "find": "            flagClone.setAttribute('data-hq-skip', '');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js",
+    "grep": "bare class the userscript can repaint",
+    "expect": "fail"
+  },
+  {
+    "name": "BOTH hollow-flag guards removed together",
+    "why": "The load-bearing one. iconSel and _bakeFlagIconNode()'s null return each cover for the other on this shape, so removing either alone leaves the spec green — recorded individually above. Removing both restores the original defect exactly: the Italy entry renders ['span','img'], the hollowed sprite AND the real image, one before the name and one after. If this mutation ever starts passing, the double-flag guarantee has no coverage at all, whatever the two entries above say.",
+    "edits": [
+      {
+        "find": ":not(:has(${AREA_ICON_WRAPPER_SEL})):not(:has(${AREA_ICON_TRAILING_IMG_SEL}))",
+        "replace": ":not(:has(${AREA_ICON_WRAPPER_SEL}))"
+      },
+      {
+        "find": "            if (!visual && el.hasAttribute('data-hq-processed')) return null;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js",
+    "grep": "exactly one dropdown icon",
+    "expect": "fail"
+  }
+]
