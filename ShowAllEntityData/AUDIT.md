@@ -337,7 +337,24 @@ is seeded from `td.mb-re-cell` alone. It is §3.3's second write, and L6's
 
 ### 3.8 Cell collapse / expand — added 2026-09-17
 
-**Status:** suspect. **Live pre-test:** §10 L8.
+**Status:** **reproduced** on `main` 9.99.1098 (and confirmed live via L8) and
+**fixed** on hotfix branch `fix/collapse-state-filter-staleness` (`ec9669f`,
+pushed, **not merged**), 2026-09-18. **Spec:**
+`tests/fixtures/collapse-state-filter-staleness.spec.js`. **Mutations:**
+`scripts/mutations/collapse-state-filter-staleness.json` (6/6 as expected).
+
+| Test | `main` 9.99.1098 | hotfix |
+|---|---|---|
+| control: the entry filters to exactly the cells it counts | ✅ 46/46 | ✅ |
+| **B**: pick, uncheck, expand one cell, pick again | ❌ **45 expected, 46** | ✅ |
+| **C** isolation: a fresh key after expanding one cell | ✅ 45 — **passes on main** | ✅ |
+| **D**: expand a cell while the entry is filtering | ❌ **45 expected, 46** | ✅ |
+
+C passing on `main` is the point: a key never used before sees the expanded cell
+at once, so this is a replayed row list, not stale state. Fix: the five writers
+of `expandedCells` are now one (`_applyExpandedCellState()`), which drops the
+cached row lists whose key mentions those modes and re-runs an active filter,
+coalesced per frame. Full fixture suite on the hotfix tree: 98 + 97 + 94 passed.
 
 `_applyCollapseState()` (column-header and global mass toggles) and
 `ensureCollapseDelegate()` (per-cell ▶N▤ clicks) mutate `expandedCells`, which the
@@ -432,7 +449,8 @@ passed, 0 failed. **Update 2026-09-18:** `main` is at 9.99.1097 (§3.3/§3.7 shi
 into this branch (`e263a69`); merged-`main` suite 281 passed, this branch 314
 passed, 0 failed. **Update 2026-09-18 (later):** `main` is at 9.99.1098 (§3.4 shipped) and merged
 into this branch (`bcb041e`); merged-`main` suite 285 passed, this branch 318
-passed, 0 failed. Still open: §3.8 and the §3.5/§3.6 code checks. The
+passed, 0 failed. Still open: the §3.5/§3.6 code checks (§3.8 is fixed on an unmerged hotfix
+branch). The
 first-written state below is kept as history.
 
 * Branch `rel-column-batch-and-cell-states` @ `d551df6`, pushed, **unmerged**.
