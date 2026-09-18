@@ -15314,9 +15314,9 @@
                 ],
                 injectedColumns: [ 'Relationships' ],
                 integerColumns: [
-		    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
-		    {sourceColumn: 'Total Tracks', align: 'R'}
-		],
+                    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
+                    {sourceColumn: 'Total Tracks', align: 'R'}
+                ],
                 renderMultiRowCell: [ 'Label', 'Catalog#', 'Relationship types' ],
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'Relationship types' ],
                 addCAA: 'Release',
@@ -15518,8 +15518,8 @@
                             { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                         ],
                         integerColumns: [
-		            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		        ],
+                            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                        ],
                         addCAA: 'Title',
                         extractMainColumn: 'Title',
                         stickyColumn: 'Title'
@@ -15551,9 +15551,9 @@
                         ],
                         injectedColumns: [ 'Relationships' ],
                         integerColumns: [
-			    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
-			    {sourceColumn: 'Total Tracks', align: 'R'}
-			],
+                            {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
+                            {sourceColumn: 'Total Tracks', align: 'R'}
+                        ],
                         renderMultiRowCell: [ 'Label', 'Catalog#' ],
                         collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#' ],
                         addCAA: 'Release',
@@ -15574,8 +15574,8 @@
                             { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                         ],
                         integerColumns: [
-		            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		        ],
+                            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                        ],
                         addCAA: 'Title',
                         extractMainColumn: 'Title',
                         stickyColumn: 'Title'
@@ -15610,9 +15610,9 @@
                 ],
                 msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15632,9 +15632,9 @@
                 ],
                 msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15650,8 +15650,8 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -15668,8 +15668,8 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -15719,10 +15719,10 @@
                  ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15749,10 +15749,10 @@
                  ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15896,9 +15896,9 @@
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15921,9 +15921,9 @@
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
