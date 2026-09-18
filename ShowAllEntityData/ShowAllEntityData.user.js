@@ -3552,7 +3552,20 @@
                         const dateSpan    = ev.querySelector('.release-date');
                         if (countrySpan) {
                             const li            = document.createElement('li');
-                            const flagImg       = countrySpan.querySelector('img')?.outerHTML || '';
+                            // NEVER clone a THIRD-PARTY flag image. "Right Side Flags
+                            // Everywhere" appends its own `img.mb-hq-flag-img`
+                            // (AREA_ICON_TRAILING_IMG_SEL) INSIDE the native flag span
+                            // whenever that span has no `<a>`, and "More Flags
+                            // Everywhere" uses `img.flag-custom-region`. Copying one
+                            // into the synthetic cell puts a SECOND flag there, because
+                            // the flag userscript's own MutationObserver then decorates
+                            // the new span too. Whether it happens is a RACE between
+                            // this extraction and that debounced observer, so a clean
+                            // run can look fine and still be one tick away from
+                            // double-flagging. Native sprite flags carry no <img> at
+                            // all, so this filter costs nothing when no flag userscript
+                            // is installed.
+                            const flagImg       = countrySpan.querySelector('img:not(.mb-hq-flag-img):not(.flag-custom-region)')?.outerHTML || '';
                             const abbr          = countrySpan.querySelector('abbr');
                             const countryCode   = abbr ? abbr.textContent.trim() : '';
                             const countryFull   = abbr?.getAttribute('title') || '';
@@ -4961,26 +4974,32 @@
 
 
         /**
-         * splitCountryDate — splits a "Release events" cell (populated by
-         * initReleaseEventsColumn / _rePopulateCell) into separate "Release country"
-         * and "Release date" cells.
+         * splitCountryDate — splits the injected "Release events" cell into
+         * "Release country" and "Release date".
          *
-         * Source structure: a <td class="mb-re-cell"> whose content is a <ul> where
-         * each <li> encodes one release event as plain text in one of two formats:
+         * This is now a pass-through to `ColumnDataExtractor.splitCountryDate`,
+         * and the delegation is the point. `_rePopulateCell()` used to build a
+         * bespoke `<li class="flag flag-XX">XX  YYYY-MM-DD</li>`, so this
+         * function had to recover the country and the date by SPLITTING THAT
+         * LI'S TEXT on a two-space separator and reading the flag class and
+         * `title` back off the element. It now builds MusicBrainz's own native
+         * `.release-event` / `.release-country` / `.release-date` shape (see
+         * `_buildReleaseEventLi()`), which the native extractor already parses.
          *
-         *   With country:    "XX  YYYY-MM-DD"  (country code + two spaces + ISO date)
-         *   Without country: "YYYY-MM-DD"      (date only, no country prefix)
+         * Keeping the key here rather than deleting it: the ICE dispatcher in
+         * `_processRow()` resolves `injectedColumnExtractors[].extractor`
+         * against `SyntheticColumnDataExtractor` by name, and four
+         * pageDefinitions name it — place-performances(-filtered) and
+         * label-relationships(-filtered).
          *
-         * The two-space separator is produced by _rePopulateCell:
-         *   li.textContent = `${codes[0]}  ${ev.date || '\u00a0'}`;
-         *
-         * For multi-event cells each <li> produces one parallel <li> in the two
-         * output cells, preserving row alignment — the same approach used by
-         * ColumnDataExtractor.splitCountryDate for native Country/Date columns.
-         * A single-event cell is also wrapped in <ul><li> for structural consistency.
-         *
-         * When the source cell is empty or has no <ul> content, both output cells
-         * are returned empty.
+         * The visible result is unchanged. The old text-splitting build
+         * produced `<span class="flag flag-XX" title="Name (XX)">Name (XX)</span>`;
+         * the native one produces
+         * `<span class="flag flag-XX release-country"><a …>Name (XX)</a></span>`
+         * — same rendered string, so typed filters and sort order carry over,
+         * and the added `.release-country` class plus the `<a>` are exactly
+         * what `_findCellCountryNameParts()` needs to offer the "Country
+         * details - Name"/"- Code" sections it could never see before.
          *
          * Synthetic columns: ['Release country', 'Release date']
          *
@@ -4988,70 +5007,7 @@
          * @returns {HTMLTableCellElement[]}            Two synthetic <td> elements: [Release country, Release date].
          */
         splitCountryDate(sourceCell) {
-            const tdCountry = document.createElement('td');
-            const tdDate    = document.createElement('td');
-
-            if (!sourceCell) return [tdCountry, tdDate];
-
-            const liItems = Array.from(sourceCell.querySelectorAll('ul > li'));
-            if (!liItems.length) return [tdCountry, tdDate];
-
-            // Two-space separator used by _rePopulateCell between country code and date.
-            // Each <li> is stamped with: classList='flag flag-XX', title='Name (XX)',
-            // textContent='XX  YYYY-MM-DD' (or ' ' when no date is known).
-            const SEP = '  ';
-
-            const ulCountry = document.createElement('ul');
-            const ulDate    = document.createElement('ul');
-            ulCountry.style.cssText = 'list-style:none;margin:0;padding:0;';
-            ulDate.style.cssText    = 'list-style:none;margin:0;padding:0;';
-
-            liItems.forEach(li => {
-                const raw = li.textContent.trim();
-
-                // ── Extract date portion from textContent ─────────────────────
-                // Split on the two-space separator; accept the right-hand side as
-                // the date only when the left-hand side is a 2-letter country code.
-                let date = '';
-                const sepIdx = raw.indexOf(SEP);
-                if (sepIdx !== -1) {
-                    const prefix = raw.slice(0, sepIdx).trim();
-                    const suffix = raw.slice(sepIdx + SEP.length).trim();
-                    date = /^[A-Z]{2}$/.test(prefix) ? suffix : raw;
-                } else {
-                    date = raw;
-                }
-
-                // ── Build country cell content from flag class + title attr ───
-                // _rePopulateCell stamps li.classList = 'flag flag-XX' and
-                // li.title = 'United States (US)'.  Use the title as visible text
-                // so the full country name (not just the 2-letter code) is shown.
-                const liC = document.createElement('li');
-                const flagClass = Array.from(li.classList).find(c => c.startsWith('flag-'));
-                if (flagClass) {
-                    const fullTitle = li.title || flagClass.replace('flag-', '');
-                    const span = document.createElement('span');
-                    span.classList.add('flag', flagClass);
-                    span.title       = fullTitle;
-                    span.textContent = fullTitle;
-                    liC.appendChild(span);
-                }
-                // No flag class → country cell stays empty (event has no area data).
-
-                // ── Build date cell ───────────────────────────────────────────
-                const liD = document.createElement('li');
-                // Suppress the non-breaking space placeholder so sort/filter treat
-                // the date cell as empty rather than as a non-empty string.
-                liD.textContent = (date === '\u00a0' || date === '') ? '' : date;
-
-                ulCountry.appendChild(liC);
-                ulDate.appendChild(liD);
-            });
-
-            if (ulCountry.hasChildNodes()) tdCountry.appendChild(ulCountry);
-            if (ulDate.hasChildNodes())    tdDate.appendChild(ulDate);
-
-            return [tdCountry, tdDate];
+            return ColumnDataExtractor.splitCountryDate(sourceCell);
         }
 
     };
@@ -15314,9 +15270,9 @@
                 ],
                 injectedColumns: [ 'Relationships' ],
                 integerColumns: [
-		    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
-		    {sourceColumn: 'Total Tracks', align: 'R'}
-		],
+                    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
+                    {sourceColumn: 'Total Tracks', align: 'R'}
+                ],
                 renderMultiRowCell: [ 'Label', 'Catalog#', 'Relationship types' ],
                 collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#', 'Relationship types' ],
                 addCAA: 'Release',
@@ -15518,8 +15474,8 @@
                             { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                         ],
                         integerColumns: [
-		            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		        ],
+                            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                        ],
                         addCAA: 'Title',
                         extractMainColumn: 'Title',
                         stickyColumn: 'Title'
@@ -15551,9 +15507,9 @@
                         ],
                         injectedColumns: [ 'Relationships' ],
                         integerColumns: [
-			    {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
-			    {sourceColumn: 'Total Tracks', align: 'R'}
-			],
+                            {sourceColumn: 'DD', align: 'R'}, {sourceColumn: 'MM', align: 'R'}, {sourceColumn: 'YYYY', align: 'C'},
+                            {sourceColumn: 'Total Tracks', align: 'R'}
+                        ],
                         renderMultiRowCell: [ 'Label', 'Catalog#' ],
                         collapsableColumns: [ 'Country/Date' ,'Country', 'Date', 'Label', 'Catalog#' ],
                         addCAA: 'Release',
@@ -15574,8 +15530,8 @@
                             { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                         ],
                         integerColumns: [
-		            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		        ],
+                            {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                        ],
                         addCAA: 'Title',
                         extractMainColumn: 'Title',
                         stickyColumn: 'Title'
@@ -15610,9 +15566,9 @@
                 ],
                 msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15632,9 +15588,9 @@
                 ],
                 msTrackLengthWs2: true,   // area inc=recording-rels covers the page — see _msWs2PageKey()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -15650,8 +15606,8 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -15668,8 +15624,8 @@
                     { sourceColumn: 'Date',  extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
                 ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'}
+                ],
                 injectedColumns: [ 'Relationships' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
@@ -15719,10 +15675,10 @@
                  ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15749,10 +15705,10 @@
                  ],
                 msTrackLengthWs2: true,   // no length data in the page — see _msLengthSource()
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
-		    {sourceColumn: 'Length', align: ':'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'},
+                    {sourceColumn: 'Length', align: ':'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15896,9 +15852,9 @@
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -15921,9 +15877,9 @@
                     { sourceColumn: 'Release date',   extractor: 'dateParts',        syntheticColumns: ['R-DD', 'R-MM', 'R-YYYY', 'R-Day', 'R-Month'] }
                  ],
                 integerColumns: [
-		    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
-		    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
-		],
+                    {sourceColumn: 'DD',     align: 'R'}, {sourceColumn: 'MM',   align: 'R'}, {sourceColumn: 'YYYY',   align: 'C'},
+                    {sourceColumn: 'R-DD',   align: 'R'}, {sourceColumn: 'R-MM', align: 'R'}, {sourceColumn: 'R-YYYY', align: 'C'}
+                ],
                 collapsableColumns: [ 'Release events', 'Release country', 'Release date' ],
                 addCAA: 'Title',
                 extractMainColumn: 'Title',
@@ -55425,6 +55381,11 @@ a { color: #1565c0; }`;
         const countryNameValueCounts = _uniqCacheHit ? _uniqCacheHit.countryNameValueCounts : new Map();
         const countryCodeValueCounts = _uniqCacheHit ? _uniqCacheHit.countryCodeValueCounts : new Map();
         const countryCodeFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryCodeFlagMap     : new Map();
+        // Same, keyed by country NAME. A "Country" cell renders both halves
+        // of one value — "United States (US)" — so both its dropdown sections
+        // describe the same flagged entity and both should show the flag.
+        // Only the code half ever did.
+        const countryNameFlagMap     = _uniqCacheHit ? _uniqCacheHit.countryNameFlagMap     : new Map();
         // Distinct "Tracks" cell per-medium track-count values (e.g. "6")
         // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
         // (isTracksCol below).
@@ -55852,6 +55813,7 @@ a { color: #1565c0; }`;
                         // Same "flag flag-XX" combined-string convention as
                         // revCountryFlagMap above.
                         if (!countryCodeFlagMap.has(p.code)) countryCodeFlagMap.set(p.code, p.flagClass ? `flag ${p.flagClass}` : null);
+                        if (!countryNameFlagMap.has(p.name)) countryNameFlagMap.set(p.name, p.flagClass ? `flag ${p.flagClass}` : null);
                     });
                     _rowCountryNameValues.forEach(t => countryNameValueCounts.set(t, (countryNameValueCounts.get(t) || 0) + 1));
                     _rowCountryCodeValues.forEach(t => countryCodeValueCounts.set(t, (countryCodeValueCounts.get(t) || 0) + 1));
@@ -56046,7 +56008,13 @@ a { color: #1565c0; }`;
                         if (!entityNameTypeMap.has(p.name)) entityNameTypeMap.set(p.name, p.type);
                         if (Lib.settings.sa_enable_dropdown_flag_icons && p.type === 'area' &&
                             p.flagEl && !entityNameFlagMap.has(p.name)) {
-                            entityNameFlagMap.set(p.name, _bakeFlagIconNode(p.flagEl));
+                            // Only CACHE a real icon: _bakeFlagIconNode() returns
+                            // null for a neutralized flag, and storing that would
+                            // satisfy the has() guard above, so a later row whose
+                            // flag IS paintable would never get a chance to fill
+                            // this entry.
+                            const _bakedName = _bakeFlagIconNode(p.flagEl);
+                            if (_bakedName) entityNameFlagMap.set(p.name, _bakedName);
                         }
                     }
                     if (p.href) {
@@ -56055,7 +56023,8 @@ a { color: #1565c0; }`;
                         if (!entityHrefTypeMap.has(p.href))  entityHrefTypeMap.set(p.href, p.type);
                         if (Lib.settings.sa_enable_dropdown_flag_icons && p.type === 'area' &&
                             p.flagEl && !entityHrefFlagMap.has(p.href)) {
-                            entityHrefFlagMap.set(p.href, _bakeFlagIconNode(p.flagEl));
+                            const _bakedHref = _bakeFlagIconNode(p.flagEl);
+                            if (_bakedHref) entityHrefFlagMap.set(p.href, _bakedHref);
                         }
                     }
                     if (p.comment) _rowCommentValues.add(p.comment);
@@ -56393,6 +56362,11 @@ a { color: #1565c0; }`;
                             // this is only a fallback for a clone with none baked.
                             if (!iconClone.style.marginRight) iconClone.style.marginRight = '4px';
                             item.appendChild(iconClone);
+                            // See the segment builder: a real text space rather
+                            // than a margin, because a third-party flag image
+                            // sets its own margins inline WITH !important and
+                            // nothing in a stylesheet can outrank that.
+                            if (seg.spaceAfter) item.appendChild(document.createTextNode(' '));
                             continue;
                         }
                         if (filter) {
@@ -56510,11 +56484,20 @@ a { color: #1565c0; }`;
         //     </abbr></a></span> — the SAME shape as the already-handled
         //     Country column flag span (just with an extra class), so no
         //     new scan logic is needed, only recognising the column name.
-        //     NOTE: deliberately NOT extended to 'Release events' — that
-        //     source column's flag is a script-rebuilt <li class="flag
-        //     flag-XX"> with no wrapping <span>/<a>, a different shape that
-        //     caused a regression when decoration was attempted for it
-        //     (reverted; see git history) and is out of scope here.
+        //   - 'Release events' (exact match — the INJECTED column
+        //     `initReleaseEventsColumn()`/`_rePopulateCell()` builds). This
+        //     note used to say the opposite, and the reason it gave was real:
+        //     that column's flag was a script-rebuilt `<li class="flag
+        //     flag-XX">` with no wrapping `<span>`/`<a>`, a shape `iconSel`
+        //     cannot match — `span.flag` does not match an `<li>`, and the
+        //     `<li>` is also the walk ROOT, which `querySelectorAll()` never
+        //     returns. Decorating it was attempted once and reverted. The
+        //     column now emits MusicBrainz's OWN native
+        //     `<span class="flag flag-XX release-country">` per event (see
+        //     `_buildReleaseEventLi()`), i.e. the exact shape 'Country/Date'
+        //     above already relies on — so this is once again purely a
+        //     name-recognition entry, with no new scan logic, and the old
+        //     objection no longer applies to anything.
         //   - 'Recorded at place'/'Mixed at place' (exact match —
         //     release-tracks' own shared `_buildRecordedAtPlaceTd`, see
         //     WIP.14/17/25/50): each place's "in <area>, <region flag>,
@@ -56537,6 +56520,7 @@ a { color: #1565c0; }`;
             return name.endsWith('ountry') || name.endsWith('ocality') ||
                 name.endsWith('egion') || name.endsWith('rea') ||
                 name === 'Location' || name === 'Place' || name === 'Country/Date' ||
+                name === 'Release events' ||
                 name === 'Recorded at place' || name === 'Mixed at place';
         })();
 
@@ -56691,19 +56675,54 @@ a { color: #1565c0; }`;
          *   `_findAreaLinkIcon()` or matched by `iconSel` above: a
          *   `.flag.flag-XX` span, an `.area-icon`/`.custom-area-icon` span,
          *   or a bare `img.mb-hq-flag-img`
-         * @returns {HTMLElement} a detached node ready for repeated cloning
+         * @returns {?HTMLElement} a detached node ready for repeated cloning,
+         *   or null when the element has no paintable background left at all
+         *   (a flag a third-party userscript has neutralized) — callers must
+         *   treat null as "this cell shows no icon here", never as an error
          */
         function _bakeFlagIconNode(el) {
             if (el.classList.contains('area-icon') || el.classList.contains('custom-area-icon') || el.tagName === 'IMG') {
                 return el.cloneNode(true);
             }
+            const visual = resolveFlagVisual(el);
+            // A flag a third-party userscript has NEUTRALIZED — background
+            // stripped because that script replaced it with its own <img> —
+            // is invisible in the cell, so the dropdown must not show one
+            // either. Returning a class-only clone (what this used to do) is
+            // what made it REAPPEAR in the panel: the class alone is enough for
+            // someone else to paint it, since "Right Side Flags Everywhere"
+            // injects `.flag:not([data-hq-processed]):not([data-hq-skip]) {
+            // background-image: none !important }` AND a MutationObserver on
+            // document.documentElement — and the dropdown is appended to
+            // document.body, so a bare `class="flag flag-XX"` clone landing
+            // there is found and decorated with a fresh <img> within one 100 ms
+            // debounce.
+            //
+            // The test is that script's OWN marker, never "nothing is paintable"
+            // on its own. Those are different facts and conflating them breaks a
+            // working guarantee: a native flag renders from MusicBrainz's sprite
+            // stylesheet, which is ABSENT in every fixture (and briefly absent
+            // on a slow real page), so `resolveFlagVisual()` legitimately
+            // returns null for a perfectly good flag. Keyed on the absence
+            // alone, this dropped the trailing flag from every "Entity info -
+            // Area name" entry — caught by
+            // tests/fixtures/uniq-drop-area-name-flag-position.spec.js, which
+            // exists for exactly that guarantee.
+            if (!visual && el.hasAttribute('data-hq-processed')) return null;
+
             const flagClone = document.createElement('span');
             // Copy the CSS class too (harmless belt-and-suspenders — inline
             // styles below always win the cascade regardless, so there is
             // no conflict risk; kept in case any non-visual behavior is
             // keyed off the class name).
             flagClone.className = el.className;
-            const visual = resolveFlagVisual(el);
+            // Opt this clone out of that same userscript's re-processing. Its
+            // `!important` stylesheet rule beats our normal-priority inline
+            // background (author `!important` outranks normal inline in the
+            // cascade), so without the marker a correctly baked flag would be
+            // blanked and then re-decorated with a foreign image. Inert when no
+            // such userscript is installed.
+            flagClone.setAttribute('data-hq-skip', '');
             if (visual) {
                 flagClone.style.backgroundImage    = visual.backgroundImage;
                 flagClone.style.backgroundPosition = visual.backgroundPosition;
@@ -56829,7 +56848,20 @@ a { color: #1565c0; }`;
             // dated entry): before this fix, "Cinema City Hall in Israel"
             // rendered with the hollow native flag AND the wrapper itself
             // both matching as bogus icon segments in front of the name.
-            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})), ${AREA_ICON_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
+            // The native-flag fragment excludes BOTH shapes "Right Side Flags
+            // Everywhere" uses to neutralize a flag it has replaced, because it
+            // picks its shape by whether the flag span wraps an `<a href="/area/…">`:
+            //   - WITH a link  -> it wraps the anchor in its own
+            //     AREA_ICON_WRAPPER_SEL (`span.mfe-flag-wrapper`).
+            //   - WITHOUT one  -> it appends AREA_ICON_TRAILING_IMG_SEL
+            //     (`img.mb-hq-flag-img`) directly INSIDE the flag span.
+            // Only the first was excluded, so the second produced TWO icon
+            // segments for one cell icon — the hollow span AND the img — which
+            // is the "double flag, before and after the name" in the injected
+            // "Release country" column, whose spans carry no anchor. The img
+            // itself still matches the third fragment, so the cell's one real
+            // flag is still shown, once, in its own position.
+            const iconSel = `span.flag[class*="flag-"]:not(:has(${AREA_ICON_WRAPPER_SEL})):not(:has(${AREA_ICON_TRAILING_IMG_SEL})), ${AREA_ICON_SIBLING_SEL}, ${AREA_ICON_TRAILING_IMG_SEL}`;
 
             /**
              * Builds ONE root element's (a single `<li>` item, or a whole
@@ -56867,6 +56899,10 @@ a { color: #1565c0; }`;
              * @returns {Array<{type:'text',text:string}|{type:'icon',node:HTMLElement}>}
              */
             function _buildFlagSegmentsForRoot(root) {
+                // `_bakeFlagIconNode()` returns null for a flag with nothing
+                // paintable left (see its own note). The array keeps that null
+                // so it stays positionally aligned with `querySelectorAll()`;
+                // the walk below consumes the slot and emits no segment.
                 const bakedIcons = Array.from(root.querySelectorAll(iconSel)).map(_bakeFlagIconNode);
                 let iconIdx = 0;
 
@@ -56909,8 +56945,31 @@ a { color: #1565c0; }`;
                 while (node = walker.nextNode()) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if (node.matches(iconSel)) {
-                            flushText();
-                            segments.push({ type: 'icon', node: bakedIcons[iconIdx++] });
+                            const baked = bakedIcons[iconIdx++];
+                            // A dropped icon must NOT flush the text run: the
+                            // text either side of it belongs to one value and
+                            // has to read as one segment, exactly as it would
+                            // have if the icon had never been in the DOM.
+                            if (baked) {
+                                flushText();
+                                // A release event reads "<country><flag><date>",
+                                // and splitting the text run at the icon loses
+                                // the join that would otherwise have put a space
+                                // between the two halves — segments are
+                                // concatenated with no separator, so the date
+                                // ends up against the flag. Scoped to a flag
+                                // INSIDE a .release-country, which is exactly
+                                // that shape: elsewhere an icon decorates the
+                                // text that FOLLOWS it (an area chain reads
+                                // "<flag>Los Angeles, <flag>California"), and a
+                                // space there would push every flag away from
+                                // the name it belongs to.
+                                segments.push({
+                                    type: 'icon',
+                                    node: baked,
+                                    spaceAfter: !!node.closest('.release-country'),
+                                });
+                            }
                         }
                         continue;
                     }
@@ -57097,7 +57156,7 @@ a { color: #1565c0; }`;
                 recAttrValueCounts, workAttrIdValueCounts,
                 titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
-                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap,
+                countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
@@ -57618,7 +57677,8 @@ a { color: #1565c0; }`;
             badge.style.minWidth        = `${panelBadgeChWidth}ch`;
             badge.style.textAlign       = 'right';
             item.appendChild(badge);
-            if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode') && glyphClass) {
+            if ((kind === 'name' || kind === 'revcountry' || kind === 'countrycode'
+                 || kind === 'countryname') && glyphClass) {
                 // Fixed-width, centered slot so the label text right after
                 // it (starting with "» ") always starts at the same
                 // horizontal position across entries, regardless of which
@@ -57631,18 +57691,25 @@ a { color: #1565c0; }`;
                 markerSlot.style.width          = '16px';
                 markerSlot.style.marginRight    = '4px';
                 markerSlot.style.verticalAlign  = 'middle';
-                // For 'revcountry'/'countrycode', glyphClass is the
-                // combined `flag flag-XX` class string (both native
-                // classes together, matching the native `class="flag
-                // flag-XX"` shape) — see the two country-code
-                // aggregation call sites in openUniqDrop(). For 'name',
-                // this is always the entity's own generic native glyph
-                // (e.g. 'arealink') — a real country flag, when one
-                // exists (`flagNode`), is appended AFTER the label below
-                // instead of taking this slot's place, so both are visible
-                // together: "[glyph] » area name: Spain [flag]".
+                // This slot always holds a GENERIC entity glyph, never a real
+                // flag. For 'name' that is the entity's own native class (e.g.
+                // 'arealink'); for 'revcountry'/'countrycode' `glyphClass` is
+                // instead the combined `flag flag-XX` string, which is rendered
+                // AFTER the label by the trailing slot below — so those two
+                // kinds borrow the same 'arealink' glyph here, a country being
+                // an area.
+                //
+                // Keeping the real flag out of this slot is a settled decision,
+                // not a detail: it was made once already for 'name' entries,
+                // which used to render "[flag] » area name: Spain" and now
+                // render "[glyph] » area name: Spain [flag]". The country kinds
+                // were simply never brought along, so the two sections
+                // disagreed — "🇬🇧 » country: GB" beside "🌐 » area name:
+                // California 🏞" in the same panel.
                 const marker = document.createElement('span');
-                marker.className = glyphClass;
+                marker.className = (kind === 'revcountry' || kind === 'countrycode'
+                                    || kind === 'countryname')
+                    ? 'arealink' : glyphClass;
                 _guardGlyphAgainstEmptySelectorHiding(marker);
                 markerSlot.appendChild(marker);
                 item.appendChild(markerSlot);
@@ -57725,18 +57792,42 @@ a { color: #1565c0; }`;
                 if (kind === 'entitycancelled' || kind === 'eventcancelled') {
                     _labelSpan.classList.add('cancelled');
                 }
-                if (kind === 'name' && flagNode) {
-                    // Real country flag, when this area name has one —
-                    // rendered AFTER the name rather than replacing the
-                    // generic glyph in markerSlot above (see that slot's
-                    // comment): "[glyph] » area name: Spain [flag]".
+                // The country kinds carry their flag as a CLASS STRING rather
+                // than a baked node — see the two aggregation call sites in
+                // openUniqDrop() — so they build the span here instead of
+                // cloning one. Same slot, same position, so every flag-bearing
+                // entry in the panel reads alike.
+                const _trailingFlagClass =
+                    (kind === 'revcountry' || kind === 'countrycode' || kind === 'countryname')
+                        ? glyphClass : null;
+                if ((kind === 'name' && flagNode) || _trailingFlagClass) {
+                    // Real country flag, when this entry has one — rendered
+                    // AFTER the name rather than replacing the generic glyph in
+                    // markerSlot above (see that slot's comment):
+                    // "[glyph] » area name: Spain [flag]".
                     const trailingFlagSlot = document.createElement('span');
                     trailingFlagSlot.setAttribute('aria-hidden', 'true');
                     trailingFlagSlot.style.display       = 'inline-flex';
                     trailingFlagSlot.style.alignItems    = 'center';
                     trailingFlagSlot.style.marginLeft    = '4px';
                     trailingFlagSlot.style.verticalAlign = 'middle';
-                    trailingFlagSlot.appendChild(flagNode.cloneNode(true));
+                    if (flagNode) {
+                        trailingFlagSlot.appendChild(flagNode.cloneNode(true));
+                    } else {
+                        // Class-only, exactly as this span was when it sat in
+                        // the marker slot: it is painted by MusicBrainz's own
+                        // `.flag` stylesheet, or by a flag userscript that
+                        // replaces it. Deliberately NOT given `data-hq-skip` —
+                        // that marker belongs on clones `_bakeFlagIconNode()`
+                        // resolves from a live cell, where an inline background
+                        // is already baked and must survive. Here there is
+                        // nothing to protect, and opting out would leave an
+                        // empty span.
+                        const _flagGlyph = document.createElement('span');
+                        _flagGlyph.className = _trailingFlagClass;
+                        _guardGlyphAgainstEmptySelectorHiding(_flagGlyph);
+                        trailingFlagSlot.appendChild(_flagGlyph);
+                    }
                     item.appendChild(trailingFlagSlot);
                 }
             }
@@ -58131,7 +58222,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
-            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
@@ -58237,7 +58328,7 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
-            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v)));
+            _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
@@ -62745,6 +62836,116 @@ a { color: #1565c0; }`;
      *
      * To add support for a new JSON shape, append a new entry to this object.
      */
+    /**
+     * Builds ONE release-event `<li>` in MusicBrainz's OWN native shape:
+     *
+     *   <li aria-label="Release event" class="release-event">
+     *     <span class="flag flag-XX release-country">
+     *       <a href="/area/<gid>"><abbr title="<name>">XX</abbr></a></span>
+     *     <span class="release-date">YYYY-MM-DD</span></li>
+     *
+     * One producer, two callers with different JSON dialects:
+     * `SHOW_ALL_JSON_HANDLERS.events.buildLi()` reconstructs truncated NATIVE
+     * cells from MusicBrainz's embedded page JSON (`iso_3166_1_codes`, `gid`,
+     * `date.year/month/day`), while `_rePopulateCell()` builds the INJECTED
+     * "Release events" column from the WS/2 `release-events` array
+     * (`iso-3166-1-codes`, `id`, `date` already a string). Each caller maps
+     * its own field names; the MARKUP is decided here exactly once.
+     *
+     * That matters because the two used to disagree, and the injected column
+     * was the odd one out — it emitted `<li class="flag flag-XX">XX  date</li>`,
+     * a shape none of the unique-values dropdown's resolvers can read:
+     * `_findCellReleaseEventParts()` scopes on `.release-event`,
+     * `_findCellCountryNameParts()` on `.release-country`, and
+     * `openUniqDrop()`'s `iconSel` on `span.flag` (never an `<li>`, which is
+     * also the walk ROOT and so unmatchable by `querySelectorAll`). So
+     * `place-performances`/`label-relationships` silently offered no
+     * "Release events - Country/Date/Weekday" and no "Country details"
+     * sections at all.
+     *
+     * @param {Document} doc
+     * @param {Object}  ev
+     * @param {?string} ev.code          ISO 3166-1 code, e.g. "US"
+     * @param {?string} ev.name          area name, for the `<abbr>` tooltip
+     * @param {?string} ev.gid           area MBID; the `<abbr>` is left unlinked without it
+     * @param {?string} ev.dateText      already-formatted "YYYY[-MM[-DD]]"
+     * @param {boolean} [ev.injectedColumn=false]  this `<li>` belongs to the
+     *   SCRIPT-BUILT column rather than to a native MusicBrainz cell, which
+     *   changes two things — alignment padding, and the space before the date.
+     *   Both follow from the same fact: an injected cell is not native markup
+     *   sitting in MusicBrainz's own CSS context, so it has to be
+     *   self-contained. `_rePopulateCell()` passes true, `buildLi()` false.
+     *   See the two notes in the body.
+     * @returns {?HTMLLIElement} null only when there is nothing at all to render
+     */
+    function _buildReleaseEventLi(doc, { code, name, gid, dateText, injectedColumn = false }) {
+        if (!code && !dateText && !injectedColumn) return null;
+
+        const li = doc.createElement('li');
+        li.setAttribute('aria-label', 'Release event');
+        li.className = 'release-event';
+
+        if (code) {
+            const span = doc.createElement('span');
+            span.className = `flag flag-${code} release-country`;
+            const abbr = doc.createElement('abbr');
+            abbr.title = name || '';
+            abbr.textContent = code;
+            if (gid) {
+                const a = doc.createElement('a');
+                a.href = `/area/${gid}`;
+                a.appendChild(abbr);
+                span.appendChild(a);
+            } else {
+                span.appendChild(abbr);
+            }
+            li.appendChild(span);
+        } else if (injectedColumn) {
+            // Alignment, and ONLY for the injected column.
+            // `ColumnDataExtractor.splitCountryDate()` pushes one `<li>` into
+            // its Country output per `.release-country` it finds and one into
+            // its Date output per `.release-date` — independently. So an event
+            // missing EITHER half must still contribute an empty span of that
+            // half, or a multi-event cell's "Release country" and "Release
+            // date" columns fall out of row alignment with each other. The old
+            // bespoke extractor preserved this by always emitting both `<li>`s;
+            // the real page has events of both shapes (a country with no date,
+            // and a date with no country). An empty span contributes no text,
+            // so `_findCellReleaseEventParts()` reports that half as null and
+            // no phantom value reaches the 📊 sections.
+            //
+            // Deliberately EMPTY, unlike MusicBrainz's own
+            // `<span class="release-country no-country" title="Missing
+            // country">-</span>`: that "-" is visible TEXT, so carrying it
+            // would change this column's extracted value — and therefore
+            // every typed filter, sort key and 📊 entry — from "2008-06-25"
+            // to "- 2008-06-25". The area's own name is kept as the tooltip,
+            // which is where the previous shape put it too.
+            const span = doc.createElement('span');
+            span.className = 'release-country no-country';
+            if (name) span.title = name;
+            li.appendChild(span);
+        }
+
+        if (dateText || injectedColumn) {
+            const dateSpan = doc.createElement('span');
+            dateSpan.className = 'release-date';
+            // No separator baked into the text, and none added anywhere else
+            // either: this cell is left at MusicBrainz's OWN rendering, which
+            // puts nothing between the country and the date. Three attempts to
+            // add a gap in CSS were reverted — see DEBUG-NOTES 2026-09-18 — so
+            // the markup here stays byte-identical to MusicBrainz's.
+            // The 📊 panel is a different surface and DOES add one, via
+            // `_buildFlagSegmentsForRoot()`'s `spaceAfter`, because rebuilding
+            // an entry from segments otherwise reads "US2005-12-20" — worse
+            // than before this column was rewritten.
+            if (dateText) dateSpan.textContent = dateText;
+            li.appendChild(dateSpan);
+        }
+
+        return li;
+    }
+
     const SHOW_ALL_JSON_HANDLERS = {
 
         // ── "relations": Place-Events → Artists column ───────────────────────────────
@@ -62868,43 +63069,37 @@ a { color: #1565c0; }`;
                 const date    = entry?.date;
                 if (!country && !date) return null;
 
-                const li = doc.createElement('li');
-                li.setAttribute('aria-label', 'Release event');
-                li.className = 'release-event';
-
-                if (country) {
-                    const code = country.iso_3166_1_codes?.[0] || country.primary_code || country.country_code || '';
-                    const name = country.name || country.primaryAlias || '';
-                    const gid  = country.gid || '';
-
-                    const span = doc.createElement('span');
-                    span.className = `flag flag-${code} release-country`;
-                    const a    = doc.createElement('a');
-                    a.href     = `/area/${gid}`;
-                    const abbr = doc.createElement('abbr');
-                    abbr.title = name;
-                    abbr.textContent = code;
-                    a.appendChild(abbr);
-                    span.appendChild(a);
-                    li.appendChild(span);
-                }
-
+                // 'YYYY' / 'YYYY-MM' / 'YYYY-MM-DD', zero-padded — the exact
+                // format dateParts (ColumnDataExtractor/SyntheticColumnDataExtractor)
+                // already expects from a native "Date" cell.
+                let dateText = '';
                 if (date && date.year) {
-                    // 'YYYY' / 'YYYY-MM' / 'YYYY-MM-DD', zero-padded — the exact
-                    // format dateParts (ColumnDataExtractor/SyntheticColumnDataExtractor)
-                    // already expects from a native "Date" cell.
-                    let dateText = String(date.year);
+                    dateText = String(date.year);
                     if (date.month) {
                         dateText += '-' + String(date.month).padStart(2, '0');
                         if (date.day) dateText += '-' + String(date.day).padStart(2, '0');
                     }
-                    const dateSpan = doc.createElement('span');
-                    dateSpan.className = 'release-date';
-                    dateSpan.textContent = dateText;
-                    li.appendChild(dateSpan);
                 }
 
-                return li;
+                // Markup lives in _buildReleaseEventLi(); this only maps
+                // MusicBrainz's own embedded-JSON field names onto it.
+                // `injectedColumn` stays false because this path reconstructs
+                // cells whose OTHER <li>s are real native markup — padding them
+                // with empty spans the native ones do not have would make one
+                // cell internally inconsistent. The one behaviour change: a
+                // country carrying no resolvable code now contributes no span
+                // at all rather than a degenerate
+                // `class="flag flag- release-country"`, whose bare `flag-`
+                // would have become a garbage flagClass in
+                // `_findCellReleaseEventParts()`. No baseline contains that
+                // shape (checked: 0 occurrences).
+                return _buildReleaseEventLi(doc, {
+                    code: country ? (country.iso_3166_1_codes?.[0] || country.primary_code || country.country_code || '') : '',
+                    name: country ? (country.name || country.primaryAlias || '') : '',
+                    gid:  country ? (country.gid || '') : '',
+                    dateText,
+                    injectedColumn: false,  // native cell: no padding, no added space
+                });
             }
         }
 
@@ -65095,35 +65290,54 @@ a { color: #1565c0; }`;
     /**
      * Renders release-events into one mb-re-cell <td> as a <ul><li> list so
      * that initCollapsableColumns can manage the expand/collapse toggle.
-     * Each <li> represents one release event: country flag + date text.
+     * Each <li> is one release event, in MusicBrainz's OWN native shape —
+     * see `_buildReleaseEventLi()`, which is shared with the show-all JSON
+     * reconstruction so the two cannot drift.
+     *
+     * This used to emit a bespoke `<li class="flag flag-XX">XX  date</li>`
+     * instead, which rendered fine and was unreadable to every consumer that
+     * matters: the 📊 dropdown's `_findCellReleaseEventParts()` /
+     * `_findCellCountryNameParts()` found nothing, and `openUniqDrop()`'s
+     * `iconSel` cannot match a flag class sitting on the walk root itself.
+     * The rendered TEXT is unchanged — the old two-space separator already
+     * collapsed to one through `normalizeExtractedText()` — so existing typed
+     * filters and sort order carry over.
+     *
+     * `injectedColumn: true` keeps one `<li>` per event in BOTH derived
+     * columns even when an event is missing its country or its date, which is
+     * what holds "Release country" and "Release date" in row alignment with
+     * each other. See the builder's own note.
+     *
      * @param {HTMLTableCellElement} cell
      * @param {Array} events  release-events array from WS2
      */
     function _rePopulateCell(cell, events) {
         if (!events || !events.length) return;
+        // REPLACE, never append. Two passes can reach the same cell before
+        // either has stamped `data-re-done`, and this used to append a second
+        // <ul> beside the first — the cell then rendered every release event
+        // twice, and so did both derived columns. A live page hides it behind
+        // WS/2 latency; a stubbed fetch that answers instantly reproduces it
+        // every time, which is how tests/fixtures/uniq-drop-release-events-sections.spec.js
+        // found it. Same idiom, and the same reason, as `_populateCells()`'s
+        // own `td.textContent = ''`.
+        cell.textContent = '';
         const ul = document.createElement('ul');
         ul.style.cssText = 'list-style:none;margin:0;padding:0;';
         for (const ev of events) {
-            const li = document.createElement('li');
-            if (ev.area) {
-                const codes = ev.area['iso-3166-1-codes'];
-                const name  = ev.area.name || '';
-                if (codes && codes.length > 0) {
-                    li.classList.add('flag', 'flag-' + codes[0]);
-                    li.title = name ? `${name} (${codes[0]})` : codes[0];
-                    // Render "XX  date" — country code without brackets, two spaces before date
-                    li.textContent = `${codes[0]}  ${ev.date || '\u00a0'}`;
-                } else {
-                    if (name) li.title = name;
-                    li.textContent = ev.date || '\u00a0';
-                }
-            } else {
-                li.textContent = ev.date || '\u00a0';
-            }
-            ul.appendChild(li);
+            // WS/2's own dialect: hyphenated 'iso-3166-1-codes', 'id' (not
+            // 'gid'), and 'date' already a formatted string.
+            const area = ev.area || null;
+            const li = _buildReleaseEventLi(document, {
+                code: area ? ((area['iso-3166-1-codes'] || [])[0] || '') : '',
+                name: area ? (area.name || '') : '',
+                gid:  area ? (area.id || '') : '',
+                dateText: ev.date || '',
+                injectedColumn: true,
+            });
+            if (li) ul.appendChild(li);
         }
         cell.appendChild(ul);
-
     }
 
     /**

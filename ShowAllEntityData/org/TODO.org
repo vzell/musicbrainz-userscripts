@@ -440,11 +440,15 @@ silently, and only for people who use Save to Disk. No fixture drives that path;
 
 After the test, suite merge it. Then tackle the "the _artMirrorInlineThumbToSourceRow()'s per-row master scan (0.69 ms/row on every multi-table re-render — the largest remaining number I know of)"
 
-* flag rendering mismatch
+* DONE flag rendering mismatch
+** i
 
 1.)
 
-The latest implementations and tests all have been done on 
+The latest implementations and tests all have been done on the host "vzell-lap" which is not as powerfull as "NB-3641" and "petri".
+Also the tests have been run in 3 shards to work around problems.
+
+Should we rerun specific tests on this machine "NB-3641" to get definitiv results ?
 
 2.)
 
@@ -454,9 +458,67 @@ the columns "Release events" and "Release country" compared to other pageTypes w
 
 #+begin_example
 "Release events" column is missing the sections with area and country info and flags - "Release country" - [Image #1]
-"Release country" column double flags, befor and after country name - [Image #2]
+"Release country" column double flags, before and after country name - [Image #2]
 #+end_example
 
 #+begin_example
-@debug/right-flags-release-events.html - raw HTML of final rendered https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances with all sub-tables uncollapased
+@debug/right-flags-release-events.html - raw HTML of final rendered https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances with all sub-tables uncollapsed
 #+end_example
+
+3.)
+
+additionally:
+
+- fix the tab-indentation
+- register "MusicBrainz: Right Side Flags Everywhere" and unregister the obsolete "MusicBrainz_More_Flags_Everywhere" script (I removed them)
+
+** bug
+
+1.)
+
+It's not ""More Flags Everywhere" it's "Right Flags..."
+
+2.)
+
+In the unique value drop down sections, the flags should also render after the entities, see [Image #7] and not as in
+our case before it [Image #8]
+
+** another bug
+
+actually there is another whitespace bug already present in pageTypes e.g. 'artist-releases' in the "Country/Date" column, see [Image #9]
+
+** on columns which render additionally the country abbreviation
+
+This is for e.g. the pageType https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+
+1.)
+
+There is still no spacing between the flag and the date in the "Country/Date" column, see [Image #10], and the raw
+rendered HTML on the final, see page @debug/flag-spacing.html
+
+2.)
+
+on columns like e.g "Country" which render additionally the country code (e.g. "AD") like in [Image #11] both sections,
+
+#+begin_example
+"Country details - Name" - missing
+"Country details - Code" - ok
+#+end_example
+
+should get the flags
+
+* DONE OK
+
+1.)
+
+Still no visual whitespace, see a typical raw cell HTML, @debug/cell-bug.html
+
+2.)
+
+- the XE … and GB … multi-event row looks ok
+- it's not "More Flags Everywhere" decorating these columns, but "Right Flags..."
+
+* still not working
+
+still not working, let's give up. revert everything we have done to the "Country/Date" column and leave it at it's natural rendering but commit everything else as it's working OK.
+

@@ -12651,3 +12651,333 @@ of re-running a shard.
 
 Numbers, host conditions and the per-arm detail: `tests/MEASUREMENTS.org`,
 "Unsharded vs. worker count — NB-3641, 2026-09-18".
+
+## 2026-09-18 — The injected Release-events column was built in a shape nothing could read (branch fix/release-events-native-markup)
+
+Reported as a flag problem on
+`https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances`
+with "MusicBrainz: Right Side Flags Everywhere" installed: the 📊 dropdown for
+"Release events" showed no flags and none of its usual sections, and "Release
+country" showed two flags per entry, one before the name and one after.
+
+**Four independent defects, and only ONE of them was the flag userscript's
+doing.** Root-caused from `debug/right-flags-release-events.html`, the real
+rendered DOM, rather than from the screenshots — and cross-checked against
+`debug/label-rels-final.html`, the same pipeline with the flag userscript
+absent (`mb-hq-flag-img` count: 0), which is what showed three of the four
+reproduce with no third-party script at all.
+
+**The shared cause.** `release-country`, `release-date` and `release-event`
+appear **0 times** in that 1.3 MB page. `_rePopulateCell()` was building
+
+    <li class="flag flag-US" title="United States (US)">US  2005-12-20</li>
+
+where MusicBrainz builds `.release-event` > `.release-country` + `.release-date`.
+Every consumer that reads structure rather than pixels scopes on those classes:
+
+| Consumer | scopes on | found |
+|---|---|---|
+| `_findCellReleaseEventParts()` | `.release-event` | nothing |
+| `_findCellCountryNameParts()` | `.release-country` | nothing |
+| `openUniqDrop()`'s `iconSel` | `span.flag` | nothing — the class was on the `<li>`, which is ALSO the walk root and so never returned by `querySelectorAll()` |
+| `hasFlagIcons` | a column-NAME whitelist | 'Release events' explicitly excluded |
+
+The column rendered perfectly, which is exactly why this survived: nothing was
+missing on screen, only in the dropdown. `_rePopulateCell()` now goes through a
+shared `_buildReleaseEventLi()` that also serves the show-all JSON
+reconstruction, so the two producers cannot drift again, and
+`SyntheticColumnDataExtractor.splitCountryDate` is a pass-through to the native
+extractor instead of re-parsing a two-space separator out of the `<li>`'s text.
+
+**The double flag was downstream of that same shape, not a separate bug.**
+RSFE picks its shape by whether the `.flag` element wraps an
+`a[href*="/area/"]`: with one it neutralizes in place and puts its `<img>` in a
+sibling `span.mfe-flag-wrapper`; without one it appends the `<img>` INSIDE the
+element. Our script-built spans had no anchor, so they got the second shape —
+and only the first was excluded from `iconSel`, so the hollow span and the img
+both matched. Now that these cells emit anchored native markup, RSFE takes the
+first branch there anyway; the guard is kept and pinned separately because any
+anchorless flag span reaches the same path.
+
+**One correction to my own fix, caught by an existing spec.** The first version
+dropped the dropdown icon whenever `resolveFlagVisual()` found nothing
+paintable, reasoning "invisible in the cell ⇒ invisible in the dropdown". Those
+are different facts. A native flag paints from MusicBrainz's sprite stylesheet,
+which is **absent in every fixture** and briefly absent on a slow real page, so
+the resolver legitimately returns null for a perfectly good flag. That stripped
+the trailing flag from every "Entity info - Area name" entry and failed
+`uniq-drop-area-name-flag-position.spec.js`, which exists for exactly that
+guarantee. The guard now keys on the userscript's own `data-hq-processed`
+marker — positive evidence of neutralization — and never on absence of paint.
+
+**A pre-existing bug the new fixture exposed.** `_rePopulateCell()` did
+`cell.appendChild(ul)` with no clear, so two passes reaching one cell before
+either stamped `data-re-done` rendered every event twice, in the cell and in
+both derived columns. WS/2 latency hides it live; a stubbed fetch that answers
+instantly reproduces it every time. The identical unguarded `appendChild` is
+visible in this change's own diff, so it is not a regression from it. Fixed the
+way `_populateCells()` already does it — replace, never append.
+
+**Mutation testing changed the work three times**, which is the argument for
+running it rather than assuming:
+
+- The alignment test only inspected the countryless row, so removing the
+  DATE-side padding left it green. A mirror test for the dateless row now exists.
+- "Remove the `<a>`" passed: `ColumnDataExtractor.splitCountryDate()` rebuilds
+  the anchor itself from the `<abbr>`, so it is not load-bearing for the
+  Country-details sections. Recorded as `expect: "pass"` rather than dropped.
+- **The two hollow-flag guards cover for each other in BOTH directions.**
+  Removing `iconSel`'s exclusion alone passes (the bake guard catches it);
+  removing the bake guard alone passes (the selector catches it). Either one
+  recorded as `expect: "fail"` would have been false. A combined mutation
+  removing both now fails with `RSFE direct-append shape: one icon, not two` —
+  that, not the individual entries, is what shows the pair is load-bearing.
+
+`scripts/mutations/release-events-native-markup.json`, 11 entries, 9 expect-fail
+and 2 expect-pass. Perf gate in `tests/MEASUREMENTS.org`: the cell grew from one
+node per event to four, costing +0.9 ms per pass at 2000 cells with one event
+and +5.6 ms with three — 0.08% and 0.51% of this host's own 1096 ms filter pass.
+
+### Follow-up, same day: the date ran into the flag, and CSS could not fix it
+
+Found by exercising the real page rather than by a test — the fixture suite was
+green and had nothing to say about it. With "Right Side Flags Everywhere"
+installed the cell and the dropdown both rendered `US<flag>2005-12-20`, the date
+jammed against the flag.
+
+**Not a native-markup faithfulness problem.** MusicBrainz's own
+`.release-event` puts `.release-country` and `.release-date` adjacent with no
+whitespace node between them, and this column now reproduces that exactly. The
+crowding comes from the flag userscript: it gives its `<img>`
+`margin-left: 0.40em` but `margin-right: 0.05em`, which is correct on every
+surface where its flag is the last thing in the cell — and this column is the
+one where something follows it.
+
+**Superseded the same day — see "Follow-up 3" below.** The first fix put a
+leading space in the date span's own text, scoped to the injected column. That
+was too narrow: the bug is in MusicBrainz's NATIVE `Country/Date` column too,
+which this script does not build. It is now a stylesheet rule plus a
+segment-builder flag, covering both columns with one mechanism, and the text is
+left byte-identical to MusicBrainz's own.
+
+What was already right in that first attempt, and still holds: the fix needs
+TWO mechanisms, because neither surface can be reached by the other's. A margin
+rule alone cannot touch the 📊 panel — it rebuilds an entry from `flagIconMap`
+segments as `[text][cloned icon][text]` and never clones the `.release-date`
+element at all.
+
+`padForAlignment` became `injectedColumn` in the same edit. Two options now hang
+off it, and they are one fact rather than two: an injected cell is not native
+markup sitting in MusicBrainz's own CSS context, so it pads its own alignment
+spans AND supplies its own separator.
+
+### Follow-up 2: the country sections put the flag before the name, the area sections after it
+
+Also found by looking at a real panel. One dropdown showed both conventions at
+once:
+
+    🇬🇧 » country: GB                    <- "Release events - Country"
+    🌐 » area name: California 🏞        <- "Entity info - Area name"
+
+**The decision had already been made — for one kind only.** `'name'` entries
+used to render `[flag] » area name: Spain` and were changed to
+`[glyph] » area name: Spain [flag]`, with `uniq-drop-area-name-flag-position.spec.js`
+written to pin it. `'revcountry'` and `'countrycode'` were never brought along,
+because they reach `makeValueSynItem()` by a different route: they pass their
+flag as a CLASS STRING in `glyphClass` (the combined `flag flag-XX`), where
+`'name'` passes a baked NODE in `flagNode`. The marker slot rendered whatever
+`glyphClass` held, so for the country kinds that was the flag itself.
+
+Both kinds now put a generic `arealink` glyph in the marker slot — a country is
+an area — and render the flag after the label. The trailing slot builds a span
+from the class string when there is no node to clone; same slot, same position,
+so every flag-bearing entry in the panel reads alike.
+
+**The class-only span deliberately does NOT get `data-hq-skip`.** That marker
+belongs on clones `_bakeFlagIconNode()` resolves from a live cell, which carry
+an inline background that has to survive a flag userscript's `!important`
+blanking rule. This span has no inline background to protect — it is painted by
+MusicBrainz's own `.flag` stylesheet, or by whichever userscript replaces it —
+so opting it out would leave an empty span rather than protect anything.
+
+Two mutations, because the marker alone cannot distinguish "the flag moved" from
+"the flag is gone": one puts it back in the leading slot, the other removes the
+trailing one.
+
+
+### Follow-up 3: the same gap is missing on NATIVE pageTypes, and CSS alone cannot fix it
+
+Reported against `artist-releases`' own `Country/Date` column: `US<flag>1986-05`.
+So follow-up 2's fix was scoped wrongly — the defect is not in what this script
+builds. MusicBrainz's native markup is
+
+    <li class="release-event"><span class="flag flag-XX release-country">…</span
+    ><span class="release-date">1986-05</span></li>
+
+with no whitespace between the two spans, and this column now reproduces it
+byte for byte. It reads fine while the flag is a background sprite ON the
+country span and badly once a flag userscript puts a real `<img>` there.
+
+**The gap cannot go on the image.** "Right Side Flags Everywhere" sets
+`margin-right: 0.05em` INLINE with `!important`, and an inline `!important`
+declaration outranks every stylesheet rule — author `!important` beats normal
+inline, but inline `!important` beats author `!important`. So the rule targets
+`.release-date`, which carries no inline margin:
+
+    table.tbl li.release-event > .release-country:not(.no-country) + .release-date
+
+`:not(.no-country)` keeps a countryless date flush left instead of spacing it
+off an empty span.
+
+**And CSS alone is not enough**, which is the part worth remembering: the 📊
+panel rebuilds an entry from segments and never clones `.release-date`. That
+half is `spaceAfter` on an icon segment whose element sits inside a
+`.release-country` — scoped exactly so, because elsewhere an icon decorates the
+text that FOLLOWS it (an area chain reads `<flag>Los Angeles, <flag>California`)
+and a blanket space would push every flag away from its own name.
+
+**A test that passed for the wrong reason, caught by mutation-testing.** The
+first version of the dropdown assertion had no flag userscript in the fixture —
+and with no image, the walker keeps `US` and the date in ONE text segment, where
+`textParts.join(' ')` supplies the space by itself. Clearing `spaceAfter`
+entirely left the test green. The image is what splits the run in two, so the
+spec now decorates the rendered cells with `tests/fixtures/thirdPartyScripts/rsfe-flags.js`
+(both of that script's branches, from its v2026-09-16.1151 source) before
+asserting. The mutation fails properly now.
+
+One more detail the same run exposed: the entry-finder used `/US\b/`, which
+cannot match `US2005-12-20` — so the mutation reported "entry missing" for what
+is really a spacing defect. Dropped the word boundary so the real assertion is
+what fires.
+
+**And the trap this file already documents, hit again:** the CSS comment was
+written with backticks, inside the `GM_addStyle` template literal. `node --check`
+reported `missing ) after argument list` 15 lines away. Third time recorded;
+the replacement comment says in-line why it uses none.
+
+### Follow-up 4: the snapshot that "showed the bug still there" predated the fix
+
+Reported as the date/flag spacing still being broken on `artist-releases`, with
+`debug/flag-spacing.html` as evidence. The snapshot does not contain the fix:
+`release-country:not(.no-country)` appears **0** times in it, so it was captured
+from the installed 9.99.1111 build rather than this branch. It also carries
+**0** `data-hq-processed` and **0** `mb-hq-flag-img`, i.e. no flag userscript was
+active either — those flags are MusicBrainz's own sprites.
+
+Worth keeping rather than discarding, because it is the first real capture of
+the NATIVE shape this fix has to cover, and it settled the open question
+directly: the selector is now asserted against that page's exact bytes, injected
+into a rendered table so the real stylesheet resolves them —
+`tests/fixtures/uniq-drop-release-events-sections.spec.js`, "the date-spacing
+rule matches MusicBrainz's OWN native Country/Date markup". It passes, and a
+mutation narrowing the rule to `td.mb-re-cell` fails it. So the rule was already
+right; only the evidence was stale.
+
+**The lesson for the next report: check whether the snapshot contains the change
+before diagnosing.** One grep for a distinctive string from the fix answers it,
+and answering it first would have saved re-deriving a defect that was already
+fixed.
+
+### Follow-up 5: only half of a "Country" cell's value got a flag
+
+Same report, second half. A "Country" cell renders both halves of ONE value —
+`United States (US)` — and the dropdown lists them as two sections, "Country
+details - Name" and "- Code". Only the code half was decorated: `countryCodeFlagMap`
+existed, was populated from `_findCellCountryNameParts()`'s own `flagClass`, and
+was passed to `makeValueSynItem()`; there was simply no name-keyed equivalent,
+and the `'countryname'` kind was absent from the marker/trailing-flag lists.
+
+`countryNameFlagMap` now sits beside it, populated in the same pass and — the
+part that is easy to miss — **cached alongside it in `_setUniqDropDataCache()`**.
+Without that a cold dropdown would show the flags and a warm one would not,
+which is the sort of split that reads as a rendering race rather than a missing
+map.
+
+### Follow-up 6: the rule was applying the whole time — it was 4.2px, not 0
+
+Settled from the live page rather than from another snapshot. One console
+expression returned everything at once:
+
+    ruleInAnyStylesheet: true    selectorMatches: 469
+    marginLeft: "4.2px"          fontSize: "12px"
+
+So neither the selector nor the cascade was ever the problem. `0.35em` against
+musicbrainz.org's 12px root font is 4.2px; the fixture that "proved" the rule
+works runs at 16px and produced 5.6px, which is why it read as fine there and
+tight on the real page. **A gap sized in `em` and verified only in a fixture is
+verified at the wrong font size.**
+
+The value is now `0.4em`, chosen rather than guessed: it is exactly the
+`margin-left` that flag userscript gives its own image, so the flag sits evenly
+between the country code and the date instead of hugging one side.
+
+`!important` stays, but it fixed nothing and the code comment no longer implies
+it did.
+
+**Two reporting failures on my side, recorded because they are the reusable
+lesson, not the CSS.**
+
+1. *A truncated read reported as a whole result.* The mutation run was checked
+   with `tail -3`, which showed three `OK` lines, and reported as "18/18". One
+   entry was `UNEXPECTED`: the `!important` edit had invalidated its `find`
+   anchor and `mutation-check.py` correctly refused it as `ERROR`. Counting
+   outcomes explicitly — `grep -c` on `^        OK`, `^UNEXPECTED` and `ERROR` —
+   is the fix, and is cheap.
+2. *A conclusion stated firmer than its evidence.* `debug/flag-spacing.html` was
+   declared to predate the fix because the rule's text was absent from it. These
+   captures contain **zero** `<style>` blocks, so a CSS rule's absence says
+   nothing at all about the build.
+
+Both are the same habit. The snapshot-based check that WOULD have worked is a
+DOM-visible marker, never a stylesheet one.
+
+
+### Follow-up 7: the Country/Date cell gap was REVERTED — root cause found, fix abandoned
+
+Three CSS attempts, all reverted at the user's call. The column is left at
+MusicBrainz's own rendering, which puts nothing between the country and the
+date. Recorded because the root cause WAS found, and anyone tempted to try
+again should start from it rather than from the margin.
+
+**The root cause.** Two numbers from the live page, together, are the whole
+story:
+
+    computed margin-left: 4.8px      rendered gap: 0.59px
+
+Both true at once only if the date is laid out after `.release-country`'s box
+EDGE while the flag image overflows that box. musicbrainz.org's own `.flag`
+rule makes that span a fixed-width 16px inline-block holding a background
+sprite; "Right Side Flags Everywhere" zeroes its `background-image`, `padding`
+and `margin` — but NOT its `width` — so its ~21px image overflows, and any
+margin on the date lands inside the overflow. Reproduced at 0.66px against the
+live 0.59px, and releasing the width gave 5.39px.
+
+So `width: auto !important` on `.release-country:has(img)` did work in the lab.
+It was still reverted: the user reported it as not working on the real page, and
+after three rounds the honest read is that something further up that page's
+cascade is not reproducible here. Leaving a rule that is unverifiable in a
+fixture and unconfirmed in the browser is worse than leaving the column alone.
+
+**What was NOT reverted, and why.** `_buildFlagSegmentsForRoot()`'s `spaceAfter`
+stays. That is the 📊 panel, not the cell, and it is not cosmetic there: the
+panel rebuilds an entry as `[text][cloned icon][text]` with no separator between
+segments, so without it an entry reads "US2005-12-20" — WORSE than before this
+column was rewritten, when the cell was a single text node and
+`textParts.join(' ')` spaced it for free. Reverting it would introduce a
+regression rather than restore a baseline.
+
+**Four rounds of my own diagnosis were wrong, in the same way each time**, and
+that is the reusable part:
+
+| Claimed | Actually |
+|---|---|
+| the snapshot predates the fix (rule text absent) | these captures strip `<style>` entirely — a CSS rule's absence says nothing |
+| the live cascade must be overriding it | it was not; the rule computed 4.8px |
+| 18/18 mutations green | 17 OK, 1 UNEXPECTED — read off a `tail -3` |
+| the flag and date overlap (gap -20px) | the line had WRAPPED in a narrow test column |
+
+Every one came from measuring the wrong thing and reporting it with more
+confidence than the measurement carried. The check that finally worked was
+geometry on the live page — `getBoundingClientRect()` — asked for in one console
+expression. **For anything about visual spacing, measure rects, not computed
+styles, and measure them where the bug is.**

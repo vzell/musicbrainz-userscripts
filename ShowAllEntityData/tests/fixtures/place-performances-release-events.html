@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Place “The Stone Pony” - Performances - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A place-performances-filtered page (link_type_id present => tableMode
+        'single'), shaped for the INJECTED "Release events" column and the two
+        columns derived from it.
+
+        Every Title cell links to a /release/<mbid>, which is what the real
+        page's release sub-table does (see debug/right-flags-release-events.html,
+        whose rows link /release/22904ce0-…) and what BOTH
+        `_extractMbidFromRow()` — it needs the mbid to key the WS/2 answer onto
+        the row — and `_suppressReleaseEventsIfNoReleaseLinks()` require. Without
+        a release link the column is removed and there is nothing to test.
+
+        The four rows cover the four event shapes that behave differently, and
+        the last two are the ones that regressed historically:
+
+          1. country + date          — the ordinary case
+          2. country, NO date        — must still emit an empty .release-date,
+                                       or "Release country" and "Release date"
+                                       fall out of row alignment
+          3. date, NO country        — must still emit an empty
+                                       .release-country.no-country, same reason,
+                                       and must NOT gain MusicBrainz's visible
+                                       "-" placeholder, which would change the
+                                       column's extracted value
+          4. TWO events on one row   — multi-row cell, joined "A and B"
+
+        The release-events payload itself is stubbed per-mbid in the spec.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere placeheader">
+            <h1><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463"><bdi>The Stone Pony</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/place/6a59a67c-fcc5-491f-949c-bfc45bc97463/performances">Performances</a></li></ul>
+        </div>
+        <h2>Performances</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1973-07-28</td>
+                    <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111111"><bdi>Greetings From Asbury Park</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr>
+                    <td>1975-08-25</td>
+                    <td><a class="wrap-anywhere" href="/release/22222222-2222-2222-2222-222222222222"><bdi>Born to Run</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>4:24</td>
+                </tr>
+                <tr>
+                    <td>1978-06-02</td>
+                    <td><a class="wrap-anywhere" href="/release/33333333-3333-3333-3333-333333333333"><bdi>Darkness on the Edge of Town</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>5:35</td>
+                </tr>
+                <tr>
+                    <td>1980-10-17</td>
+                    <td><a class="wrap-anywhere" href="/release/44444444-4444-4444-4444-444444444444"><bdi>The River</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>7:52</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
