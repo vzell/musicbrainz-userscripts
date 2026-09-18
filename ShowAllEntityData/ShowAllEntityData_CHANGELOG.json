@@ -1,5 +1,65 @@
 [
   {
+    "version": "9.99.1116",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "In the 📊 unique-values dropdown, the \"Country details - Name\" entries showed no country flag while the \"Country details - Code\" entries right below them did — the same countries, listed twice, decorated once. A \"Country\" cell renders both halves of one value (\"United States (US)\"), so both sections now show the flag."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1115",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "In the 📊 unique-values dropdown, the \"Release events - Country\" and \"Country details - Code\" entries showed the country flag in front of the entry instead of after it, so one panel could display two different conventions at once — \"[flag] country: GB\" directly above \"[icon] area name: California [flag]\". Country entries now match every other entry: the generic entity icon leads, and the flag follows the name."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1114",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a place's performances page and a label's relationships page, the \"Release events\" column could occasionally list every release event twice — and so could the \"Release country\" and \"Release date\" columns beside it. Two passes could reach the same cell before either had marked it filled, and the second added a second copy rather than replacing the first. It showed up only when the MusicBrainz web service answered unusually quickly, which is why it was easy to miss."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1113",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "With a flag userscript installed (\"MusicBrainz: Right Side Flags Everywhere\"), entries in the 📊 unique-values dropdown could show the same country flag twice — once before the country name and once after — while the table cell itself showed one. When that userscript replaces a flag it cannot simply delete MusicBrainz's original, so it empties it and leaves it in place; the dropdown was counting both the emptied original and the replacement as separate icons. Only one of the two shapes that userscript uses had been recognised. A flag it has emptied is now left out entirely, and the flags this script copies into the dropdown are marked so that userscript does not redecorate them a second time."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1112",
+    "date": "2026-09-18",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a place's performances page and a label's relationships page, the 📊 unique-values dropdown offered far less for the \"Release events\" and \"Release country\" columns than the same columns get everywhere else: no country flags, and none of the \"Release events - Country\", \"- Date\" or \"- Weekday\" groupings, nor \"Country details - Name\" and \"- Code\". Filtering by country on those pages meant typing the value by hand. These two columns are built by this script rather than read from the page, and they were being built in a shape of their own that none of the dropdown's country and date recognisers could read — everything else on the page uses MusicBrainz's own markup, and they now do too. The columns look and read exactly as before; what changes is that the dropdown can finally see into them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1111",
     "date": "2026-09-18",
     "sections": [

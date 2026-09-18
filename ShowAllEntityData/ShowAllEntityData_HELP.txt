@@ -307,15 +307,19 @@ every distinct non-empty value currently visible in that column.
                        "2xVinyl"-style count+type combination in one click),
                        and "- Type" (e.g. "Vinyl", matching regardless of
                        size)
-    — 🌐/📅/📆 Release events — on the "Country/Date" column: distinct
-                       country codes with their native flag (🌐), date text
-                       (📅), and — when the chaban companion script is
-                       installed — weekday abbreviation (📆), each its own
-                       collapsible sub-section: "- Country"/"- Date"/
-                       "- Weekday"
+    — 🌐/📅/📆 Release events — on the "Country/Date" column, and on the
+                       injected "Release events" column (place-performances
+                       and label-relationships): distinct country codes with
+                       their native flag (🌐), date text (📅), and — when the
+                       chaban companion script is installed — weekday
+                       abbreviation (📆), each its own collapsible
+                       sub-section: "- Country"/"- Date"/"- Weekday"
     — 🌍/🏳️ Country details — on the synthetic "Country" column produced by
-                       splitting "Country/Date": "- Name" (🌍) and "- Code"
-                       (🏳️) in two separate sub-sections
+                       splitting "Country/Date", and on "Release country"
+                       produced the same way from the injected "Release
+                       events" column: "- Name" (🌍) and "- Code" (🏳️) in two
+                       separate sub-sections, both showing the country's flag
+                       after the name
     — 🎵/💽 Tracks info — "- Tracks" (distinct per-medium track counts) and
                        "- Multi-medium" (a flag for rows joined by "+")
     — 🧾/🔍 Catalog info — "- Prefix" (distinct catalog-number prefixes, e.g.
@@ -579,15 +583,17 @@ visible while it is engaged and releases it, page-wide.
 • Flag icons (optional, on by default) — "Show Flag Icons In
   Unique-Values Dropdown" in ⚙️ Settings decorates each entry with the same
   flag icon shown in the table cell, for Country/Area/Locality/Region/
-  Location/Place/Country-Date columns (including release-tracks' "Recorded
-  at place"/"Mixed at place" columns, and subdivision icons added by
-  separately-installed userscripts such as "More Flags Everywhere" or
-  "Right Side Flags Everywhere"). An "Entity info - Area name" entry for
-  ANY area — a country or a subdivision such as a state/province/region —
-  always keeps its generic area icon in front of the name; a real flag or
-  subdivision icon, when that area has one, is appended AFTER the name
-  instead of replacing the generic icon — e.g. "» area name: Spain 🇪🇸" or
-  "» area name: Catalunya 🇪🇸".
+  Location/Place/Country-Date/Release-events columns (including
+  release-tracks' "Recorded at place"/"Mixed at place" columns, and
+  subdivision icons added by separately-installed userscripts such as
+  "More Flags Everywhere" or "Right Side Flags Everywhere"). An "Entity
+  info - Area name" entry for ANY area — a country or a subdivision such as
+  a state/province/region — always keeps its generic area icon in front of
+  the name; a real flag or subdivision icon, when that area has one, is
+  appended AFTER the name instead of replacing the generic icon — e.g.
+  "» area name: Spain 🇪🇸" or "» area name: Catalunya 🇪🇸". The country
+  entries under "Release events - Country" and "Country details" follow the
+  same convention: generic icon in front, flag after the name.
 
 PRE-FILTER (Load from Disk — three-phase dialog)
 -------------------------------------------------
