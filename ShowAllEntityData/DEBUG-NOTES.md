@@ -12425,11 +12425,11 @@ told "none".
 Measured on the 4174-row `artist-events` disk fixture (`vzell-lap`, 2026-09-18
 08:27 UTC, median of 5, `scripts/measure-live-date-flag-scan.js`):
 
-| Shape                            | Queries | Median |
-|----------------------------------|---------|--------|
-| per cell — what shipped before   | 87 654  | 64.0 ms |
-| per row — the new first pass     | 4 174   | 4.6 ms  |
-| gated — every later pass         | 0       | 0 ms    |
+| Shape                          | Queries | Median  |
+|--------------------------------|---------|---------|
+| per cell — what shipped before | 87 654  | 64.0 ms |
+| per row — the new first pass   | 4 174   | 4.6 ms  |
+| gated — every later pass       | 0       | 0 ms    |
 
 Step 25's estimate of "~87 700" was right to three figures. Against that page's
 ~3033 ms global filter it is ~2% — the reason to fix it is that it is pure waste
