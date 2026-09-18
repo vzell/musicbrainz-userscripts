@@ -36156,6 +36156,26 @@ a { color: #1565c0; }`;
             td.mb-re-cell a::after {
                 content: none !important;
             }
+            /* A release event renders "<country><flag><date>" with NOTHING
+               between the two spans — that is MusicBrainz's own markup, and
+               this script's injected column reproduces it. It reads fine while
+               the flag is a background sprite ON the country span, and badly
+               once a flag userscript puts a real <img> there: "Right Side Flags
+               Everywhere" gives its image margin-left 0.40em but margin-right
+               0.05em, correct on every surface where its flag ends the cell,
+               and this is the one where a date follows.
+               The gap goes on the DATE, not the image: that script sets its
+               margins inline WITH !important, which no stylesheet rule can
+               outrank. Skipping .no-country keeps a date with no country
+               flush left instead of indenting it. The panel needs its own
+               fix -- see spaceAfter in _buildFlagSegmentsForRoot() -- because
+               it rebuilds an entry from segments and never clones this
+               element. NOTE: no backticks in this comment, deliberately; it
+               lives inside a GM_addStyle template literal, where one would
+               terminate the string and break the whole script. */
+            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {
+                margin-left: 0.35em;
+            }
             td.mb-rel-cell a,
             td.mb-rel-cell img,
             td.mb-re-cell a,
@@ -56356,6 +56376,11 @@ a { color: #1565c0; }`;
                             // this is only a fallback for a clone with none baked.
                             if (!iconClone.style.marginRight) iconClone.style.marginRight = '4px';
                             item.appendChild(iconClone);
+                            // See the segment builder: a real text space rather
+                            // than a margin, because a third-party flag image
+                            // sets its own margins inline WITH !important and
+                            // nothing in a stylesheet can outrank that.
+                            if (seg.spaceAfter) item.appendChild(document.createTextNode(' '));
                             continue;
                         }
                         if (filter) {
@@ -56941,7 +56966,23 @@ a { color: #1565c0; }`;
                             // have if the icon had never been in the DOM.
                             if (baked) {
                                 flushText();
-                                segments.push({ type: 'icon', node: baked });
+                                // A release event reads "<country><flag><date>",
+                                // and splitting the text run at the icon loses
+                                // the join that would otherwise have put a space
+                                // between the two halves — segments are
+                                // concatenated with no separator, so the date
+                                // ends up against the flag. Scoped to a flag
+                                // INSIDE a .release-country, which is exactly
+                                // that shape: elsewhere an icon decorates the
+                                // text that FOLLOWS it (an area chain reads
+                                // "<flag>Los Angeles, <flag>California"), and a
+                                // space there would push every flag away from
+                                // the name it belongs to.
+                                segments.push({
+                                    type: 'icon',
+                                    node: baked,
+                                    spaceAfter: !!node.closest('.release-country'),
+                                });
                             }
                         }
                         continue;
@@ -62900,27 +62941,15 @@ a { color: #1565c0; }`;
         if (dateText || injectedColumn) {
             const dateSpan = doc.createElement('span');
             dateSpan.className = 'release-date';
-            // The space between the country and the date has to live in the
-            // TEXT, and CSS would otherwise be the obvious choice. It cannot
-            // be: the 📊 dropdown rebuilds an entry as [text][cloned icon][text]
-            // and never clones the `.release-date` element, so a margin rule
-            // would space the table cell and leave the dropdown crammed.
-            //
-            // Native cells are left alone — they sit in MusicBrainz's own
-            // stylesheet, and a reconstructed <li> has to match the real ones
-            // beside it. An injected cell has neither guarantee, and a flag
-            // userscript makes it worse rather than better: "Right Side Flags
-            // Everywhere" gives its <img> margin-left 0.40em but margin-right
-            // 0.05em, on the assumption that nothing follows the flag. Here a
-            // date does, so it rendered as "US<flag>2005-12-20".
-            //
-            // Only when a country precedes it: with none, the date is the
-            // cell's first visible text and a leading space would just indent
-            // it. Every reader trims (`_findCellReleaseEventParts()`,
-            // `ColumnDataExtractor.splitCountryDate()`) or collapses
-            // (`normalizeExtractedText()`), so no extracted value, filter key
-            // or sort order changes.
-            if (dateText) dateSpan.textContent = (injectedColumn && code ? ' ' : '') + dateText;
+            // No separator baked into the text. The gap between the country
+            // and the date is supplied for EVERY release-event cell — this
+            // column's and MusicBrainz's own "Country/Date" — by the
+            // `.release-country:not(.no-country) + .release-date` rule in the
+            // stylesheet, and in the 📊 panel by `_buildFlagSegmentsForRoot()`'s
+            // `spaceAfter` flag. Keeping it out of the text is what lets one
+            // mechanism cover both, and keeps this builder producing markup
+            // byte-identical to MusicBrainz's.
+            if (dateText) dateSpan.textContent = dateText;
             li.appendChild(dateSpan);
         }
 

@@ -12753,20 +12753,18 @@ crowding comes from the flag userscript: it gives its `<img>`
 surface where its flag is the last thing in the cell — and this column is the
 one where something follows it.
 
-**The separator has to be TEXT, and that is the non-obvious half.** A margin
-rule on `.release-date` was the obvious fix and would have been wrong: the 📊
-dropdown rebuilds an entry from `flagIconMap` segments as
-`[text][cloned icon][text]` and never clones the `.release-date` element at all,
-so CSS would have spaced the table cell and left the dropdown exactly as
-crammed. The space is a leading character on the date span's own text, and the
-spec asserts it in BOTH places for that reason.
+**Superseded the same day — see "Follow-up 3" below.** The first fix put a
+leading space in the date span's own text, scoped to the injected column. That
+was too narrow: the bug is in MusicBrainz's NATIVE `Country/Date` column too,
+which this script does not build. It is now a stylesheet rule plus a
+segment-builder flag, covering both columns with one mechanism, and the text is
+left byte-identical to MusicBrainz's own.
 
-Conditional on a country actually preceding the date: with none, the date is the
-cell's first visible text and a leading space would simply indent it. Nothing
-downstream sees it either way — `_findCellReleaseEventParts()` and
-`ColumnDataExtractor.splitCountryDate()` both `.trim()`, and
-`normalizeExtractedText()` collapses — so no extracted value, filter key or sort
-order moves.
+What was already right in that first attempt, and still holds: the fix needs
+TWO mechanisms, because neither surface can be reached by the other's. A margin
+rule alone cannot touch the 📊 panel — it rebuilds an entry from `flagIconMap`
+segments as `[text][cloned icon][text]` and never clones the `.release-date`
+element at all.
 
 `padForAlignment` became `injectedColumn` in the same edit. Two options now hang
 off it, and they are one fact rather than two: an injected cell is not native
@@ -12805,3 +12803,54 @@ so opting it out would leave an empty span rather than protect anything.
 Two mutations, because the marker alone cannot distinguish "the flag moved" from
 "the flag is gone": one puts it back in the leading slot, the other removes the
 trailing one.
+
+
+### Follow-up 3: the same gap is missing on NATIVE pageTypes, and CSS alone cannot fix it
+
+Reported against `artist-releases`' own `Country/Date` column: `US<flag>1986-05`.
+So follow-up 2's fix was scoped wrongly — the defect is not in what this script
+builds. MusicBrainz's native markup is
+
+    <li class="release-event"><span class="flag flag-XX release-country">…</span
+    ><span class="release-date">1986-05</span></li>
+
+with no whitespace between the two spans, and this column now reproduces it
+byte for byte. It reads fine while the flag is a background sprite ON the
+country span and badly once a flag userscript puts a real `<img>` there.
+
+**The gap cannot go on the image.** "Right Side Flags Everywhere" sets
+`margin-right: 0.05em` INLINE with `!important`, and an inline `!important`
+declaration outranks every stylesheet rule — author `!important` beats normal
+inline, but inline `!important` beats author `!important`. So the rule targets
+`.release-date`, which carries no inline margin:
+
+    table.tbl li.release-event > .release-country:not(.no-country) + .release-date
+
+`:not(.no-country)` keeps a countryless date flush left instead of spacing it
+off an empty span.
+
+**And CSS alone is not enough**, which is the part worth remembering: the 📊
+panel rebuilds an entry from segments and never clones `.release-date`. That
+half is `spaceAfter` on an icon segment whose element sits inside a
+`.release-country` — scoped exactly so, because elsewhere an icon decorates the
+text that FOLLOWS it (an area chain reads `<flag>Los Angeles, <flag>California`)
+and a blanket space would push every flag away from its own name.
+
+**A test that passed for the wrong reason, caught by mutation-testing.** The
+first version of the dropdown assertion had no flag userscript in the fixture —
+and with no image, the walker keeps `US` and the date in ONE text segment, where
+`textParts.join(' ')` supplies the space by itself. Clearing `spaceAfter`
+entirely left the test green. The image is what splits the run in two, so the
+spec now decorates the rendered cells with `tests/fixtures/thirdPartyScripts/rsfe-flags.js`
+(both of that script's branches, from its v2026-09-16.1151 source) before
+asserting. The mutation fails properly now.
+
+One more detail the same run exposed: the entry-finder used `/US\b/`, which
+cannot match `US2005-12-20` — so the mutation reported "entry missing" for what
+is really a spacing defect. Dropped the word boundary so the real assertion is
+what fires.
+
+**And the trap this file already documents, hit again:** the CSS comment was
+written with backticks, inside the `GM_addStyle` template literal. `node --check`
+reported `missing ) after argument list` 15 lines away. Third time recorded;
+the replacement comment says in-line why it uses none.

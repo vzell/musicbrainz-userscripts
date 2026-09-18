@@ -1255,6 +1255,19 @@ from every "Entity info - Area name" entry — caught by
 `uniq-drop-area-name-flag-position.spec.js`. Key on the userscript's own
 `data-hq-processed` marker instead.
 
+**A release event's country and date need an explicit gap, in TWO places.**
+MusicBrainz's own markup puts `.release-country` and `.release-date` adjacent
+with no whitespace, and this script's injected column reproduces that exactly.
+Once a flag userscript replaces the sprite with a real `<img>`, the date ends up
+against the flag on EVERY release-event column, native ones included. The gap
+goes on `.release-date` (a stylesheet rule), never on the image — that script
+sets its margins inline WITH `!important`, which no stylesheet rule can outrank.
+CSS alone is not enough: the 📊 panel rebuilds an entry from `flagIconMap`
+segments and never clones `.release-date`, so it needs `spaceAfter` on the icon
+segment. Scoped to an icon inside a `.release-country`, because elsewhere an
+icon decorates the text that FOLLOWS it and a blanket space would push every
+flag away from its own name.
+
 **A real flag NEVER goes in a dropdown entry's leading marker slot.** That slot
 holds a generic entity glyph (`arealink` and friends); the flag is appended
 AFTER the label, so an entry reads `[glyph] » area name: Spain [flag]`. This

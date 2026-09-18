@@ -147,19 +147,6 @@
     "expect": "fail"
   },
   {
-    "name": "the date loses its leading space in the injected column",
-    "why": "Removes the separator between the country and the date. \"Right Side Flags Everywhere\" gives its <img> margin-left 0.40em but margin-right 0.05em, assuming nothing follows the flag — so without this the cell and the dropdown entry both render \"US<flag>2005-12-20\" with the date jammed against the flag. It has to be text rather than CSS: the dropdown rebuilds an entry as [text][cloned icon][text] and never clones the .release-date element, so a margin rule would fix the cell only. Must fail on the spacing test.",
-    "edits": [
-      {
-        "find": "            if (dateText) dateSpan.textContent = (injectedColumn && code ? ' ' : '') + dateText;",
-        "replace": "            if (dateText) dateSpan.textContent = dateText;"
-      }
-    ],
-    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
-    "grep": "space between the country and the date",
-    "expect": "fail"
-  },
-  {
     "name": "the country flag goes back into the leading marker slot",
     "why": "Restores `marker.className = glyphClass` for the country kinds, putting the real flag back where the generic glyph belongs. The same decision was made once already for 'name' entries — which used to render '[flag] » area name: Spain' and now render '[glyph] » area name: Spain [flag]' — and the country kinds were never brought along, so one panel showed both conventions at once. Fails on 'leading slot keeps a generic glyph' rather than on 'the flag is NOT in the leading slot' — the marker becomes `flag flag-US`, so the missing generic glyph is what trips first. Both assertions cover the same relocation.",
     "edits": [
@@ -183,6 +170,45 @@
     ],
     "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
     "grep": "reads like an area-name entry",
+    "expect": "fail"
+  },
+  {
+    "name": "the stylesheet no longer spaces the date off the country",
+    "why": "Removes the rule that separates a release event's date from its country. A flag userscript's image sets margin-right 0.05em INLINE with !important, which no stylesheet rule can outrank, so the gap has to go on .release-date instead — and without it the cell reads \"US<flag>2005-12-20\". Affects MusicBrainz's own Country/Date column as well as this injected one; both carry the same markup.",
+    "edits": [
+      {
+        "find": "            table.tbl li.release-event > .release-country:not(.no-country) + .release-date {\n                margin-left: 0.35em;\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "separated, in the cell AND the dropdown",
+    "expect": "fail"
+  },
+  {
+    "name": "the date spacing stops skipping a countryless event",
+    "why": "Drops the :not(.no-country) qualifier, so a date with no country is spaced off an EMPTY span and simply indented. Seen only by the not-indented test; the main spacing test stays green, which is why both exist.",
+    "edits": [
+      {
+        "find": ".release-country:not(.no-country) + .release-date {",
+        "replace": ".release-country + .release-date {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "no country is not indented",
+    "expect": "fail"
+  },
+  {
+    "name": "dropdown segments lose the space after a release-country flag",
+    "why": "Clears spaceAfter. The panel rebuilds an entry as [text][cloned icon][text] with no separator between segments, so splitting the run at the flag loses the join that would have spaced the date — and the stylesheet cannot help, because the panel never clones the .release-date element. Scoped to a flag inside a .release-country precisely so an area chain, where the icon decorates the text that FOLLOWS it, keeps its flags tight against their names.",
+    "edits": [
+      {
+        "find": "                                    spaceAfter: !!node.closest('.release-country'),",
+        "replace": "                                    spaceAfter: false,"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-release-events-sections.spec.js",
+    "grep": "separated, in the cell AND the dropdown",
     "expect": "fail"
   }
 ]
