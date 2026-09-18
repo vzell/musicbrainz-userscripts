@@ -2441,15 +2441,42 @@ header of its own) and falling back to live rows before capture. Found by the
 ~AUDIT.md~ §3.6 sweep, same shape as ~_countLengthMismatchRows~/~_msSourceRows()~;
 ~tests/fixtures/live-date-flag-button-counts.spec.js~ pins it.
 
-*Cost.* It runs ~cell.querySelectorAll('.mb-live-date-flag')~ for every cell of
-every row of every ~table.tbl~ — ~87 700 failing subtree scans per pass on
-~artist-events~. The buttons it feeds are created unconditionally in
-~mb-global-summary-container~ (~:32629~, asserted by
-~tests/fixtures/filter-bar-containers.spec.js~), so the early-out at ~:32919~
-never fires and this runs on every pageType, including the great majority that
-have no live-date flags anywhere. Gate the walk on the page actually carrying
-one, the way ~_updateAllColHeaderCounts~ gates its own per-cell inline-art probe
-behind a single table-wide ~querySelector~ (~:57119-57124~).
+*Cost — implemented on branch* ~perf/live-date-flag-scan-gate~, /TODO until it
+is on/ ~main~.
+
+It ran ~cell.querySelectorAll('.mb-live-date-flag')~ for every cell of every row
+of every ~table.tbl~. The buttons it feeds are created unconditionally in
+~mb-global-summary-container~ (asserted by
+~tests/fixtures/filter-bar-containers.spec.js~), so its early-out never fired
+and this ran on every pageType, including the great majority that have no
+live-date flags anywhere. Measured on the 4174-row =artist-events= fixture:
+*87 654 failing subtree queries, 64.0 ms per filter pass* — the estimate above
+was right. Full table and method in ~tests/MEASUREMENTS.org~.
+
+Two changes, worth roughly 14x and then the rest:
+
+- *One query per ROW, not per cell.* The column index now comes from the flag's
+  own ~<td>~ (~cellIndex~ IS the position in ~row.cells~, so it is the same
+  answer) instead of from the loop. 87 654 → 4 174 queries, 64.0 → 4.6 ms.
+- *A gate*, ~_liveDateFlagsPresent~: ~true~ once ~_appendLiveDateFlag()~ has
+  built one, ~false~ once a tally over the CAPTURED rows came back empty, ~null~
+  while unknown. Every pass after the first is then one comparison, 0 ms.
+
+*The gate must not be a DOM query, and that is the whole difficulty.*
+~runFilter()~ REMOVES non-matching rows, so
+~document.querySelector('.mb-live-date-flag')~ answers "no" as soon as a filter
+excludes the flagged rows — which is §3.6's vanishing-button bug re-entered
+through the back door. Hence the two non-DOM inputs, and hence ~false~ being
+cached only from the captured-rows branch: the pre-capture fallback's "nothing
+found" means "no rows yet", and would stick. ~_hydrateAndRenderFromSnapshotData()~
+resets it, because hydrated rows carry their flags as stored HTML without
+~_appendLiveDateFlag()~ ever running.
+
+~tests/fixtures/live-date-flag-scan-gate.spec.js~ pins both halves — the counter
+stops moving on a flagless page, AND the ⚠️ button still counts the data on a
+page that has flags. Without the second, an early ~return~ passes the first.
+Mutation list ~scripts/mutations/live-date-flag-scan-gate.json~ (7, three of them
+~expect: "pass"~ for the snapshot/re-fetch resets no fixture reaches).
 
 *** TODO Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
 

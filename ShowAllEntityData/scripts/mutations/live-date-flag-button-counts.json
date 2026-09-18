@@ -4,8 +4,8 @@
     "why": "Reverts _countLiveDateFlags() to walking the rendered tables. runFilter() REMOVES non-matching rows and _updateLiveDateFlagButtons() hides a button whose count is 0, so a filter that excludes the flagged rows takes the button away. Must fail on 'A: the ⚠️ button survives a filter that hides its rows' (visible expected, hidden).",
     "edits": [
       {
-        "find": "        const _grouped = (typeof groupedRows !== 'undefined' && groupedRows.length) ? groupedRows : [];\n        const _all     = (typeof allRows !== 'undefined' && allRows.length) ? allRows : [];\n        if (_grouped.length || _all.length) {\n            _grouped.forEach((g, i) => tally(g.rows, tables[i]));\n            if (_all.length) tally(_all, tables[0]);\n        } else {",
-        "replace": "        if (false) {\n        } else {"
+        "find": "        if (_grouped.length || _all.length) {",
+        "replace": "        if (false) {"
       }
     ],
     "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",
@@ -17,8 +17,8 @@
     "why": "Makes every flag fall into the positional `Col N` bucket instead of the header name. The totals and the buttons' visibility are unaffected — only the tooltip changes — so this is what the per-column control test is for. Must fail on 'the tooltip breaks the count down by column'.",
     "edits": [
       {
-        "find": "                        const colName = headers[colIdx] || `Col ${colIdx}`;",
-        "replace": "                        const colName = `Col ${colIdx}`;"
+        "find": "                    const colName = headers[colIdx] || `Col ${colIdx}`;",
+        "replace": "                    const colName = `Col ${colIdx}`;"
       }
     ],
     "spec": "tests/fixtures/live-date-flag-button-counts.spec.js",

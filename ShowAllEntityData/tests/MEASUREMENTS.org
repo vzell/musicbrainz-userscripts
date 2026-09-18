@@ -1597,3 +1597,40 @@ posters) and a 10 000-row page.
 - Pre-existing, unchanged: =_artMirrorInlineThumbToSourceRow()= does the 0.69 ms
   scan per row on EVERY multi-table re-render (Case C1), i.e. on the order of
   N × 0.35–0.7 ms per keystroke on a page with inline art.
+
+* The live-date flag scan — PERFORMANCE.org Step 25's cost half (2026-09-18)
+
+Decides whether gating `_countLiveDateFlags()` is worth doing, and how much of
+the win comes from the gate versus from scanning per ROW instead of per CELL.
+Measured on the real rendered DOM of the =artist-events= disk fixture (4174
+rows, 21 columns, =tableMode: 'multi'=, Bruce Springsteen's "Events" listing),
+replaying each scan shape over the same live rows in the same page — a
+like-for-like comparison of the removed work.
+
+*Deliberately not an end-to-end arm.* The quantity in question is scan work on a
+pageType that has no flags at all, and CLAUDE.md records the same =main= arm
+coming back 1.5-1.85x apart across hosts. That noise is an order of magnitude
+larger than what is being measured, so a filter-latency A/B would have said
+nothing either way.
+
+| Host        | UTC run                 | Shape                                                    | Queries | Median of 5 |
+|-------------+-------------------------+----------------------------------------------------------+---------+-------------|
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | per CELL — what shipped before                           |  87 654 | *64.0 ms*   |
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | per ROW — the new first pass, column read from the =<td>= |   4 174 | *4.6 ms*    |
+| =vzell-lap= | 2026-09-18 08:27:26–:52 | gated — every later pass                                 |       0 | *0 ms*      |
+
+=scripts/measure-live-date-flag-scan.js=, node v24.11.1, 4 cores, uptime 61.5 h.
+
+** What these establish
+
+- Step 25's estimate was right: *87 654* failing subtree queries per filter
+  pass, and it cost *64 ms* of every keystroke on this page — for a result that
+  is always "none", since `.mb-live-date-flag` is built only on =release-tracks=.
+- Against that page's ~3033 ms global filter (CLAUDE.md's reference point) this
+  is ~2%. Real, but the reason to fix it is that it is *pure waste on every
+  pageType but one*, not that it dominates anything.
+- The two halves are worth roughly 14x and then the rest: per-cell → per-row is
+  64.0 → 4.6 ms, and the gate takes the remaining 4.6 to 0 on every pass after
+  the first. A page that HAS flags keeps paying the per-row cost, which is what
+  correctness requires — and a tracklist is tens of rows, not thousands.
+- =flagsFound= is 0 here, which is the point: this is the majority case.

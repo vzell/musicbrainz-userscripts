@@ -11154,6 +11154,10 @@
      */
     function _appendLiveDateFlag(container, result) {
         if (!result) return;
+        // The one authoritative "this page HAS flags" signal — see
+        // `_liveDateFlagsPresent`. It must come from building one, never from
+        // querying the live DOM, which a filter can empty.
+        _liveDateFlagsPresent = true;
         const _flag = document.createElement('span');
         _flag.className = 'mb-live-date-flag';
         _flag.textContent = ' ' + result.icon;
@@ -34014,6 +34018,36 @@ a { color: #1565c0; }`;
     actionsGroup.appendChild(clearAllFiltersBtn);
 
     /**
+     * Whether this page carries any `.mb-live-date-flag` at all: `true` once
+     * one has been built or found, `false` once a tally over the CAPTURED rows
+     * came back empty, `null` while still unknown.
+     *
+     * `_countLiveDateFlags()` runs on every filter pass, and the flags exist
+     * only on `release-tracks` — every other pageType paid a full row walk to
+     * be told "none", 87 700 failing subtree scans per pass on the 4174-row
+     * `artist-events` fixture (PERFORMANCE.org Step 25).
+     *
+     * **It must not be derived from the live DOM.** `runFilter()` REMOVES
+     * non-matching rows, so `document.querySelector('.mb-live-date-flag')`
+     * answers "no" as soon as a filter excludes the flagged rows — which is
+     * AUDIT.md §3.6's vanishing-button bug re-entered through the gate. The
+     * only inputs are `_appendLiveDateFlag()` building one, and a tally over
+     * the captured source rows finding none.
+     *
+     * A `false` is cached ONLY from the captured-rows branch. The fallback
+     * branch runs before the fetch has captured anything, so a `false` there
+     * would mean "no rows yet", not "no flags", and would stick.
+     */
+    let _liveDateFlagsPresent = null;
+
+    /**
+     * How many rows `_countLiveDateFlags()` has scanned since the page loaded.
+     * Read by `__saTest.liveDateFlagRowScans()`; see its JSDoc for why this
+     * needs an explicit counter rather than a DOM assertion.
+     */
+    let _liveDateFlagRowScans = 0;
+
+    /**
      * Scans every rendered `table.tbl` for `.mb-live-date-flag` spans (added
      * by the live-recording date check — see `_appendLiveDateFlag`) and
      * tallies them by icon kind and by column. Counts EVERY flag instance
@@ -34029,6 +34063,12 @@ a { color: #1565c0; }`;
             warning: { total: 0, byColumn: new Map() },
             error:   { total: 0, byColumn: new Map() }
         };
+        // Step 25's cost half. This runs on every filter pass, and the flags
+        // exist only on `release-tracks`; once a tally over the captured rows
+        // has come back empty, every later pass is this one comparison instead
+        // of a walk of every row. `_appendLiveDateFlag()` is what can make it
+        // true again, so a later fetch that builds flags is not locked out.
+        if (_liveDateFlagsPresent === false) return result;
         // Counts the CAPTURED SOURCE rows, not the rendered ones: `runFilter()`
         // REMOVES non-matching rows, and `_updateLiveDateFlagButtons()` hides a
         // button whose count is 0 — so a live-DOM tally made the ⚠️/❌ buttons
@@ -34048,15 +34088,20 @@ a { color: #1565c0; }`;
         const tally = (rows, table) => {
             const headers = headersOf(table);
             rows.forEach(row => {
-                Array.from(row.cells).forEach((cell, colIdx) => {
-                    cell.querySelectorAll('.mb-live-date-flag').forEach(flag => {
-                        const bucket = flag.textContent.includes('⚠️') ? result.warning
-                            : flag.textContent.includes('❌') ? result.error : null;
-                        if (!bucket) return;
-                        bucket.total++;
-                        const colName = headers[colIdx] || `Col ${colIdx}`;
-                        bucket.byColumn.set(colName, (bucket.byColumn.get(colName) || 0) + 1);
-                    });
+                _liveDateFlagRowScans++;
+                // ONE subtree scan per ROW, not one per cell. The column comes
+                // from the flag's own `<td>` instead of from the loop index,
+                // which is the same answer — `cellIndex` IS the position in
+                // `row.cells` — for a 21st of the queries on a wide table.
+                row.querySelectorAll('.mb-live-date-flag').forEach(flag => {
+                    const bucket = flag.textContent.includes('⚠️') ? result.warning
+                        : flag.textContent.includes('❌') ? result.error : null;
+                    if (!bucket) return;
+                    bucket.total++;
+                    const cell = flag.closest('td, th');
+                    const colIdx = cell ? cell.cellIndex : -1;
+                    const colName = headers[colIdx] || `Col ${colIdx}`;
+                    bucket.byColumn.set(colName, (bucket.byColumn.get(colName) || 0) + 1);
                 });
             });
         };
@@ -34065,6 +34110,11 @@ a { color: #1565c0; }`;
         if (_grouped.length || _all.length) {
             _grouped.forEach((g, i) => tally(g.rows, tables[i]));
             if (_all.length) tally(_all, tables[0]);
+            // Authoritative: these are ALL the rows, filtered or not, so an
+            // empty tally really does mean the page has no flags. The fallback
+            // branch below cannot conclude that — "nothing captured yet" is not
+            // "nothing to find", and caching false there would stick.
+            _liveDateFlagsPresent = (result.warning.total + result.error.total) > 0;
         } else {
             // Nothing captured yet (called before the fetch, or on a page the
             // script only decorated): the rendered rows are all there is.
@@ -46132,6 +46182,10 @@ a { color: #1565c0; }`;
      * @returns {Promise<void>}
      */
     async function startFetchingProcess(e, buttonConfig, baseDef) {
+        // A new fetch replaces the row set, so last time's "this page has no
+        // live-date flags" is no longer an answer about these rows. Cheap to
+        // re-determine: one walk, on the first filter pass after the render.
+        _liveDateFlagsPresent = null;
         // MERGE LOGIC: Combine base definition with button-specific overrides.
         // For page types that carry an `entityFeatures` map (e.g.
         // 'series-releases', 'collections-releases'), resolve the per-entity
@@ -68210,6 +68264,11 @@ a { color: #1565c0; }`;
      *   used in place of opts.file.name when opts.file is null.
      */
     async function _hydrateAndRenderFromSnapshotData(data, opts = {}) {
+        // Hydrated rows can carry `.mb-live-date-flag` in their stored HTML
+        // without `_appendLiveDateFlag()` ever running in this session, so the
+        // flag state has to be re-determined rather than assumed — otherwise a
+        // restored release tracklist shows no ⚠️/❌ buttons at all.
+        _liveDateFlagsPresent = null;
         const {
             file = null,
             filterQueryRaw = '',
@@ -79929,6 +79988,24 @@ a { color: #1565c0; }`;
              */
             picardEntityScans() {
                 return _picardEntityScans;
+            },
+
+            /**
+             * How many rows `_countLiveDateFlags()` has walked since the page
+             * loaded.
+             *
+             * Exposed for the same reason as `picardEntityScans()` above. That
+             * function runs on every filter pass via
+             * `updateFilterButtonsVisibility()`, and on every pageType except
+             * `release-tracks` there is nothing for it to find — but "found
+             * nothing after walking 4174 rows" and "did not walk" produce
+             * byte-identical DOM: two hidden buttons either way. A test types
+             * a filter keystroke and asserts this did not move.
+             *
+             * @returns {number}
+             */
+            liveDateFlagRowScans() {
+                return _liveDateFlagRowScans;
             },
 
             /**
