@@ -381,3 +381,10 @@ live browser for some time to maybe catch some more bugs.
 * Parking lot in AUDIT.org
 
 the ▶N▤/Structure-section mismatch, the per-row master-row scan on multi-table re-renders, and _adoptJesus2099MsLength() — none of them examined yet, and none urgent.
+
+* What's still open
+
+unchanged: Step 25's cost half — _countLiveDateFlags() running querySelectorAll('.mb-live-date-flag') over every cell of every row on every filter pass, ~87 700 failing subtree scans on
+artist-events, on every pageType including the majority with no live-date flags at all. The fix has a stated shape already (gate the walk behind one table-wide querySelector, as _updateAllColHeaderCounts
+does for its inline-art probe), and it's real userscript work: fixture spec, mutation list, and a measured A/B in one session. Also still untouched are the ▶N▤-vs-Structure-section mismatch your screenshot
+found, _artMirrorInlineThumbToSourceRow()'s per-row master scan, and the two recorded harness weaknesses.
