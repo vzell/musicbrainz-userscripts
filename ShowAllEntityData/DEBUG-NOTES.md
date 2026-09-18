@@ -12232,3 +12232,47 @@ expected, each on its own labelled assertion, including the `null`-into-`cols[]`
 sentinel trap. Recorded as `expect: pass`, KNOWN UNCOVERED: dropping the
 per-frame coalescing guard — a cost, not a wrong answer, and three corrected
 rows cannot show it.
+
+## 2026-09-18 — The 📊 collapsed/expanded entries kept their pre-toggle row list (hotfix, branch fix/collapse-state-filter-staleness)
+
+`AUDIT.md` §3.8, live twin §10 L8 — confirmed live by the user on 9.99.1098
+before this spec was written. Reproduced there in a fixture too.
+
+**Symptom.** Pick "▶ collapsed multi-row cells (K)" → K rows. Uncheck, expand one
+of those cells, pick the entry again: the dropdown says K−1 and the table still
+shows K, including the cell just expanded. And expanding a cell while that entry
+was filtering left the row on screen.
+
+**Root cause.** Not content and not a cache of text: `expandedCells` (keyed
+`"rowIdx:colIdx"`) is what `_cellMatchesStructureMode()`'s `collapsed`/`expanded`
+modes read. A toggle changes which rows they match while every filter INPUT stays
+the same, so `_buildFilterKey()` produces the same key and `_filterResultCache`
+replays. The five sites that write `expandedCells` all dropped the uniq-dropdown
+cache — which is exactly why the COUNTS kept up and made the mismatch visible —
+and none of them touched the filter side.
+
+**Fixture results** (`tests/fixtures/collapse-state-filter-staleness.spec.js`,
+`vzell-lap`, 2026-09-18, Catalog# column of the Greetings release group, 46
+collapsed multi-row cells): control passes on `main`; B (45 expected, **46**) and
+D (45 expected, **46**) fail; **C, the isolation test, PASSES on main** — a fresh
+cache key sees the expanded cell at once, which is what pins this to a replayed
+row list rather than to stale state.
+
+**Fix.** One writer, `_applyExpandedCellState()`, replacing the five hand-rolled
+copies (`_applyCollapseState()` ×2, `ensureCollapseDelegate()`'s list, prose and
+CAA/EAA branches). It drops the uniq-drop cache as before, and on an actual
+change schedules `_scheduleCollapseStateFilterRefresh()`: drop only the cached
+row lists whose key mentions those modes, then re-run an active filter —
+coalesced per animation frame, since the column-header and global mass toggles
+walk every cell of a column.
+
+**Mutation check** (`scripts/mutations/collapse-state-filter-staleness.json`),
+6/6 as expected, each on its own labelled assertion. Two are recorded as
+`expect: pass`, KNOWN UNCOVERED: the no-op gate and the per-frame coalescing
+guard are both cost, not correctness, and 46 cells cannot show the difference.
+
+**Fixture note.** `tests/fixtures/releasegroup-releases-multirow-catalog.html` is
+the real page the user verified, captured with `scripts/capture-page-fixture.js`
+(which redacts credential-shaped strings). Its page-1 shell is served for page 2
+as well, so rows appear twice — harmless here, since every expectation is read
+from the dropdown rather than hard-coded.

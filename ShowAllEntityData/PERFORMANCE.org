@@ -1031,6 +1031,10 @@ while rebasing onto ~main~).
   (~initCollapsableColumns()~'s one-time "start expanded by default"
   pre-population) needs none — it runs before any dropdown cache for that
   table could exist.
+  /2026-09-18 (AUDIT.md §3.8):/ those 5 places are now ONE —
+  ~_applyExpandedCellState()~ — which also drops the cached filter results that
+  read those modes and re-runs an active filter. The uniq-drop half alone kept
+  the COUNTS right while the rows stayed as they were before the toggle.
 - *Correctness hazard 2 — async-populated columns* (this is
   PERFORMANCE.org's own Step 8 for the uniq-drop cache, folded in here
   rather than left as a known-shipped bug). Several columns fill
