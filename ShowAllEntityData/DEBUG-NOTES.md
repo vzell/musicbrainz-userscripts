@@ -13252,3 +13252,76 @@ because "share the gate" is the obvious-looking tidy-up.
 page-error exclusions (that captured shell's own MusicBrainz scripts throw). All
 6 mutations behaved as predicted, all `expect: "fail"`. Full fixture suite 375
 passed.
+
+## 2026-09-19 — retrying three failed rows cost two thousand requests
+
+Branch `feat/rel-retry-failed-only`. `org/503-handling.org` F7 / item 8,
+Relationships half. The CAA half stays blocked: nothing on the art path records
+that a request failed *transiently*, since F5 deliberately kept the in-memory
+zero for both a genuine 404 and a 503.
+
+**The defect.** `_relRetryTable()` collects every `td.mb-rel-cell[data-mbid]` in
+the table and re-requests all of them. On a 2000-row table with three failures
+that is 2000 requests at one per 1.1 s — about forty minutes to repair three
+seconds of trouble. `_relRetryAll()` does the same page-wide.
+
+**What shipped**: `#mb-rel-retry-failed` (`⚠⟳ N`), present only when something
+failed. Both existing buttons are untouched — "force a genuine refetch of a
+table I believe is stale" and "recover the failures" are different intents, and
+there is a mutation for the future simplification that would collapse them.
+
+**Two real bugs surfaced while making the tests pass**, neither of which was the
+thing being built:
+
+- **`_relRetryMbids()` cleared `data-rel-error` on the LIVE DOM only.** A
+  failure a filter was hiding kept its marker, and the impl's candidate scan and
+  `_relQueueStillWants()` both read a marked cell as "leave alone" — so it was
+  stranded *permanently*, silently, even after a retry the user watched succeed.
+  Markers are now cleared on the source rows too.
+- **`_relRetryAnchorFor()`**: the anchor walk stopped at the `<h2>` and returned
+  `null`, so on a single-table page with cover art off the retry buttons were
+  created and then dropped on the floor. That is every single-table FIXTURE
+  (`FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` off), which is why no
+  spec had ever seen these buttons and why this only came to light now.
+
+**Three things I got wrong first, all caught by mutation-testing.** Worth
+recording because each looked right:
+
+1. **"Present but dimmed at zero" does not answer trap 2.** The org offers
+   "count source rows, OR keep the zone present and merely dimmed" and I took
+   the second as the cheaper route. It is not equivalent: a filter that hides
+   the failures still dims the control into uselessness, which is the same
+   defect wearing a different hat. The count has to be filter-proof either way,
+   and once it is, absent-at-zero is fine and adds no button to a clean page.
+2. **My filter test was measuring the wrong thing.** It filtered every row away
+   and asserted the label still read `⚠⟳ 1`. That passes on a live-DOM-only
+   count too — because a filter triggers no cell write, so nothing recomputes
+   the label at all. The mutation that strips the source-row scan passed against
+   it. The assertion now goes through `__saTest.relFailedMbids()`, and the test
+   pins the *recovery*, not the label.
+3. **The repaint hook was redundant and expensive.** I hung
+   `_relRefreshFailedRetryButtons()` off `_relScheduleProgressRefresh()`, which
+   is the obvious place. Its mutation could not be made to fail — because
+   `_relCreateRetryButtons()` already runs when the Phase-2 queue drains, i.e.
+   once every failure has settled. And `_relFailedMbidsPageWide()` walks every
+   captured source row, so a per-animation-frame call is thousands of
+   `querySelectorAll()`s per frame on a large page. Removed rather than kept as
+   belt and braces. **A mutation that will not fail is worth reading as a
+   question about the code, not only about the test.**
+
+**Scope deviations from the org's UI design, both deliberate.** Plain sibling
+button rather than a segmented pill (user's call: the CAA half is blocked, so a
+half-converted header would read inconsistently). And page-wide rather than per
+table — scoping zone 4 to one table needs a table → source-rows mapping that
+`_relScheduleProgressRefresh()`'s own comment says is unreliable, and it saves
+nothing, since F7 is about not re-requesting the successes. That mapping is the
+first problem to solve when the per-table pill is built.
+
+**What is NOT guaranteed.** A filtered-out failure is not re-*fetched* while it
+is off screen: `initRelationshipsColumn()`'s candidate scan is live-DOM-based.
+It is un-marked, so it loads as soon as it is back in view, and the spec pins
+that rather than claiming an immediate fetch.
+
+Six mutations, five `expect: "fail"` and one honest `expect: "pass"` — the
+done-wins rule needs a fixture listing the same entity twice, and no committed
+fixture has one.

@@ -68685,13 +68685,36 @@ a { color: #1565c0; }`;
                 `🔗 Retry: evicted ${mbids.length} IDB record${mbids.length === 1 ? '' : 's'}`,
                 `Force-retry cleared ${mbids.length} rel-ws2 IDB record(s) for ${entityType}; fetching fresh from network`);
         }
-        mbids.forEach(mbid => {
-            document.querySelectorAll(`td.mb-rel-cell[data-mbid='${mbid}']`)
-                .forEach(td => { td.dataset.relDone = ''; delete td.dataset.relError; td.innerHTML = ''; });
-        });
+        // The captured SOURCE rows as well as the live DOM. `runFilter()` REMOVES
+        // non-matching rows, so a row a filter is hiding has no live cell at
+        // all — and its master cell keeps `data-rel-error`, which
+        // `initRelationshipsColumn()`'s candidate scan and
+        // `_relQueueStillWants()` both treat as "leave this one alone". The
+        // result was a retry that silently skipped exactly the rows the user
+        // could not see: pressing ⚠⟳ with a filter active recovered the visible
+        // failures and left the hidden ones broken for good. Found by
+        // mutation-testing `rel-retry-failed-only.spec.js`, which asserts the
+        // request count for a filtered-out failure.
+        const _wanted = new Set(mbids);
+        const _clearIn = (root) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('td.mb-rel-cell[data-mbid]').forEach(td => {
+                if (!_wanted.has(td.dataset.mbid)) return;
+                td.dataset.relDone = '';
+                delete td.dataset.relError;
+                td.innerHTML = '';
+            });
+        };
+        _clearIn(document);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_clearIn));
+        if (typeof allRows !== 'undefined') allRows.forEach(_clearIn);
         _relRetryActive = true;
         initRelationshipsColumn();
         _relRetryActive = false;
+        // The markers this just cleared are what the ⚠⟳ counts are read from,
+        // and a retry that recovers everything produces no further failure write
+        // to ride the coalesced refresh. Repaint immediately.
+        _relRefreshFailedRetryButtons();
     }
     /**
      * Creates and inserts Relationship retry buttons (🔗⟳) into the page header
@@ -68709,10 +68732,51 @@ a { color: #1565c0; }`;
      * No-ops when `sa_enable_relationships_column` is disabled or no injected
      * columns are active.
      */
+    /**
+     * The element a per-table Relationships retry button is inserted after.
+     *
+     * Preference order: this table's artwork retry button (so the run reads as
+     * one group of controls), then its own `<h3>` sub-heading.
+     *
+     * **On a SINGLE-table page the `<h2>` counts as that heading; on a
+     * multi-table page it does not.** There the `<h2>` is the page heading and
+     * belongs to `#mb-rel-retry-global`, so a sub-table's own button must not
+     * land on it and the walk stops. On a single-table page it is this table's
+     * only heading — and before this, the walk stopped there too and returned
+     * `null`, so the button was built and then dropped on the floor whenever
+     * there was no artwork retry button to anchor to. That is every
+     * single-table page with cover art switched off, which is also every
+     * single-table FIXTURE (`loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces
+     * `sa_enable_caa_pics` off), which is why no spec had ever seen these
+     * buttons.
+     *
+     * @param   {HTMLTableElement} tbl
+     * @param   {number} i  The table's index among `table.tbl`.
+     * @returns {?Element}  `null` when there is nowhere sensible to put it.
+     */
+    /** Inline style shared by every Relationships retry control. */
+    const _REL_RETRY_BTN_CSS = 'cursor:pointer;padding:1px 4px;border:1px solid #aaa;border-radius:3px;background:#f5f5f5;vertical-align:middle;font-size:0.8em;margin-left:3px;line-height:1;display:inline-flex;align-items:center;box-sizing:border-box;transition:transform 0.1s,box-shadow 0.1s;';
+
+    function _relRetryAnchorFor(tbl, i) {
+        const _art = document.getElementById('mb-caa-toggle-btn-retry-' + i)
+                  || document.getElementById('mb-eaa-toggle-btn-retry-' + i);
+        if (_art) return _art;
+        const _single = !(activeDefinition && activeDefinition.tableMode === 'multi');
+        let el = tbl.previousElementSibling;
+        while (el) {
+            if (el.tagName === 'H3') return el.querySelector('button:last-of-type') || el;
+            if (el.tagName === 'H2') {
+                return _single ? (el.querySelector('button:last-of-type') || el) : null;
+            }
+            el = el.previousElementSibling;
+        }
+        return null;
+    }
+
     function _relCreateRetryButtons() {
         if (!Lib.settings.sa_enable_relationships_column) return;
         if (!_relPageHasColumn()) return;
-        const C = 'cursor:pointer;padding:1px 4px;border:1px solid #aaa;border-radius:3px;background:#f5f5f5;vertical-align:middle;font-size:0.8em;margin-left:3px;line-height:1;display:inline-flex;align-items:center;box-sizing:border-box;transition:transform 0.1s,box-shadow 0.1s;';
+        const C = _REL_RETRY_BTN_CSS;
         function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';b.title=t;b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
         // The global Relationships retry button is only meaningful on multi-table
         // pages where there are multiple sub-tables.  On single-table pages the
@@ -68731,13 +68795,176 @@ a { color: #1565c0; }`;
                        || document.querySelector('h2 .mb-row-count-stat');
                 if (a) a.after(gb);
             }
+
         }
         Array.from(document.querySelectorAll('table.tbl')).forEach((tbl,i)=>{
             const sb=mk('mb-rel-retry-'+i,'Retry Relationship icons for this sub-table (network reload, clears IDB)',()=>_relRetryTable(tbl));
+            const a=_relRetryAnchorFor(tbl,i);
+            if(sb&&a)a.after(sb);
             if(!sb)return;
-            const a=document.getElementById('mb-caa-toggle-btn-retry-'+i)||document.getElementById('mb-eaa-toggle-btn-retry-'+i)||(()=>{let el=tbl.previousElementSibling;while(el){if(el.tagName==='H3')return el.querySelector('button:last-of-type')||el;if(el.tagName==='H2')break;el=el.previousElementSibling;}return null;})();
-            if(a)a.after(sb);
         });
+        // A freshly built ⚠⟳ carries no count yet, and on a settled page no
+        // further cell write is coming to trigger the coalesced refresh. Paint
+        // them once here or they sit looking enabled with nothing to do.
+        _relRefreshFailedRetryButtons();
+    }
+
+    /**
+     * Every distinct MBID whose Relationships lookup FAILED, page-wide.
+     *
+     * **Reads the captured SOURCE rows as well as the live DOM, and that is the
+     * whole point.** `runFilter()` REMOVES non-matching rows rather than hiding
+     * them, so a tally taken from the live tbody drops to zero exactly when a
+     * filter excludes the rows that failed — and a control driven by it then
+     * disappears, or dims into uselessness, at the moment it is most needed.
+     * CLAUDE.md records the identical bug for `_updateLengthMismatchButtons()`
+     * and `_countLiveDateFlags()`; `_countLengthMismatchRows()` walking
+     * `_msSourceRows()` is the fix being copied here.
+     *
+     * An MBID done ANYWHERE is excluded even if another of its cells still
+     * carries `data-rel-error`: the same entity can appear in several rows,
+     * `_relWriteResult()` clears the marker only on the cells it writes, and
+     * re-requesting something already answered is the waste this exists to
+     * remove.
+     *
+     * Page-wide, not per table, deliberately. Scoping it to one table would
+     * need a table -> source-rows mapping this file states is not reliable (see
+     * `_relScheduleProgressRefresh()`: merged discography view folds other
+     * groups' rows into the first-occurrence table), and it would save nothing:
+     * F7 is about not re-requesting the SUCCESSES, which is orthogonal to which
+     * table they are in. When the segmented per-table pill is built, that
+     * mapping is the problem to solve first.
+     *
+     * @returns {Set<string>}
+     */
+    function _relFailedMbidsPageWide() {
+        const _failed = new Set();
+        const _done = new Set();
+        const _scan = (root) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('td.mb-rel-cell[data-mbid]').forEach(td => {
+                const m = td.dataset.mbid;
+                if (!m) return;
+                if (td.dataset.relDone === '1') _done.add(m);
+                else if (td.dataset.relError) _failed.add(m);
+            });
+        };
+        _scan(document);
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_scan));
+        if (typeof allRows !== 'undefined') allRows.forEach(_scan);
+        _done.forEach(m => _failed.delete(m));
+        return _failed;
+    }
+
+    /**
+     * Retries ONLY the Relationships lookups that failed.
+     *
+     * org/503-handling.org F7. `_relRetryTable()`/`_relRetryAll()` collect every
+     * `td.mb-rel-cell[data-mbid]` in scope and re-request all of them, successes
+     * included, so recovering three failed cells on a 2000-row table costs 2000
+     * requests at one per 1.1 s — about forty minutes to repair three seconds of
+     * trouble.
+     *
+     * Both of those are deliberately LEFT ALONE. "Force a genuine refetch of a
+     * table I believe is stale" is a different intent from "recover the
+     * failures", and both are legitimate; collapsing them would quietly remove
+     * the first.
+     *
+     * Grouped by each cell's own table's stamped entityType, the same way
+     * `_relRetryAll()` does and for the same reason. An MBID that appears only
+     * on rows a filter has removed is still retried — it is in the failed set,
+     * and `_relRetryMbids()` resolves its cells itself.
+     *
+     * @returns {void}
+     */
+    function _relRetryFailedAll() {
+        if (!Lib.settings.sa_enable_relationships_column) return;
+        const _failed = _relFailedMbidsPageWide();
+        if (!_failed.size) return;
+        const _pageDefaultEt = (activeInjectedColumns[0] || {}).entityType;
+        const _byEt = new Map();
+        const _assign = (root) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('td.mb-rel-cell[data-mbid]').forEach(td => {
+                const _mbid = td.dataset.mbid;
+                if (!_mbid || !_failed.has(_mbid)) return;
+                const _tbl = td.closest ? td.closest('table.tbl') : null;
+                const _et = (_tbl && _tbl.dataset.mbRelEntityType) || _pageDefaultEt;
+                if (!_et) return;
+                if (!_byEt.has(_et)) _byEt.set(_et, new Set());
+                _byEt.get(_et).add(_mbid);
+            });
+        };
+        _assign(document);
+        // A source row has no `closest('table.tbl')`, so it can only contribute
+        // the page default -- which is right for every pageType that does not
+        // stamp per-group entity types, and is the same fallback
+        // `_relRetryAll()` uses. Live cells are scanned FIRST so a stamped type
+        // wins wherever one exists.
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_assign));
+        if (typeof allRows !== 'undefined') allRows.forEach(_assign);
+        Lib.debug('relationships',
+            `_relRetryFailedAll: retrying ${_failed.size} failed MBID(s)`);
+        _byEt.forEach((mbidSet, entityType) => {
+            _relRetryMbids([...mbidSet], entityType, _relIncOptionsForEntityType(entityType));
+        });
+    }
+
+    /**
+     * Creates, updates or removes the single failed-only retry control.
+     *
+     * Present exactly when something has failed, which is safe here ONLY
+     * because `_relFailedMbidsPageWide()` reads the source rows: a control keyed
+     * on a live-DOM tally would vanish the moment a filter hid the failed rows.
+     * That is not hypothetical -- an earlier draft of this kept the control
+     * present but DIMMED at zero, which turned out to be the same defect wearing
+     * a different hat, since a filter still dimmed it into uselessness.
+     *
+     * One page-wide control rather than one per table, anchored after whichever
+     * reload-everything button exists (`#mb-rel-retry-global` on multi-table
+     * pages, `#mb-rel-retry-0` on single-table ones) so the two read as a run.
+     *
+     * **Deliberately NOT hooked into `_relScheduleProgressRefresh()`**, which is
+     * the obvious place and was the first attempt. Two reasons, and the second
+     * is the load-bearing one: it is redundant, because
+     * `_relCreateRetryButtons()` runs when the Phase-2 queue DRAINS — exactly
+     * when every failure has settled — and ends by calling this; and it is
+     * expensive, because `_relFailedMbidsPageWide()` walks every captured source
+     * row, so a per-animation-frame call would be thousands of
+     * `querySelectorAll()`s per frame on a large page while artwork and
+     * relationships are still loading. Mutation-testing found the redundancy
+     * (`scripts/mutations/rel-retry-failed-only.json` had an entry for the hook
+     * that could not be made to fail); the cost is why it was removed rather
+     * than kept as belt and braces.
+     *
+     * @returns {void}
+     */
+    function _relRefreshFailedRetryButtons() {
+        const _existing = document.getElementById('mb-rel-retry-failed');
+        if (!Lib.settings.sa_enable_relationships_column || !_relPageHasColumn()) {
+            if (_existing) _existing.remove();
+            return;
+        }
+        const n = _relFailedMbidsPageWide().size;
+        if (!n) {
+            if (_existing) _existing.remove();
+            return;
+        }
+        const _btn = _existing || document.createElement('button');
+        if (!_existing) {
+            _btn.id = 'mb-rel-retry-failed';
+            _btn.type = 'button';
+            _btn.style.cssText = _REL_RETRY_BTN_CSS;
+            _btn.addEventListener('click', e => { e.stopPropagation(); _relRetryFailedAll(); });
+        }
+        _btn.textContent = `⚠⟳ ${n}`;
+        _btn.title = `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that failed, `
+                   + 'instead of re-requesting every row. Rows a filter is hiding are included.';
+        if (!_existing) {
+            const _a = document.getElementById('mb-rel-retry-global')
+                    || document.getElementById('mb-rel-retry-0');
+            if (_a) _a.after(_btn);
+        }
     }
 
     /**
@@ -81294,6 +81521,22 @@ a { color: #1565c0; }`;
              * @param {number|string|null|undefined} status
              * @returns {boolean}
              */
+            /**
+             * The MBIDs `_relFailedMbidsPageWide()` currently reports as failed.
+             *
+             * Exposed because this set is the one thing about the failed-only
+             * retry with no DOM surface at all: once a filter has removed the
+             * failed rows, "is the count still right" cannot be read from the
+             * page, and the button's label is repainted only on a cell write.
+             * A spec asserting the label alone measures whether the button was
+             * repainted, not whether the set is filter-proof.
+             *
+             * @returns {string[]} Sorted, so a comparison is stable.
+             */
+            relFailedMbids() {
+                return [..._relFailedMbidsPageWide()].sort();
+            },
+
             isTransientHttp(status) {
                 return _isTransientHttp(status);
             },

@@ -1932,6 +1932,56 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## Relationships retry: two buttons, two intentions
+
+`org/503-handling.org` F7. `#mb-rel-retry-{i}` / `#mb-rel-retry-global` still
+reload EVERYTHING; `#mb-rel-retry-failed` (one page-wide control, `⚠⟳ N`)
+recovers only what failed. **Keep both** — "force a refetch of a table I believe
+is stale" and "recover the failures" are different intentions, and a mutation
+exists for the plausible future simplification that collapses them.
+
+- **The failed set reads the captured SOURCE rows, not just the live DOM**
+  (`_relFailedMbidsPageWide()`). `runFilter()` REMOVES non-matching rows, so a
+  live-DOM tally loses exactly the failures a filter is hiding. An earlier draft
+  kept the control present but DIMMED at zero instead of absent, thinking that
+  answered the trap: it did not — a filter still dimmed it into uselessness.
+  The control is absent at zero, which is safe only BECAUSE the count is
+  filter-proof.
+- **It is page-wide, not per table, and that is a decision.** Scoping to one
+  table needs a table → source-rows mapping this file says is unreliable (see
+  `_relScheduleProgressRefresh()`: merged view folds other groups' rows into the
+  first-occurrence table). It also saves nothing — F7 is about not re-requesting
+  the SUCCESSES. That mapping is the first problem to solve when the segmented
+  per-table pill gets built.
+- **`_relRetryMbids()` clears markers on the source rows too.** It used to clear
+  only the live DOM, so a filtered-out failure kept `data-rel-error` — which the
+  impl's candidate scan and `_relQueueStillWants()` both read as "leave alone",
+  stranding it permanently. It is now merely pending and loads when it returns
+  to view. **What is NOT guaranteed: it is not re-fetched while off screen**,
+  because the candidate scan is live-DOM-based. The spec pins the recovery, not
+  an immediate fetch.
+- **Do NOT hook the repaint into `_relScheduleProgressRefresh()`.** It is
+  redundant — `_relCreateRetryButtons()` runs when the Phase-2 queue drains,
+  i.e. once every failure has settled, and ends by calling the refresh — and it
+  is expensive, since `_relFailedMbidsPageWide()` walks every source row, so a
+  per-frame call is thousands of `querySelectorAll()`s per frame on a big page.
+  Mutation-testing is what found the redundancy.
+- **`_relRetryAnchorFor()` treats `<h2>` as an anchor on SINGLE-table pages
+  only.** On a multi-table page the `<h2>` is the page heading and belongs to
+  the global button. Before this the walk stopped there and returned `null`, so
+  on a single-table page with cover art off the retry buttons were created and
+  dropped on the floor — which is every single-table FIXTURE
+  (`FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` off), and why no spec
+  had ever seen them.
+
+Covered by `tests/fixtures/rel-retry-failed-only.spec.js`; mutation list
+`scripts/mutations/rel-retry-failed-only.json`, which carries one honest
+`expect: "pass"` — the done-wins rule needs a fixture listing the same entity
+twice, and no committed fixture has one. `__saTest.relFailedMbids()` exists
+because the set has no DOM surface once a filter has removed its rows, and the
+button's label is repainted only on a cell write, so asserting the label alone
+measures "the button was not repainted" instead.
+
 ## Release events: one request for the whole page, so losing it costs the column
 
 `org/503-handling.org` F4. `initReleaseEventsColumn()` now goes through
