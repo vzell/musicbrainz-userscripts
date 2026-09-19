@@ -346,22 +346,130 @@ both are legitimate.
    source order silently decides. Three deltas in the existing family are
    load-bearing for exactly this reason; see CLAUDE.md.
 
-** Open question — what does zone 2 DO?
+** DECIDED — zone 2 opens an artwork summary for the table
 
-Splitting the thumb and the count into two click targets was asked for, and the
-thumb's action is obvious (toggle the strip). The count's is not. Two targets
-that do the same thing is worse than one target, so zone 2 needs either a
-distinct action or to be merged back into zone 1. Candidates, none chosen:
+Settled 2026-09-19. The four-zone shape stands; zone 4 stays.
 
-- a pure DISPLAY, not a control — merge back into zone 1, and let the count
-  carry the failure state inline (=36= → =36 ⚠7=), which removes zone 4 as a
-  separate thing entirely;
-- scroll the strip to its first image / jump to the strip;
-- open an artwork summary for the table.
+*This is not just "something for the count to do".* It closes a real gap: today
+the only place artwork state is reported at all is
+=_showCaaCompletionToast()=, and that surface is page-wide, transient
+("click to dismiss") and fires on the =_caaQueue='s =onIdle=. CLAUDE.md already
+records that on a large listing *it never fires* — measured still empty and
+hidden after 300 s on =artist-releasegroups= while artwork was visibly painting.
+So on exactly the pages where a user most wants to know what happened, there is
+currently nothing to look at. A per-table panel that reads current state on open
+is the fix, and the count is the natural place to hang it.
 
-*Recommendation*: decide this before any code. The "count carries the failure
-state" variant is the smallest design and drops a zone, at the cost of making
-the recovery action less discoverable.
+*The data already exists and is already assembled* — see the tail of
+=_showCaaCompletionToast()=: =iconTotal=, =inlineTotal=, =grandTotal=, and a
+four-tier cache breakdown (🟢 memory / 🟡 network / 🔵 IDB / 🗄️ timed) already
+rendered as both a toast body and a tooltip. What is missing is *scope* (it is
+page-wide) and *timing* (it is computed once, on drain).
+
+*** What the archive actually gives us, and what we already have
+
+Checked against <https://musicbrainz.org/doc/Cover_Art_Archive/API> on
+2026-09-19, per the root CLAUDE.md rule. =GET /release/{mbid}= returns
+={release, images[]}=, and each image carries *exactly nine* documented fields:
+
+| Field        | Type   | The doc's own words                                  | Used today?    |
+|--------------+--------+------------------------------------------------------+----------------|
+| =id=         | string | "archive.org's internal file id"                     | yes, 1 site    |
+| =image=      | string | full URL to the original                             | yes            |
+| =thumbnails= | object | =250= / =500= / =1200=, plus deprecated =small=/=large= | yes, 8 sites |
+| =types=      | array  | "list of zero or more types for the image"           | yes, 3 sites   |
+| =front=      | bool   | "indicates if this is the 'main front'"              | *no*           |
+| =back=       | bool   | "indicates if this is the 'main back'"                | *no*           |
+| =comment=    | string | "a free text comment"                                | yes, 3 sites   |
+| =approved=   | bool   | "whether the image was approved by the musicbrainz edit system" | yes, 1 site |
+| =edit=       | int    | "the edit id on musicbrainz (e.g. 123)"              | *no*           |
+
+=/release-group/{mbid}= returns the same image shape and adds a =release=
+field — "the specific release from which the art was sourced".
+
+*Everything above is ALREADY FETCHED AND ALREADY PERSISTED.* Tier 3 does
+=images = Array.isArray(json.images) ? json.images : []= and hands that array
+verbatim to =_artIdbPutMetadata(entityPath, count, images)=, so the whole
+record — every field, every thumbnail size — is sitting in the =metadata= IDB
+store right now. *The summary panel therefore costs ZERO new requests and zero
+new storage.* It is a pure read of data the script already pays for and then
+throws away.
+
+Four things are stored on every image and surfaced nowhere:
+
+- =edit= — a MusicBrainz edit id, i.e. a link to =/edit/{id}=. For an editor
+  chasing "who added this cover and when", that is the single most useful field
+  in the record, and it is currently dead weight in the cache.
+- =front= / =back= — the archive's own "this is THE main front" flags, which are
+  not the same thing as ='Front' ∈ types=: an image can be typed Front without
+  being the main front. Worth showing exactly because the distinction is
+  invisible today.
+- The full thumbnail ladder. The script reads whichever size it needs; the
+  summary can say which sizes actually exist per image, which is how a missing
+  =1200= (common on old uploads) stops being a mystery.
+- On a release-group listing, =release= — *which release supplied this cover*.
+  Nothing in the script can answer that today.
+
+*** Proposed contents, per table
+
+| Group    | Rows                                                                                           |
+|----------+------------------------------------------------------------------------------------------------|
+| Entities | total / with artwork / none / *failed* / still pending                                         |
+| Images   | icon + inline + strip, as the toast already breaks them down                                   |
+| Cache    | the existing four tiers (🟢 memory, 🟡 network, 🔵 IDB, 🗄️ timed), scoped to this table      |
+| Types    | Front / Back / Booklet / Medium / Tray / Obi / Matrix-Runout / …, counted from =types[]=        |
+| Flags    | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
+| Sizes    | how many images offer =1200= / =500= / =250=                                                   |
+| Edits    | =edit= ids, linked to =/edit/{id}=                                                             |
+| Sourced  | release-group listings only: which release each cover came from                                |
+| Failures | the failing entities by name, each a link, plus a "retry these" action                         |
+
+The Failures group is what ties zone 2 to zone 4: *zone 2 explains, zone 4
+acts*. Zone 4 stays as the one-click path — a user who has already seen the
+panel should not have to reopen it to retry.
+
+*Do not add a request to enrich this.* The archive publishes no batch or bulk
+endpoint (same doc, same date), so anything not in the record above costs one
+request per entity — which is the cost this whole file exists to reduce. If a
+field is wanted that the archive does not return, the answer is a MusicBrainz
+WS/2 lookup, and it needs its own gate and its own measurement.
+
+*** Traps specific to this zone
+
+1. *It must work MID-LOAD, which is the whole point.* Do not gate it on the
+   queue draining, do not reuse the toast's "has it completed" signal, and do
+   not wait on =#mb-info-display-caa=. Read current state when the panel opens.
+   A summary that only becomes available once everything succeeded is useless on
+   precisely the pages that motivated it.
+2. *Do not reuse the toast's accumulators for a per-table count.*
+   =_showCaaCompletionToast()='s =s.icon[key]= / =s.inline[key]= are PAGE-WIDE
+   tallies. A per-table panel needs its own pass, and that pass must walk the
+   SOURCE rows — =runFilter()= removes non-matching rows, so a live-tbody tally
+   silently reports "the filtered subset" as if it were the table. Same rule as
+   trap 2 above, same fix (=_countLengthMismatchRows()= / =_msSourceRows()=).
+3. *Follow =.mb-col-uniq-wrap=, do not invent a panel idiom.* It is the exact
+   precedent: the one member of the column-header family that is NOT a toggle
+   but a panel opener. Copy its conventions — an "on" state of
+   =.mb-col-uniq-active= (two classes, so it wins on specificity regardless of
+   source order) rather than =aria-pressed=, and one panel open at a time, which
+   =_uniqDropOwner= already manages by clearing the class from the previous
+   owner.
+4. *Drive it from =ctx=, never from the string "CAA".* EAA shares
+   =sa_enable_caa_pics= and the whole pipeline; =ctx.column= is ='CAA'= or
+   ='EAA'= and =ctx.key= is the debug channel. A hardcoded panel works on
+   release pages and silently mislabels every event page.
+5. *The panel's own counts need the uniq-drop cache discipline.* If it is
+   opened while artwork is still arriving, its numbers are a snapshot; either
+   refresh it on the same coalesced hook the progress badge uses, or state the
+   time it was taken. Do not cache it under a key that a later write cannot
+   invalidate — CLAUDE.md's "Writing cell text AFTER the render" applies.
+
+*** What this does not change
+
+Zone 2 is a panel opener, so it has no pressed state and never changes what is
+loaded. It cannot be the recovery affordance on its own, which is why the
+"count carries the failure state inline" variant (=36= → =36 ⚠7=) was NOT
+taken: it would have merged an explanation and an action into one target.
 
 ** What this does NOT address
 
