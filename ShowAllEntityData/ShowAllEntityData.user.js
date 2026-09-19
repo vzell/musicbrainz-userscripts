@@ -18206,7 +18206,7 @@
      */
     const _MS_BATCH_SIZE = 100;
 
-    /** Attempts per batch, including the first. WS2 503s intermittently under bot load. */
+    /** Attempts per batch, including the first. WS2 fails transiently under bot load. */
     const _MS_BATCH_TRIES = 3;
 
     /** Milliseconds between batches — the MusicBrainz Web Service allows 1 req/s. */
@@ -18376,10 +18376,10 @@
      * MusicBrainz models instrument credits as artist-recording relationships
      * carrying an instrument attribute (scripts/probe-ms-browse-endpoints.py).
      *
-     * A 503 is retried rather than treated as an answer: the Web Service
-     * returns them in bursts under bot load — measured at roughly one request
-     * in three while this was being built — and a burst is not a fact about
-     * the data.
+     * A transient status (`_isTransientHttp()` — 429/502/503/504) is retried
+     * rather than treated as an answer: the Web Service returns 503 in bursts
+     * under bot load — measured at roughly one request in three while this was
+     * being built — and a burst is not a fact about the data.
      *
      * The retry loop itself lives in `_ws2GetJson()`, shared with the
      * Relationships column; this function supplies the spacing between attempts.
@@ -18392,13 +18392,106 @@
         const url = `/ws/2/recording?query=${query}&limit=${_MS_BATCH_SIZE}&fmt=json`;
         const res = await _ws2GetJson(url, {
             tries: _MS_BATCH_TRIES,
-            beforeRetry: attempt => new Promise(r => setTimeout(r, _MS_BATCH_DELAY * attempt)),
+            // The server's own `Retry-After` is a FLOOR on our widening backoff,
+            // never a replacement for it — see `_ws2GetJson()`'s JSDoc.
+            beforeRetry: (attempt, retryAfterMs) => new Promise(
+                r => setTimeout(r, Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs))),
             dbg: _msDbg,
             label: '_msFetchOneBatch',
         });
         return res.ok
             ? { ok: true, recordings: (res.data && res.data.recordings) || [], detail: '' }
             : { ok: false, recordings: [], detail: res.detail };
+    }
+
+    /**
+     * HTTP statuses that mean "ask again in a moment", as opposed to "this is
+     * the answer".
+     *
+     * MusicBrainz answers 503 in bursts under bot load, its reverse proxy
+     * answers 502/504 while a deploy rolls, and 429 is the rate limiter asking
+     * us to slow down. All four say something about the SERVER's minute rather
+     * than about the data, so all four are worth another attempt.
+     *
+     * Deliberately absent, so nobody "completes" the set later: 500 (a real
+     * server-side error — asking again only costs time), 408 (MusicBrainz does
+     * not emit it), and every 4xx other than 429, which answers the same way
+     * however often it is asked.
+     *
+     * This is NOT the complement of `_ART_MISS_STATUSES` (`[404, 410]`, "this
+     * artwork does not exist"). The two sets answer different questions and a
+     * status can belong to neither — a 403 is neither transient nor a
+     * definitive absence — so they must never be expressed in terms of each
+     * other.
+     *
+     * @type {Set<number>}
+     */
+    const _TRANSIENT_HTTP_STATUSES = new Set([429, 502, 503, 504]);
+
+    /**
+     * Ceiling on a `Retry-After` wait, in milliseconds.
+     *
+     * The header is the server's ask, not its right: a maintenance window can
+     * legitimately say `Retry-After: 3600`, and honouring that literally would
+     * park a request for an hour with nothing on screen to explain it. Half a
+     * minute is long enough for a deploy or a rate-limit window to pass, and
+     * short enough that the user still gets an answer rather than a hang.
+     */
+    const _RETRY_AFTER_MAX_MS = 30000;
+
+    /**
+     * Is this HTTP status worth another attempt?
+     *
+     * The single answer to that question — see `_TRANSIENT_HTTP_STATUSES` for
+     * which statuses qualify and why.
+     *
+     * @param   {number|string|null|undefined} status  An HTTP status. A falsy
+     *          value means no response arrived at all, which is not a status
+     *          and so not transient: a thrown request is retried by its own
+     *          branch in `_ws2GetJson()`, never by this.
+     * @returns {boolean}
+     */
+    function _isTransientHttp(status) {
+        return _TRANSIENT_HTTP_STATUSES.has(Number(status));
+    }
+
+    /**
+     * Reads a `Retry-After` header into a millisecond wait.
+     *
+     * Both RFC 9110 forms are accepted: delta-seconds (`"5"`) and an HTTP-date
+     * (`"Wed, 21 Oct 2015 07:28:00 GMT"`), the latter resolved against the
+     * clock now. The result is clamped to `[0, _RETRY_AFTER_MAX_MS]`.
+     *
+     * Returns `0` — never `null` — for a missing, unparseable or already-past
+     * header, so a caller folds the hint into its own backoff with a bare
+     * `Math.max(ownDelay, hint)` and never has a null to handle. `0` means "no
+     * usable hint", which is also the right answer for a date one second ago.
+     *
+     * The header is readable at all only because every caller is SAME-ORIGIN
+     * (`/ws/2/...`). On a cross-origin response the server would have to list
+     * it in `Access-Control-Expose-Headers`, and `Headers.get()` would
+     * otherwise return `null` here with no error of any kind.
+     *
+     * @param   {?string} headerValue  Raw header, as `Headers.get()` returns it.
+     * @returns {number}  Milliseconds to wait; `0` when there is nothing to honour.
+     */
+    function _parseRetryAfterMs(headerValue) {
+        if (!headerValue) return 0;
+        const raw = String(headerValue).trim();
+        if (!raw) return 0;
+        let ms;
+        if (/^\d+$/.test(raw)) {
+            // Delta-seconds is tested FIRST because `Date.parse('12')` parses
+            // on some engines (as the year 12); a bare number would otherwise
+            // be read as a date two millennia ago and discarded as 0.
+            ms = Number(raw) * 1000;
+        } else {
+            const at = Date.parse(raw);
+            if (Number.isNaN(at)) return 0;
+            ms = at - Date.now();
+        }
+        if (!Number.isFinite(ms) || ms <= 0) return 0;
+        return Math.min(ms, _RETRY_AFTER_MAX_MS);
     }
 
     /**
@@ -18410,16 +18503,27 @@
      * batch source was built, and most requests needed 3-5 attempts during the
      * 2026-09-15 Relationships probe — and a burst is not a fact about the data.
      *
-     * The retry policy is exactly the one `_msFetchOneBatch()` had before it was
-     * extracted: a 503, or a thrown request (network failure, unparseable body),
-     * is retried up to `tries` attempts in total; any other non-OK status is
-     * final, since a 4xx will not change. `beforeRetry(attempt)` is awaited
-     * between attempts, so each caller owns its own spacing and rate limiting.
+     * A TRANSIENT status (`_isTransientHttp()` — 429/502/503/504) or a thrown
+     * request (network failure, unparseable body) is retried up to `tries`
+     * attempts in total; any other non-OK status is final, since it will answer
+     * the same way however often it is asked. Before the version the
+     * `// @version` header names, the only retried status was 503 — so a 502 or
+     * 504 from the reverse proxy during a deploy, and a 429 from the rate
+     * limiter, were each reported as a final failure on the first try.
+     *
+     * `beforeRetry(attempt, retryAfterMs)` is awaited between attempts, so each
+     * caller still owns its own spacing and rate limiting. `retryAfterMs` is
+     * the server's own `Retry-After` ask, already parsed and capped
+     * (`_parseRetryAfterMs()`), or `0` when it sent none. **This function
+     * applies no floor of its own**: a `beforeRetry` that ignores the second
+     * argument simply does not honour the header. Every caller today folds it
+     * in as `Math.max(ownDelay, retryAfterMs)`, so the server's ask is a floor
+     * and never a licence to retry faster than MusicBrainz's 1 req/s rule.
      *
      * Never rejects.
      *
      * @param   {string} url  Same-origin `/ws/2/...` URL.
-     * @param   {{tries: number, beforeRetry: function(number): Promise<void>,
+     * @param   {{tries: number, beforeRetry: function(number, number): Promise<void>,
      *            dbg: function(...*): void, label: string}} opts
      * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
      *          `status` is the last HTTP status seen, or 0 when no response arrived.
@@ -18428,6 +18532,8 @@
         let detail = '';
         let status = 0;
         for (let attempt = 1; attempt <= tries; attempt++) {
+            // Per attempt: a thrown request carries no response and so no header.
+            let retryAfterMs = 0;
             try {
                 const resp = await fetch(url, { headers: { Accept: 'application/json' } });
                 status = resp.status;
@@ -18436,14 +18542,15 @@
                     return { ok: true, status, data, detail: '' };
                 }
                 detail = `HTTP ${resp.status}`;
-                // Only a 503 is worth another attempt; a 4xx will not change.
-                if (resp.status !== 503) break;
-                dbg(`${label}: ${detail} on attempt ${attempt}/${tries}`);
+                if (!_isTransientHttp(resp.status)) break;
+                retryAfterMs = _parseRetryAfterMs(resp.headers.get('Retry-After'));
+                dbg(`${label}: ${detail} on attempt ${attempt}/${tries}` +
+                    (retryAfterMs ? ` (Retry-After → ${retryAfterMs} ms)` : ''));
             } catch (err) {
                 detail = 'the request failed';
                 dbg(`${label}: ${err.message || String(err)} on attempt ${attempt}`);
             }
-            if (attempt < tries) await beforeRetry(attempt);
+            if (attempt < tries) await beforeRetry(attempt, retryAfterMs);
         }
         return { ok: false, status, data: null, detail };
     }
@@ -64715,8 +64822,14 @@ a { color: #1565c0; }`;
             _dbg(`_relFetchWs2: fetching ${wsUrl}`);
             const res = await _ws2GetJson(wsUrl, {
                 tries: _REL_WS2_TRIES,
-                beforeRetry: async attempt => {
-                    await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+                // The server's own `Retry-After` is a FLOOR on our widening
+                // backoff, never a replacement for it. It is waited out BEFORE
+                // the slot is reserved, so `_relAwaitRateSlot()`'s reservation
+                // still sits immediately in front of the request and the one
+                // request per `_REL_WS2_SPACING_MS` invariant is untouched.
+                beforeRetry: async (attempt, retryAfterMs) => {
+                    await new Promise(r => setTimeout(
+                        r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));
                     await _relAwaitRateSlot();
                 },
                 dbg: _dbg,
@@ -65171,8 +65284,11 @@ a { color: #1565c0; }`;
         _dbg(`_relBrowseFetchPage: ${url}`);
         const res = await _ws2GetJson(url, {
             tries: _REL_WS2_TRIES,
-            beforeRetry: async attempt => {
-                await new Promise(r => setTimeout(r, _REL_WS2_SPACING_MS * attempt));
+            // Same floor-not-replacement rule as `_relFetchWs2()`'s, and for
+            // the same reason the wait precedes the slot reservation.
+            beforeRetry: async (attempt, retryAfterMs) => {
+                await new Promise(r => setTimeout(
+                    r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));
                 await _relAwaitRateSlot();
             },
             dbg: _dbg,
@@ -80605,6 +80721,40 @@ a { color: #1565c0; }`;
              */
             sortColumnKind(name) {
                 return _sortColumnKind(name);
+            },
+
+            /**
+             * Thin wrapper around `_isTransientHttp()` — "is this HTTP status
+             * worth another attempt?".
+             *
+             * Exposed because the set's MEMBERSHIP is the guarantee and only
+             * part of it is reachable through behaviour: driving a 500 or a 403
+             * through a real fetch pipeline proves it is final, but so would a
+             * dozen other defects, and the statuses this script never meets
+             * (408, 410) have no behavioural surface at all.
+             *
+             * @param {number|string|null|undefined} status
+             * @returns {boolean}
+             */
+            isTransientHttp(status) {
+                return _isTransientHttp(status);
+            },
+
+            /**
+             * Thin wrapper around `_parseRetryAfterMs()`.
+             *
+             * Exposed because `_RETRY_AFTER_MAX_MS` cannot be asserted
+             * behaviourally without a test that actually waits half a minute:
+             * proving a `Retry-After: 600` is capped means watching a retry
+             * arrive at 30 s rather than at 600 s. The FLOOR is pinned through
+             * the real pipeline instead; only the cap and the two header forms
+             * come through here.
+             *
+             * @param {?string} headerValue
+             * @returns {number} Milliseconds, `0` when there is nothing to honour.
+             */
+            parseRetryAfterMs(headerValue) {
+                return _parseRetryAfterMs(headerValue);
             },
 
             /**

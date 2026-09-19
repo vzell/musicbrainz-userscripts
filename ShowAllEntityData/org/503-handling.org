@@ -10,9 +10,10 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 
 *Shipped since:*
 
-| Finding | Branch                        | Spec                                             |
-|---------+-------------------------------+--------------------------------------------------|
-| F5      | =fix/caa-metadata-transient=  | =tests/fixtures/caa-metadata-transient-503.spec.js= |
+| Finding | Branch                          | Spec                                                |
+|---------+---------------------------------+-----------------------------------------------------|
+| F5      | =fix/caa-metadata-transient=    | =tests/fixtures/caa-metadata-transient-503.spec.js= |
+| F6      | =fix/ws2-transient-classifier=  | =tests/fixtures/ws2-transient-classifier.spec.js=   |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -22,8 +23,10 @@ one-level (branch → =main=) and deletes the WIP file when it folds, so the who
 batch would have had to ship as one version block. This file stays on =main= as
 the tracker.
 
-Remaining order: item 1 (shared transient classifier, =fix/ws2-transient-classifier=)
-first, since items 3-4 and 6 depend on it; then F1-F3, then F4, then F7.
+Remaining order: item 1 (shared transient classifier) is DONE and shipped on
+=fix/ws2-transient-classifier=; then F1-F3 (items 3-4), then F4 (item 6), then
+F7 (item 8). Items 3-4 and 6 are the ones that were waiting on item 1 —
+=_isTransientHttp()= and =_parseRetryAfterMs()= now exist for them to reuse.
 
 F7 now carries a UI design — see [[Retry UI: one segmented control per table]].
 It has a *prerequisite the rest of F7 does not*: the Relationships half can be
@@ -47,19 +50,28 @@ see. "Level" = the finest granularity at which the user can retry.
 |  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | none                                     | any non-OK throws                             | *none* — console =Lib.error= only, then the loop =break=s (see F1)               | whole fetch only (press "Show all" again)                                             |
 |  2 | =fetchMaxPageGeneric()= (page count)                                               | none                                     | any error                                     | *none* — returns =1=, i.e. "one page" (F2)                                       | whole fetch only                                                                      |
 |  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | none                                     | any error                                     | console only, =break= (F3)                                                       | whole fetch only                                                                      |
-|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, *503 and thrown errors only*    | 503 vs other non-OK vs thrown                 | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
+|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, 429/502/503/504 + thrown (F6)   | transient vs other non-OK vs thrown           | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
 |  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
-|  6 | ⏱ ms Length                                                                        | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
+|  6 | ⏱ ms Length, ='batch'= source                                                      | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
+| 6b | ⏱ ms Length, ='ws2'= source — *bare =fetch()=, NOT row 4*                          | *none*                                   | every non-OK is "transient", none classified  | same button states as row 6                                                      | *table/column* (press the ⏱ button again — the user IS the retry)                     |
 |  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | none, *and does not use =_ws2GetJson()=* | any non-OK                                    | *none* — =_dbg= and =return= (F4)                                                | none (reload the page)                                                                |
 |  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404/410 definitive vs transient (F5, fixed)   | =Lib.warn= for a transient failure; nothing on screen                            | *table* (=mb-caa-toggle-btn-retry-{i}=), now really evicting                          |
 |  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                             |
 | 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                   |
 | 11 | Picard / barcode / other non-network features                                      | n/a                                      | n/a                                           | n/a                                                                              | n/a                                                                                   |
 
-Nothing reads =Retry-After=, and there is no user-facing setting for retry
-count or delay (grep for =sa_*retr*= is empty). The script's only pacing is
-the Relationships gate (=_relAwaitRateSlot()=, one request per 1100 ms) and the
-⏱ batch delay; the HTML pagination loop is sequential with *no* delay.
+Row 6b was recorded as "via row 4" until F6 shipped, which was simply wrong:
+=_msFetchWs2RecordingLengths()= and =_msFetchFullReleaseTrackLengths()= call
+=fetch()= directly and have no retry at all — the same defect as F4, on a path
+whose button states make it look handled. Routing them through
+=_ws2GetJson()= is a natural sibling of item 6 and is deliberately NOT part of
+the F6 branch; see [[Open questions]] 5.
+
+=Retry-After= is read by =_ws2GetJson()= since F6 (capped at 30 s) and nowhere
+else. There is still no user-facing setting for retry count or delay (grep for
+=sa_*retr*= is empty). The script's only pacing is the Relationships gate
+(=_relAwaitRateSlot()=, one request per 1100 ms) and the ⏱ batch delay; the
+HTML pagination loop is sequential with *no* delay.
 
 * Findings, most serious first
 
@@ -150,14 +162,53 @@ damage. Pinned by the "the in-memory zero is gated on the status too" entry in
 =scripts/mutations/caa-metadata-transient.json=, so the decision is a tested one
 rather than an unexplained divergence.
 
-** F6 — retry policy is narrower than the failures it meets  (read in the code)
+** DONE F6 — retry policy is narrower than the failures it meets  (confirmed by a spec; fixed)
 
-=_ws2GetJson()= retries only =status === 503= plus thrown errors. 502 and 504
-(what a reverse proxy returns during a MusicBrainz deploy) and 429 break out at
-once and are reported as final. =Retry-After= is ignored everywhere, so the
-script cannot back off by the amount the server asks for. Note that
-=_relAwaitRateSlot()='s fixed 1100 ms spacing also means all three of a row's
-attempts land inside a burst that typically lasts longer than 3.3 s.
+=_ws2GetJson()= retried only =status === 503= plus thrown errors. 502 and 504
+(what a reverse proxy returns during a MusicBrainz deploy) and 429 broke out at
+once and were reported as final. =Retry-After= was ignored everywhere — no
+response header was read anywhere in the file — so the script could not back
+off by the amount the server asks for. Note that =_relAwaitRateSlot()='s fixed
+1100 ms spacing also means all three of a row's attempts land inside a burst
+that typically lasts longer than 3.3 s.
+
+*Fixed on =fix/ws2-transient-classifier=*, pinned by
+=tests/fixtures/ws2-transient-classifier.spec.js= (9 tests) and
+=scripts/mutations/ws2-transient-classifier.json= (12 mutations, all
+=expect: "fail"=, all confirmed).
+
+What shipped:
+- =_TRANSIENT_HTTP_STATUSES= (429/502/503/504) and =_isTransientHttp(status)=,
+  declared immediately above =_ws2GetJson()= so they precede every future
+  consumer in file order. Their JSDoc names what is deliberately EXCLUDED — 500
+  (a real server-side error), 408, every other 4xx — and records that this is
+  *not* the complement of =_ART_MISS_STATUSES= (=[404, 410]=): a 403 is in
+  neither set, and expressing either in terms of the other would be wrong.
+- =_parseRetryAfterMs(headerValue)= + =_RETRY_AFTER_MAX_MS= (30 s). Both RFC
+  9110 forms, clamped to =[0, cap]=, returning =0= rather than =null= so callers
+  fold it in with a bare =Math.max()=. Delta-seconds is tested BEFORE the date
+  form, because =Date.parse('12')= succeeds on some engines as the year 12 and a
+  bare number would otherwise be discarded as two millennia past.
+- =_ws2GetJson()= passes the parsed hint on as =beforeRetry(attempt,
+  retryAfterMs)=. It applies *no floor of its own* — a =beforeRetry= that
+  ignores the argument simply does not honour the header — and that contract is
+  in its JSDoc.
+- All three call sites fold it in as =Math.max(ownDelay, retryAfterMs)=: the
+  server's ask is a FLOOR, never a replacement (or a =Retry-After: 0.5= would
+  let us retry faster than MusicBrainz's 1 req/s rule) and never additive. On
+  both Relationships sites the extra wait precedes =_relAwaitRateSlot()=, so the
+  slot reservation still sits immediately in front of the request and Step 36's
+  one-request-per-1100 ms invariant is untouched.
+
+Two things the mutation run taught, worth keeping:
+- The three =beforeRetry= bodies are written out separately, so each is its own
+  guard and each needed its own test — the ⏱ batch source and the Relationships
+  BROWSE source would otherwise have been a fix wired up in one place only.
+- *The rate gate MASKS a lost backoff.* Dropping the hint argument entirely
+  makes every caller compute =Math.max(delay, undefined)= = =NaN=, i.e. no
+  pause at all — and the observed retry gap was still 1100 ms, because
+  =_relAwaitRateSlot()= alone held the line. A spec that merely checked "was
+  there a pause" would not have seen it; the assertion has to name the number.
 
 ** F7 — Relationships retry-table reloads everything, not just what failed  (read in the code; scope of cost unmeasured)
 
@@ -198,10 +249,15 @@ data at stake) and the CAA and release-events columns (nothing visible at all).
 Ordered by value over intrusiveness. "Silent" = the user notices nothing except
 things now working.
 
-1. *Shared transient classifier* (silent, tiny). One =_isTransientHttp(status)=
-   covering 429, 502, 503, 504 and thrown errors, used by =_ws2GetJson()= and
-   everything below, and an optional =Retry-After= reader capped at, say, 30 s.
-   Removes F6 and is the prerequisite for the rest.
+1. [DONE] *Shared transient classifier* (silent, tiny). One
+   =_isTransientHttp(status)= covering 429, 502, 503, 504 and thrown errors,
+   used by =_ws2GetJson()= and everything below, and an optional =Retry-After=
+   reader capped at, say, 30 s. Removes F6 and is the prerequisite for the rest.
+   Shipped on =fix/ws2-transient-classifier= — see F6 above for exactly what
+   landed. Scoped to =_ws2GetJson()= as its only consumer: the helpers are
+   there for items 3-4 and 6 to pick up, and neither the CAA art path nor the
+   ⏱ ='ws2'= source was touched (both would have been behaviour changes, not
+   refactors — see [[Open questions]] 5).
 2. [DONE] *Stop recording transient failures as "no artwork"* (silent, small).
    Only 404/410 may write the zero and only they may go to IDB (F5). Also delete
    the IDB record in =_artRetryTable()=. Do this first: it is the only finding
@@ -502,7 +558,7 @@ fail before the fix and pass after (project rule; mutation-check it).
 | F2      | page-count request answers 503                                                     | not silently one page                                                                              |
 | F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
 | F4      | =inc=release-rels= answers 503 once                                                | column still populates after the retry                                                             |
-| F6      | 502, 504, 429 with and without =Retry-After=                                       | retried, and the wait honours the header up to the cap                                             |
+| F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap        | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
 | F7      | table with 3 failed of N cells                                                     | request count on table retry equals the failed count                                               |
 
 The live check for a real burst is opportunistic: MusicBrainz 503s are bursty
@@ -520,3 +576,14 @@ Do not measure with the live site and quote it as a rate.
    toggles the row.
 4. Should the HTML retry share one budget across pages, so a genuinely down
    site fails fast instead of spending 3 attempts on each of 40 pages?
+5. Should the ⏱ ='ws2'= source (row 6b) move onto =_ws2GetJson()=? It is a few
+   lines and would give work/artist-relationships/place-performances/
+   area-recordings the same three attempts the batched pages have. Left out of
+   the F6 branch to keep that one change one change; a natural companion to
+   item 6, which does the same for the release-events column.
+6. Is 30 s the right =_RETRY_AFTER_MAX_MS=? A 429 burst with a large
+   =Retry-After= now costs up to 2 × 30 s per request, and the Relationships
+   queue is serial — so a table where every entity 429s is a very long crawl.
+   It is already a long crawl at the 1100/2200 ms backoff (~3.3 s × N), so this
+   changes the degree and not the kind, and item 7's circuit breaker is the
+   real answer. One constant if it proves too generous.

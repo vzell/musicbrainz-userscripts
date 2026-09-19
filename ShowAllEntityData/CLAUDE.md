@@ -1875,6 +1875,53 @@ The traps. Every one of them fails silently:
   filterable as an expanded column's; `relIconCounts` used to be skipped
   whenever the column was collapsed.
 
+## HTTP failure classification: two sets, and they are not opposites
+
+`_isTransientHttp(status)` + `_TRANSIENT_HTTP_STATUSES` (429/502/503/504) and
+`_parseRetryAfterMs(headerValue)` + `_RETRY_AFTER_MAX_MS` (30 s) live together
+just above `_ws2GetJson()`, which is their only consumer today. Everything
+below is a decision, not an accident.
+
+**`_TRANSIENT_HTTP_STATUSES` is NOT the complement of `_ART_MISS_STATUSES`**
+(`[404, 410]`, "this artwork does not exist"). The two answer different
+questions and a status can be in neither — a 403 is not transient and not a
+definitive absence. Never express one in terms of the other, and do not
+"complete" the transient set with 500 (a real server-side error, not a burst)
+or 408. The boundary is pinned by the `a 400 is final` test, which passes on
+unfixed code on purpose: it guards the overshoot, not the original defect.
+
+**`_ws2GetJson()` applies no floor of its own.** It parses the header and hands
+it on as `beforeRetry(attempt, retryAfterMs)`; a `beforeRetry` that ignores the
+second argument silently does not honour `Retry-After`. All three call sites —
+`_msFetchOneBatch()`, `_relFetchWs2()`, `_relBrowseFetchPage()` — fold it in as
+`Math.max(ownDelay, retryAfterMs)`, so the server's ask is a **floor**, never a
+replacement (a `Retry-After: 0.5` must not let us retry faster than
+MusicBrainz's 1 req/s rule) and never additive. Each is written out separately,
+so each is its own guard and needs its own test.
+
+**On both Relationships sites the extra wait precedes `_relAwaitRateSlot()`.**
+See PERFORMANCE.org Step 36: reserving the slot first and topping up afterwards
+would spend a reservation and then fire late.
+
+**Delta-seconds is parsed BEFORE the HTTP-date form.** `Date.parse('12')`
+succeeds on some engines as the year 12, so a bare number would otherwise be
+read as two millennia past and discarded as `0`. The parser returns `0`, never
+`null`, for missing/garbage/past — that is what lets callers use a bare
+`Math.max()`.
+
+**The rate gate MASKS a lost backoff**, which is why an assertion here has to
+name the number. Dropping the hint argument entirely makes every caller compute
+`Math.max(delay, undefined)` = `NaN`, i.e. no pause at all — and the measured
+retry gap was still 1100 ms, because `_relAwaitRateSlot()` alone held the line.
+A spec that only checked "was there a pause" would not see it.
+
+Covered by `tests/fixtures/ws2-transient-classifier.spec.js`; mutation list
+`scripts/mutations/ws2-transient-classifier.json`. Two WS/2 paths deliberately
+do NOT go through `_ws2GetJson()` and so have no retry at all —
+`_msFetchWs2RecordingLengths()` and `_msFetchFullReleaseTrackLengths()` (the ⏱
+`'ws2'` source) — and neither does `initReleaseEventsColumn()`. That is
+`org/503-handling.org`'s remaining work, not an oversight.
+
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
 **Seven** controls share that slot and that visual language. Six share **one CSS

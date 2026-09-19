@@ -1,0 +1,158 @@
+[
+  {
+    "name": "only a 503 is retried again",
+    "why": "The original org/503-handling.org F6 defect, reverted verbatim. Every widened status must notice; 502 is the representative here and 429/504 have their own entries below.",
+    "edits": [
+      {
+        "find": "                if (!_isTransientHttp(resp.status)) break;",
+        "replace": "                if (resp.status !== 503) break;"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 502 is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "429 dropped from the transient set",
+    "why": "Only the 429 test may notice. If 502/504 fail too, the set is being read somewhere it should not be.",
+    "edits": [
+      {
+        "find": "new Set([429, 502, 503, 504])",
+        "replace": "new Set([502, 503, 504])"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 429 is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "502 dropped from the transient set",
+    "why": "Attribution: a single missing member must be traceable to the status it belongs to, which is why these are one test per status rather than one loop.",
+    "edits": [
+      {
+        "find": "new Set([429, 502, 503, 504])",
+        "replace": "new Set([429, 503, 504])"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 502 is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "504 dropped from the transient set",
+    "why": "As above. 504 is the one a reverse proxy returns on a slow upstream, i.e. the most likely to be met in practice and the least likely to be noticed if dropped.",
+    "edits": [
+      {
+        "find": "new Set([429, 502, 503, 504])",
+        "replace": "new Set([429, 502, 503])"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 504 is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "the set is bypassed — every 4xx/5xx retried",
+    "why": "The overshoot, not the defect: widening a retry set is exactly the change that goes too far. Without the boundary test a set that swallowed 400/403/500 would look identical to a correct one, and every failure on the page would cost three attempts instead of one.",
+    "edits": [
+      {
+        "find": "        return _TRANSIENT_HTTP_STATUSES.has(Number(status));",
+        "replace": "        return _TRANSIENT_HTTP_STATUSES.has(Number(status)) || Number(status) >= 400;"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 400 is final",
+    "expect": "fail"
+  },
+  {
+    "name": "Retry-After is never read",
+    "why": "The header half of F6. 503 was already retried, so only the WAIT changes: the retry lands at the bare backoff (~1100 ms) instead of the 3000 ms the server asked for.",
+    "edits": [
+      {
+        "find": "                retryAfterMs = _parseRetryAfterMs(resp.headers.get('Retry-After'));",
+        "replace": "                retryAfterMs = 0;"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "honoured as a floor",
+    "expect": "fail"
+  },
+  {
+    "name": "the hint is not passed to beforeRetry",
+    "why": "Drops the second argument at the one place it is handed over. Every caller then computes Math.max(delay, undefined) = NaN and setTimeout(fn, NaN) fires at once, so the per-caller backoff goes too — measured gap 1100 ms, which is _relAwaitRateSlot() alone still holding the line. Worth knowing: the rate gate MASKS a lost backoff, so a spec that only checked 'was there a pause' would not see this.",
+    "edits": [
+      {
+        "find": "            if (attempt < tries) await beforeRetry(attempt, retryAfterMs);",
+        "replace": "            if (attempt < tries) await beforeRetry(attempt);"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "honoured as a floor",
+    "expect": "fail"
+  },
+  {
+    "name": "the 30 s cap is removed",
+    "why": "A maintenance window answering `Retry-After: 3600` would park a request for an hour with nothing on screen explaining it. Only the __saTest assertion can see this — a behavioural test would have to wait out the cap.",
+    "edits": [
+      {
+        "find": "        return Math.min(ms, _RETRY_AFTER_MAX_MS);",
+        "replace": "        return ms;"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "capped at 30 s",
+    "expect": "fail"
+  },
+  {
+    "name": "delta-seconds parsed as an HTTP-date",
+    "why": "Removes the numeric branch, so `Retry-After: 12` reaches Date.parse() — which succeeds on some engines as the year 12, i.e. a date two millennia in the past, silently discarded as 0. The likeliest way to break this parser while it still looks correct for the date form.",
+    "edits": [
+      {
+        "find": "        if (/^\\d+$/.test(raw)) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "parses both RFC forms",
+    "expect": "fail"
+  },
+  {
+    "name": "_relFetchWs2's beforeRetry ignores the hint",
+    "why": "The floor is applied per call site, written out three times. This is the per-entity Relationships lookup — the one the click-to-load path uses.",
+    "edits": [
+      {
+        "find": "                beforeRetry: async (attempt, retryAfterMs) => {\n                    await new Promise(r => setTimeout(\n                        r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));",
+        "replace": "                beforeRetry: async (attempt, retryAfterMs) => {\n                    await new Promise(r => setTimeout(\n                        r, _REL_WS2_SPACING_MS * attempt));"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "honoured as a floor",
+    "expect": "fail"
+  },
+  {
+    "name": "_msFetchOneBatch's beforeRetry ignores the hint",
+    "why": "The second call site. A shared classifier that only one consumer actually honours is the failure this covers.",
+    "edits": [
+      {
+        "find": "            beforeRetry: (attempt, retryAfterMs) => new Promise(\n                r => setTimeout(r, Math.max(_MS_BATCH_DELAY * attempt, retryAfterMs))),",
+        "replace": "            beforeRetry: (attempt, retryAfterMs) => new Promise(\n                r => setTimeout(r, _MS_BATCH_DELAY * attempt)),"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 502 on a batch is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "_relBrowseFetchPage's beforeRetry ignores the hint",
+    "why": "The third call site, and the quietest: a failed browse page does not surface as an error at all — the loop just breaks and per-row lookups take over. The browse test counts the two request kinds apart for exactly that reason.",
+    "edits": [
+      {
+        "find": "            beforeRetry: async (attempt, retryAfterMs) => {\n                await new Promise(r => setTimeout(\n                    r, Math.max(_REL_WS2_SPACING_MS * attempt, retryAfterMs)));",
+        "replace": "            beforeRetry: async (attempt, retryAfterMs) => {\n                await new Promise(r => setTimeout(\n                    r, _REL_WS2_SPACING_MS * attempt));"
+      }
+    ],
+    "spec": "tests/fixtures/ws2-transient-classifier.spec.js",
+    "grep": "a 502 on a browse page is retried",
+    "expect": "fail"
+  }
+]
