@@ -38,9 +38,9 @@ then a per-release check against =coverartarchive.org/release/<mbid>=.
 
 | Artist (browse offset)   | Block on page | count 0 | count > 0 | Archive checked (0 / >0) | False negatives | Count mismatches |
 |--------------------------+---------------+---------+-----------+--------------------------+-----------------+------------------|
-| Bob Dylan (0)            | 100 / 100     | 31      | 69        | 15 / 15 -> 404 / index   | 0               | 0                |
-| Bruce Springsteen (4000) | 100 / 100     | 0       | 100       | 0 / 30 -> - / index      | n/a (no zeros)  | 0                |
-| Bruce Springsteen (8000) | 100 / 100     | 10      | 90        | 10 / 30 -> 404 / index   | 0               | 0                |
+| Bob Dylan (0)            | 100 / 100     |      31 |        69 | 15 / 15 -> 404 / index   |               0 |                0 |
+| Bruce Springsteen (4000) | 100 / 100     |       0 |       100 | 0 / 30 -> - / index      |  n/a (no zeros) |                0 |
+| Bruce Springsteen (8000) | 100 / 100     |      10 |        90 | 10 / 30 -> 404 / index   |               0 |                0 |
 
 - 25 count-0 releases checked, all 404 at the archive; 60 count>0 checked, all
   with an index whose image count equalled =count=.
@@ -58,11 +58,11 @@ Gate: =tests/support/measure-caa-metadata-404s.js=, host =vzell-lap= (uptime
 sub-table expanded, the global strip toggled and asserted, "settled" = no new
 request for 30 s. Raw JSON: =tests/snapshots/caa-404-share/=.
 
-| Page                              | pageType                 | mode   | Rows | Native anchors / =blank-icon= | Metadata requests | 404  | Share |
-|-----------------------------------+--------------------------+--------+------+-------------------------------+-------------------+------+-------|
-| BoDeans =/releases=               | =artist-releases=        | single | 56   | 37 / *19*                     | 56                | *19* | *34%* |
-| "Greetings From Asbury Park" RG   | =releasegroup-releases=  | multi  | 7    | 7 / 0                         | 7                 | 0    | 0%    |
-| BoDeans =/relationships=          | =artist-relationships=   | multi  | 3    | 0 / 0                         | 1                 | 0    | 0%    |
+| Page                            | pageType                | mode   | Rows | Native anchors / =blank-icon= | Metadata requests |  404 | Share |
+|---------------------------------+-------------------------+--------+------+-------------------------------+-------------------+------+-------|
+| BoDeans =/releases=             | =artist-releases=       | single |   56 | 37 / *19*                     |                56 | *19* | *34%* |
+| "Greetings From Asbury Park" RG | =releasegroup-releases= | multi  |    7 | 7 / 0                         |                 7 |    0 |    0% |
+| BoDeans =/relationships=        | =artist-relationships=  | multi  |    3 | 0 / 0                         |                 1 |    0 |    0% |
 
 On BoDeans, three numbers are the same number: the =blank-icon= spans
 MusicBrainz rendered (19), the synthetic anchors the extractor made (19), and
@@ -187,14 +187,14 @@ node tests/support/measure-caa-metadata-404s.js --only=bodeans-releases
 
 * Where everything lives
 
-| What                                             | Where                                                                  |
-|--------------------------------------------------+------------------------------------------------------------------------|
-| CAA probe (WS/2 block vs archive)                | =scripts/probe-caa-presence-from-browse.py=                            |
-| 404-share measurement                            | =tests/support/measure-caa-metadata-404s.js=                           |
-| Raw measurement output                           | =tests/snapshots/caa-404-share/caa-404-share-2026-09-18-vzell-lap.json= |
-| Logged numbers, with host and times              | =tests/MEASUREMENTS.org=, two entries dated 2026-09-18                 |
-| CAA / MusicBrainz API guidance for future work   | =../CLAUDE.md=, section "MusicBrainz API documentation"                |
-| Related: the 503 finding that affects CAA        | =org/503-handling.org=, F5                                             |
+| What                                           | Where                                                                   |
+|------------------------------------------------+-------------------------------------------------------------------------|
+| CAA probe (WS/2 block vs archive)              | =scripts/probe-caa-presence-from-browse.py=                             |
+| 404-share measurement                          | =tests/support/measure-caa-metadata-404s.js=                            |
+| Raw measurement output                         | =tests/snapshots/caa-404-share/caa-404-share-2026-09-18-vzell-lap.json= |
+| Logged numbers, with host and times            | =tests/MEASUREMENTS.org=, two entries dated 2026-09-18                  |
+| CAA / MusicBrainz API guidance for future work | =../CLAUDE.md=, section "MusicBrainz API documentation"                 |
+| Related: the 503 finding that affects CAA      | =org/503-handling.org=, F5                                              |
 
 * Test-framework impact
 
