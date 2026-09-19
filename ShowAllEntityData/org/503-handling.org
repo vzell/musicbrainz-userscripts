@@ -10,12 +10,12 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 
 *Shipped since:*
 
-| Finding | Branch                          | Spec                                                |
-|---------+---------------------------------+-----------------------------------------------------|
-| F5      | =fix/caa-metadata-transient=    | =tests/fixtures/caa-metadata-transient-503.spec.js= |
-| F6      | =fix/ws2-transient-classifier=  | =tests/fixtures/ws2-transient-classifier.spec.js=   |
-| F1-F3   | =fix/html-fetch-transient=      | =tests/fixtures/html-fetch-transient.spec.js=       |
-| F4      | =fix/release-events-transient=  | =tests/fixtures/release-events-transient.spec.js=   |
+| Finding  | Branch                         | Spec                                                |
+|----------+--------------------------------+-----------------------------------------------------|
+| F5       | =fix/caa-metadata-transient=   | =tests/fixtures/caa-metadata-transient-503.spec.js= |
+| F6       | =fix/ws2-transient-classifier= | =tests/fixtures/ws2-transient-classifier.spec.js=   |
+| F1-F3    | =fix/html-fetch-transient=     | =tests/fixtures/html-fetch-transient.spec.js=       |
+| F4       | =fix/release-events-transient= | =tests/fixtures/release-events-transient.spec.js=   |
 | F7 (Rel) | =feat/rel-retry-failed-only=   | =tests/fixtures/rel-retry-failed-only.spec.js=      |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
@@ -52,20 +52,20 @@ without being intrusive.
 "Auto" = retries without the user doing anything. "Signal" = what the user can
 see. "Level" = the finest granularity at which the user can retry.
 
-|  # | Request                                                                            | Auto retry                               | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                    |
-|----+------------------------------------------------------------------------------------+------------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------|
-|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | 3 tries, 429/502/503/504 + thrown (F1)   | =err.status= attached; transient vs final     | ⚠️ status line "Loaded N of M pages — INCOMPLETE" + tooltip (F1, fixed)       | whole fetch only (press "Show all" again)                                             |
-|  2 | =fetchMaxPageGeneric()= (page count)                                               | via row 1                                | returns ={maxPage, ok, detail}=               | ⚠️ "of an unknown total — INCOMPLETE" (F2, fixed)                              | whole fetch only                                                                      |
-|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | via row 1                                | partial set DISCARDED, never handed on        | ⚠️ "discography views unavailable"; rows NOT marked incomplete (F3, fixed)     | whole fetch only                                                                      |
-|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, 429/502/503/504 + thrown (F6)   | transient vs other non-OK vs thrown           | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
-|  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
-|  6 | ⏱ ms Length, ='batch'= source                                                      | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
-| 6b | ⏱ ms Length, ='ws2'= source — *bare =fetch()=, NOT row 4*                          | *none*                                   | every non-OK is "transient", none classified  | same button states as row 6                                                      | *table/column* (press the ⏱ button again — the user IS the retry)                     |
-|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | 3 tries via =_ws2GetJson()= (F4)         | transient vs final; cells never marked done   | ⏳ while loading, yellow ⚠ on the column header naming the error (F4, fixed)     | *column* (click the ⚠) — new; previously none at all                               |
-|  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404/410 definitive vs transient (F5, fixed)   | =Lib.warn= for a transient failure; nothing on screen                            | *table* (=mb-caa-toggle-btn-retry-{i}=), now really evicting                          |
-|  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                             |
-| 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                   |
-| 11 | Picard / barcode / other non-network features                                      | n/a                                      | n/a                                           | n/a                                                                              | n/a                                                                                   |
+|  # | Request                                                                            | Auto retry                             | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                    |
+|----+------------------------------------------------------------------------------------+----------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------|
+|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | 3 tries, 429/502/503/504 + thrown (F1) | =err.status= attached; transient vs final     | ⚠️ status line "Loaded N of M pages — INCOMPLETE" + tooltip (F1, fixed)           | whole fetch only (press "Show all" again)                                             |
+|  2 | =fetchMaxPageGeneric()= (page count)                                               | via row 1                              | returns ={maxPage, ok, detail}=               | ⚠️ "of an unknown total — INCOMPLETE" (F2, fixed)                                 | whole fetch only                                                                      |
+|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | via row 1                              | partial set DISCARDED, never handed on        | ⚠️ "discography views unavailable"; rows NOT marked incomplete (F3, fixed)        | whole fetch only                                                                      |
+|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, 429/502/503/504 + thrown (F6) | transient vs other non-OK vs thrown           | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
+|  5 | Relationships column                                                               | via row 4                              | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
+|  6 | ⏱ ms Length, ='batch'= source                                                      | via row 4                              | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
+| 6b | ⏱ ms Length, ='ws2'= source — *bare =fetch()=, NOT row 4*                          | *none*                                 | every non-OK is "transient", none classified  | same button states as row 6                                                      | *table/column* (press the ⏱ button again — the user IS the retry)                     |
+|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | 3 tries via =_ws2GetJson()= (F4)       | transient vs final; cells never marked done   | ⏳ while loading, yellow ⚠ on the column header naming the error (F4, fixed)     | *column* (click the ⚠) — new; previously none at all                                  |
+|  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                   | 404/410 definitive vs transient (F5, fixed)   | =Lib.warn= for a transient failure; nothing on screen                            | *table* (=mb-caa-toggle-btn-retry-{i}=), now really evicting                          |
+|  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                   | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                             |
+| 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                   | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                   |
+| 11 | Picard / barcode / other non-network features                                      | n/a                                    | n/a                                           | n/a                                                                              | n/a                                                                                   |
 
 Row 6b was recorded as "via row 4" until F6 shipped, which was simply wrong:
 =_msFetchWs2RecordingLengths()= and =_msFetchFullReleaseTrackLengths()= call
@@ -461,11 +461,11 @@ the behaviour half of it.
 
 Three separate buttons, all at table / sub-table level:
 
-| Button                          | id                                    | Does                                                |
-|---------------------------------+---------------------------------------+-----------------------------------------------------|
-| CAA/EAA strip toggle            | =mb-caa-toggle-btn-{i}=               | show/hide the big-image strip; carries thumb + count |
-| CAA/EAA retry                   | =mb-caa-toggle-btn-retry-{i}=         | =_artRetryTable()= — reload EVERYTHING, cache-busted |
-| Relationships retry             | =mb-rel-retry-{i}=                    | =_relRetryTable()= — reload EVERYTHING, evicts IDB   |
+| Button               | id                            | Does                                                 |
+|----------------------+-------------------------------+------------------------------------------------------|
+| CAA/EAA strip toggle | =mb-caa-toggle-btn-{i}=       | show/hide the big-image strip; carries thumb + count |
+| CAA/EAA retry        | =mb-caa-toggle-btn-retry-{i}= | =_artRetryTable()= — reload EVERYTHING, cache-busted |
+| Relationships retry  | =mb-rel-retry-{i}=            | =_relRetryTable()= — reload EVERYTHING, evicts IDB   |
 
 Globals alongside them: =mb-caa-toggle-btn-global=,
 =mb-caa-toggle-btn-global-retry=, =mb-rel-retry-global= (note the LAST one
@@ -582,17 +582,17 @@ Checked against <https://musicbrainz.org/doc/Cover_Art_Archive/API> on
 2026-09-19, per the root CLAUDE.md rule. =GET /release/{mbid}= returns
 ={release, images[]}=, and each image carries *exactly nine* documented fields:
 
-| Field        | Type   | The doc's own words                                  | Used today?    |
-|--------------+--------+------------------------------------------------------+----------------|
-| =id=         | string | "archive.org's internal file id"                     | yes, 1 site    |
-| =image=      | string | full URL to the original                             | yes            |
-| =thumbnails= | object | =250= / =500= / =1200=, plus deprecated =small=/=large= | yes, 8 sites |
-| =types=      | array  | "list of zero or more types for the image"           | yes, 3 sites   |
-| =front=      | bool   | "indicates if this is the 'main front'"              | *no*           |
-| =back=       | bool   | "indicates if this is the 'main back'"                | *no*           |
-| =comment=    | string | "a free text comment"                                | yes, 3 sites   |
-| =approved=   | bool   | "whether the image was approved by the musicbrainz edit system" | yes, 1 site |
-| =edit=       | int    | "the edit id on musicbrainz (e.g. 123)"              | *no*           |
+| Field        | Type   | The doc's own words                                             | Used today?  |
+|--------------+--------+-----------------------------------------------------------------+--------------|
+| =id=         | string | "archive.org's internal file id"                                | yes, 1 site  |
+| =image=      | string | full URL to the original                                        | yes          |
+| =thumbnails= | object | =250= / =500= / =1200=, plus deprecated =small=/=large=         | yes, 8 sites |
+| =types=      | array  | "list of zero or more types for the image"                      | yes, 3 sites |
+| =front=      | bool   | "indicates if this is the 'main front'"                         | *no*         |
+| =back=       | bool   | "indicates if this is the 'main back'"                          | *no*         |
+| =comment=    | string | "a free text comment"                                           | yes, 3 sites |
+| =approved=   | bool   | "whether the image was approved by the musicbrainz edit system" | yes, 1 site  |
+| =edit=       | int    | "the edit id on musicbrainz (e.g. 123)"                         | *no*         |
 
 =/release-group/{mbid}= returns the same image shape and adds a =release=
 field — "the specific release from which the art was sourced".
@@ -626,8 +626,8 @@ Four things are stored on every image and surfaced nowhere:
 |----------+------------------------------------------------------------------------------------------------|
 | Entities | total / with artwork / none / *failed* / still pending                                         |
 | Images   | icon + inline + strip, as the toast already breaks them down                                   |
-| Cache    | the existing four tiers (🟢 memory, 🟡 network, 🔵 IDB, 🗄️ timed), scoped to this table      |
-| Types    | Front / Back / Booklet / Medium / Tray / Obi / Matrix-Runout / …, counted from =types[]=        |
+| Cache    | the existing four tiers (🟢 memory, 🟡 network, 🔵 IDB, 🗄️ timed), scoped to this table         |
+| Types    | Front / Back / Booklet / Medium / Tray / Obi / Matrix-Runout / …, counted from =types[]=       |
 | Flags    | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
 | Sizes    | how many images offer =1200= / =500= / =250=                                                   |
 | Edits    | =edit= ids, linked to =/edit/{id}=                                                             |
@@ -706,14 +706,14 @@ still the fix for that.
 Each finding needs a fixture spec with a route that answers 503, written to
 fail before the fix and pass after (project rule; mutation-check it).
 
-| Finding | Spec shape                                                                         | Guarantee it pins                                                                                  |
-|---------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------|
-| F1      | [DONE] page 2 of 3 answers 503 (recovering and permanent variants, plus 404)       | recovered run has all rows; failed run says "1 of 3" and =pagesProcessed= excludes the failed page |
-| F2      | [DONE] page-count request 503s on all three attempts; the loop's own page 1 is OK  | "of an unknown total", never "1 of 1 pages"                                                        |
-| F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
-| F4      | [DONE] =inc=release-rels= 503s once, then permanently, then 404                    | recovers silently; a final failure leaves cells un-done and offers a clickable ⚠                   |
-| F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap        | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
-| F7      | [DONE] 12-row table, 3 failed; plus a variant with one failure hidden by a filter  | request count equals the failed count; the failed SET survives a filter; 🔗⟳ still reloads all    |
+| Finding | Spec shape                                                                        | Guarantee it pins                                                                                  |
+|---------+-----------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------|
+| F1      | [DONE] page 2 of 3 answers 503 (recovering and permanent variants, plus 404)      | recovered run has all rows; failed run says "1 of 3" and =pagesProcessed= excludes the failed page |
+| F2      | [DONE] page-count request 503s on all three attempts; the loop's own page 1 is OK | "of an unknown total", never "1 of 1 pages"                                                        |
+| F5      | metadata request answers 503 for one release, 404 for another                     | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
+| F4      | [DONE] =inc=release-rels= 503s once, then permanently, then 404                   | recovers silently; a final failure leaves cells un-done and offers a clickable ⚠                   |
+| F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap       | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
+| F7      | [DONE] 12-row table, 3 failed; plus a variant with one failure hidden by a filter | request count equals the failed count; the failed SET survives a filter; 🔗⟳ still reloads all     |
 
 The live check for a real burst is opportunistic: MusicBrainz 503s are bursty
 and cannot be summoned on demand, so a fixture is the only reproducible route.
