@@ -555,10 +555,48 @@ we should probably always commit a current settings file with the default settin
 implemented/changed
 
 * TODO 503
-** table/sub-table level (button with two click areas, one for reload ALL, one for "just what failed", ==> show me a mock of the button)
+** CAA/EAA and Relationships multi section button
 
-table/sub-table level (button with two click areas, one for reload ALL, one for "just what failed", ==> show me a mock
-of the button)
+Before I leave this session, adjust the @org/503-handling.org for the following ideas:
+
+1.)
+
+Currently we have the following two buttons regarding CAA/EAA handling on tables/sub-tables:
+
+#+begin_example
+<button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" data-art-render-gen="3"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">36</span></button>
+<button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button>
+#+end_example
+
+2.)
+
+Mayb we can combine these into one button with different clickable areas on the table/sub-table level during these current 503 implementations
+
+- the CAA/EAA toggle icon thumb
+- the CAA/EAA count
+- a reload ALL section
+- a "just what failed" section
+
+3.)
+
+The situation for the "Relationships" column looks like this:
+
+#+begin_example
+<button id="mb-rel-retry-0" type="button" title="Retry loading Relationship icons for this table (network reload, clears IDB cache)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button>
+#+end_example
+
+Maybe we can also extend the above ideas to that button
+
+3.)
+
+show me a mock of the buttons if that's a workable solution
+
+4.)
+
+tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
+
+
+
 
 ** DONE sa_art_idb_metadata_ttl_days
 
@@ -621,4 +659,4 @@ Tracking lives in =org/503-handling.org='s Status section, on =main=.
 in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
 days change
 
-** 
+
