@@ -12614,9 +12614,9 @@ Found while re-running this repo's measurements on `NB-3641` (28 cores, 31 GB)
 because every recent arm had been captured on `vzell-lap` (4 cores, 16 GB). Six
 full fixture-suite runs on `main` at 9.99.1111, machine otherwise idle:
 
-| Workers      | Runs | Green | Wall      | Failing spec, when red                                                    |
-|--------------|------|-------|-----------|---------------------------------------------------------------------------|
-| 14 (default) | 3    | 2/3   | 1.7-1.8 m | `rel-column-fetch-failure.spec.js:109`                                    |
+| Workers      | Runs | Green | Wall      | Failing spec, when red                                                     |
+|--------------|------|-------|-----------|----------------------------------------------------------------------------|
+| 14 (default) | 3    | 2/3   | 1.7-1.8 m | `rel-column-fetch-failure.spec.js:109`                                     |
 | 4            | 3    | 1/3   | 4.4-4.5 m | `rel-cell-state-glyphs.spec.js:328`, `area-flag-region-filter.spec.js:142` |
 
 **Two separate findings, and only the first is settled.**
@@ -12675,12 +12675,12 @@ appear **0 times** in that 1.3 MB page. `_rePopulateCell()` was building
 where MusicBrainz builds `.release-event` > `.release-country` + `.release-date`.
 Every consumer that reads structure rather than pixels scopes on those classes:
 
-| Consumer | scopes on | found |
-|---|---|---|
-| `_findCellReleaseEventParts()` | `.release-event` | nothing |
-| `_findCellCountryNameParts()` | `.release-country` | nothing |
-| `openUniqDrop()`'s `iconSel` | `span.flag` | nothing — the class was on the `<li>`, which is ALSO the walk root and so never returned by `querySelectorAll()` |
-| `hasFlagIcons` | a column-NAME whitelist | 'Release events' explicitly excluded |
+| Consumer                       | scopes on               | found                                                                                                            |
+|--------------------------------|-------------------------|------------------------------------------------------------------------------------------------------------------|
+| `_findCellReleaseEventParts()` | `.release-event`        | nothing                                                                                                          |
+| `_findCellCountryNameParts()`  | `.release-country`      | nothing                                                                                                          |
+| `openUniqDrop()`'s `iconSel`   | `span.flag`             | nothing — the class was on the `<li>`, which is ALSO the walk root and so never returned by `querySelectorAll()` |
+| `hasFlagIcons`                 | a column-NAME whitelist | 'Release events' explicitly excluded                                                                             |
 
 The column rendered perfectly, which is exactly why this survived: nothing was
 missing on screen, only in the dropdown. `_rePopulateCell()` now goes through a
@@ -12969,12 +12969,12 @@ regression rather than restore a baseline.
 **Four rounds of my own diagnosis were wrong, in the same way each time**, and
 that is the reusable part:
 
-| Claimed | Actually |
-|---|---|
+| Claimed                                          | Actually                                                                    |
+|--------------------------------------------------|-----------------------------------------------------------------------------|
 | the snapshot predates the fix (rule text absent) | these captures strip `<style>` entirely — a CSS rule's absence says nothing |
-| the live cascade must be overriding it | it was not; the rule computed 4.8px |
-| 18/18 mutations green | 17 OK, 1 UNEXPECTED — read off a `tail -3` |
-| the flag and date overlap (gap -20px) | the line had WRAPPED in a narrow test column |
+| the live cascade must be overriding it           | it was not; the rule computed 4.8px                                         |
+| 18/18 mutations green                            | 17 OK, 1 UNEXPECTED — read off a `tail -3`                                  |
+| the flag and date overlap (gap -20px)            | the line had WRAPPED in a narrow test column                                |
 
 Every one came from measuring the wrong thing and reporting it with more
 confidence than the measurement carried. The check that finally worked was

@@ -228,10 +228,10 @@ console error appears.
 
 | Gate                            | Fires when                                                   |
 |---------------------------------+--------------------------------------------------------------|
-| ℹ️ Unknown Page Count           | An edit-listing page whose pagination has no true last page  |
-| ⚠️ High Page Count              | More pages than =sa_max_page= (default 50)                   |
+| ℹ️ Unknown Page Count            | An edit-listing page whose pagination has no true last page  |
+| ⚠️ High Page Count               | More pages than =sa_max_page= (default 50)                   |
 | 💾 Save to Disk / 🎨 Render Now | More rows than =sa_render_threshold= (default 5000)          |
-| ⚠️ Large Render Warning         | More rows than =sa_render_warning_threshold= (default 10000) |
+| ⚠️ Large Render Warning          | More rows than =sa_render_warning_threshold= (default 10000) |
 
 The last two fire *after* the fetch finishes, so hitting one wastes the entire
 fetch and then times out. Run with =npm run test:headed= to see which dialog is
