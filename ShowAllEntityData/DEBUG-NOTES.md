@@ -13113,3 +13113,83 @@ multi-table test failed once inside a 50-test batch, passed standalone, passed
 on a re-run of the same batch, and passes identically on unmodified code — the
 change cannot touch it, since a 503 with no `Retry-After` parses to `0` and
 `Math.max` is then a no-op.
+
+## 2026-09-19 — a truncated page fetch was reported as a completed one
+
+Branch `fix/html-fetch-transient`. `org/503-handling.org` F1-F3 / items 3 and 4,
+unblocked by the `_isTransientHttp()` / `_parseRetryAfterMs()` helpers that
+shipped as 9.99.1118 the same day.
+
+**The defect, in one line each.** `fetchHtml()` had no retry. The main loop did
+`pagesProcessed++` *before* fetching page `p` and `break`d in its catch, so a
+503 on page 4 of 40 ended the run at page 3 and then printed "Loaded 4 pages" —
+counting the page that failed, in the words a complete run uses (F1).
+`fetchMaxPageGeneric()` returned `1` from its catch, so a failed page count was
+indistinguishable from a one-page listing; its own JSDoc said "defaults to 1 on
+error", which is how it survived — it read as a decision (F2). And the
+artist-releasegroups official-headers pre-fetch `break`d too (F3).
+
+**Two of the file's own open questions were answerable by reading, and both
+answers changed the fix.**
+
+- *What does a short official set do?* (open question 2) It is **worse than
+  truncation**. The consumer walks `h3_all_category_header_array` and treats
+  entries matching the FRONT of the official array *in sequence* as official;
+  the first mismatch starts the non-official section. A set short by two
+  categories therefore files two genuinely-official categories under
+  Non-Official — confidently, silently — and `discOfficialCategories` persists
+  that to disk. So the fix is to **discard** the partial set, not to carry it.
+  Discarding is also what reaches every consumer: all of them gate on
+  `length > 0`, including `saveTableDataToDisk()`, which does not run inside
+  `startFetchingProcess()` and so could not have seen a flag.
+- *Should the HTML retry share a budget across pages?* (open question 4) **No,
+  and none is needed.** Every caller stops at its first failed page, so exactly
+  one page can ever pay the retries: a genuinely down site costs three attempts
+  in total, not three per page. The `break` already is the budget. Worth
+  re-deciding only if item 5 (resume) makes the loop continue past a failure.
+
+**Open question 1 was answerable only by fixing it.** Save-to-Disk after a
+truncated fetch did write the partial set with no marker at all. The payload now
+carries an optional `incomplete` block — absent on a clean run and in every file
+written before it existed, so `!incomplete` keeps its old meaning and no format
+version bump was needed. A loaded file's marker is carried forward, so re-saving
+a partial file keeps it partial.
+
+**The wording distinction that took a second pass.** `dataIncomplete` is
+narrower than "something went wrong": a failed page or an unreadable count means
+rows are missing, but an incomplete *pre-fetch* does not — the main pass fetched
+everything and only the discography split is lost. Marking that run INCOMPLETE
+would train the user to ignore the word. And when the count is unknown, `maxPage`
+is the fallback `1`, so printing "N of M" would have produced "Loaded 1 of 1
+pages" — a complete one-page listing, the same lie in new words. Hence
+`pagesPhrase`, and a mutation entry for each.
+
+**Testing note, and the trap worth remembering.** `tests/fixtures/html-fetch-transient.spec.js`
+drives two shells that `scripts/build-html-fetch-fixtures.py` derives from the
+committed snapshots, rewriting only the pagination widget to 3 pages — the real
+ones say 42 and 22, and a fixture route serves the same shell for *every* page,
+so honouring them would mean dozens of parses of a quarter-megabyte document per
+test.
+
+The trap: **once `fetchHtml()` retries, failing ONE attempt proves nothing.**
+The first draft of the F2 test failed the page-count request once and asserted
+the run was marked incomplete; the new retry absorbed it, the count came back
+correct, and the spec reported a clean three-page run. A test that wants a final
+failure has to exhaust all three attempts — and, here, stop there, so the loop's
+own page-1 request (the same URL) still succeeds and F1 is not what is being
+measured instead. Two smaller ones: the tooltip is on the status line's first
+child span, not on the container (reading `title` off `#mb-global-status-display`
+returns `null`, which looks exactly like "no tooltip was set"); and the F3 test
+needs its CONTROL — without asserting that a *clean* run builds the discography
+buttons, "no buttons" would pass on a fixture that never had them.
+
+All 10 mutations behaved as predicted, all `expect: "fail"`. Full fixture suite
+369 passed.
+
+**Unrelated observation, recorded because it cost three investigations.** The
+full fixture suite on this machine currently produces about one spurious failure
+per run, a different spec each time, mostly `_runAndWaitForSettledText` timing
+out at 30 s. It reproduces on **unmodified** code (verified by stashing the
+userscript and re-running the same batch), and each spec passes standalone. It
+is environmental, not a regression — but it means a single red spec in a full
+run is not evidence on its own. Re-run it alone before believing it.

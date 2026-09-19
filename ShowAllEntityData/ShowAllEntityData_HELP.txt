@@ -56,7 +56,55 @@ GETTING STARTED
    while the Stop button is visible.
 4. When complete, the consolidated table appears with filtering, sorting, and
    all UI features active.  The global filter is auto-focused so you can start
-   typing immediately.
+   typing immediately.  The status line then reads "Loaded N pages (M rows)" —
+   and if anything went wrong on the way, it says so instead; see WHEN A FETCH
+   DOESN'T FINISH below.
+
+WHEN A FETCH DOESN'T FINISH
+---------------------------
+Fetching a large listing means one request per page, and MusicBrainz refuses
+requests in bursts when it is busy.  Two things happen about that.
+
+• Refusals are retried.  A page that comes back "503 Service Unavailable",
+  "502 Bad Gateway", "504 Gateway Timeout" or "429 Too Many Requests" is asked
+  for again, up to three times, with a growing pause (about 2s, then 5s)
+  between attempts.  If the server says how long to wait (a "Retry-After"
+  header) that wait is honoured, up to 30 seconds.  Most bursts pass
+  unnoticed.  An answer that is genuinely final — a 404, say — is not retried,
+  because asking again would only produce the same answer.  Pressing Stop
+  during one of those pauses takes effect immediately; you do not have to wait
+  it out.
+
+• A fetch that still can't finish SAYS SO, and stops at the page that failed.
+  The status line turns orange and reads, for example:
+
+      ⚠️ Loaded 3 of 40 pages (287 rows) — INCOMPLETE
+
+  Hover it for the reason.  The rows that did arrive are kept and are fully
+  usable — the table is simply smaller than the listing.  Press the action
+  button again to retry from the start.
+
+  This matters because it used to be invisible: a failed page ended the fetch
+  and the result was then reported in the same words a complete fetch uses,
+  counting the page that failed.  "Loaded 4 pages" could mean four pages of
+  four, or four of forty.
+
+  Two related cases:
+    — If the PAGE COUNT itself could not be read, the line says "of an unknown
+      total" rather than claiming a one-page listing.
+    — On an artist's release-group page the Official/Non-Official discography
+      buttons need a preparatory pass of their own.  If that pass fails, the
+      buttons are left out entirely rather than built from half the data — a
+      partial list there does not shorten the "Official" view, it silently
+      files genuinely-official releases under Non-Official.  The status line
+      says so, and the rows themselves are unaffected (so that case is marked
+      with ⚠️ but NOT called INCOMPLETE).
+
+• Saving an incomplete fetch to disk is allowed, but the file remembers.  The
+  Save dialog warns you before writing, and loading that file later shows the
+  same orange "INCOMPLETE" marker — otherwise a short file is indistinguishable
+  from a complete one, forever.  Files saved before this existed load as
+  normal.
 
 ACTION BUTTONS
 --------------
@@ -789,6 +837,11 @@ SAVE & LOAD (Offline Cache)
   ▼ dropdown in the Load dialog.
 • Pre-filtered rows are highlighted with 🎨; toggle highlighting with the
   dynamic prefilter button.
+• A file saved from a fetch that did not finish is marked as such inside the
+  file, and loading it shows an orange "INCOMPLETE" status line saying so.  See
+  WHEN A FETCH DOESN'T FINISH above.  Files written before this marker existed
+  carry no such flag and load as complete, which is the only thing that can be
+  assumed about them.
 
 COLUMN MANAGEMENT
 -----------------

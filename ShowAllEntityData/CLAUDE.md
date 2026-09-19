@@ -1922,6 +1922,63 @@ do NOT go through `_ws2GetJson()` and so have no retry at all —
 `'ws2'` source) — and neither does `initReleaseEventsColumn()`. That is
 `org/503-handling.org`'s remaining work, not an oversight.
 
+**`fetchHtml()` has its own retry on the same helpers**, with a longer backoff
+(`_HTML_FETCH_BACKOFF_MS`, 2 s then 5 s) because a lost page fetch costs a whole
+page of rows rather than one cell, and there are far fewer of them. It throws an
+Error carrying `status` so callers classify without parsing `message`, and its
+backoff is interruptible (`_sleepInterruptible()`) or a pressed Stop would sit
+out up to seven seconds. **There is no shared retry budget across pages and none
+is needed** — every caller stops at its first failed page, so exactly one page
+can ever pay the retries. That stops being true the moment anything makes the
+loop continue past a failure.
+
+## A truncated fetch must never be reported like a complete one
+
+`org/503-handling.org` F1-F3. The rule: anything that makes the fetched set
+smaller than the listing goes into `startFetchingProcess()`'s `fetchIncomplete`
+record, and **every surface renders it through the one resolver
+`_fetchIncompleteSummary()`** — status line, render-decision dialog,
+save-without-rendering line, disk-load line, saved file. Four of those printed
+"Loaded N pages" independently before, and a truncated run reached all four in
+the words of a complete one.
+
+- **`pagesProcessed++` happens AFTER the fetch.** It used to run before the try
+  block, so the page that 503'd was counted as loaded. Any assertion here must
+  name the NUMBER (`"1 of 3"`), not just look for a warning glyph.
+- **`dataIncomplete` is narrower than "something went wrong", deliberately.** A
+  failed page or an unreadable page count means rows are missing. An incomplete
+  artist-releasegroups pre-fetch does not — the main pass fetched everything,
+  and only the Official/Non-Official split is lost. Marking a complete row set
+  INCOMPLETE would train the user to ignore the word.
+- **`fetchMaxPageGeneric()` returns `{maxPage, ok, detail}`, not a number.**
+  `maxPage` is still `1` on failure so nothing fetches zero pages; `ok: false`
+  is what lets the line say "of an unknown total" rather than "1 of 1 pages" —
+  which would read as a complete one-page listing, i.e. the same lie in new
+  words.
+- **An incomplete pre-fetch DISCARDS its partial official set.** Every consumer
+  — the view-button builder, the two re-render walks and `saveTableDataToDisk()`
+  — gates on `h3_official_category_header_array.length > 0`, so discarding
+  switches all of them off at once. Threading a flag out instead misses the save
+  path, which does not run inside `startFetchingProcess()`. A short set does not
+  truncate the Official view: the consumer matches against the FRONT of that
+  array in sequence, so a missing tail MISFILES genuinely-official categories as
+  non-official.
+- **The saved file carries an optional `incomplete` block, and no format bump
+  was needed.** It is absent on a clean run and in every file written before it
+  existed, so `!incomplete` keeps its old meaning. `_lastFetchIncomplete` is
+  module-level because the Save button fires whenever the user likes, long
+  outside the fetch; the disk-load path re-points it so re-saving a partial file
+  keeps it partial.
+
+Covered by `tests/fixtures/html-fetch-transient.spec.js`, whose two shells
+`scripts/build-html-fetch-fixtures.py` derives from the committed snapshots with
+only the pagination widget rewritten to 3 pages (the real ones say 42 and 22,
+and a fixture route serves the same shell for every page). Mutation list
+`scripts/mutations/html-fetch-transient.json`. **Note the trap that spec hit:
+once `fetchHtml()` retries, failing ONE attempt of a request proves nothing** —
+the retry absorbs it and the run comes back clean. A test that wants a final
+failure has to exhaust all three attempts.
+
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
 **Seven** controls share that slot and that visual language. Six share **one CSS
