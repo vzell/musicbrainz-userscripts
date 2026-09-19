@@ -72022,6 +72022,37 @@ a { color: #1565c0; }`;
     const _caaImagesCache = new Map();
 
     /**
+     * Entity paths whose archive METADATA lookup failed transiently, this session.
+     *
+     * The hard prerequisite org/503-handling.org F7 names for the CAA half of
+     * its retry design, and the one thing the art path had no way to express.
+     * After F5, `ctx.countCache` holds `0` for BOTH "the archive says this
+     * release has no artwork" (a 404 — a fact) and "the request failed" (a 503):
+     * F5 deliberately kept the in-memory zero for both, because dropping it
+     * would re-fire one request per failed entity on every keystroke and every
+     * sort, hammering the archive precisely while it is already struggling. So
+     * the zero stays, and this Set records WHY it is there.
+     *
+     * Session-scoped and never persisted, exactly like the zero it annotates —
+     * a transport failure is not a fact about the release, which is the whole of
+     * F5. Written where F5 decided not to persist, in `_artEnrichIcon()`'s
+     * Tier 3.
+     *
+     * **Keyed by entity path, not by DOM**, and that matters: `runFilter()`
+     * REMOVES non-matching rows, so anything derived from the live table loses
+     * exactly the failures a filter is hiding. The Relationships half of F7 had
+     * to read the captured source rows to get the same property; here it comes
+     * for free.
+     *
+     * @type {Set<string>}
+     */
+    const _caaFailedPaths = new Set();
+
+    /** EAA's own, for the same reasons. Separate so one archive's bad minute
+     *  never makes the other's control appear. @type {Set<string>} */
+    const _eaaFailedPaths = new Set();
+
+    /**
      * Creates a fixed-concurrency async FIFO request queue.
      *
      * All art-archive network requests — both `<img>` loads (_artLoadIcon) and `fetch()`
@@ -73127,6 +73158,7 @@ a { color: #1565c0; }`;
         entityGuard:   (p) => p.includes('/release-group/') || p.includes('/release/'),
         countCache:    _caaCountCache,
         imagesCache:   _caaImagesCache,
+        failedCache:   _caaFailedPaths,
         multiBuiltAttr:'caaMultiBuilt',
         tooltip:       (n) => n + ' image' + (n !== 1 ? 's' : '') + ' found for this release / release-group',
         badgeClass:    'mb-caa-count-badge',
@@ -73170,6 +73202,7 @@ a { color: #1565c0; }`;
         entityTypes:   ['event'],
         entityGuard:   (p) => p.includes('/event/'),
         countCache:    _eaaEventCountCache,
+        failedCache:   _eaaFailedPaths,
         imagesCache:   _eaaImagesCache,
         multiBuiltAttr:'eaaMultiBuilt',
         tooltip:       (n) => n + ' image' + (n !== 1 ? 's' : '') + ' found for this event',
@@ -75962,6 +75995,13 @@ a { color: #1565c0; }`;
                     // The ⟳ retry button and a reload both clear it.
                     ctx.countCache.set(entityPath, 0);
                     ctx.imagesCache.set(entityPath, []);
+                    // Annotate the zero: this is the ONLY place that can still
+                    // tell "the archive has nothing" from "the archive could not
+                    // answer", and after this function returns the two are
+                    // indistinguishable. See `_caaFailedPaths`.
+                    if (definitiveAbsence) ctx.failedCache.delete(entityPath);
+                    else ctx.failedCache.add(entityPath);
+                    _artScheduleFailedBtnRefresh(ctx);
                     // Persist the negative result in IDB so Load-from-Disk skips the
                     // network too — but ONLY for a definitive absence. A transport
                     // failure is not a fact about the release: persisting it made one
@@ -75982,6 +76022,8 @@ a { color: #1565c0; }`;
                 count  = images.length;
                 ctx.countCache.set(entityPath, count);
                 ctx.imagesCache.set(entityPath, images);
+                ctx.failedCache.delete(entityPath);   // answered: no longer failed
+                _artScheduleFailedBtnRefresh(ctx);
                 // Persist to IDB so subsequent page loads skip this network call.
                 if (Lib.settings.sa_art_idb_enable) {
                     _artIdbPutMetadata(entityPath, count, images);
@@ -75991,8 +76033,16 @@ a { color: #1565c0; }`;
                 }
             } catch (err) {
                 // Network-level failure — do NOT cache so connectivity-restored
-                // re-renders can retry.
+                // re-renders can retry. Recorded all the same: the user has an
+                // entity with no artwork on screen and no idea why, which is
+                // precisely what the ⚠⟳ control exists to answer. Unlike the
+                // branch above this one leaves no zero behind, so an ordinary
+                // re-render will retry it on its own — the record is what makes
+                // it VISIBLE in the meantime, and it is cleared by the same
+                // success path.
                 Lib.warn(ctx.key, `${ctx.key}EnrichIcon: network error for ${entityPath}:`, err);
+                ctx.failedCache.add(entityPath);
+                _artScheduleFailedBtnRefresh(ctx);
                 return;
             }
         }
@@ -77489,6 +77539,153 @@ a { color: #1565c0; }`;
      *   discard it; the promise exists so the eviction is ordered BEFORE the
      *   re-enrichment, not so anyone waits on it.
      */
+    /**
+     * Re-enriches ONLY the entities whose metadata lookup failed transiently.
+     *
+     * org/503-handling.org F7, CAA half — the half its own design record called
+     * blocked, because until `ctx.failedCache` existed there was nothing to
+     * drive it. `_artRetryTable()` rebuilds a whole table's artwork: it
+     * cache-busts every image, clears the Resource Timing buffer, and re-runs
+     * the bigbox, small-icon and inline-thumbnail passes. That is the right tool
+     * for "force a refetch of artwork I believe is stale", and it is left
+     * untouched. It is the wrong tool for "three releases 503'd", where it costs
+     * one request per row to recover three.
+     *
+     * **Much narrower than `_artRetryTable()`, and deliberately so.** A metadata
+     * failure means the JSON never arrived, so there is no stale image to bust
+     * and no strip to rebuild: clearing the zero, dropping the `enriched`
+     * marker and re-running `_artEnrichIcon()` is the whole of the recovery.
+     * None of the mirroring, sorting or re-render machinery the CAA/EAA section
+     * of CLAUDE.md protects is touched — no sort key is rewritten, no source-row
+     * mirror is re-resolved, and `_artEnrichTable()` is the same entry point an
+     * ordinary render uses.
+     *
+     * Page-wide rather than per table, matching the Relationships half: the
+     * failed set is keyed by entity path, an entity can appear in several
+     * tables, and scoping to one table would need a table -> source-rows mapping
+     * this file states is unreliable.
+     *
+     * @param   {Object} ctx  `CAA_CTX` or `EAA_CTX`.
+     * @returns {void}
+     */
+    function _artRetryFailedAll(ctx) {
+        const paths = new Set(ctx.failedCache);
+        if (!paths.size) return;
+        Lib.debug(ctx.key, `${ctx.key}RetryFailedAll: re-enriching ${paths.size} failed entit(ies)`);
+
+        // The zero this is annotating has to go, or Tier 1 serves it straight
+        // back and no request is made at all — the same defect F5 fixed one
+        // layer down, where `_artRetryTable()` cleared the session caches but
+        // not the IDB record. Nothing is evicted from IDB here: a transient
+        // failure was never written there (that IS F5), so there is nothing to
+        // evict, and clearing it would throw away good records for entities
+        // that merely share the table.
+        paths.forEach(pth => {
+            ctx.countCache.delete(pth);
+            ctx.imagesCache.delete(pth);
+        });
+
+        // Re-arm the anchors for those entities only. The path is derived with
+        // the WRITER's own expression (`ref || href.replace(artSuffix)`), the
+        // one `_artEnrichIcon()` uses when it records the failure — deriving it
+        // from `ctx.rowLinkSel` instead drifts on Path-C synthetic anchors, the
+        // same trap F5's IDB eviction documents.
+        const tables = new Set();
+        const suffixRe = new RegExp(ctx.artSuffix + '$');
+        document.querySelectorAll('a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+            const pth = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
+            if (!pth || !paths.has(pth)) return;
+            delete a.dataset[ctx.enrichedAttr];
+            const td = a.closest('td');
+            if (td && td.dataset[ctx.multiBuiltAttr]) delete td.dataset[ctx.multiBuiltAttr];
+            const tbl = a.closest('table.tbl');
+            if (tbl) tables.add(tbl);
+        });
+
+        // Cleared BEFORE re-enriching, not after: `_artEnrichIcon()` re-adds any
+        // entity that fails again, and a clear afterwards would wipe that fresh
+        // record and leave the control claiming everything recovered.
+        paths.forEach(pth => ctx.failedCache.delete(pth));
+
+        tables.forEach(tbl => _artEnrichTable(ctx, tbl));
+        _artRefreshFailedRetryButton(ctx);
+    }
+
+    /**
+     * Creates, updates or removes one archive's failed-only retry control.
+     *
+     * Present exactly when that archive has transient failures on record, which
+     * is safe because `ctx.failedCache` is keyed by entity path and so cannot be
+     * emptied by a filter. The Relationships half of F7 had to be argued into
+     * this property; here it is structural.
+     *
+     * Anchored after the per-table ⟳, or after the global one on a multi-table
+     * page, so the run reads as a group of controls.
+     *
+     * @param   {Object} ctx  `CAA_CTX` or `EAA_CTX`.
+     * @returns {void}
+     */
+    function _artRefreshFailedRetryButton(ctx) {
+        const id = ctx.btnPrefix + '-retry-failed';
+        const existing = document.getElementById(id);
+        const n = ctx.failedCache.size;
+        if (!n) {
+            if (existing) existing.remove();
+            return;
+        }
+        const btn = existing || document.createElement('button');
+        if (!existing) {
+            btn.id = id;
+            btn.type = 'button';
+            btn.style.cssText =
+                'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
+                ' border-radius:3px; background:rgba(255,193,7,0.55); vertical-align:middle;' +
+                ' font-size:0.8em; margin-left:3px; line-height:1;' +
+                ' display:inline-flex; align-items:center; box-sizing:border-box;' +
+                ' transition:transform 0.1s, box-shadow 0.1s;';
+            btn.addEventListener('click', e => { e.stopPropagation(); _artRetryFailedAll(ctx); });
+        }
+        btn.textContent = `⚠⟳ ${n}`;
+        btn.title = `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the archive `
+                  + 'could not answer, instead of reloading every image in the table. '
+                  + 'Rows a filter is hiding are included.';
+        if (!existing) {
+            // Bail rather than leave an orphan: the per-table ⟳ this anchors on
+            // is built later than the first failures arrive, and an element
+            // created but never inserted is invisible to `getElementById`, so
+            // every later refresh would build another one.
+            const a = document.getElementById(ctx.btnPrefix + '-global-retry')
+                   || document.getElementById(ctx.btnPrefix + '-retry-0');
+            if (!a) return;
+            a.after(btn);
+        }
+    }
+
+    /** Archives with a failed-retry button refresh already scheduled this frame. */
+    const _artFailedBtnRefreshPending = new Set();
+
+    /**
+     * Coalesces `_artRefreshFailedRetryButton()` to once per frame per archive.
+     *
+     * Called from `_artEnrichIcon()`'s failure branches, which on a large
+     * listing run hundreds of times. Cheap to coalesce and cheap to run — the
+     * count is `Set.size`, not a DOM walk — which is what makes a per-frame
+     * refresh reasonable here and was NOT true of the Relationships equivalent,
+     * whose count had to read every captured source row (see
+     * `_relRefreshFailedRetryButtons()`'s JSDoc for why that one is not hooked).
+     *
+     * @param   {Object} ctx
+     * @returns {void}
+     */
+    function _artScheduleFailedBtnRefresh(ctx) {
+        if (_artFailedBtnRefreshPending.has(ctx.key)) return;
+        _artFailedBtnRefreshPending.add(ctx.key);
+        requestAnimationFrame(() => {
+            _artFailedBtnRefreshPending.delete(ctx.key);
+            _artRefreshFailedRetryButton(ctx);
+        });
+    }
+
     async function _artRetryTable(ctx, table, tableIndex) {
         Lib.debug(ctx.key, `${ctx.key}RetryTable: starting forced reload for table ${tableIndex}`);
 
@@ -77528,6 +77725,19 @@ a { color: #1565c0; }`;
         // per-URL: this is the user explicitly asking for everything to be
         // tried again, and the set is rebuilt for free on the next pass.
         _artMissCache.clear();
+
+        // The transient-failure records for this table's entities go too: the
+        // user has just asked for every one of them to be tried again, and
+        // `_artEnrichIcon()` re-adds any that fail a second time. Scoped to this
+        // table rather than cleared wholesale, so a retry on sub-table 3 does
+        // not make sub-table 5's ⚠⟳ disappear without having retried anything.
+        const _failSuffixRe = new RegExp(ctx.artSuffix + '$');
+        table.querySelectorAll('a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+            const pth = a.getAttribute('ref')
+                || (a.getAttribute('href') || '').replace(_failSuffixRe, '');
+            if (pth) ctx.failedCache.delete(pth);
+        });
+        _artRefreshFailedRetryButton(ctx);
 
         // ── 2b. Evict this table's IndexedDB `metadata` records ─────────────
         // Keys are derived exactly as `_artEnrichIcon()` derives them when it
@@ -81535,6 +81745,23 @@ a { color: #1565c0; }`;
              */
             relFailedMbids() {
                 return [..._relFailedMbidsPageWide()].sort();
+            },
+
+            /**
+             * The entity paths one archive has on record as transiently failed.
+             *
+             * Exposed because `ctx.failedCache` has no DOM surface at all once a
+             * filter has removed the rows it describes — which is precisely the
+             * property worth asserting — and because the distinction it carries
+             * (a 503 is recorded, a 404 is not) is invisible on screen: both
+             * render as a release with no artwork.
+             *
+             * @param {('caa'|'eaa')} which
+             * @returns {string[]} Sorted, so a comparison is stable.
+             */
+            artFailedPaths(which) {
+                const ctx = (which === 'eaa') ? EAA_CTX : CAA_CTX;
+                return [...ctx.failedCache].sort();
             },
 
             isTransientHttp(status) {

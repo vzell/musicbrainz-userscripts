@@ -13325,3 +13325,65 @@ that rather than claiming an immediate fetch.
 Six mutations, five `expect: "fail"` and one honest `expect: "pass"` — the
 done-wins rule needs a fixture listing the same entity twice, and no committed
 fixture has one.
+
+## 2026-09-20 — the art path could not say a request had failed
+
+Branch `feat/caa-retry-failed-only`. `org/503-handling.org` F7, CAA half — the
+half its own design record called a hard prerequisite rather than a detail, and
+the last piece of item 8.
+
+**The blocker, restated.** After F5, `ctx.countCache` holds `0` for both "the
+archive says this release has no artwork" (a 404 — a fact) and "the request
+failed" (a 503). F5 kept the in-memory zero for **both** deliberately: dropping
+it would re-fire one request per failed entity on every keystroke and every
+sort, hammering the archive precisely while it is already struggling. The
+consequence was that nothing downstream could tell the two apart, so there was
+nothing for a "just what failed" control to count.
+
+**What cleared it.** `ctx.failedCache` — a session-scoped `Set` of entity paths
+per archive, written in `_artEnrichIcon()`'s Tier 3 at exactly the point F5
+decided not to persist. The org predicted this shape almost exactly. Two
+corrections to the prediction:
+
+- It is cleared by the **success path** and by `_artRetryFailedAll()` as well as
+  by `_artRetryTable()`, not only the last.
+- **Only a non-definitive status is recorded.** A 404 is the commonest answer
+  the archive gives; recording it too would have put a `⚠⟳` carrying a large
+  number on almost every page, which is the same as having no signal.
+
+**Keyed by entity path, not by DOM — and that mattered more than expected.** The
+Relationships half of F7 had to be argued into surviving a filter, and got there
+only by reading the captured source rows. Here the property is structural: a
+`Set` of paths has no idea the table exists.
+
+**Two mutations that would not fail, and what each taught.** This is the second
+day running that a non-failing mutation was more informative than a failing one.
+
+- **"a successful answer leaves the entity on the failed list" passed.** Because
+  the failed-only retry clears the set up front, so that path empties it whether
+  or not the success arm works. The success arm is observable only on the
+  NETWORK-ERROR branch, which caches no zero and is therefore retried by an
+  ordinary re-render with nobody pressing anything. Added a test for exactly
+  that, using `route.abort()` — normally the wrong tool on this path, and the
+  right one here precisely because the catch arm is the subject.
+- **"the retry re-arms every entity, not just the failed ones" passed**, and
+  corrected my own understanding of the code I had just written. That membership
+  test is an **efficiency** guard, not the correctness one: re-arming an anchor
+  only produces a request when the entity has no cache entry, and the ones that
+  answered still have theirs. What actually limits the requests is the
+  cache-deletion loop, which is scoped to `paths` and does have a failing
+  mutation. Recorded as `expect: "pass"` with that reasoning rather than deleted.
+
+**What this does NOT touch**, since the CAA/EAA section of CLAUDE.md asks for
+that statement up front: no sort key is rewritten, no source-row mirror is
+re-resolved, no big-image strip is rebuilt, no image is cache-busted, and no
+IDB record is evicted. A metadata failure means the JSON never arrived, so the
+whole recovery is "clear the zero, drop the `enriched` marker, re-run
+`_artEnrichIcon()`" — and `_artEnrichTable()` is the same entry point an
+ordinary render uses. `_artRetryTable()` keeps its full eight-step rebuild for
+the case it was written for.
+
+**One asymmetry worth knowing.** The per-frame refresh hook that was *removed*
+from the Relationships control is *kept* here, and the reason is the cost of the
+count: `Set.size` versus `_relFailedMbidsPageWide()` walking every captured
+source row.

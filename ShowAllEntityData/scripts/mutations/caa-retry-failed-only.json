@@ -1,0 +1,80 @@
+[
+  {
+    "name": "every non-OK status is recorded as a failure",
+    "why": "The distinction the whole feature rests on. A 404 means the archive HAS no artwork for that release, which is the commonest case there is — recording it too would put a ⚠⟳ carrying a large number on almost every page, which is the same as having no signal at all.",
+    "edits": [
+      {
+        "find": "                    if (definitiveAbsence) ctx.failedCache.delete(entityPath);\n                    else ctx.failedCache.add(entityPath);",
+        "replace": "                    ctx.failedCache.add(entityPath);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "a 503 is recorded as a failure",
+    "expect": "fail"
+  },
+  {
+    "name": "a transient failure is not recorded at all",
+    "why": "The pre-F7 state: ctx.countCache holds a zero for both a 404 and a 503 and nothing can tell them apart, so there is nothing for a failed-only control to read. This is the blocker the org called hard.",
+    "edits": [
+      {
+        "find": "                    if (definitiveAbsence) ctx.failedCache.delete(entityPath);\n                    else ctx.failedCache.add(entityPath);",
+        "replace": "                    ctx.failedCache.delete(entityPath);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "a 503 is recorded as a failure",
+    "expect": "fail"
+  },
+  {
+    "name": "a successful answer leaves the entity on the failed list",
+    "why": "The record has to come off when the entity is answered. Only observable on the NETWORK-ERROR branch: a thrown request caches no zero, so an ordinary re-render retries the entity and the success arm is what clears the record. The failed-only RETRY path cannot show it — that one empties the set up front, whether or not the success arm does its job, which is why an earlier version of this entry passed.",
+    "edits": [
+      {
+        "find": "                ctx.failedCache.delete(entityPath);   // answered: no longer failed",
+        "replace": "                void 0;   // answered: no longer failed"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "recovers on its own",
+    "expect": "fail"
+  },
+  {
+    "name": "the retry does not clear the cached zero",
+    "why": "F5 kept the in-memory zero for a transient failure on purpose, so Tier 1 serves it back on every re-render. A retry that re-arms the anchors without dropping that zero makes no request at all — the same defect F5 itself fixed one layer down, where _artRetryTable() cleared the session caches but not the IDB record.",
+    "edits": [
+      {
+        "find": "        paths.forEach(pth => {\n            ctx.countCache.delete(pth);\n            ctx.imagesCache.delete(pth);\n        });",
+        "replace": "        paths.forEach(pth => { void pth; });"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "re-requests only the failed release",
+    "expect": "fail"
+  },
+  {
+    "name": "the retry re-arms every entity, not just the failed ones",
+    "why": "KNOWN GAP, and it corrected my own understanding of the code: this membership test is an EFFICIENCY guard, not the correctness one. Re-arming an anchor only causes a request when the entity has no cache entry, and the entities that answered still have theirs — so Tier 1 serves them and the request counts do not move. What actually limits the requests is the cache-deletion loop above, which IS scoped to `paths` and DOES have a failing mutation (\"the retry does not clear the cached zero\"). Dropping this test would still make the pass walk every anchor on the page and re-enrich every table, which is worth keeping and is not worth a request-count assertion.",
+    "edits": [
+      {
+        "find": "            if (!pth || !paths.has(pth)) return;",
+        "replace": "            if (!pth) return;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "re-requests only the failed release",
+    "expect": "pass"
+  },
+  {
+    "name": "the record is cleared after re-enriching instead of before",
+    "why": "_artEnrichIcon() re-adds any entity that fails a second time. Clearing afterwards wipes that fresh record, so a retry into a still-broken archive reports everything recovered. KNOWN GAP recorded honestly: this fixture lets the retry succeed, so no second failure is produced and the ordering cannot be observed. Covering it needs a route that keeps failing across a retry AND a settled assertion afterwards.",
+    "edits": [
+      {
+        "find": "        paths.forEach(pth => ctx.failedCache.delete(pth));\n\n        tables.forEach(tbl => _artEnrichTable(ctx, tbl));",
+        "replace": "        tables.forEach(tbl => _artEnrichTable(ctx, tbl));\n        paths.forEach(pth => ctx.failedCache.delete(pth));"
+      }
+    ],
+    "spec": "tests/fixtures/caa-retry-failed-only.spec.js",
+    "grep": "re-requests only the failed release",
+    "expect": "pass"
+  }
+]

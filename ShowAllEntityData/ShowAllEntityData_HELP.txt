@@ -1247,6 +1247,19 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
       the ⟳ retry button asks again.
   If you upload artwork while the page is open, press ⟳ to clear the
   remembered absences (or simply reload).
+• TWO retry buttons, for two different intentions — the same pair the
+  Relationships column has:
+    ⟳     Reload EVERYTHING in this table.  Forces a fresh, cache-busted
+          fetch of every image and every lookup.  For when you think what is
+          on screen is stale.
+    ⚠⟳ N  Ask again about ONLY the N entities the archive could not answer,
+          leaving the rest alone.  This one appears only when something has
+          actually failed.
+  The difference matters because a lookup that 404s and a lookup that 503s
+  look identical on screen — both are a release with no artwork.  The number
+  on ⚠⟳ counts only the second kind, so a page full of releases that
+  genuinely have no cover art shows no button at all.
+  Entities whose rows a filter is hiding are counted and retried too.
 • Artwork already on screen stays on screen.  Sorting or filtering rebuilds
   the table rows, and both the small icon and the inline thumbnail now come
   back already showing their image instead of blanking and repainting a
