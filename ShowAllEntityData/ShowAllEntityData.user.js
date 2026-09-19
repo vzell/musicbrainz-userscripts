@@ -33107,6 +33107,35 @@ a { color: #1565c0; }`;
     /** Release-events injected column list; parallel to activeInjectedColumns. */
     let activeReleaseEventColumns = [];
 
+    /** Attempts per Release-events lookup, including the first (see `_ws2GetJson()`). */
+    const _RE_WS2_TRIES = 3;
+
+    /**
+     * Backoff multiplier between those attempts, in milliseconds.
+     *
+     * Not routed through `_relAwaitRateSlot()` on purpose. That gate exists to
+     * space a STREAM of one request per entity; this feature issues exactly one
+     * request for the whole page, so joining it would buy nothing and would
+     * couple two unrelated features' pacing. The pre-existing bare `fetch()` did
+     * not join it either, so nothing regresses.
+     */
+    const _RE_WS2_BACKOFF_MS = 1100;
+
+    /**
+     * How the Release-events lookup went, for the column header to render.
+     *
+     * Module-level rather than local to `initReleaseEventsColumn()` because the
+     * header is rebuilt from a clone on every re-render — `_reInitColHeaderState()`
+     * runs from each render path and needs to know what to show long after the
+     * fetch resolved.
+     *
+     * @type {{status: ('idle'|'loading'|'ok'|'error'), detail: string}}
+     */
+    let _reFetchState = { status: 'idle', detail: '' };
+
+    /** Guards a double click on the ⚠ retry control. */
+    let _reFetchInFlight = false;
+
     // Runtime eraser list populated by buildActiveColumnErasers() in startFetchingProcess.
     // Each entry: { sourceColumn, erasers, colIdx }
     // colIdx is resolved per-page during header scanning and reset to -1 between pages.
@@ -35729,6 +35758,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
+        .mb-re-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
         .mb-col-uniq-wrap {
             cursor: pointer;
@@ -35752,6 +35782,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
+        .mb-re-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
         .mb-col-uniq-wrap:hover {
             background: var(--mb-hdr-pill-bg-hover);
@@ -35760,7 +35791,8 @@ a { color: #1565c0; }`;
         .mb-caa-col-hdr-btn:focus-visible,
         .mb-ms-col-hdr-btn:focus-visible,
         .mb-picard-col-hdr-btn:focus-visible,
-        .mb-rel-col-hdr-btn:focus-visible {
+        .mb-rel-col-hdr-btn:focus-visible,
+        .mb-re-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
             outline-offset: 1px;
         }
@@ -35775,6 +35807,37 @@ a { color: #1565c0; }`;
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
             border-color: var(--mb-hdr-pill-engaged-border);
+        }
+
+        /* Release-events lookup state (org/503-handling.org F4). Present only
+           while loading or after a final failure — a column that worked needs
+           no control, which is also why a clean render gains no markup here.
+
+           The glyph is generated content, never element text: this <th>'s
+           textContent feeds _cleanColHeaderText()'s fallback,
+           _exportCleanHeaderText() and the 📊 dropdown's column lookup. Same
+           rule as .mb-rel-col-hdr-btn's, and U+FE0E for the same reason — it
+           forces the monochrome outline form, so the glyph takes the header's
+           own colour instead of rendering as a colour emoji.
+
+           The yellow is the ⏱ retry tint's, deliberately: the two mean the
+           same thing to the user (nothing was cached, click and it really does
+           ask again) and are worth looking alike. */
+        .mb-re-col-hdr-btn[data-re-state="error"] {
+            background: rgba(255, 193, 7, 0.55);
+            border-color: rgba(190, 140, 0, 0.70);
+        }
+        .mb-re-col-hdr-btn[data-re-state="error"]:hover {
+            background: rgba(255, 193, 7, 0.75);
+        }
+        .mb-re-col-hdr-btn[data-re-state="error"]::before {
+            content: "⚠︎";
+        }
+        .mb-re-col-hdr-btn[data-re-state="loading"] {
+            cursor: default;
+        }
+        .mb-re-col-hdr-btn[data-re-state="loading"]::before {
+            content: "⏳";
         }
 
         /* Per-column ▶N▤/▼N▤ multi-row collapse toggle, inserted into the
@@ -44817,6 +44880,10 @@ a { color: #1565c0; }`;
             // unconditionally, because the gate below deliberately does NOT
             // fire on a settled page.
             _relInitColHeaderToggles();
+            // Same reason as the line above: the <thead> this writes into may
+            // have just been rebuilt from a clone. No-op unless the Release-events
+            // lookup is loading or has failed.
+            _reInitColHeaderState();
             // Re-populate any rel cells that were not yet done when runFilter rebuilt
             // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
             // Scoped to EXPANDED tables and to cells that can actually be
@@ -45075,6 +45142,10 @@ a { color: #1565c0; }`;
                 // ▶🔗 toggle anyway: it is idempotent, and the gate below
                 // deliberately does not fire on a settled page.
                 _relInitColHeaderToggles();
+                // Same reason as the line above: the <thead> this writes into may
+                // have just been rebuilt from a clone. No-op unless the Release-events
+                // lookup is loading or has failed.
+                _reInitColHeaderState();
                 // Re-populate any rel cells that were not yet done when runFilter rebuilt
                 // the DOM (race: Phase-2 fetch queue was mid-flight when the user typed).
                 // See _relAnyPendingInExpandedTable()'s JSDoc for why this is no
@@ -46399,6 +46470,10 @@ a { color: #1565c0; }`;
             Object.keys(baseDef.entityFeatures).find(k => baseDef.entityFeatures[k] === entitySpecificFeatures)) || undefined;
         activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _entityKindHintFromH2);
         activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
+        // A new run starts with no verdict on the Release-events lookup, so a
+        // ⚠ left over from the previous one cannot be painted into the fresh
+        // headers. The fetch below sets 'loading' the moment it starts.
+        _reFetchState = { status: 'idle', detail: '' };
         activeInjectedColumnExtractors = buildActiveInjectedColumnExtractors(activeDefinition);
         if (activeInjectedColumns.length) {
             Lib.debug('init', `injectedColumns: [${activeInjectedColumns.map(e => `"${e.colName}"(${e.entityType})`).join(', ')}]`);
@@ -49152,6 +49227,10 @@ a { color: #1565c0; }`;
             // table over sa_rel_collapse_threshold the fetch below does nothing
             // at all, and the toggle is the only way for the user to ask for it.
             _relInitColHeaderToggles();
+            // Same reason as the line above: the <thead> this writes into may
+            // have just been rebuilt from a clone. No-op unless the Release-events
+            // lookup is loading or has failed.
+            _reInitColHeaderState();
             if (_relPageHasColumn()) initRelationshipsColumn();
 
             // Inject Picard tagger column AFTER Relationships so Picard is always the
@@ -65921,6 +66000,82 @@ a { color: #1565c0; }`;
      *      cells) and re-runs `initCollapsableColumns()` a third time
      *      (idempotent, safe) since nothing else re-scans after that pass.
      */
+    /**
+     * Records how the Release-events lookup went and repaints the header.
+     *
+     * @param {('idle'|'loading'|'ok'|'error')} status
+     * @param {string} detail  e.g. `"HTTP 503"`; shown in the control's tooltip.
+     * @returns {void}
+     */
+    function _reSetFetchState(status, detail) {
+        _reFetchState = { status, detail: detail || '' };
+        _reInitColHeaderState();
+    }
+
+    /**
+     * Paints the ⚠/⏳ control into every Release-events column header.
+     *
+     * Present ONLY while loading or after a final failure. A column that worked
+     * needs no control, and that is also what keeps this change out of the
+     * committed `rendered.html` baselines: a clean render produces no new
+     * markup at all, only the CSS in the `<style>` block
+     * (tests/snapshots/registry.org's "Expected drift").
+     *
+     * **The control is destroyed and rebuilt rather than reused**, even when one
+     * is already there. `renderGroupedTable()` rebuilds every `<thead>` from a
+     * `cloneNode(true)`, which carries the element's classes and attributes but
+     * NOT its click listener — so a surviving-looking button would be dead.
+     * Recreating is the cheapest correct answer here (at most one per
+     * Release-events column) and avoids a delegate whose only client is this.
+     *
+     * Must be called from every render path, like `_relInitColHeaderToggles()`,
+     * for the same reason: the header it writes into did not exist a moment ago.
+     *
+     * @returns {void}
+     */
+    function _reInitColHeaderState() {
+        if (!activeReleaseEventColumns.length) return;
+        const _names = new Set(activeReleaseEventColumns.map(e => e.colName));
+        const _show = (_reFetchState.status === 'error' || _reFetchState.status === 'loading');
+        document.querySelectorAll('table.tbl thead th').forEach(th => {
+            const _old = th.querySelector('.mb-re-col-hdr-btn');
+            if (_old) _old.remove();
+            if (!_show) return;
+            // `th.dataset.colName` and not a textContent strip: these are
+            // injected columns, so `makeTableSortableUnified()` always sets it,
+            // and a strip would have to know about the glyph guard's U+200B
+            // (see CLAUDE.md's `_cleanColHeaderText()` note).
+            if (!_names.has(th.dataset.colName || '')) return;
+            const _flex = th.querySelector('.mb-col-hdr-flex');
+            if (!_flex) return;
+
+            const _btn = document.createElement('button');
+            _btn.type = 'button';
+            _btn.className = 'mb-re-col-hdr-btn';
+            _btn.dataset.reState = _reFetchState.status;
+            if (_reFetchState.status === 'loading') {
+                _btn.title = 'Release events: loading…';
+                _btn.setAttribute('aria-disabled', 'true');
+            } else {
+                _btn.title = `Release events could not be loaded (${_reFetchState.detail}). `
+                           + 'MusicBrainz was asked three times. Click to try again.';
+                _btn.addEventListener('click', (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();          // never reaches the sort handler
+                    if (_reFetchInFlight) return;
+                    _reFetchInFlight = true;
+                    Promise.resolve(initReleaseEventsColumn())
+                        .catch(() => {})
+                        .then(() => { _reFetchInFlight = false; });
+                });
+            }
+            // The glyph is CSS `::before`, never text — `th.textContent` feeds
+            // `_cleanColHeaderText()`'s fallback, `_exportCleanHeaderText()` and
+            // the 📊 dropdown's column lookup. Same rule as the ▶🔗 toggle's.
+            _flex.prepend(_btn);
+        });
+    }
+
     async function initReleaseEventsColumn() {
         if (!Lib.settings.sa_enable_release_events_column) return;
         if (!activeReleaseEventColumns.length) return;
@@ -65988,15 +66143,30 @@ a { color: #1565c0; }`;
         const _wsUrl = `/ws/2/${_eType}/${_eId}?inc=release-rels&fmt=json`;
         _dbg(`initReleaseEventsColumn: fetching ${_wsUrl}`);
 
-        let relations;
-        try {
-            const resp = await fetch(_wsUrl, { headers: { Accept: 'application/json' } });
-            if (!resp.ok) { _dbg(`initReleaseEventsColumn: HTTP ${resp.status}`); return; }
-            relations = (await resp.json()).relations || [];
-        } catch (err) {
-            _dbg('initReleaseEventsColumn: fetch error:', err.message || String(err));
+        // Routed through `_ws2GetJson()` rather than a bare `fetch()`
+        // (org/503-handling.org F4). It used to get neither the retry nor the
+        // transient/final classification its WS/2 siblings had, and a failure
+        // ended in a debug line and a `return` — so one 503 cost the whole
+        // column, silently, with no way back short of reloading the page. It is
+        // ONE request per page, which is what made that so cheap to lose.
+        _reSetFetchState('loading', '');
+        const _res = await _ws2GetJson(_wsUrl, {
+            tries: _RE_WS2_TRIES,
+            beforeRetry: (attempt, retryAfterMs) => new Promise(
+                r => setTimeout(r, Math.max(_RE_WS2_BACKOFF_MS * attempt, retryAfterMs))),
+            dbg: _dbg,
+            label: 'initReleaseEventsColumn',
+        });
+        if (!_res.ok) {
+            // Nothing is marked `reDone`, so the cells stay unpopulated and a
+            // later call — the ⚠ header control, or the next render path that
+            // reaches here — picks them all up again.
+            _dbg(`initReleaseEventsColumn: FAILED (${_res.detail}) — column left empty, retry offered`);
+            _reSetFetchState('error', _res.detail || 'the request failed');
             return;
         }
+        const relations = (_res.data && _res.data.relations) || [];
+        _reSetFetchState('ok', '');
         _dbg(`initReleaseEventsColumn: ${relations.length} relations`);
 
         const eventsMap = extractReleaseEvents(relations);
@@ -69991,6 +70161,10 @@ a { color: #1565c0; }`;
             // cost, so collapsing it would be pure loss. See
             // _relTableExpanded()'s "the two defaults".
             _relInitColHeaderToggles();
+            // Same reason as the line above: the <thead> this writes into may
+            // have just been rebuilt from a clone. No-op unless the Release-events
+            // lookup is loading or has failed.
+            _reInitColHeaderState();
             // "Has or needs": a snapshot saved WITHOUT a populated column has
             // no rel cell to find here — the cells are built inside the call
             // below. _relCreateRetryButtons() keeps the plain DOM test because

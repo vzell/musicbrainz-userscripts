@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the Release-events lookup does not retry",
+    "why": "The pre-F4 behaviour in one number: one attempt, so a single 503 costs the whole column. The recovery test must notice both the missing retry and the empty cells.",
+    "edits": [
+      {
+        "find": "const _RE_WS2_TRIES = 3;",
+        "replace": "const _RE_WS2_TRIES = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "a 503 is retried and the column still populates",
+    "expect": "fail"
+  },
+  {
+    "name": "a failure is silent again",
+    "why": "The other half of F4: the fetch is retried but the verdict is thrown away, so the column is empty with nothing on screen saying why and no way to ask again — which is exactly the state this finding describes.",
+    "edits": [
+      {
+        "find": "            _reSetFetchState('error', _res.detail || 'the request failed');",
+        "replace": "            _reSetFetchState('idle', '');"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "a permanent failure leaves the cells alone",
+    "expect": "fail"
+  },
+  {
+    "name": "a failure marks the cells done",
+    "why": "\"A transport failure is not an answer\", the mistake every other network path in the script has already had fixed. Marking them done would leave the column permanently empty AND stop any later pass picking the cells up, while looking entirely settled.",
+    "edits": [
+      {
+        "find": "            _dbg(`initReleaseEventsColumn: FAILED (${_res.detail}) — column left empty, retry offered`);",
+        "replace": "            allCells.forEach(td => { td.dataset.reDone = '1'; });"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "a permanent failure leaves the cells alone",
+    "expect": "fail"
+  },
+  {
+    "name": "success does not clear the marker",
+    "why": "A stale ⚠ on a column that has just filled is worse than none: it says the data is missing when it is right there.",
+    "edits": [
+      {
+        "find": "        _reSetFetchState('ok', '');",
+        "replace": "        void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "clicking the control retries",
+    "expect": "fail"
+  },
+  {
+    "name": "the control is reused instead of rebuilt",
+    "why": "Rebuilding rather than reusing carries TWO guarantees, and this mutation is caught by the first of them: the control also has to change STATE, and reusing means the ⏳ painted when the lookup started is never replaced by the ⚠, so the settled error state never appears at all. The second guarantee is the one the test's name is about — renderGroupedTable() rebuilds every <thead> from a cloneNode(true), which carries classes and attributes but NOT the click listener, so a reused control would look normal and do nothing. That half is why the test CLICKS rather than just looking, and it is covered by the same edit rather than separately.",
+    "edits": [
+      {
+        "find": "            const _old = th.querySelector('.mb-re-col-hdr-btn');\n            if (_old) _old.remove();",
+        "replace": "            const _old = th.querySelector('.mb-re-col-hdr-btn');\n            if (_old) return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "survives a re-render AND is still wired",
+    "expect": "fail"
+  },
+  {
+    "name": "every status is retried, 4xx included",
+    "why": "The overshoot rather than the defect. Without the boundary test a 404 from a mistyped entity would cost three attempts and a wait, on every page.",
+    "edits": [
+      {
+        "find": "                if (!_isTransientHttp(resp.status)) break;",
+        "replace": "                if (false) break;"
+      }
+    ],
+    "spec": "tests/fixtures/release-events-transient.spec.js",
+    "grep": "a 404 is final",
+    "expect": "fail"
+  }
+]

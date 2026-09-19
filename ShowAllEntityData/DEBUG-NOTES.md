@@ -13193,3 +13193,62 @@ out at 30 s. It reproduces on **unmodified** code (verified by stashing the
 userscript and re-running the same batch), and each spec passes standalone. It
 is environmental, not a regression — but it means a single red spec in a full
 run is not evidence on its own. Re-run it alone before believing it.
+
+## 2026-09-19 — one lost request emptied the Release-events column, silently
+
+Branch `fix/release-events-transient`. `org/503-handling.org` F4 / item 6, the
+last of that file's silent-failure findings.
+
+**The defect.** `initReleaseEventsColumn()` called `fetch()` directly rather
+than `_ws2GetJson()`, so it had neither the three attempts nor the
+transient/final classification every other WS/2 path had gained. A failure ended
+in `_dbg(...)` — gated behind `sa_enable_release_events_debug`, so silent by
+default — and a `return`. It is **one request for the whole page**, which is
+what made it so cheap to lose: a single 503 and the column was empty, with
+nothing on screen and no retry short of a page reload.
+
+**What shipped beyond the routing.** The org note asked for "the failure state
+on the column header if it still fails". Making that state CLICKABLE was barely
+more code and gives the script its first **column-level** retry — a level the
+file's own "Visualisation and retry level" table had as "No" everywhere.
+`.mb-re-col-hdr-btn` is the eighth member of the `.mb-col-hdr-flex` family,
+added by extending the three shared selector lists rather than copying a block,
+per that section's own instruction.
+
+It is painted **only** while loading (⏳) or after a final failure (⚠), which is
+not just restraint: a clean render therefore gains no markup, so no committed
+`rendered.html` baseline changes except its `<style>` block. Recorded in
+`tests/snapshots/registry.org`'s "Expected drift", alongside the equivalent
+entry from the Relationships glyph work.
+
+**Two traps, both of which bit.**
+
+- **Destroy and rebuild the control; never reuse it.** Two independent reasons,
+  and I only had the second one in mind when writing it. (1) The control changes
+  STATE — ⏳ becomes ⚠ — so reusing the existing element strands it on whatever
+  it was first painted as. (2) `renderGroupedTable()` rebuilds every `<thead>`
+  from a `cloneNode(true)`, which carries classes and attributes but **not** the
+  click listener, so a reused control would look perfectly normal and do
+  nothing. The mutation that turns the rebuild into a reuse is caught by (1)
+  first; the spec clicks the control after a filter keystroke, which is what
+  covers (2). The mutation file says so explicitly rather than claiming the
+  edit proves only the listener half.
+- **A test must wait on `[data-re-state="error"]`, not on the bare class.** The
+  control exists while loading too, and the three attempts take a few seconds.
+  Waiting on `.mb-re-col-hdr-btn` therefore proceeds mid-retry: the first draft
+  of the spec asserted three requests, saw one, and reported a defect that did
+  not exist. Three of its six tests failed that way at once, which is the
+  cheapest possible way to learn it.
+
+**Deliberately not on the rate gate.** `_relAwaitRateSlot()` exists to space a
+STREAM of one request per entity. This is one request per page, so joining it
+would couple two unrelated features' pacing for no benefit — and the bare
+`fetch()` it replaces did not join it either, so nothing regressed. Written down
+because "share the gate" is the obvious-looking tidy-up.
+
+**Testing note.** `tests/fixtures/release-events-transient.spec.js` reuses the
+`label-relationships-release-events.html` shell that
+`release-events-filter-after-populate.spec.js` already drives, including its
+page-error exclusions (that captured shell's own MusicBrainz scripts throw). All
+6 mutations behaved as predicted, all `expect: "fail"`. Full fixture suite 375
+passed.
