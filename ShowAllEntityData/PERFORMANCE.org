@@ -1955,6 +1955,17 @@ Three things worth keeping:
   fails in bursts and caching that would turn a few seconds of upstream trouble
   into a permanently blank column.
 
+  *That sentence was only half true until 9.99.1117, and it reads as a blanket
+  guarantee.* It held for the IMAGE-bytes path this step is about
+  (~_artMissCache~ / ~_ART_MISS_STATUSES~). The METADATA path did the opposite:
+  ~_artEnrichIcon()~'s Tier 3 wrote ~count: 0~ for *every* non-OK status and
+  persisted it to the IndexedDB ~metadata~ store, so a 5xx produced exactly the
+  blank column this bullet promises it avoids — and did it across sessions, for
+  ~sa_art_idb_metadata_ttl_days~, rather than only until reload. Fixed as
+  ~org/503-handling.org~ F5; the claim is now true of both paths. Left here
+  rather than silently corrected, because a doc asserting a guarantee the code
+  only half-had is the failure mode worth remembering.
+
 *Still open from this series*: the re-enrichment shape — see Step 20.
 
 *** TODO Step 20: Separate "re-apply artwork highlight" from "re-fetch artwork enrichment"
