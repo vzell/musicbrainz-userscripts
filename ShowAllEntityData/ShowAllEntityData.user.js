@@ -2357,7 +2357,7 @@
         sa_art_idb_metadata_ttl_days: {
             label: 'Metadata (JSON) cache TTL (days)',
             type: 'number',
-            default: 7,
+            default: 30,
             min: 1,
             max: 90,
             description: 'Maximum age in days for a cached archive JSON metadata record (image count + ' +
@@ -29328,7 +29328,7 @@ ${sections.join('\n')}
                     stat:    `📋 Art metadata store (IDB)`,
                     value:   '<em class="sa-stats-faint">querying…</em>',
                     comment: _idbEnabled
-                        ? `TTL: ${Lib.settings.sa_art_idb_metadata_ttl_days || 7} days — archive JSON metadata`
+                        ? `TTL: ${Lib.settings.sa_art_idb_metadata_ttl_days || 30} days — archive JSON metadata`
                         : '⚠️ IDB art cache disabled',
                     _id:     'mb-stats-idb-metadata',
                 },
@@ -71668,6 +71668,12 @@ a { color: #1565c0; }`;
      * builds a wrapper — so the cross-reload case is covered without adding a
      * store and bumping `_ART_IDB_VERSION`.
      *
+     * Read "negatives" there strictly: since org/503-handling.org's F5 fix, the
+     * metadata layer persists a DEFINITIVE absence only (`_ART_MISS_STATUSES`).
+     * A transient failure is now remembered here and in `ctx.countCache` for the
+     * session alone, and is deliberately NOT covered cross-reload — which is the
+     * point, not an omission.
+     *
      * @type {Set<string>}
      */
     const _artMissCache = new Set();
@@ -72020,7 +72026,7 @@ a { color: #1565c0; }`;
      * @returns {Promise<{count: number, images: Array}|null>}
      */
     async function _artIdbGetMetadata(entityPath) {
-        const ttlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 7) * 86400 * 1000);
+        const ttlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 30) * 86400 * 1000);
         try {
             const rec = await _artIdbGet('metadata', entityPath);
             if (rec && (Date.now() - rec.storedAt) < ttlMs) {
@@ -72068,7 +72074,7 @@ a { color: #1565c0; }`;
         const run = () => {
             _artOpenIdb().then(db => {
                 const imgTtlMs  = ((Lib.settings.sa_art_idb_image_ttl_days    || 30) * 86400 * 1000);
-                const metaTtlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 7)  * 86400 * 1000);
+                const metaTtlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 30)  * 86400 * 1000);
                 let   deleted   = 0;
 
                 /**
@@ -75036,21 +75042,35 @@ a { color: #1565c0; }`;
             try {
                 const resp = await fetch(apiUrl);
                 if (!resp.ok) {
-                    // 404 — no archive entry at all: expected, debug only.
-                    // 429 / 5xx — server-side problems: warn so they surface.
-                    if (resp.status === 404) {
+                    // 404 / 410 — no archive entry at all, and asking again will not
+                    //   change that: expected, debug only.
+                    // 429 / 5xx — the archive is having a bad minute: warn so they surface.
+                    const definitiveAbsence = _ART_MISS_STATUSES.includes(resp.status);
+                    if (definitiveAbsence) {
                         if (Lib.settings.sa_enable_art_fetch_debug_logging) {
-                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP 404 (no entry) for ${entityPath}`);
+                            Lib.debug(ctx.key, `${ctx.key}EnrichIcon: HTTP ${resp.status} (no entry) for ${entityPath}`);
                         }
                     } else {
                         Lib.warn(ctx.key, `${ctx.key}EnrichIcon: HTTP ${resp.status} for ${entityPath} — enrichment skipped`);
                     }
-                    // Cache sentinel (0) to suppress repeated failed requests
-                    // across sort/filter re-renders for the same entity.
+                    // Cache sentinel (0) to suppress repeated failed requests across
+                    // sort/filter re-renders for the same entity. For a TRANSIENT
+                    // failure this stays session-scoped on purpose: dropping it would
+                    // re-fire one request per entity on every keystroke and every sort,
+                    // i.e. hammer the archive precisely while it is already struggling.
+                    // The ⟳ retry button and a reload both clear it.
                     ctx.countCache.set(entityPath, 0);
                     ctx.imagesCache.set(entityPath, []);
-                    // Persist negative result in IDB so Load-from-Disk skips the network too.
-                    if (Lib.settings.sa_art_idb_enable) {
+                    // Persist the negative result in IDB so Load-from-Disk skips the
+                    // network too — but ONLY for a definitive absence. A transport
+                    // failure is not a fact about the release: persisting it made one
+                    // bad minute at the archive hide real artwork for the whole
+                    // `sa_art_idb_metadata_ttl_days` window, on every later page load,
+                    // with no request and no warning (org/503-handling.org F5). This is
+                    // the same distinction `_artGmFetchBlob()` already draws for image
+                    // bytes, and the one the ⏱ and Relationships features already fixed
+                    // for WS/2 — left standing in the oldest network path.
+                    if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {
                         _artIdbPutMetadata(entityPath, 0, []);
                     }
                     anchor.dataset[ctx.enrichedAttr] = '1';
@@ -76546,7 +76566,12 @@ a { color: #1565c0; }`;
      *      increments back up during the fresh load.
      *   2. Purge `ctx.countCache` for every entity link in this table so that
      *      `_artEnrichIcon` makes a fresh network request instead of replaying a
-     *      cached 404 or stale count.
+     *      cached 404 or stale count, and DELETE each entity's IndexedDB
+     *      `metadata` record so Tier 2 cannot hand the same stale count straight
+     *      back. Without that delete this whole function is a no-op for any
+     *      entity with a persisted negative: step 2 clears the session Maps,
+     *      `_artEnrichIcon` misses Tier 1, hits Tier 2 and returns the stored
+     *      zero without issuing a request.
      *   3. Strip the `enrichedAttr` marker from all art anchors in the table so
      *      `_artEnrichIcon`'s idempotency guard does not suppress the re-fetch.
      *   4. Set any visible `⚠⟳` error indicators to `⟳` (loading state) so the
@@ -76558,8 +76583,12 @@ a { color: #1565c0; }`;
      * @param {HTMLTableElement} table
      * @param {number}           tableIndex  Index corresponding to the toggle/retry
      *   button IDs (`ctx.btnPrefix + '-' + tableIndex`).
+     * @returns {Promise<void>}  Resolves once the IDB eviction has landed and the
+     *   reload has been kicked off. Both call sites are `click` handlers that
+     *   discard it; the promise exists so the eviction is ordered BEFORE the
+     *   re-enrichment, not so anyone waits on it.
      */
-    function _artRetryTable(ctx, table, tableIndex) {
+    async function _artRetryTable(ctx, table, tableIndex) {
         Lib.debug(ctx.key, `${ctx.key}RetryTable: starting forced reload for table ${tableIndex}`);
 
         // ── 1. Adjust global badge (subtract current sub-table count) ────────
@@ -76598,6 +76627,35 @@ a { color: #1565c0; }`;
         // per-URL: this is the user explicitly asking for everything to be
         // tried again, and the set is rebuilt for free on the next pass.
         _artMissCache.clear();
+
+        // ── 2b. Evict this table's IndexedDB `metadata` records ─────────────
+        // Keys are derived exactly as `_artEnrichIcon()` derives them when it
+        // WRITES (`ref || href.replace(artSuffix)`, off the art anchor), so the
+        // key deleted matches the key stored by construction. Deriving them from
+        // `ctx.rowLinkSel` instead would drift on Path-C synthetic anchors, and
+        // would also issue deletes for the sticky-column duplicate and for
+        // release-group breadcrumbs that `_artEnrichIcon` never wrote.
+        //
+        // Awaited, and ordered before step 3, so the whole of steps 3-8 sees one
+        // consistent "nothing cached anywhere" state — step 8's `_artEnrichTable`
+        // re-enters `_artEnrichIcon`, whose Tier 2 would otherwise be free to read
+        // the record back before the delete landed. Same shape as
+        // `_relRetryMbids()`, including the swallowed rejection: a failed eviction
+        // must not abort the reload.
+        if (Lib.settings.sa_art_idb_enable) {
+            const idbKeys = new Set();
+            table.querySelectorAll('a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+                const p = a.getAttribute('ref')
+                    || (a.getAttribute('href') || '').replace(new RegExp(ctx.artSuffix + '$'), '');
+                if (p) idbKeys.add(p);
+            });
+            if (idbKeys.size) {
+                await Promise.all([...idbKeys].map(p =>
+                    _artIdbDelete('metadata', p).catch(() => {})
+                ));
+                Lib.debug(ctx.key, `${ctx.key}RetryTable: evicted ${idbKeys.size} IDB metadata record(s)`);
+            }
+        }
 
         // ── 3. Strip enrichedAttr and multiBuiltAttr so _artEnrichIcon
         //       and _artBuildMultiRowArtCell re-run from scratch ────────────

@@ -99,27 +99,27 @@ timestamp recording; theirs are recovered from the commit that captured them
 from the background task's own output file. The harness now records
 =startedAt=/=finishedAt= itself.
 
-|       Date | Time (UTC) | Host                         |    Script | Arm                                              | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
-|------------+------------+------------------------------+-----------+--------------------------------------------------+--------+--------+------+-----------+-----------+----------+-------------|
-| 2026-08-24 |   <= 23:46 | (unknown, DIFFERENT machine) |  9.99.953 | main                                             |   1418 |   1595 | 2994 |     29802 |     29700 |        — |           — |
-| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.970 | worktree-perf-step-4                             |   1292 |   1239 | 2906 |     32985 |       581 |        — |           — |
-| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.976 | fix-chunked-render-header-counts                 |   1752 |   1891 | 4241 |     30920 |       914 |        — |           — |
-| 2026-09-07 |   <= 11:41 | (unknown)                    | 9.99.1045 | main                                             |   1735 |   1730 | 3968 |     31149 |       863 |        — |           — |
-| 2026-09-07 |      18:58 | (unknown)                    | 9.99.1048 | main (narrow metric, discarded)                  |   3757 |   3327 | 7393 |     52514 |      1900 |     1884 |        7806 |
-| 2026-09-07 |      19:36 | (unknown)                    | 9.99.1048 | main                                             |   3503 |   3311 | 6932 |     48844 |      1903 |     8507 |       12631 |
-| 2026-09-07 |      19:56 | (unknown)                    | 9.99.1048 | step3, both cache tiers                          |   3669 |   3515 | 6917 |     48563 |      1678 |     8066 |        8944 |
-| 2026-09-08 |      08:11 | =petri=                      | 9.99.1048 | main                                             |   3033 |   3295 | 6410 |     45996 |      1676 |     8033 |       12319 |
-| 2026-09-08 |      08:27 | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)                     |   3168 |   3337 | 6469 |     46516 |      1747 |     7980 |        8977 |
-| 2026-09-08 |      17:01 | =petri=                      | 9.99.1045 | bisect — same script as row 4                    |   3117 |   3285 | 6044 |     42948 |      1640 |     7779 |       11175 |
-| 2026-09-08 |      20:23 | =NB-3641=                    | 9.99.1049 | main, first arm on this machine                  |   1996 |   1706 | 4392 |     30347 |       985 |     4704 |        5689 |
-| 2026-09-08 |      21:07 | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row                 |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
-| 2026-09-08 |      21:52 | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=                      |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
-| 2026-09-08 |      22:44 | =petri=                      | 9.99.1049 | R — rebooted, fresh session                      |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
-| 2026-09-08 |      23:25 | =petri=                      | 9.99.1049 | D — same reboot as R, no =claude=, 1h uptime     |   2328 |   2116 | 4465 |     24456 |      1304 |     5661 |        6078 |
-| 2026-09-08 |      23:40 | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime                        |   1664 |   1757 | 3622 |     29531 |       823 |     4334 |        5319 |
-| 2026-09-09 |      00:18 | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine |   3490 |   2898 | 8622 |     59767 |      2196 |     8245 |       10457 |
-| 2026-09-09 |      05:33 | =petri=                      | 9.99.1049 | D2 — SECOND independent reboot, no =claude=      |   2301 |   2322 | 4146 |     25583 |      1312 |     6078 |        6304 |
-| 2026-09-09 |      07:15 | =NB-3641=                    | 9.99.1049 | same reboot as F, +7h uptime, resident session   |   1693 |   1660 | 3391 |     30469 |       824 |     4580 |        5260 |
+|       Date | Time (UTC) | Host                         |    Script | Arm                                                | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+------------------------------+-----------+----------------------------------------------------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-08-24 |   <= 23:46 | (unknown, DIFFERENT machine) |  9.99.953 | main                                               |   1418 |   1595 | 2994 |     29802 |     29700 |        — |           — |
+| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.970 | worktree-perf-step-4                               |   1292 |   1239 | 2906 |     32985 |       581 |        — |           — |
+| 2026-08-31 |  (unknown) | (unknown)                    |  9.99.976 | fix-chunked-render-header-counts                   |   1752 |   1891 | 4241 |     30920 |       914 |        — |           — |
+| 2026-09-07 |   <= 11:41 | (unknown)                    | 9.99.1045 | main                                               |   1735 |   1730 | 3968 |     31149 |       863 |        — |           — |
+| 2026-09-07 |      18:58 | (unknown)                    | 9.99.1048 | main (narrow metric, discarded)                    |   3757 |   3327 | 7393 |     52514 |      1900 |     1884 |        7806 |
+| 2026-09-07 |      19:36 | (unknown)                    | 9.99.1048 | main                                               |   3503 |   3311 | 6932 |     48844 |      1903 |     8507 |       12631 |
+| 2026-09-07 |      19:56 | (unknown)                    | 9.99.1048 | step3, both cache tiers                            |   3669 |   3515 | 6917 |     48563 |      1678 |     8066 |        8944 |
+| 2026-09-08 |      08:11 | =petri=                      | 9.99.1048 | main                                               |   3033 |   3295 | 6410 |     45996 |      1676 |     8033 |       12319 |
+| 2026-09-08 |      08:27 | =petri=                      | 9.99.1048 | step3, shipped (tier 1 only)                       |   3168 |   3337 | 6469 |     46516 |      1747 |     7980 |        8977 |
+| 2026-09-08 |      17:01 | =petri=                      | 9.99.1045 | bisect — same script as row 4                      |   3117 |   3285 | 6044 |     42948 |      1640 |     7779 |       11175 |
+| 2026-09-08 |      20:23 | =NB-3641=                    | 9.99.1049 | main, first arm on this machine                    |   1996 |   1706 | 4392 |     30347 |       985 |     4704 |        5689 |
+| 2026-09-08 |      21:07 | =petri=                      | 9.99.1049 | main, pairs with the NB-3641 row                   |   3634 |   3158 | 6903 |     46549 |      1722 |     8191 |        8594 |
+| 2026-09-08 |      21:52 | =petri=                      | 9.99.1049 | A — 18d uptime, no =claude=                        |   2820 |   3028 | 7065 |     41723 |      1798 |     8250 |        8915 |
+| 2026-09-08 |      22:44 | =petri=                      | 9.99.1049 | R — rebooted, fresh session                        |   2388 |   2013 | 4462 |     26244 |      1068 |     5844 |        6264 |
+| 2026-09-08 |      23:25 | =petri=                      | 9.99.1049 | D — same reboot as R, no =claude=, 1h uptime       |   2328 |   2116 | 4465 |     24456 |      1304 |     5661 |        6078 |
+| 2026-09-08 |      23:40 | =NB-3641=                    | 9.99.1049 | F — rebooted, 0.2h uptime                          |   1664 |   1757 | 3622 |     29531 |       823 |     4334 |        5319 |
+| 2026-09-09 |      00:18 | =vzell-lap=                  | 9.99.1049 | rebooted, 0.4h uptime, first arm on this machine   |   3490 |   2898 | 8622 |     59767 |      2196 |     8245 |       10457 |
+| 2026-09-09 |      05:33 | =petri=                      | 9.99.1049 | D2 — SECOND independent reboot, no =claude=        |   2301 |   2322 | 4146 |     25583 |      1312 |     6078 |        6304 |
+| 2026-09-09 |      07:15 | =NB-3641=                    | 9.99.1049 | same reboot as F, +7h uptime, resident session     |   1693 |   1660 | 3391 |     30469 |       824 |     4580 |        5260 |
 | 2026-09-09 |      06:38 | =vzell-lap=                  | 9.99.1049 | same reboot as row above, 2.2h uptime, no =claude= |   3286 |   2624 | 7869 |     54511 |      1581 |     7109 |        9549 |
 
 Committed as =tests/snapshots/artist-events/interaction-perf-*.json=.
@@ -1784,10 +1784,10 @@ has the pair.
 
 ** =artist-releasegroups= — =perf-baseline.json= re-captured
 
-| Arm                          |   Items | Median wall | fetch   | render |
-|------------------------------+---------+-------------+---------+--------|
-| 9.99.1045, 2026-09-07, host unknown |    2143 |     26378 ms | 16692.4 |    533 |
-| 9.99.1111, 2026-09-18, =NB-3641=    |    2144 |     28000 ms | 18773.0 |  608.4 |
+| Arm                                 | Items | Median wall |   fetch | render |
+|-------------------------------------+-------+-------------+---------+--------|
+| 9.99.1045, 2026-09-07, host unknown |  2143 | 26378 ms    | 16692.4 |    533 |
+| 9.99.1111, 2026-09-18, =NB-3641=    |  2144 | 28000 ms    | 18773.0 |  608.4 |
 
 Verdict =ok= against the outgoing baseline. *This metric is fetch-dominated* —
 18.8 s of the 28 s is the live page fetch — so it measures MusicBrainz's
@@ -1841,11 +1841,11 @@ releases whose block says =count: 0=. Only false negatives (count 0 but the
 archive has images) would make skipping unsafe. pageType: none — these are
 plain =/ws/2/release?artist=<mbid>&limit=100= browse pages, no table involved.
 
-| Artist (browse offset)    | Block on page | count 0 | count > 0 | Archive checked (0 / >0) | False negatives | Count mismatches |
-|---------------------------+---------------+---------+-----------+--------------------------+-----------------+------------------|
-| Bob Dylan (0)             | 100 / 100     | 31      | 69        | 15 / 15 -> 404 / index   | 0               | 0                |
-| Bruce Springsteen (4000)  | 100 / 100     | 0       | 100       | 0 / 30 -> - / index      | n/a             | 0                |
-| Bruce Springsteen (8000)  | 100 / 100     | 10      | 90        | 10 / 30 -> 404 / index   | 0               | 0                |
+| Artist (browse offset)   | Block on page | count 0 | count > 0 | Archive checked (0 / >0) | False negatives | Count mismatches |
+|--------------------------+---------------+---------+-----------+--------------------------+-----------------+------------------|
+| Bob Dylan (0)            | 100 / 100     |      31 |        69 | 15 / 15 -> 404 / index   |               0 |                0 |
+| Bruce Springsteen (4000) | 100 / 100     |       0 |       100 | 0 / 30 -> - / index      |             n/a |                0 |
+| Bruce Springsteen (8000) | 100 / 100     |      10 |        90 | 10 / 30 -> 404 / index   |               0 |                0 |
 
 Release-group browse carried the block on 0 of 5 groups, both artists, so this
 is release-only. *Read as*: 25 count-0 releases checked, all 404 at the archive;
@@ -1867,11 +1867,11 @@ coverartarchive.org =/release|release-group/<guid>= by final status; image bytes
 are not observable and are not counted. Every sub-table expanded, the global
 strip toggled and *asserted*, settled = no new request for 30 s.
 
-| Page                                   | pageType              | mode   | Rows | Native anchors / =blank-icon= | Metadata requests | 404 | Share |
-|----------------------------------------+-----------------------+--------+------+-------------------------------+-------------------+-----+-------|
-| BoDeans =/releases= (56 rows)          | =artist-releases=     | single | 56   | 37 / *19*                     | 56                | *19* | *33.9%* |
-| "Greetings From Asbury Park" RG        | =releasegroup-releases= | multi  | 7    | 7 / 0                         | 7                 | 0   | 0%    |
-| BoDeans =/relationships=               | =artist-relationships= | multi  | 3    | 0 / 0                         | 1                 | 0   | 0%    |
+| Page                            | pageType                | mode   | Rows | Native anchors / =blank-icon= | Metadata requests |  404 |   Share |
+|---------------------------------+-------------------------+--------+------+-------------------------------+-------------------+------+---------|
+| BoDeans =/releases= (56 rows)   | =artist-releases=       | single |   56 | 37 / *19*                     |                56 | *19* | *33.9%* |
+| "Greetings From Asbury Park" RG | =releasegroup-releases= | multi  |    7 | 7 / 0                         |                 7 |    0 |      0% |
+| BoDeans =/relationships=        | =artist-relationships=  | multi  |    3 | 0 / 0                         |                 1 |    0 |      0% |
 
 *Read as*: on the one page that has count-0 rows, the number of blank-icons
 MusicBrainz rendered (19), the number of synthetic anchors the =caa= extractor
@@ -1890,3 +1890,42 @@ Greetings has 7 releases, not the ~124 that CLAUDE.md and the older spec prose
 suggest. The blank-icon = no-artwork equivalence rests on this single page
 plus the 25-sample WS/2 probe above, not on a large sample; darkened artwork
 and MusicBrainz's own cover-art-presence lag are untested.
+
+* 2026-09-19 — fixture suite size and wall clock (=tests/README.org= resync)
+
+*Probing*: how long a full =npm test= (the =chromium-fixtures= project) takes
+end to end, and how that compares to the summed per-test time — i.e. how much
+of it is parallelism. Not a page measurement: no pageType, =tableMode= or page
+title applies, because every test serves its own fixture.
+
+| What                     | Value                                                                  |
+|--------------------------+------------------------------------------------------------------------|
+| Host                     | =NB-3641= (28 cores, node v24.19.0)                                    |
+| Started / finished (UTC) | 2026-09-19T14:48:42Z / 14:50:30Z                                       |
+| Command                  | =npx playwright test --project=chromium-fixtures --reporter=list,json= |
+| Workers                  | 14 (Playwright's own default here)                                     |
+| Tests / files            | 353 in 97                                                              |
+| *Wall clock*             | *108 s*                                                                |
+| Summed per-test duration | 1159 s                                                                 |
+| Median test              | 1.9 s                                                                  |
+| Slowest single test      | 25.5 s                                                                 |
+| Slowest single spec file | =rel-column-collapse-toggle.spec.js= (10 tests) — 73 s                 |
+
+Summed / wall = *10.7x*, against 14 workers.
+
+Counted the same day with =--list=: =chromium-live= is 77 tests in 38 files,
+split =@core= 10/9, =@extended= 58/29, =@perf= 9/1. The file counts overlap
+because =artist-events-interactions.spec.js= holds the 9 =@perf= tests *and*
+two =@extended= ones.
+
+*Why this row exists.* =tests/README.org= claimed "140 fixture tests, ≈ 65–75 s,
+measured twice 2026-09-07" with *no host recorded*. By the time the drift was
+noticed the suite had grown to 353 tests — 2.5x — so the old figure could not be
+compared to this one at all, and there is no way to tell how much of the gap is
+the extra 213 tests and how much is the machine. Exactly the failure this file
+was created to stop, in a doc nobody thought of as a measurement. Re-measure per
+host; the worker count alone scales with core count.
+
+*What it does not cover*: one host, one run, no repeat. Treat the wall clock as
+an order of magnitude, not a baseline to regress against — there is no committed
+baseline for the fixture suite and this row does not create one.

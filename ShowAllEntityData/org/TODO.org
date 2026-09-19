@@ -518,13 +518,13 @@ Still no visual whitespace, see a typical raw cell HTML, @debug/cell-bug.html
 - the XE … and GB … multi-event row looks ok
 - it's not "More Flags Everywhere" decorating these columns, but "Right Flags..."
 
-* still not working
+* DONE still not working
 
 still not working, let's give up. revert everything we have done to the "Country/Date" column and leave it at it's natural rendering but commit everything else as it's working OK.
 
-* what does "arm" in the context of our test suite mean
+* DONE what does "arm" in the context of our test suite mean
 
-* questions
+* DONE questions
 
 1.)
 
@@ -541,3 +541,84 @@ areas, if the non-row based approach would benefit performance
 combine the outcome of the two caa branches and create a summary org file like we did now for the 503 handling, commit
 everything and merge to main so I can start over on another machine
 
+
+
+* TODO analyze the save/load settings regarding end-user handling/versioning
+
+1.)
+
+analyze the save/load settings regarding end-user handling/versioning
+
+2.)
+
+we should probably always commit a current settings file with the default settings and add any changes when new stuff is
+implemented/changed
+
+* TODO 503
+** table/sub-table level (button with two click areas, one for reload ALL, one for "just what failed", ==> show me a mock of the button)
+
+table/sub-table level (button with two click areas, one for reload ALL, one for "just what failed", ==> show me a mock
+of the button)
+
+** DONE sa_art_idb_metadata_ttl_days
+
+Work on @org/503-handling.org
+
+1.)
+
+Change the "sa_art_idb_metadata_ttl_days" to 30 days
+
+2.)
+
+Is the following a good idea ?
+
+a.)
+
+work generically in a 503 branch
+
+b.)
+
+for each sub-step create a worktree and implemente/test there. let the end-user do a live test (if possible) before
+offering to merge back to the "503" branch
+
+c.)
+
+if a feature is worth implementing right away as kind of a "quick fix"/win, after an end-user live test (if possible)
+merge the worktree to main directly and afterwards right back to the "503" branch
+
+*** Answer (2026-09-19)
+
+1.) Done on =fix/caa-metadata-transient=, *together with the F5 fix, not alone*.
+The TTL could not be raised on its own: a 503 from coverartarchive.org was being
+persisted as "this release has no artwork", so 7 → 30 would have quadrupled how
+long one transient failure hid real artwork. Fixing F5 is what makes 30 safe.
+
+2.) *No umbrella =503= branch.* =main= is the trunk; one short-lived branch per
+sub-step, off =main=, live-tested, merged back. Reasons, in order of weight:
+
+- The eight items in =org/503-handling.org= are independently shippable. The one
+  real dependency (item 1, the shared transient classifier, feeding items 3-4 and
+  6) is a *sequence on main*, not a batch that must integrate first.
+- Two levels break the WIP-changelog rule: =scripts/fold-wip-changelog.py= is
+  one-level (branch → =main=) and deletes the WIP file when it folds, so entries
+  would pile up on =503= until one final fold — the whole batch shipping as a
+  single version block, which is the opposite of (c).
+- (c) is the tell: if most sub-steps go straight to =main= anyway, =503= spends
+  its life being back-merged, conflicting every time in =// @version=,
+  =ShowAllEntityData_CHANGELOG.json= and =org/503-handling.org=.
+
+*Worktrees: not per sub-step.* The script is re-imported into Tampermonkey by
+hand, so a branch switch in the main checkout costs the same and skips
+=npm install= plus a fresh =npm run auth:login= (=playwright/.auth/= is
+gitignored, so a new worktree runs live specs *logged out*, silently). Keep a
+worktree for the one case the project's rules demand it: a perf A/B, where
+=main= and the branch must be measured in one session on one host.
+
+Tracking lives in =org/503-handling.org='s Status section, on =main=.
+
+** in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
+
+in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
+days change
+
+** 

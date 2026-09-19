@@ -1,0 +1,119 @@
+[
+  {
+    "name": "Tier 3: any non-OK status is persisted again",
+    "why": "The original org/503-handling.org F5 defect: a 503 is written to the IDB `metadata` store exactly like a real 404. The store assertion for the transiently-failed release must notice.",
+    "edits": [
+      {
+        "find": "if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {",
+        "replace": "if (Lib.settings.sa_art_idb_enable) {"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 503 writes no metadata record",
+    "expect": "fail"
+  },
+  {
+    "name": "Tier 3: no non-OK status is persisted at all",
+    "why": "The over-broad 'fix'. The 503 half of the test still passes; the 404 half must fail. This is what pins the change as NARROWING negative persistence rather than removing it.",
+    "edits": [
+      {
+        "find": "                        _artIdbPutMetadata(entityPath, 0, []);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 503 writes no metadata record",
+    "expect": "fail"
+  },
+  {
+    "name": "Tier 3: the in-memory zero is gated on the status too",
+    "why": "org/503-handling.org's F5 wording as written, which was deliberately narrowed. Without a session sentinel a transiently-failed entity is re-requested on every filter keystroke and every sort.",
+    "edits": [
+      {
+        "find": "                    ctx.countCache.set(entityPath, 0);\n                    ctx.imagesCache.set(entityPath, []);\n",
+        "replace": "                    if (definitiveAbsence) {\n                        ctx.countCache.set(entityPath, 0);\n                        ctx.imagesCache.set(entityPath, []);\n                    }\n"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a re-render does not re-request",
+    "expect": "fail"
+  },
+  {
+    "name": "_artRetryTable: no IDB metadata eviction",
+    "why": "The pre-fix state. Step 2 clears the session Maps, so _artEnrichIcon misses Tier 1 and then HITS Tier 2 and returns the stored zero with no request: the retry button is a no-op for the whole table.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_art_idb_enable) {\n            const idbKeys = new Set();",
+        "replace": "        if (false) {\n            const idbKeys = new Set();"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "the retry button evicts",
+    "expect": "fail"
+  },
+  {
+    "name": "_artRetryTable: the eviction is not awaited",
+    "why": "KNOWN OVERLAP, recorded rather than omitted. _artIdbDelete and _artIdbGetMetadata share the one cached `_artIdbPromise`, so the delete's readwrite transaction on `metadata` is created before the read's readonly one, and IndexedDB serialises overlapping-scope transactions in creation order; `_caaQueue.enqueue()` defers the read further still. The race cannot be forced from a fixture. The await is kept anyway: it is free, it mirrors _relRetryMbids(), and it saves the next reader from reconstructing that argument.",
+    "edits": [
+      {
+        "find": "                await Promise.all([...idbKeys].map(p =>",
+        "replace": "                Promise.all([...idbKeys].map(p =>"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "the retry button evicts",
+    "expect": "pass"
+  },
+  {
+    "name": "metadata TTL default back to 7 days",
+    "why": "The seeded 10-day-old record expires at _artIdbGetMetadata() (and is swept by _artIdbSweepExpired()), so the release goes to the network — which the test asserts does not happen.",
+    "edits": [
+      {
+        "find": "            label: 'Metadata (JSON) cache TTL (days)',\n            type: 'number',\n            default: 30,",
+        "replace": "            label: 'Metadata (JSON) cache TTL (days)',\n            type: 'number',\n            default: 7,"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 10-day-old metadata record",
+    "expect": "fail"
+  },
+  {
+    "name": "_artIdbGetMetadata fallback back to 7",
+    "why": "KNOWN UNCOVERABLE. `|| N` fires only when the setting is absent or 0, and `min: 1` plus the schema default make that unreachable through any supported route. Aligned with the new default for consistency, not for behaviour.",
+    "edits": [
+      {
+        "find": "const ttlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 30) * 86400 * 1000);",
+        "replace": "const ttlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 7) * 86400 * 1000);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 10-day-old metadata record",
+    "expect": "pass"
+  },
+  {
+    "name": "_artIdbSweepExpired fallback back to 7",
+    "why": "KNOWN UNCOVERABLE, same reason as the entry above.",
+    "edits": [
+      {
+        "find": "const metaTtlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 30)  * 86400 * 1000);",
+        "replace": "const metaTtlMs = ((Lib.settings.sa_art_idb_metadata_ttl_days || 7)  * 86400 * 1000);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 10-day-old metadata record",
+    "expect": "pass"
+  },
+  {
+    "name": "stats-panel TTL display back to 7",
+    "why": "KNOWN UNCOVERABLE. A cosmetic string in the Statistics panel, which no fixture spec opens. Listed so the third fallback is not silently unmentioned.",
+    "edits": [
+      {
+        "find": "${Lib.settings.sa_art_idb_metadata_ttl_days || 30} days",
+        "replace": "${Lib.settings.sa_art_idb_metadata_ttl_days || 7} days"
+      }
+    ],
+    "spec": "tests/fixtures/caa-metadata-transient-503.spec.js",
+    "grep": "a 10-day-old metadata record",
+    "expect": "pass"
+  }
+]

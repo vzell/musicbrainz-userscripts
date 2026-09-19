@@ -15,7 +15,7 @@ For *which pageTypes are covered and which are planned*, see
 #+begin_src sh
 cd ShowAllEntityData
 npm install          # first time only
-npm test             # the safe default: 140 fixture tests, ~66 s, no network
+npm test             # the safe default: 353 fixture tests, ~1 m 50 s, no network
 #+end_src
 
 =npm test= needs no network, no login, and no MusicBrainz cooperation. Start
@@ -48,8 +48,8 @@ The harness is split into two Playwright projects, by directory.
 
 | Project             | Directory         | Tests           | Network     | Per-test timeout |
 |---------------------+-------------------+-----------------+-------------+------------------|
-| =chromium-fixtures= | =tests/fixtures/= | 140 in 31 files | none        | 30 s (default)   |
-| =chromium-live=     | =tests/live/=     | 71 in 37 files  | real MB.org | 120 s            |
+| =chromium-fixtures= | =tests/fixtures/= | 353 in 97 files | none        | 30 s (default)   |
+| =chromium-live=     | =tests/live/=     | 77 in 38 files  | real MB.org | 120 s            |
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
@@ -107,7 +107,10 @@ Every live spec carries exactly one tag, and the npm scripts select on it:
 | =@extended= | Bespoke / pageType-specific edge cases — Stop button, IDB cache tiers, third-party interop, sub-table filters, artwork |
 | =@perf=     | The deliberate perf-comparison instrumentation only                                                                    |
 
-Current split: =@core= 10 tests / 9 files · =@extended= 54 / 28 · =@perf= 7 / 1.
+Current split: =@core= 10 tests / 9 files · =@extended= 58 / 29 · =@perf= 9 / 1.
+(=@perf='s single file, =artist-events-interactions.spec.js=, also carries two
+=@extended= tests, so the file counts overlap rather than summing to 38.)
+Counted with =--list= on 2026-09-19; re-count rather than trusting these.
 
 * Every npm script
 
@@ -115,7 +118,7 @@ Current split: =@core= 10 tests / 9 files · =@extended= 54 / 28 · =@perf= 7 / 
 |--------------------------------------------------+-----------------------------------------------|
 | =npm test=                                       | Fixtures only. The default and CI-safe suite. |
 | =npm run test:live=                              | Live =@core= only                             |
-| =npm run test:live:extended=                     | Live =@core= + =@extended= (64 tests)         |
+| =npm run test:live:extended=                     | Live =@core= + =@extended= (68 tests)         |
 | =npm run test:live:perf=                         | Live =@perf= only                             |
 | =npm run test:all=                               | Literally everything, fixtures and live       |
 | =npm run test:ui=                                | Playwright's interactive UI mode              |
@@ -143,17 +146,25 @@ them for a decision.
 
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
-| =npm test= (140 fixture tests)              | *≈ 65–75 s*  | measured twice, 2026-09-07 (66 s and 72 s)              |
-| slowest single fixture spec                 | ≈ 60 s       | measured — =release-tracks-recording-length= (18 tests) |
-| median individual fixture test              | ≈ 1.4 s      | measured                                                |
-| slowest individual fixture test             | ≈ 9 s        | measured                                                |
+| =npm test= (353 fixture tests)              | *≈ 1 m 50 s* | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
+| slowest single fixture spec                 | ≈ 73 s       | measured — =rel-column-collapse-toggle= (10 tests)      |
+| median individual fixture test              | ≈ 1.9 s      | measured 2026-09-19, =NB-3641=                          |
+| slowest individual fixture test             | ≈ 25.5 s     | measured 2026-09-19, =NB-3641=                          |
 | =npm run test:live= (=@core=, 10 tests)     | a few min    | estimate — mostly at the 120 s default                  |
 | =artist-releases-filter-sort.spec.js=       | *≈ 7 m 45 s* | measured 2026-08-31, 11 tests, both opt-ins on          |
 | =releasegroup-releases-filter-sort.spec.js= | ≈ 12 min+    | the spec's own note: ~2 min setup *per test* × 6        |
-| =npm run test:live:extended= (64 tests)     | tens of min  | estimate; declared ceiling is 3 h 41 m                  |
+| =npm run test:live:extended= (68 tests)     | tens of min  | estimate; declared ceiling is 3 h 41 m                  |
 
-The fixture suite's 66 s wall clock against ~327 s of summed test time is
-parallelism doing its job across workers.
+The fixture suite's 108 s wall clock against ~1159 s of summed test time is
+parallelism doing its job — 14 workers on a 28-core box, a ~10.7x speed-up.
+
+*Every fixture number in that table is one host on one day* (=NB-3641=,
+2026-09-19), and the worker count scales with the machine, so they are not
+portable. The row this replaced read "140 fixture tests, ≈ 65–75 s, measured
+twice 2026-09-07" with *no host recorded* — by the time it was noticed the suite
+had grown to 353 tests and the old figure could not be compared to anything.
+Re-measure on your own machine rather than trusting these, and log it in
+=tests/MEASUREMENTS.org= with the host, per =CLAUDE.md='s measurement rule.
 
 ** Why some live specs take 8–15 minutes
 
@@ -217,10 +228,10 @@ console error appears.
 
 | Gate                            | Fires when                                                   |
 |---------------------------------+--------------------------------------------------------------|
-| ℹ️ Unknown Page Count           | An edit-listing page whose pagination has no true last page  |
-| ⚠️ High Page Count              | More pages than =sa_max_page= (default 50)                   |
+| ℹ️ Unknown Page Count            | An edit-listing page whose pagination has no true last page  |
+| ⚠️ High Page Count               | More pages than =sa_max_page= (default 50)                   |
 | 💾 Save to Disk / 🎨 Render Now | More rows than =sa_render_threshold= (default 5000)          |
-| ⚠️ Large Render Warning         | More rows than =sa_render_warning_threshold= (default 10000) |
+| ⚠️ Large Render Warning          | More rows than =sa_render_warning_threshold= (default 10000) |
 
 The last two fire *after* the fetch finishes, so hitting one wastes the entire
 fetch and then times out. Run with =npm run test:headed= to see which dialog is

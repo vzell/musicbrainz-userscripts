@@ -3,12 +3,27 @@
 
 * Status
 
-Analysis only, on branch =analysis/503-handling=. *No userscript change, no version
-bump, no changelog entry.* Everything below comes from *reading the code at
-9.99.1116*; no 503 was reproduced live and no fixture spec exists yet for any
-finding. Each finding says whether it is "read in the code" or "confirmed by a
-run" — today every one is the former, so treat them as hypotheses to pin with a
-spec (see [[Verification plan]]) before fixing.
+Originally analysis only, on branch =analysis/503-handling= — read off the code
+at 9.99.1116, with no 503 reproduced live and no spec for any finding. Findings
+still marked "read in the code" remain hypotheses; pin them with a spec (see
+[[Verification plan]]) before fixing.
+
+*Shipped since:*
+
+| Finding | Branch                        | Spec                                             |
+|---------+-------------------------------+--------------------------------------------------|
+| F5      | =fix/caa-metadata-transient=  | =tests/fixtures/caa-metadata-transient-503.spec.js= |
+
+*Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
+trunk and each item below gets its own short-lived branch off it, live-tested
+and merged back. The items are independently shippable, and a two-level branch
+hierarchy breaks the WIP-changelog rule — =scripts/fold-wip-changelog.py= is
+one-level (branch → =main=) and deletes the WIP file when it folds, so the whole
+batch would have had to ship as one version block. This file stays on =main= as
+the tracker.
+
+Remaining order: item 1 (shared transient classifier, =fix/ws2-transient-classifier=)
+first, since items 3-4 and 6 depend on it; then F1-F3, then F4, then F7.
 
 * The question
 
@@ -22,19 +37,19 @@ without being intrusive.
 "Auto" = retries without the user doing anything. "Signal" = what the user can
 see. "Level" = the finest granularity at which the user can retry.
 
-|  # | Request                                                                            | Auto retry                               | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                     |
-|----+------------------------------------------------------------------------------------+------------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+----------------------------------------------------------------------------------------|
-|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | none                                     | any non-OK throws                             | *none* — console =Lib.error= only, then the loop =break=s (see F1)               | whole fetch only (press "Show all" again)                                              |
-|  2 | =fetchMaxPageGeneric()= (page count)                                               | none                                     | any error                                     | *none* — returns =1=, i.e. "one page" (F2)                                       | whole fetch only                                                                       |
-|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | none                                     | any error                                     | console only, =break= (F3)                                                       | whole fetch only                                                                       |
-|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)    | 3 tries, *503 and thrown errors only*    | 503 vs other non-OK vs thrown                 | see rows 5 and 6                                                                 | see rows 5 and 6                                                                       |
-|  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"  | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                  |
-|  6 | ⏱ ms Length                                                                       | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
-|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | none, *and does not use =_ws2GetJson()=* | any non-OK                                    | *none* — =_dbg= and =return= (F4)                                                | none (reload the page)                                                                 |
-|  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404 vs everything else *conflated* (F5)       | =Lib.warn= for non-404; nothing on screen                                        | *table* (=mb-caa-toggle-btn-retry-{i}=) — but see F5                                   |
-|  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                              |
-| 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                    |
-| 11 | Picard / barcode / other non-network features                                      | n/a                                      | n/a                                           | n/a                                                                              | n/a                                                                                    |
+|  # | Request                                                                            | Auto retry                               | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                    |
+|----+------------------------------------------------------------------------------------+------------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------|
+|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | none                                     | any non-OK throws                             | *none* — console =Lib.error= only, then the loop =break=s (see F1)               | whole fetch only (press "Show all" again)                                             |
+|  2 | =fetchMaxPageGeneric()= (page count)                                               | none                                     | any error                                     | *none* — returns =1=, i.e. "one page" (F2)                                       | whole fetch only                                                                      |
+|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | none                                     | any error                                     | console only, =break= (F3)                                                       | whole fetch only                                                                      |
+|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, *503 and thrown errors only*    | 503 vs other non-OK vs thrown                 | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
+|  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
+|  6 | ⏱ ms Length                                                                        | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
+|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | none, *and does not use =_ws2GetJson()=* | any non-OK                                    | *none* — =_dbg= and =return= (F4)                                                | none (reload the page)                                                                |
+|  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404/410 definitive vs transient (F5, fixed)   | =Lib.warn= for a transient failure; nothing on screen                            | *table* (=mb-caa-toggle-btn-retry-{i}=), now really evicting                          |
+|  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                             |
+| 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                   |
+| 11 | Picard / barcode / other non-network features                                      | n/a                                      | n/a                                           | n/a                                                                              | n/a                                                                                   |
 
 Nothing reads =Retry-After=, and there is no user-facing setting for retry
 count or delay (grep for =sa_*retr*= is empty). The script's only pacing is
@@ -79,7 +94,7 @@ classification, and a failure ends in =_dbg(...)= then =return=. The column
 stays empty with nothing to tell the user why, and there is no retry short of a
 reload. It is one request per page, so a single 503 costs the whole column.
 
-** F5 — a 503/429/5xx on CAA metadata is recorded as "no artwork", persisted for 7 days, and the retry button may not clear it  (read in the code)
+** DONE F5 — a 503/429/5xx on CAA metadata is recorded as "no artwork", persisted for 7 days, and the retry button may not clear it  (confirmed by a spec; fixed)
 
 In =_artEnrichIcon()= Tier 3, every non-OK status takes one branch:
 =countCache.set(path, 0)=, =imagesCache.set(path, [])=,
@@ -99,6 +114,36 @@ This is the same mistake the ⏱ and Relationships features already fixed
 oldest network path. The image-bytes path (row 9) already does it correctly;
 only the metadata path is wrong. Highest-value, smallest fix, and the only
 finding whose damage /outlives the session/.
+
+*Fixed on =fix/caa-metadata-transient=.* Both halves confirmed by
+=tests/fixtures/caa-metadata-transient-503.spec.js= — consequence 2 was exactly
+as suspected: the retry re-entered Tier 2 and issued *zero* requests for the
+whole table, which the "no IDB metadata eviction" mutation reproduces.
+
+What shipped:
+- =_artEnrichIcon()= Tier 3 gates the =_artIdbPutMetadata()= call on
+  =_ART_MISS_STATUSES= (404/410), an existing constant declared next to
+  =_artMissCache= whose sibling =_artGmFetchBlob()= already drew this exact
+  distinction for image bytes. The same local also replaces the old bare
+  =resp.status === 404= log-severity test, which logged a 410 as a warning
+  while treating it as definitive.
+- =_artRetryTable()= is now =async= and evicts each entity's =metadata= record
+  before step 3, gated on =sa_art_idb_enable= so the IDB-off path stays fully
+  synchronous (step 5's =performance.clearResourceTimings()= is order-sensitive).
+  Keys come from the *art anchors* via =ref || href.replace(artSuffix)= — the
+  writer's own expression — not from =ctx.rowLinkSel=, which drifts on Path-C
+  synthetic anchors and would also delete keys never written.
+- =sa_art_idb_metadata_ttl_days= 7 → 30, matching every sibling TTL. Safe only
+  *because* of the first bullet.
+
+*Deliberately NARROWER than this file's own item 2 below.* Only the IDB write is
+gated; =ctx.countCache=/=ctx.imagesCache= still take the zero for every non-OK
+status. Gating those too would re-fire one request per failed entity on every
+filter keystroke and every sort — hammering the archive precisely while it is
+already struggling. The zero that /outlives the session/ was the whole of the
+damage. Pinned by the "the in-memory zero is gated on the status too" entry in
+=scripts/mutations/caa-metadata-transient.json=, so the decision is a tested one
+rather than an unexplained divergence.
 
 ** F6 — retry policy is narrower than the failures it meets  (read in the code)
 
@@ -127,13 +172,13 @@ distinguish a definitive absence from a transport failure.
 
 * Visualisation and retry level, summarised
 
-| Level           | Has a visible failure state today?                                | Can retry here today?                  |
-|-----------------+-------------------------------------------------------------------+----------------------------------------|
-| Whole run/page  | *No.* F1, F2, F3: truncation looks like completion                | No — rerun the whole fetch             |
+| Level           | Has a visible failure state today?                               | Can retry here today?                 |
+|-----------------+------------------------------------------------------------------+---------------------------------------|
+| Whole run/page  | *No.* F1, F2, F3: truncation looks like completion               | No — rerun the whole fetch            |
 | Table/sub-table | Rel: badge with failed count. ⏱: yellow retry/partial. CAA: none | Rel: yes. CAA: yes but see F5. ⏱: yes |
-| Row             | Expand-RG: inline error text                                      | Yes (click ▶ again)                    |
-| Cell            | Rel only: ⚠︎, hover ⟳                                             | Rel only: click                        |
-| Column          | Release events: none. CAA metadata: none                          | No                                     |
+| Row             | Expand-RG: inline error text                                     | Yes (click ▶ again)                   |
+| Cell            | Rel only: ⚠︎, hover ⟳                                             | Rel only: click                       |
+| Column          | Release events: none. CAA metadata: none                         | No                                    |
 
 The gaps sit at the two extremes: the page/run level (least visible, the most
 data at stake) and the CAA and release-events columns (nothing visible at all).
@@ -147,10 +192,12 @@ things now working.
    covering 429, 502, 503, 504 and thrown errors, used by =_ws2GetJson()= and
    everything below, and an optional =Retry-After= reader capped at, say, 30 s.
    Removes F6 and is the prerequisite for the rest.
-2. *Stop recording transient failures as "no artwork"* (silent, small). Only
-   404/410 may write the zero and only they may go to IDB (F5). Also delete the
-   IDB record in =_artRetryTable()=. Do this first: it is the only finding that
-   persists.
+2. [DONE] *Stop recording transient failures as "no artwork"* (silent, small).
+   Only 404/410 may write the zero and only they may go to IDB (F5). Also delete
+   the IDB record in =_artRetryTable()=. Do this first: it is the only finding
+   that persists.
+   Shipped on =fix/caa-metadata-transient=, with one change: "may write the zero"
+   was narrowed to the IDB write alone — see F5 above for why.
 3. *Retry the HTML page fetch* (silent, small). 3 attempts with widening
    backoff (about 2 s, 5 s) inside =fetchHtml()= for transient statuses only,
    applied to all three call sites (F1-F3). Most 503s are bursts, so this
