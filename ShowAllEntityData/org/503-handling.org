@@ -1,0 +1,227 @@
+#+TITLE: HTTP 503 / transient-failure handling — analysis
+#+DATE: 2026-09-19
+
+* Status
+
+Analysis only, on branch =analysis/503-handling=. *No userscript change, no version
+bump, no changelog entry.* Everything below comes from *reading the code at
+9.99.1116*; no 503 was reproduced live and no fixture spec exists yet for any
+finding. Each finding says whether it is "read in the code" or "confirmed by a
+run" — today every one is the former, so treat them as hypotheses to pin with a
+spec (see [[Verification plan]]) before fixing.
+
+* The question
+
+For every place the script talks to the network: what happens on a 503 (or
+another transient failure), what does the end user SEE, can they retry, at
+which level (page, table/sub-table, row, cell), and what could be automated
+without being intrusive.
+
+* Inventory
+
+"Auto" = retries without the user doing anything. "Signal" = what the user can
+see. "Level" = the finest granularity at which the user can retry.
+
+|  # | Request                                                                            | Auto retry                               | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                     |
+|----+------------------------------------------------------------------------------------+------------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+----------------------------------------------------------------------------------------|
+|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | none                                     | any non-OK throws                             | *none* — console =Lib.error= only, then the loop =break=s (see F1)               | whole fetch only (press "Show all" again)                                              |
+|  2 | =fetchMaxPageGeneric()= (page count)                                               | none                                     | any error                                     | *none* — returns =1=, i.e. "one page" (F2)                                       | whole fetch only                                                                       |
+|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | none                                     | any error                                     | console only, =break= (F3)                                                       | whole fetch only                                                                       |
+|  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)    | 3 tries, *503 and thrown errors only*    | 503 vs other non-OK vs thrown                 | see rows 5 and 6                                                                 | see rows 5 and 6                                                                       |
+|  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"  | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                  |
+|  6 | ⏱ ms Length                                                                       | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
+|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | none, *and does not use =_ws2GetJson()=* | any non-OK                                    | *none* — =_dbg= and =return= (F4)                                                | none (reload the page)                                                                 |
+|  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404 vs everything else *conflated* (F5)       | =Lib.warn= for non-404; nothing on screen                                        | *table* (=mb-caa-toggle-btn-retry-{i}=) — but see F5                                   |
+|  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                              |
+| 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                    |
+| 11 | Picard / barcode / other non-network features                                      | n/a                                      | n/a                                           | n/a                                                                              | n/a                                                                                    |
+
+Nothing reads =Retry-After=, and there is no user-facing setting for retry
+count or delay (grep for =sa_*retr*= is empty). The script's only pacing is
+the Relationships gate (=_relAwaitRateSlot()=, one request per 1100 ms) and the
+⏱ batch delay; the HTML pagination loop is sequential with *no* delay.
+
+* Findings, most serious first
+
+** F1 — a failed HTML page silently truncates the result, and the status line says it completed  (read in the code)
+
+The pagination loop does =pagesProcessed++= /before/ fetching page =p=, and its
+catch block is =Lib.error(...); break;=. After the =break= the loop falls
+through to render whatever was accumulated, and the final status reads
+=Loaded ${pagesProcessed} pages (${totalRows} rows)=. So:
+
+- =pagesProcessed= counts the page that FAILED;
+- nothing on screen distinguishes "5 of 5 pages" from "2 of 5 pages, then a 503";
+- the Save-to-Disk path takes the same route, so a truncated set may be
+  written to disk as if complete (to confirm — not traced to the write).
+
+This is the only finding that can make a user believe wrong DATA is complete,
+which is why it outranks the rest. =fetchHtml()= itself has no retry: a single
+503 on page 4 of 40 ends the whole run at page 3.
+
+** F2 — =fetchMaxPageGeneric()= turns a fetch failure into "1 page"  (read in the code)
+
+Its catch returns =1=. A 503 on the page-count request makes the script fetch
+page 1 only and report success. Same silent-truncation class as F1, one step
+earlier, and it also has no retry.
+
+** F3 — the artist-releasegroups pre-fetch pass =break=s on error  (read in the code; effect unverified)
+
+The pass builds the "official headers" set that the main pass uses. A break
+leaves the set incomplete. What that does to grouping downstream has not been
+traced; it needs a fixture with a 503 on pre-fetch page 2.
+
+** F4 — the release-events column gives up silently and uses a weaker path than its siblings  (read in the code)
+
+=initReleaseEventsColumn()= calls =fetch()= directly rather than
+=_ws2GetJson()=, so it gets neither the 3-attempt retry nor error
+classification, and a failure ends in =_dbg(...)= then =return=. The column
+stays empty with nothing to tell the user why, and there is no retry short of a
+reload. It is one request per page, so a single 503 costs the whole column.
+
+** F5 — a 503/429/5xx on CAA metadata is recorded as "no artwork", persisted for 7 days, and the retry button may not clear it  (read in the code)
+
+In =_artEnrichIcon()= Tier 3, every non-OK status takes one branch:
+=countCache.set(path, 0)=, =imagesCache.set(path, [])=,
+=_artIdbPutMetadata(path, 0, [])=. The comment says "404 — expected"; the code
+does not act on that distinction. Two consequences:
+
+1. A transient failure is stored as a fact about the release, in IDB, for
+   =sa_art_idb_metadata_ttl_days= (default 7). Every later page load hits Tier 2
+   and shows no artwork with no request and no warning.
+2. =_artRetryTable()= purges =countCache=/=imagesCache= (session Maps) and
+   =_artMissCache=, but a search of its body finds no IDB metadata delete. If
+   that holds, the retry button re-enters =_artEnrichIcon()=, hits the stored
+   zero at Tier 2, and does nothing.
+
+This is the same mistake the ⏱ and Relationships features already fixed
+("a transport failure is not 'no data'", in CLAUDE.md), left standing in the
+oldest network path. The image-bytes path (row 9) already does it correctly;
+only the metadata path is wrong. Highest-value, smallest fix, and the only
+finding whose damage /outlives the session/.
+
+** F6 — retry policy is narrower than the failures it meets  (read in the code)
+
+=_ws2GetJson()= retries only =status === 503= plus thrown errors. 502 and 504
+(what a reverse proxy returns during a MusicBrainz deploy) and 429 break out at
+once and are reported as final. =Retry-After= is ignored everywhere, so the
+script cannot back off by the amount the server asks for. Note that
+=_relAwaitRateSlot()='s fixed 1100 ms spacing also means all three of a row's
+attempts land inside a burst that typically lasts longer than 3.3 s.
+
+** F7 — Relationships retry-table reloads everything, not just what failed  (read in the code; scope of cost unmeasured)
+
+=_relRetryTable()= collects every =td.mb-rel-cell[data-mbid]= in the table and
+evicts and re-requests all of them, including the ones that succeeded. On a
+2000-row table with three failures that is 2000 requests at 1 per 1.1 s to
+recover three cells. The per-cell ⟳ is the right tool there; the table button
+should default to failed cells only. Not a correctness issue.
+
+** F8 — what already works
+
+Relationships is the model to copy: errors are a distinct outcome, never
+cached, visible per cell and as a count on the header, filterable in 📊, and
+retryable at cell, table and page level. ⏱ has honest button states, and its
+partial retry re-requests only the outstanding MBIDs. CAA image bytes
+distinguish a definitive absence from a transport failure.
+
+* Visualisation and retry level, summarised
+
+| Level           | Has a visible failure state today?                                | Can retry here today?                  |
+|-----------------+-------------------------------------------------------------------+----------------------------------------|
+| Whole run/page  | *No.* F1, F2, F3: truncation looks like completion                | No — rerun the whole fetch             |
+| Table/sub-table | Rel: badge with failed count. ⏱: yellow retry/partial. CAA: none | Rel: yes. CAA: yes but see F5. ⏱: yes |
+| Row             | Expand-RG: inline error text                                      | Yes (click ▶ again)                    |
+| Cell            | Rel only: ⚠︎, hover ⟳                                             | Rel only: click                        |
+| Column          | Release events: none. CAA metadata: none                          | No                                     |
+
+The gaps sit at the two extremes: the page/run level (least visible, the most
+data at stake) and the CAA and release-events columns (nothing visible at all).
+
+* What could be automated, and how intrusive each is
+
+Ordered by value over intrusiveness. "Silent" = the user notices nothing except
+things now working.
+
+1. *Shared transient classifier* (silent, tiny). One =_isTransientHttp(status)=
+   covering 429, 502, 503, 504 and thrown errors, used by =_ws2GetJson()= and
+   everything below, and an optional =Retry-After= reader capped at, say, 30 s.
+   Removes F6 and is the prerequisite for the rest.
+2. *Stop recording transient failures as "no artwork"* (silent, small). Only
+   404/410 may write the zero and only they may go to IDB (F5). Also delete the
+   IDB record in =_artRetryTable()=. Do this first: it is the only finding that
+   persists.
+3. *Retry the HTML page fetch* (silent, small). 3 attempts with widening
+   backoff (about 2 s, 5 s) inside =fetchHtml()= for transient statuses only,
+   applied to all three call sites (F1-F3). Most 503s are bursts, so this
+   alone should turn most of F1 into a non-event.
+4. *Make a final HTML failure visible* (visible, small). When retries are
+   exhausted, keep what was loaded but change the status line to
+   "⚠️ Loaded N of M pages — page K failed (HTTP 503)" and do not count the
+   failed page in =pagesProcessed=. Do not offer Save-to-Disk as "complete".
+   No new controls. Fixes the deception without adding UI.
+5. *Resume from the failed page* (visible, medium). A "↻ Load remaining pages"
+   button that continues the loop from page K, appending to the existing
+   accumulators. Worth doing only if the accumulators can be kept without a
+   re-architecture; otherwise the honest answer is to rerun. Needs design
+   before any code.
+6. *Route release events through =_ws2GetJson()=* (silent, small), plus the
+   failure state on the column header if it still fails (F4).
+7. *One automatic follow-up pass for failed Relationships cells* (silent to
+   nearly silent, small) after the Phase 2 queue drains and a cool-down of
+   about 30 s, at most twice. The glyph states already exist, so the user sees
+   ⚠︎ turn into icons. It needs a *circuit breaker*: stop after N consecutive
+   failures, or MusicBrainz in a real outage gets hammered by a script that was
+   meant to be polite.
+8. *Table retry = failed cells only* (silent, small) — F7.
+
+Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
+modal ("some requests failed"); any change to the pacing constants without a
+measurement (the 1 request/second rule is MusicBrainz's, not ours to loosen).
+
+Items 1-4 and 6 are non-intrusive and each is a few lines plus a test. Item 5
+is the only one that adds UI. Item 7 is the only one with a rate-limit risk.
+
+* Performance and compatibility notes
+
+- Items 1-4 add no work on the success path (a status check that already
+  exists). Retry backoff only spends time on a request that was already lost.
+- Item 7's follow-up pass adds requests only after failures; the shared rate
+  gate must cover it, as Step 36 requires of every Relationships source.
+- =fetchHtml()= is used for the current-page shortcut only when the page is the
+  current document; retry does not apply there.
+- Test-framework impact to check before implementing: =tests/support/gmStubs.js=
+  and =realNetworkGmXhr.js= (they stub network calls), any fixture that
+  answers =**/ws/2/**= or serves HTML pages (a 503 sequence needs a stateful
+  route), and =rel-column-collapse-toggle.spec.js= (it asserts exact request
+  counts, which item 7 changes by design).
+
+* Verification plan
+
+Each finding needs a fixture spec with a route that answers 503, written to
+fail before the fix and pass after (project rule; mutation-check it).
+
+| Finding | Spec shape                                                                         | Guarantee it pins                                                                                  |
+|---------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------|
+| F1      | HTML page 2 of 3 answers 503 (then 200 on the retry, and a variant that stays 503) | recovered run has all rows; failed run says "N of M" and =pagesProcessed= excludes the failed page |
+| F2      | page-count request answers 503                                                     | not silently one page                                                                              |
+| F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
+| F4      | =inc=release-rels= answers 503 once                                                | column still populates after the retry                                                             |
+| F6      | 502, 504, 429 with and without =Retry-After=                                       | retried, and the wait honours the header up to the cap                                             |
+| F7      | table with 3 failed of N cells                                                     | request count on table retry equals the failed count                                               |
+
+The live check for a real burst is opportunistic: MusicBrainz 503s are bursty
+and cannot be summoned on demand, so a fixture is the only reproducible route.
+Do not measure with the live site and quote it as a rate.
+
+* Open questions
+
+1. Does Save-to-Disk after F1's truncated fetch write the partial set with no
+   marker? (Trace =saveToDisk= from the =break= path.)
+2. What does the artist-releasegroups main pass do when the pre-fetch set is
+   short (F3)?
+3. On the expand-RG error row, does one click re-arm the load or two? The
+   =retrySetup= handler installs =loadOnce= on the /next/ mousedown, which also
+   toggles the row.
+4. Should the HTML retry share one budget across pages, so a genuinely down
+   site fails fast instead of spending 3 attempts on each of 40 pages?
