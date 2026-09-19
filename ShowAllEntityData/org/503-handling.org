@@ -25,6 +25,11 @@ the tracker.
 Remaining order: item 1 (shared transient classifier, =fix/ws2-transient-classifier=)
 first, since items 3-4 and 6 depend on it; then F1-F3, then F4, then F7.
 
+F7 now carries a UI design — see [[Retry UI: one segmented control per table]].
+It has a *prerequisite the rest of F7 does not*: the Relationships half can be
+built today, the CAA half cannot, because nothing on the art path records that
+a request failed transiently. Sequence it accordingly, or split the branch.
+
 * The question
 
 For every place the script talks to the network: what happens on a 503 (or
@@ -180,6 +185,11 @@ distinguish a definitive absence from a transport failure.
 | Cell            | Rel only: ⚠︎, hover ⟳                                             | Rel only: click                       |
 | Column          | Release events: none. CAA metadata: none                         | No                                    |
 
+*Every "can retry here" above means retry EVERYTHING at that level.* Nothing
+in the script can currently retry just what failed, at any level except a
+single Relationships cell. That is F7 as a behaviour and
+[[Retry UI: one segmented control per table]] as an affordance.
+
 The gaps sit at the two extremes: the page/run level (least visible, the most
 data at stake) and the CAA and release-events columns (nothing visible at all).
 
@@ -220,7 +230,10 @@ things now working.
    ⚠︎ turn into icons. It needs a *circuit breaker*: stop after N consecutive
    failures, or MusicBrainz in a real outage gets hammered by a script that was
    meant to be polite.
-8. *Table retry = failed cells only* (silent, small) — F7.
+8. *Table retry = failed cells only* (silent, small) — F7. Its UI is the
+   "just what failed" zone in [[Retry UI: one segmented control per table]],
+   which is where the real work is: the behaviour is a one-line filter, the
+   affordance is not.
 
 Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
 modal ("some requests failed"); any change to the pacing constants without a
@@ -228,6 +241,133 @@ measurement (the 1 request/second rule is MusicBrainz's, not ours to loosen).
 
 Items 1-4 and 6 are non-intrusive and each is a few lines plus a test. Item 5
 is the only one that adds UI. Item 7 is the only one with a rate-limit risk.
+
+* Retry UI: one segmented control per table
+
+Raised 2026-09-19. Not yet built; this is the design record, and item 8 / F7 is
+the behaviour half of it.
+
+** What exists today
+
+Three separate buttons, all at table / sub-table level:
+
+| Button                          | id                                    | Does                                                |
+|---------------------------------+---------------------------------------+-----------------------------------------------------|
+| CAA/EAA strip toggle            | =mb-caa-toggle-btn-{i}=               | show/hide the big-image strip; carries thumb + count |
+| CAA/EAA retry                   | =mb-caa-toggle-btn-retry-{i}=         | =_artRetryTable()= — reload EVERYTHING, cache-busted |
+| Relationships retry             | =mb-rel-retry-{i}=                    | =_relRetryTable()= — reload EVERYTHING, evicts IDB   |
+
+Globals alongside them: =mb-caa-toggle-btn-global=,
+=mb-caa-toggle-btn-global-retry=, =mb-rel-retry-global= (note the LAST one
+breaks the pattern — it is not =mb-rel-retry-global-retry=).
+
+*The two CAA buttons are already adjacent siblings*:
+=_artCreateOrUpdateRetryButton()= ends in =toggleBtn.after(btn)=, and it bails
+out entirely if the toggle is absent. So they are already one visual run that
+merely looks like two controls. That is what makes this cheap.
+
+** Proposed shape
+
+One segmented pill per table, replacing the run of loose buttons. Zones left to
+right, each its own click target:
+
+#+begin_example
+  CAA / EAA                                Relationships
+
+  ┌─────┬─────┬─────┬───────┐              ┌────────┬─────┬───────┐
+  │ ▶🖼 │  36 │  ⟳  │ ⚠⟳ 3 │              │ 🔗 84/91 │  ⟳  │ ⚠⟳ 7 │
+  └─────┴─────┴─────┴───────┘              └────────┴─────┴───────┘
+    (1)   (2)   (3)    (4)                    (1)      (3)    (4)
+
+  (1) toggle   strip / column show-hide, carries the thumb (CAA) or done/total (Rel)
+  (2) count    CAA only — see the open question below
+  (3) all      reload everything, cache-busted (today's ⟳)
+  (4) failed   reload ONLY what failed; ABSENT when nothing failed
+#+end_example
+
+Zone 4 is the new affordance and the point of the exercise. Zone 3 keeps
+today's behaviour so "force a genuine refetch of a table I believe is stale"
+does not disappear — it is a different intent from "recover the failures" and
+both are legitimate.
+
+** Why this is workable, and cheap
+
+- *No DOM restructuring.* The CAA pair are already siblings; the pill is CSS
+  plus one new segment. The Relationships button becomes a run of its own.
+- *No wrapper element is needed*, so nothing has to be re-parented. Draw the
+  run as one pill with the run-relative selector pair the sort group already
+  uses — =:not(.mb-x + .mb-x)= for the first segment,
+  =:not(:has(+ .mb-x))= for the last. =:first-of-type=/=:last-of-type= are
+  WRONG here for the same reason CLAUDE.md gives for the sort group.
+- *Existing ids survive.* =mb-caa-toggle-btn-{i}= and
+  =mb-caa-toggle-btn-retry-{i}= stay on zones 1 and 3. This matters more than
+  it looks: =#mb-caa-toggle-btn-global= is referenced by *eight live specs*
+  plus =tests/support/measure-caa-metadata-404s.js=, and =.mb-caa-toggle-count=
+  by two more. Renaming any of them turns a CSS change into a test migration.
+- *There is an established visual language to join*, not invent: the
+  =.mb-col-hdr-flex= family (six controls, one shared CSS rule) and the sort
+  group's segmented pill. CLAUDE.md's "Column-header toggle family" section is
+  the spec; a seventh member extends the selector lists rather than copying a
+  block.
+
+** Traps, in the order they will bite
+
+1. *CAA HAS NO FAILURE STATE TO DRIVE ZONE 4. This is a hard prerequisite, not
+   a detail.* Grep comes back empty for any transient-failure tracking on the
+   art path. After F5, =ctx.countCache= holds =0= for *both* "the archive says
+   this release has no artwork" (a 404, a fact) and "the request failed" (a
+   503) — F5 deliberately kept the in-memory zero for both, and nothing
+   distinguishes them afterwards. Zone 4 therefore needs a new session-scoped
+   set of entity paths that failed transiently, written where F5 decided not to
+   persist and cleared by =_artRetryTable()=. *Relationships already has this*
+   (=data-rel-error= per cell, =_relCellLoadState()=, the 📊 "Load state"
+   section), which is why the Rel half of this design is nearly free and the
+   CAA half is not.
+2. *Do not hide zone 4 on a count taken from the live DOM.*
+   =_relTableProgress()= reads =table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]')=
+   — the LIVE tbody — and =runFilter()= REMOVES non-matching rows rather than
+   hiding them. A zone that disappears at =failed === 0= would therefore vanish
+   exactly when a filter excludes the failed rows, removing the only way back
+   to them. This is the *identical* bug CLAUDE.md records for
+   =_updateLengthMismatchButtons()= / =_updateLiveDateFlagButtons()=, and
+   =_countLengthMismatchRows()= walking =_msSourceRows()= is the fix to copy.
+   Count source rows, or keep the zone present and merely dimmed.
+3. *Nested =<button>= is invalid HTML.* The segments are siblings, never
+   nested — which they already are. The sort group uses sibling =<span>=s for
+   the same reason.
+4. *The sort group's "no wrapper, ever" rule does NOT transfer, and knowing why
+   matters.* That rule exists because 19 specs locate sort icons as
+   =locator('.sort-icon-btn', {hasText: '▲'})= and =hasText= is a SUBSTRING
+   match, so a wrapper whose text is =⇅▲▼= wins =.first()=. These buttons are
+   located by *id*, so a wrapper would be harmless here. It is still not needed
+   — but do not cite the sort-group rule as a blanket prohibition, and do not
+   dismiss it either.
+5. *Per-zone CSS deltas must sit AFTER the shared rule*, same specificity, or
+   source order silently decides. Three deltas in the existing family are
+   load-bearing for exactly this reason; see CLAUDE.md.
+
+** Open question — what does zone 2 DO?
+
+Splitting the thumb and the count into two click targets was asked for, and the
+thumb's action is obvious (toggle the strip). The count's is not. Two targets
+that do the same thing is worse than one target, so zone 2 needs either a
+distinct action or to be merged back into zone 1. Candidates, none chosen:
+
+- a pure DISPLAY, not a control — merge back into zone 1, and let the count
+  carry the failure state inline (=36= → =36 ⚠7=), which removes zone 4 as a
+  separate thing entirely;
+- scroll the strip to its first image / jump to the strip;
+- open an artwork summary for the table.
+
+*Recommendation*: decide this before any code. The "count carries the failure
+state" variant is the smallest design and drops a zone, at the cost of making
+the recovery action less discoverable.
+
+** What this does NOT address
+
+The page/run level, which is where the most data is at stake (F1-F3). A
+per-table control cannot say "page 4 of 40 failed"; item 4's status line is
+still the fix for that.
 
 * Performance and compatibility notes
 
