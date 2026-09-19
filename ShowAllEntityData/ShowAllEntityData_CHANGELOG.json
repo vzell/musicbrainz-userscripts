@@ -1,5 +1,26 @@
 [
   {
+    "version": "9.99.1119",
+    "date": "2026-09-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A fetch that did not finish was reported in exactly the same words as one that did. MusicBrainz refuses requests in bursts when it is busy, and a single refusal on page 4 of 40 ended the whole run at page 3 — after which the status line read \"Loaded 4 pages\", counting the page that had just failed. Nothing anywhere said the table was short. It now stops at the failed page and says so: \"⚠️ Loaded 3 of 40 pages (287 rows) — INCOMPLETE\", in orange, with the reason on hover. The rows that did arrive are kept and stay fully usable; press the action button again to retry.",
+          "Page fetches are now retried. A page that comes back \"503 Service Unavailable\", \"502 Bad Gateway\", \"504 Gateway Timeout\" or \"429 Too Many Requests\" is asked for again, up to three times, with a growing pause (about 2 and 5 seconds) between attempts, and a \"Retry-After\" header from the server is honoured up to 30 seconds. Most bursts now pass unnoticed rather than truncating the table. An answer that is genuinely final, such as a 404, is not retried. Pressing Stop during one of those pauses takes effect immediately instead of waiting it out.",
+          "When the PAGE COUNT itself could not be read, the script quietly fetched page 1 and called it a complete one-page listing. It now says \"of an unknown total\" and marks the run incomplete.",
+          "On an artist's release-group page, the Official / Non-Official discography buttons are built from a preparatory pass of their own. If that pass was cut short, the buttons were still built — and a partial list there does not shorten the \"Official\" view, it silently files genuinely-official releases under \"Non-Official\", including in any file you then saved. That partial list is now discarded and the buttons are left out, with the reason in the status line. The rows themselves are unaffected, so this case is flagged but not called INCOMPLETE."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Saving an incomplete fetch to disk now warns you first, and the file remembers. The Save dialog says the file will be a partial copy of the listing, and loading that file later shows the same orange \"INCOMPLETE\" marker — without it, a short file is indistinguishable from a complete one forever. Files saved before this existed load exactly as they did before."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1118",
     "date": "2026-09-19",
     "sections": [
