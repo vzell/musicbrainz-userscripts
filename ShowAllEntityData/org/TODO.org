@@ -522,3 +522,22 @@ Still no visual whitespace, see a typical raw cell HTML, @debug/cell-bug.html
 
 still not working, let's give up. revert everything we have done to the "Country/Date" column and leave it at it's natural rendering but commit everything else as it's working OK.
 
+* what does "arm" in the context of our test suite mean
+
+* questions
+
+1.)
+
+Add information about consulting the official MusicBrainz API documentation for MusicBrainz userscripts in the following
+file, @../CLAUDE.md if the file is also read from the current directory, other wise to @CLAUDE.md
+
+2.)
+
+Summarize the current use of MusicBrainz APIs like browse and search in our userscript and check if there are other
+areas, if the non-row based approach would benefit performance
+
+3.)
+
+combine the outcome of the two caa branches and create a summary org file like we did now for the 503 handling, commit
+everything and merge to main so I can start over on another machine
+
