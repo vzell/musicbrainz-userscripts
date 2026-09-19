@@ -1,0 +1,132 @@
+[
+  {
+    "name": "fetchHtml() does not retry at all",
+    "why": "The pre-F1 behaviour: one attempt, and a single 503 on page 2 ends the run at page 1. The recovery test must notice both the missing retry and the missing rows.",
+    "edits": [
+      {
+        "find": "const _HTML_FETCH_TRIES = 3;",
+        "replace": "const _HTML_FETCH_TRIES = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "a 503 on page 2 is retried",
+    "expect": "fail"
+  },
+  {
+    "name": "every status is retried, 4xx included",
+    "why": "The overshoot rather than the defect. Widening a retry set is exactly the change that goes too far, and without the boundary test a page fetch would spend three attempts on every 404 on the site.",
+    "edits": [
+      {
+        "find": "                if (!_isTransientHttp(res.status)) break;",
+        "replace": "                if (false) break;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "a 404 is final",
+    "expect": "fail"
+  },
+  {
+    "name": "Retry-After is ignored on the HTML path",
+    "why": "The header half. 503 is retried either way, so only the WAIT changes: the retry lands at the bare 2000 ms backoff instead of the 5000 ms the server asked for.",
+    "edits": [
+      {
+        "find": "const waitMs = Math.max(_HTML_FETCH_BACKOFF_MS[attempt - 1] || 0, retryAfterMs);",
+        "replace": "const waitMs = _HTML_FETCH_BACKOFF_MS[attempt - 1] || 0;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "honoured as a floor on the page backoff",
+    "expect": "fail"
+  },
+  {
+    "name": "the failed page is counted as loaded again",
+    "why": "F1 itself, reproduced by putting the increment back on the failure path: `pagesProcessed` then includes the page that 503'd and the line reads \"2 of 3\". Note the test asserts the NUMBER, not merely that a warning appeared — a warning would still be there.",
+    "edits": [
+      {
+        "find": "                    fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };\n                    break; // Stop fetching further pages on error",
+        "replace": "                    fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };\n                    pagesProcessed++;\n                    break; // Stop fetching further pages on error"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "keeps failing stops the run",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed page is logged but not recorded",
+    "why": "The other half of F1: without the record every reporting surface goes back to describing a truncated run in the words of a complete one.",
+    "edits": [
+      {
+        "find": "fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };",
+        "replace": "fetchIncomplete.pageFailure = null;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "keeps failing stops the run",
+    "expect": "fail"
+  },
+  {
+    "name": "fetchMaxPageGeneric() reports a failed count as OK",
+    "why": "F2 restored: `maxPage` is still 1, so the run looks like a complete one-page listing — which is exactly how this survived, since the old JSDoc documented it as intended.",
+    "edits": [
+      {
+        "find": "return { maxPage: 1, ok: false, detail: _httpFailureDetail(err) };",
+        "replace": "return { maxPage: 1, ok: true, detail: '' };"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "unreadable page count",
+    "expect": "fail"
+  },
+  {
+    "name": "an unknown page count prints \"N of M\" anyway",
+    "why": "M is the fallback 1 when the count could not be read, so this makes the line read \"Loaded 1 of 1 pages\" — a complete one-page listing, the same lie in new words. This is the whole reason pagesPhrase distinguishes the two cases.",
+    "edits": [
+      {
+        "find": "        const pagesPhrase = rec.pageFailure\n            ? `${pagesProcessed} of ${maxPage} pages`\n            : (rec.maxPageUnknown\n                ? `${pagesProcessed} ${plural} of an unknown total`\n                : `${pagesProcessed} ${plural}`);",
+        "replace": "        const pagesPhrase = `${pagesProcessed} of ${maxPage} pages`;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "unreadable page count",
+    "expect": "fail"
+  },
+  {
+    "name": "a short official set is handed on instead of discarded",
+    "why": "F3: the partial set survives, so the view buttons are built from it and the walk misfiles genuinely-official categories as non-official. Discarding is also what stops `discOfficialCategories` persisting the wrong split to disk.",
+    "edits": [
+      {
+        "find": "                    h3_official_category_header_array = [];",
+        "replace": "                    void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "suppresses them rather than guessing",
+    "expect": "fail"
+  },
+  {
+    "name": "an incomplete pre-fetch is not recorded",
+    "why": "Without the record nothing discards the partial set and nothing tells the user why the discography buttons are missing — the run looks entirely clean.",
+    "edits": [
+      {
+        "find": "                        fetchIncomplete.preFetchIncomplete =\n                            `the official-headers pass failed on page ${_pp} of ${_preMaxPage} ` +\n                            `(${_httpFailureDetail(_preErr)})`;",
+        "replace": "                        fetchIncomplete.preFetchIncomplete = null;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "suppresses them rather than guessing",
+    "expect": "fail"
+  },
+  {
+    "name": "a pre-fetch failure marks the ROWS incomplete",
+    "why": "The severity distinction. The main pass is independent of the pre-fetch, so its rows really are all there; calling that set INCOMPLETE would train the user to ignore the word, which is the only thing making it useful.",
+    "edits": [
+      {
+        "find": "const dataIncomplete = !!(rec.pageFailure || rec.maxPageUnknown);",
+        "replace": "const dataIncomplete = true;"
+      }
+    ],
+    "spec": "tests/fixtures/html-fetch-transient.spec.js",
+    "grep": "suppresses them rather than guessing",
+    "expect": "fail"
+  }
+]

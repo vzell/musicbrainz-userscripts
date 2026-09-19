@@ -18495,6 +18495,37 @@
     }
 
     /**
+     * Sleeps, but gives up early when `shouldStop()` turns true.
+     *
+     * A plain `setTimeout` promise cannot be cancelled, so a Stop press landing
+     * inside a retry backoff would be ignored until the wait ran out — up to
+     * seven seconds of an unresponsive button on the HTML fetch path. The sleep
+     * is therefore cut into slices and the predicate re-read between them.
+     *
+     * 250 ms is the slice because it is below the threshold at which a button
+     * feels stuck, while costing at most 28 timer callbacks for the longest
+     * backoff this script uses. The caller still re-checks the predicate after
+     * awaiting — this resolves EARLY, it does not throw.
+     *
+     * @param   {number} ms  Total milliseconds to wait.
+     * @param   {function(): boolean} [shouldStop]  Re-read between slices.
+     * @returns {Promise<void>}
+     */
+    function _sleepInterruptible(ms, shouldStop) {
+        const _SLICE_MS = 250;
+        return new Promise(resolve => {
+            let remaining = Math.max(0, ms);
+            const tick = () => {
+                if (remaining <= 0 || (shouldStop && shouldStop())) return resolve();
+                const slice = Math.min(_SLICE_MS, remaining);
+                remaining -= slice;
+                setTimeout(tick, slice);
+            };
+            tick();
+        });
+    }
+
+    /**
      * GETs one same-origin WS/2 URL as JSON, retrying transient failures.
      *
      * Shared by the millisecond-Length batch source and the Relationships
@@ -36897,6 +36928,24 @@ a { color: #1565c0; }`;
     let h3_non_official_category_header_array = [];
     let discographyViewState = 'all'; // 'all' | 'official' | 'non-official' | 'merged'
     // ── end Artist-Releasegroups discography view state ──────────────────────
+
+    /**
+     * The last fetch run's incompleteness record, or `null` for a clean run.
+     *
+     * `startFetchingProcess()` owns it; `saveTableDataToDisk()` reads it to
+     * stamp the file. Module-level because the Save button fires at a time of
+     * the user's choosing, outside that function entirely.
+     *
+     * Every run points this at its OWN fresh record, so a file saved after a
+     * successful re-fetch is never stamped with a previous run's failure. The
+     * disk-load path re-points it too, carrying a loaded file's own marker
+     * forward so that re-saving a partial file keeps it partial.
+     *
+     * @type {?{pageFailure: ?{page: number, detail: string},
+     *          maxPageUnknown: ?string, preFetchIncomplete: ?string}}
+     */
+    let _lastFetchIncomplete = null;
+
     let multiTableSortStates = new Map();
     // Registry of per-table tint functions so renderFinalTable can re-apply tints after re-render
     let multiSortTintRegistry = new Map(); // sortKey → { applyTints, clearTints }
@@ -39230,9 +39279,22 @@ a { color: #1565c0; }`;
 
     /**
      * Fetches the maximum page number by making a request to a URL and parsing its pagination
+     *
+     * *Returns an OUTCOME, not a bare number* (org/503-handling.org F2). This
+     * used to `return 1` from its catch, so a 503 on the page-count request was
+     * indistinguishable from a listing that genuinely has one page: the script
+     * then fetched page 1 alone and reported success. The old JSDoc documented
+     * that as intended behaviour ("defaults to 1 on error"), which is how it
+     * survived — it read like a decision rather than the bug it was.
+     *
+     * `maxPage` is still `1` on failure, so a caller that ignores `ok` behaves
+     * exactly as before and nothing silently fetches zero pages; `ok: false`
+     * is what lets the caller say so.
+     *
      * @param {string} targetPath - The path to fetch (relative to site origin)
      * @param {Object} queryParams - Query parameters to include in the URL
-     * @returns {Promise<number>} The maximum page number found, defaults to 1 on error
+     * @returns {Promise<{maxPage: number, ok: boolean, detail: string}>}
+     *   `ok: false` means the count is UNKNOWN, not that it is 1.
      */
     async function fetchMaxPageGeneric(targetPath, queryParams = {}) {
         const url = new URL(window.location.origin + targetPath);
@@ -39262,10 +39324,10 @@ a { color: #1565c0; }`;
                 }
             }
             Lib.debug('success', `Determined maxPage: ${maxPage}`);
-            return maxPage;
+            return { maxPage, ok: true, detail: '' };
         } catch (err) {
             Lib.error('fetch', 'Error fetching maxPage:', err);
-            return 1;
+            return { maxPage: 1, ok: false, detail: _httpFailureDetail(err) };
         }
     }
 
@@ -45806,9 +45868,15 @@ a { color: #1565c0; }`;
      * Shows a modal dialog asking user whether to render, save, or cancel when dataset is large
      * @param {number} totalRows - The total number of rows fetched
      * @param {number} pagesProcessed - The number of pages that were fetched
+     * @param {?{dataIncomplete: boolean, reasons: string[], tip: string}} [incomplete]
+     *   From `_fetchIncompleteSummary()`. When it reports missing rows, the
+     *   dialog must not say "Successfully fetched" — this is the one screen
+     *   that offers Save to Disk, so it is the last chance to tell the user the
+     *   file they are about to write is a partial copy of the listing
+     *   (org/503-handling.org F1, open question 1).
      * @returns {Promise<string>} - Returns 'render', 'save', or 'cancel'
      */
-    function showRenderDecisionDialog(totalRows, pagesProcessed) {
+    function showRenderDecisionDialog(totalRows, pagesProcessed, incomplete) {
         return new Promise((resolve) => {
             // Create modal overlay
             const overlay = document.createElement('div');
@@ -45858,7 +45926,13 @@ a { color: #1565c0; }`;
             dialog.innerHTML = `
                 <h2 id="sa-rd-title">Large Dataset Fetched</h2>
                 <p id="sa-rd-summary">
-                    Successfully fetched <strong>${totalRows.toLocaleString()} rows</strong> from <strong>${pagesProcessed} ${pageLabel}</strong>.
+                    ${(incomplete && incomplete.dataIncomplete)
+                        ? `⚠️ <strong>This listing was not fully fetched.</strong> `
+                          + `Got <strong>${totalRows.toLocaleString()} rows</strong> from `
+                          + `<strong>${pagesProcessed} ${pageLabel}</strong> — `
+                          + `${incomplete.reasons.join('; ')}. `
+                          + `Saving now writes a PARTIAL copy of this listing to disk.`
+                        : `Successfully fetched <strong>${totalRows.toLocaleString()} rows</strong> from <strong>${pagesProcessed} ${pageLabel}</strong>.`}
                 </p>
                 <p id="sa-rd-warning">
                     Rendering this many rows may take a considerable amount of time and could impact your browser performance
@@ -46374,6 +46448,34 @@ a { color: #1565c0; }`;
         e.preventDefault();
         e.stopPropagation();
 
+        // ── Incompleteness record for this run (org/503-handling.org F1-F3) ──
+        //
+        // Anything that makes the fetched set SMALLER than the listing lands
+        // here, and every surface that reports on the run reads it: the status
+        // line, the render-decision dialog, the save-without-rendering line and
+        // the saved file's own header. Before this, a truncated run was reported
+        // in exactly the same words as a complete one — the only defect in that
+        // file able to make a user believe wrong DATA is right.
+        //
+        // Three separate facts rather than one boolean, deliberately: they have
+        // different consequences and the user needs to know WHICH happened.
+        // Declared here, ahead of the pre-fetch pass, because that pass is the
+        // first thing that can write to it.
+        const fetchIncomplete = {
+            /** @type {?{page: number, detail: string}} A page fetch finally failed (F1). */
+            pageFailure: null,
+            /** @type {?string} The page COUNT is unknown, not 1 (F2). */
+            maxPageUnknown: null,
+            /** @type {?string} artist-releasegroups' official-headers pass is short (F3). */
+            preFetchIncomplete: null,
+        };
+        // Published module-side so `saveTableDataToDisk()` can stamp the file.
+        // It does not run inside this function — the toolbar's Save button
+        // calls it whenever the user likes, long after the fetch — so a local
+        // record alone could never reach it, and a file that does not say it is
+        // partial looks complete forever.
+        _lastFetchIncomplete = fetchIncomplete;
+
         // ── BEGIN: Artist-Releasegroups pre-fetch pass ────────────────────────────────────────
         //
         // For artist-releasegroups pages, before the combined (all:'1') main fetch we
@@ -46430,7 +46532,12 @@ a { color: #1565c0; }`;
                 fetchProgressLabel.style.color  = '#333';
                 fetchProgressFill.style.background = '#b3d9ff'; // light blue for pre-fetch pass
 
-                const _preMaxPage = await fetchMaxPageGeneric(path, _preFetchParams);
+                const _preMaxRes = await fetchMaxPageGeneric(path, _preFetchParams);
+                const _preMaxPage = _preMaxRes.maxPage;
+                if (!_preMaxRes.ok) {
+                    fetchIncomplete.preFetchIncomplete =
+                        `the official-headers pass could not read its page count (${_preMaxRes.detail})`;
+                }
                 Lib.debug('fetch', `Artist-Releasegroups pre-fetch pass: maxPage=${_preMaxPage}`);
 
                 let _preLastCategorySeen = null;
@@ -46459,6 +46566,16 @@ a { color: #1565c0; }`;
                     } catch (_preErr) {
                         Lib.error('fetch',
                             `Artist-Releasegroups pre-fetch pass: page ${_pp} fetch error:`, _preErr);
+                        // A SHORT official set is worse than none: the consumer
+                        // below treats the first category that stops matching
+                        // the front of this array as the start of the
+                        // non-official section, so a set missing its tail files
+                        // genuinely-official categories as non-official — and
+                        // `discOfficialCategories` persists that to disk. Record
+                        // it; the split is suppressed rather than guessed.
+                        fetchIncomplete.preFetchIncomplete =
+                            `the official-headers pass failed on page ${_pp} of ${_preMaxPage} ` +
+                            `(${_httpFailureDetail(_preErr)})`;
                         break;
                     }
 
@@ -46483,6 +46600,23 @@ a { color: #1565c0; }`;
                             _preLastCategorySeen = _catName;
                         }
                     });
+                }
+
+                // A SHORT official set is worse than an empty one. Every
+                // consumer — the view-button builder, the two re-render walks
+                // and `saveTableDataToDisk()`'s `discOfficialCategories` — is
+                // gated on `length > 0`, so DISCARDING the partial set is what
+                // switches all of them off at once, including the one that
+                // would otherwise persist a wrong split to disk. Threading a
+                // flag out to each would have missed the save path, which does
+                // not run inside this function.
+                if (fetchIncomplete.preFetchIncomplete) {
+                    Lib.warn('fetch',
+                        `Artist-Releasegroups pre-fetch pass INCOMPLETE — discarding ` +
+                        `${h3_official_category_header_array.length} partial official ` +
+                        `categories; discography views are suppressed for this run ` +
+                        `(${fetchIncomplete.preFetchIncomplete})`);
+                    h3_official_category_header_array = [];
                 }
 
                 Lib.debug('fetch',
@@ -46769,11 +46903,15 @@ a { color: #1565c0; }`;
             globalStatusDisplay.textContent = 'Getting number of pages to fetch... Non-paginated page definition. Initially assuming 1';
         } else if (overrideParams) {
             Lib.debug('fetch', 'Context: overrideParams detected. Fetching maxPage with overrides.', overrideParams);
-            maxPage = await fetchMaxPageGeneric(_effectivePath, overrideParams);
+            const _maxRes = await fetchMaxPageGeneric(_effectivePath, overrideParams);
+            maxPage = _maxRes.maxPage;
+            if (!_maxRes.ok) fetchIncomplete.maxPageUnknown = _maxRes.detail;
             globalStatusDisplay.textContent = `Getting number of pages to fetch... Paginated page definition extracted from URL with queryParameters: ${maxPage}`;
         } else if (buttonConfig.virtualPath) {
             Lib.debug('fetch', `Context: virtualPath detected. Fetching maxPage from ${_effectivePath}.`);
-            maxPage = await fetchMaxPageGeneric(_effectivePath, {});
+            const _maxRes = await fetchMaxPageGeneric(_effectivePath, {});
+            maxPage = _maxRes.maxPage;
+            if (!_maxRes.ok) fetchIncomplete.maxPageUnknown = _maxRes.detail;
             globalStatusDisplay.textContent = `Getting number of pages to fetch... virtualPath page. Fetched maxPage: ${maxPage}`;
         } else {
             Lib.debug('fetch', 'Context: Paginated page definition. Fetching maxPage from DOM.');
@@ -46892,7 +47030,6 @@ a { color: #1565c0; }`;
                     Lib.debug('cleanup', 'Fetch loop stopped at page ' + p);
                     break;
                 }
-                pagesProcessed++;
 
                 const pageStartTime = performance.now();
 
@@ -46939,8 +47076,20 @@ a { color: #1565c0; }`;
                     }
                 } catch (e) {
                     Lib.error('fetch', `Error fetching/parsing page ${p}:`, e);
+                    // Recorded, not just logged: without this the run below
+                    // reports "Loaded 3 pages" in exactly the words a complete
+                    // run uses, and the user has no way to tell 3-of-3 from
+                    // 3-of-40 (org/503-handling.org F1). `fetchHtml()` has
+                    // already spent its three attempts by the time we are here.
+                    fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };
                     break; // Stop fetching further pages on error
                 }
+
+                // AFTER the fetch, so a page that failed is not counted as
+                // processed. It used to be incremented before the try block, so
+                // the failing page was included in every "Loaded N pages" the
+                // run went on to print.
+                pagesProcessed++;
 
                 // ── Auto-expand "(show N more)" cells before row extraction ──────────
                 // expandShowAllCells reads the <script type="application/json"> sibling
@@ -48513,7 +48662,9 @@ a { color: #1565c0; }`;
             // If the dataset is very large, offer the user a choice before rendering
             const renderThreshold = Lib.settings.sa_render_threshold || 5000;
             if (renderThreshold > 0 && totalRows > renderThreshold) {
-                const userChoice = await showRenderDecisionDialog(totalRows, pagesProcessed);
+                const userChoice = await showRenderDecisionDialog(
+                    totalRows, pagesProcessed,
+                    _fetchIncompleteSummary(fetchIncomplete, maxPage, pagesProcessed));
 
                 if (userChoice === 'save') {
                     // User chose to save directly without rendering
@@ -48533,8 +48684,18 @@ a { color: #1565c0; }`;
 
                     const fetchSeconds = (totalFetchingTime / 1000).toFixed(2);
                     const pageLabel = (pagesProcessed === 1) ? 'page' : 'pages';
-                    globalStatusDisplay.textContent = `Fetched ${pagesProcessed} ${pageLabel} (${totalRows} rows) in ${fetchSeconds}s - Saved to disk without rendering`;
-                    globalStatusDisplay.style.color = 'green';
+                    const _saveIncomplete = _fetchIncompleteSummary(
+                        fetchIncomplete, maxPage, pagesProcessed);
+                    if (_saveIncomplete && _saveIncomplete.dataIncomplete) {
+                        globalStatusDisplay.textContent =
+                            `⚠️ Fetched ${_saveIncomplete.pagesPhrase} (${totalRows} rows) ` +
+                            `in ${fetchSeconds}s - Saved to disk without rendering — INCOMPLETE`;
+                        globalStatusDisplay.style.color = '#b26a00';
+                    } else {
+                        globalStatusDisplay.textContent = `Fetched ${pagesProcessed} ${pageLabel} (${totalRows} rows) in ${fetchSeconds}s - Saved to disk without rendering`;
+                        globalStatusDisplay.style.color = 'green';
+                    }
+                    globalStatusDisplay.title = _saveIncomplete ? _saveIncomplete.tip : '';
                     fetchProgressWrap.style.display = 'none';
 
                     Lib.debug('success', `Process complete. Data saved without rendering. Row Count: ${totalRows}. Fetch Time: ${fetchSeconds}s`);
@@ -48752,6 +48913,14 @@ a { color: #1565c0; }`;
             // This block runs only for artist-releasegroups pages AND only when the
             // pre-fetch pass has actually collected official category data (otherwise
             // there is nothing to split).
+            // The `length > 0` gate is also what suppresses this after an
+            // incomplete pre-fetch pass: that pass DISCARDS its partial set
+            // rather than handing a short one on (see its own comment). The
+            // walk below treats the first category that stops matching the
+            // front of `h3_official_category_header_array` as the start of the
+            // non-official section, so a set missing its tail would not
+            // truncate the Official view — it would MISFILE genuinely-official
+            // categories as non-official, confidently and silently.
             if (pageType === 'artist-releasegroups' &&
                 h3_official_category_header_array.length > 0) {
 
@@ -49088,8 +49257,29 @@ a { color: #1565c0; }`;
             _setInfoSub('mb-info-display-rel', '');
             _setInfoSub('mb-info-display-generic', '');
             const _sdLoaded = document.createElement('span');
-            _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
-            _sdLoaded.title = 'Pages and rows loaded from the MusicBrainz database.';
+            const _incomplete = _fetchIncompleteSummary(fetchIncomplete, maxPage, pagesProcessed);
+            if (_incomplete && _incomplete.dataIncomplete) {
+                // "N of M" rather than a bare count: the whole point is that the
+                // user can tell 3-of-3 from 3-of-40, which the old wording made
+                // impossible. `pagesProcessed` no longer includes the page that
+                // failed, so the two numbers really do differ.
+                _sdLoaded.textContent =
+                    `⚠️ Loaded ${_incomplete.pagesPhrase} (${totalRows} rows) — INCOMPLETE`;
+                _sdLoaded.style.color = '#b26a00';
+                _sdLoaded.style.fontWeight = 'bold';
+            } else if (_incomplete) {
+                // Rows ARE complete here — only something alongside them failed
+                // (today: the discography pre-fetch). Warned about, but never
+                // called INCOMPLETE, or the word stops meaning "rows missing".
+                _sdLoaded.textContent =
+                    `⚠️ Loaded ${_incomplete.pagesPhrase} (${totalRows} rows)`;
+                _sdLoaded.style.color = '#b26a00';
+            } else {
+                _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
+            }
+            _sdLoaded.title = _incomplete
+                ? _incomplete.tip
+                : 'Pages and rows loaded from the MusicBrainz database.';
             globalStatusDisplay.appendChild(_sdLoaded);
             _sdAppend(`Fetching: ${fetchSeconds}s`, '; ',
                 'Time to fetch all pages from the MusicBrainz server.');
@@ -63409,6 +63599,96 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Turns a `fetchHtml()` rejection into a short phrase for the status line.
+     *
+     * Reads `err.status` rather than parsing `err.message`, which is why
+     * `fetchHtml()` attaches it. `0` means no response arrived at all, and the
+     * user-facing wording has to say that rather than invent a status —
+     * "HTTP 0" would be worse than useless.
+     *
+     * @param   {?Error} err
+     * @returns {string} e.g. `"HTTP 503"`, or `"the request failed"`.
+     */
+    function _httpFailureDetail(err) {
+        const status = err && err.status;
+        return (typeof status === 'number' && status > 0)
+            ? `HTTP ${status}`
+            : 'the request failed';
+    }
+
+    /**
+     * Renders a run's incompleteness record for the user.
+     *
+     * One resolver for every surface that reports on a fetch — the status line,
+     * the render-decision dialog, the save-without-rendering line and the saved
+     * file's header — so they cannot describe the same run differently. That is
+     * not hypothetical: "Loaded N pages" was printed by four separate places,
+     * and a truncated run reached all four in the words of a complete one.
+     *
+     * **`dataIncomplete` is deliberately narrower than "something went wrong".**
+     * A failed page or an unreadable page count means ROWS ARE MISSING. An
+     * incomplete artist-releasegroups pre-fetch does not: the main pass still
+     * fetched every row, and all that is lost is the Official/Non-Official
+     * split. Marking a complete row set as incomplete would train the user to
+     * ignore the marker, which is the only thing making it useful.
+     *
+     * @param   {{pageFailure: ?{page: number, detail: string},
+     *            maxPageUnknown: ?string, preFetchIncomplete: ?string}} rec
+     * @param   {number} maxPage  The loop bound this run was given.
+     * @param   {number} pagesProcessed  Pages actually fetched, failed one excluded.
+     * @returns {?{dataIncomplete: boolean, reasons: string[], tip: string,
+     *             pagesPhrase: string}}  `null` when the run was clean.
+     *          `pagesPhrase` is the "N pages" fragment every caller prints, so
+     *          the three of them cannot word the same run differently.
+     */
+    function _fetchIncompleteSummary(rec, maxPage, pagesProcessed) {
+        const reasons = [];
+        if (rec.pageFailure) {
+            reasons.push(`page ${rec.pageFailure.page} of ${maxPage} failed ` +
+                         `(${rec.pageFailure.detail})`);
+        }
+        if (rec.maxPageUnknown) {
+            reasons.push(`the page count could not be read (${rec.maxPageUnknown}), ` +
+                         `so only the first page was fetched`);
+        }
+        if (rec.preFetchIncomplete) {
+            reasons.push(`${rec.preFetchIncomplete} — the Official/Non-Official ` +
+                         `discography views are unavailable for this run`);
+        }
+        if (!reasons.length) return null;
+        const dataIncomplete = !!(rec.pageFailure || rec.maxPageUnknown);
+        const plural = (pagesProcessed === 1) ? 'page' : 'pages';
+        // "N of M" needs a trustworthy M, so it is used only where a page
+        // FAILED — there the widget really did report M. When the count itself
+        // could not be read, M is the fallback 1 and printing "1 of 1 pages"
+        // would read as a complete run of a one-page listing, i.e. exactly the
+        // lie being removed.
+        const pagesPhrase = rec.pageFailure
+            ? `${pagesProcessed} of ${maxPage} pages`
+            : (rec.maxPageUnknown
+                ? `${pagesProcessed} ${plural} of an unknown total`
+                : `${pagesProcessed} ${plural}`);
+        const tip = (dataIncomplete
+            ? 'This listing was NOT fully fetched, so rows are missing: '
+            : 'The rows are complete, but part of this run did not finish: ')
+            + reasons.join('; ')
+            + '. Press the button again to retry.';
+        return { dataIncomplete, reasons, tip, pagesPhrase };
+    }
+
+    /** Attempts per HTML page fetch, including the first. See `fetchHtml()`. */
+    const _HTML_FETCH_TRIES = 3;
+
+    /**
+     * Backoff before attempt 2 and attempt 3, in milliseconds.
+     *
+     * Longer than the WS/2 path's 1100/2200 because there are far fewer page
+     * fetches than entity lookups and each one is worth more: losing it costs a
+     * whole page of rows, not one cell. Indexed by `attempt - 1`.
+     */
+    const _HTML_FETCH_BACKOFF_MS = [2000, 5000];
+
+    /**
      * Fetches HTML content from a URL using the browser's native fetch() API.
      *
      * All URLs fetched here are same-origin MusicBrainz pages, so CORS is not
@@ -63432,18 +63712,72 @@ a { color: #1565c0; }`;
      *     Firefox Desktop, GM_xmlhttpRequest happened to share the cookie jar
      *     with the foreground tab, so the bug was invisible there.
      *
+     * ── Retrying a transient failure ────────────────────────────────────────
+     *
+     * A single 503 on page 4 of 40 used to end the whole run at page 3, and
+     * `fetchMaxPageGeneric()` turned one into "this listing has one page"
+     * (org/503-handling.org F1-F3). MusicBrainz returns 503 in bursts, so the
+     * cheapest fix by far is to ask again: a transient status
+     * (`_isTransientHttp()`) or a thrown request is retried up to
+     * `_HTML_FETCH_TRIES` times, honouring `Retry-After` as a floor on the
+     * backoff exactly as `_ws2GetJson()` does.
+     *
+     * The backoff is deliberately longer than the WS/2 one
+     * (`_HTML_FETCH_BACKOFF_MS`, 2 s then 5 s, against 1.1 s then 2.2 s). A
+     * page fetch is one request per PAGE rather than one per row, so there are
+     * far fewer of them and each is worth waiting longer for; and the caller
+     * has a progress bar on screen, so the wait is visible rather than dead
+     * air.
+     *
+     * *A pressed Stop button interrupts a pending backoff*, so the button stays
+     * responsive instead of sitting out up to seven seconds of sleeping.
+     *
+     * *There is no shared budget across pages, and none is needed.* Every
+     * caller stops at its first failed page, so exactly one page can ever pay
+     * the retries — a genuinely-down site still fails after three attempts
+     * total, not three per page (org/503-handling.org open question 4).
+     *
      * @param {string} url - The URL to fetch (must be same-origin).
      * @returns {Promise<string>} Promise that resolves with the HTML response text.
+     * @throws {Error} On a final failure. The error carries `status` (the last
+     *   HTTP status seen, `0` when no response arrived) and `attempts`, so a
+     *   caller can classify it without parsing `message`.
      */
-    function fetchHtml(url) {
+    async function fetchHtml(url) {
         Lib.debug('fetch', `Initiating fetch for URL: ${url}`);
-        return fetch(url, { credentials: 'same-origin' })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
-                }
-                return res.text();
-            });
+        let lastErr = null;
+        for (let attempt = 1; attempt <= _HTML_FETCH_TRIES; attempt++) {
+            let retryAfterMs = 0;
+            try {
+                const res = await fetch(url, { credentials: 'same-origin' });
+                if (res.ok) return await res.text();
+                const err = new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
+                err.status = res.status;
+                lastErr = err;
+                if (!_isTransientHttp(res.status)) break;
+                retryAfterMs = _parseRetryAfterMs(res.headers.get('Retry-After'));
+            } catch (netErr) {
+                // A thrown request (offline, DNS, a connection reset) is as
+                // transient as a 503 and is retried on the same terms. `status`
+                // stays 0: no response arrived, so there is none to report.
+                if (netErr && netErr.status !== undefined) throw netErr;
+                lastErr = netErr;
+                if (lastErr && lastErr.status === undefined) lastErr.status = 0;
+            }
+            if (attempt >= _HTML_FETCH_TRIES) break;
+            // Stop is checked BEFORE sleeping as well as after, so a press that
+            // lands during the request itself is not followed by a pointless wait.
+            if (stopRequested) break;
+            const waitMs = Math.max(_HTML_FETCH_BACKOFF_MS[attempt - 1] || 0, retryAfterMs);
+            Lib.debug('fetch',
+                `${url}: attempt ${attempt}/${_HTML_FETCH_TRIES} failed ` +
+                `(${lastErr && lastErr.message}) — retrying in ${waitMs} ms` +
+                (retryAfterMs ? ` (Retry-After → ${retryAfterMs} ms)` : ''));
+            await _sleepInterruptible(waitMs, () => stopRequested);
+            if (stopRequested) break;
+        }
+        if (lastErr && lastErr.status === undefined) lastErr.status = 0;
+        throw lastErr || new Error(`Failed to fetch ${url}`);
     }
 
     /**
@@ -68380,6 +68714,24 @@ a { color: #1565c0; }`;
                 timestamp: Date.now(),
                 timestampReadable: new Date().toISOString(),
                 tableMode: activeDefinition.tableMode,
+                // ── Is this file a PARTIAL copy of the listing? ──────────────
+                // Absent in every file written before this field existed, and
+                // absent here on a clean run, so `!incomplete` keeps its old
+                // meaning and no format-version bump is needed: a reader that
+                // does not know the field behaves exactly as it always did.
+                //
+                // Stamped because a truncated set is indistinguishable from a
+                // complete one once it is on disk — the rows look fine, there
+                // are just fewer of them than the listing has. The only moment
+                // anyone can know is the run that fetched it
+                // (org/503-handling.org F1, open question 1).
+                incomplete: (_lastFetchIncomplete
+                    && (_lastFetchIncomplete.pageFailure || _lastFetchIncomplete.maxPageUnknown))
+                    ? {
+                        pageFailure: _lastFetchIncomplete.pageFailure,
+                        maxPageUnknown: _lastFetchIncomplete.maxPageUnknown,
+                    }
+                    : null,
                 entityType: null,       // filled in below — e.g. "Artist"
                 entityName: null,       // filled in below — e.g. "Bruce Springsteen"
                 sectionSuffix: null,    // filled in below — e.g. "Relationships"
@@ -68645,6 +68997,24 @@ a { color: #1565c0; }`;
             const _supportsRelAndCdtocFastPath = _snapshotVersionAtLeast(data.version, '1.1');
 
             Lib.debug('cache', `Loaded data version ${data.version} from ${data.timestampReadable} (File total: ${data.rowCount} rows)`);
+
+            // Carry the file's own partial-fetch marker forward, so re-saving a
+            // partial file keeps it partial and a clean load clears whatever
+            // the last live fetch in this session left behind. Files written
+            // before the field existed have no `incomplete` key and load as
+            // clean, which is the only thing that can be assumed about them.
+            _lastFetchIncomplete = data.incomplete
+                ? {
+                    pageFailure: data.incomplete.pageFailure || null,
+                    maxPageUnknown: data.incomplete.maxPageUnknown || null,
+                    preFetchIncomplete: null,
+                }
+                : null;
+            if (_lastFetchIncomplete) {
+                Lib.warn('cache',
+                    'This file was saved from an INCOMPLETE fetch — it holds fewer rows ' +
+                    'than the listing did. Re-fetch the page to get the rest.');
+            }
 
             // TEMP DEBUG (bug 2 investigation — see debug/CAA-missing-doubled.org,
             // WIP.89 follow-up): entry marker for the cross-tab "Show single-table"
@@ -69727,8 +70097,22 @@ a { color: #1565c0; }`;
             _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
             const _sdLoadedFromDisk = document.createElement('span');
-            _sdLoadedFromDisk.textContent = `Loaded ${loadedRowCount} ${rowLabel} from ${file ? `disk file ${file.name}` : sourceLabel}`;
-            _sdLoadedFromDisk.title = 'Rows loaded from a saved snapshot file.';
+            const _source = file ? `disk file ${file.name}` : sourceLabel;
+            if (_lastFetchIncomplete) {
+                // The marker has to reappear on every LOAD, not just on the run
+                // that wrote it — a partial file is opened long after anyone
+                // remembers why it is short, and its rows look perfectly normal.
+                _sdLoadedFromDisk.textContent =
+                    `⚠️ Loaded ${loadedRowCount} ${rowLabel} from ${_source} — INCOMPLETE`;
+                _sdLoadedFromDisk.style.color = '#b26a00';
+                _sdLoadedFromDisk.style.fontWeight = 'bold';
+                _sdLoadedFromDisk.title =
+                    'This file was saved from a fetch that did not finish, so it holds '
+                    + 'fewer rows than the listing does. Re-fetch the page for the rest.';
+            } else {
+                _sdLoadedFromDisk.textContent = `Loaded ${loadedRowCount} ${rowLabel} from ${_source}`;
+                _sdLoadedFromDisk.title = 'Rows loaded from a saved snapshot file.';
+            }
             globalStatusDisplay.appendChild(_sdLoadedFromDisk);
 
             // Same reason as the fetch path's call: the reset just above wiped

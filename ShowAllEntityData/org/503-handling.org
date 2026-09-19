@@ -14,6 +14,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 |---------+---------------------------------+-----------------------------------------------------|
 | F5      | =fix/caa-metadata-transient=    | =tests/fixtures/caa-metadata-transient-503.spec.js= |
 | F6      | =fix/ws2-transient-classifier=  | =tests/fixtures/ws2-transient-classifier.spec.js=   |
+| F1-F3   | =fix/html-fetch-transient=      | =tests/fixtures/html-fetch-transient.spec.js=       |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -23,10 +24,12 @@ one-level (branch → =main=) and deletes the WIP file when it folds, so the who
 batch would have had to ship as one version block. This file stays on =main= as
 the tracker.
 
-Remaining order: item 1 (shared transient classifier) is DONE and shipped on
-=fix/ws2-transient-classifier=; then F1-F3 (items 3-4), then F4 (item 6), then
-F7 (item 8). Items 3-4 and 6 are the ones that were waiting on item 1 —
-=_isTransientHttp()= and =_parseRetryAfterMs()= now exist for them to reuse.
+Remaining order: item 1 (shared transient classifier) shipped on
+=fix/ws2-transient-classifier=; items 3-4 (F1-F3) shipped on
+=fix/html-fetch-transient=, reusing =_isTransientHttp()= and
+=_parseRetryAfterMs()= exactly as item 1 intended. *Remaining: item 6 (F4),
+item 5 (resume — still needs design), item 7 (auto follow-up pass) and item 8
+(F7).*
 
 F7 now carries a UI design — see [[Retry UI: one segmented control per table]].
 It has a *prerequisite the rest of F7 does not*: the Relationships half can be
@@ -47,9 +50,9 @@ see. "Level" = the finest granularity at which the user can retry.
 
 |  # | Request                                                                            | Auto retry                               | Failure classified?                           | Signal to the user                                                               | Manual retry level                                                                    |
 |----+------------------------------------------------------------------------------------+------------------------------------------+-----------------------------------------------+----------------------------------------------------------------------------------+---------------------------------------------------------------------------------------|
-|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | none                                     | any non-OK throws                             | *none* — console =Lib.error= only, then the loop =break=s (see F1)               | whole fetch only (press "Show all" again)                                             |
-|  2 | =fetchMaxPageGeneric()= (page count)                                               | none                                     | any error                                     | *none* — returns =1=, i.e. "one page" (F2)                                       | whole fetch only                                                                      |
-|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | none                                     | any error                                     | console only, =break= (F3)                                                       | whole fetch only                                                                      |
+|  1 | HTML page fetch, main pagination loop (=fetchHtml()=, =startFetchingProcess=)      | 3 tries, 429/502/503/504 + thrown (F1)   | =err.status= attached; transient vs final     | ⚠️ status line "Loaded N of M pages — INCOMPLETE" + tooltip (F1, fixed)       | whole fetch only (press "Show all" again)                                             |
+|  2 | =fetchMaxPageGeneric()= (page count)                                               | via row 1                                | returns ={maxPage, ok, detail}=               | ⚠️ "of an unknown total — INCOMPLETE" (F2, fixed)                              | whole fetch only                                                                      |
+|  3 | artist-releasegroups pre-fetch pass (=fetchHtml()=)                                | via row 1                                | partial set DISCARDED, never handed on        | ⚠️ "discography views unavailable"; rows NOT marked incomplete (F3, fixed)     | whole fetch only                                                                      |
 |  4 | WS/2 via =_ws2GetJson()= (⏱ ms Length batch, Relationships lookups and browse)     | 3 tries, 429/502/503/504 + thrown (F6)   | transient vs other non-OK vs thrown           | see rows 5 and 6                                                                 | see rows 5 and 6                                                                      |
 |  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
 |  6 | ⏱ ms Length, ='batch'= source                                                      | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
@@ -75,7 +78,7 @@ HTML pagination loop is sequential with *no* delay.
 
 * Findings, most serious first
 
-** F1 — a failed HTML page silently truncates the result, and the status line says it completed  (read in the code)
+** DONE F1 — a failed HTML page silently truncates the result, and the status line says it completed  (confirmed by a spec; fixed)
 
 The pagination loop does =pagesProcessed++= /before/ fetching page =p=, and its
 catch block is =Lib.error(...); break;=. After the =break= the loop falls
@@ -91,17 +94,76 @@ This is the only finding that can make a user believe wrong DATA is complete,
 which is why it outranks the rest. =fetchHtml()= itself has no retry: a single
 503 on page 4 of 40 ends the whole run at page 3.
 
-** F2 — =fetchMaxPageGeneric()= turns a fetch failure into "1 page"  (read in the code)
+*Fixed on =fix/html-fetch-transient=, together with F2 and F3.* The third
+bullet is now CONFIRMED and fixed: the Save-to-Disk path did take the same
+route, and a truncated set was written with no marker at all.
 
-Its catch returns =1=. A 503 on the page-count request makes the script fetch
+- =fetchHtml()= retries a transient status or a thrown request up to
+  =_HTML_FETCH_TRIES= (3) times, backing off =_HTML_FETCH_BACKOFF_MS= (2 s then
+  5 s) and honouring =Retry-After= as a floor via item 1's helpers. A pressed
+  Stop interrupts the backoff (=_sleepInterruptible()=). It throws an Error
+  carrying =status=, so callers classify without parsing =message=.
+- =pagesProcessed++= moved to AFTER the fetch, so the failed page is no longer
+  counted as loaded.
+- A =fetchIncomplete= record ({=pageFailure=, =maxPageUnknown=,
+  =preFetchIncomplete=}) is filled during the run and rendered by ONE resolver,
+  =_fetchIncompleteSummary()=, for every surface: the status line, the
+  render-decision dialog, the save-without-rendering line, the disk-load line
+  and the saved file's own header. Four places printed "Loaded N pages"
+  independently before.
+- The saved file gains an optional =incomplete= block. Absent on a clean run
+  and in every file written before it existed, so =!incomplete= keeps its old
+  meaning and *no format-version bump was needed*. A loaded file's marker is
+  carried forward, so re-saving a partial file keeps it partial.
+
+*No shared retry budget across pages, and none is needed* (open question 4,
+answered): every caller stops at its first failed page, so exactly one page can
+ever pay the retries. A genuinely down site costs three attempts in total, not
+three per page.
+
+** DONE F2 — =fetchMaxPageGeneric()= turns a fetch failure into "1 page"  (confirmed by a spec; fixed)
+
+Its catch returned =1=. A 503 on the page-count request made the script fetch
 page 1 only and report success. Same silent-truncation class as F1, one step
-earlier, and it also has no retry.
+earlier, and it also had no retry.
 
-** F3 — the artist-releasegroups pre-fetch pass =break=s on error  (read in the code; effect unverified)
+*Fixed on =fix/html-fetch-transient=.* It now returns ={maxPage, ok, detail}=.
+=maxPage= is still =1= on failure, so a caller that ignores =ok= behaves exactly
+as before and nothing silently fetches zero pages; =ok: false= is what lets the
+status line say "of an unknown total" instead of "1 of 1 pages". The old JSDoc
+said "defaults to 1 on error", which is how this survived — it read as a
+decision rather than the bug it was.
+
+Note the *spec had to be rewritten once* because the F1 retry absorbed it:
+failing one attempt of the count request is no longer enough, so the test
+exhausts all three and lets the loop's own page-1 request (the same URL)
+succeed.
+
+** DONE F3 — the artist-releasegroups pre-fetch pass =break=s on error  (traced, confirmed by a spec; fixed)
 
 The pass builds the "official headers" set that the main pass uses. A break
-leaves the set incomplete. What that does to grouping downstream has not been
-traced; it needs a fixture with a 503 on pre-fetch page 2.
+leaves the set incomplete.
+
+*Effect traced (open question 2, answered): it is worse than truncation.* The
+consumer walks =h3_all_category_header_array= and treats entries matching the
+FRONT of the official array in sequence as official; the first mismatch starts
+the non-official section. So a set short by two categories does not shorten the
+Official view — it files two genuinely-official categories under
+Non-Official, confidently and silently. And =discOfficialCategories= persists
+that to disk, so the wrong split outlives the session.
+
+*Fixed on =fix/html-fetch-transient=:* an incomplete pass DISCARDS its partial
+set. Every consumer — the view-button builder, the two re-render walks and
+=saveTableDataToDisk()= — is gated on =length > 0=, so discarding switches
+all of them off at once, including the one that would have persisted the wrong
+split. Threading a flag out instead would have missed the save path, which does
+not run inside =startFetchingProcess()=.
+
+The rows themselves are untouched (the main pass is independent), so this case
+is marked ⚠️ but deliberately NOT called INCOMPLETE — see
+=_fetchIncompleteSummary()='s =dataIncomplete=. The spec carries a CONTROL test
+asserting a clean run DOES build the buttons, without which the suppression
+test would pass on a fixture that never had them.
 
 ** F4 — the release-events column gives up silently and uses a weaker path than its siblings  (read in the code)
 
@@ -264,15 +326,16 @@ things now working.
    that persists.
    Shipped on =fix/caa-metadata-transient=, with one change: "may write the zero"
    was narrowed to the IDB write alone — see F5 above for why.
-3. *Retry the HTML page fetch* (silent, small). 3 attempts with widening
-   backoff (about 2 s, 5 s) inside =fetchHtml()= for transient statuses only,
-   applied to all three call sites (F1-F3). Most 503s are bursts, so this
-   alone should turn most of F1 into a non-event.
-4. *Make a final HTML failure visible* (visible, small). When retries are
-   exhausted, keep what was loaded but change the status line to
-   "⚠️ Loaded N of M pages — page K failed (HTTP 503)" and do not count the
-   failed page in =pagesProcessed=. Do not offer Save-to-Disk as "complete".
-   No new controls. Fixes the deception without adding UI.
+3. [DONE] *Retry the HTML page fetch* (silent, small). 3 attempts with widening
+   backoff (2 s, 5 s) inside =fetchHtml()= for transient statuses only, applied
+   to all three call sites (F1-F3). Most 503s are bursts, so this alone turns
+   most of F1 into a non-event. Shipped on =fix/html-fetch-transient=; it also
+   honours =Retry-After= and is interruptible by Stop.
+4. [DONE] *Make a final HTML failure visible* (visible, small). Shipped on
+   =fix/html-fetch-transient=, and slightly wider than planned: as well as the
+   status line and =pagesProcessed=, the render-decision dialog, the
+   save-without-rendering line, the disk-load line and the FILE ITSELF carry the
+   marker, all from one resolver (=_fetchIncompleteSummary()=). No new controls.
 5. *Resume from the failed page* (visible, medium). A "↻ Load remaining pages"
    button that continues the loop from page K, appending to the existing
    accumulators. Worth doing only if the accumulators can be kept without a
@@ -554,8 +617,8 @@ fail before the fix and pass after (project rule; mutation-check it).
 
 | Finding | Spec shape                                                                         | Guarantee it pins                                                                                  |
 |---------+------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------------------|
-| F1      | HTML page 2 of 3 answers 503 (then 200 on the retry, and a variant that stays 503) | recovered run has all rows; failed run says "N of M" and =pagesProcessed= excludes the failed page |
-| F2      | page-count request answers 503                                                     | not silently one page                                                                              |
+| F1      | [DONE] page 2 of 3 answers 503 (recovering and permanent variants, plus 404)       | recovered run has all rows; failed run says "1 of 3" and =pagesProcessed= excludes the failed page |
+| F2      | [DONE] page-count request 503s on all three attempts; the loop's own page 1 is OK  | "of an unknown total", never "1 of 1 pages"                                                        |
 | F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
 | F4      | =inc=release-rels= answers 503 once                                                | column still populates after the retry                                                             |
 | F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap        | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
@@ -567,15 +630,22 @@ Do not measure with the live site and quote it as a rate.
 
 * Open questions
 
-1. Does Save-to-Disk after F1's truncated fetch write the partial set with no
-   marker? (Trace =saveToDisk= from the =break= path.)
-2. What does the artist-releasegroups main pass do when the pre-fetch set is
-   short (F3)?
+1. [ANSWERED — yes, and fixed] Save-to-Disk after a truncated fetch DID write
+   the partial set with no marker. The payload now carries an optional
+   =incomplete= block, the render-decision dialog warns before writing, and a
+   load of such a file shows the marker again. See F1.
+2. [ANSWERED — worse than truncation, and fixed] A short official set MISFILES
+   genuinely-official categories as non-official, because the consumer matches
+   against the FRONT of the array in sequence. The partial set is now discarded.
+   See F3.
 3. On the expand-RG error row, does one click re-arm the load or two? The
    =retrySetup= handler installs =loadOnce= on the /next/ mousedown, which also
    toggles the row.
-4. Should the HTML retry share one budget across pages, so a genuinely down
-   site fails fast instead of spending 3 attempts on each of 40 pages?
+4. [ANSWERED — not needed] Every caller stops at its first failed page, so
+   exactly one page can ever pay the retries: a down site costs three attempts
+   in total, not three per page. The =break= already IS the budget. This stops
+   being true only if item 5 (resume) makes the loop continue past a failure —
+   design that in then, not before.
 5. Should the ⏱ ='ws2'= source (row 6b) move onto =_ws2GetJson()=? It is a few
    lines and would give work/artist-relationships/place-performances/
    area-recordings the same three attempts the batched pages have. Left out of
