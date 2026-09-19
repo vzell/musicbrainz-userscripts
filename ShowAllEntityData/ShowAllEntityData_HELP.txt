@@ -1402,6 +1402,20 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Relationship data is cached in IndexedDB (configurable TTL, default 30
   days) to avoid re-fetching on repeated visits.  Retry buttons (⟳) force a
   fresh network fetch with IDB cache invalidation.
+• TWO retry buttons, for two different intentions:
+    🔗⟳  Reload EVERYTHING here.  For when you think the data is stale — it
+        throws away what is cached and asks again about every row.
+    ⚠⟳ N  Recover ONLY the N lookups that FAILED, leaving the rows that
+        worked alone.  This one appears only when something has actually
+        failed, and the number tells you how many.
+  The difference is worth knowing on a big page: recovering three failures
+  out of two thousand rows used to mean two thousand requests at one per
+  second — about forty minutes to repair three seconds of trouble.  Now it
+  is three requests.
+  Rows that a filter is currently hiding are counted too, so ⚠⟳ never
+  disappears just because you typed something.  They cannot be re-fetched
+  while they are off screen, but they are no longer left marked as failed
+  either — clear the filter and they load like any other pending row.
 • A request the Web Service could not answer RIGHT NOW is retried up to three
   times, with a growing pause between attempts.  Four answers count as "not
   right now": "503 Service Unavailable" (which MusicBrainz returns in bursts

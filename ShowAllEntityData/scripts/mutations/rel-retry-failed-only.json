@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the failed-only retry asks about every entity again",
+    "why": "F7 itself: dropping the filter restores _relRetryAll()'s behaviour, so recovering three failures costs a request per row. The test asserts an EXACT count against the failure count, so this cannot be satisfied by luck.",
+    "edits": [
+      {
+        "find": "                const _mbid = td.dataset.mbid;\n                if (!_mbid || !_failed.has(_mbid)) return;",
+        "replace": "                const _mbid = td.dataset.mbid;\n                if (!_mbid) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "requests exactly the failed entities",
+    "expect": "fail"
+  },
+  {
+    "name": "the failed-only retry asks about nothing",
+    "why": "The other direction, and the reason the test does not settle for \"fewer requests than before\": a retry that issues nothing at all would pass a count-went-down assertion while leaving every failed cell unrecovered. Pinned by the companion icon assertion.",
+    "edits": [
+      {
+        "find": "        const _failed = _relFailedMbidsPageWide();\n        if (!_failed.size) return;",
+        "replace": "        const _failed = new Set();\n        if (!_failed.size) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "requests exactly the failed entities",
+    "expect": "fail"
+  },
+  {
+    "name": "the count ignores the source rows",
+    "why": "The trap this design turns on. runFilter() REMOVES non-matching rows, so a live-DOM-only tally loses the failures a filter is hiding — and the retry then leaves them marked failed, which the impl's candidate scan and _relQueueStillWants() both read as \"leave alone\", stranding them for good. Pinned through __saTest.relFailedMbids() rather than the button's label: the label is repainted only on a cell write, so a filter alone never recomputes it and a label assertion would measure \"the button was not repainted\" instead. An earlier draft of the spec did exactly that and this mutation passed against it.",
+    "edits": [
+      {
+        "find": "        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_scan));\n        if (typeof allRows !== 'undefined') allRows.forEach(_scan);\n        _done.forEach(m => _failed.delete(m));",
+        "replace": "        _done.forEach(m => _failed.delete(m));"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "is not stranded",
+    "expect": "fail"
+  },
+  {
+    "name": "an entity answered elsewhere is retried anyway",
+    "why": "KNOWN GAP, recorded rather than hidden: every MBID appears exactly once on this fixture, so the done-wins rule is never exercised and no assertion here can see it. It matters on a page that lists the same entity twice, and on the live/master pair during the window before _relWriteResult() has mirrored its answer — re-requesting an entity already answered is the waste this whole change removes. Covering it needs a fixture with a repeated entity; none of the committed ones has one.",
+    "edits": [
+      {
+        "find": "        _scan(document);\n        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_scan));\n        if (typeof allRows !== 'undefined') allRows.forEach(_scan);\n        _done.forEach(m => _failed.delete(m));\n        return _failed;",
+        "replace": "        _scan(document);\n        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => g.rows.forEach(_scan));\n        if (typeof allRows !== 'undefined') allRows.forEach(_scan);\n        return _failed;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "absent when nothing failed",
+    "expect": "pass"
+  },
+  {
+    "name": "the reload-everything button becomes failed-only too",
+    "why": "\"Force a genuine refetch of a table I believe is stale\" is a different intent from \"recover the failures\", and the org says both are legitimate. Collapsing them is the plausible future simplification; this is what has to fail when someone tries it.",
+    "edits": [
+      {
+        "find": "        const mbids = [...new Set(\n            Array.from(table.querySelectorAll('td.mb-rel-cell[data-mbid]'))\n                .map(td => td.dataset.mbid).filter(Boolean)\n        )];",
+        "replace": "        const mbids = [..._relFailedMbidsPageWide()];"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "still reloads EVERYTHING",
+    "expect": "fail"
+  },
+  {
+    "name": "a single-table page loses its retry anchor again",
+    "why": "The pre-existing bug this branch fixed in passing: the walk stopped at the <h2>, so on a single-table page with cover art off the retry buttons were built and then dropped on the floor — which is every single-table FIXTURE, and why no spec had ever seen them. The failed-only control anchors on them, so it goes missing too.",
+    "edits": [
+      {
+        "find": "                return _single ? (el.querySelector('button:last-of-type') || el) : null;",
+        "replace": "                return null;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "absent when nothing failed",
+    "expect": "fail"
+  }
+]

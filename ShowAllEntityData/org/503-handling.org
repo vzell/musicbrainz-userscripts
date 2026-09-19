@@ -16,6 +16,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F6      | =fix/ws2-transient-classifier=  | =tests/fixtures/ws2-transient-classifier.spec.js=   |
 | F1-F3   | =fix/html-fetch-transient=      | =tests/fixtures/html-fetch-transient.spec.js=       |
 | F4      | =fix/release-events-transient=  | =tests/fixtures/release-events-transient.spec.js=   |
+| F7 (Rel) | =feat/rel-retry-failed-only=   | =tests/fixtures/rel-retry-failed-only.spec.js=      |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -29,8 +30,10 @@ Remaining order: item 1 (shared transient classifier) shipped on
 =fix/ws2-transient-classifier=; items 3-4 (F1-F3) shipped on
 =fix/html-fetch-transient=, reusing =_isTransientHttp()= and
 =_parseRetryAfterMs()= exactly as item 1 intended. Item 6 (F4) shipped on
-=fix/release-events-transient=. *Remaining: item 5 (resume — still needs
-design), item 7 (auto follow-up pass) and item 8 (F7).*
+=fix/release-events-transient=, and item 8 (F7) shipped its RELATIONSHIPS
+half on =feat/rel-retry-failed-only=. *Remaining: F7's CAA half (still
+blocked), item 5 (resume — still needs design) and item 7 (auto follow-up
+pass).*
 
 F7 now carries a UI design — see [[Retry UI: one segmented control per table]].
 It has a *prerequisite the rest of F7 does not*: the Relationships half can be
@@ -304,13 +307,64 @@ Two things the mutation run taught, worth keeping:
   =_relAwaitRateSlot()= alone held the line. A spec that merely checked "was
   there a pause" would not have seen it; the assertion has to name the number.
 
-** F7 — Relationships retry-table reloads everything, not just what failed  (read in the code; scope of cost unmeasured)
+** DONE F7 — Relationships retry-table reloads everything, not just what failed  (confirmed by a spec; fixed)
 
-=_relRetryTable()= collects every =td.mb-rel-cell[data-mbid]= in the table and
-evicts and re-requests all of them, including the ones that succeeded. On a
+=_relRetryTable()= collected every =td.mb-rel-cell[data-mbid]= in the table and
+evicted and re-requested all of them, including the ones that succeeded. On a
 2000-row table with three failures that is 2000 requests at 1 per 1.1 s to
-recover three cells. The per-cell ⟳ is the right tool there; the table button
-should default to failed cells only. Not a correctness issue.
+recover three cells.
+
+*Fixed on =feat/rel-retry-failed-only=* — the Relationships half. What shipped:
+
+- =#mb-rel-retry-failed= (=⚠⟳ N=), ONE page-wide control, present only when
+  something failed. =_relRetryTable()=/=_relRetryAll()= are deliberately left
+  alone: "force a genuine refetch of a table I believe is stale" and "recover
+  the failures" are different intents, and a mutation covers the future
+  simplification that would collapse them.
+- =_relFailedMbidsPageWide()= reads the captured SOURCE rows as well as the live
+  DOM, so the set survives a filter (trap 2).
+- *A real bug found on the way*: =_relRetryMbids()= cleared =data-rel-error= on
+  the LIVE DOM only. A failure a filter was hiding therefore kept its marker —
+  and the impl's candidate scan and =_relQueueStillWants()= both read a marked
+  cell as "leave alone" — so it was stranded permanently, silently. Markers are
+  now cleared on the source rows too.
+- *A second one*: =_relRetryAnchorFor()= (extracted from an inline arrow) now
+  treats an =<h2>= as an anchor on SINGLE-table pages. The walk used to stop
+  there and return =null=, so with cover art off the retry buttons were built
+  and dropped on the floor — which is every single-table FIXTURE, and why no
+  spec had ever seen them.
+
+*Deviations from [[Retry UI: one segmented control per table]], both deliberate:*
+
+1. *Plain sibling button, not a segmented pill* (user decision). The CAA half of
+   that design is blocked, so drawing only the Rel pair as a pill would leave
+   the header reading inconsistently. The pill gets done once, for both, when
+   the CAA blocker clears.
+2. *Page-wide, not per table.* Scoping zone 4 to one table needs a table →
+   source-rows mapping this file's own code says is unreliable (merged
+   discography view folds other groups' rows into the first-occurrence table),
+   and it saves nothing — F7 is about not re-requesting the SUCCESSES, which is
+   orthogonal to which table they are in. *That mapping is the first problem to
+   solve when the per-table pill is built.*
+
+*What is NOT guaranteed, and is worth knowing before promising more:* a
+filtered-out failure is not re-FETCHED while it is off screen, because
+=initRelationshipsColumn()='s candidate scan is live-DOM-based. It is un-marked,
+so it loads as soon as it is back in view. Fixing that properly means teaching
+the candidate scan about source rows, which is Step 36 territory.
+
+Two things the mutation run taught:
+
+- *An earlier draft kept the control present but DIMMED at zero* rather than
+  absent, believing that answered trap 2. It did not: a filter still dimmed it
+  into uselessness. Absent-at-zero is safe only BECAUSE the count is
+  filter-proof.
+- *The repaint hook in =_relScheduleProgressRefresh()= was redundant AND
+  expensive* — =_relCreateRetryButtons()= already runs when the Phase-2 queue
+  drains, and =_relFailedMbidsPageWide()= walks every source row, so a per-frame
+  call would be thousands of =querySelectorAll()=s per frame on a big page. The
+  mutation for it could not be made to fail, which is how the redundancy
+  surfaced; it was removed rather than kept as belt and braces.
 
 ** F8 — what already works
 
@@ -383,10 +437,13 @@ things now working.
    ⚠︎ turn into icons. It needs a *circuit breaker*: stop after N consecutive
    failures, or MusicBrainz in a real outage gets hammered by a script that was
    meant to be polite.
-8. *Table retry = failed cells only* (silent, small) — F7. Its UI is the
-   "just what failed" zone in [[Retry UI: one segmented control per table]],
-   which is where the real work is: the behaviour is a one-line filter, the
-   affordance is not.
+8. [DONE, Relationships half] *Table retry = failed cells only* (silent,
+   small) — F7. Shipped on =feat/rel-retry-failed-only= as one page-wide
+   =⚠⟳ N= control. The prediction that "the behaviour is a one-line filter,
+   the affordance is not" was right about the affordance and wrong about the
+   behaviour: the filter itself is one line, but making it reach a
+   filtered-out failure needed =_relRetryMbids()= fixed as well. The CAA half
+   is still blocked on there being no transient-failure state to drive it.
 
 Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
 modal ("some requests failed"); any change to the pacing constants without a
@@ -656,7 +713,7 @@ fail before the fix and pass after (project rule; mutation-check it).
 | F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
 | F4      | [DONE] =inc=release-rels= 503s once, then permanently, then 404                    | recovers silently; a final failure leaves cells un-done and offers a clickable ⚠                   |
 | F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap        | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
-| F7      | table with 3 failed of N cells                                                     | request count on table retry equals the failed count                                               |
+| F7      | [DONE] 12-row table, 3 failed; plus a variant with one failure hidden by a filter  | request count equals the failed count; the failed SET survives a filter; 🔗⟳ still reloads all    |
 
 The live check for a real burst is opportunistic: MusicBrainz 503s are bursty
 and cannot be summoned on demand, so a fixture is the only reproducible route.
