@@ -1932,6 +1932,61 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## CAA/EAA retry: the transient-failure record that unblocked it
+
+`org/503-handling.org` F7, CAA half — blocked until `ctx.failedCache` existed.
+
+**After F5, `ctx.countCache` holds `0` for both "the archive has no artwork" (a
+404) and "the request failed" (a 503).** F5 kept the in-memory zero for both on
+purpose: dropping it would re-fire one request per failed entity on every
+keystroke and every sort. So the zero stays, and `ctx.failedCache` — a
+session-scoped `Set` of entity paths per archive, written in `_artEnrichIcon()`'s
+Tier 3 where F5 decided not to persist — records WHY it is there.
+
+- **Never persisted**, exactly like the zero it annotates. A transport failure is
+  not a fact about the release; that is the whole of F5.
+- **Keyed by entity path, not by DOM.** `runFilter()` REMOVES non-matching rows,
+  so anything derived from the live table loses exactly the failures a filter is
+  hiding. The Relationships half had to read the captured source rows to get this
+  property; here it is structural.
+- **Only a NON-definitive status is recorded.** A 404 is the commonest answer the
+  archive gives; recording it too would put a `⚠⟳` carrying a large number on
+  almost every page, which is the same as no signal at all.
+- **The network-error branch records too, and is the only place the success-path
+  clear is observable.** A thrown request caches no zero, so an ordinary
+  re-render retries the entity and the success arm is what removes the record.
+  The failed-only retry path cannot show it — that one empties the set up front.
+- **`_artRetryFailedAll()` clears the record BEFORE re-enriching**, because
+  `_artEnrichIcon()` re-adds anything that fails again; clearing afterwards would
+  wipe the fresh record and claim everything recovered.
+- **It must delete the cached zero**, or Tier 1 serves it straight back and no
+  request is made — the same defect F5 fixed one layer down, where
+  `_artRetryTable()` cleared the session caches but not the IDB record.
+- **Nothing is evicted from IDB here.** A transient failure was never written
+  there (that IS F5), so there is nothing to evict, and clearing would throw away
+  good records for entities that merely share the table.
+
+**What this does NOT touch**, per the CAA/EAA section's standing requirement: no
+sort key is rewritten, no source-row mirror is re-resolved, no strip is rebuilt
+and no image is cache-busted. A metadata failure means the JSON never arrived, so
+recovery is "clear the zero, drop the `enriched` marker, re-run
+`_artEnrichIcon()`" — and `_artEnrichTable()` is the same entry point an ordinary
+render uses. `_artRetryTable()` keeps its full eight-step rebuild for the
+stale-artwork case.
+
+**The refresh IS hooked per-frame here, unlike the Relationships one.** The count
+is `Set.size`, not a DOM walk, so `_artScheduleFailedBtnRefresh()` costs nothing;
+`_relFailedMbidsPageWide()` walks every captured source row, which is why its
+equivalent hook was removed.
+
+Covered by `tests/fixtures/caa-retry-failed-only.spec.js`; mutation list
+`scripts/mutations/caa-retry-failed-only.json`, carrying one honest
+`expect: "pass"` — the membership test in the anchor loop is an EFFICIENCY guard,
+not the correctness one, since re-arming an anchor whose entity is still cached
+produces no request. `__saTest.artFailedPaths(which)` exists because the set has
+no DOM surface once a filter has removed its rows, and because the 404/503
+distinction is invisible on screen: both render as a release with no artwork.
+
 ## Relationships retry: two buttons, two intentions
 
 `org/503-handling.org` F7. `#mb-rel-retry-{i}` / `#mb-rel-retry-global` still
