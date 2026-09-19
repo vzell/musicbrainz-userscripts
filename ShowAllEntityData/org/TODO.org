@@ -597,7 +597,6 @@ tell me the exact prompt for you, to go on in our current implementation strateg
 
 
 
-
 ** DONE sa_art_idb_metadata_ttl_days
 
 Work on @org/503-handling.org
@@ -660,3 +659,16 @@ in the upcoming forum artice when releaseing new userscript version mention the 
 days change
 
 
+
+** How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
+
+❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
+     `_ws2GetJson()` (so Relationships + ⏱ batch get 429/502/504 + Retry-After). F1-F3 (fetchHtml) and F4 (release
+     events) stay for their own branches, as the org sequences them. One logical change, small live-test surface.
+  2. Also refactor the CAA art path onto the helper Additionally rewrite `_artEnrichIcon()`/`_artGmFetchBlob()`'s status
+     tests in terms of the new helper. Risk: `_ART_MISS_STATUSES` (404/410, "definitive miss") is NOT the complement of
+     transient — a 403 is neither — so this would be a behaviour change on the path 9.99.1117 just touched, not a
+     refactor.
+  3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
+     `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
+     go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
