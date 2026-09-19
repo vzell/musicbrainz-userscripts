@@ -13387,3 +13387,68 @@ the case it was written for.
 from the Relationships control is *kept* here, and the reason is the cost of the
 count: `Set.size` versus `_relFailedMbidsPageWide()` walking every captured
 source row.
+
+## 2026-09-20 — the artwork summary panel, built from data already thrown away
+
+Branch `feat/caa-artwork-summary`. `org/503-handling.org`'s zone 2, decided
+2026-09-19 and the last designed-but-unbuilt piece of that file apart from the
+segmented pill itself.
+
+**Why it is worth having.** The only surface reporting artwork state was
+`_showCaaCompletionToast()`: page-wide, transient, and fired on the `_caaQueue`'s
+`onIdle`. CLAUDE.md already recorded that on a large listing it **never fires**
+— measured still hidden after 300 s while artwork was visibly painting. So on
+exactly the pages where a user most wants to know what happened, there was
+nothing to look at.
+
+**It costs no requests, and that is structural.** `_artEnrichIcon()` Tier 3
+stores `json.images` verbatim, so the full archive record is already in
+`ctx.imagesCache`: `edit`, `front`/`back`, the thumbnail ladder, and `release`
+on a release-group lookup. Four of those were stored and surfaced nowhere. The
+archive has no batch endpoint, so anything the panel could not answer from that
+cache would be one request per entity — the cost this whole file exists to
+reduce.
+
+**The distinction worth knowing about**: `img.front` is not
+`types.includes('Front')`. An image can be typed Front without being the
+archive's chosen main front. The fixture makes the two disagree by construction
+— two Front-typed images per release, one main front — because a fixture where
+they agreed would pass on code that conflated them. There is a mutation for
+exactly that conflation.
+
+**Three departures from the written design, all deliberate and all recorded in
+the org file:**
+
+1. **A separate 📊 sibling button, not the count badge.** The design drew the
+   count as the opener; making it a click target would nest an interactive
+   element inside the toggle `<button>` — the design's *own* trap 3 — and
+   `.mb-caa-toggle-count` is located by two specs and read by
+   `_artRetryTable()`'s badge arithmetic.
+2. **The scope is declared, not walked.** Trap 2 asks for a pass over the source
+   rows so a filter cannot make the panel report a subset as the whole table.
+   That needs a table → source-rows mapping this file calls unreliable (merged
+   discography view), which is the same wall zone 4 hit twice. So the panel
+   tallies the live rows and says "a filter is active" in its own header. That
+   is trap 2's own second option, taken knowingly rather than by omission.
+3. **The Cache-tier group was deferred.** It is the one group that merely
+   reproduces the toast per table; every other group shows something no screen
+   in the script showed before.
+
+**Two test-shape corrections, both caught on the first run:**
+
+- **The panel is per-table; `hits.size` is page-wide.** The first draft asserted
+  against the number of releases the PAGE asked about (7) while the panel covers
+  the first sub-table (Official, 6). Every assertion is now relative to the
+  panel's own entity count, which is both correct and a better assertion.
+- **The "could not be fetched" rows have no value cell**, so the generic
+  row-reader threw on `null`. Worth remembering for any future group that is a
+  list rather than a label/value pair.
+
+**Known gap, recorded rather than discovered later:** the "Cover sourced from"
+group ships untested. The archive returns `release` only on a release-GROUP
+lookup, and this fixture's page (`releasegroup-releases`) looks up releases;
+covering it needs an `artist-releasegroups` fixture.
+
+Seven mutations, six `expect: "fail"` confirmed plus one honest `expect: "pass"`
+for the entity-path dedup — this fixture has no sticky-column duplicate reaching
+an art anchor, so double-counting does not move the numbers here.

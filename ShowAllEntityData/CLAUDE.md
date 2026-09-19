@@ -1932,6 +1932,51 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## The artwork summary panel (zone 2)
+
+`org/503-handling.org`'s "zone 2 opens an artwork summary for the table".
+`_artCollectSummary()` + `_artRenderSummary()`, opened by
+`#mb-caa-toggle-btn-summary-{i}`.
+
+- **It costs ZERO requests.** `_artEnrichIcon()` Tier 3 stores `json.images`
+  verbatim in `ctx.imagesCache`, so the whole archive record — `edit`,
+  `front`/`back`, the thumbnail ladder, and `release` on a release-group
+  lookup — is already there. The archive has no batch endpoint, so anything the
+  panel could not answer from that cache would be one request per entity, which
+  is the cost the whole 503 file exists to reduce. **Do not add a request to
+  enrich this.**
+- **`img.front` is NOT `types.includes('Front')`.** An image can be typed Front
+  without being the archive's chosen main front, and that distinction is
+  invisible everywhere else in the script. The fixture makes the two disagree on
+  purpose, and there is a mutation for conflating them.
+- **It must open MID-LOAD, gated on nothing.** `_showCaaCompletionToast()` fires
+  on the `_caaQueue`'s `onIdle`, and CLAUDE.md records that on a large listing it
+  never fires at all — so a panel gated the same way is useless on exactly the
+  pages that motivated it. There is a mutation that adds such a gate.
+- **It does not reuse `_caaFetchStats`.** Those are PAGE-WIDE tallies; this is
+  per table and does its own pass.
+- **The scope is declared, not implied.** `runFilter()` REMOVES non-matching
+  rows, so the tally is of what is SHOWN. The design's trap 2 asks for a walk
+  over source rows instead; that needs a table → source-rows mapping this file
+  calls unreliable, so the panel says "a filter is active" in its own header
+  instead of quietly reporting a subset as the whole table. That is the org's
+  own second option, chosen knowingly.
+- **Driven from `ctx`, never the string "CAA"** — `ctx.column` is `'CAA'` or
+  `'EAA'`, so the same panel serves event art without mislabelling it.
+- **A separate sibling button, not the count badge.** The design drew the count
+  as the opener; a click target inside the toggle `<button>` would be a nested
+  interactive element (its own trap 3), and `.mb-caa-toggle-count` is located by
+  two specs and read by `_artRetryTable()`'s badge arithmetic.
+- Entity paths are **deduped**: the sticky-column duplicate of a row carries the
+  same art anchor, and a release-group breadcrumb can repeat one.
+
+Covered by `tests/fixtures/caa-artwork-summary.spec.js`; mutation list
+`scripts/mutations/caa-artwork-summary.json`, with one honest `expect: "pass"`
+for the dedup (this fixture has no sticky duplicate reaching an art anchor).
+**Not yet covered: the "Cover sourced from" group**, which needs a
+release-GROUP lookup — the archive returns `release` only there, and this
+fixture's page looks up releases.
+
 ## CAA/EAA retry: the transient-failure record that unblocked it
 
 `org/503-handling.org` F7, CAA half — blocked until `ctx.failedCache` existed.

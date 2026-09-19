@@ -18,6 +18,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F4       | =fix/release-events-transient= | =tests/fixtures/release-events-transient.spec.js=   |
 | F7 (Rel) | =feat/rel-retry-failed-only=   | =tests/fixtures/rel-retry-failed-only.spec.js=      |
 | F7 (CAA) | =feat/caa-retry-failed-only=   | =tests/fixtures/caa-retry-failed-only.spec.js=      |
+| zone 2   | =feat/caa-artwork-summary=     | =tests/fixtures/caa-artwork-summary.spec.js=        |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -40,7 +41,8 @@ F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
 here — "nothing on the art path records that a request failed transiently" —
 was cleared by =ctx.failedCache= on =feat/caa-retry-failed-only=; see trap 1
-below. *Still unbuilt: the segmented pill itself, and zone 2.*
+below. Zone 2 shipped on =feat/caa-artwork-summary=. *Still unbuilt: the
+segmented pill itself* — all four controls are plain sibling buttons.
 
 * The question
 
@@ -566,9 +568,24 @@ both are legitimate.
    source order silently decides. Three deltas in the existing family are
    load-bearing for exactly this reason; see CLAUDE.md.
 
-** DECIDED — zone 2 opens an artwork summary for the table
+** DONE — zone 2 opens an artwork summary for the table
 
-Settled 2026-09-19. The four-zone shape stands; zone 4 stays.
+Settled 2026-09-19, shipped 2026-09-20 on =feat/caa-artwork-summary=.
+The four-zone shape stands; zone 4 stays.
+
+*Three departures from what is written below, each decided deliberately:*
+
+1. *A separate 📊 sibling button, not the count badge.* Making the count a
+   click target would nest an interactive element inside the toggle
+   =<button>= — this design's own trap 3 — and =.mb-caa-toggle-count= is
+   located by two specs and read by =_artRetryTable()='s badge arithmetic.
+2. *The scope is DECLARED rather than walked.* Trap 2 asks for a pass over
+   the source rows; that needs a table → source-rows mapping this file
+   states is unreliable, so the panel says "a filter is active" in its own
+   header instead. That is trap 2's own second option, taken knowingly.
+3. *The Cache-tier group was deferred.* It is the one group that merely
+   reproduces =_showCaaCompletionToast()= per table; every other group
+   surfaces something no screen in the script showed before.
 
 *This is not just "something for the count to do".* It closes a real gap: today
 the only place artwork state is reported at all is
@@ -653,6 +670,14 @@ endpoint (same doc, same date), so anything not in the record above costs one
 request per entity — which is the cost this whole file exists to reduce. If a
 field is wanted that the archive does not return, the answer is a MusicBrainz
 WS/2 lookup, and it needs its own gate and its own measurement.
+
+*As shipped, the panel makes no request at all* — every group reads
+=ctx.imagesCache=, which already holds =json.images= verbatim.
+
+*One group is shipped but UNTESTED: "Cover sourced from".* The archive
+returns =release= only on a release-GROUP lookup, and the fixture's page
+(=releasegroup-releases=) looks up releases. Covering it needs an
+=artist-releasegroups= fixture; recorded rather than left to be discovered.
 
 *** Traps specific to this zone
 

@@ -1,0 +1,17 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "A 📊 button next to each table's cover-art controls opens a summary of what that table's artwork actually is — and it costs nothing, because every word of it was already fetched and then thrown away. It reports how many entities have artwork, have none, could not be fetched or have not been looked up yet; the images broken down by type; which images the archive marks as THE main front or main back (not the same thing as being typed \"Front\", a distinction nothing else in the script shows you); how many are still unapproved; which thumbnail sizes exist, so a missing 1200 on an old upload stops being a mystery; the MusicBrainz edit that added each cover, linked; and on a release-group listing, which release each cover came from.",
+          "It reads the current state when you open it, so it works while artwork is still loading. That is the point rather than a detail: the completion message it replaces is page-wide, vanishes on its own, and on a large listing never appears at all — so on exactly the pages where you most want to know what happened, there was nothing to look at.",
+          "Anything that could not be fetched is named and linked at the bottom, with a button to retry just those.",
+          "The panel counts the rows currently SHOWN, and says so at the top when a filter is active rather than passing a filtered subset off as the whole table."
+        ]
+      }
+    ]
+  }
+]

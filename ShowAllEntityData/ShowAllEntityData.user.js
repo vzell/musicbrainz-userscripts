@@ -35878,6 +35878,81 @@ a { color: #1565c0; }`;
            0.20 rather than the old 0.13 because it now sits over a white pill
            rather than over the header, exactly as the ⏱ retry tint had to move.
            Wins on specificity (two classes) regardless of source order. */
+        /* Artwork summary panel (org/503-handling.org zone 2). Mirrors the
+           unique-values dropdown's placement idiom: one absolutely-positioned
+           element on document.body, shown under its owning button. No glyph
+           escapes and no backticks anywhere in here - a backtick would
+           terminate the GM_addStyle template literal, and a CSS backslash
+           escape is read as a JS escape first. */
+        #mb-art-summary-panel {
+            position: absolute;
+            z-index: 10001;
+            max-height: 70vh;
+            overflow-y: auto;
+            min-width: 240px;
+            max-width: 420px;
+            padding: 6px 10px 9px;
+            background: #fff;
+            border: 1px solid #999;
+            border-radius: 4px;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+            font-size: 0.82em;
+            line-height: 1.45;
+            color: #222;
+        }
+        #mb-art-summary-panel .mb-art-sum-title {
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+            margin-bottom: 4px;
+        }
+        #mb-art-summary-panel .mb-art-sum-scope {
+            color: #555;
+            font-style: italic;
+            margin-bottom: 6px;
+        }
+        #mb-art-summary-panel .mb-art-sum-scope.mb-art-sum-warn {
+            color: #b26a00;
+            font-style: normal;
+            font-weight: bold;
+        }
+        #mb-art-summary-panel .mb-art-sum-h {
+            margin-top: 7px;
+            font-weight: bold;
+            color: #444;
+            border-bottom: 1px dotted #ccc;
+        }
+        #mb-art-summary-panel .mb-art-sum-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        #mb-art-summary-panel .mb-art-sum-k {
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #mb-art-summary-panel .mb-art-sum-v {
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+        }
+        #mb-art-summary-panel .mb-art-sum-edits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 2px;
+        }
+        #mb-art-summary-panel .mb-art-sum-act {
+            margin-top: 8px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border: 1px solid rgba(190,140,0,0.7);
+            border-radius: 3px;
+            background: rgba(255,193,7,0.55);
+            font-size: 1em;
+        }
+
         .mb-col-uniq-wrap.mb-col-uniq-active {
             background: var(--mb-hdr-pill-engaged-bg);
             border-color: var(--mb-hdr-pill-engaged-border);
@@ -77540,6 +77615,311 @@ a { color: #1565c0; }`;
      *   re-enrichment, not so anyone waits on it.
      */
     /**
+     * Everything the artwork summary panel reports about one table.
+     *
+     * **Reads `ctx.imagesCache`, which already holds the FULL archive record.**
+     * `_artEnrichIcon()` Tier 3 stores `json.images` verbatim, so every field
+     * the Cover Art Archive publishes is sitting there: `edit`, `front`/`back`,
+     * the whole thumbnail ladder and, on a release-group lookup, the `release`
+     * that supplied the cover. Four of those are surfaced nowhere else in the
+     * script. The panel therefore costs ZERO new requests — the archive has no
+     * batch endpoint, so anything it could not answer from this cache would be
+     * one request per entity, which is the cost org/503-handling.org exists to
+     * reduce.
+     *
+     * **Scoped to the table's LIVE rows, and the caller says so.** `runFilter()`
+     * REMOVES non-matching rows, so this counts what is on screen. The design's
+     * trap 2 calls for walking the source rows instead; that needs a table ->
+     * source-rows mapping this file states is unreliable (merged discography
+     * view folds other groups' rows into the first-occurrence table), so the
+     * panel declares its scope in its own header rather than quietly reporting
+     * a filtered subset as the whole table.
+     *
+     * @param   {Object} ctx  `CAA_CTX` or `EAA_CTX`.
+     * @param   {HTMLTableElement} table
+     * @returns {Object} Aggregates; see the panel renderer for what each is for.
+     */
+    function _artCollectSummary(ctx, table) {
+        const suffixRe = new RegExp(ctx.artSuffix + '$');
+        const paths = [];
+        const seen = new Set();
+        // Deduped by PATH: the sticky-column duplicate of a row carries the same
+        // anchor, and a release-group breadcrumb can repeat one too.
+        table.querySelectorAll('tbody a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+            const p = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
+            if (p && !seen.has(p)) { seen.add(p); paths.push(p); }
+        });
+
+        const out = {
+            entities: { total: paths.length, has: 0, none: 0, failed: 0, pending: 0 },
+            failedPaths: [],
+            images: 0,
+            types: new Map(),
+            flags: { mainFront: 0, mainBack: 0, unapproved: 0, untyped: 0 },
+            sizes: { 1200: 0, 500: 0, 250: 0 },
+            edits: [],
+            sourced: [],
+        };
+
+        paths.forEach(pth => {
+            if (ctx.failedCache.has(pth)) {
+                out.entities.failed++;
+                out.failedPaths.push(pth);
+                return;
+            }
+            const count = ctx.countCache.get(pth);
+            if (count === undefined) { out.entities.pending++; return; }
+            if (count <= 0) { out.entities.none++; return; }
+            out.entities.has++;
+
+            const images = ctx.imagesCache.get(pth) || [];
+            out.images += images.length;
+            images.forEach(img => {
+                const types = Array.isArray(img.types) ? img.types : [];
+                if (!types.length) out.flags.untyped++;
+                types.forEach(t => out.types.set(t, (out.types.get(t) || 0) + 1));
+                // `front` is NOT the same question as "'Front' is in types": an
+                // image can be typed Front without being the archive's chosen
+                // main front. The distinction is invisible everywhere else.
+                if (img.front) out.flags.mainFront++;
+                if (img.back) out.flags.mainBack++;
+                if (img.approved === false) out.flags.unapproved++;
+                const th = img.thumbnails || {};
+                [1200, 500, 250].forEach(sz => { if (th[sz]) out.sizes[sz]++; });
+                if (img.edit) out.edits.push({ edit: img.edit, path: pth });
+                // Release-group lookups only: which release supplied this cover.
+                // Nothing in the script could answer that before.
+                if (img.release) out.sourced.push({ release: img.release, path: pth });
+            });
+        });
+        return out;
+    }
+
+    /** The one artwork-summary panel, and the button that owns it right now. */
+    let _artSummaryEl = null;
+    let _artSummaryOwner = null;
+
+    /**
+     * Closes the artwork summary panel, if open.
+     * @returns {void}
+     */
+    function _artCloseSummary() {
+        if (_artSummaryEl) _artSummaryEl.style.display = 'none';
+        if (_artSummaryOwner) _artSummaryOwner.classList.remove('mb-col-uniq-active');
+        _artSummaryOwner = null;
+    }
+
+    /**
+     * Lazily creates the shared panel element.
+     *
+     * One element reused by every table, with one owner at a time — the idiom
+     * `.mb-col-uniq-wrap` established for the unique-values dropdown, including
+     * its `.mb-col-uniq-active` "on" class (two classes, so it wins on
+     * specificity regardless of source order). A separate element rather than
+     * that panel itself, so the two can never fight over `_uniqDropOwner`.
+     *
+     * @returns {HTMLDivElement}
+     */
+    function _artGetSummaryEl() {
+        if (_artSummaryEl) return _artSummaryEl;
+        const el = document.createElement('div');
+        el.id = 'mb-art-summary-panel';
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        document.addEventListener('mousedown', ev => {
+            if (!_artSummaryOwner) return;
+            if (_artSummaryOwner.contains(ev.target)) return;
+            if (el.contains(ev.target)) return;
+            _artCloseSummary();
+        });
+        document.addEventListener('keydown', ev => {
+            if (ev.key === 'Escape' && _artSummaryOwner) _artCloseSummary();
+        });
+        _artSummaryEl = el;
+        return el;
+    }
+
+    /**
+     * Builds and shows the artwork summary for one table.
+     *
+     * **Reads current state when it opens, and is gated on nothing.** The one
+     * surface that reported any of this before was
+     * `_showCaaCompletionToast()`, which is page-wide, transient, and fires on
+     * the queue's `onIdle` — and CLAUDE.md records that on a large listing that
+     * never fires at all (measured still hidden after 300 s while artwork was
+     * visibly painting). So on exactly the pages where a user most wants to know
+     * what happened, there was nothing to look at. Gating this on completion
+     * would reproduce that.
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @param   {HTMLElement} owner  The button to anchor under.
+     * @returns {void}
+     */
+    function _artRenderSummary(ctx, table, owner) {
+        const el = _artGetSummaryEl();
+        const d = _artCollectSummary(ctx, table);
+        el.textContent = '';
+
+        const add = (parent, tag, text, cls) => {
+            const n = document.createElement(tag);
+            if (text !== undefined && text !== null) n.textContent = text;
+            if (cls) n.className = cls;
+            parent.appendChild(n);
+            return n;
+        };
+        const row = (label, value) => {
+            const r = add(el, 'div', null, 'mb-art-sum-row');
+            add(r, 'span', label, 'mb-art-sum-k');
+            add(r, 'span', value, 'mb-art-sum-v');
+            return r;
+        };
+        const heading = (t) => add(el, 'div', t, 'mb-art-sum-h');
+
+        add(el, 'div', ctx.column + ' artwork summary', 'mb-art-sum-title');
+
+        // Scope, stated rather than implied. `runFilter()` REMOVES rows, so
+        // saying "43 rows" without saying "shown" is the silent-subset bug.
+        const scope = add(el, 'div', null, 'mb-art-sum-scope');
+        const filtered = (typeof _anyFilterActive === 'function') && _anyFilterActive();
+        scope.textContent = filtered
+            ? `⚠ ${d.entities.total} entities in the rows currently SHOWN — a filter is active, hidden rows are not counted`
+            : `${d.entities.total} entities in this table`;
+        if (filtered) scope.classList.add('mb-art-sum-warn');
+
+        const e = d.entities;
+        heading('Entities');
+        row('with artwork', e.has);
+        row('none on record', e.none);
+        if (e.failed) row('could not be fetched', e.failed);
+        if (e.pending) row('not looked up yet', e.pending);
+
+        heading('Images on record');
+        row('total', d.images);
+        if (d.types.size) {
+            [...d.types.entries()].sort((a, b) => b[1] - a[1])
+                .forEach(([t, n]) => row(t, n));
+        }
+        if (d.flags.untyped) row('(no type)', d.flags.untyped);
+
+        heading('Flags');
+        row('main front present', d.flags.mainFront);
+        row('main back present', d.flags.mainBack);
+        row('not yet approved', d.flags.unapproved);
+
+        heading('Thumbnail sizes available');
+        [1200, 500, 250].forEach(sz => row(String(sz), d.sizes[sz]));
+
+        if (d.sourced.length) {
+            heading('Cover sourced from');
+            d.sourced.slice(0, 12).forEach(({ release, path }) => {
+                const r = add(el, 'div', null, 'mb-art-sum-row');
+                add(r, 'span', path.replace('/release-group/', '').slice(0, 8) + '…', 'mb-art-sum-k');
+                const a = add(r, 'a', (release && (release.title || release.id)) || 'release', 'mb-art-sum-v');
+                if (release && release.id) {
+                    a.href = 'https://musicbrainz.org/release/' + release.id;
+                    a.target = '_blank';
+                    a.rel = 'noopener';
+                }
+            });
+            if (d.sourced.length > 12) row('…and more', d.sourced.length - 12);
+        }
+
+        if (d.edits.length) {
+            heading('Edits that added these');
+            const wrap = add(el, 'div', null, 'mb-art-sum-edits');
+            d.edits.slice(0, 25).forEach(({ edit }) => {
+                const a = add(wrap, 'a', String(edit));
+                a.href = 'https://musicbrainz.org/edit/' + edit;
+                a.target = '_blank';
+                a.rel = 'noopener';
+            });
+            if (d.edits.length > 25) add(wrap, 'span', `…+${d.edits.length - 25}`);
+        }
+
+        if (d.failedPaths.length) {
+            heading('Could not be fetched');
+            d.failedPaths.slice(0, 12).forEach(pth => {
+                const r = add(el, 'div', null, 'mb-art-sum-row');
+                const a = add(r, 'a', pth, 'mb-art-sum-k');
+                a.href = 'https://musicbrainz.org' + pth;
+                a.target = '_blank';
+                a.rel = 'noopener';
+            });
+            // Zone 2 EXPLAINS, zone 4 ACTS — and a user already looking at the
+            // list should not have to close the panel to act on it.
+            const act = add(el, 'button', `⚠⟳ Retry these (${ctx.failedCache.size} page-wide)`,
+                            'mb-art-sum-act');
+            act.type = 'button';
+            act.addEventListener('click', ev => {
+                ev.stopPropagation();
+                _artCloseSummary();
+                _artRetryFailedAll(ctx);
+            });
+        }
+
+        const r = owner.getBoundingClientRect();
+        el.style.display = 'block';
+        el.style.left = `${Math.max(4, Math.min(r.left + window.scrollX,
+            window.scrollX + document.documentElement.clientWidth - el.offsetWidth - 8))}px`;
+        el.style.top = `${r.bottom + window.scrollY + 3}px`;
+    }
+
+    /**
+     * Opens or closes the artwork summary for one table.
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @param   {HTMLElement} btn
+     * @returns {void}
+     */
+    function _artToggleSummary(ctx, table, btn) {
+        if (_artSummaryOwner === btn) { _artCloseSummary(); return; }
+        _artCloseSummary();
+        _artSummaryOwner = btn;
+        btn.classList.add('mb-col-uniq-active');
+        _artRenderSummary(ctx, table, btn);
+    }
+
+    /**
+     * Creates the per-table summary opener.
+     *
+     * A SEPARATE sibling button rather than making `.mb-caa-toggle-count` the
+     * click target, which is what the design drew. Two reasons: a click target
+     * inside the toggle `<button>` would be a nested interactive element, which
+     * the design's own trap 3 forbids; and that class is located by two specs
+     * and read by `_artRetryTable()`'s badge arithmetic, so moving it turns a
+     * UI change into a test migration for no gain.
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @param   {number} tableIndex
+     * @returns {void}
+     */
+    function _artCreateSummaryButton(ctx, table, tableIndex) {
+        const id = ctx.btnPrefix + '-summary-' + tableIndex;
+        if (document.getElementById(id)) return;
+        const anchor = document.getElementById(ctx.btnPrefix + '-retry-' + tableIndex);
+        if (!anchor) return;
+        const btn = document.createElement('button');
+        btn.id = id;
+        btn.type = 'button';
+        btn.textContent = '📊';
+        btn.title = `What ${ctx.column} artwork this table has, what the archive says about it, `
+                  + 'and what could not be fetched. Reads current state — safe to open mid-load.';
+        btn.style.cssText =
+            'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
+            ' border-radius:3px; background:#f5f5f5; vertical-align:middle;' +
+            ' font-size:0.8em; margin-left:3px; line-height:1;' +
+            ' display:inline-flex; align-items:center; box-sizing:border-box;';
+        btn.addEventListener('click', ev => {
+            ev.stopPropagation();
+            _artToggleSummary(ctx, table, btn);
+        });
+        anchor.after(btn);
+    }
+
+    /**
      * Re-enriches ONLY the entities whose metadata lookup failed transiently.
      *
      * org/503-handling.org F7, CAA half — the half its own design record called
@@ -77881,6 +78261,10 @@ a { color: #1565c0; }`;
 
         toggleBtn.after(btn);
         Lib.debug(ctx.key, `_artCreateOrUpdateRetryButton: created retry btn ${retryBtnId}`);
+
+        // Zone 2 of org/503-handling.org's retry design: the summary opener,
+        // inserted after this table's ⟳ so the run reads as one group.
+        _artCreateSummaryButton(ctx, table, tableIndex);
 
         // ── Per-subtable Relationships retry button ───────────────────────
         const relRetryBtnId = 'mb-rel-retry-' + tableIndex;
