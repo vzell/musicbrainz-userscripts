@@ -1,0 +1,21 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-19",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The Relationships column and the ⏱ millisecond Length feature gave up on the first try whenever MusicBrainz answered anything other than \"503 Service Unavailable\". Both already knew to keep asking through a 503 burst, but a \"502 Bad Gateway\" or \"504 Gateway Timeout\" — which MusicBrainz's front-end returns for a minute or two whenever a new version is rolled out — and a \"429 Too Many Requests\" from the rate limiter each ended the request immediately and were reported as a settled failure. All three are now retried exactly like a 503: up to three attempts with a growing pause. A deploy that used to leave a page full of ⚠ cells, or a yellow ⏱ button, now mostly passes unnoticed.",
+          "An answer that is genuinely final is still taken at face value. A 400 or a 404 is not retried, because asking again would only produce the same answer, and spending three attempts on every one of them would make a bad page slower for no benefit."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "When MusicBrainz says how long to wait before asking again (a \"Retry-After\" header), that wait is now honoured rather than ignored. It acts as a floor: the pause is never shorter than the normal one, so a server asking for half a second still gets the polite one-request-per-second spacing MusicBrainz asks of every client, and it is capped at 30 seconds so a maintenance window saying \"come back in an hour\" cannot park a request for an hour. This is the first time the script has read a response header at all."
+        ]
+      }
+    ]
+  }
+]

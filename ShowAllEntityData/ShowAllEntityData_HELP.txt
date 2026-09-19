@@ -979,14 +979,22 @@ is fetched at all:
   makes no request at all.  This can be turned off, or given a shorter
   expiry, under "Enable IndexedDB millisecond length cache" in ⚙️ Settings.
 
-When the data can't be had, the toggle says which of two quite different
+When the data can't be had, the toggle says which of three quite different
 things went wrong instead of quietly doing nothing:
 
-  • The Web Service could not be reached (a 503 is common — MusicBrainz gets
-    hammered by bots).  The button turns YELLOW and says so, naming the
-    error and inviting you to click again.  Nothing is cached in this case,
-    so a later press really does retry; the milliseconds are probably there,
-    we just couldn't fetch them this second.
+  • The Web Service could not be reached.  A 503 is the common one —
+    MusicBrainz gets hammered by bots and refuses requests in bursts.  On
+    the BATCHED pages a refusal like that is retried up to three times
+    before you are told about it, with a growing pause between attempts, so
+    most bursts pass unnoticed; four answers count as "not right now" there
+    (503, 502 and 504 — the last two while a new version is being rolled
+    out — and 429, the rate limiter), and a "Retry-After" header from the
+    server is honoured up to 30 seconds.  The single-request pages above
+    ask once and report what they get.  Either way the button turns YELLOW
+    and says so, naming the error and inviting you to click again.  Nothing
+    is cached in this case, so a later press really does retry; the
+    milliseconds are probably there, we just couldn't fetch them this
+    second.
 
   • MusicBrainz answered, and genuinely has no sub-second length on record
     for these recordings.  The button dims and says that.  This one IS
@@ -1325,14 +1333,27 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
 • Relationship data is cached in IndexedDB (configurable TTL, default 30
   days) to avoid re-fetching on repeated visits.  Retry buttons (⟳) force a
   fresh network fetch with IDB cache invalidation.
-• A request the Web Service REFUSES — it answers "503 Service Unavailable" in
-  bursts when it is busy — is retried up to three times, with a growing pause
-  between attempts.  If it still fails, that row is left FAILED rather than
-  shown as "no relationships", and nothing about it is cached, so it does not
-  stay quietly wrong for the rest of the session.  A filter keystroke does not
-  retry it; collapsing and re-expanding the column (▼🔗 then ▶🔗), or a 🔗⟳
-  Retry button, does.  The completion toast and the status-bar tooltip say how
-  many requests failed.
+• A request the Web Service could not answer RIGHT NOW is retried up to three
+  times, with a growing pause between attempts.  Four answers count as "not
+  right now": "503 Service Unavailable" (which MusicBrainz returns in bursts
+  when it is busy), "502 Bad Gateway" and "504 Gateway Timeout" (which its
+  front-end returns while a new version is being rolled out), and "429 Too
+  Many Requests" (the rate limiter asking us to slow down).  All four say
+  something about the server's minute rather than about the data.  Anything
+  else — a 404, a 400 — is taken as the answer and not asked again, because
+  it would only come back the same.
+• If the server says HOW LONG to wait (a "Retry-After" header), that wait is
+  honoured, up to a limit of 30 seconds.  It is a floor, not a replacement:
+  the pause is never shorter than the normal one, so a server asking for half
+  a second still gets the polite one-request-per-second spacing MusicBrainz
+  asks of every client.  The 30-second limit exists so a maintenance window
+  saying "come back in an hour" cannot park a request for an hour.
+• If it still fails after all three attempts, that row is left FAILED rather
+  than shown as "no relationships", and nothing about it is cached, so it does
+  not stay quietly wrong for the rest of the session.  A filter keystroke does
+  not retry it; collapsing and re-expanding the column (▼🔗 then ▶🔗), or a
+  🔗⟳ Retry button, does.  The completion toast and the status-bar tooltip say
+  how many requests failed.
 • Round-trips through Save-to-Disk/Load-from-Disk with zero network activity
   when every Relationships cell was already fully populated at save time —
   only a row saved mid-fetch triggers a fresh fetch for that row on load.

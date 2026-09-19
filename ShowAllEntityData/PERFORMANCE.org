@@ -3276,6 +3276,15 @@ bypassing the bulk one. A failed cell is excluded from
 ~_relAnyPendingInExpandedTable()~, or Step 35's per-keystroke gate becomes a
 per-keystroke retry storm.
 
+"One rate gate" gained a new way to be broken after ~fix/ws2-transient-classifier~
+(org/503-handling.org F6) taught ~_ws2GetJson()~ to honour ~Retry-After~: both
+Relationships ~beforeRetry~ callbacks now wait ~Math.max(spacing * attempt,
+retryAfterMs)~ *before* calling ~_relAwaitRateSlot()~. The order is the point.
+Reserving the slot first and topping the wait up afterwards would spend a
+reservation and then fire late, so the request would no longer sit immediately
+behind the slot it holds. Anything that adds a wait to these callbacks belongs
+on the same side of the gate.
+
 **** What shipped (2026-09-18, 9.99.1101-9.99.1108)
 
 Built on ~rel-column-batch-and-cell-states~ between 2026-09-15 and 2026-09-16,

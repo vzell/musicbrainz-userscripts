@@ -13048,3 +13048,68 @@ All 9 mutations behaved as predicted (4 `fail`, 5 `pass` — the `pass` entries
 being the un-awaited eviction, which cannot race from a fixture because
 `_artIdbDelete` and `_artIdbGetMetadata` share one cached `_artIdbPromise`, and
 the three `|| N` fallbacks, unreachable while `min: 1` holds).
+
+## 2026-09-19 — `_ws2GetJson()` retried one status out of four, and read no headers at all
+
+Branch `fix/ws2-transient-classifier`. `org/503-handling.org` F6 / item 1, the
+prerequisite for items 3-4 (F1-F3) and item 6 (F4). Found by reading, not by a
+report; pinned by `tests/fixtures/ws2-transient-classifier.spec.js` before any
+code changed shape.
+
+**The defect.** The file's only shared retry engine tested exactly one status:
+
+```js
+detail = `HTTP ${resp.status}`;
+// Only a 503 is worth another attempt; a 4xx will not change.
+if (resp.status !== 503) break;
+```
+
+The comment is right about 4xx and wrong about everything between. A 502 or 504
+— what MusicBrainz's front-end returns while a deploy rolls — and a 429 from the
+rate limiter each broke out on the first attempt and were reported as settled
+failures: a ⚠ cell in the Relationships column, a yellow ⏱ button. And a grep
+for `Retry-After` across all 80,757 lines came back empty, so the one case where
+the server says exactly how long to wait was the one case we ignored.
+
+**Three consumers, three separate `beforeRetry` bodies.** `_msFetchOneBatch()`,
+`_relFetchWs2()` and `_relBrowseFetchPage()`. That mattered more than expected:
+the floor is applied per call site, so "wired up" had to be proved three times.
+The browse one is the quietest failure of the three — a failed browse page does
+not surface as an error at all, the loop just `break`s and per-row lookups take
+over, so the only visible difference is 1 browse + 6 lookups instead of 2
+browses + 1. The test counts the two request kinds apart for that reason.
+
+**Two things learned from the mutation run, both worth carrying forward.**
+
+- **The rate gate MASKS a lost backoff.** Dropping the hint argument at the
+  handover makes every caller compute `Math.max(delay, undefined)` = `NaN`, and
+  `setTimeout(fn, NaN)` fires at once — no pause whatsoever. The measured retry
+  gap was still **1100 ms**, because `_relAwaitRateSlot()` alone held the line.
+  A spec asserting "there was a pause" would have been green on a build with no
+  backoff at all. The assertion has to name the number.
+- **Order matters around the rate slot.** The extra wait goes *before*
+  `_relAwaitRateSlot()`. Topping up after the reservation would spend a slot and
+  then fire late, so the request would no longer sit immediately behind the slot
+  it holds — PERFORMANCE.org Step 36's "one rate gate" invariant. Recorded there
+  as well, because nothing about the code makes the order look load-bearing.
+
+**One correction to the analysis file itself.** `org/503-handling.org`'s
+inventory had the ⏱ feature down as retrying "via row 4". Only the `'batch'`
+source does. `_msFetchWs2RecordingLengths()` and
+`_msFetchFullReleaseTrackLengths()` call `fetch()` directly with no retry at all
+— the same defect as F4, on a path whose honest button states make it look
+handled. Split out as row 6b rather than fixed here, to keep one change one
+change.
+
+**Testing note.** Everything is asserted through the real pipeline except the
+30 s cap and the statuses this script never meets (408, 410), which go through
+`__saTest.parseRetryAfterMs`/`isTransientHttp` — a behavioural cap test would
+have to wait out half a minute to prove anything. The `a 400 is final` test
+passes on unfixed code **on purpose**: widening a retry set is the change that
+overshoots, and its mutation is the overshoot, not the original defect. All 12
+mutations were `expect: "fail"` and all 12 failed; no known-overlap entries were
+needed. One flake seen and chased down: `rel-column-fetch-failure.spec.js`'
+multi-table test failed once inside a 50-test batch, passed standalone, passed
+on a re-run of the same batch, and passes identically on unmodified code — the
+change cannot touch it, since a 503 with no `Retry-After` parses to `0` and
+`Math.max` is then a no-op.
