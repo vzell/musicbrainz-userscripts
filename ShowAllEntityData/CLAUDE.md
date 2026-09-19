@@ -1932,6 +1932,42 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## Release events: one request for the whole page, so losing it costs the column
+
+`org/503-handling.org` F4. `initReleaseEventsColumn()` now goes through
+`_ws2GetJson()` (`_RE_WS2_TRIES`, `_RE_WS2_BACKOFF_MS`) instead of a bare
+`fetch()`, and a final failure is **visible and retryable** via
+`.mb-re-col-hdr-btn` — the eighth member of the column-header family.
+
+- **It is deliberately NOT on `_relAwaitRateSlot()`.** That gate spaces a
+  STREAM of one request per entity; this is one request for the whole page, so
+  joining it would couple two unrelated features' pacing for nothing. The
+  pre-existing bare `fetch()` did not join it either, so nothing regressed.
+- **A failure must not mark the cells `reDone`.** They stay unpopulated, which
+  is what lets the retry — or any later render path — pick every one of them up.
+  Marking them done would look completely settled and be permanently wrong.
+- **`_reInitColHeaderState()` destroys and rebuilds the control, never reuses
+  it**, and both halves of that matter. The control has to change STATE (⏳ →
+  ⚠), so reusing leaves it stuck on whatever it was first painted as; and
+  `renderGroupedTable()` rebuilds every `<thead>` from a `cloneNode(true)`,
+  which carries classes and attributes but **not** the click listener, so a
+  reused control would look normal and do nothing. One mutation covers both;
+  the spec clicks the control after a re-render rather than just looking at it.
+- **It is called from every render path**, beside `_relInitColHeaderToggles()`,
+  for the same reason that one is.
+- **The glyph is CSS `::before`, never element text** — this `<th>`'s
+  textContent feeds `_cleanColHeaderText()`'s fallback,
+  `_exportCleanHeaderText()` and the 📊 dropdown's column lookup. U+FE0E keeps
+  it monochrome, as on `.mb-rel-col-hdr-btn`.
+- **`_reFetchState` resets at the start of every run**, or a ⚠ from the
+  previous fetch is painted into the fresh headers.
+
+Covered by `tests/fixtures/release-events-transient.spec.js`; mutation list
+`scripts/mutations/release-events-transient.json`. **A test here must wait on
+`[data-re-state="error"]`, not the bare class** — the control is painted while
+loading too, so waiting on the class alone proceeds mid-retry and sees one
+request where three are coming. That cost a run.
+
 ## A truncated fetch must never be reported like a complete one
 
 `org/503-handling.org` F1-F3. The rule: anything that makes the fetched set
@@ -1981,8 +2017,8 @@ failure has to exhaust all three attempts.
 
 ## Column-header toggle family (`.mb-col-hdr-flex` slot)
 
-**Seven** controls share that slot and that visual language. Six share **one CSS
-rule**; the seventh — the `⇅ ▲ ▼` sort group — cannot, and the reason matters
+**Eight** controls share that slot and that visual language. Seven share **one
+CSS rule**; the eighth — the `⇅ ▲ ▼` sort group — cannot, and the reason matters
 before anyone "finishes the job" by adding it to the selector list: the family
 rule styles **one element as one pill**, and the sort glyphs are **three sibling
 `span.sort-icon-btn`** that must read as one pill. Applying the family rule to
@@ -1998,14 +2034,22 @@ nothing — silently unstyled while everything else looks fine. Custom propertie
 resolve through inheritance at computed-value time, so consuming rules may sit
 earlier in the stylesheet than the declaration.
 
-The six that do share the rule, since 9.99.1060:
+The seven that do share the rule, six of them since 9.99.1060:
 `.mb-caa-col-hdr-btn` (▶🖼 + a real 16px thumbnail `<img>`, not an emoji),
 `.mb-ms-col-hdr-btn` (▶⏱), `.mb-picard-col-hdr-btn` (▶♪),
-`.mb-rel-col-hdr-btn` (▶🔗), `.mb-col-collapse-hdr-btn` (▶N▤) and
-`.mb-col-uniq-wrap` (`N 📊`). They were six near-identical copies of the same
-declarations; grouping them means "these are the same kind of control" is
-structural rather than something six blocks have to keep agreeing on. Add a
-seventh by extending the selector lists, not by copying a block.
+`.mb-rel-col-hdr-btn` (▶🔗), `.mb-col-collapse-hdr-btn` (▶N▤),
+`.mb-col-uniq-wrap` (`N 📊`) and `.mb-re-col-hdr-btn` (⚠/⏳, added for
+org/503-handling.org F4 — see the Release-events section below). They were six
+near-identical copies of the same declarations; grouping them means "these are
+the same kind of control" is structural rather than something six blocks have
+to keep agreeing on. The seventh was added by extending the three selector
+lists, which is how to add an eighth — never by copying a block.
+
+`.mb-re-col-hdr-btn` is the only member that is **not always present**: it is
+painted only while the Release-events lookup is in flight or after it has
+finally failed. That is deliberate, and it is what keeps a clean
+`rendered.html` baseline free of new markup — only the `<style>` block moves
+(`tests/snapshots/registry.org`'s "Expected drift").
 
 `.mb-col-uniq-wrap` is the one member that is **not a toggle** — it opens the
 unique-values dropdown — so it has no `aria-pressed`/`aria-expanded` arm; its

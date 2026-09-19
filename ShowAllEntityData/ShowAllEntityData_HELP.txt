@@ -1285,6 +1285,22 @@ already typed is re-applied to the new values as soon as they arrive, so the
 table you are looking at is never left filtered on data that had not loaded
 yet.
 
+Because it is ONE call for the whole page, losing it used to cost the whole
+column — silently, with an empty column and no way back short of reloading.
+Now:
+
+• A refusal is retried, up to three times with a growing pause, on the same
+  terms as everything else that talks to the Web Service (503, 502, 504 and
+  429, honouring a "Retry-After" header).  An answer that is genuinely final,
+  such as a 404, is not retried.
+• While the call is in flight the column header shows ⏳.
+• If it still fails, the header shows a yellow ⚠ instead.  Hover it for the
+  reason ("HTTP 503", say); CLICK IT to ask again.  The cells are left empty
+  rather than marked as answered, so a successful retry fills every one of
+  them — and the ⚠ disappears.
+• The ⚠ survives filtering and sorting, so you do not lose the retry by
+  typing.
+
 RELATIONSHIPS COLUMN  (🔗 in ⚙️ Settings)
 --------------------------------------------
 On pages that declare injectedColumns:["Relationships"] the script injects

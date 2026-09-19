@@ -15,6 +15,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F5      | =fix/caa-metadata-transient=    | =tests/fixtures/caa-metadata-transient-503.spec.js= |
 | F6      | =fix/ws2-transient-classifier=  | =tests/fixtures/ws2-transient-classifier.spec.js=   |
 | F1-F3   | =fix/html-fetch-transient=      | =tests/fixtures/html-fetch-transient.spec.js=       |
+| F4      | =fix/release-events-transient=  | =tests/fixtures/release-events-transient.spec.js=   |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -27,9 +28,9 @@ the tracker.
 Remaining order: item 1 (shared transient classifier) shipped on
 =fix/ws2-transient-classifier=; items 3-4 (F1-F3) shipped on
 =fix/html-fetch-transient=, reusing =_isTransientHttp()= and
-=_parseRetryAfterMs()= exactly as item 1 intended. *Remaining: item 6 (F4),
-item 5 (resume — still needs design), item 7 (auto follow-up pass) and item 8
-(F7).*
+=_parseRetryAfterMs()= exactly as item 1 intended. Item 6 (F4) shipped on
+=fix/release-events-transient=. *Remaining: item 5 (resume — still needs
+design), item 7 (auto follow-up pass) and item 8 (F7).*
 
 F7 now carries a UI design — see [[Retry UI: one segmented control per table]].
 It has a *prerequisite the rest of F7 does not*: the Relationships half can be
@@ -57,7 +58,7 @@ see. "Level" = the finest granularity at which the user can retry.
 |  5 | Relationships column                                                               | via row 4                                | =outcome: 'ok'/'error'=, errors never cached  | *best in the script*: per-cell ⚠︎, hover ⟳, =done/total= badge, 📊 "Load state"   | *cell* (click), *table* (=mb-rel-retry-{i}=), *page* (=_relRetryAll=)                 |
 |  6 | ⏱ ms Length, ='batch'= source                                                      | via row 4                                | =ok/empty/error/partial=                      | button state: ⏳ loading, yellow *retry*, yellow *partial*, dimmed *unavailable* | *table/column* (press the ⏱ button again; partial retries only the outstanding MBIDs) |
 | 6b | ⏱ ms Length, ='ws2'= source — *bare =fetch()=, NOT row 4*                          | *none*                                   | every non-OK is "transient", none classified  | same button states as row 6                                                      | *table/column* (press the ⏱ button again — the user IS the retry)                     |
-|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | none, *and does not use =_ws2GetJson()=* | any non-OK                                    | *none* — =_dbg= and =return= (F4)                                                | none (reload the page)                                                                |
+|  7 | Release-events column (=initReleaseEventsColumn()=, one =inc=release-rels= lookup) | 3 tries via =_ws2GetJson()= (F4)         | transient vs final; cells never marked done   | ⏳ while loading, yellow ⚠ on the column header naming the error (F4, fixed)     | *column* (click the ⚠) — new; previously none at all                               |
 |  8 | CAA/EAA metadata (=_artEnrichIcon()= Tier 3, =fetch()=)                            | none                                     | 404/410 definitive vs transient (F5, fixed)   | =Lib.warn= for a transient failure; nothing on screen                            | *table* (=mb-caa-toggle-btn-retry-{i}=), now really evicting                          |
 |  9 | CAA/EAA image bytes (=_artGmFetchBlob()=)                                          | none                                     | 404/410 *definitive* vs 5xx/timeout transient | transient failures are not cached as a miss (correct)                            | *table* (same retry button, cache-busted)                                             |
 | 10 | Expand release group / release (=ergCreateButton()=, =XMLHttpRequest=)             | none                                     | =status === 200= or not                       | inline "Error loading release group (HTTP 503)" in the expanded row              | *row*: click the ▶ again (behaviour on the second click unverified)                   |
@@ -165,13 +166,44 @@ is marked ⚠️ but deliberately NOT called INCOMPLETE — see
 asserting a clean run DOES build the buttons, without which the suppression
 test would pass on a fixture that never had them.
 
-** F4 — the release-events column gives up silently and uses a weaker path than its siblings  (read in the code)
+** DONE F4 — the release-events column gives up silently and uses a weaker path than its siblings  (confirmed by a spec; fixed)
 
-=initReleaseEventsColumn()= calls =fetch()= directly rather than
-=_ws2GetJson()=, so it gets neither the 3-attempt retry nor error
-classification, and a failure ends in =_dbg(...)= then =return=. The column
-stays empty with nothing to tell the user why, and there is no retry short of a
-reload. It is one request per page, so a single 503 costs the whole column.
+=initReleaseEventsColumn()= called =fetch()= directly rather than
+=_ws2GetJson()=, so it got neither the 3-attempt retry nor error
+classification, and a failure ended in =_dbg(...)= — gated behind a setting, so
+silent by default — then =return=. The column stayed empty with nothing to tell
+the user why, and there was no retry short of a reload. It is one request per
+page, which is exactly what made it so cheap to lose.
+
+*Fixed on =fix/release-events-transient=.* What shipped:
+
+- Routed through =_ws2GetJson()= (=_RE_WS2_TRIES= 3, =_RE_WS2_BACKOFF_MS=
+  1100), so it gains the transient classification and =Retry-After= for free.
+  Deliberately NOT on =_relAwaitRateSlot()=: that gate spaces a STREAM of one
+  request per entity, and this is one request for the whole page. The old bare
+  =fetch()= did not join it either, so nothing regressed.
+- A failure leaves the cells UNPOPULATED and un-=reDone=, which is what lets
+  the retry — or any later render path — pick every one of them up. Marking
+  them done would have looked entirely settled and been permanently wrong.
+- *The first column-level retry affordance in the script.* =.mb-re-col-hdr-btn=,
+  the eighth member of the =.mb-col-hdr-flex= family: ⏳ while in flight, a
+  yellow ⚠ naming the error afterwards, click to ask again. Present ONLY in
+  those two states, so a clean render gains no markup and no committed
+  =rendered.html= baseline changes except its =<style>= block
+  (=tests/snapshots/registry.org='s "Expected drift" has the entry).
+
+Two traps, both of which bit during the work:
+
+- *The control must be destroyed and rebuilt, not reused.* It has to change
+  state (⏳ → ⚠), so reuse strands it on whatever it was first painted as;
+  and =renderGroupedTable()= rebuilds every =<thead>= from a =cloneNode(true)=,
+  which carries classes and attributes but NOT the click listener. One mutation
+  covers both, and the spec CLICKS the control after a re-render rather than
+  just looking at it.
+- *A test must wait on =[data-re-state="error"]=, not the bare class.* The
+  control is painted while loading too, so waiting on the class alone proceeds
+  mid-retry and sees one request where three are coming — which is what the
+  first draft of the spec did, reporting 1 of 3 as though it were a defect.
 
 ** DONE F5 — a 503/429/5xx on CAA metadata is recorded as "no artwork", persisted for 7 days, and the retry button may not clear it  (confirmed by a spec; fixed)
 
@@ -341,8 +373,10 @@ things now working.
    accumulators. Worth doing only if the accumulators can be kept without a
    re-architecture; otherwise the honest answer is to rerun. Needs design
    before any code.
-6. *Route release events through =_ws2GetJson()=* (silent, small), plus the
-   failure state on the column header if it still fails (F4).
+6. [DONE] *Route release events through =_ws2GetJson()=* (silent, small), plus
+   the failure state on the column header if it still fails (F4). Shipped on
+   =fix/release-events-transient=; the header state turned out to be worth
+   making CLICKABLE, which gives the script its first column-level retry.
 7. *One automatic follow-up pass for failed Relationships cells* (silent to
    nearly silent, small) after the Phase 2 queue drains and a cool-down of
    about 30 s, at most twice. The glyph states already exist, so the user sees
@@ -620,7 +654,7 @@ fail before the fix and pass after (project rule; mutation-check it).
 | F1      | [DONE] page 2 of 3 answers 503 (recovering and permanent variants, plus 404)       | recovered run has all rows; failed run says "1 of 3" and =pagesProcessed= excludes the failed page |
 | F2      | [DONE] page-count request 503s on all three attempts; the loop's own page 1 is OK  | "of an unknown total", never "1 of 1 pages"                                                        |
 | F5      | metadata request answers 503 for one release, 404 for another                      | 503 writes nothing to the =metadata= store; 404 writes a zero; retry then refetches                |
-| F4      | =inc=release-rels= answers 503 once                                                | column still populates after the retry                                                             |
+| F4      | [DONE] =inc=release-rels= 503s once, then permanently, then 404                    | recovers silently; a final failure leaves cells un-done and offers a clickable ⚠                   |
 | F6      | [DONE] 502/504/429 recover; 400 stays final; =Retry-After: 3= moves the gap        | retried, the wait honours the header as a FLOOR, and the cap and both header forms hold            |
 | F7      | table with 3 failed of N cells                                                     | request count on table retry equals the failed count                                               |
 

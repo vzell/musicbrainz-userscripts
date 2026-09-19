@@ -106,6 +106,24 @@ the per-cell =title= is only written on hover. =data-rel-loading= and
 =data-rel-error= are transient: they appear only if a capture lands mid-fetch
 or on a failed request.
 
+** Release-events header control stylesheet (branch fix/release-events-transient)
+
+A script change, not upstream movement — recorded here for the same reason as
+the entry above. Every =rendered.html= gains =.mb-re-col-hdr-btn= in the three
+shared =.mb-col-hdr-flex= family selector lists (base, =:hover=,
+=:focus-visible=) plus a small block of its own for the ⚠/⏳ generated content
+and the retry tint. The rules live in the one =GM_addStyle= block that is
+injected on every page, so they land in every baseline including pageTypes with
+no Release-events column at all.
+
+There is NO markup change on a clean capture, and that is by design: the control
+is painted only while the lookup is in flight or after it has finally failed
+(org/503-handling.org F4). A capture that lands mid-fetch would show one
+=button.mb-re-col-hdr-btn[data-re-state="loading"]= per Release-events column
+header; a capture taken while MusicBrainz was refusing requests would show
+=data-re-state="error"=. Neither is expected, and either means the capture is
+worth repeating rather than committing.
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not
