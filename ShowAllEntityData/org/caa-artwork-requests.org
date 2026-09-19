@@ -1,0 +1,206 @@
+#+TITLE: Cover Art Archive requests — what we measured and what to do next
+#+DATE: 2026-09-19
+
+* Status
+
+Investigation only. *No userscript change, no version bump, no changelog entry.*
+Two branches of work were combined here and merged to =main= so it can be
+picked up on another machine: =probe/caa-presence-from-browse= (the probe and
+the API guidance) and =feat/caa-count-from-ws2= (the 404-share measurement).
+
+*Bottom line*: about a third of the archive metadata requests on a native
+release listing can only 404 (19 of 56 on the one page that has artwork-less
+rows). MusicBrainz's own markup already says which rows have no artwork, and
+the =caa= extractor throws that away. The fix is a small extractor change with
+no WS/2 dependency. It is *not built*, and it rests on one page, so measure
+more before building.
+
+* How we got here
+
+1. Hypothesis: MusicBrainz's WS/2 release JSON carries a =cover-art-archive=
+   block ={artwork, count, front, back, darkened}=. If =count: 0= reliably
+   means "the archive has nothing", a browse response the Relationships column
+   already pays for could stand in for one coverartarchive.org request per
+   release.
+2. Probe: is that block accurate? (yes, on 25 zero-count samples)
+3. Plan, then a *gate* before any code: how many archive metadata requests are
+   404s on real pages? If few, the idea saves nothing.
+4. The gate showed the waste is real, and also showed the WS/2 count is not the
+   right tool — the page's own HTML already carries the answer.
+
+* Findings
+
+** F1 — the block is accurate, on the samples we ran
+
+Probe: =scripts/probe-caa-presence-from-browse.py=, host =vzell-lap=,
+2026-09-18 22:10-22:16 UTC. One =/ws/2/release?artist=<mbid>&limit=100= page,
+then a per-release check against =coverartarchive.org/release/<mbid>=.
+
+| Artist (browse offset)   | Block on page | count 0 | count > 0 | Archive checked (0 / >0) | False negatives | Count mismatches |
+|--------------------------+---------------+---------+-----------+--------------------------+-----------------+------------------|
+| Bob Dylan (0)            | 100 / 100     | 31      | 69        | 15 / 15 -> 404 / index   | 0               | 0                |
+| Bruce Springsteen (4000) | 100 / 100     | 0       | 100       | 0 / 30 -> - / index      | n/a (no zeros)  | 0                |
+| Bruce Springsteen (8000) | 100 / 100     | 10      | 90        | 10 / 30 -> 404 / index   | 0               | 0                |
+
+- 25 count-0 releases checked, all 404 at the archive; 60 count>0 checked, all
+  with an index whose image count equalled =count=.
+- *Release groups do not carry the block* (0 of 5, both artists). Release-only.
+- The Cover Art Archive API doc does not describe this block at all, so the
+  rule rests on the probe alone. The decisive direction is *false negatives*
+  (count 0 but images exist), since skipping those would lose artwork. None
+  seen; 25 zero-count samples from two artists is evidence, not proof.
+
+** F2 — a third of a native listing's metadata requests can only 404
+
+Gate: =tests/support/measure-caa-metadata-404s.js=, host =vzell-lap= (uptime
+75.5 h), 2026-09-18 22:33:53-22:37:16 UTC. Counts page-side =fetch()= to
+=coverartarchive.org/{release,release-group}/<guid>= by final status. Every
+sub-table expanded, the global strip toggled and asserted, "settled" = no new
+request for 30 s. Raw JSON: =tests/snapshots/caa-404-share/=.
+
+| Page                              | pageType                 | mode   | Rows | Native anchors / =blank-icon= | Metadata requests | 404  | Share |
+|-----------------------------------+--------------------------+--------+------+-------------------------------+-------------------+------+-------|
+| BoDeans =/releases=               | =artist-releases=        | single | 56   | 37 / *19*                     | 56                | *19* | *34%* |
+| "Greetings From Asbury Park" RG   | =releasegroup-releases=  | multi  | 7    | 7 / 0                         | 7                 | 0    | 0%    |
+| BoDeans =/relationships=          | =artist-relationships=   | multi  | 3    | 0 / 0                         | 1                 | 0    | 0%    |
+
+On BoDeans, three numbers are the same number: the =blank-icon= spans
+MusicBrainz rendered (19), the synthetic anchors the extractor made (19), and
+the archive 404s (19).
+
+** F3 — the cause: the extractor discards MusicBrainz's "no artwork" marker
+
+=ColumnDataExtractor.caa= (grep =Path A: artwork inside an anchor=):
+
+1. It first *removes* =span.blank-icon= from the source cell ("a visible
+   rendering artefact").
+2. Path A/B handle rows that have a =span.caa-icon=.
+3. Path C ("no artwork span at all, but a bare entity link exists") then
+   synthesises =<a href=".../cover-art" data-caa-synthetic="1">= for every row
+   left over, so =_artEnrichIcon()= fires one lookup for it.
+
+Path C exists for pages like =artist-relationships=, where MusicBrainz never
+emits either icon. But a native listing's artwork-less row /does/ carry a
+=blank-icon=, and step 1 destroys that evidence before step 3 acts. *Every
+artwork-less row on a native release listing costs one request that can only
+404.* This falsified an earlier reading (in this investigation's own first
+plan) that native listings already skip such rows.
+
+** F4 — not everything is a win: the request that is skipped is the cheap one
+
+The archive has no batch endpoint and publishes no rate limit
+(<https://musicbrainz.org/doc/Cover_Art_Archive/API>, checked 2026-09-19), so
+the saving is one request per artwork-less row and nothing more. On BoDeans
+that is 19 of 56 requests. On a page whose rows nearly all have artwork it is
+about zero (Greetings: 0 of 7). The size of the win depends on the artist's
+catalogue, so quote it per page, never as a percentage of "artwork".
+
+* Recommendation
+
+*Do not seed =countCache= from WS/2.* Instead, in the =caa= extractor, remember
+that a row had =span.blank-icon= and do not synthesise a Path C anchor for it.
+
+Why this beats the WS/2 plan:
+- needs no extra request, and works whether or not the Relationships column is
+  collapsed (that column defers fetching above =sa_rel_collapse_threshold=,
+  default 200 entities, which would have starved the WS/2 route);
+- no dependency on an undocumented field;
+- the information is already on the page.
+
+What it must not do (each is a real trap in this file):
+- Path C exists for a reason. Only a row that /positively carried/
+  =span.blank-icon= is "known absent"; a row with neither icon (relationship
+  pages) must keep its synthetic anchor.
+- The sort key is written as ="no"= for Path C and flipped to ="yes"= by
+  =_artEnrichIcon()=. A known-absent row needs the same ="no"= written directly,
+  or CAA presence-sorting and the 📊 "no artwork" filter change silently. The
+  CAA/EAA section of =ShowAllEntityData/CLAUDE.md= ("What must not break")
+  applies in full, including =_sortCellText()=, =_cellMatchesStructureMode()=
+  and the multi/single-table split.
+- The bigbox strip and inline thumbnails also walk every entity link
+  (=rowLinkSel= / =inlineLinkSel=). Whether they issue their own metadata
+  lookups was *not* verified: metadata requests equalled rows on BoDeans, so
+  they appear to share the cache, but check before claiming the whole saving.
+
+* Caveats — what this evidence does not cover
+
+- *One page* with artwork-less rows (BoDeans, 56 rows). The other two targets
+  were too small to say anything (Greetings has 7 releases; the relationships
+  page has 3 rows).
+- The =blank-icon = no artwork= equivalence rests on that page plus the
+  25-sample WS/2 probe. Untested: /darkened/ artwork, and any lag between
+  MusicBrainz's own cover-art flag and the archive.
+- Image bytes are not counted (they travel through the exposed
+  =__realGmFetch= and are not observable as page requests). They exist only
+  for count > 0 anyway, so nothing here could skip them.
+- =CLAUDE.md= and older spec prose say the Greetings release group has ~124
+  rows. It has 7 today. Treat those references as stale.
+- =curl= against musicbrainz.org gets a "Verifying your browser" page. We did
+  not work around it; the Playwright browser is let through, so read native
+  markup from a browser session, not from curl.
+
+* Next steps, in order
+
+1. *Measure a larger artwork-less sample first* (gate, no code). Extend
+   =measure-caa-metadata-404s.js= with a target that has many rows without art,
+   and compare per row: blank-icon vs archive 404. Look for any blank-icon row
+   the archive /does/ serve. Candidates: a label or artist with many old or
+   bootleg releases.
+2. Verify whether the bigbox strip and inline thumbnails issue their own
+   lookups (count requests per entity, not just per row).
+3. If both hold: branch =fix/caa-skip-known-absent-rows= from =main=.
+   - Fixture spec that fails first: a listing with =blank-icon= rows must make
+     zero archive requests for them, keep sort/📊 presence filtering correct in
+     single and multi mode, and a page with no icons at all (Path C proper)
+     must still request. Mutation-check it (=scripts/mutations/=).
+   - Expand every sub-table and uncollapse the strips in the spec and assert
+     it (CLAUDE.md artwork-test rules); never wait on the CAA completion toast.
+   - Changelog goes in =ShowAllEntityData_CHANGELOG.wip.json= as =WIP.1=; the
+     real version bump happens at merge on =main=.
+4. Independent and higher value: *fix the CAA metadata 503 bug* from
+   =org/503-handling.org= (F5). =_artEnrichIcon()= stores any non-OK status as
+   "no artwork" in the IDB =metadata= store for 7 days, and the retry button may
+   not clear it. That is the only defect found here whose damage outlives the
+   session, and it is a smaller change than anything above.
+
+* Reproducing on another machine
+
+#+begin_src sh
+cd ShowAllEntityData
+npm install                                   # Playwright is a dev dependency
+python3 scripts/probe-caa-presence-from-browse.py                        # Dylan, first page
+python3 scripts/probe-caa-presence-from-browse.py 70248960-cb53-4ea4-943a-edb18f7d336f --sample 30 --offset 8000
+node tests/support/measure-caa-metadata-404s.js                          # all three targets, ~4 min
+node tests/support/measure-caa-metadata-404s.js --only=bodeans-releases
+#+end_src
+
+- Both are network probes against the live sites; run them politely (the probe
+  spaces archive requests 1 s apart).
+- Record host and UTC time with every number (=tests/MEASUREMENTS.org= rules).
+  This document's numbers are all =vzell-lap=, 2026-09-18 evening UTC.
+- =--offset= matters: Springsteen's first pages have no count-0 releases, and
+  an early version of the probe printed "SAFE" for such a page. It now prints
+  INCONCLUSIVE when no zero-count release was checked.
+- =tests/support/measure-caa-metadata-404s.js= seeds
+  =sa_render_threshold=/=sa_render_warning_threshold= high so no threshold
+  dialog stalls a run.
+
+* Where everything lives
+
+| What                                             | Where                                                                  |
+|--------------------------------------------------+------------------------------------------------------------------------|
+| CAA probe (WS/2 block vs archive)                | =scripts/probe-caa-presence-from-browse.py=                            |
+| 404-share measurement                            | =tests/support/measure-caa-metadata-404s.js=                           |
+| Raw measurement output                           | =tests/snapshots/caa-404-share/caa-404-share-2026-09-18-vzell-lap.json= |
+| Logged numbers, with host and times              | =tests/MEASUREMENTS.org=, two entries dated 2026-09-18                 |
+| CAA / MusicBrainz API guidance for future work   | =../CLAUDE.md=, section "MusicBrainz API documentation"                |
+| Related: the 503 finding that affects CAA        | =org/503-handling.org=, F5                                             |
+
+* Test-framework impact
+
+None so far: nothing here changes the userscript or any fixture. Before the
+extractor change, check =tests/support/= comments that describe when archive
+requests fire, and the artwork specs
+(=caa-icon-survives-sort-multi.spec.js=, =art-inline-uniq-filter-late-load.spec.js=,
+=global-filter-art-search.spec.js=) and the =tests/snapshots/= baselines for
+pageTypes with a CAA column.

@@ -1,0 +1,146 @@
+{
+  "machine": {
+    "hostname": "vzell-lap",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 4,
+    "totalMemGb": 16,
+    "node": "v24.11.1",
+    "playwright": "1.62.1",
+    "uptimeHours": 75.5,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 0.8
+    },
+    "claudeSinceBoot": true
+  },
+  "startedAt": "2026-09-18T22:33:53.343Z",
+  "finishedAt": "2026-09-18T22:37:16.257Z",
+  "results": [
+    {
+      "id": "rg-releases-greetings",
+      "pageType": "releasegroup-releases",
+      "tableMode": "multi",
+      "title": "Greetings From Asbury Park, N.J. (release group, ~124 releases)",
+      "pathClass": "native markup (expected Path A/B)",
+      "url": "https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c",
+      "nativeCensus": {
+        "rows": 9,
+        "caaAnchors": 7,
+        "blankIcons": 0
+      },
+      "expanded": {
+        "total": 2,
+        "hidden": 0
+      },
+      "stripToggled": true,
+      "census": {
+        "rows": 7,
+        "caaIcons": 7,
+        "caaIconsPainted": 0,
+        "blankIcons": 0,
+        "syntheticAnchors": 0,
+        "bigboxWrappers": 7
+      },
+      "settled": true,
+      "metadataRequests": 7,
+      "n404": 0,
+      "share404": 0,
+      "byStatus": {
+        "ok(200)": 7
+      },
+      "byEntity": {
+        "release": {
+          "total": 7,
+          "n404": 0
+        }
+      },
+      "startedAt": "2026-09-18T22:33:53.552Z",
+      "finishedAt": "2026-09-18T22:34:37.333Z"
+    },
+    {
+      "id": "bodeans-releases",
+      "pageType": "artist-releases",
+      "tableMode": "single",
+      "title": "BoDeans - releases (~56 rows)",
+      "pathClass": "native markup (expected Path A/B)",
+      "url": "https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases",
+      "nativeCensus": {
+        "rows": 56,
+        "caaAnchors": 37,
+        "blankIcons": 19
+      },
+      "expanded": {
+        "total": 1,
+        "hidden": 0
+      },
+      "stripToggled": false,
+      "census": {
+        "rows": 56,
+        "caaIcons": 56,
+        "caaIconsPainted": 36,
+        "blankIcons": 0,
+        "syntheticAnchors": 19,
+        "bigboxWrappers": 36
+      },
+      "settled": true,
+      "metadataRequests": 56,
+      "n404": 19,
+      "share404": 0.339,
+      "byStatus": {
+        "404": 19,
+        "ok(200)": 36,
+        "failed": 1
+      },
+      "byEntity": {
+        "release": {
+          "total": 56,
+          "n404": 19
+        }
+      },
+      "startedAt": "2026-09-18T22:34:37.384Z",
+      "finishedAt": "2026-09-18T22:36:39.981Z"
+    },
+    {
+      "id": "bodeans-relationships",
+      "pageType": "artist-relationships",
+      "tableMode": "multi",
+      "title": "BoDeans - relationships overview",
+      "pathClass": "no native icon (expected Path C, synthetic anchors)",
+      "url": "https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/relationships",
+      "nativeCensus": {
+        "rows": 5,
+        "caaAnchors": 0,
+        "blankIcons": 0
+      },
+      "expanded": {
+        "total": 2,
+        "hidden": 0
+      },
+      "stripToggled": true,
+      "census": {
+        "rows": 3,
+        "caaIcons": 1,
+        "caaIconsPainted": 0,
+        "blankIcons": 0,
+        "syntheticAnchors": 1,
+        "bigboxWrappers": 1
+      },
+      "settled": true,
+      "metadataRequests": 1,
+      "n404": 0,
+      "share404": 0,
+      "byStatus": {
+        "ok(200)": 1
+      },
+      "byEntity": {
+        "release": {
+          "total": 1,
+          "n404": 0
+        }
+      },
+      "startedAt": "2026-09-18T22:36:40.032Z",
+      "finishedAt": "2026-09-18T22:37:16.190Z"
+    }
+  ]
+}
