@@ -1890,3 +1890,42 @@ Greetings has 7 releases, not the ~124 that CLAUDE.md and the older spec prose
 suggest. The blank-icon = no-artwork equivalence rests on this single page
 plus the 25-sample WS/2 probe above, not on a large sample; darkened artwork
 and MusicBrainz's own cover-art-presence lag are untested.
+
+* 2026-09-19 — fixture suite size and wall clock (=tests/README.org= resync)
+
+*Probing*: how long a full =npm test= (the =chromium-fixtures= project) takes
+end to end, and how that compares to the summed per-test time — i.e. how much
+of it is parallelism. Not a page measurement: no pageType, =tableMode= or page
+title applies, because every test serves its own fixture.
+
+| What                      | Value                                 |
+|---------------------------+---------------------------------------|
+| Host                      | =NB-3641= (28 cores, node v24.19.0)   |
+| Started / finished (UTC)  | 2026-09-19T14:48:42Z / 14:50:30Z      |
+| Command                   | =npx playwright test --project=chromium-fixtures --reporter=list,json= |
+| Workers                   | 14 (Playwright's own default here)    |
+| Tests / files             | 353 in 97                             |
+| *Wall clock*              | *108 s*                               |
+| Summed per-test duration  | 1159 s                                |
+| Median test               | 1.9 s                                 |
+| Slowest single test       | 25.5 s                                |
+| Slowest single spec file  | =rel-column-collapse-toggle.spec.js= (10 tests) — 73 s |
+
+Summed / wall = *10.7x*, against 14 workers.
+
+Counted the same day with =--list=: =chromium-live= is 77 tests in 38 files,
+split =@core= 10/9, =@extended= 58/29, =@perf= 9/1. The file counts overlap
+because =artist-events-interactions.spec.js= holds the 9 =@perf= tests *and*
+two =@extended= ones.
+
+*Why this row exists.* =tests/README.org= claimed "140 fixture tests, ≈ 65–75 s,
+measured twice 2026-09-07" with *no host recorded*. By the time the drift was
+noticed the suite had grown to 353 tests — 2.5x — so the old figure could not be
+compared to this one at all, and there is no way to tell how much of the gap is
+the extra 213 tests and how much is the machine. Exactly the failure this file
+was created to stop, in a doc nobody thought of as a measurement. Re-measure per
+host; the worker count alone scales with core count.
+
+*What it does not cover*: one host, one run, no repeat. Treat the wall clock as
+an order of magnitude, not a baseline to regress against — there is no committed
+baseline for the fixture suite and this row does not create one.
