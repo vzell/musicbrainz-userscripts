@@ -1171,12 +1171,19 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
   the strip per sub-table; a global toggle in the h2 header controls all
   strips at once.  Retry buttons (⟳ and 🔗⟳) force a fresh network fetch
   with IDB cache invalidation.
-• Missing artwork is remembered for the session.  Once the archive reports
-  that an entity has no cover art (or that a specific image is absent), it is
-  not requested again — so sorting and filtering a page cost no network
-  traffic at all rather than re-asking for every absent image on each
-  re-render.  Only a definitive "does not exist" answer is remembered: if the
-  archive is merely unreachable or erroring, the image is retried normally.
+• Missing artwork is remembered.  Once the archive reports that an entity has
+  no cover art (or that a specific image is absent), it is not requested again
+  — so sorting and filtering a page cost no network traffic at all rather than
+  re-asking for every absent image on each re-render.
+  How long it is remembered depends on WHY:
+    — A definitive "does not exist" answer (HTTP 404/410) is a fact, so it is
+      stored in the IndexedDB cache and still honoured on your next visit, for
+      up to the "Metadata (JSON) cache TTL (days)" setting (default 30).
+    — A transport failure (HTTP 429/5xx, a timeout, an unreachable archive) is
+      NOT a fact about the release, so it is never written to disk.  It is held
+      for the current session only — just enough to stop every keystroke and
+      every sort re-asking while the archive is struggling — and a reload or
+      the ⟳ retry button asks again.
   If you upload artwork while the page is open, press ⟳ to clear the
   remembered absences (or simply reload).
 • Artwork already on screen stays on screen.  Sorting or filtering rebuilds

@@ -12981,3 +12981,70 @@ confidence than the measurement carried. The check that finally worked was
 geometry on the live page — `getBoundingClientRect()` — asked for in one console
 expression. **For anything about visual spacing, measure rects, not computed
 styles, and measure them where the bug is.**
+
+## 2026-09-19 — A Cover Art Archive outage was stored on disk as "this release has no artwork" (branch fix/caa-metadata-transient)
+
+`org/503-handling.org` F5, ranked first there because it is the only finding
+whose damage **outlives the session**. Found by reading the code at 9.99.1116;
+confirmed by `tests/fixtures/caa-metadata-transient-503.spec.js`, which is also
+the first test in the repo to read the art cache's `metadata` store back.
+
+**Root cause.** `_artEnrichIcon()`'s Tier 3 had one branch for every `!resp.ok`:
+
+```js
+if (resp.status === 404) { /* debug */ } else { Lib.warn(...) }   // severity ONLY
+ctx.countCache.set(entityPath, 0);
+ctx.imagesCache.set(entityPath, []);
+if (Lib.settings.sa_art_idb_enable) _artIdbPutMetadata(entityPath, 0, []);
+```
+
+`resp.status` picked the log level and nothing else. A 503 therefore became a
+stored fact about the release, in IndexedDB, for `sa_art_idb_metadata_ttl_days`.
+Every later page load hit Tier 2, took the `count <= 0` early return, and showed
+no artwork with **no request and no warning** — so the symptom outlived the
+outage by a week and looked nothing like a network problem.
+
+**The second half was worse, and was the part I only suspected.** The org note
+said `_artRetryTable()` "may not clear it". It does not: it purges `countCache`,
+`imagesCache` and `_artMissCache`, all session Maps, and never touches the store.
+So the retry re-entered `_artEnrichIcon`, missed Tier 1, **hit Tier 2** and
+returned the same stored zero. Measured by the `"no IDB metadata eviction"`
+mutation: the ⟳ button issues **zero** metadata requests for the whole table,
+not just for the failed release. The one visible affordance for recovering from
+this bug was itself a no-op.
+
+**Three things worth carrying forward.**
+
+- **The predicate already existed.** `_ART_MISS_STATUSES = [404, 410]`, declared
+  next to `_artMissCache`, with `_artGmFetchBlob()`'s comment already stating the
+  exact semantics ("a DEFINITIVE absence … from a transport failure"). The image-
+  *bytes* path had been right about this the whole time; only the *metadata* path
+  was wrong. I nearly added a new helper before grepping. Reusing it also fixed a
+  latent bug for free: the old bare `resp.status === 404` meant a 410 was logged
+  as a warning while being treated as definitive.
+- **The fix is deliberately narrower than the org note proposed.** That note said
+  only 404/410 may write the zero *and* only they may go to IDB. Gating the
+  in-memory zero too would re-fire one request per failed entity on every filter
+  keystroke and every sort — hammering the archive precisely while it is already
+  struggling. Only the IDB write is gated. There is a mutation entry for this, so
+  the narrowing is a *tested decision* rather than an unexplained divergence.
+- **Key parity is by construction, not by inspection.** `_artRetryTable`'s step 2
+  derives its cache keys from `ctx.rowLinkSel` + `href.split('?')[0]`, but
+  `_artEnrichIcon` *writes* under `anchor.getAttribute('ref') || href.replace(artSuffix)`,
+  read off the art anchor. Those agree for an ordinary row and diverge on a Path-C
+  synthetic anchor; `rowLinkSel` also matches the sticky-column duplicate and
+  release-group breadcrumbs that were never written. The eviction therefore
+  derives its keys with the *writer's own expression*, off the art anchors.
+
+**Testing note.** None of this is visible in the DOM — a release with no artwork
+renders identically whether the archive said 404 or 503, on the broken build and
+the fixed one alike. Every assertion reads the `metadata` store or the request
+counter. Two traps cost a cycle each and are commented in the spec: `route.abort()`
+makes `fetch()` *throw* and lands in the `catch` arm that already caches nothing
+(so a spec built on it passes on unfixed code), and `sa_caa_pics_big: false` makes
+`_artInitPics()` return before the ⟳ button is ever created.
+
+All 9 mutations behaved as predicted (4 `fail`, 5 `pass` — the `pass` entries
+being the un-awaited eviction, which cannot race from a fixture because
+`_artIdbDelete` and `_artIdbGetMetadata` share one cached `_artIdbPromise`, and
+the three `|| N` fallbacks, unreachable while `min: 1` holds).
