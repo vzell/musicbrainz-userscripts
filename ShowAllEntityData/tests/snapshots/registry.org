@@ -514,3 +514,24 @@ incoherent pair, and the rendered half cannot be captured at all right now. So
 =user-open-edits= stays at its older baseline and will re-capture cleanly the
 next time that account has an open edit. A timeout there is evidence about the
 account's edit queue, never about the change under test.
+
+** 🧷 the segmented-pill CSS (9.99.1126, 2026-09-20)
+
+Every baseline's =<style>= block gains twelve rules drawing the h2/h3 control
+runs as segmented pills — four each for =[id^="mb-caa-toggle-btn-"]=,
+=[id^="mb-eaa-toggle-btn-"]= and =[id^="mb-rel-retry-"]=. =snapshot.js= strips
+=<script>= but KEEPS =<style>=, so this lands in all of them, including
+pageTypes that render none of those buttons. Same shape as the Relationships
+cell-glyph CSS drift already recorded for 9.99.1101-1108.
+
+*No baseline changes MARKUP, and that was checked rather than assumed.* The
+change also reorders the per-table 🔗⟳ to sit after the 📊 artwork-summary
+button, which would move real elements — but no committed baseline contains
+=mb-caa-toggle-btn-summary= at all (verified 2026-09-20 across all of them),
+so =_ctlRunEnd()= resolves to exactly the anchor the old code used and the
+serialized order is untouched. Eleven baselines do carry =mb-rel-retry=, three
+occurrences each, and none of them moves.
+
+If a future re-capture DOES show a 🔗⟳ moving, check first whether that page
+now builds a 📊 summary; if so the new order is correct and should be
+committed.

@@ -1,5 +1,25 @@
 [
   {
+    "version": "9.99.1126",
+    "date": "2026-09-20",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The little buttons beside a table's heading — the ▶🖼 artwork toggle with its count, ⟳ reload, 📊 artwork summary, and 🔗⟳ for relationships — are now drawn as joined-up pills instead of a row of separate boxes. Buttons that belong together sit in one pill with a hairline between them and rounded ends only at the two ends of the group, so it reads as one control with several parts.",
+          "Artwork and relationships stay two separate pills even when they sit side by side, because they reload two different things. A page showing both cover art and event art keeps those apart too.",
+          "The ⚠⟳ buttons keep their yellow: the point of that colour is that something failed, and flattening the group to one shade would have thrown the signal away for the sake of tidiness."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 🔗⟳ relationships button no longer lands in the middle of the artwork buttons. It and the 📊 summary were both being inserted next to the same ⟳, so whichever feature finished loading last took the spot and the order came out differently depending on timing. Both now attach to the end of their own group, which gives the same order every time."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1125",
     "date": "2026-09-20",
     "sections": [
