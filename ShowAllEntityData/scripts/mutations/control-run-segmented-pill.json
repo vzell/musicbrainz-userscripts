@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the caps are not applied at all",
+    "why": "Without !important the rules lose to the buttons' own inline border-radius:3px, so every segment stays individually rounded and the run never reads as one control. This is the whole cascade hazard the block exists to work around.",
+    "edits": [
+      {
+        "find": "            border-radius: 0 !important;\n            margin-left: 0 !important;\n            margin-right: 0 !important;\n        }\n        [id^=\"mb-caa-toggle-btn-\"] + [id^=\"mb-caa-toggle-btn-\"]",
+        "replace": "            border-radius: 0;\n            margin-left: 0 !important;\n            margin-right: 0 !important;\n        }\n        [id^=\"mb-caa-toggle-btn-\"] + [id^=\"mb-caa-toggle-btn-\"]"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "caps sit at the ends",
+    "expect": "fail"
+  },
+  {
+    "name": "the last-in-run cap is dropped",
+    "why": "The run would open with a left cap and never close, which is the single most visible way a segmented pill can be wrong.",
+    "edits": [
+      {
+        "find": "        [id^=\"mb-caa-toggle-btn-\"]:not(:has(+ [id^=\"mb-caa-toggle-btn-\"])) {",
+        "replace": "        [id^=\"mb-caa-toggle-btn-NOPE\"]:not(:has(+ [id^=\"mb-caa-toggle-btn-NOPE\"])) {"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "caps sit at the ends",
+    "expect": "fail"
+  },
+  {
+    "name": "side borders are not collapsed, so every divider is drawn twice",
+    "why": "Leaving the inline shorthand's right border in place pairs it with the next segment's left border: 2px between segments and 1px at the edges. The sort group documents the identical defect, caught on its first run. The find is scoped to the CAA selector because all three groups share identical declaration blocks.",
+    "edits": [
+      {
+        "find": "        [id^=\"mb-caa-toggle-btn-\"] {\n            border-left-width: 0 !important;\n            border-right-width: 0 !important;",
+        "replace": "        [id^=\"mb-caa-toggle-btn-\"] {\n            border-left-width: 0 !important;"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "one hairline",
+    "expect": "fail"
+  },
+  {
+    "name": "CAA and Relationships share one selector, merging into a single pill",
+    "why": "The design decision this branch implements is that the three sources are three pills. Merging them looks TIDIER, which is exactly why it needs a test rather than an eyeball.",
+    "edits": [
+      {
+        "find": "        [id^=\"mb-rel-retry-\"]:not(:has(+ [id^=\"mb-rel-retry-\"])) {",
+        "replace": "        [id^=\"mb-rel-retry-NOPE\"]:not(:has(+ [id^=\"mb-rel-retry-NOPE\"])) {"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "single-segment run",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-table Relationships retry goes back to anchoring inside the artwork run",
+    "why": "This is the DOM-ordering defect the pill exposed: _artCreateOrUpdateRetryButton creates the 📊 summary and then inserted 🔗⟳ after the artwork ⟳, landing between two artwork controls. Invisible before the pill — the buttons merely looked shuffled — and it splits the artwork run into two pills with a foreign one between them.",
+    "edits": [
+      {
+        "find": "            _ctlRunEnd(btn).after(relRetryBtn2);",
+        "replace": "            btn.after(relRetryBtn2);"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "two pills, not one",
+    "expect": "fail"
+  },
+  {
+    "name": "_ctlRunEnd ignores its skip argument",
+    "why": "KNOWN GAP, recorded rather than hidden. `skip` exists so the 📊 summary cannot anchor on its own position when it RE-anchors after a filter re-creates the row-count stat. Reaching it needs a pass in which the summary is already the run's last element AND something re-runs the art pass afterwards; this fixture's artwork all 404s, so the re-anchor branch never fires a second time. Covering it needs a live page or a fixture that keeps artwork resolving across a filter.",
+    "edits": [
+      {
+        "find": "            if (next !== skip) last = next;",
+        "replace": "            last = next;"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "two pills, not one",
+    "expect": "pass"
+  }
+]

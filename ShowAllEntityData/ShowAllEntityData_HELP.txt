@@ -1254,6 +1254,13 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
   the strip per sub-table; a global toggle in the h2 header controls all
   strips at once.  Retry buttons (⟳ and 🔗⟳) force a fresh network fetch
   with IDB cache invalidation.
+
+  These buttons are drawn as JOINED-UP PILLS: the ones that act on the same
+  thing sit in one pill with a hairline between them and rounded ends only at
+  the two ends of the group.  Artwork and relationships stay separate pills,
+  because they reload different things — as do cover art and event art on a
+  page that shows both.  ⚠⟳ keeps its yellow wherever it appears; that colour
+  means something failed, and grouping does not wash it out.
 • Missing artwork is remembered.  Once the archive reports that an entity has
   no cover art (or that a specific image is absent), it is not requested again
   — so sorting and filtering a page cost no network traffic at all rather than

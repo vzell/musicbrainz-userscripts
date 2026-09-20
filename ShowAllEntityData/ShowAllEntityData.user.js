@@ -35178,6 +35178,107 @@ a { color: #1565c0; }`;
            beats :hover — a sorted column stays yellow under the pointer. */
         .sort-icon-active { color: Green !important; background-color: #FFFF00 !important; }
 
+        /* ── The h2/h3 control runs, as SEGMENTED PILLS ─────────────────────
+           org/503-handling.org, "Retry UI: one segmented control per table".
+           Same technique as the sort group above — see that block for the
+           reasoning behind every part of it; only what DIFFERS is repeated
+           here.
+
+           THREE RUNS, NOT ONE, and the separation is deliberate. CAA, EAA and
+           Relationships each get their own pill even when they sit side by
+           side, because they are three different sources: a page carrying both
+           archives would otherwise render one long pill implying a single
+           control group. The prefixes are what separate them.
+
+           ZERO DOM CHANGE, and for a better reason than the sort group's. The
+           ids are already prefix-consistent — mb-caa-toggle-btn-{i} /
+           -global / -global-retry / -retry-{i} / -retry-failed / -summary-{i}
+           all share one prefix, and mb-rel-retry-{i} / -global / -failed share
+           another — so the runs can be selected without adding a class to
+           anything. That also means a button added later joins its pill for
+           free, provided it keeps the naming convention. Do not "tidy" an id
+           out of its prefix.
+
+           EVERY DECLARATION NEEDS !important, which the sort group did not.
+           These buttons set border, border-radius, background and margin-left
+           INLINE (see _artCreateOrUpdateToggleButton and _REL_RETRY_BTN_CSS),
+           and a normal-priority stylesheet rule cannot outrank inline. The
+           same cascade fact CLAUDE.md records for the flag userscript's
+           margins, arrived at from the other direction.
+
+           BACKGROUNDS ARE DELIBERATELY LEFT ALONE. The failed-retry segment is
+           yellow because it means something; flattening the run to one ground
+           would erase that signal to gain nothing. The pill here is the shared
+           height, the single hairline between segments, and rounded caps at
+           the two ends of each run only.
+
+           Side borders start at 0 and are re-grown, exactly as the sort group
+           does, so that exactly ONE hairline falls between two segments rather
+           than two abutting 1px borders. */
+        /* CAA artwork run */
+        [id^="mb-caa-toggle-btn-"] {
+            border-left-width: 0 !important;
+            border-right-width: 0 !important;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        [id^="mb-caa-toggle-btn-"] + [id^="mb-caa-toggle-btn-"] { border-left-width: 1px !important; }
+        [id^="mb-caa-toggle-btn-"]:not([id^="mb-caa-toggle-btn-"] + [id^="mb-caa-toggle-btn-"]) {
+            margin-left: 5px !important;
+            border-left-width: 1px !important;
+            border-top-left-radius: 3px !important;
+            border-bottom-left-radius: 3px !important;
+        }
+        [id^="mb-caa-toggle-btn-"]:not(:has(+ [id^="mb-caa-toggle-btn-"])) {
+            margin-right: 3px !important;
+            border-right-width: 1px !important;
+            border-top-right-radius: 3px !important;
+            border-bottom-right-radius: 3px !important;
+        }
+        /* EAA artwork run */
+        [id^="mb-eaa-toggle-btn-"] {
+            border-left-width: 0 !important;
+            border-right-width: 0 !important;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        [id^="mb-eaa-toggle-btn-"] + [id^="mb-eaa-toggle-btn-"] { border-left-width: 1px !important; }
+        [id^="mb-eaa-toggle-btn-"]:not([id^="mb-eaa-toggle-btn-"] + [id^="mb-eaa-toggle-btn-"]) {
+            margin-left: 5px !important;
+            border-left-width: 1px !important;
+            border-top-left-radius: 3px !important;
+            border-bottom-left-radius: 3px !important;
+        }
+        [id^="mb-eaa-toggle-btn-"]:not(:has(+ [id^="mb-eaa-toggle-btn-"])) {
+            margin-right: 3px !important;
+            border-right-width: 1px !important;
+            border-top-right-radius: 3px !important;
+            border-bottom-right-radius: 3px !important;
+        }
+        /* Relationships run */
+        [id^="mb-rel-retry-"] {
+            border-left-width: 0 !important;
+            border-right-width: 0 !important;
+            border-radius: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+        }
+        [id^="mb-rel-retry-"] + [id^="mb-rel-retry-"] { border-left-width: 1px !important; }
+        [id^="mb-rel-retry-"]:not([id^="mb-rel-retry-"] + [id^="mb-rel-retry-"]) {
+            margin-left: 5px !important;
+            border-left-width: 1px !important;
+            border-top-left-radius: 3px !important;
+            border-bottom-left-radius: 3px !important;
+        }
+        [id^="mb-rel-retry-"]:not(:has(+ [id^="mb-rel-retry-"])) {
+            margin-right: 3px !important;
+            border-right-width: 1px !important;
+            border-top-right-radius: 3px !important;
+            border-bottom-right-radius: 3px !important;
+        }
+
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */
         /* so even/odd zebra striping remains visible underneath.                                    */
         /* 'a' shade = first value-run, 'b' shade = next value-run (alternates on each value change) */
@@ -69221,10 +69322,50 @@ a { color: #1565c0; }`;
     /** Inline style shared by every Relationships retry control. */
     const _REL_RETRY_BTN_CSS = 'cursor:pointer;padding:1px 4px;border:1px solid #aaa;border-radius:3px;background:#f5f5f5;vertical-align:middle;font-size:0.8em;margin-left:3px;line-height:1;display:inline-flex;align-items:center;box-sizing:border-box;transition:transform 0.1s,box-shadow 0.1s;';
 
+    /**
+     * The LAST element of the control run that `el` belongs to.
+     *
+     * The h2/h3 controls form runs identified by an id prefix —
+     * `mb-caa-toggle-btn-*`, `mb-eaa-toggle-btn-*`, `mb-rel-retry-*` — which is
+     * also how the segmented-pill CSS finds them. Anything inserting a new
+     * control has to append to the END of a run rather than `.after()` a
+     * particular member, or the DOM order depends on which feature happened to
+     * initialise last.
+     *
+     * That is not hypothetical: the 📊 summary and the 🔗⟳ Relationships retry
+     * both anchored on the SAME artwork ⟳, so the Relationships button landed
+     * between two artwork controls and the artwork run rendered as two pills
+     * with a foreign one wedged in the middle. Resolving the run's end instead
+     * makes both insertion orders converge on the same result, which is why
+     * both call sites use this rather than only the later one.
+     *
+     * @param   {HTMLElement}  el     - Any member of the run.
+     * @param   {?HTMLElement} [skip] - A member to ignore, used when RE-anchoring
+     *   an element that is already in the run and must not anchor on itself.
+     * @returns {HTMLElement} The run's last element, or `el` when it is not in
+     *   a recognised run (in which case the caller's old behaviour is kept).
+     */
+    function _ctlRunEnd(el, skip) {
+        const m = el && el.id
+            ? el.id.match(/^(mb-(?:caa|eaa)-toggle-btn-|mb-rel-retry-)/) : null;
+        if (!m) return el;
+        const pfx = m[1];
+        let last = el;
+        let next = el.nextElementSibling;
+        while (next && next.id && next.id.startsWith(pfx)) {
+            if (next !== skip) last = next;
+            next = next.nextElementSibling;
+        }
+        return last;
+    }
+
     function _relRetryAnchorFor(tbl, i) {
         const _art = document.getElementById('mb-caa-toggle-btn-retry-' + i)
                   || document.getElementById('mb-eaa-toggle-btn-retry-' + i);
-        if (_art) return _art;
+        // The END of the artwork run, not the ⟳ itself: the 📊 summary anchors on
+        // that same button, so returning it directly wedges this control
+        // between two artwork controls. See _ctlRunEnd().
+        if (_art) return _ctlRunEnd(_art);
         const _single = !(activeDefinition && activeDefinition.tableMode === 'multi');
         let el = tbl.previousElementSibling;
         while (el) {
@@ -78032,8 +78173,10 @@ a { color: #1565c0; }`;
                 if (typeof _relRetryAll === 'function') _relRetryAll();
             });
             const globalRetryEl = document.getElementById(globalRetryId);
-            if (globalRetryEl) globalRetryEl.after(relRetryBtn);
-            else btn.after(relRetryBtn);
+            // Same rule as the per-table sibling below: after the whole artwork
+            // run, so the page-level header shows one artwork pill and one
+            // Relationships pill rather than an interleaving of the two.
+            _ctlRunEnd(globalRetryEl || btn).after(relRetryBtn);
             Lib.debug(ctx.key, 'created global rel retry btn');
         }
     }
@@ -78423,7 +78566,11 @@ a { color: #1565c0; }`;
         // in tests/fixtures/caa-summary-button-position.spec.js.
         const existing = document.getElementById(id);
         if (existing) {
-            if (existing.previousElementSibling !== anchor) anchor.after(existing);
+            // The run's END, skipping this button itself so it cannot anchor on
+            // its own position. Re-anchoring to the ⟳ directly would drag it
+            // back in front of the 🔗⟳ on every pass.
+            const _end = _ctlRunEnd(anchor, existing);
+            if (existing.previousElementSibling !== _end) _end.after(existing);
             return;
         }
 
@@ -78442,7 +78589,9 @@ a { color: #1565c0; }`;
             ev.stopPropagation();
             _artToggleSummary(ctx, table, btn);
         });
-        anchor.after(btn);
+        // End of the artwork run, for the same reason as the re-anchor path
+        // above: the 🔗⟳ may already have been inserted after `anchor`.
+        _ctlRunEnd(anchor).after(btn);
     }
 
     /**
@@ -78828,7 +78977,12 @@ a { color: #1565c0; }`;
                     _relRetryTable(targetTable);
                 }
             });
-            btn.after(relRetryBtn2);
+            // End of the ARTWORK run, not the artwork ⟳ itself. The 📊 summary
+            // is created a few lines above and anchors on that same ⟳, so
+            // `btn.after(...)` drops this control between two artwork controls —
+            // which the segmented-pill CSS then renders as two artwork pills with
+            // a foreign one wedged between them. See _ctlRunEnd().
+            _ctlRunEnd(btn).after(relRetryBtn2);
             Lib.debug(ctx.key, `created rel retry btn ${relRetryBtnId}`);
         }
     }
