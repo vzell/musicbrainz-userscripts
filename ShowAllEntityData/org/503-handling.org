@@ -38,16 +38,20 @@ Remaining order: item 1 (shared transient classifier) shipped on
 =feat/rel-retry-failed-only= then =feat/caa-retry-failed-only=, the second of
 which cleared its own blocker. Item 7 shipped on
 =feat/rel-auto-retry-failed=, item 5 on =feat/resume-from-failed-page=.
-*Remaining: the segmented pill from the UI design, and one defect found while
-designing item 5 — the heading pre-processing block is not idempotent as a
-group, which bites a plain second press on 18 pageTypes.*
+The segmented pill shipped on =feat/segmented-retry-pill=. *Remaining: one
+defect found while designing item 5 — the heading pre-processing block is not
+idempotent as a group, which bites a plain second press on 18 pageTypes — and
+the optional rescoping of the =⚠⟳= controls to per table, which is a choice
+rather than a blocker (see the pill section's trap 2).*
 
 F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
 here — "nothing on the art path records that a request failed transiently" —
 was cleared by =ctx.failedCache= on =feat/caa-retry-failed-only=; see trap 1
-below. Zone 2 shipped on =feat/caa-artwork-summary=. *Still unbuilt: the
-segmented pill itself* — all four controls are plain sibling buttons.
+below. Zone 2 shipped on =feat/caa-artwork-summary=, and the segmented pill
+itself on =feat/segmented-retry-pill= (2026-09-20). *Nothing in this design is
+unbuilt now*, except the optional rescoping of zone 4 to per-table — see the
+correction under trap 2 for why that is a choice rather than a blocker.
 
 * The question
 
@@ -484,8 +488,9 @@ things now working.
    prediction that "the behaviour is a one-line filter, the affordance is
    not" was wrong in both halves, in the same direction: the Rel one needed
    =_relRetryMbids()= fixed to reach a filtered-out failure, and the CAA one
-   needed a whole new failure record built first. What was NOT built is the
-   segmented pill — both controls are plain sibling buttons for now.
+   needed a whole new failure record built first. The segmented pill that
+   groups them followed on =feat/segmented-retry-pill=; both =⚠⟳= controls
+   remain page-wide, now as the last segment of their own page-level pill.
 
 Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
 modal ("some requests failed"); any change to the pacing constants without a
@@ -498,10 +503,34 @@ design's own feasibility argument contained a false premise, and building it
 was what found that out. Item 7 was the only one with a rate-limit risk, and
 shipped with four independent ceilings for that reason.
 
-* Retry UI: one segmented control per table
+* DONE — Retry UI: one segmented control per table
 
-Raised 2026-09-19. Not yet built; this is the design record, and item 8 / F7 is
-the behaviour half of it.
+Raised 2026-09-19, *built 2026-09-20* on =feat/segmented-retry-pill=; item 8 /
+F7 was the behaviour half of it. Spec
+=tests/fixtures/control-run-segmented-pill.spec.js=, mutations
+=scripts/mutations/control-run-segmented-pill.json=.
+
+*What shipped, and the one place it departs from the drawing below.* Zones 1-3
+became one pill per run, exactly as drawn. *Zone 4 stayed PAGE-WIDE* rather than
+moving into each per-table pill: both =⚠⟳= controls are single page-level
+elements today, and CLAUDE.md records that as a decision with a reason that
+still holds — "it saves nothing, F7 is about not re-requesting the SUCCESSES".
+So the page-level header carries an artwork pill ending in =⚠⟳= and a
+Relationships pill ending in its own, while each table carries the 3-zone pill.
+Rescoping zone 4 per table remains possible and is no longer blocked — see the
+correction under trap 2.
+
+*The pill is three runs, not one*: CAA, EAA and Relationships each get their
+own, selected by id prefix, so a page carrying both archives does not render one
+long pill implying a single control group.
+
+*It exposed a DOM-ordering defect that predated it.*
+=_artCreateOrUpdateRetryButton()= creates the =📊= summary and then the
+per-table =🔗⟳=, and both =.after()='d the SAME artwork =⟳= — so whichever ran
+last took the slot and =🔗⟳= landed between two artwork controls. Invisible
+while they were loose buttons; two pills with a foreign one between them once
+they were drawn as a run. All four insertion sites now resolve the end of their
+own run (=_ctlRunEnd()=), which makes both creation orders converge.
 
 ** What exists today
 
@@ -586,7 +615,18 @@ both are legitimate.
    Being keyed by entity PATH rather than by DOM turned out to matter more than
    expected: the Relationships half had to read the captured source rows to
    survive a filter, and this one gets that property for free.
-2. *Do not hide zone 4 on a count taken from the live DOM.*
+2. [CORRECTED 2026-09-20] *Do not hide zone 4 on a count taken from the live
+   DOM* — still true, but the blocker this trap implied is NOT. CLAUDE.md says
+   scoping the failed-retry per table "needs a table → source-rows mapping this
+   file says is not reliable". A reliable one already exists and is in use:
+   =_pendingEditsGroups()= binds =groupedRows[i]= to the =i=-th table bearing a
+   =.mb-col-filter-row=, which is the SAME binding =runFilter()='s own
+   multi-table loop uses, so the two cannot disagree by construction. Merged
+   discography view does not break it either — the merge pass clones rows and
+   "the originals stay in groupedRows intact". A single-table page needs one
+   extra arm (=allRows= against the one table), as =_msSourceRows()= shows.
+   So per-table zone 4 is a decision about whether it is worth it, not a
+   blocker. The original warning stands on its own terms:
    =_relTableProgress()= reads =table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]')=
    — the LIVE tbody — and =runFilter()= REMOVES non-matching rows rather than
    hiding them. A zone that disappears at =failed === 0= would therefore vanish

@@ -2459,6 +2459,59 @@ reports the failure at the *start of the template*, often hundreds of lines
 before the real cause, which is what makes it slow to find. Grep the region you
 just edited for a backtick before reaching for anything else.
 
+## The h2/h3 control runs are segmented pills too — three of them, not one
+
+A second family, distinct from the `.mb-col-hdr-flex` one above: the buttons
+that sit beside a table's heading. `org/503-handling.org`, "Retry UI: one
+segmented control per table".
+
+**Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
+already prefix-consistent, so the CSS needs no class and no wrapper:
+
+| Run           | Prefix                 | Members                                              |
+|---------------|------------------------|------------------------------------------------------|
+| CAA artwork   | `mb-caa-toggle-btn-`   | `-{i}`, `-global`, `-retry-{i}`, `-global-retry`, `-retry-failed`, `-summary-{i}` |
+| EAA artwork   | `mb-eaa-toggle-btn-`   | the same set                                         |
+| Relationships | `mb-rel-retry-`        | `-{i}`, `-global`, `-failed`                         |
+
+A button added later joins its pill for free **provided it keeps the naming
+convention** — so do not tidy an id out of its prefix. Conversely, the three
+are kept apart deliberately: one shared selector would render a page carrying
+both archives as a single long pill, implying one control group where there
+are three sources. That regression *looks tidier*, which is why
+`tests/fixtures/control-run-segmented-pill.spec.js` asserts the CAA run keeps
+its right cap and the Relationships run opens its own left cap **while the two
+are adjacent siblings**.
+
+**Every declaration needs `!important` here, unlike the sort group.** These
+buttons set `border`, `border-radius`, `background` and `margin-left` INLINE
+(`_artCreateOrUpdateToggleButton`, `_REL_RETRY_BTN_CSS`, and the two rel-retry
+creation sites), and a normal-priority stylesheet rule cannot outrank inline.
+Same cascade fact this file records for the flag userscript's margins, reached
+from the other side. A middle segment computing `border-radius: 3px` is the
+symptom.
+
+**Backgrounds are deliberately NOT unified.** The `⚠⟳` segment is yellow
+because it means something; flattening the run to one ground would erase that
+to gain nothing. The pill here is the shared height, one hairline between
+segments, and rounded caps at each run's two ends.
+
+**`_ctlRunEnd(el, skip)` — every control must append to the END of its run.**
+This is the load-bearing part, and it fixed a real ordering defect the pill
+merely exposed. `_artCreateOrUpdateRetryButton()` creates the `📊` summary and
+then, a few lines later, the per-table `🔗⟳` — and both used to `.after()` the
+*same* artwork `⟳`. Whichever ran last took the slot, so `🔗⟳` landed between
+two artwork controls and the artwork run rendered as two pills with a foreign
+one wedged between them. **All four insertion sites now resolve the run's end**
+(the summary's create and re-anchor paths, the per-table `🔗⟳`, and the global
+`🔗⟳`), which makes both creation orders converge on the same DOM. The `skip`
+argument exists so the summary cannot anchor on its own position when it
+re-anchors after a filter re-creates `.mb-row-count-stat`.
+
+Before the pill this was invisible — the buttons merely looked shuffled — so
+there was nothing to notice. Do not "simplify" any of those four back to
+`anchor.after(...)`.
+
 ### The sort group — a segmented pill, with zero DOM change
 
 `⇅ ▲ ▼` are three sibling spans drawn as one pill: shared background and
