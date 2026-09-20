@@ -1932,6 +1932,78 @@ is needed** — every caller stops at its first failed page, so exactly one page
 can ever pay the retries. That stops being true the moment anything makes the
 loop continue past a failure.
 
+## The artwork summary panel (zone 2)
+
+`org/503-handling.org`'s "zone 2 opens an artwork summary for the table".
+`_artCollectSummary()` + `_artRenderSummary()`, opened by
+`#mb-caa-toggle-btn-summary-{i}`.
+
+- **It costs ZERO requests.** `_artEnrichIcon()` Tier 3 stores `json.images`
+  verbatim in `ctx.imagesCache`, so the whole archive record — `edit`,
+  `front`/`back` and the thumbnail ladder — is already there. **There is no
+  `release` field**, whatever the archive's documentation says: probed
+  2026-09-20 (`scripts/probe-caa-release-group-release-field.py`), a
+  release-group lookup returns the same nine keys a release lookup does. The archive has no batch endpoint, so anything the
+  panel could not answer from that cache would be one request per entity, which
+  is the cost the whole 503 file exists to reduce. **Do not add a request to
+  enrich this.**
+- **`img.front` is NOT `types.includes('Front')`.** An image can be typed Front
+  without being the archive's chosen main front, and that distinction is
+  invisible everywhere else in the script. The fixture makes the two disagree on
+  purpose, and there is a mutation for conflating them.
+- **It must open MID-LOAD, gated on nothing.** `_showCaaCompletionToast()` fires
+  on the `_caaQueue`'s `onIdle`, and CLAUDE.md records that on a large listing it
+  never fires at all — so a panel gated the same way is useless on exactly the
+  pages that motivated it. There is a mutation that adds such a gate.
+- **"pending" must say WHY it is pending.** `initCaaPics()`'s Pass 2 enqueues
+  every JSON lookup BEHIND every image fetch on the page, deliberately, so
+  icons and strips paint first. On a 2144-row discography that is half an hour
+  before the first lookup runs — diagnosed from `debug/bs-debug.html`
+  (2026-09-20), where not one of 2144 art anchors carried `data-caa-enriched`.
+  The count was literally true and read as stuck, which is how it was reported
+  as a bug. The panel now shows the queue depth alongside it.
+- **It does not reuse `_caaFetchStats`.** Those are PAGE-WIDE tallies; this is
+  per table and does its own pass.
+- **The scope is declared, not implied.** `runFilter()` REMOVES non-matching
+  rows, so the tally is of what is SHOWN. The design's trap 2 asks for a walk
+  over source rows instead; that needs a table → source-rows mapping this file
+  calls unreliable, so the panel says "a filter is active" in its own header
+  instead of quietly reporting a subset as the whole table. That is the org's
+  own second option, chosen knowingly.
+- **Driven from `ctx`, never the string "CAA"** — `ctx.column` is `'CAA'` or
+  `'EAA'`, so the same panel serves event art without mislabelling it.
+- **A separate sibling button, not the count badge.** The design drew the count
+  as the opener; a click target inside the toggle `<button>` would be a nested
+  interactive element (its own trap 3), and `.mb-caa-toggle-count` is located by
+  two specs and read by `_artRetryTable()`'s badge arithmetic.
+- Entity paths are **deduped**: the sticky-column duplicate of a row carries the
+  same art anchor, and a release-group breadcrumb can repeat one.
+- **The opener re-anchors on EVERY pass, never "already exists, bail".**
+  `.mb-row-count-stat` is removed and re-created whenever the count changes,
+  i.e. on every filter, and is re-inserted relative to the master toggle or
+  (single-table) the filter container. `_artCreateOrUpdateToggleButton()` copes
+  because it re-derives its position from the LIVE stat every call —
+  `countStat.after(btn)` runs whether or not the button existed — and ⟳ and 🔗⟳
+  chain off it. A control that bails out on "already exists" opts out of that
+  and gets stranded: reported live on an artist-releases page with the opener
+  sitting between the heading text and the stat while the rest of the run moved
+  on. `_artCreateOrUpdateRetryButton()` therefore calls
+  `_artCreateSummaryButton()` on BOTH paths, before its own early return.
+  Pinned by `tests/fixtures/caa-summary-button-position.spec.js`, which asserts
+  ORDER — the button never disappeared, so an existence check passed throughout
+  the bug. **Single-table only:** on a multi-table page the per-table controls
+  live in an `<h3>` that carries no row-count stat, which is why the panel's own
+  spec (releasegroup-releases) never saw this.
+
+Covered by `tests/fixtures/caa-artwork-summary.spec.js`; mutation list
+`scripts/mutations/caa-artwork-summary.json`, with one honest `expect: "pass"`
+for the dedup (this fixture has no sticky duplicate reaching an art anchor).
+There is no "Cover sourced from" group: it was built from the archive's
+documented `release` field, shipped untested because the fixture could not
+exercise it, and removed once a probe showed the field does not exist. **A
+group nothing could test was a group nothing had checked** — that is the
+transferable part.
+
 ## CAA/EAA retry: the transient-failure record that unblocked it
 
 `org/503-handling.org` F7, CAA half — blocked until `ctx.failedCache` existed.

@@ -13387,3 +13387,238 @@ the case it was written for.
 from the Relationships control is *kept* here, and the reason is the cost of the
 count: `Set.size` versus `_relFailedMbidsPageWide()` walking every captured
 source row.
+
+## 2026-09-20 — the artwork summary panel, built from data already thrown away
+
+Branch `feat/caa-artwork-summary`. `org/503-handling.org`'s zone 2, decided
+2026-09-19 and the last designed-but-unbuilt piece of that file apart from the
+segmented pill itself.
+
+**Why it is worth having.** The only surface reporting artwork state was
+`_showCaaCompletionToast()`: page-wide, transient, and fired on the `_caaQueue`'s
+`onIdle`. CLAUDE.md already recorded that on a large listing it **never fires**
+— measured still hidden after 300 s while artwork was visibly painting. So on
+exactly the pages where a user most wants to know what happened, there was
+nothing to look at.
+
+**It costs no requests, and that is structural.** `_artEnrichIcon()` Tier 3
+stores `json.images` verbatim, so the full archive record is already in
+`ctx.imagesCache`: `edit`, `front`/`back`, the thumbnail ladder, and `release`
+on a release-group lookup. Four of those were stored and surfaced nowhere. The
+archive has no batch endpoint, so anything the panel could not answer from that
+cache would be one request per entity — the cost this whole file exists to
+reduce.
+
+**The distinction worth knowing about**: `img.front` is not
+`types.includes('Front')`. An image can be typed Front without being the
+archive's chosen main front. The fixture makes the two disagree by construction
+— two Front-typed images per release, one main front — because a fixture where
+they agreed would pass on code that conflated them. There is a mutation for
+exactly that conflation.
+
+**Three departures from the written design, all deliberate and all recorded in
+the org file:**
+
+1. **A separate 📊 sibling button, not the count badge.** The design drew the
+   count as the opener; making it a click target would nest an interactive
+   element inside the toggle `<button>` — the design's *own* trap 3 — and
+   `.mb-caa-toggle-count` is located by two specs and read by
+   `_artRetryTable()`'s badge arithmetic.
+2. **The scope is declared, not walked.** Trap 2 asks for a pass over the source
+   rows so a filter cannot make the panel report a subset as the whole table.
+   That needs a table → source-rows mapping this file calls unreliable (merged
+   discography view), which is the same wall zone 4 hit twice. So the panel
+   tallies the live rows and says "a filter is active" in its own header. That
+   is trap 2's own second option, taken knowingly rather than by omission.
+3. **The Cache-tier group was deferred.** It is the one group that merely
+   reproduces the toast per table; every other group shows something no screen
+   in the script showed before.
+
+**Two test-shape corrections, both caught on the first run:**
+
+- **The panel is per-table; `hits.size` is page-wide.** The first draft asserted
+  against the number of releases the PAGE asked about (7) while the panel covers
+  the first sub-table (Official, 6). Every assertion is now relative to the
+  panel's own entity count, which is both correct and a better assertion.
+- **The "could not be fetched" rows have no value cell**, so the generic
+  row-reader threw on `null`. Worth remembering for any future group that is a
+  list rather than a label/value pair.
+
+**Known gap, recorded rather than discovered later:** the "Cover sourced from"
+group ships untested. The archive returns `release` only on a release-GROUP
+lookup, and this fixture's page (`releasegroup-releases`) looks up releases;
+covering it needs an `artist-releasegroups` fixture.
+
+Seven mutations, six `expect: "fail"` confirmed plus one honest `expect: "pass"`
+for the entity-path dedup — this fixture has no sticky-column duplicate reaching
+an art anchor, so double-counting does not move the numbers here.
+
+## 2026-09-20 (later) — the artwork panel's live pass: one fix, one withdrawal, one open
+
+Corrects and extends the entry above, after the first browser pass over the
+zone 2 panel. Three things were reported; two are settled and one is not, and
+the not-settled one is the interesting entry.
+
+**"Cover sourced from" never appeared — because the field does not exist.**
+`org/503-handling.org`'s field table said a `/release-group/{mbid}` lookup
+"adds a `release` field — the specific release from which the art was sourced".
+That row was filled in from the Cover Art Archive's **documentation** on
+2026-09-19. `scripts/probe-caa-release-group-release-field.py`, 2026-09-20:
+
+    RELEASE-GROUP lookup  HTTP 200, 12 images
+      first image keys: approved back comment edit front id image thumbnails types
+      images carrying `release`: 0 of 12
+
+A release-group answer carries exactly the same nine keys a release answer
+does. The group is removed and every doc that repeated the claim is corrected,
+citing the probe.
+
+The root CLAUDE.md already says this in as many words — "the docs describe
+intent, and several endpoints behave differently from what they suggest…
+Record the probe result next to the code that depends on it" — and I built the
+group from the docs anyway. **The tell was there and I wrote it down myself**:
+the previous entry records the group as "shipped but UNTESTED" because no
+fixture could exercise it. A group nothing could test was a group nothing had
+checked.
+
+**The panel's presentation was reworked** toward the agreed mock: read-time and
+a "still loading" marker in the header, chip-style sections, a "N images have no
+1200" note, a distinct failed section, Retry/Close in a footer.
+
+**STILL OPEN: "not looked up yet" stuck at 21 on a 2144-row Springsteen
+artist-releasegroups page**, not falling over time or across reopens.
+
+I guessed a cause, wrote a regression test for it, and **the test passed against
+the build that still had the bug** — so the guess was reverted rather than
+shipped. Recorded because the guess was plausible and the disproof is cheap to
+repeat:
+
+- The guess: the panel scans `a[href$="/cover-art"]` while `_artEnrichTable()`
+  enqueues from `ctx.iconSel` (anchors that CONTAIN an icon span), so the panel
+  counts entities nothing will ever look up.
+- Disproof 1: `releasegroup-releases` has 7 cover-art anchors and **all 7**
+  carry icon spans, so the two selectors agree and that fixture cannot show the
+  difference either way — which is exactly why the test passed on the buggy
+  build.
+- Disproof 2: a Simon & Garfunkel **artist-releasegroups** page — the same
+  pageType — renders the panel correctly (43 with artwork), so `iconSel` does
+  find those anchors on that pageType.
+
+What actually differs between the two live pages is SCALE: 123 rows against
+2144. At the archive's ~1.2 req/s, ~2144 entities is roughly half an hour of
+queue, so the Album sub-table's 21 may genuinely still be behind it. If that is
+the story, the number is TRUE and useless, and the defect is that "pending"
+does not distinguish "queued behind two thousand others" from "in flight" and
+offers no sense of the queue.
+
+That remains a hypothesis. What would settle it, in order of cost: does the
+number move at all after several minutes; does the CAA toggle badge beside
+"Album (21)" stay at 0; does the page header ever show a `CAA:` timing. If
+enrichment is not running at all there, a `debug/` snapshot of that page is the
+next step.
+
+## 2026-09-20 (later still) — defect 1 answered: the panel was telling the truth
+
+Closes the "STILL OPEN" item in the entry above. Answered from evidence, not
+from reasoning: `debug/bs-debug.html`, an 11.7 MB save of the 2144-row
+Springsteen artist-releasegroups page taken while other sub-tables were still
+loading.
+
+**What the snapshot says**, counted with
+`scratchpad/analyse_bs.py`-style greps:
+
+    table.tbl count: 47
+    PAGE-WIDE: cover-art anchors = 2144, with a direct-child icon span = 2144
+    occurrences of data-caa-enriched: 0
+
+Two conclusions, and the second is the answer.
+
+1. **My earlier guess is dead twice over.** All 2144 anchors carry
+   `<span class="artwork-icon caa-icon">`, so `ctx.iconSel` and the plain
+   `a[href$="/cover-art"]` scan find the *same* 2144. The selector was never
+   the difference — which is what the reverted test had already failed to show.
+2. **Not one anchor on the page had been enriched.** `data-caa-enriched`
+   occurs zero times across 2144 anchors. So "21 pending" was *literally true*:
+   nothing had been looked up, in that sub-table or any other.
+
+**Why nothing had been looked up.** `initCaaPics()` Pass 2 enqueues every JSON
+lookup BEHIND every image fetch on the page, and says so in its own comment —
+"so that small icons and big-strip loads have priority in `_caaQueue`. Users
+who start filtering immediately will see visual feedback before count badges
+and multi-row art cells arrive." That is a deliberate and defensible choice.
+Its consequence at this scale is not: 2144 entities at the archive's ~1.2 req/s
+is roughly half an hour before the first *lookup* runs, during which every
+table's summary reads "N pending" and never moves.
+
+**So the defect was never a wrong number — it was a true number with no
+context**, which is indistinguishable from a stuck one. The fix is
+informational: the panel now shows the page-wide queue depth beside the pending
+count and says lookups are queued behind the images. Mutation-covered
+(`"pending" is shown with no explanation`).
+
+**What was NOT changed, deliberately.** The Pass 1 / Pass 2 ordering stands.
+Reversing it would make count badges appear before any picture did, on every
+page, to improve one screen on the largest pages only — and PERFORMANCE.org has
+no measurement for that trade. If it is ever revisited, the thing to measure is
+time-to-first-painted-icon against time-to-first-count, not either alone.
+
+**Method note worth keeping.** Three rounds on this one: a guess (reverted), a
+test that passed against the buggy build (deleted), and then eleven megabytes of
+saved HTML that answered it in one grep. The snapshot was cheaper than either
+of the first two, and CLAUDE.md already said so — "Always read the relevant
+`debug/*.html` before proposing any DOM fix". I proposed one first.
+
+## 2026-09-20 — the summary opener walked out of its own control run
+
+Reported live on `https://musicbrainz.org/artist/84c38d3a-…/releases` (BoDeans,
+`artist-releases`, `tableMode: 'single'`): filtering from a 📊 column dropdown
+left the 📊 artwork-summary button between the "Releases" heading text and the
+row-count stat, while the rest of the artwork controls stayed together.
+
+**Diagnosed from the saved DOM**, `debug/bd-filter-relocation-bug.html`, whose
+h2 children read, in order:
+
+    [mb-toggle-icon] "Releases" [summary-0] [row-count-stat]
+    [caa-toggle-0] [caa-retry-0] [rel-retry-0] [mb-filter-container]
+
+**Cause — an asymmetry, not a mystery.** `.mb-row-count-stat` is REMOVED AND
+RE-CREATED every time the count changes, and re-inserted relative to the master
+toggle or, on a single-table page, the filter container.
+`_artCreateOrUpdateToggleButton()` copes because it re-derives its position
+from the live stat on every call:
+
+    const countStat = header.querySelector('.mb-row-count-stat');
+    if (countStat) countStat.after(btn);          // runs even if btn existed
+
+⟳ and 🔗⟳ chain off that. The summary opener was created once, inside
+`_artCreateOrUpdateRetryButton()`'s "just created" branch, and bailed out on
+every later call — so the run rebuilt itself around the new stat and left it
+behind. **It is the only control in the run that does not re-derive its own
+position**, which is exactly why it is the only one that moved.
+
+**Fix.** `_artCreateSummaryButton()` re-anchors an existing button instead of
+returning, and `_artCreateOrUpdateRetryButton()` calls it on BOTH paths —
+before its own early return, not only after creating.
+
+**Reproduced before fixing, which is the part worth recording.** The two
+previous rounds on this feature were a guess and a test that passed against the
+broken build. This time the committed disk fixture
+`tests/fixtures/saved-data/artist-releases-bodeans.json.gz` turned out to be
+*the very page reported* — `artist-releases`, single-table, 56 rows, every one
+carrying a `/cover-art` anchor — so the bug reproduced offline in one run, and
+the fix was verified against a failing test rather than against reasoning.
+
+Two things that cost a cycle each:
+
+- **`page.fill()` is not actionable on `#mb-global-filter-input` after a disk
+  load.** The input is present, visible, enabled and 500x24, with no modal over
+  it, and `fill` still waits until the test times out — the script re-asserts a
+  🔍 focus prefix in it. `typeGlobalFilter()` (click, wait for the prefix to
+  settle, then type) is the harness's own answer and works.
+- **The assertion has to be on ORDER, not existence.** The button never
+  disappeared during the bug, so any "is it there" check passed the whole time.
+
+**Note on multi-table pages:** the per-table controls live in an `<h3>` that
+carries no row-count stat, so the churn cannot reach them. That is why the
+panel's own spec, which runs on `releasegroup-releases`, never saw this — and
+why the new spec has to be single-table.

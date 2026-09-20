@@ -18,6 +18,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F4       | =fix/release-events-transient= | =tests/fixtures/release-events-transient.spec.js=   |
 | F7 (Rel) | =feat/rel-retry-failed-only=   | =tests/fixtures/rel-retry-failed-only.spec.js=      |
 | F7 (CAA) | =feat/caa-retry-failed-only=   | =tests/fixtures/caa-retry-failed-only.spec.js=      |
+| zone 2   | =feat/caa-artwork-summary=     | =tests/fixtures/caa-artwork-summary.spec.js=        |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -40,7 +41,8 @@ F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
 here — "nothing on the art path records that a request failed transiently" —
 was cleared by =ctx.failedCache= on =feat/caa-retry-failed-only=; see trap 1
-below. *Still unbuilt: the segmented pill itself, and zone 2.*
+below. Zone 2 shipped on =feat/caa-artwork-summary=. *Still unbuilt: the
+segmented pill itself* — all four controls are plain sibling buttons.
 
 * The question
 
@@ -566,9 +568,24 @@ both are legitimate.
    source order silently decides. Three deltas in the existing family are
    load-bearing for exactly this reason; see CLAUDE.md.
 
-** DECIDED — zone 2 opens an artwork summary for the table
+** DONE — zone 2 opens an artwork summary for the table
 
-Settled 2026-09-19. The four-zone shape stands; zone 4 stays.
+Settled 2026-09-19, shipped 2026-09-20 on =feat/caa-artwork-summary=.
+The four-zone shape stands; zone 4 stays.
+
+*Three departures from what is written below, each decided deliberately:*
+
+1. *A separate 📊 sibling button, not the count badge.* Making the count a
+   click target would nest an interactive element inside the toggle
+   =<button>= — this design's own trap 3 — and =.mb-caa-toggle-count= is
+   located by two specs and read by =_artRetryTable()='s badge arithmetic.
+2. *The scope is DECLARED rather than walked.* Trap 2 asks for a pass over
+   the source rows; that needs a table → source-rows mapping this file
+   states is unreliable, so the panel says "a filter is active" in its own
+   header instead. That is trap 2's own second option, taken knowingly.
+3. *The Cache-tier group was deferred.* It is the one group that merely
+   reproduces =_showCaaCompletionToast()= per table; every other group
+   surfaces something no screen in the script showed before.
 
 *This is not just "something for the count to do".* It closes a real gap: today
 the only place artwork state is reported at all is
@@ -604,8 +621,14 @@ Checked against <https://musicbrainz.org/doc/Cover_Art_Archive/API> on
 | =approved=   | bool   | "whether the image was approved by the musicbrainz edit system" | yes, 1 site  |
 | =edit=       | int    | "the edit id on musicbrainz (e.g. 123)"                         | *no*         |
 
-=/release-group/{mbid}= returns the same image shape and adds a =release=
-field — "the specific release from which the art was sourced".
+=/release-group/{mbid}= returns the same image shape. *The documentation also
+says it adds a =release= field — "the specific release from which the art was
+sourced". IT DOES NOT.* Probed 2026-09-20
+(=scripts/probe-caa-release-group-release-field.py=): a release-group lookup
+returns images carrying exactly the same nine keys a release lookup does, and 0
+of 12 images carried =release=. This row was originally filled in from the docs
+alone, which is precisely what the root CLAUDE.md says not to do — and it cost
+a shipped feature that could never have worked.
 
 *Everything above is ALREADY FETCHED AND ALREADY PERSISTED.* Tier 3 does
 =images = Array.isArray(json.images) ? json.images : []= and hands that array
@@ -627,8 +650,10 @@ Four things are stored on every image and surfaced nowhere:
 - The full thumbnail ladder. The script reads whichever size it needs; the
   summary can say which sizes actually exist per image, which is how a missing
   =1200= (common on old uploads) stops being a mystery.
-- On a release-group listing, =release= — *which release supplied this cover*.
-  Nothing in the script can answer that today.
+- [WITHDRAWN] On a release-group listing, =release= — which release supplied
+  this cover. *The archive does not return this field*; see the probe above.
+  Answering it needs a MusicBrainz WS/2 lookup, with its own gate and its own
+  measurement.
 
 *** Proposed contents, per table
 
@@ -641,7 +666,7 @@ Four things are stored on every image and surfaced nowhere:
 | Flags    | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
 | Sizes    | how many images offer =1200= / =500= / =250=                                                   |
 | Edits    | =edit= ids, linked to =/edit/{id}=                                                             |
-| Sourced  | release-group listings only: which release each cover came from                                |
+| ~~Sourced~~ | *withdrawn* — the archive returns no =release= field; see the probe                        |
 | Failures | the failing entities by name, each a link, plus a "retry these" action                         |
 
 The Failures group is what ties zone 2 to zone 4: *zone 2 explains, zone 4
@@ -653,6 +678,17 @@ endpoint (same doc, same date), so anything not in the record above costs one
 request per entity — which is the cost this whole file exists to reduce. If a
 field is wanted that the archive does not return, the answer is a MusicBrainz
 WS/2 lookup, and it needs its own gate and its own measurement.
+
+*As shipped, the panel makes no request at all* — every group reads
+=ctx.imagesCache=, which already holds =json.images= verbatim.
+
+*The "Cover sourced from" group was built and then REMOVED.* It shipped
+untested — the fixture's page looks up releases, so it could not be exercised
+— and a live check on an =artist-releasegroups= page showed it never appearing.
+The probe explains why: the field does not exist. Removed the same day, with
+=scripts/probe-caa-release-group-release-field.py= committed as the evidence.
+*The lesson is the cheap one: a group nothing could test was a group nothing
+had checked.*
 
 *** Traps specific to this zone
 

@@ -1260,6 +1260,33 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
   on ⚠⟳ counts only the second kind, so a page full of releases that
   genuinely have no cover art shows no button at all.
   Entities whose rows a filter is hiding are counted and retried too.
+• 📊 ARTWORK SUMMARY — a third button opens a panel describing what this
+  table's artwork actually is.  It reads the current state when you open it,
+  so it works WHILE artwork is still loading — which matters, because the
+  completion message never appears at all on a large listing.
+  It costs no network requests: everything in it was already fetched and
+  simply never shown.  What it reports:
+    — Entities: how many have artwork, how many genuinely have none, how
+      many could not be fetched, and how many have not been looked up yet.
+    — Images on record, broken down by type (Front, Back, Booklet, Medium,
+      Tray, …), including images the archive lists with no type at all.
+    — Flags: how many images the archive marks as THE main front or THE main
+      back — which is not the same as being typed "Front", a distinction
+      nothing else in the script shows you — and how many are not yet
+      approved by the edit system.
+    — Thumbnail sizes: how many images offer 1200, 500 and 250 px.  A
+      missing 1200 is common on old uploads and stops being a mystery.
+    — Edits: the MusicBrainz edit that added each cover, linked, so "who
+      added this and when" is one click away.
+    — Anything that could not be fetched, named and linked, with a button to
+      retry just those.
+  The panel counts the rows currently SHOWN.  If a filter is active it says
+  so at the top rather than passing a filtered subset off as the whole table.
+  On a big discography "pending" can stay put for a long time, and the panel
+  explains why rather than leaving it looking stuck: cover-art lookups are
+  deliberately queued BEHIND every image on the page, so the pictures appear
+  first.  On a 2 000-release artist that is half an hour before the first
+  lookup runs.  The panel shows how many jobs are still queued page-wide.
 • Artwork already on screen stays on screen.  Sorting or filtering rebuilds
   the table rows, and both the small icon and the inline thumbnail now come
   back already showing their image instead of blanking and repainting a

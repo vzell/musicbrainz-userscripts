@@ -1,0 +1,106 @@
+[
+  {
+    "name": "main-front is read as \"Front is in types\"",
+    "why": "The distinction the design says is invisible today: an image can be TYPED Front without being the archive's chosen main front. The fixture makes them disagree on purpose — two Front-typed images per release, one main front — so a build that conflated them reports double.",
+    "edits": [
+      {
+        "find": "                if (img.front) out.flags.mainFront++;",
+        "replace": "                if (types.includes('Front')) out.flags.mainFront++;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "archive fields nothing else surfaces",
+    "expect": "fail"
+  },
+  {
+    "name": "the thumbnail ladder is not inspected per image",
+    "why": "A missing 1200 on an old upload stops being a mystery only if the panel counts the sizes that actually exist. The fixture's second image has a 250 alone.",
+    "edits": [
+      {
+        "find": "                [1200, 500, 250].forEach(sz => { if (th[sz]) out.sizes[sz]++; });",
+        "replace": "                [1200, 500, 250].forEach(sz => { out.sizes[sz]++; void th; });"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "archive fields nothing else surfaces",
+    "expect": "fail"
+  },
+  {
+    "name": "edit ids are collected but never linked",
+    "why": "For an editor chasing \"who added this cover and when\", the edit id is the single most useful field in the record, and it was dead weight in the cache. A plain number is not the feature.",
+    "edits": [
+      {
+        "find": "                a.href = 'https://musicbrainz.org/edit/' + id;",
+        "replace": "                void id;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "archive fields nothing else surfaces",
+    "expect": "fail"
+  },
+  {
+    "name": "the panel does not say a filter is active",
+    "why": "runFilter() REMOVES non-matching rows, so the tally is of what is shown. Reporting that as the whole table is the silent-subset defect the design's trap 2 names; saying the scope out loud is what this build does instead of walking source rows.",
+    "edits": [
+      {
+        "find": "        const filtered = (typeof _anyFilterActive === 'function') && _anyFilterActive();",
+        "replace": "        const filtered = false;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "says so when a filter is hiding rows",
+    "expect": "fail"
+  },
+  {
+    "name": "the panel is gated on nothing being outstanding",
+    "why": "The trap the design names first. _showCaaCompletionToast() fires on the queue's onIdle and CLAUDE.md records that on a large listing it NEVER fires — so a panel gated the same way is useless on exactly the pages that motivated it.",
+    "edits": [
+      {
+        "find": "    function _artToggleSummary(ctx, table, btn) {\n        if (_artSummaryOwner === btn) { _artCloseSummary(); return; }",
+        "replace": "    function _artToggleSummary(ctx, table, btn) {\n        if (_artCollectSummary(ctx, table).entities.pending) return;\n        if (_artSummaryOwner === btn) { _artCloseSummary(); return; }"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "opens MID-LOAD",
+    "expect": "fail"
+  },
+  {
+    "name": "the failures group offers no action",
+    "why": "Zone 2 explains and zone 4 acts, and a user already looking at the list should not have to close the panel to act on it.",
+    "edits": [
+      {
+        "find": "                _artRetryFailedAll(ctx);",
+        "replace": "                void ctx;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "offers to retry just those",
+    "expect": "fail"
+  },
+  {
+    "name": "entity paths are not deduped",
+    "why": "The sticky-column duplicate of a row carries the same art anchor, and a release-group breadcrumb can repeat one. Counting an entity twice inflates every number in the panel. KNOWN GAP recorded honestly: this fixture's sub-table has no sticky duplicate reaching the art anchor, so the counts do not move. Covering it needs a pageType with a sticky first column that carries one.",
+    "edits": [
+      {
+        "find": "            if (p && !seen.has(p)) { seen.add(p); paths.push(p); }",
+        "replace": "            if (p) { paths.push(p); }"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "archive fields nothing else surfaces",
+    "expect": "pass"
+  },
+  {
+    "name": "\"pending\" is shown with no explanation",
+    "why": "Diagnosed from debug/bs-debug.html: on a 2144-row Springsteen discography NOT ONE of the 2144 art anchors carried data-caa-enriched, so the panel's \"21 pending\" was literally TRUE — initCaaPics()' Pass 2 queues every JSON lookup behind every image fetch on the page, and at ~1.2 req/s that is half an hour before the first lookup runs. A true number with no context reads as a stuck one, and that is what was reported as a bug.",
+    "edits": [
+      {
+        "find": "        if (e.pending && d.queue && (d.queue.pending + d.queue.running) > 0) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "opens MID-LOAD",
+    "expect": "fail"
+  }
+]
