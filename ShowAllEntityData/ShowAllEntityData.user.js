@@ -1366,6 +1366,32 @@
                          + 'click-to-load off.'
         },
 
+        sa_rel_auto_retry_failed: {
+            label: 'Relationships: retry failed lookups once, automatically',
+            type: 'checkbox',
+            default: true,
+            description: 'When the Web Service refuses a few rows during a burst, wait half a minute '
+                         + 'after everything else has finished and quietly ask about just those rows '
+                         + 'again \u2014 up to two times. Most bursts are over by then, so the \u26a0 cells '
+                         + 'simply become icons. It never runs on more than 25 failed rows (that many '
+                         + 'is an outage, not a burst) and it gives up immediately after 5 refusals in '
+                         + 'a row, so a Web Service that is genuinely down is asked a handful of times '
+                         + 'and then left alone. Turn this off to retry only by hand, with the \u26a0\u27f3 '
+                         + 'button.'
+        },
+
+        sa_rel_auto_retry_max_failed: {
+            label: 'Relationships: largest failure count still worth retrying automatically',
+            type: 'number',
+            default: 25,
+            min: 0,
+            description: 'Above this many failed rows, the automatic retry above does not run at all: '
+                         + 'that many refusals is the Web Service being down rather than briefly busy, '
+                         + 'and asking again would only add to its load. Set to 0 to disable the '
+                         + 'automatic retry by this route. The \u26a0\u27f3 button is unaffected and always '
+                         + 'retries exactly what failed, however many that is.'
+        },
+
         sa_rel_browse_batch_enable: {
             label: 'Relationships: fetch whole pages at once where MusicBrainz allows it',
             type: 'checkbox',
@@ -46611,6 +46637,9 @@ a { color: #1565c0; }`;
             Object.keys(baseDef.entityFeatures).find(k => baseDef.entityFeatures[k] === entitySpecificFeatures)) || undefined;
         activeInjectedColumns = buildActiveInjectedColumns(activeDefinition, _entityKindHintFromH2);
         activeReleaseEventColumns = buildActiveReleaseEventColumns(activeDefinition);
+        // A fresh page gets its own automatic-retry budget rather than
+        // inheriting one already spent by the previous fetch.
+        _relAutoRetryReset();
         // A new run starts with no verdict on the Release-events lookup, so a
         // ⚠ left over from the previous one cannot be painted into the fresh
         // headers. The fetch below sets 'loading' the moment it starts.
@@ -65288,6 +65317,91 @@ a { color: #1565c0; }`;
     const _REL_WS2_TRIES = 3;
 
     /**
+     * Automatic follow-up pass for failed Relationships cells
+     * (org/503-handling.org item 7). All four numbers are ceilings, not tuning.
+     *
+     * The item is the only one in that file that makes the script talk to the
+     * network without the user asking, so it is bounded on four independent
+     * axes and any one of them stopping it is enough:
+     *
+     *   - it starts only AFTER everything else has finished, plus a cool-down,
+     *     so it can never compete with the first-load queue;
+     *   - it runs at most `_REL_AUTO_RETRY_MAX_PASSES` times per page;
+     *   - it does not start at all above `_relAutoRetryMaxFailed()` failures,
+     *     because that many is an outage rather than a burst, and retrying an
+     *     outage is exactly the hammering the file warns against;
+     *   - it aborts MID-PASS after `_REL_AUTO_RETRY_BREAK_AFTER` consecutive
+     *     refusals, through `_relQueueStillWants()` — so the rest of the queue
+     *     drains at microtask speed with no requests at all, which is the
+     *     behaviour that function already has for a superseded pass.
+     */
+    const _REL_AUTO_RETRY_DELAY_MS = 30000;
+    const _REL_AUTO_RETRY_MAX_PASSES = 2;
+    const _REL_AUTO_RETRY_MAX_FAILED_DEFAULT = 25;
+
+    /**
+     * The failure-count ceiling, read from settings.
+     *
+     * `typeof === 'number'` and not `|| DEFAULT`: `0` is a meaningful value here
+     * — it disables the automatic pass — and a falsy-zero read would silently
+     * turn it back into 25. That exact defect is on record in CLAUDE.md for
+     * `sa_render_threshold`, whose own description promises "0 to disable" and
+     * does not honour it.
+     *
+     * @returns {number}
+     */
+    function _relAutoRetryMaxFailed() {
+        const v = Lib.settings.sa_rel_auto_retry_max_failed;
+        return (typeof v === 'number' && v >= 0) ? v : _REL_AUTO_RETRY_MAX_FAILED_DEFAULT;
+    }
+    const _REL_AUTO_RETRY_BREAK_AFTER = 5;
+
+    /**
+     * @type {{passes: number, timer: ?number, consecutiveErrors: number,
+     *         tripped: boolean, active: boolean}}
+     */
+    let _relAutoRetry = {
+        passes: 0, timer: null, consecutiveErrors: 0, tripped: false, active: false,
+    };
+
+    /**
+     * Resets the automatic-retry budget. Called when a NEW fetch starts, so a
+     * fresh page gets its own two passes rather than inheriting a spent budget.
+     *
+     * @returns {void}
+     */
+    function _relAutoRetryReset() {
+        if (_relAutoRetry.timer) clearTimeout(_relAutoRetry.timer);
+        _relAutoRetry = {
+            passes: 0, timer: null, consecutiveErrors: 0, tripped: false, active: false,
+        };
+    }
+
+    /**
+     * Records one automatic-pass outcome and trips the breaker on a run of them.
+     *
+     * Consecutive, not cumulative: a pass that is mostly succeeding with the odd
+     * refusal is the case this feature exists for, and must not be aborted. A
+     * run of refusals is the Web Service being down.
+     *
+     * @param   {boolean} failed
+     * @returns {void}
+     */
+    function _relAutoRetryNote(failed) {
+        if (!_relAutoRetry.active) return;
+        if (!failed) { _relAutoRetry.consecutiveErrors = 0; return; }
+        _relAutoRetry.consecutiveErrors++;
+        if (_relAutoRetry.consecutiveErrors >= _REL_AUTO_RETRY_BREAK_AFTER
+                && !_relAutoRetry.tripped) {
+            _relAutoRetry.tripped = true;
+            Lib.warn('relationships',
+                `Relationships auto-retry: ${_relAutoRetry.consecutiveErrors} refusals in a row — `
+                + 'giving up on the rest of this pass and scheduling no more. '
+                + 'The \u26a0\u27f3 button still works.');
+        }
+    }
+
+    /**
      * Earliest `Date.now()` at which the next Relationships-column network
      * request may start — the state behind `_relAwaitRateSlot()`.
      */
@@ -68464,6 +68578,12 @@ a { color: #1565c0; }`;
          * @returns {boolean}
          */
         function _relQueueStillWants(mbid) {
+            // The circuit breaker rides HERE rather than anywhere new: this
+            // guard is already consulted before AND after the rate-slot wait,
+            // and returning false is already the documented way a superseded
+            // pass drains at microtask speed with no requests. A tripped
+            // breaker is exactly that — a pass nobody wants any more.
+            if (_relAutoRetry.tripped) return false;
             // `!relError`: a cell that failed earlier is not re-answered by a
             // later overlapping pass either — same exclusion as the candidate
             // scan and `_relAnyPendingInExpandedTable()`.
@@ -68618,6 +68738,7 @@ a { color: #1565c0; }`;
                 if (_l1Hit) _p2CacheHits++;
                 else _p2NetFetches++;
                 const _res = await _relFetchWs2(mbid, _mbidEt, _mbidInc, false, { slotHeld: !_l1Hit });
+                _relAutoRetryNote(_res.outcome === 'error');
                 if (_res.outcome === 'error') {
                     _p2Failed++;
                     _relMarkCellsFailed(mbid, _res.detail);
@@ -68658,6 +68779,13 @@ a { color: #1565c0; }`;
             // See _invalidateUniqDropDataCacheForTable()'s own JSDoc.
             document.querySelectorAll('table.tbl').forEach(t => _invalidateUniqDropDataCacheForTable(t));
             _relCreateRetryButtons();
+            // The queue has drained, so "what failed" is settled and nothing
+            // else is competing for the rate gate — the only safe moment to
+            // consider an automatic follow-up (org/503-handling.org item 7).
+            // Closing `active` first: a pass that has just finished must not go
+            // on counting a LATER pass's outcomes into its own breaker.
+            _relAutoRetry.active = false;
+            _relScheduleAutoRetry();
             const _relElapsed = performance.now() - _relStartMs;
             // `failed` counts requests that still failed after every retry —
             // their cells carry `data-rel-error` rather than being shown as
@@ -69049,6 +69177,67 @@ a { color: #1565c0; }`;
         _byEt.forEach((mbidSet, entityType) => {
             _relRetryMbids([...mbidSet], entityType, _relIncOptionsForEntityType(entityType));
         });
+    }
+
+    /**
+     * Schedules the ONE automatic follow-up pass for failed cells, if allowed.
+     *
+     * org/503-handling.org item 7. Called when the Phase-2 queue drains — the
+     * only moment at which "what failed" is settled and nothing else is
+     * competing for the rate gate.
+     *
+     * Every reason to decline is checked here rather than inside the pass, so a
+     * declined schedule costs one `Set.size` read and nothing else:
+     *
+     *   - the setting is off;
+     *   - nothing failed;
+     *   - MORE than `_relAutoRetryMaxFailed()` failed. That many is an outage,
+     *     not a burst, and an automatic retry of an outage is the hammering
+     *     org/503-handling.org explicitly refuses to propose;
+     *   - the budget of `_REL_AUTO_RETRY_MAX_PASSES` is spent;
+     *   - the breaker has already tripped on a previous pass.
+     *
+     * The user sees nothing except ⚠ cells quietly becoming icons, which is why
+     * the item is filed as "silent to nearly silent". The ⚠⟳ control stays
+     * clickable throughout, so declining costs the user nothing either.
+     *
+     * @returns {void}
+     */
+    function _relScheduleAutoRetry() {
+        if (Lib.settings.sa_rel_auto_retry_failed === false) return;
+        if (_relAutoRetry.tripped) return;
+        if (_relAutoRetry.passes >= _REL_AUTO_RETRY_MAX_PASSES) return;
+        if (_relAutoRetry.timer) return;
+
+        const failed = _relFailedMbidsPageWide().size;
+        if (!failed) return;
+        const ceiling = _relAutoRetryMaxFailed();
+        if (failed > ceiling) {
+            Lib.debug('relationships',
+                `Relationships auto-retry: ${failed} failed rows is more than the ` +
+                `${ceiling} ceiling — that is an outage, not a burst. ` +
+                'Not retrying automatically; the \u26a0\u27f3 button still works.');
+            return;
+        }
+
+        Lib.debug('relationships',
+            `Relationships auto-retry: ${failed} failed row(s), pass ` +
+            `${_relAutoRetry.passes + 1}/${_REL_AUTO_RETRY_MAX_PASSES} in ` +
+            `${_REL_AUTO_RETRY_DELAY_MS} ms`);
+        _relAutoRetry.timer = setTimeout(() => {
+            _relAutoRetry.timer = null;
+            // Re-checked on FIRING, not only on scheduling: half a minute is
+            // long enough for the user to have pressed \u26a0\u27f3 themselves, for a
+            // re-render to have recovered the rows, or for the column to have
+            // been collapsed.
+            if (Lib.settings.sa_rel_auto_retry_failed === false) return;
+            if (_relAutoRetry.tripped) return;
+            if (!_relFailedMbidsPageWide().size) return;
+            _relAutoRetry.passes++;
+            _relAutoRetry.consecutiveErrors = 0;
+            _relAutoRetry.active = true;
+            _relRetryFailedAll();
+        }, _REL_AUTO_RETRY_DELAY_MS);
     }
 
     /**
@@ -82270,6 +82459,50 @@ a { color: #1565c0; }`;
              */
             relFailedMbids() {
                 return [..._relFailedMbidsPageWide()].sort();
+            },
+
+            /**
+             * The automatic-retry budget and breaker, as numbers.
+             *
+             * Exposed because none of it has a DOM surface: a declined schedule,
+             * a spent budget and a tripped breaker all look identical on screen
+             * (\u26a0 cells, unchanged), and the only other evidence is a request
+             * that does or does not happen 30 seconds later.
+             *
+             * @returns {{passes: number, tripped: boolean, pending: boolean,
+             *            consecutiveErrors: number}}
+             */
+            relAutoRetryState() {
+                return {
+                    passes: _relAutoRetry.passes,
+                    tripped: _relAutoRetry.tripped,
+                    pending: !!_relAutoRetry.timer,
+                    consecutiveErrors: _relAutoRetry.consecutiveErrors,
+                };
+            },
+
+            /**
+             * Runs the automatic-retry schedule check immediately, so a spec
+             * does not have to wait out `_REL_AUTO_RETRY_DELAY_MS`.
+             *
+             * Deliberately exercises the REAL decision path
+             * (`_relScheduleAutoRetry()`) and then fires the timer it set, so
+             * every ceiling is still applied \u2014 a helper that skipped straight
+             * to the retry would test nothing.
+             *
+             * @returns {boolean} whether a pass was scheduled at all.
+             */
+            relRunAutoRetryNow() {
+                _relScheduleAutoRetry();
+                if (!_relAutoRetry.timer) return false;
+                clearTimeout(_relAutoRetry.timer);
+                _relAutoRetry.timer = null;
+                if (!_relFailedMbidsPageWide().size) return false;
+                _relAutoRetry.passes++;
+                _relAutoRetry.consecutiveErrors = 0;
+                _relAutoRetry.active = true;
+                _relRetryFailedAll();
+                return true;
             },
 
             /**

@@ -13622,3 +13622,54 @@ Two things that cost a cycle each:
 carries no row-count stat, so the churn cannot reach them. That is why the
 panel's own spec, which runs on `releasegroup-releases`, never saw this — and
 why the new spec has to be single-table.
+
+## 2026-09-20 — the automatic retry pass (item 7), and two tests that lied
+
+`org/503-handling.org` item 7, on `feat/rel-auto-retry-failed`. The last item in
+that file with any rate-limit risk, and the only one that makes the script fetch
+without the user asking — so it is bounded on four independent axes, and any one
+of them stopping it is enough: it starts only after the Phase-2 queue drains
+plus 30 s; at most two passes per page; it does not start above 25 failures
+(`sa_rel_auto_retry_max_failed`); and five CONSECUTIVE refusals abort it
+mid-flight.
+
+**The breaker needed no new mechanism.** `_relQueueStillWants()` is already
+consulted before AND after the rate-slot wait, and returning `false` is already
+how a superseded pass drains at microtask speed with no requests. A tripped
+breaker is exactly that — a pass nobody wants any more — so the whole hook is
+one line in a guard that already existed.
+
+**Two tests that passed while proving nothing**, both caught rather than
+shipped:
+
+- **A second page load poisons the fixture via IndexedDB.** The first draft
+  loaded the page, read the MBIDs, chose its victims and reloaded. The first
+  load answered three entities before the reload and those went into the
+  `rel-ws2` store — and **IDB survives a reload**, so on the second pass they
+  were served from cache, never reached the route, and never failed. The test
+  reported 9 failures where it expected 10 and looked like a breaker bug. Fixed
+  by choosing the victims in the route on first sight, with no second load, and
+  `sa_rels_idb_enable: false` on top: a cache that outlives a page load has no
+  business in a test about what gets REQUESTED.
+- **A fixed `waitForTimeout()` after the breaker trips bounds the request count
+  by the WAIT, not by the pass.** At ~1.1 s per request a 4 s pause admits about
+  four more, so an unguarded pass that would have spent thirty looked identical
+  to an aborted one — and the mutation that removes the breaker's read from
+  `_relQueueStillWants()` passed against it. Now the test settles the request
+  log. **Mutation-testing found this one**, which is twice this week that a
+  mutation refusing to fail was the more useful result.
+
+**One honest gap.** No test here can tell consecutive counting from cumulative:
+a retry pass only ever asks about entities that already failed, so either every
+request in it fails or none does, and there is no interleaving to distinguish
+the two. Recorded as `expect: "pass"` with what would cover it.
+
+**Cost, measured and recorded rather than absorbed.** The spec is 324 s on
+`NB-3641` (2026-09-20, `--workers=1`) — four times the previous slowest fixture
+spec, and it takes the full suite from ~120 s to ~318 s. None of it is slow
+code: it is the rate gate, paid twice, once to MAKE 10-12 entities fail during
+setup (three attempts each) and again to retry them. Not shortened, because the
+breaker's own threshold is 5 and a test that pins it needs more failures than
+that. `tests/README.org` and `tests/MEASUREMENTS.org` now both say so, with the
+host, so the next person reading the suite's wall clock knows which spec owns
+the increase.
