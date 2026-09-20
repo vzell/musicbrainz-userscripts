@@ -15,12 +15,18 @@ For *which pageTypes are covered and which are planned*, see
 #+begin_src sh
 cd ShowAllEntityData
 npm install          # first time only
-npm test             # the safe default: 353 fixture tests, ~1 m 50 s, no network
+npm test             # the safe default: 389 fixture tests, ~2 m, no network
+npm run test:full    # all 403, incl. the two @slow specs — what a merge needs
 #+end_src
 
 =npm test= needs no network, no login, and no MusicBrainz cooperation. Start
 there. Everything else in this file costs real time and real requests to
 musicbrainz.org.
+
+=npm test= leaves out the two =@slow= fixture specs, which is why it is two
+minutes rather than five. Run =npm run test:full= before merging anything —
+see "The fixture =@slow= tag" below for what is being skipped and why that is
+safe only at the merge gate.
 
 ** Node version and the =playwright=/=@playwright/test= pin
 
@@ -112,11 +118,33 @@ Current split: =@core= 10 tests / 9 files · =@extended= 58 / 29 · =@perf= 9 / 
 =@extended= tests, so the file counts overlap rather than summing to 38.)
 Counted with =--list= on 2026-09-19; re-count rather than trusting these.
 
+** The fixture =@slow= tag
+
+Two fixture specs are opt-in, selected with Playwright's native =tag= option
+exactly as the live specs are:
+
+| Spec                            | Tests | Wall clock | What it covers                               |
+|---------------------------------+-------+------------+----------------------------------------------|
+| =rel-auto-retry-failed=         |     7 | ~324 s     | org/503-handling.org item 7 (automatic pass) |
+| =resume-from-failed-page=       |     7 | ~84 s      | org/503-handling.org item 5 (resume)         |
+
+Between them that is most of the suite's wall clock. *Neither is slow because
+of slow code*: both spend their time in the rate gates and retry backoffs the
+features under test exist to respect, so shortening them means testing
+something other than what ships.
+
+They are opt-in *for iteration only*. =npm run test:full= runs them and is
+what =merge-push-remove= uses, so nothing merges without them. The honest cost
+of the tag is that a =@slow= spec can go stale for a working session; that is
+bounded by the merge gate, not removed.
+
 * Every npm script
 
 | Command                                          | Runs                                          |
 |--------------------------------------------------+-----------------------------------------------|
-| =npm test=                                       | Fixtures only. The default and CI-safe suite. |
+| =npm test=                                       | Fixtures only, minus =@slow=. The default.    |
+| =npm run test:slow=                              | Fixtures, only =@slow= (14 tests, 2 files)    |
+| =npm run test:full=                              | Every fixture test. *The merge gate.*         |
 | =npm run test:live=                              | Live =@core= only                             |
 | =npm run test:live:extended=                     | Live =@core= + =@extended= (68 tests)         |
 | =npm run test:live:perf=                         | Live =@perf= only                             |
@@ -140,14 +168,16 @@ npx playwright test tests/live/smoke.spec.js --project=chromium-live
 
 * How long things take
 
-Two of these are *measured*; the rest are estimates or declared ceilings, and
-the "Basis" column says which is which. Re-measure before relying on any of
-them for a decision.
+The fixture rows are *measured*; most live rows are estimates or declared
+ceilings, and the "Basis" column says which is which. Re-measure before relying
+on any of them for a decision.
 
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
-| =npm test= (403 fixture tests)              | *≈ 5 m 12 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
-| — the same suite at 353 tests               | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
+| =npm test= (389 tests, =@slow= excluded)    | *≈ 2 m 6 s*  | measured 2026-09-20, =NB-3641=, 14 workers              |
+| =npm run test:full= (403 tests)             | *≈ 5 m 18 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
+| =npm run test:slow= (14 tests, 2 files)     | *≈ 4 m 48 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
+| — the whole suite at 353 tests, pre-=@slow= | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
 | slowest single fixture spec                 | *≈ 324 s*    | measured 2026-09-20, =NB-3641= — =rel-auto-retry-failed= (7 tests, =--workers=1=) |
 | previous slowest                            | ≈ 73 s       | measured — =rel-column-collapse-toggle= (10 tests)      |
 | =resume-from-failed-page= (7 tests)         | ≈ 84 s       | measured 2026-09-20, =NB-3641=, =--workers=1=           |
@@ -163,6 +193,13 @@ which no amount of parallelism helps: it is one spec, and its own 324 s is a
 floor for the whole run. At 353 tests, before that spec existed, 108 s of wall
 clock against ~1159 s of summed test time was parallelism doing its job — 14
 workers on a 28-core box, a ~10.7x speed-up.
+
+*Running the two selections separately costs MORE than running everything
+once*: 2 m 6 s + 4 m 48 s = 6 m 54 s against =test:full='s 5 m 18 s, because
+in a full run the two =@slow= files occupy workers that would otherwise sit
+idle while the short specs finish. So the tag only pays when you genuinely
+skip the slow specs for a while. If you are going to run both anyway, run
+=npm run test:full= once.
 
 *=rel-auto-retry-failed.spec.js= is an outlier worth knowing about*: 324 s on
 its own (=NB-3641=, 2026-09-20, =--workers=1=), four times the previous slowest

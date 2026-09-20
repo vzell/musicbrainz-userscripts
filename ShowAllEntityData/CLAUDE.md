@@ -736,8 +736,23 @@ A full Playwright harness lives under `tests/` (`ShowAllEntityData/
 package.json`, `playwright.config.js`). Two projects, split by directory:
 
 - **`chromium-fixtures`** (`tests/fixtures/*.spec.js`) — local HTML
-  fixtures via `page.route()`, no network. Run via plain `npm test`; this
-  is the default, CI-safe suite.
+  fixtures via `page.route()`, no network. Two selections, and the difference
+  matters at merge time:
+  - `npm test` — everything EXCEPT `@slow`. The default for iterating.
+  - `npm run test:slow` — only `@slow`.
+  - **`npm run test:full` — every fixture test. This is the merge gate**, and
+    `merge-push-remove` runs it rather than `npm test`.
+
+  **`@slow` is opt-in for iteration, mandatory at a merge.** Two specs carry
+  it — `rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s),
+  14 tests of 403 — and between them they are most of the suite's wall clock
+  and *all* of its coverage of org/503-handling.org items 5 and 7. Neither is
+  slow because of slow code: both spend their time in rate gates and retry
+  backoffs that the feature under test exists to respect, so shortening them
+  means testing something other than what ships. The cost of the tag, stated
+  plainly: a `@slow` spec can now rot for a whole working session. That is
+  bounded by the merge gate, not eliminated — so if you change the merge
+  workflow, keep it on `test:full`.
 - **`chromium-live`** (`tests/live/*.spec.js`) — real musicbrainz.org
   pages. Every spec carries exactly one tag:
   - `@core` — shared-mechanism sanity net (filter/sort/fetch/pagination
