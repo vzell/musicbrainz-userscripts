@@ -1,0 +1,15 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-20",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📊 artwork-summary button stood taller than the buttons beside it, so the group it sits in no longer read as one control with a straight top and bottom edge. All of them are the same height again.",
+          "The rule that keeps those buttons aligned used to list them one by one, which is why a button added later was left out of it. It now matches them the way the grouping itself does, so anything added next is the right height without a further change."
+        ]
+      }
+    ]
+  }
+]

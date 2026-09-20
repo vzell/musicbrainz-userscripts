@@ -131,6 +131,33 @@ test.describe('h2/h3 control runs render as segmented pills', () => {
         });
     });
 
+    test('every segment in a run is the same height', async ({ page }) => {
+        // Reported from a real page: the 📊 summary button stood taller than
+        // its neighbours and broke the pill's straight edge. The shared-height
+        // rule enumerated `-retry-` and `-global-retry` by name, so `-summary-`
+        // was simply never in it — and its emoji is taller than the other
+        // glyphs, so with no height to sit in it grew.
+        //
+        // Asserted across the WHOLE run rather than on the summary button
+        // alone: the defect was a missing selector, and the next control added
+        // would have hit it the same way. Heights are compared as rendered
+        // pixels, which is the thing that was actually wrong.
+        const heights = await page.evaluate((p) => Array.from(
+            document.querySelectorAll(`[id^="${p}"]`),
+            (el) => ({ id: el.id, h: Math.round(el.getBoundingClientRect().height) })),
+        CAA);
+
+        expect(heights.length, 'the fixture builds a multi-segment run')
+            .toBeGreaterThan(1);
+        const distinct = [...new Set(heights.map((x) => x.h))];
+        expect(distinct,
+            `every segment shares one height — got ${JSON.stringify(heights)}`)
+            .toHaveLength(1);
+        // And it is the height the rule declares, so a run that agreed on some
+        // OTHER value would still fail.
+        expect(distinct[0], 'and it is the declared 22px').toBe(22);
+    });
+
     test('CAA and Relationships are two pills, not one', async ({ page }) => {
         const caa = await runOf(page, CAA);
         const rel = await runOf(page, REL);
