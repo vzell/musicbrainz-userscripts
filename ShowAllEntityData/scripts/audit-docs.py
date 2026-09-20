@@ -123,6 +123,28 @@ def check_half_flipped(text, problems):
                     f'"{phrase}" — flipping the keyword is the easy half')
 
 
+LINE_REF = re.compile(r'~:\d[\d-]*~')
+
+
+def check_no_line_refs(text, problems):
+    """A ~:NNNNN~ line reference has come back.
+
+    They were all removed on 2026-09-20 after a survey found every one of the
+    118 then present pointing at unrelated code — the userscript grows on
+    nearly every commit, so a number is stale within days of being written.
+    CLAUDE.md's File-structure table reached the same conclusion first
+    ("worse than having no table at all") and carries grep anchors instead.
+
+    Scoped to PERFORMANCE.org because that is the file the cleanup covered;
+    widen it if another doc starts collecting them.
+    """
+    for i, line in enumerate(text.split('\n'), 1):
+        for ref in LINE_REF.findall(line):
+            problems.append(
+                f'{PERF}:{i}: line reference {ref} — name the symbol and grep '
+                'for it instead; a number is stale within days')
+
+
 def check_stale_branch_sections(root, problems):
     """An "IN PROGRESS" section naming a branch that no longer exists."""
     git_root = git_dir_for(root)
@@ -170,6 +192,7 @@ def main():
     problems = []
     check_done_set(text, problems)
     check_half_flipped(text, problems)
+    check_no_line_refs(text, problems)
     check_stale_branch_sections(root, problems)
 
     if problems:
@@ -182,7 +205,7 @@ def main():
     print(f'{PERF}: {len(list(step_bodies(text)))} steps, '
           f'{len(done)} DONE ({", ".join(map(str, done))}) — sentence matches the '
           'keywords, no DONE step contradicts itself, no "IN PROGRESS" section '
-          'names a branch that is gone.')
+          'names a branch that is gone, no ~:NNNNN~ line references.')
     return 0
 
 

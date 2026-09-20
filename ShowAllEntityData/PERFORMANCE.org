@@ -20,9 +20,14 @@ incompatible schemes — ~main~, ~perf-steps-1-4~ and
 now reconciled here; see "Step-number provenance" below before trusting any
 "Step N" reference in a branch commit message or an old session log.
 
-*Line references* (~:12345~) are only valid for the script version named
-alongside them. Re-grep the symbol rather than trusting a number that looks
-stale — the userscript is ~77 000 lines and they drift constantly.
+*No line references.* This file names symbols; it does not carry ~:NNNNN~
+line numbers. It used to carry 118 of them and *every single one was stale* when
+they were removed on 2026-09-20 — each pointing at unrelated code, several by
+thousands of lines, against a userscript that has since grown past 82 000
+lines. That is the conclusion CLAUDE.md's File-structure table reached for the
+same reason ("worse than having no table at all"), and the one Step 30's own
+paragraph reached by itself a few refs at a time. Grep the symbol.
+~scripts/audit-docs.py~ fails if a line reference reappears.
 
 ** Context
 
@@ -50,12 +55,12 @@ for reference — the ideas need a fresh reimplementation against current
 Yes — re-confirmed against ~main~ at *9.99.1045+2026-09-07*, which is also the
 version every line reference in this section was read at:
 
-- ~runFilter()~ (~:42225~) still clones every matching row and fully rebuilds
+- ~runFilter()~ still clones every matching row and fully rebuilds
   the tbody on every keystroke, in both branches.
 - The multi-table branch does the same per group, *except for a sort*, which
   since Step 18 touches only the sub-table it re-ordered: ~runFilter()~
-  (~:42450~) pushes an empty ~_mbSkipRender~ group for every undisturbed
-  index and ~renderGroupedTable()~ (~:49379~) leaves those ~<tbody>~ elements
+  pushes an empty ~_mbSkipRender~ group for every undisturbed index and
+  ~renderGroupedTable()~ leaves those ~<tbody>~ elements
   alone. Filters still re-render everything.
 - No ~IntersectionObserver~ exists anywhere in the file — zero occurrences —
   so lazy CAA/EAA loading (Step 5) was never independently reimplemented.
@@ -68,26 +73,26 @@ version every line reference in this section was read at:
 
 *** The dominant, previously-underweighted cost: ~_updateAllColHeaderCounts~
 
-The file's own comments (~:56886-56888~, ~:57587~) document that this
+The file's own comments document that this
 O(rows x columns) per-column unique-value + multi-row-count scan can take
 "30–120 s synchronously" for 8 k+ rows — enough to trigger Chrome's "Page
 Unresponsive" dialog, which is why it's already deferred rather than fixed at
-the root. ~:56694~ puts the same cost concretely for the harness page:
+the root. One of them puts the same cost concretely for the harness page:
 ~artist-events~ at 4174 rows × 21 columns is *~88 000 ~getCleanColumnText()~
 calls* per full pass.
 
-It runs at the tail of ~initCollapsableColumns()~ (~:56878~), reached from
-~_scheduleColHeaderCounts()~ (~:56650~), which today fires from:
+It runs at the tail of ~initCollapsableColumns()~, reached from
+~_scheduleColHeaderCounts()~, which today fires from:
 
-| Call site          | Function                                                | Frequency                                                                       |
-|--------------------+---------------------------------------------------------+---------------------------------------------------------------------------------|
-| ~:42747~           | ~runFilter()~, single-table branch                      | *every keystroke and every sort*                                                |
-| ~:49738~           | ~renderGroupedTable()~, reuse branch, per sub-table     | every multi-table render — *except undisturbed groups on a sort, since Step 18* |
-| ~:50271~           | ~renderGroupedTable()~, new-table branch, per sub-table | every multi-table render                                                        |
-| ~:19699~           | ~syncCollapseButtonsWithColumnVisibility()~             | every column show/hide, page-wide                                               |
-| ~:61362~, ~:61377~ | ~initReleaseEventsColumn()~                             | up to 3x in a row post-fetch (what the coalescing token exists for)             |
-| ~:46421~           | ~startFetchingProcess()~                                | once per fetch                                                                  |
-| ~:73505~           | ~initPicardTaggerColumn()~                              | post-render                                                                     |
+| Call site                                               | Frequency                                                                       |
+|---------------------------------------------------------+---------------------------------------------------------------------------------|
+| ~runFilter()~, single-table branch                      | *every keystroke and every sort*                                                |
+| ~renderGroupedTable()~, reuse branch, per sub-table     | every multi-table render — *except undisturbed groups on a sort, since Step 18* |
+| ~renderGroupedTable()~, new-table branch, per sub-table | every multi-table render                                                        |
+| ~syncCollapseButtonsWithColumnVisibility()~             | every column show/hide, page-wide                                               |
+| ~initReleaseEventsColumn()~                             | up to 3x in a row post-fetch (what the coalescing token exists for)             |
+| ~startFetchingProcess()~                                | once per fetch                                                                  |
+| ~initPicardTaggerColumn()~                              | post-render                                                                     |
 
 Scaled to 5,000 rows that is roughly 19-75 s of background work re-triggered
 on most of those actions — larger than the cloneNode/DOM-rebuild cost the old
@@ -164,7 +169,7 @@ this section and in Steps 23-33 was read at. Prompted by a report that
 "specific things happen at every keystroke" while a filter string is typed.
 
 *It is not the debounce.* ~runFilter()~ is debounced through
-~_adaptiveFilterDelay()~ (~:43210~) — a 300 ms floor from
+~_adaptiveFilterDelay()~ — a 300 ms floor from
 ~sa_filter_debounce_delay~, plus 0.05 ms/row above 500 rows, capped at 1000 ms.
 On the 4174-row ~artist-events~ fixture the adaptive term is only 184 ms, so the
 floor wins and a *burst* of keystrokes already collapses into one pass. The
@@ -173,18 +178,18 @@ typing pause over ~300 ms — and every backspace — pays it again in full.
 
 *** One pass makes five independent walks of the same cells
 
-With ~M~ = matching rows and ~C~ = columns, ~runFilter()~ (~:42388-43190~) does:
+With ~M~ = matching rows and ~C~ = columns, ~runFilter()~ does:
 
-| # | Walk                                                | Per-cell cost                                                                                                                 | Reached from                                    |
-|---+-----------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------|
-| 1 | ~cloneNode(true)~ + ~_stripTransientCellState(td)~  | *1* ~querySelectorAll~/cell, and none at all for a cell with no element children — was *12* until Step 34 landed at 9.99.1059 | ~:42814~ single, ~:42620~ multi                 |
-| 2 | ~testRowMatch(clone, ctx)~ + ~highlightText(…, -1)~ | ~normalize()~ + text-node TreeWalk                                                                                            | ~:42854~ → ~:41688~, ~:38622~, ~:38785~         |
-| 3 | ~applyStickyColumn~ hover-background snapshot       | style write → ~getComputedStyle~                                                                                              | ~:19262-19268~, via ~_applyPostRenderRowPasses~ |
-| 4 | ~_countLiveDateFlags()~                             | one failing ~querySelectorAll~                                                                                                | ~:32881~, via ~updateFilterButtonsVisibility~   |
-| 5 | ~_updateAllColHeaderCounts~                         | ~getCleanColumnText~ per cell                                                                                                 | ~:57088~, via ~initCollapsableColumns~ ~:42910~ |
+| # | Walk                                                | Per-cell cost                                                                                                                 | Reached from                                         |
+|---+-----------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------+------------------------------------------------------|
+| 1 | ~cloneNode(true)~ + ~_stripTransientCellState(td)~  | *1* ~querySelectorAll~/cell, and none at all for a cell with no element children — was *12* until Step 34 landed at 9.99.1059 | ~runFilter()~, both branches                         |
+| 2 | ~testRowMatch(clone, ctx)~ + ~highlightText(…, -1)~ | ~normalize()~ + text-node TreeWalk                                                                                            | ~runFilter()~ → ~testRowMatch()~ → ~highlightText()~ |
+| 3 | ~applyStickyColumn~ hover-background snapshot       | style write → ~getComputedStyle~                                                                                              | via ~_applyPostRenderRowPasses~                      |
+| 4 | ~_countLiveDateFlags()~                             | one failing ~querySelectorAll~                                                                                                | via ~updateFilterButtonsVisibility~                  |
+| 5 | ~_updateAllColHeaderCounts~                         | ~getCleanColumnText~ per cell                                                                                                 | via ~initCollapsableColumns~                         |
 
 Walks 2 and 5 re-extract text that walk 1's own cached ~matchOnly~ pass
-(~_rowTextCache~, ~:35148~) already extracted and has sitting in a ~WeakMap~.
+(~_rowTextCache~) already extracted and has sitting in a ~WeakMap~.
 Walk 3 is a write-then-read layout-thrash loop. Walk 4 produces nothing at all
 on every pageType that carries no live-date flags, which is nearly all of them.
 
@@ -207,13 +212,13 @@ is a fresh ~getCleanColumnText~. The second call is the expensive one and it is
 the one with no cache.
 
 On top of the five: ~applyZebraStriping~, ~normalizeCommentSpans~ and
-~initBarcodeHighlight~ (three more O(M) walks, ~:42326-42341~);
+~initBarcodeHighlight~ (three more O(M) walks);
 ~_countLengthMismatchRows~ and ~_pendingEditsGroups~, which walk all *source*
 rows and so cost the same 4174 no matter how narrow the filter is;
 ~initPicardTaggerColumn(true)~ and ~initExpandRGsFeature()~ rebuilding every
 interactive cell (see Step 23 — since 9.99.1057 that is ERG alone on a
 default-configured page, because a collapsed Picard column builds nothing); and
-an unconditional ~window.scrollTo()~ forced reflow (~:43011~).
+an unconditional ~window.scrollTo()~ forced reflow.
 
 *The size of walk 3 is not an estimate.*
 ~tests/snapshots/artist-events/rendered.html~ contains *87 738*
@@ -230,8 +235,8 @@ end of Tier 1./
 *~initPicardTaggerColumn(true)~ defeated Step 3's cache on every keystroke —
 fixed at 9.99.1057 for the default configuration.* Its rewire pass used to end
 in an unconditional ~_invalidateUniqDropDataCacheForTable(table)~, which also
-drops ~_colHeaderCountsCache~. ~runFilter~ calls it every pass (~:42748~ multi,
-~:42946~ single); ~sa_enable_picard_tagger~ defaults *true* and the only guard
+drops ~_colHeaderCountsCache~. ~runFilter~ calls it every pass, in both
+branches; ~sa_enable_picard_tagger~ defaults *true* and the only guard
 is "does this tbody contain a ~/release/~ link". So on ~artist-releases~,
 ~artist-releasegroups~, ~releasegroup-releases~, ~series-releases~ and
 ~collections-releases~, 9.99.1049's memoization never hit at all.
@@ -251,12 +256,12 @@ reference for everything that is not about this column.
 
 *~_countLiveDateFlags()~ tallies the live tbody, not the source rows.* Its own
 JSDoc claims the totals "stay a stable page-wide summary independent of
-whatever filter happens to be active" (~:32874-32876~), but ~runFilter~ REMOVES
+whatever filter happens to be active", but ~runFilter~ REMOVES
 non-matching rows rather than hiding them. This is the identical bug already
 fixed for ~_countLengthMismatchRows~, which now counts ~_msSourceRows()~ for
 exactly this reason. Its buttons are created unconditionally in
-~mb-global-summary-container~ (~:32629~, asserted by
-~tests/fixtures/filter-bar-containers.spec.js~), so the early-out at ~:32919~
+~mb-global-summary-container~ (asserted by
+~tests/fixtures/filter-bar-containers.spec.js~), so its early-out
 never fires and the walk always runs, on every pageType.
 
 *** Measured, 2026-09-09 — and it moved the ordering
@@ -326,7 +331,7 @@ all three, so hiding it removes searchable content — which is affordable at
 
 Two costs are also already better optimised than they look, and should not be
 re-attacked: the prose-clamp ~scrollHeight~/~clientHeight~ reads are batched
-into one layout flush per column (~:57752-57757~), and
+into one layout flush per column, and
 ~_updateAllColHeaderCounts~ is already deferred, sliced per column, coalesced
 per table and memoized (Steps 3 and 22).
 
@@ -1163,7 +1168,7 @@ already-measured wins rather than adding a new one.
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script
 v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
 
-~_useIO~ (~:63104~) checks ~allRows.length~, which is always 0 in
+~_useIO~ checks ~allRows.length~, which is always 0 in
 ~tableMode: 'multi'~ mode, so lazy CAA/EAA loading never activates on any
 multi-table art page (e.g. ~user-ratings~) regardless of row count — see
 "Findings" regression #2. Fix: compute the row count from ~groupedRows~
@@ -1192,7 +1197,7 @@ existing ~_invalidateColHeaderCountsCache~ call in
 paths.
 
 *Extended by the 2026-08-25 cloud ultra review*: a third uninvalidated site
-— ~_artSetInlineSortKey()~ (~:63570~), called from ~8 CAA/EAA
+— ~_artSetInlineSortKey()~, called from ~8 CAA/EAA
 fetch-completion callbacks, stamps the ~.mb-inline-art-sort-key~ sentinel
 that ~openUniqDrop~'s inline-art scan reads, with no corresponding
 invalidation call either. Same fix shape: call
@@ -1290,9 +1295,9 @@ landed on ~main~, not whether anyone ever wrote it.
 
 Found by the 2026-08-25 cloud ultra review — not a missed optimization, a
 live bug in already-~DONE~ code. ~_artProcessIoEntriesBatched()~ (added by
-the animation-frame-batching fix under Step 5, ~:61449-61470~) references
+the animation-frame-batching fix under Step 5) references
 ~_caaImgQueue~/~_caaMetaQueue~, neither of which is declared anywhere in
-the file — the real queue is ~_caaQueue~ (~:58083~), which every other call
+the file — the real queue is ~_caaQueue~, which every other call
 site (including this function's own eager-path sibling
 ~_artInitSmallPics~) uses correctly. Under ~'use strict'~, reading either
 undeclared name throws ~ReferenceError~ the moment the IntersectionObserver
@@ -1324,7 +1329,7 @@ real ~_caaQueue~, matching every other call site's guard shape.
 v9.99.976). A proposal: no implementation exists on that branch or on ~main~.
 
 Found by the 2026-08-25 cloud ultra review. ~runFilter()~'s single-table
-branch (~:37125-37145~) explicitly hides a cdtoc tracklist sub-row when its
+branch explicitly hides a cdtoc tracklist sub-row when its
 parent row no longer matches (correct — prevents an orphaned visible
 sub-row), but the matched/show branch never restores it, even though the
 adjacent comment claims "a visible row's sub-row is left exactly as the
@@ -1358,7 +1363,7 @@ an inline CAA front-cover thumbnail AND has a separate "CAA" column
 already-fetched image instead of fetching it again? Investigation found the
 two DO already fetch the byte-identical front-thumbnail URL
 (~ctx.archiveHost + entityPath + '/front-' + size~) through the same shared
-three-tier cache, ~_artFetchCachedImage()~ (~:58705~ before this change) —
+three-tier cache, ~_artFetchCachedImage()~ (as it stood before this change) —
 so on any table where the inline pass (always run first, never IO-gated)
 has time to resolve before the CAA-column's own icon task is dequeued from
 the shared ~_caaQueue~ (true for essentially all tables above trivial
@@ -1386,8 +1391,8 @@ resolves with whatever ~{fromIdb, fromMemory}~ the leading call determined.
 Applies uniformly to CAA and EAA, and to both the inline and column
 pipelines, since all four go through this one shared function. Also applies
 to a THIRD consumer of the same cache found while verifying this step: the
-release-group bigbox strip (~_artInitBigPics~ → ~_loadBigImgIdb~, ~:62282~
-before this change) fetches the identical front-thumbnail URL too (its
+release-group bigbox strip (~_artInitBigPics~ → ~_loadBigImgIdb~, as it
+stood before this change) fetches the identical front-thumbnail URL too (its
 ~sa_caa_big_img_size~ setting defaults to the same 250 as
 ~sa_caa_small_img_size~), so all three now share the same de-dup.
 
@@ -1647,7 +1652,7 @@ Preliminary pass already done (grepped every ~getBoundingClientRect~/
 total hits, most on dialogs/tooltips/dropdowns unrelated to table rows):
 
 - *Safe, confirmed* — auto-resize column-width measurement
-  (~:26247-26277~, the "Measure ALL data rows — no sampling" loop): clones
+  (the "Measure ALL data rows — no sampling" loop): clones
   each cell's child nodes (~cloneNode(true)~) into a separate, always-
   rendered ~measureDiv~ appended to ~document.body~, then reads
   ~measureDiv.offsetWidth~ — never reads the live row's own geometry, so
@@ -1655,18 +1660,18 @@ total hits, most on dialogs/tooltips/dropdowns unrelated to table rows):
   means the pass's own O(rows) cost is NOT reduced by this step either —
   it clones every visible-per-filter row's cells regardless of scroll
   position, both before and after. Not a goal of this step, not a risk.)
-- *Safe, confirmed* — ~applyStickyColumn~'s per-row loop
-  (~:16036-16111~): reads ~getComputedStyle(cell).backgroundColor~ only
+- *Safe, confirmed* — ~applyStickyColumn~'s per-row loop reads
+  ~getComputedStyle(cell).backgroundColor~ only
   (non-geometric, unaffected by skipping); ~_leftOffset()~
-  (~:15970-15972~) is hardcoded to return ~0~, no geometry read at all.
-- *Safe, confirmed* — ~_findCellListItems~ (~:16897~),
-  ~_classifyCollapseCell~ (~:17419~), ~initBarcodeHighlight~ (~:64011~),
-  ~_cdtocInitTracklistToggles~ (~:50256~): none read
+  is hardcoded to return ~0~, no geometry read at all.
+- *Safe, confirmed* — ~_findCellListItems~,
+  ~_classifyCollapseCell~, ~initBarcodeHighlight~,
+  ~_cdtocInitTracklistToggles~: none read
   offsetWidth/offsetHeight/getBoundingClientRect/scrollWidth/scrollHeight
   anywhere in their bodies (grepped directly).
 - *Safe by construction* — every tooltip/hover-preview positioning call
-  site (~getBoundingClientRect~ on hover targets, e.g. ~:53454~, ~:59054~,
-  ~:60981~, ~:62578~): these only run on ~mouseenter~ of an element the
+  site (~getBoundingClientRect~ on hover targets — four of them when this was
+  written): these only run on ~mouseenter~ of an element the
   user is currently pointing at, which by definition cannot be in the
   skipped (off-screen) state at that moment.
 - *At risk, newly identified* — ~initCollapsableColumns()~'s first-~<li>~
@@ -2025,16 +2030,16 @@ the sentinel the ordering depends on.
 
 The mechanism, verified at 9.99.1045:
 
-- ~_CLEAN_STRIP_SEL~ (~:38143~) contains ~'.mb-caa-sort-key,.mb-eaa-sort-key,'~
-  (~:38166~) and ~'.mb-inline-art-sort-key,'~ (~:38155~) — plus ~.caa-icon~,
+- ~_CLEAN_STRIP_SEL~ contains ~'.mb-caa-sort-key,.mb-eaa-sort-key,'~
+  and ~'.mb-inline-art-sort-key,'~ — plus ~.caa-icon~,
   ~.artwork-icon~, ~.mb-caa-count-badge~ and the cache-hint wrappers, so a
   plain CAA/EAA icon cell has no surviving text at all.
-- ~getCleanVisibleText()~ (~:38082~) removes all of it by clone-and-remove
-  *before* its TreeWalker runs, with a ~FILTER_REJECT~ belt-and-braces at
-  ~:38108~.
-- ~createSortComparator()~ (~:18563~, values at ~:18565-18566~) and
-  ~createMultiColumnComparator()~ (~:18598~, ~:18604-18605~) read *only*
-  ~getCleanVisibleText()~. ~_sortColumnKind()~ (~:16552~) has no CAA/EAA
+- ~getCleanVisibleText()~ removes all of it by clone-and-remove
+  *before* its TreeWalker runs, with a ~FILTER_REJECT~ belt-and-braces in the
+  walker's own filter.
+- ~createSortComparator()~ and
+  ~createMultiColumnComparator()~ read *only*
+  ~getCleanVisibleText()~. ~_sortColumnKind()~ has no CAA/EAA
   branch and classifies these columns ~'text'~.
 
 *The strip itself is correct and must stay* — its own comment explains why: a
@@ -2044,7 +2049,7 @@ consumers were each given a replacement and sorting was not:
 
 | Consumer               | How it survives the strip                                                                                  |
 |------------------------+------------------------------------------------------------------------------------------------------------|
-| Column filter          | explicit bypass in ~testRowMatch()~ (~:41738-41749~) — exact-match test straight against the span          |
+| Column filter          | explicit bypass in ~testRowMatch()~ — exact-match test straight against the span                           |
 | Unique-values dropdown | migrated to structure-mode relabeling ("✓ has artwork" / "✗ no artwork" via ~_cellMatchesStructureMode()~) |
 | *Sort*                 | *nothing*                                                                                                  |
 
@@ -2072,10 +2077,10 @@ confined to the two artwork ones — the other two never entered
 
 | Sort-key class                     | In ~_CLEAN_STRIP_SEL~? | Contract                                                                                                                                                                     |
 |------------------------------------+------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| ~mb-caa-sort-key~ (serves EAA too) | *yes* (~:38166~)       | *broken* — JSDoc ~:3614~ still claims ~"no" < "yes"~ works                                                                                                                   |
-| ~mb-inline-art-sort-key~           | *yes* (~:38155~)       | filter-only by design, so no sort contract broken — but ~_artSetInlineSortKey()~'s JSDoc claims the strip pass excludes its class, and that no bypass is needed. Both false. |
-| ~mb-cancelled-sort-key~            | no                     | intact — JSDoc ~:3827~ correct                                                                                                                                               |
-| ~mb-video-sort-key~                | no                     | intact — JSDoc ~:3525~ correct                                                                                                                                               |
+| ~mb-caa-sort-key~ (serves EAA too) | *yes*                  | *broken* — the ~caa~ extractor's JSDoc still claims ~"no" < "yes"~ works                                                                                                     |
+| ~mb-inline-art-sort-key~           | *yes*                  | filter-only by design, so no sort contract broken — but ~_artSetInlineSortKey()~'s JSDoc claims the strip pass excludes its class, and that no bypass is needed. Both false. |
+| ~mb-cancelled-sort-key~            | no                     | intact — its JSDoc correct                                                                                                                                                   |
+| ~mb-video-sort-key~                | no                     | intact — its JSDoc correct                                                                                                                                                   |
 
 Note ~.mb-eaa-sort-key~ is in the strip selector but is never created: the
 ~caa~ extractor always writes ~mb-caa-sort-key~ regardless of CAA vs EAA.
@@ -2092,17 +2097,18 @@ Mirror the filter bypass, which is the precedent this should follow:
 1. In ~createSortComparator()~ and ~createMultiColumnComparator()~, before
    falling through to the text compare, read
    ~cell.querySelector('.mb-caa-sort-key,.mb-eaa-sort-key')~ directly and use
-   its ~'yes'~/~'no'~ text — exactly as ~:41749~ already does for filtering.
+   its ~'yes'~/~'no'~ text — exactly as ~testRowMatch()~'s own bypass already
+   does for filtering.
    Both comparators must change together; they have disagreed before (see
    ~_sortColumnKind()~'s own JSDoc for that history).
 2. Add a regression test. There is currently none for this guarantee, which is
    why it regressed silently.
 3. Correct three JSDoc blocks that document behaviour which does not happen:
-   - ~:3609-3617~ (and the inner ~appendSortKey~ block) — the ~"no" < "yes"~
+   - the ~caa~ extractor's JSDoc (and the inner ~appendSortKey~ block) — the ~"no" < "yes"~
      sortability claim.
    - ~_artSetInlineSortKey()~ — the "strip pass does not include this class"
      and "no bypass required" claims.
-   - ~:56576~ — describes Step 3 as "not part of this branch", written when
+   - the comment describing Step 3 as "not part of this branch", written when
      ~_visibleRowSetSignature~ lived on a branch. Unrelated to this bug, but
      it is the one remaining stale ~PERFORMANCE.org~ cross-reference in the
      userscript and it is cheap to fix in the same pass.
@@ -2135,7 +2141,7 @@ that the row count survives — which is precisely the gap "Why it went
 unnoticed" identifies above. Verified failing before the change, with the
 presence sequence after an ascending sort coming back fully unsorted.
 
-Point 3's third item (~:56576~) was narrower than filed: Step 3 was still
+Point 3's third item was narrower than filed: Step 3 was still
 ~TODO~ at the time, so only the parenthetical "not part of this branch" was
 stale, not the cross-reference itself. Step 3 has since landed (9.99.1049).
 
@@ -2447,8 +2453,8 @@ the next reader will read the shrink as a regression.
 
 *** DONE Step 25: ~_countLiveDateFlags~ always walks every cell of every row
 
-Two problems in one function (~:32881-32901~), reached from
-~updateFilterButtonsVisibility()~ → ~_updateLiveDateFlagButtons()~ (~:33509~)
+Two problems in one function, reached from
+~updateFilterButtonsVisibility()~ → ~_updateLiveDateFlagButtons()~
 on every filter pass.
 
 *Correctness — FIXED, shipped 9.99.1100 (2026-09-18).* It used to walk the live
@@ -2507,10 +2513,10 @@ what the ~expect: "pass"~ entries say; this records that it is not unverified.
 
 *** TODO Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
 
-~runFilter~ calls ~updateFilterButtonsVisibility()~ unconditionally at ~:43187~,
-and its tail (~:33509-33511~) runs three counters. Two of them —
-~_countLengthMismatchRows~ (~:32991~) and ~_pendingEditsGroups~ /
-~_countPendingEditRowsSingle~ (~:33146~/~:33164~) — deliberately walk the
+~runFilter~ calls ~updateFilterButtonsVisibility()~ unconditionally,
+and its tail runs three counters. Two of them —
+~_countLengthMismatchRows~ and ~_pendingEditsGroups~ /
+~_countPendingEditRowsSingle~ — deliberately walk the
 *source* rows via ~_msSourceRows()~, one ~querySelector~ each, so their cost is
 the full row count no matter how narrow the filter is. On ~artist-events~ that
 is ~8 300 ~querySelector~ calls per pass whose answers cannot have changed:
@@ -2518,7 +2524,7 @@ their inputs are the source rows, which a filter never mutates.
 
 Fix: memoize both against the source-row set, invalidated where the source rows
 are actually replaced (fetch, sort, disk load — the same three sites
-~_invalidateFilterCache()~ already hooks, ~:44781~, ~:58524~, ~:63632~) and
+~_invalidateFilterCache()~ already hooks) and
 wherever a flag is stamped asynchronously.
 
 *This is the item that matters most on a narrow filter*, which is the case
@@ -2527,7 +2533,7 @@ shrinks as the query narrows, while these three stay flat at the full row count.
 
 *** TODO Step 27: Scope ~_applyPostRenderRowPasses()~ to the dirty tables
 
-~_applyPostRenderRowPasses()~ (~:42326-42341~) is page-wide: four
+~_applyPostRenderRowPasses()~ is page-wide: four
 ~document.querySelectorAll('table.tbl')~ sweeps, running ~applyZebraStriping~,
 ~normalizeCommentSpans~, ~applyStickyColumn~ and ~initBarcodeHighlight~ over
 every table on the page, including sub-tables that are collapsed and sub-tables
@@ -2538,21 +2544,21 @@ the per-group decorate pass for every sub-table a sort did not disturb, but
 these four still run over all of them — so a 47-section page sorting one section
 still pays the whole page's row-by-cell style-recalc storm from Step 24's walk.
 
-Fix: honour ~_renderDirtyGroupIdxs~ (~:42185~), which already exists and already
+Fix: honour ~_renderDirtyGroupIdxs~, which already exists and already
 carries exactly the right answer. Note the same caveat Step 18 records for the
 colon-alignment finalizers: a pass scoped to one group must not run anything
 that measures a width shared across the whole rendered row set.
 
 *** TODO Step 28: Hold the header-count scan until typing settles
 
-~_scheduleColHeaderCounts()~ (~:57017~) already waits out any in-flight render,
+~_scheduleColHeaderCounts()~ already waits out any in-flight render,
 yields through ~_yieldToEventLoop()~, coalesces per table via the Step 22 token,
 and memoizes through Step 3's LRU. What it does not do is wait for the user to
 stop typing.
 
 That matters because *Step 3's cache misses by construction while typing*: its
-key is the visible row set (~_colHeaderCountsRowSetSignature~, ~:56913~) with a
-four-entry LRU (~:52519~), and every distinct query produces a distinct row set.
+key is the visible row set (~_colHeaderCountsRowSetSignature~) with a
+four-entry LRU, and every distinct query produces a distinct row set.
 Only backspacing to an already-seen set hits — and backspacing toward the full
 row set is the most expensive direction of all, which is what
 ~headerCountsRestore~ measures at 5.7-12.3 s depending on host.
@@ -2568,10 +2574,10 @@ slightly different thing. Say so in ~tests/MEASUREMENTS.org~ when it lands.
 
 *** TODO Step 29: Stop re-deriving cell text in the highlight pass
 
-~testRowMatch~ (~:41688~) runs twice per surviving row. The first call
+~testRowMatch~ runs twice per surviving row. The first call
 (~matchOnly=true~, on the source row) reads every cell through ~_rowTextCache~
-(~:35148~). The second (~matchOnly=false~, on the clone — ~:42854~ single,
-~:42662~ multi) re-derives all of it with fresh ~getCleanColumnText~ /
+The second (~matchOnly=false~, on the clone, in both ~runFilter~
+branches) re-derives all of it with fresh ~getCleanColumnText~ /
 ~getCleanVisibleText~ calls, because the clone is a different element and the
 cache is keyed by element identity.
 
@@ -2580,8 +2586,8 @@ Two fixes, independent of each other:
 - Feed the source row's cached per-cell text into the clone pass. The clone is a
   ~cloneNode(true)~ of that exact row and the text is identical by construction.
 - Scope the global-filter highlight. ~highlightText(row, q, …, -1, …)~
-  (~:38622~, dispatch at ~:38666-38669~) walks *every* ~<td>~ of the row, doing
-  ~td.normalize()~ plus a full ~highlightCrossTag~ TreeWalk (~:38785~) on each.
+  walks *every* ~<td>~ of the row, doing ~td.normalize()~ plus a full
+  ~highlightCrossTag~ TreeWalk on each.
   The match pass already knows which cells hit; on a query that matches one
   column this is ~C~ times more work than needed.
 
@@ -2596,27 +2602,27 @@ Small, independent, and cheap to verify. Grouped because none justifies its own
 step.
 
 - *The unconditional ~window.scrollTo(__scrollX, __scrollY)~* at the tail of
-  every pass (~:43011~) forces a reflow whether or not the scroll position
+  every pass forces a reflow whether or not the scroll position
   actually moved. Guard it. This is the exact term that made Steps 1/2 lose on
   narrow filters (219 ms against ~main~'s 35 ms), so landing it changes the
   arithmetic those steps get re-judged on.
-- *~getCleanColumnText~ calls ~root.normalize()~ unconditionally* (~:38414~).
+- *~getCleanColumnText~ calls ~root.normalize()~ unconditionally*.
   On the no-clone fast path ~root~ IS the live cell, so this mutates the live
   DOM on every one of the ~88 000 calls a full header-count pass makes.
 - *~getCleanColumnText~ ends with an unconditional
-  ~element.querySelector('ul.mb-caa-art-ul')~* (~:38473~) — a full failing
+  ~element.querySelector('ul.mb-caa-art-ul')~* — a full failing
   subtree scan per call on every page with no artwork columns.
 
 *** TODO Step 31: Multi-table incremental narrowing
 
 Single-table mode narrows a lengthening plain-text global query to the previous
-match set instead of rescanning ~allRows~ — ~_incrMatchSet~ and friends
-(~:35122-35124~), gate at ~:42794-42812~, deliberately disabled for regexp and
+match set instead of rescanning ~allRows~ — ~_incrMatchSet~ and friends,
+gated inside ~runFilter~ and deliberately disabled for regexp and
 exclude because neither narrows monotonically.
 
 Multi-table mode has no equivalent: it re-runs
-~_sourceRows.filter(r => testRowMatch(r, matchCtx, true))~ per group per pass
-(~:42596~), with only ~_filterResultCache~ (50 entries, FIFO) between it and a
+~_sourceRows.filter(r => testRowMatch(r, matchCtx, true))~ per group per
+pass, with only ~_filterResultCache~ (50 entries, FIFO) between it and a
 full rescan. Port the same gate per group.
 
 Cheap and mechanical, but genuinely lower value than it looks: the match scan is
@@ -2801,9 +2807,9 @@ Full design and test plan in ~org/picard.org~.
 ~_initRelationshipsColumnImpl()~ collects every unpopulated ~td.mb-rel-cell~,
 dedupes to ~uniqueMbids~, and fetches one WS/2 request per unique MBID at
 initial render, regardless of where the row sits relative to the viewport.
-(Grep the function name; the line refs this paragraph used to carry —
-~:62582~, ~:62619-62620~, ~:62659~ — were already ~600 lines stale before they
-were removed.)
+(Grep the function name. The line refs this paragraph used to carry were
+already ~600 lines stale before they were removed — which is the reason every
+other one in this file followed them, on 2026-09-20.)
 
 Since Step 35 the collection is *per table and skips collapsed ones*, so
 "every unpopulated cell on the page" is no longer literally true; the sentence
@@ -2866,8 +2872,8 @@ one function — roughly *1.05 million*, twelve per cell across 87 654 cells,
 against ~27 000 for everything else in the phase combined. Full numbers in
 ~tests/MEASUREMENTS.org~.
 
-The shape: ~runFilter~ calls it once per cell of every cloned row (~:42848~
-single, ~:42656~ multi), and its body (~:60597~) runs about a dozen
+The shape: ~runFilter~ calls it once per cell of every cloned row, in both
+branches, and its body runs about a dozen
 UNCONDITIONAL ~querySelectorAll~ passes over that cell — the CAA/EAA
 enrichment markers, art ~<li>~ items, expand buttons, collapse toggles, icon
 spans, inline placeholders, three cache-hint families, the ERG buttons, and a
@@ -3478,7 +3484,7 @@ Tried both ~content-visibility: auto~ on every ~<tr>~ (see this file's own
 technique for a related cost) and ~table-layout: fixed~ with locked
 ~<col>~ widths (the exact technique this codebase's own manual-resize
 handler already uses, with the comment "so subsequent width writes are
-cheap" — see ~ShowAllEntityData.user.js~ around ~:25860~). Measured against
+cheap" — grep that comment in ~ShowAllEntityData.user.js~). Measured against
 the same forced-reflow probe, isolated to the table (~table.offsetHeight~,
 not ~document.body.offsetHeight~, to rule out unrelated page content):
 
@@ -3591,7 +3597,7 @@ Step 6+ heading in "Implementation steps".
 
 *** Correctness regressions in Steps 1-5
 
-1. ~_visibleRowSetSignature()~ (~:49412~) is documented as order-independent
+1. ~_visibleRowSetSignature()~ is documented as order-independent
    ("regardless of row order") but is actually an order-DEPENDENT string
    concat over ~tbody.rows~ in DOM iteration order. Sort (Step 2) reorders
    rows in place without hiding/showing any of them, so the row SET is
@@ -3603,7 +3609,7 @@ Step 6+ heading in "Implementation steps".
    moment a sort has happened first — far and away the highest-impact
    regression found, since it undoes two already-shipped, already-measured
    steps at once.
-2. Step 5's lazy-load gate (~_useIO~, ~:63104~) computes
+2. Step 5's lazy-load gate (~_useIO~) computes
    ~allRows.length >= sa_caa_io_threshold~, but ~allRows~ is only populated
    in single-table mode — it stays empty for every ~tableMode: 'multi'~
    page (e.g. ~user-ratings~' "Release groups"/"Events" sub-tables, which
@@ -3612,20 +3618,20 @@ Step 6+ heading in "Implementation steps".
    activates there — reproducing the exact "did not complete within 180s"
    eager-load queue-saturation failure Step 5 was built to fix, for every
    multi-table art page.
-3. ~initReleaseEventsColumn()~'s post-population re-init (~:53971~) calls
+3. ~initReleaseEventsColumn()~'s post-population re-init calls
    Step 3's ~_invalidateColHeaderCountsCache(t)~ but never Step 4's
    ~_invalidateUniqDropDataCache~ — a uniq-drop dropdown opened for
    Release events/Country/Date while that column is still populating can
    cache a near-empty bundle that then never refreshes (nothing invalidates
    it afterward) until an unrelated filter/sort happens to change the
    row-set signature.
-4. ~initRelationshipsColumn()~/~initPicardTaggerColumn()~ (~:54689~) never
+4. ~initRelationshipsColumn()~/~initPicardTaggerColumn()~ never
    re-trigger ~initCollapsableColumns()~/the recount pass at all — Step 3's
    own implementation notes already flagged this as a pre-existing gap for
    header counts; Step 4 adds a second, equally uninvalidated cache
    (~relIconCounts~ and friends) on top of it with no new invalidation path
    either.
-5. ~_rowTextCache~ (~:30460~, filter-match text memoization) is never
+5. ~_rowTextCache~ (filter-match text memoization) is never
    invalidated anywhere in the file. A filter run before an async column
    (Release events/Relationships/Picard) finishes populating permanently
    caches that row's pre-population (often empty) text; a later filter
@@ -3637,7 +3643,7 @@ Step 6+ heading in "Implementation steps".
 *** New performance opportunities (candidate Step 6+, not yet in the plan above)
 
 1. ~sortLargeArray~'s comparator (~createSortComparator~/
-   ~createMultiColumnComparator~, ~:15508~) calls ~getCleanVisibleText()~
+   ~createMultiColumnComparator~) calls ~getCleanVisibleText()~
    (clone + ~TreeWalker~ text extraction) fresh on every pairwise
    comparison instead of once per row before sorting — for a 5,000-row
    merge sort (~n log n~ ~ 60,000+ comparisons), that's 100,000+ redundant
@@ -3651,7 +3657,7 @@ Step 6+ heading in "Implementation steps".
    precompute each row's sort-key text (and each column's ~isNumeric~) once
    before calling ~sortLargeArray~ (decorate-sort-undecorate).
 2. ~applyExtractTrackTitleData()~'s ~_anyTitleCellMatches()~ helper
-   (~:7748~) runs one independent full-table DOM scan per "does any track
+   runs one independent full-table DOM scan per "does any track
    need column X" presence check (video/recArtist/disambig/streaming/
    recOf/recordedAtEvent/recordedAtPlace/recordedInArea/mixedAtPlace/
    recOfDate, ...) — ~10-15 sequential full re-walks of every row for what
