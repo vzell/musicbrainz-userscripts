@@ -2494,11 +2494,23 @@ included**, so dropping it fails a test rather than quietly regressing the look.
 **The CSS is inside a `GM_addStyle` template literal.** A backtick in a comment
 there terminates the literal and breaks the whole script; and a CSS `\\XXXX`
 escape is read as a *JS* escape first, which is why this file writes glyphs as
-literal characters. **Both have now cost a debugging round twice** — the
-backtick one on the very commit that first documented it — and `node --check`
-reports the failure at the *start of the template*, often hundreds of lines
-before the real cause, which is what makes it slow to find. Grep the region you
-just edited for a backtick before reaching for anything else.
+literal characters. **Both have now cost a debugging round three times** — the
+backtick one on the very commit that first documented it, and again at
+9.99.1129 — and `node --check` reports the failure at the *start of the
+template*, often hundreds of lines before the real cause, which is what makes
+it slow to find. Grep the region you just edited for a backtick before reaching
+for anything else.
+
+**And `node --check` does NOT always catch it.** At 9.99.1129 a comment used
+backticks for four id fragments; because they BALANCED, the file stayed
+syntactically valid JavaScript and `node --check` passed cleanly. What
+happened instead was silent: the literal closed and reopened, so every CSS rule
+after that point stopped applying. The symptom was five failing pill tests —
+including four that had nothing to do with the change — which reads like a
+broken feature rather than a broken string. **An even number of backticks is
+the dangerous case**, because the one tool you would reach for says the file is
+fine. If a CSS change makes unrelated rules stop working, grep the edited
+region for a backtick before debugging anything else.
 
 ## The h2/h3 control runs are segmented pills too — three of them, not one
 

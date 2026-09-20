@@ -76,5 +76,18 @@
     "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
     "grep": "two pills, not one",
     "expect": "pass"
+  },
+  {
+    "name": "the shared-height rule enumerates buttons instead of using the prefixes",
+    "why": "This is the defect as reported from a real page: the rule named -retry- and -global-retry explicitly, so the 📊 summary button was never in it, and its taller emoji broke the pill's straight edge. Reverting to the enumerated form reproduces it exactly, and would do the same to the next control added under the naming convention.",
+    "edits": [
+      {
+        "find": "        [id^=\"mb-caa-toggle-btn-\"],\n        [id^=\"mb-eaa-toggle-btn-\"],\n        [id^=\"mb-rel-retry-\"],\n        .mb-subtable-resize-btn,",
+        "replace": "        [id^=\"mb-caa-toggle-btn-retry-\"],\n        [id^=\"mb-eaa-toggle-btn-retry-\"],\n        [id$=\"-global-retry\"],\n        [id^=\"mb-rel-retry-\"],\n        .mb-subtable-resize-btn,"
+      }
+    ],
+    "spec": "tests/fixtures/control-run-segmented-pill.spec.js",
+    "grep": "same height",
+    "expect": "fail"
   }
 ]

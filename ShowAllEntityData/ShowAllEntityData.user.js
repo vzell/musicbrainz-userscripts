@@ -35050,12 +35050,29 @@ a { color: #1565c0; }`;
            + 1 px top border  + 1 px bottom border
            = 22 px total.
            box-sizing:border-box is set on the individual elements so that
-           padding + border are included in the declared height.             */
+           padding + border are included in the declared height.
+
+           SELECTED BY THE PILL'S OWN ID PREFIXES, not by enumerating each
+           button. It used to name -retry- and -global-retry explicitly, which
+           silently left the summary button (-summary-N) out — its emoji is
+           taller than the other glyphs, so with no height to sit in it grew and
+           broke the run's straight edge. Any control that keeps the naming
+           convention now gets the shared height for free, which is the same
+           promise the segmented-pill CSS makes and for the same reason. The
+           old [id$="-global-retry"] selector is gone as redundant: both
+           -global-retry ids begin with one of these prefixes.
+
+           NO BACKTICKS IN THIS COMMENT, AND THAT IS NOT A STYLE CHOICE. This
+           whole block is inside a GM_addStyle template literal, so a backtick
+           here terminates it. The first draft of this very comment used them
+           for the id fragments above; node --check PASSED because they
+           happened to balance, and every rule after this point silently
+           stopped applying — which failed five pill tests, not one. CLAUDE.md
+           records this trap as having cost a debugging round twice before.   */
         .mb-caa-art-toggle-btn,
         .mb-global-art-toggle-btn,
-        [id^="mb-caa-toggle-btn-retry-"],
-        [id^="mb-eaa-toggle-btn-retry-"],
-        [id$="-global-retry"],
+        [id^="mb-caa-toggle-btn-"],
+        [id^="mb-eaa-toggle-btn-"],
         [id^="mb-rel-retry-"],
         .mb-subtable-resize-btn,
         .mb-subtable-vis-btn {
@@ -35078,9 +35095,8 @@ a { color: #1565c0; }`;
 
         /* H3 CAA/EAA art toggle buttons and their retry siblings */
         .mb-caa-art-toggle-btn:active,
-        [id^="mb-caa-toggle-btn-retry-"]:active,
-        [id^="mb-eaa-toggle-btn-retry-"]:active,
-        [id$="-global-retry"]:active,
+        [id^="mb-caa-toggle-btn-"]:active,
+        [id^="mb-eaa-toggle-btn-"]:active,
         [id^="mb-rel-retry-"]:active {
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
