@@ -13826,3 +13826,51 @@ counter-guard that native headings are still demoted). Mutations:
 `scripts/mutations/preprocessing-group-idempotency.json` — 2 fail, 1 recorded
 `pass` (`applyRenameH2ToH1` carries the identical hazard on `user-edits` /
 `user-open-edits`, which have no driveable fixture).
+
+## 2026-09-20 — a filter-proofness test that proved nothing, and the mutation that said so
+
+Building the per-table `⚠⟳` controls (`org/503-handling.org`'s zone 4). The
+property that matters is the one that design names as its own trap 2: the count
+must come from SOURCE rows, because `runFilter()` REMOVES non-matching rows and
+a control that hides itself at zero would vanish exactly when a filter excludes
+the rows it is the only way back to.
+
+So the spec filtered the table to nothing and asserted the counts were
+unchanged. It passed. **It also passed against a build with the source-row walk
+deliberately removed** — `scripts/mutation-check.py` reported
+`expected fail, got pass`.
+
+**Why.** Nothing recomputes those counts after a filter. The refresh is driven
+by the enrich pass, which has long finished by the time anyone types. The
+buttons were simply *stale*, and a stale correct number is indistinguishable
+from a freshly-computed correct number by looking at it. Traced by logging the
+refresh:
+
+```
+DIAGPT[load]          PTREFRESH caa
+DIAGPT[load]          PTREFRESH caa
+DIAGPT counts-before  ["⚠⟳ 6","⚠⟳ 1"]
+DIAGPT counts-after   ["⚠⟳ 6","⚠⟳ 1"]      <- after the filter; no PTREFRESH between
+```
+
+**Two things follow, and only one of them is a code change.**
+
+The staleness itself is benign and was left alone: the counts only change while
+failures are being recorded, so there is nothing to recompute afterwards. An
+intermediate attempt to "fix" it by hooking the refresh into the render path
+(`_artCreateOrUpdateRetryButton`, once per table per render) did not make the
+mutation fail either — that hook is not reached on a filter re-render — and it
+was kept only because re-anchoring the controls after a render is worth doing on
+its own terms.
+
+What made the property testable was `__saTest.artRefreshPerTableFailed()`,
+which runs the real function and bypasses only its 1 s throttle. With the
+recompute forced, the mutation fails with the right message.
+
+**The transferable part** is the shape of the mistake, not the API. The
+assertion was about a value that nothing was recalculating, so it could only
+ever observe inertia. CLAUDE.md already says "name the guarantee precisely, or
+the test proves something adjacent" — this is the variant where the test proves
+something *stationary*. Before asserting that X survives an event, check that
+anything recomputes X in response to it; if not, the test measures nothing and
+mutation-testing is what will say so.

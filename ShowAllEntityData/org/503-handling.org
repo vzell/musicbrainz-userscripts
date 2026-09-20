@@ -43,9 +43,9 @@ pre-processing defect on =fix/preprocessing-group-idempotency= — where
 reproducing it first showed the filed note had the mechanism right and the
 reachability (Load-from-Disk, not a second button press), the blast radius (17
 pageTypes, not 18) and the symptom (element identity, not a duplicate heading)
-all wrong. See DEBUG-NOTES.md, 2026-09-20. *Remaining: only the optional
-rescoping of the =⚠⟳= controls to per table, which is a choice rather than a
-blocker (see the pill section's trap 2).*
+all wrong. See DEBUG-NOTES.md, 2026-09-20. The =⚠⟳= rescoping to per table shipped on
+=feat/per-table-failed-retry=, closing the last item. *Nothing in this file is
+outstanding.*
 
 F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
@@ -628,8 +628,14 @@ both are legitimate.
    discography view does not break it either — the merge pass clones rows and
    "the originals stay in groupedRows intact". A single-table page needs one
    extra arm (=allRows= against the one table), as =_msSourceRows()= shows.
-   So per-table zone 4 is a decision about whether it is worth it, not a
-   blocker. The original warning stands on its own terms:
+   So per-table zone 4 was a decision about whether it was worth it, not a
+   blocker — and it shipped on =feat/per-table-failed-retry= (2026-09-20),
+   using exactly that binding, now named =_tableSourceRows()=. The original
+   warning stands on its own terms, and turned out to be the sharpest part of
+   this design: the first spec written for it filtered the table, re-read the
+   buttons, and passed against a build with the source-row walk REMOVED,
+   because nothing recomputes those counts after a filter. See DEBUG-NOTES.md,
+   2026-09-20. The warning, verbatim:
    =_relTableProgress()= reads =table.querySelectorAll('tbody td.mb-rel-cell[data-mbid]')=
    — the LIVE tbody — and =runFilter()= REMOVES non-matching rows rather than
    hiding them. A zone that disappears at =failed === 0= would therefore vanish

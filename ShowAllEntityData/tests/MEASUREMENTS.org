@@ -2011,3 +2011,30 @@ Note the corollary for the earlier figure in this file: the suite's jump from
 ~1 m 50 s (353 tests) to ~5 m 18 s (403 tests) was NOT 50 tests' worth of
 work. It was these two files alone — 14 tests that are almost entirely rate
 gate and retry backoff.
+
+* 2026-09-20 — cost of a per-table source-row walk (NB-3641)
+
+Taken to decide how often the per-table =⚠⟳= failed-retry counts may be
+recomputed. The page-wide count is =ctx.failedCache.size=, an O(1) read, which
+is why it can afford a =requestAnimationFrame= for the whole artwork load. A
+per-table count has to attribute entity paths to tables, which is a walk.
+
+| host                    | =NB-3641=                                        |
+| date (UTC)              | 2026-09-20                                       |
+| page                    | =artist-events= disk fixture, =tableMode: single= |
+| rows                    | 4174                                             |
+| one walk (median of 10) | *~5 ms*                                          |
+
+What the walk is: one =querySelectorAll('a[href$="/cover-art"]')= per source
+row. 5 ms is roughly a third of a 60 fps frame budget, sustained for as long as
+artwork is loading — so per-frame was rejected. At one walk per second the same
+cost is ~0.5% and invisible, which is what
+=_ART_FAILED_TBL_REFRESH_MS= (1000) buys.
+
+*Settle-only was rejected for a non-performance reason*: CLAUDE.md records that
+=_showCaaCompletionToast()= never fires at all on a large listing, so controls
+gated on settle would never appear on exactly the pages with the most failures.
+
+The Relationships half needed no such decision — its refresh was already not
+hooked per frame, and partitioning its existing page-wide pass costs the same
+total as the pass it replaces.
