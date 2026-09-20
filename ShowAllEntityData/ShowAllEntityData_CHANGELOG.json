@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.1128",
+    "date": "2026-09-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The ⚠⟳ \"retry only what failed\" buttons — for cover art, event art and relationships — now also appear on each sub-table, counting that sub-table's own failures. The page-wide one beside the main heading stays, so you can repair one section or the whole page, exactly as the ⟳ and 🔗⟳ reload buttons have always worked.",
+          "Each of them joins its own group's pill, so a sub-table with failures reads as one control: toggle, count, reload, and retry-what-failed.",
+          "The counts are taken from the rows themselves rather than from what is currently on screen, so filtering the table does not make them shrink — and a button never disappears while a filter is hiding the very rows it would repair."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1127",
     "date": "2026-09-20",
     "sections": [
