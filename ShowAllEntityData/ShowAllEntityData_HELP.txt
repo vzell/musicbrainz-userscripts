@@ -1282,6 +1282,11 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
       retry just those.
   The panel counts the rows currently SHOWN.  If a filter is active it says
   so at the top rather than passing a filtered subset off as the whole table.
+  On a big discography "pending" can stay put for a long time, and the panel
+  explains why rather than leaving it looking stuck: cover-art lookups are
+  deliberately queued BEHIND every image on the page, so the pictures appear
+  first.  On a 2 000-release artist that is half an hour before the first
+  lookup runs.  The panel shows how many jobs are still queued page-wide.
 • Artwork already on screen stays on screen.  Sorting or filtering rebuilds
   the table rows, and both the small icon and the inline thumbnail now come
   back already showing their image instead of blanking and repainting a

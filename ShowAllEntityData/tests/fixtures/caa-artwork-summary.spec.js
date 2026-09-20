@@ -256,6 +256,16 @@ test.describe('CAA artwork summary panel', () => {
         expect(Number(valueOf(rows, 'pending')), 'and what has not')
             .toBeGreaterThan(0);
 
+        // "pending" must not read as "stuck". Diagnosed from a real 2144-row
+        // discography where NOT ONE of 2144 anchors was enriched: the count was
+        // literally true, because initCaaPics()' Pass 2 queues every JSON lookup
+        // behind every image fetch on the page. The number was right and
+        // unexplained, which is its own kind of wrong.
+        await expect(page.locator(`${PANEL} .mb-art-sum-queue`),
+            'pending says why it is pending').toHaveCount(1);
+        expect(await page.locator(`${PANEL} .mb-art-sum-queue`).textContent())
+            .toContain('queued page-wide');
+
         releaseHeld();
     });
 

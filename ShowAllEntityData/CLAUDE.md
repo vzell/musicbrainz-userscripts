@@ -1955,6 +1955,13 @@ loop continue past a failure.
   on the `_caaQueue`'s `onIdle`, and CLAUDE.md records that on a large listing it
   never fires at all — so a panel gated the same way is useless on exactly the
   pages that motivated it. There is a mutation that adds such a gate.
+- **"pending" must say WHY it is pending.** `initCaaPics()`'s Pass 2 enqueues
+  every JSON lookup BEHIND every image fetch on the page, deliberately, so
+  icons and strips paint first. On a 2144-row discography that is half an hour
+  before the first lookup runs — diagnosed from `debug/bs-debug.html`
+  (2026-09-20), where not one of 2144 art anchors carried `data-caa-enriched`.
+  The count was literally true and read as stuck, which is how it was reported
+  as a bug. The panel now shows the queue depth alongside it.
 - **It does not reuse `_caaFetchStats`.** Those are PAGE-WIDE tallies; this is
   per table and does its own pass.
 - **The scope is declared, not implied.** `runFilter()` REMOVES non-matching

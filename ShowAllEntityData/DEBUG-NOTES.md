@@ -13516,3 +13516,54 @@ number move at all after several minutes; does the CAA toggle badge beside
 "Album (21)" stay at 0; does the page header ever show a `CAA:` timing. If
 enrichment is not running at all there, a `debug/` snapshot of that page is the
 next step.
+
+## 2026-09-20 (later still) — defect 1 answered: the panel was telling the truth
+
+Closes the "STILL OPEN" item in the entry above. Answered from evidence, not
+from reasoning: `debug/bs-debug.html`, an 11.7 MB save of the 2144-row
+Springsteen artist-releasegroups page taken while other sub-tables were still
+loading.
+
+**What the snapshot says**, counted with
+`scratchpad/analyse_bs.py`-style greps:
+
+    table.tbl count: 47
+    PAGE-WIDE: cover-art anchors = 2144, with a direct-child icon span = 2144
+    occurrences of data-caa-enriched: 0
+
+Two conclusions, and the second is the answer.
+
+1. **My earlier guess is dead twice over.** All 2144 anchors carry
+   `<span class="artwork-icon caa-icon">`, so `ctx.iconSel` and the plain
+   `a[href$="/cover-art"]` scan find the *same* 2144. The selector was never
+   the difference — which is what the reverted test had already failed to show.
+2. **Not one anchor on the page had been enriched.** `data-caa-enriched`
+   occurs zero times across 2144 anchors. So "21 pending" was *literally true*:
+   nothing had been looked up, in that sub-table or any other.
+
+**Why nothing had been looked up.** `initCaaPics()` Pass 2 enqueues every JSON
+lookup BEHIND every image fetch on the page, and says so in its own comment —
+"so that small icons and big-strip loads have priority in `_caaQueue`. Users
+who start filtering immediately will see visual feedback before count badges
+and multi-row art cells arrive." That is a deliberate and defensible choice.
+Its consequence at this scale is not: 2144 entities at the archive's ~1.2 req/s
+is roughly half an hour before the first *lookup* runs, during which every
+table's summary reads "N pending" and never moves.
+
+**So the defect was never a wrong number — it was a true number with no
+context**, which is indistinguishable from a stuck one. The fix is
+informational: the panel now shows the page-wide queue depth beside the pending
+count and says lookups are queued behind the images. Mutation-covered
+(`"pending" is shown with no explanation`).
+
+**What was NOT changed, deliberately.** The Pass 1 / Pass 2 ordering stands.
+Reversing it would make count badges appear before any picture did, on every
+page, to improve one screen on the largest pages only — and PERFORMANCE.org has
+no measurement for that trade. If it is ever revisited, the thing to measure is
+time-to-first-painted-icon against time-to-first-count, not either alone.
+
+**Method note worth keeping.** Three rounds on this one: a guess (reverted), a
+test that passed against the buggy build (deleted), and then eleven megabytes of
+saved HTML that answered it in one grep. The snapshot was cheaper than either
+of the first two, and CLAUDE.md already said so — "Always read the relevant
+`debug/*.html` before proposing any DOM fix". I proposed one first.

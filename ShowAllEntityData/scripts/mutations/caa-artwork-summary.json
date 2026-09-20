@@ -89,5 +89,18 @@
     "spec": "tests/fixtures/caa-artwork-summary.spec.js",
     "grep": "archive fields nothing else surfaces",
     "expect": "pass"
+  },
+  {
+    "name": "\"pending\" is shown with no explanation",
+    "why": "Diagnosed from debug/bs-debug.html: on a 2144-row Springsteen discography NOT ONE of the 2144 art anchors carried data-caa-enriched, so the panel's \"21 pending\" was literally TRUE — initCaaPics()' Pass 2 queues every JSON lookup behind every image fetch on the page, and at ~1.2 req/s that is half an hour before the first lookup runs. A true number with no context reads as a stuck one, and that is what was reported as a bug.",
+    "edits": [
+      {
+        "find": "        if (e.pending && d.queue && (d.queue.pending + d.queue.running) > 0) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/caa-artwork-summary.spec.js",
+    "grep": "opens MID-LOAD",
+    "expect": "fail"
   }
 ]

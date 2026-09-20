@@ -35947,6 +35947,11 @@ a { color: #1565c0; }`;
             color: #777;
             font-size: 0.92em;
         }
+        #mb-art-summary-panel .mb-art-sum-queue {
+            display: block;
+            margin-top: 4px;
+            color: #1565c0;
+        }
         #mb-art-summary-panel .mb-art-sum-edit {
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
@@ -77714,6 +77719,18 @@ a { color: #1565c0; }`;
         });
 
         const out = {
+            // The artwork QUEUE, because "21 pending" with no context reads as
+            // "stuck". Diagnosed from debug/bs-debug.html (2026-09-20): on a
+            // 2144-row, 47-table Springsteen discography NOT ONE of the 2144 art
+            // anchors carried `data-caa-enriched`, so the panel's count was
+            // literally true — enrichment had not started. `initCaaPics()` Pass 2
+            // enqueues every JSON lookup BEHIND every image fetch on the page, on
+            // purpose, so icons and strips paint first; at the archive's ~1.2
+            // req/s that is half an hour before the first lookup runs. The number
+            // was right and unexplained, which is its own kind of wrong.
+            queue: _caaQueue
+                ? { pending: _caaQueue.pendingCount, running: _caaQueue.runningCount }
+                : null,
             entities: { total: paths.length, has: 0, none: 0, failed: 0, pending: 0 },
             failedPaths: [],
             images: 0,
@@ -77873,6 +77890,17 @@ a { color: #1565c0; }`;
         chip(ents, 'none on record', e.none, e.none ? '' : 'mb-art-sum-zero');
         chip(ents, 'failed', e.failed, e.failed ? 'mb-art-sum-bad' : 'mb-art-sum-zero');
         chip(ents, 'pending', e.pending, e.pending ? '' : 'mb-art-sum-zero');
+
+        // Why "pending" is not "stuck". Shown only while something is actually
+        // outstanding, so a settled table gains nothing.
+        if (e.pending && d.queue && (d.queue.pending + d.queue.running) > 0) {
+            const q = d.queue.pending + d.queue.running;
+            add(el, 'div',
+                `Artwork metadata is fetched after every image on the page — `
+                + `${q} job${q === 1 ? '' : 's'} still queued page-wide, so a large `
+                + `discography can sit here for a long time before the first lookup runs.`,
+                'mb-art-sum-note-inline mb-art-sum-queue');
+        }
 
         const imgs = sec('Images on record');
         chip(imgs, 'total', d.images);
