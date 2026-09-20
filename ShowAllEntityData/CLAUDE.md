@@ -144,6 +144,83 @@ startFetchingProcess(e, buttonConfig, baseDef)
         creates h3 + table.tbl pairs, inserts master-toggle button
 ```
 
+## `startFetchingProcess()` is entered TWICE only by a resume — a second press reloads
+
+Anything that reasons about "what happens when the fetch runs again" has to
+start here, because the obvious answer is wrong. A second press does not
+re-enter the function:
+
+```javascript
+// Reload the page if a fetch process has already run to fix column-level
+// filter unresponsiveness
+if (isLoaded && !_isResume) {
+    sessionStorage.setItem('mb_show_all_reload_pending', 'true');
+    window.location.reload();
+    return;
+}
+```
+
+Nothing re-presses after the reload — init only clears the flag — so the error
+arm's own advice, *repress the "Show all" button*, means **reload, then press
+again**. Do not read that comment as evidence that the render tail is exercised
+a second time on a live page; it is not, and building item 5 on that inference
+cost five stalled spec runs whose only symptom was a renderer blocked so hard
+that `page.evaluate()` timed out (DEBUG-NOTES.md, 2026-09-20).
+
+**The `_isResume` exemption is the ONE way back in**, and it is deliberately
+narrow. `startFetchingProcess(e, buttonConfig, baseDef, resumeFrom)` with a
+`resumeFrom` record changes exactly six things and nothing else:
+
+1. the page count is reused from the record, not re-probed — and its two
+   threshold dialogs stay shut, so the user is not asked twice about the same
+   pages;
+2. the four HEADING pre-processing steps are skipped (see the defect below);
+3. the artist-releasegroups official-headers pre-fetch, and the
+   `h3_*_category_header_array` reset that sits **in front of** its pageType
+   guard, are skipped — that reset is unconditional and would otherwise empty
+   the very arrays the accumulator guard protects;
+4. the row accumulators are **not** cleared — `allRows`, `groupedRows`,
+   `_mbRowIdxCounter`, `expandedCells`, `_inlineArtSettled`,
+   `_areaFlagRegionCorrected`, `_seenTopCdStubHrefs`, the `h3_*` arrays;
+5. the loop starts at `resumeFrom.nextPage`;
+6. the "this page is the page we are standing on, use `document`" shortcut is
+   disabled — by then the render has replaced the live table with the
+   consolidated one, so it would re-extract this script's own output as page N.
+
+**`_mbRowIdxCounter` staying un-zeroed is the load-bearing one.** It is what
+gives resumed rows fresh `data-mb-row-idx` values continuing from where the
+interrupted run stopped, so every map keyed `"rowIdx:colIdx"` stays consistent
+with no merge step and no renumbering pass. Re-zeroing it is invisible to every
+row-count, status-text and request-log assertion.
+
+**The filter is NOT preserved across a resume**, and that is a decision, not an
+oversight: the render tail never calls `runFilter()`, so a preserved filter
+input would sit above a table showing every row. A resume is a fetch, and a
+fetch starts from a clean filter.
+
+`_resumeState` is written only by the loop's page-failure arm and cleared at the
+top of every run (including a resumed one) and on a disk load. `__saTest.resumeState()`
+exposes it, because a resumed run that silently re-fetched everything looks
+identical on screen to one that kept its rows.
+
+## Pre-processing is idempotent per function, NOT as a group (open defect)
+
+`applyInsertH2()` guards itself with a `data-mb-injected-h2="1"` marker it
+stamps and then queries for. `applyRenameH2ToH3()` runs **before** it, renames
+**every** `<h2>` in the document, and copies all attributes onto the `<h3>` it
+substitutes — so a second pass turns the injected `<h2 data-mb-injected-h2="1">`
+into an `<h3 data-mb-injected-h2="1">`, that marker query finds nothing, and
+another heading is injected beside the orphan.
+
+**18 pageTypes declare both features**: every `*-tags` type plus `user-ratings`,
+`popular-tags`, `reports-index`, `edit-types`, `instrument-list`,
+`privileged-accounts`, `notes-received`.
+
+Reachable today by pressing the button twice, which is what the script tells the
+user to do after a critical error. **Found by reading, not yet reproduced in a
+browser** — confirming it is its own small job on its own branch. The resume
+path sidesteps it by skipping the block, which is not a fix.
+
 ## Critical bug fix: user-tags container re-root (v9.99.521)
 
 `/user/<n>/tags` has no `div#content`. Native DOM:

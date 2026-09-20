@@ -20,6 +20,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F7 (CAA) | =feat/caa-retry-failed-only=   | =tests/fixtures/caa-retry-failed-only.spec.js=      |
 | zone 2   | =feat/caa-artwork-summary=     | =tests/fixtures/caa-artwork-summary.spec.js=        |
 | item 7   | =feat/rel-auto-retry-failed=   | =tests/fixtures/rel-auto-retry-failed.spec.js=      |
+| item 5   | =feat/resume-from-failed-page= | =tests/fixtures/resume-from-failed-page.spec.js=    |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -36,8 +37,10 @@ Remaining order: item 1 (shared transient classifier) shipped on
 =fix/release-events-transient=, and item 8 (F7) shipped in two halves —
 =feat/rel-retry-failed-only= then =feat/caa-retry-failed-only=, the second of
 which cleared its own blocker. Item 7 shipped on
-=feat/rel-auto-retry-failed=. *Remaining: item 5 (resume — still needs
-design), and the segmented pill from the UI design.*
+=feat/rel-auto-retry-failed=, item 5 on =feat/resume-from-failed-page=.
+*Remaining: the segmented pill from the UI design, and one defect found while
+designing item 5 — the heading pre-processing block is not idempotent as a
+group, which bites a plain second press on 18 pageTypes.*
 
 F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
@@ -428,11 +431,17 @@ things now working.
    status line and =pagesProcessed=, the render-decision dialog, the
    save-without-rendering line, the disk-load line and the FILE ITSELF carry the
    marker, all from one resolver (=_fetchIncompleteSummary()=). No new controls.
-5. *Resume from the failed page* (visible, medium). A "↻ Load remaining pages"
-   button that continues the loop from page K, appending to the existing
-   accumulators. Worth doing only if the accumulators can be kept without a
-   re-architecture; otherwise the honest answer is to rerun. Needs design
-   before any code.
+5. [DONE] *Resume from the failed page* (visible, medium). A
+   "↻ Load remaining pages" button that continues the loop from page K,
+   appending to the existing accumulators. Shipped on
+   =feat/resume-from-failed-page=; seven tests in
+   =tests/fixtures/resume-from-failed-page.spec.js=, eleven mutations. The gate
+   this entry set — "worth doing only if the accumulators can be kept without a
+   re-architecture" — is *answered yes*: the accumulators are module-level
+   already and the resume skips one contiguous reset block. Design, the costs,
+   the two things the plan got wrong and the two defects it turned up: see
+   "DESIGN — item 5" below. One of those, the =isLoaded= reload, is the reason
+   this was not the small change the design predicted.
 6. [DONE] *Route release events through =_ws2GetJson()=* (silent, small), plus
    the failure state on the column header if it still fails (F4). Shipped on
    =fix/release-events-transient=; the header state turned out to be worth
@@ -482,9 +491,12 @@ Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
 modal ("some requests failed"); any change to the pacing constants without a
 measurement (the 1 request/second rule is MusicBrainz's, not ours to loosen).
 
-Items 1-4 and 6 were non-intrusive and each was a few lines plus a test. Item
-5 is the only one left that adds UI. Item 7 was the only one with a
-rate-limit risk, and shipped with four independent ceilings for that reason.
+Items 1-4 and 6 were non-intrusive and each was a few lines plus a test. Item 5
+was the only one that adds UI, and the only one that needed a design step
+first — which earned its keep twice over, though not in the way intended: the
+design's own feasibility argument contained a false premise, and building it
+was what found that out. Item 7 was the only one with a rate-limit risk, and
+shipped with four independent ceilings for that reason.
 
 * Retry UI: one segmented control per table
 
@@ -762,6 +774,209 @@ The page/run level, which is where the most data is at stake (F1-F3). A
 per-table control cannot say "page 4 of 40 failed"; item 4's status line is
 still the fix for that.
 
+* DESIGN — item 5, resume from the failed page
+
+Written 2026-09-20, before any code, because the entry says to. Everything
+below is read out of the file; line references are deliberately absent
+(=ShowAllEntityData.user.js= grows on nearly every commit), so grep the names.
+
+** The gate, answered
+
+Four facts, none of them assumed:
+
+1. *The accumulators are already module-level and already survive the fetch.*
+   =allRows=, =originalAllRows=, =groupedRows= and =_mbRowIdxCounter= are
+   declared at module scope; =startFetchingProcess()= clears them in ONE
+   contiguous block near its top. Nothing has to be moved or re-homed — one
+   block has to be skipped.
+
+2. *Row indices continue correctly for free, and this is the part that would
+   otherwise have forced a re-architecture.* =_mbRowIdxCounter= is module-level
+   and is cleared in that same block, so a resume that skips the block gives
+   the new rows FRESH indices continuing from where the partial run stopped.
+   Every map keyed ="rowIdx:colIdx"= — =expandedCells=, =_inlineArtSettled=,
+   =_areaFlagRegionCorrected= — therefore stays consistent with no merge step
+   and no renumbering pass. Had that counter been per-run, resumed rows would
+   have collided with rendered ones and all three maps would have needed
+   reconciling, which is the re-architecture this entry was worried about.
+
+3. *The render tail is re-entrant — but the FUNCTION was not, and this fact
+   as first written was WRONG.* The render halves are fine:
+   =renderFinalTable()= and =renderGroupedTable()= both clear before inserting,
+   and =runFilter()= drives them on every keystroke. The inference drawn from
+   that was not: /the critical error arm's own advice is "repress the Show all
+   button", so a second full pass over a rendered page is an exercised path./
+   It is not a pass at all. =startFetchingProcess()= answers a second press
+   like this:
+
+   #+begin_src js
+   // Reload the page if a fetch process has already run to fix column-level
+   // filter unresponsiveness
+   if (isLoaded) {
+       sessionStorage.setItem('mb_show_all_reload_pending', 'true');
+       window.location.reload();
+       return;
+   }
+   #+end_src
+
+   Nothing re-presses afterwards — the flag is only cleared on init — so
+   "repress the button" means /reload, then press again/. A resume that reached
+   this line would throw away the rows it exists to keep and leave the user on
+   a bare page, which is precisely what it did: the first five runs of the spec
+   stalled here, with the renderer blocked and no error anywhere.
+
+   *The resume is exempted* (=if (isLoaded && !_isResume)=), and the exemption
+   is not free: the guard's stated reason is "column-level filter
+   unresponsiveness" after a second fetch, a 2026-05 workaround whose mechanism
+   is not recorded. So the property it protects is asserted directly instead —
+   the spec filters a COLUMN after a resume, checks the rows narrow to exactly
+   the matching count, and clears it again. It does. A mutation in the other
+   direction (dropping =isLoaded &&= outright) is in the list too, so the
+   reload for a genuine second press cannot be removed by accident either.
+
+   *The lesson, since it is the one that cost the most here:* "this path is
+   already exercised" is a claim about code, and it was made from a comment in
+   an error arm rather than from the code the comment describes.
+
+4. *Both cross-page carry values are stashable.*
+   =lastCategorySeenAcrossPages= is a category string.
+   =pendingUrlLinkedGroupCell= is ALREADY a =cloneNode(true)= and its only
+   reader takes =.innerHTML=, so neither holds a reference into the parsed
+   document that is discarded when the iteration ends. This was the one thing
+   that could have made a resume silently mis-group rows across the K-1/K
+   boundary on =report-multiple-linked=. It does not.
+
+** What it costs, counted rather than estimated
+
+*18 function-scoped locals* of =startFetchingProcess()= are read by the fetch
+loop and the render tail. That is the READ set; the set that has to be
+STASHED is smaller, and the difference is the whole reason this is a small
+change. *Seven* values cannot be recovered:
+
+  =nextPage= (the page that failed), =maxPage=, =pagesProcessed=,
+  =totalRowsAccumulated=, =cumulativeFetchTime=, =lastCategory=,
+  =pendingGroupCellHtml=
+
+plus three identity fields the re-entry needs (=button=, =buttonConfig=,
+=baseDef=) and one flag for the tooltip's wording (=maxPageKnown=). Everything
+else is DERIVED, and derived from things that do not change between the
+interrupted run and the resume: =overrideParams= and =targetHeader= from
+=activeDefinition=, =currentPageNum= from the URL,
+=isAmbiguousEditsPagination= from the live pagination widget, =activeBtn= from
+the stashed button, and the four timers fresh per run as always.
+
+*This was found by building it, not by the count above* — which is the reason
+the count is kept here rather than replaced: "18 locals are read" was the
+honest first estimate, and the gap between it and the seven is what the design
+step was for.
+
+The merged =activeDefinition= and every =activeColumn*= array are module-level
+too, so a resume inherits them unchanged — which is also the reason a resume
+must NOT be offered after the user has pressed a different button.
+
+** Two shapes, and which one
+
+- *Option A — extract the loop and the render tail* (about 2 280 lines
+  together) into their own function taking a state object. *Rejected:* the
+  extraction, not the feature, becomes the change, and it lands on the single
+  most-guarded path in the file. The 18 locals above would become its
+  signature.
+- *Option B — a module-level =_resumeState= plus a =resumeFrom= argument to
+  =startFetchingProcess()=, with the loop starting at =startPage=.* *Chosen.*
+  It needs four guarded blocks in the setup, not twenty — see below. The
+  guards are the honest cost: every future edit to that setup has to ask
+  whether the resume path wants it, which is why they are named here.
+
+** The four blocks a resume must skip
+
+1. *The page-count probe and its two threshold dialogs.* Reuse the stashed
+   =maxPage=. Re-asking costs a request and fires "⚠️ High Page Count" a
+   second time over the same page set. When =maxPage= was never learned
+   (=maxPageUnknown=) no resume is offered at all — there is no K..M to
+   resume to.
+2. *The accumulator reset block.* The whole point.
+3. *The heading pre-processing* — =applyRenameH2ToH3=, =applyRenameH2ToH1=,
+   =applyInsertH2=, =applyInsertPrependH2=. Not merely unnecessary: actively
+   wrong on a second pass, which is a finding of its own, below. The REST of
+   the pre-processing sequence (=listToTable=, =editsToTable=,
+   =notesReceivedToTable=, the =isrc= stamp, the release-page tracklist passes)
+   deliberately still runs: it is shape-driven, so the first pass consumes its
+   native input and a second finds nothing to do.
+4. *The artist-releasegroups official-headers pre-fetch, and the
+   =h3_*_category_header_array= reset that sits in front of it.* Neither was in
+   the plan. The reset is unconditional and NOT inside the pageType guard, so
+   it would have quietly emptied the very arrays the accumulator guard was
+   protecting; and re-running the pass itself would re-fetch the whole
+   official-only pagination for a row set that has not changed.
+
+*Two things the plan got wrong, both found by building it:*
+
+- *The filter UI reset is NOT skipped.* The plan said to keep the user's typed
+  filter. It cannot: the render tail never calls =runFilter()=, so a preserved
+  filter input would sit above a table showing every row. Preserving it
+  properly means a second full render on the resume path only. A resume is a
+  fetch, and in this script a fetch starts from a clean filter — so it does
+  too. Cheaper, and one behaviour rather than two.
+- *The loop's "this page is the page we are standing on, use =document=" shortcut
+  must be disabled on a resume.* By then the render has replaced the live table
+  with the consolidated one, so the shortcut would re-extract this script's own
+  output as page N of the listing. Reachable: standing on =?page=7= with page 5
+  failing puts =p === currentPageNum= inside the resumed range.
+- *The synthetic click event needs three members, not one.*
+  =startFetchingProcess()= reads =e.target= and then calls =e.preventDefault()=
+  and =e.stopPropagation()=. A bare ={target}= throws on the second, aborting
+  the resumed run before its first fetch — and the only visible symptom is a
+  run that never finishes. Caught by the spec's page-error guard.
+
+** A latent defect found while designing this: the pre-processing block is not idempotent as a GROUP
+
+=applyInsertH2()= is idempotent on its own, via a =data-mb-injected-h2="1"=
+marker it stamps and then queries for — carefully, with a long comment about
+why a text-based guard was not enough. But =applyRenameH2ToH3()= runs BEFORE
+it in the same block, renames EVERY =<h2>= in the document, and copies all
+attributes onto the =<h3>= it substitutes. So on a second pass the injected
+=<h2 data-mb-injected-h2="1">= becomes an =<h3 data-mb-injected-h2="1">=,
+=applyInsertH2()='s own =h2[data-mb-injected-h2="1"]= query finds nothing, and
+a second heading is injected beside the orphaned =<h3>=.
+
+*18 pageTypes declare both features*: =artist-tags=, =releasegroup-tags=,
+=release-tags=, =recording-tags=, =work-tags=, =label-tags=, =series-tags=,
+=place-tags=, =area-tags=, =instrument-tags=, =event-tags=, =user-ratings=,
+=popular-tags=, =reports-index=, =edit-types=, =instrument-list=,
+=privileged-accounts=, =notes-received=.
+
+This is reachable TODAY, without item 5, by pressing the button a second
+time — which is exactly what the script tells the user to do after a critical
+error. *Read from the code, not yet reproduced in a browser*; confirming it is
+its own small job and its own branch. It does not change item 5's design,
+which skips the block either way, and it is recorded here so that "the resume
+skips pre-processing" is not mistaken for caution.
+
+** What the build cost, and what it found
+
+Seven tests, 1.4 minutes, and eleven mutations — nine =fail=, two recorded
+=pass= with their reason (the live-document shortcut and the heading
+pre-processing are both unreachable from an =artist-events= fixture). The two
+things worth carrying forward:
+
+- *The reload guard above*, which is the whole reason this was not the
+  half-hour change the design predicted.
+- *The heading pre-processing defect*, found by reading and still not
+  reproduced in a browser. It is not on this branch's path — the resume skips
+  the block — so it keeps its own entry below and its own future branch.
+
+** Shape of the control
+
+Follows the existing retry-button precedent (=_relCreateRetryButtons()=): a
+small button created next to the thing it fixes. Here that thing is the status
+line's own =⚠️ Loaded 37 of 40 pages (1 234 rows) — INCOMPLETE=, so the button
+is appended at the END of that status block rather than into an =<h2>= — the
+status block is rebuilt wholesale on every run, so anything wedged between its
+segments would have to be re-created by each of them.
+
+Offered only when =_lastFetchIncomplete.pageFailure= is set AND =maxPage= is
+known. A resumed run that fails again simply offers it again, from the new K.
+
 * Performance and compatibility notes
 
 - Items 1-4 add no work on the success path (a status check that already
@@ -807,11 +1022,15 @@ Do not measure with the live site and quote it as a rate.
 3. On the expand-RG error row, does one click re-arm the load or two? The
    =retrySetup= handler installs =loadOnce= on the /next/ mousedown, which also
    toggles the row.
-4. [ANSWERED — not needed] Every caller stops at its first failed page, so
-   exactly one page can ever pay the retries: a down site costs three attempts
-   in total, not three per page. The =break= already IS the budget. This stops
-   being true only if item 5 (resume) makes the loop continue past a failure —
-   design that in then, not before.
+4. [ANSWERED — not needed; re-checked against item 5's design 2026-09-20]
+   Every caller stops at its first failed page, so exactly one page can ever
+   pay the retries: a down site costs three attempts in total, not three per
+   page. The =break= already IS the budget. The caveat this entry left open —
+   "this stops being true only if item 5 makes the loop continue past a
+   failure" — does not fire: the resume designed below is a NEW run that also
+   =break=s at ITS first failure, so the per-run budget is unchanged. What it
+   adds is that the user may spend that budget again, by pressing a button,
+   which is the opposite of an unattended loop and needs no budget of its own.
 5. Should the ⏱ ='ws2'= source (row 6b) move onto =_ws2GetJson()=? It is a few
    lines and would give work/artist-relationships/place-performances/
    area-recordings the same three attempts the batched pages have. Left out of

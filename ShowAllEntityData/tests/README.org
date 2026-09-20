@@ -146,9 +146,11 @@ them for a decision.
 
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
-| =npm test= (353 fixture tests)              | *≈ 1 m 50 s* | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
+| =npm test= (403 fixture tests)              | *≈ 5 m 12 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
+| — the same suite at 353 tests               | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
 | slowest single fixture spec                 | *≈ 324 s*    | measured 2026-09-20, =NB-3641= — =rel-auto-retry-failed= (7 tests, =--workers=1=) |
 | previous slowest                            | ≈ 73 s       | measured — =rel-column-collapse-toggle= (10 tests)      |
+| =resume-from-failed-page= (7 tests)         | ≈ 84 s       | measured 2026-09-20, =NB-3641=, =--workers=1=           |
 | median individual fixture test              | ≈ 1.9 s      | measured 2026-09-19, =NB-3641=                          |
 | slowest individual fixture test             | ≈ 25.5 s     | measured 2026-09-19, =NB-3641=                          |
 | =npm run test:live= (=@core=, 10 tests)     | a few min    | estimate — mostly at the 120 s default                  |
@@ -156,8 +158,11 @@ them for a decision.
 | =releasegroup-releases-filter-sort.spec.js= | ≈ 12 min+    | the spec's own note: ~2 min setup *per test* × 6        |
 | =npm run test:live:extended= (68 tests)     | tens of min  | estimate; declared ceiling is 3 h 41 m                  |
 
-The fixture suite's 108 s wall clock against ~1159 s of summed test time is
-parallelism doing its job — 14 workers on a 28-core box, a ~10.7x speed-up.
+The fixture suite's wall clock is dominated by =rel-auto-retry-failed= below,
+which no amount of parallelism helps: it is one spec, and its own 324 s is a
+floor for the whole run. At 353 tests, before that spec existed, 108 s of wall
+clock against ~1159 s of summed test time was parallelism doing its job — 14
+workers on a 28-core box, a ~10.7x speed-up.
 
 *=rel-auto-retry-failed.spec.js= is an outlier worth knowing about*: 324 s on
 its own (=NB-3641=, 2026-09-20, =--workers=1=), four times the previous slowest
@@ -168,6 +173,11 @@ setup is ~33-40 s before the test body starts; the automatic pass then retries
 them. Shortening it means either weakening what it pins (the breaker needs more
 failures than its own threshold of 5) or reaching past the rate gate, which is
 the one thing the whole 503 series exists to respect. Left slow on purpose.
+
+=resume-from-failed-page.spec.js= is the same shape at a twentieth the size:
+each failing page costs =fetchHtml()='s three attempts and its 2 s + 5 s
+backoff, and four of its seven tests pay that twice. 84 s, and not worth
+shortening for the same reason.
 
 *Every fixture number in that table is one host on one day* (=NB-3641=,
 2026-09-19), and the worker count scales with the machine, so they are not

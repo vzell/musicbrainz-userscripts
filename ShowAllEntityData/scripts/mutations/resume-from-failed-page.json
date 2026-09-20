@@ -1,0 +1,112 @@
+[
+  {
+    "name": "a resume takes the second-fetch reload path",
+    "why": "startFetchingProcess() answers a second press with window.location.reload(), and nothing re-presses afterwards. A resume that took that door would destroy the very rows it exists to keep and leave the user on a bare page. This is the guard whose absence stalled the first five runs of this spec.",
+    "edits": [
+      { "find": "        if (isLoaded && !_isResume) {", "replace": "        if (isLoaded) {" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "fail"
+  },
+  {
+    "name": "the row accumulators are cleared on a resume after all",
+    "why": "THE feature. Page 1's rows come from the LIVE document and can never be re-fetched, so clearing the accumulators ends the resumed run at 200 rows while the status line, the request log and the row indices all still look right.",
+    "edits": [
+      { "find": "        if (!_isResume) {\n            allRows = [];", "replace": "        if (true) {\n            allRows = [];" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "fail"
+  },
+  {
+    "name": "the row-index counter is re-zeroed on a resume",
+    "why": "_mbRowIdxCounter is deliberately left running so resumed rows get FRESH indices. Re-zeroing it yields 300 rows carrying only 200 distinct data-mb-row-idx values — invisible to every row-count and status assertion, and corrupting for every map keyed \"rowIdx:colIdx\" (expandedCells, _inlineArtSettled, _areaFlagRegionCorrected).",
+    "edits": [
+      { "find": "        if (!_isResume) {\n            allRows = [];", "replace": "        _mbRowIdxCounter = 0;\n        if (!_isResume) {\n            allRows = [];" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "continue the row-index sequence",
+    "expect": "fail"
+  },
+  {
+    "name": "the page count is re-probed instead of reused",
+    "why": "Re-probing costs a request and, worse, puts the High Page Count dialog in front of the user a second time for the same set of pages.",
+    "edits": [
+      { "find": "        if (_isResume) {\n            // The page count was settled", "replace": "        if (false) {\n            // The page count was settled" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "not re-probed",
+    "expect": "fail"
+  },
+  {
+    "name": "the High Page Count dialog is not suppressed on a resume",
+    "why": "Independent of the maxPage reuse above: even with the count reused, an unguarded dialog re-asks about pages the user already agreed to. The dialog BLOCKS, so the run never finishes.",
+    "edits": [
+      { "find": "        } else if (!_isResume && maxPage > maxThreshold) {", "replace": "        } else if (maxPage > maxThreshold) {" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "not re-probed",
+    "expect": "fail"
+  },
+  {
+    "name": "the offer is not cleared at the top of a run",
+    "why": "_resumeState must be cleared by EVERY run, including a resumed one, or a successful resume leaves a stale offer pointing at a page that has since loaded.",
+    "edits": [
+      { "find": "        _resumeState = null;\n\n        // ── BEGIN: Artist-Releasegroups pre-fetch pass", "replace": "\n        // ── BEGIN: Artist-Releasegroups pre-fetch pass" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "fail"
+  },
+  {
+    "name": "the resume point names the wrong page",
+    "why": "A button that appeared with nextPage 1 would re-fetch from the start, which is the behaviour this feature exists to replace. Pinned as an exact object rather than \"a resume state exists\".",
+    "edits": [
+      { "find": "                        nextPage: p,", "replace": "                        nextPage: 1," }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "at the page that failed",
+    "expect": "fail"
+  },
+  {
+    "name": "the synthetic click event is missing preventDefault",
+    "why": "startFetchingProcess() reads e.target and then calls e.preventDefault() and e.stopPropagation(). A bare {target} throws on the second, aborting the resumed run before its first fetch — with no symptom but a run that never finishes.",
+    "edits": [
+      { "find": "            preventDefault() {},\n", "replace": "" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "fail"
+  },
+  {
+    "name": "a second press no longer reloads",
+    "why": "Counter-guard in the other direction: the reload is answered to a SECOND fetch and is deliberately untouched — the resume is exempted from it, not the other way round. Dropping `isLoaded &&` would make every press re-enter, which is the change this branch must not have made.",
+    "edits": [
+      { "find": "        if (isLoaded && !_isResume) {", "replace": "        if (false) {" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "still reloads the page",
+    "expect": "fail"
+  },
+  {
+    "name": "the live-document shortcut is not disabled on a resume",
+    "why": "KNOWN GAP, recorded rather than hidden. On a resume the render has already replaced the live table with the consolidated one, so `p === currentPageNum` would re-extract this script's own output as page N. It is reachable on a real page — standing on ?page=7 with page 5 failing — but NOT from this fixture, whose currentPageNum is 1 and whose resumed range starts at 2, so p can never equal it. Covering it needs a fixture loaded at a later page than the one that fails.",
+    "edits": [
+      { "find": "                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath", "replace": "                    if (!_isSearchPage && !buttonConfig.virtualPath" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "pass"
+  },
+  {
+    "name": "the heading pre-processing runs again on a resume",
+    "why": "KNOWN GAP, recorded rather than hidden. applyRenameH2ToH3() renames EVERY <h2> and copies its attributes, including the data-mb-injected-h2 marker applyInsertH2() guards on — so a second pass demotes the injected heading and injects another beside it. 18 pageTypes declare both features; artist-events, which this spec uses, declares neither, so no assertion here can see it. Covering it needs a fixture on a *-tags or user-ratings page.",
+    "edits": [
+      { "find": "        if (!_isResume && activeDefinition.features?.renameH2ToH3) {", "replace": "        if (activeDefinition.features?.renameH2ToH3) {" }
+    ],
+    "spec": "tests/fixtures/resume-from-failed-page.spec.js",
+    "grep": "keeps the rows already loaded",
+    "expect": "pass"
+  }
+]
