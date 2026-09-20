@@ -621,8 +621,14 @@ Checked against <https://musicbrainz.org/doc/Cover_Art_Archive/API> on
 | =approved=   | bool   | "whether the image was approved by the musicbrainz edit system" | yes, 1 site  |
 | =edit=       | int    | "the edit id on musicbrainz (e.g. 123)"                         | *no*         |
 
-=/release-group/{mbid}= returns the same image shape and adds a =release=
-field — "the specific release from which the art was sourced".
+=/release-group/{mbid}= returns the same image shape. *The documentation also
+says it adds a =release= field — "the specific release from which the art was
+sourced". IT DOES NOT.* Probed 2026-09-20
+(=scripts/probe-caa-release-group-release-field.py=): a release-group lookup
+returns images carrying exactly the same nine keys a release lookup does, and 0
+of 12 images carried =release=. This row was originally filled in from the docs
+alone, which is precisely what the root CLAUDE.md says not to do — and it cost
+a shipped feature that could never have worked.
 
 *Everything above is ALREADY FETCHED AND ALREADY PERSISTED.* Tier 3 does
 =images = Array.isArray(json.images) ? json.images : []= and hands that array
@@ -644,8 +650,10 @@ Four things are stored on every image and surfaced nowhere:
 - The full thumbnail ladder. The script reads whichever size it needs; the
   summary can say which sizes actually exist per image, which is how a missing
   =1200= (common on old uploads) stops being a mystery.
-- On a release-group listing, =release= — *which release supplied this cover*.
-  Nothing in the script can answer that today.
+- [WITHDRAWN] On a release-group listing, =release= — which release supplied
+  this cover. *The archive does not return this field*; see the probe above.
+  Answering it needs a MusicBrainz WS/2 lookup, with its own gate and its own
+  measurement.
 
 *** Proposed contents, per table
 
@@ -658,7 +666,7 @@ Four things are stored on every image and surfaced nowhere:
 | Flags    | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
 | Sizes    | how many images offer =1200= / =500= / =250=                                                   |
 | Edits    | =edit= ids, linked to =/edit/{id}=                                                             |
-| Sourced  | release-group listings only: which release each cover came from                                |
+| ~~Sourced~~ | *withdrawn* — the archive returns no =release= field; see the probe                        |
 | Failures | the failing entities by name, each a link, plus a "retry these" action                         |
 
 The Failures group is what ties zone 2 to zone 4: *zone 2 explains, zone 4
@@ -674,10 +682,13 @@ WS/2 lookup, and it needs its own gate and its own measurement.
 *As shipped, the panel makes no request at all* — every group reads
 =ctx.imagesCache=, which already holds =json.images= verbatim.
 
-*One group is shipped but UNTESTED: "Cover sourced from".* The archive
-returns =release= only on a release-GROUP lookup, and the fixture's page
-(=releasegroup-releases=) looks up releases. Covering it needs an
-=artist-releasegroups= fixture; recorded rather than left to be discovered.
+*The "Cover sourced from" group was built and then REMOVED.* It shipped
+untested — the fixture's page looks up releases, so it could not be exercised
+— and a live check on an =artist-releasegroups= page showed it never appearing.
+The probe explains why: the field does not exist. Removed the same day, with
+=scripts/probe-caa-release-group-release-field.py= committed as the evidence.
+*The lesson is the cheap one: a group nothing could test was a group nothing
+had checked.*
 
 *** Traps specific to this zone
 

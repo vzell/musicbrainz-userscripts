@@ -30,8 +30,8 @@
     "why": "For an editor chasing \"who added this cover and when\", the edit id is the single most useful field in the record, and it was dead weight in the cache. A plain number is not the feature.",
     "edits": [
       {
-        "find": "                a.href = 'https://musicbrainz.org/edit/' + edit;",
-        "replace": "                void edit;"
+        "find": "                a.href = 'https://musicbrainz.org/edit/' + id;",
+        "replace": "                void id;"
       }
     ],
     "spec": "tests/fixtures/caa-artwork-summary.spec.js",

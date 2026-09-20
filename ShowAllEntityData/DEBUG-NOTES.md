@@ -13452,3 +13452,67 @@ covering it needs an `artist-releasegroups` fixture.
 Seven mutations, six `expect: "fail"` confirmed plus one honest `expect: "pass"`
 for the entity-path dedup — this fixture has no sticky-column duplicate reaching
 an art anchor, so double-counting does not move the numbers here.
+
+## 2026-09-20 (later) — the artwork panel's live pass: one fix, one withdrawal, one open
+
+Corrects and extends the entry above, after the first browser pass over the
+zone 2 panel. Three things were reported; two are settled and one is not, and
+the not-settled one is the interesting entry.
+
+**"Cover sourced from" never appeared — because the field does not exist.**
+`org/503-handling.org`'s field table said a `/release-group/{mbid}` lookup
+"adds a `release` field — the specific release from which the art was sourced".
+That row was filled in from the Cover Art Archive's **documentation** on
+2026-09-19. `scripts/probe-caa-release-group-release-field.py`, 2026-09-20:
+
+    RELEASE-GROUP lookup  HTTP 200, 12 images
+      first image keys: approved back comment edit front id image thumbnails types
+      images carrying `release`: 0 of 12
+
+A release-group answer carries exactly the same nine keys a release answer
+does. The group is removed and every doc that repeated the claim is corrected,
+citing the probe.
+
+The root CLAUDE.md already says this in as many words — "the docs describe
+intent, and several endpoints behave differently from what they suggest…
+Record the probe result next to the code that depends on it" — and I built the
+group from the docs anyway. **The tell was there and I wrote it down myself**:
+the previous entry records the group as "shipped but UNTESTED" because no
+fixture could exercise it. A group nothing could test was a group nothing had
+checked.
+
+**The panel's presentation was reworked** toward the agreed mock: read-time and
+a "still loading" marker in the header, chip-style sections, a "N images have no
+1200" note, a distinct failed section, Retry/Close in a footer.
+
+**STILL OPEN: "not looked up yet" stuck at 21 on a 2144-row Springsteen
+artist-releasegroups page**, not falling over time or across reopens.
+
+I guessed a cause, wrote a regression test for it, and **the test passed against
+the build that still had the bug** — so the guess was reverted rather than
+shipped. Recorded because the guess was plausible and the disproof is cheap to
+repeat:
+
+- The guess: the panel scans `a[href$="/cover-art"]` while `_artEnrichTable()`
+  enqueues from `ctx.iconSel` (anchors that CONTAIN an icon span), so the panel
+  counts entities nothing will ever look up.
+- Disproof 1: `releasegroup-releases` has 7 cover-art anchors and **all 7**
+  carry icon spans, so the two selectors agree and that fixture cannot show the
+  difference either way — which is exactly why the test passed on the buggy
+  build.
+- Disproof 2: a Simon & Garfunkel **artist-releasegroups** page — the same
+  pageType — renders the panel correctly (43 with artwork), so `iconSel` does
+  find those anchors on that pageType.
+
+What actually differs between the two live pages is SCALE: 123 rows against
+2144. At the archive's ~1.2 req/s, ~2144 entities is roughly half an hour of
+queue, so the Album sub-table's 21 may genuinely still be behind it. If that is
+the story, the number is TRUE and useless, and the defect is that "pending"
+does not distinguish "queued behind two thousand others" from "in flight" and
+offers no sense of the queue.
+
+That remains a hypothesis. What would settle it, in order of cost: does the
+number move at all after several minutes; does the CAA toggle badge beside
+"Album (21)" stay at 0; does the page header ever show a `CAA:` timing. If
+enrichment is not running at all there, a `debug/` snapshot of that page is the
+next step.

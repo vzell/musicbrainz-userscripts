@@ -35901,10 +35901,71 @@ a { color: #1565c0; }`;
             color: #222;
         }
         #mb-art-summary-panel .mb-art-sum-title {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
             font-weight: bold;
             border-bottom: 1px solid #ddd;
             padding-bottom: 3px;
             margin-bottom: 4px;
+        }
+        #mb-art-summary-panel .mb-art-sum-name { flex: 1; }
+        #mb-art-summary-panel .mb-art-sum-when {
+            font-weight: normal;
+            font-size: 0.85em;
+            color: #888;
+            font-variant-numeric: tabular-nums;
+        }
+        #mb-art-summary-panel .mb-art-sum-live { color: #1565c0; }
+        #mb-art-summary-panel .mb-art-sum-sec { margin-top: 7px; }
+        #mb-art-summary-panel .mb-art-sum-note {
+            margin-top: 4px;
+            font-style: normal;
+        }
+        #mb-art-summary-panel .mb-art-sum-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 3px;
+            align-items: baseline;
+        }
+        #mb-art-summary-panel .mb-art-sum-chip {
+            border: 1px solid #ccc;
+            border-radius: 9px;
+            padding: 0 7px;
+            background: #f7f7f7;
+            white-space: nowrap;
+        }
+        #mb-art-summary-panel .mb-art-sum-chip b { font-variant-numeric: tabular-nums; }
+        #mb-art-summary-panel .mb-art-sum-zero { color: #999; background: #fbfbfb; }
+        #mb-art-summary-panel .mb-art-sum-bad {
+            border-color: rgba(190,140,0,0.7);
+            background: rgba(255,193,7,0.35);
+            color: #000;
+        }
+        #mb-art-summary-panel .mb-art-sum-note-inline {
+            color: #777;
+            font-size: 0.92em;
+        }
+        #mb-art-summary-panel .mb-art-sum-edit {
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        #mb-art-summary-panel .mb-art-sum-failed .mb-art-sum-h { color: #b26a00; }
+        #mb-art-summary-panel .mb-art-sum-foot {
+            display: flex;
+            gap: 6px;
+            margin-top: 9px;
+            padding-top: 6px;
+            border-top: 1px solid #ddd;
+        }
+        #mb-art-summary-panel .mb-art-sum-close {
+            cursor: pointer;
+            padding: 2px 8px;
+            border: 1px solid #aaa;
+            border-radius: 3px;
+            background: #f5f5f5;
+            font-size: 1em;
         }
         #mb-art-summary-panel .mb-art-sum-scope {
             color: #555;
@@ -77645,6 +77706,8 @@ a { color: #1565c0; }`;
         const seen = new Set();
         // Deduped by PATH: the sticky-column duplicate of a row carries the same
         // anchor, and a release-group breadcrumb can repeat one too.
+        // Deduped by PATH: the sticky-column duplicate of a row carries the
+        // same anchor, and a release-group breadcrumb can repeat one.
         table.querySelectorAll('tbody a[href$="' + ctx.artSuffix + '"]').forEach(a => {
             const p = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
             if (p && !seen.has(p)) { seen.add(p); paths.push(p); }
@@ -77658,7 +77721,14 @@ a { color: #1565c0; }`;
             flags: { mainFront: 0, mainBack: 0, unapproved: 0, untyped: 0 },
             sizes: { 1200: 0, 500: 0, 250: 0 },
             edits: [],
-            sourced: [],
+            // No `sourced`: org/503-handling.org's field table claimed a
+            // release-group lookup adds a `release` naming the release the art
+            // came from. That row was filled in from the API DOCUMENTATION, and
+            // the live archive disagrees — scripts/probe-caa-release-group-
+            // release-field.py, 2026-09-20: 0 of 12 images carry it, and a
+            // release-group answer has exactly the same nine keys a release
+            // answer does. The root CLAUDE.md's rule, verbatim: the docs
+            // describe intent, verify against the live endpoint.
         };
 
         paths.forEach(pth => {
@@ -77687,9 +77757,6 @@ a { color: #1565c0; }`;
                 const th = img.thumbnails || {};
                 [1200, 500, 250].forEach(sz => { if (th[sz]) out.sizes[sz]++; });
                 if (img.edit) out.edits.push({ edit: img.edit, path: pth });
-                // Release-group lookups only: which release supplied this cover.
-                // Nothing in the script could answer that before.
-                if (img.release) out.sourced.push({ release: img.release, path: pth });
             });
         });
         return out;
@@ -77768,88 +77835,103 @@ a { color: #1565c0; }`;
             parent.appendChild(n);
             return n;
         };
-        const row = (label, value) => {
-            const r = add(el, 'div', null, 'mb-art-sum-row');
-            add(r, 'span', label, 'mb-art-sum-k');
-            add(r, 'span', value, 'mb-art-sum-v');
-            return r;
-        };
-        const heading = (t) => add(el, 'div', t, 'mb-art-sum-h');
-
-        add(el, 'div', ctx.column + ' artwork summary', 'mb-art-sum-title');
+        // ── Header: what was read, and when ──────────────────────────────
+        const head = add(el, 'div', null, 'mb-art-sum-title');
+        add(head, 'span', `${ctx.column} summary`, 'mb-art-sum-name');
+        const now = new Date();
+        const stamp = [now.getHours(), now.getMinutes(), now.getSeconds()]
+            .map(v => String(v).padStart(2, '0')).join(':');
+        add(head, 'span', `read ${stamp}`, 'mb-art-sum-when');
+        if (d.entities.pending) {
+            add(head, 'span', 'still loading', 'mb-art-sum-when mb-art-sum-live');
+        }
 
         // Scope, stated rather than implied. `runFilter()` REMOVES rows, so
-        // saying "43 rows" without saying "shown" is the silent-subset bug.
+        // saying "43 entities" without saying "shown" is the silent-subset bug.
         const scope = add(el, 'div', null, 'mb-art-sum-scope');
         const filtered = (typeof _anyFilterActive === 'function') && _anyFilterActive();
         scope.textContent = filtered
-            ? `⚠ ${d.entities.total} entities in the rows currently SHOWN — a filter is active, hidden rows are not counted`
+            ? `\u26a0 ${d.entities.total} entities in the rows currently SHOWN — a filter is active, hidden rows are not counted`
             : `${d.entities.total} entities in this table`;
         if (filtered) scope.classList.add('mb-art-sum-warn');
 
         const e = d.entities;
-        heading('Entities');
-        row('with artwork', e.has);
-        row('none on record', e.none);
-        if (e.failed) row('could not be fetched', e.failed);
-        if (e.pending) row('not looked up yet', e.pending);
+        const sec = (label) => {
+            const box = add(el, 'div', null, 'mb-art-sum-sec');
+            add(box, 'div', label, 'mb-art-sum-h');
+            return add(box, 'div', null, 'mb-art-sum-chips');
+        };
+        const chip = (box, label, n, cls) => {
+            const c = add(box, 'span', null, 'mb-art-sum-chip' + (cls ? ' ' + cls : ''));
+            add(c, 'b', String(n));
+            add(c, 'span', ' ' + label);
+            return c;
+        };
 
-        heading('Images on record');
-        row('total', d.images);
-        if (d.types.size) {
-            [...d.types.entries()].sort((a, b) => b[1] - a[1])
-                .forEach(([t, n]) => row(t, n));
-        }
-        if (d.flags.untyped) row('(no type)', d.flags.untyped);
+        const ents = sec('Entities');
+        chip(ents, 'with artwork', e.has);
+        chip(ents, 'none on record', e.none, e.none ? '' : 'mb-art-sum-zero');
+        chip(ents, 'failed', e.failed, e.failed ? 'mb-art-sum-bad' : 'mb-art-sum-zero');
+        chip(ents, 'pending', e.pending, e.pending ? '' : 'mb-art-sum-zero');
 
-        heading('Flags');
-        row('main front present', d.flags.mainFront);
-        row('main back present', d.flags.mainBack);
-        row('not yet approved', d.flags.unapproved);
+        const imgs = sec('Images on record');
+        chip(imgs, 'total', d.images);
+        [...d.types.entries()].sort((a, b) => b[1] - a[1])
+            .forEach(([t, n]) => chip(imgs, t, n));
+        if (d.flags.untyped) chip(imgs, 'untyped', d.flags.untyped, 'mb-art-sum-zero');
 
-        heading('Thumbnail sizes available');
-        [1200, 500, 250].forEach(sz => row(String(sz), d.sizes[sz]));
+        const flags = sec('Flags');
+        // `front` is NOT "'Front' is in types" — an image can be typed Front
+        // without being the archive's chosen main front, and that distinction
+        // is invisible everywhere else in the script.
+        chip(flags, 'main front', d.flags.mainFront);
+        chip(flags, 'main back', d.flags.mainBack);
+        chip(flags, 'unapproved', d.flags.unapproved,
+             d.flags.unapproved ? 'mb-art-sum-bad' : 'mb-art-sum-zero');
 
-        if (d.sourced.length) {
-            heading('Cover sourced from');
-            d.sourced.slice(0, 12).forEach(({ release, path }) => {
-                const r = add(el, 'div', null, 'mb-art-sum-row');
-                add(r, 'span', path.replace('/release-group/', '').slice(0, 8) + '…', 'mb-art-sum-k');
-                const a = add(r, 'a', (release && (release.title || release.id)) || 'release', 'mb-art-sum-v');
-                if (release && release.id) {
-                    a.href = 'https://musicbrainz.org/release/' + release.id;
-                    a.target = '_blank';
-                    a.rel = 'noopener';
-                }
-            });
-            if (d.sourced.length > 12) row('…and more', d.sourced.length - 12);
+        const sizes = sec('Thumbnail sizes available');
+        [1200, 500, 250].forEach(sz => chip(sizes, String(sz), d.sizes[sz]));
+        const missing1200 = d.images - d.sizes[1200];
+        if (missing1200 > 0) {
+            add(sizes, 'span', `${missing1200} image${missing1200 === 1 ? '' : 's'} have no 1200`,
+                'mb-art-sum-note-inline');
         }
 
         if (d.edits.length) {
-            heading('Edits that added these');
-            const wrap = add(el, 'div', null, 'mb-art-sum-edits');
-            d.edits.slice(0, 25).forEach(({ edit }) => {
-                const a = add(wrap, 'a', String(edit));
-                a.href = 'https://musicbrainz.org/edit/' + edit;
+            const box = sec('Edits that added these');
+            const uniq = [...new Set(d.edits.map(x => x.edit))];
+            uniq.slice(0, 24).forEach(id => {
+                const a = add(box, 'a', '#' + id, 'mb-art-sum-edit');
+                a.href = 'https://musicbrainz.org/edit/' + id;
                 a.target = '_blank';
                 a.rel = 'noopener';
             });
-            if (d.edits.length > 25) add(wrap, 'span', `…+${d.edits.length - 25}`);
+            if (uniq.length > 24) {
+                add(box, 'span', `\u2026${uniq.length - 24} more`, 'mb-art-sum-note-inline');
+            }
         }
 
         if (d.failedPaths.length) {
-            heading('Could not be fetched');
+            const box = add(el, 'div', null, 'mb-art-sum-sec mb-art-sum-failed');
+            add(box, 'div', 'Failed \u2014 not cached, retryable', 'mb-art-sum-h');
             d.failedPaths.slice(0, 12).forEach(pth => {
-                const r = add(el, 'div', null, 'mb-art-sum-row');
-                const a = add(r, 'a', pth, 'mb-art-sum-k');
+                const r2 = add(box, 'div', null, 'mb-art-sum-row');
+                const a = add(r2, 'a', pth, 'mb-art-sum-k');
                 a.href = 'https://musicbrainz.org' + pth;
                 a.target = '_blank';
                 a.rel = 'noopener';
             });
-            // Zone 2 EXPLAINS, zone 4 ACTS — and a user already looking at the
-            // list should not have to close the panel to act on it.
-            const act = add(el, 'button', `⚠⟳ Retry these (${ctx.failedCache.size} page-wide)`,
-                            'mb-art-sum-act');
+            if (d.failedPaths.length > 12) {
+                add(box, 'div', `\u2026and ${d.failedPaths.length - 12} more`, 'mb-art-sum-note-inline');
+            }
+        }
+
+        // Zone 2 EXPLAINS, zone 4 ACTS — and a user already looking at the list
+        // should not have to close the panel to act on it.
+        const foot = add(el, 'div', null, 'mb-art-sum-foot');
+        if (ctx.failedCache.size) {
+            const act = add(foot, 'button',
+                `\u26a0\u27f3 Retry these (${ctx.failedCache.size})`, 'mb-art-sum-act');
             act.type = 'button';
             act.addEventListener('click', ev => {
                 ev.stopPropagation();
@@ -77857,6 +77939,9 @@ a { color: #1565c0; }`;
                 _artRetryFailedAll(ctx);
             });
         }
+        const close = add(foot, 'button', 'Close', 'mb-art-sum-close');
+        close.type = 'button';
+        close.addEventListener('click', ev => { ev.stopPropagation(); _artCloseSummary(); });
 
         const r = owner.getBoundingClientRect();
         el.style.display = 'block';

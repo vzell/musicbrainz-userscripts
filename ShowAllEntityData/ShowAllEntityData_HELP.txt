@@ -1278,7 +1278,6 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
       missing 1200 is common on old uploads and stops being a mystery.
     — Edits: the MusicBrainz edit that added each cover, linked, so "who
       added this and when" is one click away.
-    — On a release-group listing, which RELEASE each cover was sourced from.
     — Anything that could not be fetched, named and linked, with a button to
       retry just those.
   The panel counts the rows currently SHOWN.  If a filter is active it says

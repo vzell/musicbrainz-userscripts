@@ -1940,8 +1940,10 @@ loop continue past a failure.
 
 - **It costs ZERO requests.** `_artEnrichIcon()` Tier 3 stores `json.images`
   verbatim in `ctx.imagesCache`, so the whole archive record — `edit`,
-  `front`/`back`, the thumbnail ladder, and `release` on a release-group
-  lookup — is already there. The archive has no batch endpoint, so anything the
+  `front`/`back` and the thumbnail ladder — is already there. **There is no
+  `release` field**, whatever the archive's documentation says: probed
+  2026-09-20 (`scripts/probe-caa-release-group-release-field.py`), a
+  release-group lookup returns the same nine keys a release lookup does. The archive has no batch endpoint, so anything the
   panel could not answer from that cache would be one request per entity, which
   is the cost the whole 503 file exists to reduce. **Do not add a request to
   enrich this.**
@@ -1973,9 +1975,11 @@ loop continue past a failure.
 Covered by `tests/fixtures/caa-artwork-summary.spec.js`; mutation list
 `scripts/mutations/caa-artwork-summary.json`, with one honest `expect: "pass"`
 for the dedup (this fixture has no sticky duplicate reaching an art anchor).
-**Not yet covered: the "Cover sourced from" group**, which needs a
-release-GROUP lookup — the archive returns `release` only there, and this
-fixture's page looks up releases.
+There is no "Cover sourced from" group: it was built from the archive's
+documented `release` field, shipped untested because the fixture could not
+exercise it, and removed once a probe showed the field does not exist. **A
+group nothing could test was a group nothing had checked** — that is the
+transferable part.
 
 ## CAA/EAA retry: the transient-failure record that unblocked it
 

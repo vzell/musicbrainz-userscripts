@@ -160,14 +160,17 @@ async function settleArchive(hits, stableFor = 6) {
     throw new Error(`archive requests never settled (last total ${last})`);
 }
 
-/** The panel as label -> value pairs, in document order. */
+/**
+ * The panel's chips as label -> count, across every section.
+ *
+ * Labels are unique across sections in this fixture; a future group that
+ * reused one would need scoping by section.
+ */
 const panelRows = (page) => page.evaluate(() => Array.from(
-    document.querySelectorAll('#mb-art-summary-panel .mb-art-sum-row'))
-    // The "could not be fetched" rows are a linked key with no value cell, so
-    // the value side has to be optional here.
-    .map((r) => [
-        (r.querySelector('.mb-art-sum-k') || {}).textContent || '',
-        (r.querySelector('.mb-art-sum-v') || {}).textContent || '',
+    document.querySelectorAll('#mb-art-summary-panel .mb-art-sum-chip'))
+    .map((c) => [
+        (c.querySelector('span') || {}).textContent.trim(),
+        (c.querySelector('b') || {}).textContent,
     ]));
 const valueOf = (rows, key) => (rows.find(([k]) => k === key) || [])[1];
 
@@ -205,11 +208,11 @@ test.describe('CAA artwork summary panel', () => {
         // Front-typed images but only one main front. Code that read
         // "'Front' in types" would report 2x here.
         expect(valueOf(rows, 'Front'), 'images TYPED Front').toBe(String(2 * withArt));
-        expect(valueOf(rows, 'main front present'), "the archive's own main-front flag")
+        expect(valueOf(rows, 'main front'), "the archive's own main-front flag")
             .toBe(String(withArt));
         expect(valueOf(rows, 'Booklet')).toBe(String(withArt));
-        expect(valueOf(rows, 'main back present')).toBe('0');
-        expect(valueOf(rows, 'not yet approved'), 'approved:false is surfaced nowhere else')
+        expect(valueOf(rows, 'main back')).toBe('0');
+        expect(valueOf(rows, 'unapproved'), 'approved:false is surfaced nowhere else')
             .toBe(String(withArt));
 
         // The thumbnail ladder: image 2 has only a 250.
@@ -219,7 +222,7 @@ test.describe('CAA artwork summary panel', () => {
 
         // Edit ids, linked — the single most useful field in the record for an
         // editor, and dead weight in the cache until now.
-        const editHrefs = await page.locator(`${PANEL} .mb-art-sum-edits a`)
+        const editHrefs = await page.locator(`${PANEL} a.mb-art-sum-edit`)
             .evaluateAll((as) => as.map((a) => a.getAttribute('href')));
         expect(editHrefs.length).toBeGreaterThan(0);
         expect(editHrefs.some((h) => h.endsWith('/edit/111'))).toBe(true);
@@ -250,7 +253,7 @@ test.describe('CAA artwork summary panel', () => {
         const rows = await panelRows(page);
         expect(Number(valueOf(rows, 'with artwork')), 'what has already arrived')
             .toBeGreaterThan(0);
-        expect(Number(valueOf(rows, 'not looked up yet')), 'and what has not')
+        expect(Number(valueOf(rows, 'pending')), 'and what has not')
             .toBeGreaterThan(0);
 
         releaseHeld();
@@ -288,7 +291,7 @@ test.describe('CAA artwork summary panel', () => {
 
             await page.locator(SUMMARY_BTN).click();
             const rows = await panelRows(page);
-            expect(valueOf(rows, 'could not be fetched')).toBe('1');
+            expect(valueOf(rows, 'failed')).toBe('1');
 
             await expect(page.locator(`${PANEL} a[href$="/release/${FAILED}"]`),
                 'the failing entity is named and linked').toHaveCount(1);
@@ -301,4 +304,5 @@ test.describe('CAA artwork summary panel', () => {
             await expect.poll(() => hits.get(FAILED), { timeout: 60000 }).toBeGreaterThan(before);
             await expect(page.locator(PANEL), 'acting closes the panel').toBeHidden();
         });
+
 });
