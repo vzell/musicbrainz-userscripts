@@ -38,11 +38,14 @@ Remaining order: item 1 (shared transient classifier) shipped on
 =feat/rel-retry-failed-only= then =feat/caa-retry-failed-only=, the second of
 which cleared its own blocker. Item 7 shipped on
 =feat/rel-auto-retry-failed=, item 5 on =feat/resume-from-failed-page=.
-The segmented pill shipped on =feat/segmented-retry-pill=. *Remaining: one
-defect found while designing item 5 — the heading pre-processing block is not
-idempotent as a group, which bites a plain second press on 18 pageTypes — and
-the optional rescoping of the =⚠⟳= controls to per table, which is a choice
-rather than a blocker (see the pill section's trap 2).*
+The segmented pill shipped on =feat/segmented-retry-pill=, and the heading
+pre-processing defect on =fix/preprocessing-group-idempotency= — where
+reproducing it first showed the filed note had the mechanism right and the
+reachability (Load-from-Disk, not a second button press), the blast radius (17
+pageTypes, not 18) and the symptom (element identity, not a duplicate heading)
+all wrong. See DEBUG-NOTES.md, 2026-09-20. *Remaining: only the optional
+rescoping of the =⚠⟳= controls to per table, which is a choice rather than a
+blocker (see the pill section's trap 2).*
 
 F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named

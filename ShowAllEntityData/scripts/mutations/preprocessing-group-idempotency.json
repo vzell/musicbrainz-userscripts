@@ -1,0 +1,32 @@
+[
+  {
+    "name": "applyRenameH2ToH3 demotes the script's own injected anchor",
+    "why": "THE defect. Demoting the anchor defeats applyInsertH2()'s own marker guard — its query looks for an h2 carrying the marker and finds an h3 — so a second heading is injected and the original element leaves the document. A COUNT of anchors stays 1 throughout, because renderGroupedTable()'s cleanup sweeps the orphan, which is why this went unnoticed and why the spec pins element IDENTITY instead.",
+    "edits": [
+      { "find": "        const _h2s = Array.from(\n            document.querySelectorAll('h2:not([data-mb-injected-h2])'));", "replace": "        const _h2s = Array.from(document.querySelectorAll('h2'));" }
+    ],
+    "spec": "tests/fixtures/preprocessing-group-idempotency.spec.js",
+    "grep": "SAME element",
+    "expect": "fail"
+  },
+  {
+    "name": "the exclusion is widened to every h2, so native headings survive too",
+    "why": "Counter-guard in the other direction. Excluding too much would stop the feature doing its job — demoting MusicBrainz's own section headings is the entire point of renameH2ToH3, and the multi-table machinery expects h3 siblings.",
+    "edits": [
+      { "find": "            document.querySelectorAll('h2:not([data-mb-injected-h2])'));", "replace": "            document.querySelectorAll('h2[data-mb-nonexistent]'));" }
+    ],
+    "spec": "tests/fixtures/preprocessing-group-idempotency.spec.js",
+    "grep": "not a blanket opt-out",
+    "expect": "fail"
+  },
+  {
+    "name": "applyRenameH2ToH1 loses the same exclusion",
+    "why": "KNOWN GAP, recorded rather than hidden. user-edits and user-open-edits declare renameH2ToH1 AND insertH2 together, so they carry the identical hazard — but no committed fixture covers either pageType, and user-open-edits' snapshot is a rendered baseline rather than a driveable fixture. Covering it needs a user-edits fixture plus a login-gated capture.",
+    "edits": [
+      { "find": "        const _h2s = Array.from(document.querySelectorAll('h2:not([data-mb-injected-h2])'))\n            .filter(h => !h.closest('div.edit-list'));", "replace": "        const _h2s = Array.from(document.querySelectorAll('h2'))\n            .filter(h => !h.closest('div.edit-list'));" }
+    ],
+    "spec": "tests/fixtures/preprocessing-group-idempotency.spec.js",
+    "grep": "SAME element",
+    "expect": "pass"
+  }
+]
