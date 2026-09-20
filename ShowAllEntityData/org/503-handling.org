@@ -19,6 +19,7 @@ still marked "read in the code" remain hypotheses; pin them with a spec (see
 | F7 (Rel) | =feat/rel-retry-failed-only=   | =tests/fixtures/rel-retry-failed-only.spec.js=      |
 | F7 (CAA) | =feat/caa-retry-failed-only=   | =tests/fixtures/caa-retry-failed-only.spec.js=      |
 | zone 2   | =feat/caa-artwork-summary=     | =tests/fixtures/caa-artwork-summary.spec.js=        |
+| item 7   | =feat/rel-auto-retry-failed=   | =tests/fixtures/rel-auto-retry-failed.spec.js=      |
 
 *Work shape* (decided 2026-09-19): no umbrella =503= branch. =main= is the
 trunk and each item below gets its own short-lived branch off it, live-tested
@@ -34,8 +35,9 @@ Remaining order: item 1 (shared transient classifier) shipped on
 =_parseRetryAfterMs()= exactly as item 1 intended. Item 6 (F4) shipped on
 =fix/release-events-transient=, and item 8 (F7) shipped in two halves —
 =feat/rel-retry-failed-only= then =feat/caa-retry-failed-only=, the second of
-which cleared its own blocker. *Remaining: item 5 (resume — still needs
-design) and item 7 (auto follow-up pass).*
+which cleared its own blocker. Item 7 shipped on
+=feat/rel-auto-retry-failed=. *Remaining: item 5 (resume — still needs
+design), and the segmented pill from the UI design.*
 
 F7 carries a UI design — see [[Retry UI: one segmented control per table]].
 Its behaviour half (zone 4) shipped in two branches. The CAA blocker named
@@ -435,12 +437,38 @@ things now working.
    the failure state on the column header if it still fails (F4). Shipped on
    =fix/release-events-transient=; the header state turned out to be worth
    making CLICKABLE, which gives the script its first column-level retry.
-7. *One automatic follow-up pass for failed Relationships cells* (silent to
-   nearly silent, small) after the Phase 2 queue drains and a cool-down of
-   about 30 s, at most twice. The glyph states already exist, so the user sees
-   ⚠︎ turn into icons. It needs a *circuit breaker*: stop after N consecutive
-   failures, or MusicBrainz in a real outage gets hammered by a script that was
-   meant to be polite.
+7. [DONE] *One automatic follow-up pass for failed Relationships cells* (silent
+   to nearly silent, small) after the Phase 2 queue drains and a cool-down of
+   about 30 s, at most twice. Shipped on =feat/rel-auto-retry-failed=, with the
+   circuit breaker this entry asked for and three more ceilings beside it — any
+   ONE of them stopping it is enough:
+
+   - starts only after the Phase-2 queue drains, plus
+     =_REL_AUTO_RETRY_DELAY_MS= (30 s), so it never competes with the first load;
+   - =_REL_AUTO_RETRY_MAX_PASSES= (2) per page, reset per run;
+   - does not start above =sa_rel_auto_retry_max_failed= (default 25) — that
+     many is an outage, and retrying an outage is the hammering this entry
+     warned about. Read with =typeof === 'number' && >= 0=, never =|| 25=,
+     because =0= disables it and the falsy-zero read is a defect this repo
+     already carries elsewhere;
+   - =_REL_AUTO_RETRY_BREAK_AFTER= (5) CONSECUTIVE refusals abort the pass
+     mid-flight. Consecutive and not cumulative on purpose: a pass mostly
+     succeeding with the odd refusal is the case the feature exists for.
+
+   *The breaker needed no new mechanism.* =_relQueueStillWants()= is already
+   consulted before AND after the rate-slot wait, and returning =false= is
+   already how a superseded pass drains with no requests at all — a tripped
+   breaker is exactly that. The whole hook is one line in a guard that existed.
+
+   *Kill switch* =sa_rel_auto_retry_failed= (default on). The ⚠⟳ button is
+   unaffected either way.
+
+   *Cost, recorded rather than absorbed:* its spec is the slowest fixture spec
+   in the repo at 324 s (=NB-3641=, 2026-09-20), four times the previous worst,
+   and takes the suite from ~120 s to ~318 s. That is the rate gate paid twice
+   — once to MAKE the failures, once to retry them — not slow code, and it is
+   not shortenable without testing something other than what ships. See
+   =tests/README.org= and =tests/MEASUREMENTS.org=.
 8. [DONE] *Table retry = failed cells only* (silent, small) — F7. Shipped in
    two branches, =feat/rel-retry-failed-only= then
    =feat/caa-retry-failed-only=, each as one page-wide =⚠⟳ N= control. The
@@ -454,8 +482,9 @@ Deliberately NOT proposed: an automatic retry loop with no ceiling; a global
 modal ("some requests failed"); any change to the pacing constants without a
 measurement (the 1 request/second rule is MusicBrainz's, not ours to loosen).
 
-Items 1-4 and 6 are non-intrusive and each is a few lines plus a test. Item 5
-is the only one that adds UI. Item 7 is the only one with a rate-limit risk.
+Items 1-4 and 6 were non-intrusive and each was a few lines plus a test. Item
+5 is the only one left that adds UI. Item 7 was the only one with a
+rate-limit risk, and shipped with four independent ceilings for that reason.
 
 * Retry UI: one segmented control per table
 

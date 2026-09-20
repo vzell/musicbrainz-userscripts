@@ -1,0 +1,106 @@
+[
+  {
+    "name": "the breaker never trips",
+    "why": "The circuit breaker is the whole reason org/503-handling.org was willing to propose an automatic pass at all — without it, an outage is walked end to end, twice. Asserted on the REQUEST COUNT, so a breaker that sets its flag and keeps requesting cannot satisfy it.",
+    "edits": [
+      {
+        "find": "        if (_relAutoRetry.consecutiveErrors >= _REL_AUTO_RETRY_BREAK_AFTER\n                && !_relAutoRetry.tripped) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "breaker gives up",
+    "expect": "fail"
+  },
+  {
+    "name": "the breaker counts cumulatively, not consecutively",
+    "why": "Consecutive, not cumulative, is deliberate: a pass that is mostly succeeding with the odd refusal is exactly the case this feature exists for and must not be aborted, while a RUN of refusals is the Web Service being down. KNOWN GAP, recorded rather than hidden: no test here can tell the two apart. A retry pass only ever asks about entities that already failed, so either every request in it fails (both counting modes trip) or none does (neither trips) — there is no interleaving to distinguish them. Covering it needs a pass in which some retried entities succeed and others fail, in a controlled order, which this route cannot produce.",
+    "edits": [
+      {
+        "find": "        if (!failed) { _relAutoRetry.consecutiveErrors = 0; return; }",
+        "replace": "        if (!failed) { return; }"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "a burst that has passed is recovered",
+    "expect": "pass"
+  },
+  {
+    "name": "a tripped breaker is not honoured by the queue",
+    "why": "Tripping is only effective because _relQueueStillWants() already drains a superseded pass with no requests. Without that read the flag is decoration.",
+    "edits": [
+      {
+        "find": "            if (_relAutoRetry.tripped) return false;",
+        "replace": "            if (false) return false;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "breaker gives up",
+    "expect": "fail"
+  },
+  {
+    "name": "a tripped breaker still schedules another pass",
+    "why": "Otherwise the pass budget is the only thing left and an outage costs two full walks instead of one aborted one.",
+    "edits": [
+      {
+        "find": "        if (_relAutoRetry.tripped) return;\n        if (_relAutoRetry.passes >= _REL_AUTO_RETRY_MAX_PASSES) return;",
+        "replace": "        if (_relAutoRetry.passes >= _REL_AUTO_RETRY_MAX_PASSES) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "schedules nothing further",
+    "expect": "fail"
+  },
+  {
+    "name": "the outage ceiling is ignored",
+    "why": "More than the ceiling is the Web Service being down, and retrying it automatically is the hammering org/503-handling.org explicitly refuses to propose. The test asserts no pass was scheduled AT ALL, so starting and then aborting does not satisfy it.",
+    "edits": [
+      {
+        "find": "        if (failed > ceiling) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "outage-sized failure set",
+    "expect": "fail"
+  },
+  {
+    "name": "the ceiling is read with the falsy-zero defect",
+    "why": "`0` disables the automatic pass and is a meaningful value, so `|| DEFAULT` silently turns it back into 25. That exact defect is on record in CLAUDE.md for sa_render_threshold, whose own description promises \"0 to disable\" and does not honour it — this is the same mistake, planted.",
+    "edits": [
+      {
+        "find": "        return (typeof v === 'number' && v >= 0) ? v : _REL_AUTO_RETRY_MAX_FAILED_DEFAULT;",
+        "replace": "        return v || _REL_AUTO_RETRY_MAX_FAILED_DEFAULT;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "ceiling of 0 disables it",
+    "expect": "fail"
+  },
+  {
+    "name": "the pass budget is unbounded",
+    "why": "\"At most twice\" is one of the four ceilings. Without it a page whose failures never recover keeps scheduling passes for as long as it is open.",
+    "edits": [
+      {
+        "find": "        if (_relAutoRetry.passes >= _REL_AUTO_RETRY_MAX_PASSES) return;",
+        "replace": "        if (false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "budget is two passes",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting is not honoured",
+    "why": "This is the only change in org/503-handling.org that makes the script fetch unprompted, so its kill switch has to work.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_rel_auto_retry_failed === false) return;\n        if (_relAutoRetry.tripped) return;",
+        "replace": "        if (_relAutoRetry.tripped) return;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "grep": "setting turns it off entirely",
+    "expect": "fail"
+  }
+]

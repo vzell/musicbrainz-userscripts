@@ -1929,3 +1929,27 @@ host; the worker count alone scales with core count.
 *What it does not cover*: one host, one run, no repeat. Treat the wall clock as
 an order of magnitude, not a baseline to regress against — there is no committed
 baseline for the fixture suite and this row does not create one.
+
+* 2026-09-20 — rel-auto-retry-failed.spec.js wall clock (NB-3641)
+
+| What                                   | Value     |
+|----------------------------------------+-----------|
+| host                                   | =NB-3641= |
+| cores                                  | 28        |
+| captured (UTC)                         | 2026-09-20T01:50:49Z |
+| script version                         | 9.99.1123 (branch =feat/rel-auto-retry-failed=) |
+| =rel-auto-retry-failed.spec.js= alone  | *324.1 s* (7 tests, =--workers=1=) |
+| full fixture suite before this spec    | ≈ 120 s (389 tests) |
+| full fixture suite with it             | ≈ 318 s (395 tests), same host, under load |
+
+Four times the previous slowest fixture spec (=rel-column-collapse-toggle=,
+≈ 73 s). None of it is slow CODE: it is =_relAwaitRateSlot()=, one request per
+1100 ms, paid twice — once to MAKE 10-12 entities fail during setup (a failure
+costs =_REL_WS2_TRIES= = 3 attempts, so ~33-40 s before the body starts) and
+again when the automatic pass retries them.
+
+Not shortened, deliberately. The breaker's threshold is 5 consecutive refusals,
+so a test that pins it needs more than 5 failures; and reaching past the rate
+gate to go faster would be testing something other than what ships. Recorded
+here so the next person reading the suite's wall clock knows which spec owns
+the increase and why, rather than treating it as drift.

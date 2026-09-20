@@ -2059,6 +2059,51 @@ produces no request. `__saTest.artFailedPaths(which)` exists because the set has
 no DOM surface once a filter has removed its rows, and because the 404/503
 distinction is invisible on screen: both render as a release with no artwork.
 
+## The automatic retry pass, and why it is bounded four ways
+
+`org/503-handling.org` item 7 — the only change in that file that makes the
+script talk to the network without the user asking, which is why it is bounded
+on four independent axes and ANY ONE of them stopping it is enough:
+
+1. **It starts only after the Phase-2 queue drains**, plus
+   `_REL_AUTO_RETRY_DELAY_MS` (30 s), so it can never compete with the first
+   load for the rate gate.
+2. **`_REL_AUTO_RETRY_MAX_PASSES` (2) per page.** Reset per run by
+   `_relAutoRetryReset()`, so a fresh page gets its own budget.
+3. **It does not start above `_relAutoRetryMaxFailed()`** (setting
+   `sa_rel_auto_retry_max_failed`, default 25). That many is an outage, and an
+   automatic retry of an outage is the hammering the org file refuses to
+   propose. **Read with `typeof === 'number' && >= 0`, never `|| 25`** — `0`
+   disables it and is meaningful, and the falsy-zero read is the defect
+   CLAUDE.md already records for `sa_render_threshold`.
+4. **`_REL_AUTO_RETRY_BREAK_AFTER` (5) CONSECUTIVE refusals abort the pass
+   mid-flight**, through `_relQueueStillWants()` — which already drains a
+   superseded pass with no requests at all, so the breaker needed no new
+   mechanism. Consecutive and not cumulative on purpose: a pass mostly
+   succeeding with the odd refusal is the case the feature exists for.
+
+**`_relAutoRetry.active` is closed at the drain, before scheduling.** A pass
+that has just finished must not count a LATER pass's outcomes into its own
+breaker.
+
+Covered by `tests/fixtures/rel-auto-retry-failed.spec.js`; mutation list
+`scripts/mutations/rel-auto-retry-failed.json`, 8 entries with one honest
+`expect: "pass"` — no test here can tell consecutive from cumulative counting,
+because a retry pass only asks about entities that already failed, so either
+all of its requests fail or none does.
+
+**Two test traps this cost, both worth knowing.** A second page load leaves the
+`rel-ws2` IDB store populated and IDB **survives a reload**, so entities
+answered before the reload are served from cache and never fail — pick the
+victims in the route on first sight instead. And after the breaker trips, a
+fixed `waitForTimeout()` bounds the request count by the WAIT (~1 request per
+1.1 s) rather than by the pass, so an unguarded pass looks identical to an
+aborted one; settle the request log instead. Mutation-testing caught the second.
+
+**It is the slowest fixture spec in the repo at ~324 s** (`NB-3641`,
+2026-09-20), four times the previous worst, and that is the rate gate rather
+than slow code — see `tests/README.org` and `tests/MEASUREMENTS.org`.
+
 ## Relationships retry: two buttons, two intentions
 
 `org/503-handling.org` F7. `#mb-rel-retry-{i}` / `#mb-rel-retry-global` still

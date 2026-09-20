@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-20",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "A handful of Relationship rows that the Web Service refused are now quietly asked about once more, by themselves, about half a minute after the rest of the column has finished — and again once after that if they still fail. MusicBrainz refuses requests in bursts rather than steadily, so a burst is usually over by then and the ⚠ cells simply turn into icons while you are reading the page. Nothing else changes on screen.",
+          "It is deliberately hard for this to become a nuisance, because it is the only thing in the script that goes to the network without you asking. It never starts until everything else has finished, so it cannot slow a page down; it runs at most twice; it does not start at all when more than 25 rows failed, because that many is the Web Service being down rather than briefly busy; and it gives up on the spot after five refusals in a row without asking about the rest. Any one of those is enough to stop it.",
+          "Both ceilings are yours: \"Relationships: retry failed lookups once, automatically\" turns it off, and \"Relationships: largest failure count still worth retrying automatically\" (default 25, 0 to disable) sets the outage limit. The ⚠⟳ button is unaffected either way and still retries exactly what failed, however many that is."
+        ]
+      }
+    ]
+  }
+]

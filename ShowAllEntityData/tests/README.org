@@ -147,7 +147,8 @@ them for a decision.
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
 | =npm test= (353 fixture tests)              | *≈ 1 m 50 s* | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
-| slowest single fixture spec                 | ≈ 73 s       | measured — =rel-column-collapse-toggle= (10 tests)      |
+| slowest single fixture spec                 | *≈ 324 s*    | measured 2026-09-20, =NB-3641= — =rel-auto-retry-failed= (7 tests, =--workers=1=) |
+| previous slowest                            | ≈ 73 s       | measured — =rel-column-collapse-toggle= (10 tests)      |
 | median individual fixture test              | ≈ 1.9 s      | measured 2026-09-19, =NB-3641=                          |
 | slowest individual fixture test             | ≈ 25.5 s     | measured 2026-09-19, =NB-3641=                          |
 | =npm run test:live= (=@core=, 10 tests)     | a few min    | estimate — mostly at the 120 s default                  |
@@ -157,6 +158,16 @@ them for a decision.
 
 The fixture suite's 108 s wall clock against ~1159 s of summed test time is
 parallelism doing its job — 14 workers on a 28-core box, a ~10.7x speed-up.
+
+*=rel-auto-retry-failed.spec.js= is an outlier worth knowing about*: 324 s on
+its own (=NB-3641=, 2026-09-20, =--workers=1=), four times the previous slowest
+spec. Nothing in it is slow code — it is the Relationships rate gate, one
+request per 1100 ms, paid twice over. Its setup deliberately makes 10-12
+entities FAIL, and a failure costs =_REL_WS2_TRIES= (3) attempts, so a single
+setup is ~33-40 s before the test body starts; the automatic pass then retries
+them. Shortening it means either weakening what it pins (the breaker needs more
+failures than its own threshold of 5) or reaching past the rate gate, which is
+the one thing the whole 503 series exists to respect. Left slow on purpose.
 
 *Every fixture number in that table is one host on one day* (=NB-3641=,
 2026-09-19), and the worker count scales with the machine, so they are not

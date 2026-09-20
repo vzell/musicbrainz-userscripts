@@ -1471,6 +1471,22 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
   a second still gets the polite one-request-per-second spacing MusicBrainz
   asks of every client.  The 30-second limit exists so a maintenance window
   saying "come back in an hour" cannot park a request for an hour.
+• A few rows that still failed are retried ONCE MORE, by themselves, about
+  half a minute after everything else has finished — up to two times.  Most
+  refusals are a busy minute rather than an outage, so the ⚠ cells usually
+  just turn into icons while you are reading the page.  Four things stop it,
+  and any one of them is enough:
+    — it never starts until the rest of the column is done, so it cannot
+      compete with the first load;
+    — at most two attempts per page;
+    — it does not start at all above 25 failed rows (⚙️ Settings) — that many
+      is the Web Service being down, and asking again would only add to its
+      load.  Set that to 0 to switch this off by itself;
+    — it gives up immediately after 5 refusals in a row, mid-pass, without
+      asking about the rest.
+  Turn it off entirely with "Relationships: retry failed lookups once,
+  automatically" in ⚙️ Settings; the ⚠⟳ button then remains the way to retry,
+  and it is unaffected either way.
 • If it still fails after all three attempts, that row is left FAILED rather
   than shown as "no relationships", and nothing about it is cached, so it does
   not stay quietly wrong for the rest of the session.  A filter keystroke does
