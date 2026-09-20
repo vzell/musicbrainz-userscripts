@@ -698,17 +698,17 @@ Four things are stored on every image and surfaced nowhere:
 
 *** Proposed contents, per table
 
-| Group    | Rows                                                                                           |
-|----------+------------------------------------------------------------------------------------------------|
-| Entities | total / with artwork / none / *failed* / still pending                                         |
-| Images   | icon + inline + strip, as the toast already breaks them down                                   |
-| Cache    | the existing four tiers (🟢 memory, 🟡 network, 🔵 IDB, 🗄️ timed), scoped to this table         |
-| Types    | Front / Back / Booklet / Medium / Tray / Obi / Matrix-Runout / …, counted from =types[]=       |
-| Flags    | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
-| Sizes    | how many images offer =1200= / =500= / =250=                                                   |
-| Edits    | =edit= ids, linked to =/edit/{id}=                                                             |
-| ~~Sourced~~ | *withdrawn* — the archive returns no =release= field; see the probe                        |
-| Failures | the failing entities by name, each a link, plus a "retry these" action                         |
+| Group       | Rows                                                                                           |
+|-------------+------------------------------------------------------------------------------------------------|
+| Entities    | total / with artwork / none / *failed* / still pending                                         |
+| Images      | icon + inline + strip, as the toast already breaks them down                                   |
+| Cache       | the existing four tiers (🟢 memory, 🟡 network, 🔵 IDB, 🗄️ timed), scoped to this table         |
+| Types       | Front / Back / Booklet / Medium / Tray / Obi / Matrix-Runout / …, counted from =types[]=       |
+| Flags       | main-front present? main-back present? =approved: false= count; images with an empty =types[]= |
+| Sizes       | how many images offer =1200= / =500= / =250=                                                   |
+| Edits       | =edit= ids, linked to =/edit/{id}=                                                             |
+| ~~Sourced~~ | *withdrawn* — the archive returns no =release= field; see the probe                            |
+| Failures    | the failing entities by name, each a link, plus a "retry these" action                         |
 
 The Failures group is what ties zone 2 to zone 4: *zone 2 explains, zone 4
 acts*. Zone 4 stays as the one-click path — a user who has already seen the
