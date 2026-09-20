@@ -13756,3 +13756,73 @@ invisible when wrong:
 
 Seven tests, 1.4 min on `NB-3641`. Eleven mutations: nine `fail`, two recorded
 `pass` with their reasons above.
+
+## 2026-09-20 — the heading pre-processing defect: real mechanism, no visible symptom, and two wrong claims
+
+Filed on 2026-09-20 while designing item 5, from reading alone, with the caveat
+"found by reading, not yet reproduced in a browser". Reproducing it first was
+the right call: the mechanism is real, but **two of the three things the note
+asserted were wrong**, and the symptom is not what it predicted.
+
+**What was right.** `applyInsertH2()` guards itself by stamping
+`data-mb-injected-h2="1"` and querying `h2[data-mb-injected-h2="1"]`.
+`applyRenameH2ToH3()` runs before it and renames every `<h2>`, copying all
+attributes onto the `<h3>`. So a second pass demotes the anchor, the guard's
+query misses, and a second heading is injected. Confirmed from the script's own
+debug output on a real Save→Load round trip (`user-ratings` fixture):
+
+```
+[press]    applyRenameH2ToH3: renamed 7 <h2> element(s) to <h3>.
+[press]    applyInsertH2: inserted <h2>"Ratings"</h2> after <div class="tabs">.
+[diskload] disk-load: running DOM pre-processing (renameH2ToH3, insertH2, applyListToTable)
+[diskload] applyRenameH2ToH3: renamed 1 <h2> element(s) to <h3>.     <- the anchor
+[diskload] applyInsertH2: inserted <h2>"Ratings"</h2> after <div class="tabs">.  <- again
+```
+
+**Wrong claim 1: "reachable by pressing the button twice".** It is not. A second
+press never reaches pre-processing — `startFetchingProcess()` answers it with
+`window.location.reload()` long before the block, so the DOM is MusicBrainz's
+own again and the first pass is the only pass. The note had inherited that
+sentence from the *resume* investigation, where the reload was the whole
+finding, and applied it to the opposite conclusion. The actual path is **Load
+from Disk on an already-rendered page**: `_hydrateAndRenderFromSnapshotData()`
+re-runs the block itself, gated on `features.listToTable`.
+
+**Wrong claim 2: "18 pageTypes".** 18 declare `renameH2ToH3` + `insertH2`, but
+the disk-load block is gated on `listToTable` too, and `notes-received` does not
+declare it. **17** can reach it.
+
+**The symptom is not a duplicate heading.** The first spec written against this
+asserted counts — one marked anchor, no orphan `<h3>` — and **passed against
+unfixed code**. That is why it was written before the fix. The net DOM really is
+correct: `renderGroupedTable()`'s cleanup sweeps the demoted orphan, and the
+freshly injected `<h2>` takes its place. What actually changes is ELEMENT
+IDENTITY. Tagging the anchor with a token no production code knows about, then
+doing the round trip:
+
+```
+{"markedTags":["H2"],"tokenBearers":[],"anchorIsSameElement":false}
+```
+
+The original element is gone from the document; the survivor is a different
+node. So anything holding a reference to that anchor, or state on it, silently
+loses both — it works today only because every consumer re-derives from the DOM
+after the render.
+
+**So this was a latent dependency on cleanup ordering, not a visible bug**, and
+the fix is framed that way: both renamers now exclude
+`h2:not([data-mb-injected-h2])`, which makes `applyInsertH2()`'s documented
+guard actually work instead of being defeated and then covered for. No
+user-visible change; the rendered result was already correct.
+
+**The transferable lesson** is the one the original note's own caveat pointed
+at. "Found by reading" was worth writing down, and worth *not* acting on until
+reproduced: the reading got the mechanism right and the reachability, the
+blast radius and the symptom all wrong. A count-based test would have shipped
+green and proved nothing.
+
+Spec: `tests/fixtures/preprocessing-group-idempotency.spec.js` (identity, plus a
+counter-guard that native headings are still demoted). Mutations:
+`scripts/mutations/preprocessing-group-idempotency.json` — 2 fail, 1 recorded
+`pass` (`applyRenameH2ToH1` carries the identical hazard on `user-edits` /
+`user-open-edits`, which have no driveable fixture).

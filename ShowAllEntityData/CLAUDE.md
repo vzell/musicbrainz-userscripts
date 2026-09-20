@@ -203,23 +203,43 @@ top of every run (including a resumed one) and on a disk load. `__saTest.resumeS
 exposes it, because a resumed run that silently re-fetched everything looks
 identical on screen to one that kept its rows.
 
-## Pre-processing is idempotent per function, NOT as a group (open defect)
+## The heading pre-processing must never touch the anchor it injected
 
 `applyInsertH2()` guards itself with a `data-mb-injected-h2="1"` marker it
-stamps and then queries for. `applyRenameH2ToH3()` runs **before** it, renames
-**every** `<h2>` in the document, and copies all attributes onto the `<h3>` it
-substitutes — so a second pass turns the injected `<h2 data-mb-injected-h2="1">`
-into an `<h3 data-mb-injected-h2="1">`, that marker query finds nothing, and
-another heading is injected beside the orphan.
+stamps and then queries for. `applyRenameH2ToH3()` and `applyRenameH2ToH1()`
+run **before** it and rename `<h2>`s wholesale, copying all attributes onto the
+substitute — so without an exclusion a second pass turns the injected
+`<h2 data-mb-injected-h2="1">` into an `<h3 data-mb-injected-h2="1">`, the
+marker query finds nothing, and another heading is injected beside the orphan.
+**Both renamers therefore exclude `h2:not([data-mb-injected-h2])`.** Do not
+widen that back: demoting MusicBrainz's OWN section headings is the whole point
+of the feature, which is why the spec has a counter-guard for it.
 
-**18 pageTypes declare both features**: every `*-tags` type plus `user-ratings`,
-`popular-tags`, `reports-index`, `edit-types`, `instrument-list`,
-`privileged-accounts`, `notes-received`.
+**Two corrections to what this section said while the defect was still open,
+both worth keeping because the reasoning was wrong in instructive ways:**
 
-Reachable today by pressing the button twice, which is what the script tells the
-user to do after a critical error. **Found by reading, not yet reproduced in a
-browser** — confirming it is its own small job on its own branch. The resume
-path sidesteps it by skipping the block, which is not a fix.
+- **It is NOT reachable by pressing the button twice.** That path never re-runs
+  pre-processing at all — `startFetchingProcess()` answers a second press with
+  `window.location.reload()` long before the block. The real path is **Load from
+  Disk after the page has already rendered**: `_hydrateAndRenderFromSnapshotData()`
+  re-runs the block itself, gated on `features.listToTable`. Two loads in a row
+  do it as well as fetch-then-load.
+- **17 pageTypes can reach it, not 18.** The count of those declaring
+  `renameH2ToH3` + `insertH2` is 18, but `notes-received` lacks `listToTable`,
+  so the disk-load block never re-runs for it. The others are every `*-tags`
+  type plus `user-ratings`, `popular-tags`, `reports-index`, `edit-types`,
+  `instrument-list` and `privileged-accounts`.
+
+**It produced no visible breakage, and that is the interesting part.** Measured
+on 2026-09-20 through a real Save→Load round trip: the disk-load pass logged
+`renamed 1 <h2>` then `inserted <h2>"Ratings"`, and the ORIGINAL anchor element
+left the document entirely — the surviving `<h2>` was a different node. The
+rendered page still looked correct, because `renderGroupedTable()`'s own cleanup
+swept the demoted orphan. So a COUNT of anchors was 1 before and after; only
+element IDENTITY distinguished them, which is what
+`tests/fixtures/preprocessing-group-idempotency.spec.js` pins. It was a latent
+dependency on cleanup ordering that nothing documented or tested, not a visible
+bug — and the guard removes the dependency rather than fixing a symptom.
 
 ## Critical bug fix: user-tags container re-root (v9.99.521)
 

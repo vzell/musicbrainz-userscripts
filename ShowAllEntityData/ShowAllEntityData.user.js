@@ -7283,12 +7283,31 @@
      * Operates on `document` directly (the live page DOM).
      * Skips the `<h1>` (entity title) — only `<h2>` nodes are touched.
      *
+     * **Never touches an `<h2>` THIS SCRIPT injected** (`data-mb-injected-h2`).
+     * `applyInsertH2()` guards itself by querying for exactly that marker on an
+     * `h2`, so demoting its anchor defeats that guard: the query then finds
+     * nothing and a second heading is injected beside the demoted orphan. The
+     * pre-processing block is re-run on every Load-from-Disk
+     * (`_hydrateAndRenderFromSnapshotData()`, gated on `features.listToTable`),
+     * so a second pass is an ordinary user action on the 17 pageTypes that
+     * declare all three features — not a hypothetical.
+     *
+     * Measured before this guard existed (2026-09-20, user-ratings fixture, a
+     * real Save→Load round trip): the disk-load pass logged
+     * `renamed 1 <h2>` followed by `inserted <h2>"Ratings"`, and the ORIGINAL
+     * anchor element left the document entirely — the surviving `<h2>` was a
+     * different node. The rendered result still looked correct, because
+     * `renderGroupedTable()`'s own cleanup swept the orphan, so nothing ever
+     * surfaced. That made it a latent dependency on cleanup ordering rather
+     * than a visible bug, and this guard is what removes the dependency.
+     *
      * @param {object} def - The active merged pageDefinition object.
      */
     function applyRenameH2ToH3(def) {
         if (!def?.features?.renameH2ToH3) return;
 
-        const _h2s = Array.from(document.querySelectorAll('h2'));
+        const _h2s = Array.from(
+            document.querySelectorAll('h2:not([data-mb-injected-h2])'));
         if (_h2s.length === 0) {
             Lib.debug('init', 'applyRenameH2ToH3: no <h2> elements found — nothing to rename.');
             return;
@@ -7353,7 +7372,12 @@
     function applyRenameH2ToH1(def) {
         if (!def?.features?.renameH2ToH1) return;
 
-        const _h2s = Array.from(document.querySelectorAll('h2'))
+        // Same exclusion as applyRenameH2ToH3: never promote the anchor this
+        // script injected, or applyInsertH2()'s marker guard is defeated and a
+        // second heading appears on the next pre-processing pass. user-edits
+        // and user-open-edits declare renameH2ToH1 AND insertH2 together, so
+        // this path has the identical hazard.
+        const _h2s = Array.from(document.querySelectorAll('h2:not([data-mb-injected-h2])'))
             .filter(h => !h.closest('div.edit-list'));
         if (_h2s.length === 0) {
             Lib.debug('init', 'applyRenameH2ToH1: no <h2> elements found — nothing to rename.');
