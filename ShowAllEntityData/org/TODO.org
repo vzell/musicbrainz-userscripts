@@ -676,4 +676,18 @@ days change
 
 ** TODO Two things this batch surfaced that aren't tracked anywhere yet
 
-if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced on unmodified code, different spec each time.
+if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
+off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
+on unmodified code, different spec each time.
+
+** PERFORMANCE.org
+
+Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
+
+** Now on main at 9.99.1125
+
+org/503-handling.org shows items 1, 3, 4, 5, 6, 7, 8, zone 2 and F1–F7 all shipped. What's left in that file is the
+segmented per-table retry pill (blocked on the table → source-rows mapping), and the defect this branch turned up but
+did not fix: the heading pre-processing block being idempotent per function yet not as a group, which a plain second
+button press hits on 18 pageTypes. That one is recorded in CLAUDE.md, DEBUG-NOTES.md and the org, still unreproduced in
+a browser, and wants its own small branch.
