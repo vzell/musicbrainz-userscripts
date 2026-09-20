@@ -2509,11 +2509,11 @@ segmented control per table".
 **Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
 already prefix-consistent, so the CSS needs no class and no wrapper:
 
-| Run           | Prefix                 | Members                                              |
-|---------------|------------------------|------------------------------------------------------|
-| CAA artwork   | `mb-caa-toggle-btn-`   | `-{i}`, `-global`, `-retry-{i}`, `-global-retry`, `-retry-failed`, `-summary-{i}` |
-| EAA artwork   | `mb-eaa-toggle-btn-`   | the same set                                         |
-| Relationships | `mb-rel-retry-`        | `-{i}`, `-global`, `-failed`                         |
+| Run           | Prefix               | Members                                                                           |
+|---------------|----------------------|-----------------------------------------------------------------------------------|
+| CAA artwork   | `mb-caa-toggle-btn-` | `-{i}`, `-global`, `-retry-{i}`, `-global-retry`, `-retry-failed`, `-summary-{i}` |
+| EAA artwork   | `mb-eaa-toggle-btn-` | the same set                                                                      |
+| Relationships | `mb-rel-retry-`      | `-{i}`, `-global`, `-failed`                                                      |
 
 A button added later joins its pill for free **provided it keeps the naming
 convention** — so do not tidy an id out of its prefix. Conversely, the three
