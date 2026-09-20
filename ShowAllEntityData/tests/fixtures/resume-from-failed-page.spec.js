@@ -130,7 +130,8 @@ async function loadEvents(page, respond, settingsOverride) {
 /** Distinct page numbers in a slice of the request log, in order. */
 const pagesIn = (reqs) => [...new Set(reqs.map((r) => r.page))].sort();
 
-test.describe('resume an interrupted fetch at the page that failed', () => {
+test.describe('resume an interrupted fetch at the page that failed',
+    { tag: '@slow' }, () => {
     let pageErrors;
 
     test.beforeEach(async ({ page }) => {

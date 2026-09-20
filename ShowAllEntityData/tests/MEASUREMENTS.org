@@ -1981,3 +1981,33 @@ suite total below.
 
 The 7 new tests are additive; the suite is still dominated by
 =rel-auto-retry-failed='s rate-gate waits.
+
+* 2026-09-20 — the fixture suite split into @slow and not-@slow (NB-3641)
+
+Two fixture specs — =rel-auto-retry-failed= and =resume-from-failed-page=,
+covering org/503-handling.org items 7 and 5 — were tagged =@slow= and taken out
+of =npm test='s default selection. All three selections measured in one
+session, same host, same 14 workers.
+
+| Selection                                  | Tests | Wall clock |
+|--------------------------------------------+-------+------------|
+| =npm test= (=--grep-invert @slow=)         |   389 | *2 m 6 s*  |
+| =npm run test:slow= (=--grep @slow=)       |    14 | *4 m 48 s* |
+| =npm run test:full= (the whole project)    |   403 | *5 m 18 s* |
+
+| host       | =NB-3641=                                    |
+| date (UTC) | 2026-09-20                                   |
+| version    | 9.99.1125 (branch =test/slow-specs-opt-in=) |
+
+*The two parts cost more than the whole*: 2 m 6 s + 4 m 48 s = 6 m 54 s
+against 5 m 18 s for one full run, i.e. splitting is 1 m 36 s WORSE if you
+then run both. In a full run the two =@slow= files occupy workers that would
+otherwise idle while the 104 short files drain, so their cost is largely
+hidden by parallelism. The tag therefore buys nothing for a merge and
+everything for iteration, which is exactly how it is wired: =npm test= for
+the loop, =npm run test:full= at the merge gate.
+
+Note the corollary for the earlier figure in this file: the suite's jump from
+~1 m 50 s (353 tests) to ~5 m 18 s (403 tests) was NOT 50 tests' worth of
+work. It was these two files alone — 14 tests that are almost entirely rate
+gate and retry backoff.

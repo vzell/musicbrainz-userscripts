@@ -125,11 +125,21 @@ All of these on the merged tree — not on the branch, where they were last gree
 
 ```bash
 node --check ShowAllEntityData.user.js
-npm test                  # chromium-fixtures, the CI-safe suite
+npm run test:full         # EVERY fixture test, @slow included
 python3 scripts/audit-docs.py          # must exit 0
 ```
 
 Report the pass count. Do not push a red tree.
+
+**`npm run test:full`, never plain `npm test`, and the difference is the whole
+point of the tag.** `npm test` excludes the `@slow` specs — today
+`rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s), which
+between them are most of the suite's wall clock and *all* of its coverage of
+org/503-handling.org items 5 and 7. They are opt-in so that iterating on an
+unrelated change does not cost five minutes a run; they are not optional at a
+merge. Running `npm test` here would let both rot silently, which is exactly
+the failure the tag would otherwise introduce. `npm run test:slow` runs them
+alone if you want them separately first.
 
 `audit-docs.py` is the mechanical half of the merge-time re-read CLAUDE.md asks
 for ("re-read `PERFORMANCE.org` for what your change made FALSE"). It catches

@@ -153,7 +153,8 @@ const autoState = (page) => page.evaluate(() => window.__saTest.relAutoRetryStat
 const runAuto = (page) => page.evaluate(() => window.__saTest.relRunAutoRetryNow());
 const failedCount = (page) => page.evaluate(() => window.__saTest.relFailedMbids().length);
 
-test.describe('Relationships: the automatic follow-up pass, and its ceilings', () => {
+test.describe('Relationships: the automatic follow-up pass, and its ceilings',
+    { tag: '@slow' }, () => {
     let pageErrors;
 
     test.beforeEach(async ({ page }) => {
