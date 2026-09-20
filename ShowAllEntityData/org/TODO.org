@@ -692,5 +692,9 @@ they are very long and probaly not worth it now that I've checked in a live brow
 
 ** DONE pick up the segmented retry pill
 
-** pick up the heading pre-processing defect
+** TODO pick up the heading pre-processing defect
 
+
+Two honest gaps, both recorded rather than buried:
+- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
+- Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
