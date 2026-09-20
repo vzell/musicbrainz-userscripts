@@ -78011,9 +78011,31 @@ a { color: #1565c0; }`;
      */
     function _artCreateSummaryButton(ctx, table, tableIndex) {
         const id = ctx.btnPrefix + '-summary-' + tableIndex;
-        if (document.getElementById(id)) return;
         const anchor = document.getElementById(ctx.btnPrefix + '-retry-' + tableIndex);
         if (!anchor) return;
+
+        // **Re-anchor an existing button; do not just bail out.** This is the
+        // one control in the run that is created once, and it used to stop here
+        // on every later call — which left it stranded.
+        //
+        // `.mb-row-count-stat` is REMOVED AND RE-CREATED whenever the count
+        // changes, i.e. on every filter, and it is re-inserted relative to the
+        // master toggle or (single-table) the filter container.
+        // `_artCreateOrUpdateToggleButton()` copes because it re-derives its own
+        // position from the LIVE stat every time it runs — `countStat.after(btn)`
+        // executes whether or not the button already existed — and the ⟳ and
+        // 🔗⟳ chain off it. Bailing out on "already exists" opted this button
+        // out of that, so a filter left it between the heading text and the
+        // stat while the rest of the run moved on without it. Reported live on
+        // an artist-releases page; the saved DOM is
+        // debug/bd-filter-relocation-bug.html and the order it showed is quoted
+        // in tests/fixtures/caa-summary-button-position.spec.js.
+        const existing = document.getElementById(id);
+        if (existing) {
+            if (existing.previousElementSibling !== anchor) anchor.after(existing);
+            return;
+        }
+
         const btn = document.createElement('button');
         btn.id = id;
         btn.type = 'button';
@@ -78342,7 +78364,13 @@ a { color: #1565c0; }`;
      */
     function _artCreateOrUpdateRetryButton(ctx, table, tableIndex) {
         const retryBtnId = ctx.btnPrefix + '-retry-' + tableIndex;
-        if (document.getElementById(retryBtnId)) return; // already present
+        if (document.getElementById(retryBtnId)) {
+            // Zone 2's opener still needs re-anchoring even when this button is
+            // untouched: the run it belongs to is rebuilt around a row-count
+            // stat that churns on every filter. See _artCreateSummaryButton().
+            _artCreateSummaryButton(ctx, table, tableIndex);
+            return;
+        }
 
         const toggleBtn = document.getElementById(ctx.btnPrefix + '-' + tableIndex);
         if (!toggleBtn) {

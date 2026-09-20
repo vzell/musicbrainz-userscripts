@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the summary button bails out instead of re-anchoring",
+    "why": "The reported defect, restored exactly. .mb-row-count-stat is removed and re-created on every filter, and _artCreateOrUpdateToggleButton() copes by re-deriving its position from the LIVE stat every call. Bailing out on \"already exists\" opts this button out of that, so a filter leaves it between the heading text and the stat while the rest of the run moves on. The test asserts ORDER, not existence — the button never disappeared, so an existence check passed throughout the bug.",
+    "edits": [
+      {
+        "find": "        const existing = document.getElementById(id);\n        if (existing) {\n            if (existing.previousElementSibling !== anchor) anchor.after(existing);\n            return;\n        }",
+        "replace": "        const existing = document.getElementById(id);\n        if (existing) return;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-summary-button-position.spec.js",
+    "grep": "stays in the control run",
+    "expect": "fail"
+  },
+  {
+    "name": "the re-anchor call site is dropped from the already-present path",
+    "why": "Re-anchoring is only reachable because _artCreateOrUpdateRetryButton() now calls it BEFORE its own early return. Putting the call back inside the just-created branch alone makes it run exactly once per page, which is the state the bug was reported in.",
+    "edits": [
+      {
+        "find": "        if (document.getElementById(retryBtnId)) {\n            // Zone 2's opener still needs re-anchoring even when this button is\n            // untouched: the run it belongs to is rebuilt around a row-count\n            // stat that churns on every filter. See _artCreateSummaryButton().\n            _artCreateSummaryButton(ctx, table, tableIndex);\n            return;\n        }",
+        "replace": "        if (document.getElementById(retryBtnId)) return;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-summary-button-position.spec.js",
+    "grep": "stays in the control run",
+    "expect": "fail"
+  }
+]

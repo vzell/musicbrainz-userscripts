@@ -13567,3 +13567,58 @@ test that passed against the buggy build (deleted), and then eleven megabytes of
 saved HTML that answered it in one grep. The snapshot was cheaper than either
 of the first two, and CLAUDE.md already said so — "Always read the relevant
 `debug/*.html` before proposing any DOM fix". I proposed one first.
+
+## 2026-09-20 — the summary opener walked out of its own control run
+
+Reported live on `https://musicbrainz.org/artist/84c38d3a-…/releases` (BoDeans,
+`artist-releases`, `tableMode: 'single'`): filtering from a 📊 column dropdown
+left the 📊 artwork-summary button between the "Releases" heading text and the
+row-count stat, while the rest of the artwork controls stayed together.
+
+**Diagnosed from the saved DOM**, `debug/bd-filter-relocation-bug.html`, whose
+h2 children read, in order:
+
+    [mb-toggle-icon] "Releases" [summary-0] [row-count-stat]
+    [caa-toggle-0] [caa-retry-0] [rel-retry-0] [mb-filter-container]
+
+**Cause — an asymmetry, not a mystery.** `.mb-row-count-stat` is REMOVED AND
+RE-CREATED every time the count changes, and re-inserted relative to the master
+toggle or, on a single-table page, the filter container.
+`_artCreateOrUpdateToggleButton()` copes because it re-derives its position
+from the live stat on every call:
+
+    const countStat = header.querySelector('.mb-row-count-stat');
+    if (countStat) countStat.after(btn);          // runs even if btn existed
+
+⟳ and 🔗⟳ chain off that. The summary opener was created once, inside
+`_artCreateOrUpdateRetryButton()`'s "just created" branch, and bailed out on
+every later call — so the run rebuilt itself around the new stat and left it
+behind. **It is the only control in the run that does not re-derive its own
+position**, which is exactly why it is the only one that moved.
+
+**Fix.** `_artCreateSummaryButton()` re-anchors an existing button instead of
+returning, and `_artCreateOrUpdateRetryButton()` calls it on BOTH paths —
+before its own early return, not only after creating.
+
+**Reproduced before fixing, which is the part worth recording.** The two
+previous rounds on this feature were a guess and a test that passed against the
+broken build. This time the committed disk fixture
+`tests/fixtures/saved-data/artist-releases-bodeans.json.gz` turned out to be
+*the very page reported* — `artist-releases`, single-table, 56 rows, every one
+carrying a `/cover-art` anchor — so the bug reproduced offline in one run, and
+the fix was verified against a failing test rather than against reasoning.
+
+Two things that cost a cycle each:
+
+- **`page.fill()` is not actionable on `#mb-global-filter-input` after a disk
+  load.** The input is present, visible, enabled and 500x24, with no modal over
+  it, and `fill` still waits until the test times out — the script re-asserts a
+  🔍 focus prefix in it. `typeGlobalFilter()` (click, wait for the prefix to
+  settle, then type) is the harness's own answer and works.
+- **The assertion has to be on ORDER, not existence.** The button never
+  disappeared during the bug, so any "is it there" check passed the whole time.
+
+**Note on multi-table pages:** the per-table controls live in an `<h3>` that
+carries no row-count stat, so the churn cannot reach them. That is why the
+panel's own spec, which runs on `releasegroup-releases`, never saw this — and
+why the new spec has to be single-table.

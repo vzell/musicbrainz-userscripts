@@ -1978,6 +1978,22 @@ loop continue past a failure.
   two specs and read by `_artRetryTable()`'s badge arithmetic.
 - Entity paths are **deduped**: the sticky-column duplicate of a row carries the
   same art anchor, and a release-group breadcrumb can repeat one.
+- **The opener re-anchors on EVERY pass, never "already exists, bail".**
+  `.mb-row-count-stat` is removed and re-created whenever the count changes,
+  i.e. on every filter, and is re-inserted relative to the master toggle or
+  (single-table) the filter container. `_artCreateOrUpdateToggleButton()` copes
+  because it re-derives its position from the LIVE stat every call —
+  `countStat.after(btn)` runs whether or not the button existed — and ⟳ and 🔗⟳
+  chain off it. A control that bails out on "already exists" opts out of that
+  and gets stranded: reported live on an artist-releases page with the opener
+  sitting between the heading text and the stat while the rest of the run moved
+  on. `_artCreateOrUpdateRetryButton()` therefore calls
+  `_artCreateSummaryButton()` on BOTH paths, before its own early return.
+  Pinned by `tests/fixtures/caa-summary-button-position.spec.js`, which asserts
+  ORDER — the button never disappeared, so an existence check passed throughout
+  the bug. **Single-table only:** on a multi-table page the per-table controls
+  live in an `<h3>` that carries no row-count stat, which is why the panel's own
+  spec (releasegroup-releases) never saw this.
 
 Covered by `tests/fixtures/caa-artwork-summary.spec.js`; mutation list
 `scripts/mutations/caa-artwork-summary.json`, with one honest `expect: "pass"`

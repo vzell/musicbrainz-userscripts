@@ -10,6 +10,7 @@
           "It reads the current state when you open it, so it works while artwork is still loading. That is the point rather than a detail: the completion message it replaces is page-wide, vanishes on its own, and on a large listing never appears at all — so on exactly the pages where you most want to know what happened, there was nothing to look at.",
           "Anything that could not be fetched is named and linked at the bottom, with a button to retry just those.",
           "The panel counts the rows currently SHOWN, and says so at the top when a filter is active rather than passing a filtered subset off as the whole table.",
+          "Fixed before release: on single-table pages the \ud83d\udcca button jumped out of the artwork-control run after filtering, landing between the heading and the row count.",
           "On a big discography the \"pending\" count can sit still for a long time, and the panel now explains why instead of looking stuck: cover-art lookups are deliberately queued behind every image on the page so the pictures appear first, and on a 2 000-release artist that is half an hour before the first lookup even runs. The panel shows how many jobs are still queued."
         ]
       }
