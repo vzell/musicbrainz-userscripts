@@ -13874,3 +13874,36 @@ the test proves something adjacent" — this is the variant where the test prove
 something *stationary*. Before asserting that X survives an event, check that
 anything recomputes X in response to it; if not, the test measures nothing and
 mutation-testing is what will say so.
+
+## 2026-09-20 — the full-suite flake is not spec-specific
+
+The existing note (2026-09-10) records
+`tests/fixtures/release-tracks-ms-length-overflow.spec.js:174` as failing
+"roughly 1 full-suite run in 3 and passes standalone every time". That is
+accurate but reads as though ONE spec is flaky. It is not — the suite is, and
+it picks a different victim each run.
+
+Today's instance, on the `fix/summary-btn-height` merge gate:
+
+| Run | Tree | Result |
+|-----|------|--------|
+| 1 | `fix/summary-btn-height` | 412 passed, 0 failed |
+| 2 | merged `main` (same userscript + version bump) | 411 passed, **1 failed** |
+| 3 | merged `main`, unchanged | 412 passed, 0 failed |
+
+The failure in run 2 was
+`tests/fixtures/length-column-filter-colon-gap.spec.js:25` — a spec with no
+connection to the change under test (a CSS selector list) and not the one the
+older note names. It passed standalone immediately afterwards.
+
+**Why this matters at a merge gate.** The skill says "do not push a red tree",
+so a red run has to be explained rather than re-rolled. The evidence that
+distinguishes flake from regression is not "it passes standalone" on its own —
+that is true of a real load-order bug too. It is that *the identical userscript
+had just run green*, and that the only delta between runs 1 and 2 was the
+version bump and a changelog entry, neither of which the failing spec reads.
+Establish that before re-running; re-running until green without it is how a
+real regression gets shipped.
+
+Both spec names are worth knowing, but the pattern to expect is "some spec,
+about 1 run in 3", not "that spec".

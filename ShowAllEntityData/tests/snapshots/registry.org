@@ -535,3 +535,10 @@ occurrences each, and none of them moves.
 If a future re-capture DOES show a 🔗⟳ moving, check first whether that page
 now builds a 📊 summary; if so the new order is correct and should be
 committed.
+
+*Extended at 9.99.1129*: the shared button-height rule and its =:active=
+sibling were rewritten to select by the same id prefixes instead of
+enumerating each button, so their selector lists differ in every baseline's
+=<style>= block too. Still =<style>=-only — no baseline contains a
+=mb-caa-toggle-btn-summary= element, and a computed height is not serialized
+in any case.
