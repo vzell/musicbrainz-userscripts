@@ -510,7 +510,9 @@ much, and what the alternative would be.
   after 9.99.1100 fixed it).
 - **`PERFORMANCE.org` carries NO `~:NNNNN~` line references, and
   `audit-docs.py` fails if one reappears.** It used to carry 118, and a survey
-  on 2026-09-20 found *every single one* pointing at unrelated code — the file
+  on 2026-09-20 found them all pointing at unrelated code — measurably so for
+  the 32 that paired a symbol with a number, of which **0** still resolved
+  within ±2 lines. The file
   had even recorded that conclusion for one paragraph of Step 30 on its own
   ("already ~600 lines stale before they were removed") without generalising
   it. This is the same rule, and the same reason, as the File-structure table

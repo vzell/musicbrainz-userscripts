@@ -21,12 +21,16 @@ now reconciled here; see "Step-number provenance" below before trusting any
 "Step N" reference in a branch commit message or an old session log.
 
 *No line references.* This file names symbols; it does not carry ~:NNNNN~
-line numbers. It used to carry 118 of them and *every single one was stale* when
-they were removed on 2026-09-20 — each pointing at unrelated code, several by
+line numbers. It used to carry 118 of them, and they were *all* stale when they
+were removed on 2026-09-20 — each pointing at unrelated code, several by
 thousands of lines, against a userscript that has since grown past 82 000
-lines. That is the conclusion CLAUDE.md's File-structure table reached for the
-same reason ("worse than having no table at all"), and the one Step 30's own
-paragraph reached by itself a few refs at a time. Grep the symbol.
+lines. Measured, not eyeballed, for the part a script can measure: 32 of the
+118 paired a symbol with a number, and *0 of those 32* still found their symbol
+within ±2 lines. The other 86 were bare numbers in table columns and ranges,
+written alongside them. That is the conclusion CLAUDE.md's File-structure
+table reached for the same reason ("worse than having no table at all"), and
+the one Step 30's own paragraph reached by itself a few refs at a time. Grep
+the symbol.
 ~scripts/audit-docs.py~ fails if a line reference reappears.
 
 ** Context
