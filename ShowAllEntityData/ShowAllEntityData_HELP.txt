@@ -1284,6 +1284,10 @@ CAA/EAA ILLUSTRATED DISCOGRAPHY  (🖼️ in ⚙️ Settings)
     ⚠⟳ N  Ask again about ONLY the N entities the archive could not answer,
           leaving the rest alone.  This one appears only when something has
           actually failed.
+          On a page with sub-tables there is one of these per sub-table,
+          counting that sub-table's own failures, plus one beside the
+          page-level buttons covering the whole page.  Press whichever
+          matches what you want to repair.
   The difference matters because a lookup that 404s and a lookup that 503s
   look identical on screen — both are a release with no artwork.  The number
   on ⚠⟳ counts only the second kind, so a page full of releases that
@@ -1477,6 +1481,9 @@ Web Service.  Relationship icons (favicons) appear after the table renders.
     ⚠⟳ N  Recover ONLY the N lookups that FAILED, leaving the rows that
         worked alone.  This one appears only when something has actually
         failed, and the number tells you how many.
+        As with artwork, a page with sub-tables gets one per sub-table for
+        that sub-table's own failures, plus a page-level one for all of
+        them.
   The difference is worth knowing on a big page: recovering three failures
   out of two thousand rows used to mean two thousand requests at one per
   second — about forty minutes to repair three seconds of trouble.  Now it

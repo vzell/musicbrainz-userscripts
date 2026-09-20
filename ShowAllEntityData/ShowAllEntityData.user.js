@@ -69304,6 +69304,7 @@ a { color: #1565c0; }`;
         // and a retry that recovers everything produces no further failure write
         // to ride the coalesced refresh. Repaint immediately.
         _relRefreshFailedRetryButtons();
+        _relRefreshPerTableFailedButtons();
     }
     /**
      * Creates and inserts Relationship retry buttons (🔗⟳) into the page header
@@ -69436,6 +69437,7 @@ a { color: #1565c0; }`;
         // further cell write is coming to trigger the coalesced refresh. Paint
         // them once here or they sit looking enabled with nothing to do.
         _relRefreshFailedRetryButtons();
+        _relRefreshPerTableFailedButtons();
     }
 
     /**
@@ -69466,6 +69468,51 @@ a { color: #1565c0; }`;
      *
      * @returns {Set<string>}
      */
+    /**
+     * Each rendered data table paired with the SOURCE rows that belong to it.
+     *
+     * This is the "table -> source rows" mapping `org/503-handling.org` long
+     * recorded as a blocker for per-table failure counts. It is not one: the
+     * binding already exists and is already trusted — `groupedRows[i]` is
+     * rendered as the `i`-th table bearing a `.mb-col-filter-row`, which is
+     * exactly how `runFilter()`'s own multi-table loop pairs them
+     * (`tables[groupIdx]`) and how `_pendingEditsGroups()` has done it all
+     * along. Because it is the same binding, a group and its table cannot
+     * disagree about which rows belong to which.
+     *
+     * **Source rows, never the live `<tbody>`, and that is the whole point.**
+     * `runFilter()` REMOVES non-matching rows rather than hiding them, so a
+     * count taken from the live DOM collapses to zero exactly when a filter
+     * excludes the rows it describes — and a control that hides itself at zero
+     * then vanishes at the moment it is most needed. CLAUDE.md records the
+     * identical bug for `_updateLengthMismatchButtons()` /
+     * `_updateLiveDateFlagButtons()`.
+     *
+     * Single-table pages keep their rows in `allRows` with `groupedRows` empty,
+     * which is why the two are handled separately rather than through
+     * `_msSourceRows()` — that helper flattens both and so cannot answer a
+     * per-table question.
+     *
+     * Merged discography view is the one caveat: it clones other groups' rows
+     * into the first-occurrence table's `<tbody>`, so what is RENDERED in a
+     * table can exceed what this attributes to it. `groupedRows` itself stays
+     * intact through that (the merge pass clones), so the attribution remains
+     * correct about ownership — which is what a per-table retry wants.
+     *
+     * @returns {Array<{table: HTMLTableElement, rows: Array<HTMLElement>}>}
+     */
+    function _tableSourceRows() {
+        const tables = Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        if (!tables.length) return [];
+        if (typeof groupedRows !== 'undefined' && Array.isArray(groupedRows) && groupedRows.length) {
+            return groupedRows
+                .map((g, i) => ({ table: tables[i] || null, rows: (g && g.rows) || [] }))
+                .filter(e => e.table);
+        }
+        return [{ table: tables[0], rows: (typeof allRows !== 'undefined' && allRows) || [] }];
+    }
+
     function _relFailedMbidsPageWide() {
         const _failed = new Set();
         const _done = new Set();
@@ -69629,6 +69676,113 @@ a { color: #1565c0; }`;
      *
      * @returns {void}
      */
+    /**
+     * The failed Relationship MBIDs of each table, partitioned.
+     *
+     * One pass, the same total cost as `_relFailedMbidsPageWide()` — this does
+     * not add work, it attributes the work already being done. The refresh that
+     * calls it is deliberately NOT hooked per frame (see that function's own
+     * JSDoc), so the cost profile is unchanged.
+     *
+     * **The "done anywhere wins" rule stays PAGE-WIDE**, and that is the one
+     * thing partitioning could easily get wrong. The same entity can appear in
+     * several tables; `_relWriteResult()` clears the error marker only on the
+     * cells it writes, so a table still holding a stale `data-rel-error` for an
+     * MBID that another table has since answered must NOT report it as a
+     * failure. The `done` set is therefore accumulated across every table
+     * before any subtraction happens.
+     *
+     * @returns {Array<{table: HTMLTableElement, mbids: Set<string>}>}
+     */
+    function _relFailedMbidsByTable() {
+        const _done = new Set();
+        const _scan = (root, failed) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('td.mb-rel-cell[data-mbid]').forEach(td => {
+                const m = td.dataset.mbid;
+                if (!m) return;
+                if (td.dataset.relDone === '1') _done.add(m);
+                else if (td.dataset.relError) failed.add(m);
+            });
+        };
+        const _entries = _tableSourceRows().map(({ table, rows }) => {
+            const failed = new Set();
+            _scan(table, failed);
+            rows.forEach(r => _scan(r, failed));
+            return { table, mbids: failed };
+        });
+        _entries.forEach(e => _done.forEach(m => e.mbids.delete(m)));
+        return _entries;
+    }
+
+    /**
+     * Creates, updates or removes the PER-TABLE Relationships failed-retry
+     * controls, one per table that has failures of its own.
+     *
+     * Sibling of the page-wide `#mb-rel-retry-failed`, which stays: "recover
+     * everything that failed" and "recover what failed in THIS table" are
+     * different intentions, exactly as the per-table and global `🔗⟳` already
+     * are. The page-wide one lives in the h2 pill, these in each h3 pill.
+     *
+     * The id keeps the `mb-rel-retry-` prefix so the control joins its table's
+     * segmented pill automatically, and it is inserted at the END of that run
+     * via `_ctlRunEnd()` — see CLAUDE.md's pill section for why both matter.
+     *
+     * @returns {void}
+     */
+    function _relRefreshPerTableFailedButtons() {
+        const _enabled = Lib.settings.sa_enable_relationships_column && _relPageHasColumn();
+        const _entries = _enabled ? _relFailedMbidsByTable() : [];
+        const _live = new Set();
+        _entries.forEach(({ table, mbids }, i) => {
+            const id = 'mb-rel-retry-failed-' + i;
+            _live.add(id);
+            const existing = document.getElementById(id);
+            const n = mbids.size;
+            if (!n) { if (existing) existing.remove(); _live.delete(id); return; }
+            const btn = existing || document.createElement('button');
+            if (!existing) {
+                btn.id = id;
+                btn.type = 'button';
+                btn.style.cssText = _REL_RETRY_BTN_CSS + 'background:rgba(255,193,7,0.55);';
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    _relRetryFailedInTable(table);
+                });
+            }
+            btn.textContent = `⚠⟳ ${n}`;
+            btn.title = `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that `
+                      + 'failed in THIS table, instead of re-requesting every row. '
+                      + 'Rows a filter is hiding are included.';
+            if (!existing) {
+                const a = document.getElementById('mb-rel-retry-' + i);
+                if (!a) return;
+                _ctlRunEnd(a).after(btn);
+            }
+        });
+        // Drop controls for tables that no longer exist or no longer fail.
+        document.querySelectorAll('[id^="mb-rel-retry-failed-"]').forEach(el => {
+            if (!_live.has(el.id)) el.remove();
+        });
+    }
+
+    /**
+     * Recovers only the failed Relationship lookups of ONE table.
+     *
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _relRetryFailedInTable(table) {
+        if (!Lib.settings.sa_enable_relationships_column || !table) return;
+        const entry = _relFailedMbidsByTable().find(e => e.table === table);
+        if (!entry || !entry.mbids.size) return;
+        const et = table.dataset.mbRelEntityType
+                || (activeInjectedColumns[0] || {}).entityType;
+        if (!et) return;
+        Lib.debug('rel', `relRetryFailedInTable: retrying ${entry.mbids.size} failed mbid(s)`);
+        _relRetryMbids(entry.mbids, et, _relIncOptionsForEntityType(et));
+    }
+
     function _relRefreshFailedRetryButtons() {
         const _existing = document.getElementById('mb-rel-retry-failed');
         if (!Lib.settings.sa_enable_relationships_column || !_relPageHasColumn()) {
@@ -78704,6 +78858,174 @@ a { color: #1565c0; }`;
      * @param   {Object} ctx  `CAA_CTX` or `EAA_CTX`.
      * @returns {void}
      */
+    /** Minimum gap between per-table failed-count walks, per archive. */
+    const _ART_FAILED_TBL_REFRESH_MS = 1000;
+    /** archive key -> { last, timer } for the throttle below. */
+    const _artFailedTblThrottle = new Map();
+
+    /**
+     * How many of an archive's failed entities each table owns.
+     *
+     * **Counted from SOURCE rows, so a filter cannot shrink it** — the trap
+     * `org/503-handling.org` records as this design's second one, and the same
+     * one CLAUDE.md documents for the length-mismatch and live-date buttons.
+     * A control that hides itself at zero must never be driven by a live-DOM
+     * tally, or it disappears exactly when a filter excludes the rows it is
+     * the only way back to.
+     *
+     * The path is derived with the WRITER's own expression
+     * (`ref || href.replace(artSuffix)`) — the one `_artEnrichIcon()` uses when
+     * it records the failure. Deriving it from `ctx.rowLinkSel` instead drifts
+     * on Path-C synthetic anchors, the trap `_artRetryFailedAll()` already
+     * documents.
+     *
+     * Entity paths are deduped per table: a sticky-column duplicate of a row
+     * carries the same art anchor, and a release-group breadcrumb can repeat
+     * one, so a naive tally double-counts.
+     *
+     * @param   {Object} ctx  `CAA_CTX` or `EAA_CTX`.
+     * @returns {Array<{table: HTMLTableElement, paths: Set<string>}>}
+     */
+    function _artFailedPathsByTable(ctx) {
+        if (!ctx.failedCache.size) return [];
+        const suffixRe = new RegExp(ctx.artSuffix + '$');
+        const sel = 'a[href$="' + ctx.artSuffix + '"]';
+        const pick = (root, into) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll(sel).forEach(a => {
+                const pth = a.getAttribute('ref')
+                         || (a.getAttribute('href') || '').replace(suffixRe, '');
+                if (pth && ctx.failedCache.has(pth)) into.add(pth);
+            });
+        };
+        return _tableSourceRows().map(({ table, rows }) => {
+            const paths = new Set();
+            pick(table, paths);
+            rows.forEach(r => pick(r, paths));
+            return { table, paths };
+        });
+    }
+
+    /**
+     * Creates, updates or removes the PER-TABLE artwork failed-retry controls.
+     *
+     * Sibling of the page-wide `{btnPrefix}-retry-failed`, which stays — the
+     * same split the per-table and global ⟳ already have, and the same one the
+     * Relationships half uses.
+     *
+     * **Throttled, never hooked per frame, and the difference is measured.**
+     * The page-wide control's count is `ctx.failedCache.size`, an O(1) read,
+     * which is why `_artScheduleFailedBtnRefresh()` can afford a
+     * `requestAnimationFrame` during the whole artwork load. A per-table count
+     * cannot be O(1): it has to attribute paths to tables, and that is a walk
+     * over the source rows — **measured at ~5 ms for 4174 rows on `NB-3641`,
+     * 2026-09-20**, i.e. about a third of a 60 fps frame budget, sustained for
+     * as long as artwork is loading. At one walk per second that same cost is
+     * ~0.5% and invisible.
+     *
+     * Settle-only refresh was the obvious alternative and is wrong here:
+     * CLAUDE.md records that `_showCaaCompletionToast()` never fires at all on
+     * a large listing, so these controls would never appear on exactly the
+     * pages that need them.
+     *
+     * @param   {Object} ctx
+     * @returns {void}
+     */
+    function _artRefreshPerTableFailedButtons(ctx) {
+        const entries = _artFailedPathsByTable(ctx);
+        const live = new Set();
+        entries.forEach(({ table, paths }, i) => {
+            const id = ctx.btnPrefix + '-retry-failed-' + i;
+            const existing = document.getElementById(id);
+            const n = paths.size;
+            if (!n) { if (existing) existing.remove(); return; }
+            live.add(id);
+            const btn = existing || document.createElement('button');
+            if (!existing) {
+                btn.id = id;
+                btn.type = 'button';
+                btn.style.cssText =
+                    'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
+                    ' border-radius:3px; background:rgba(255,193,7,0.55); vertical-align:middle;' +
+                    ' font-size:0.8em; margin-left:3px; line-height:1;' +
+                    ' display:inline-flex; align-items:center; box-sizing:border-box;' +
+                    ' transition:transform 0.1s, box-shadow 0.1s;';
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    _artRetryFailedInTable(ctx, table);
+                });
+            }
+            btn.textContent = `⚠⟳ ${n}`;
+            btn.title = `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the `
+                      + 'archive could not answer in THIS table, instead of reloading every '
+                      + 'image in it. Rows a filter is hiding are included.';
+            if (!existing) {
+                const a = document.getElementById(ctx.btnPrefix + '-retry-' + i);
+                if (!a) { live.delete(id); return; }
+                _ctlRunEnd(a).after(btn);
+            }
+        });
+        document.querySelectorAll('[id^="' + ctx.btnPrefix + '-retry-failed-"]').forEach(el => {
+            if (!live.has(el.id)) el.remove();
+        });
+    }
+
+    /**
+     * Throttles `_artRefreshPerTableFailedButtons()` to one walk per archive per
+     * `_ART_FAILED_TBL_REFRESH_MS`. See that function for why a frame is too
+     * often and a settle is too rare.
+     *
+     * @param   {Object} ctx
+     * @returns {void}
+     */
+    function _artSchedulePerTableFailedRefresh(ctx) {
+        const st = _artFailedTblThrottle.get(ctx.key) || { last: 0, timer: null };
+        _artFailedTblThrottle.set(ctx.key, st);
+        if (st.timer) return;
+        const wait = Math.max(0, _ART_FAILED_TBL_REFRESH_MS - (Date.now() - st.last));
+        st.timer = setTimeout(() => {
+            st.timer = null;
+            st.last = Date.now();
+            _artRefreshPerTableFailedButtons(ctx);
+        }, wait);
+    }
+
+    /**
+     * Recovers only the failed artwork lookups of ONE table.
+     *
+     * Mirrors `_artRetryFailedAll()` exactly, including the ordering its own
+     * comments argue for: drop the cached zero FIRST (or Tier 1 serves it back
+     * and no request is made), re-arm the anchors, and clear the failure record
+     * only AFTER, because `_artEnrichIcon()` re-adds anything that fails again.
+     * Nothing is evicted from IDB — a transient failure was never written there.
+     *
+     * @param   {Object} ctx
+     * @param   {HTMLTableElement} table
+     * @returns {void}
+     */
+    function _artRetryFailedInTable(ctx, table) {
+        const entry = _artFailedPathsByTable(ctx).find(e => e.table === table);
+        if (!entry || !entry.paths.size) return;
+        const paths = entry.paths;
+        Lib.debug(ctx.key, `${ctx.key}RetryFailedInTable: re-enriching ${paths.size} entit(ies)`);
+        paths.forEach(pth => {
+            ctx.countCache.delete(pth);
+            ctx.imagesCache.delete(pth);
+        });
+        const suffixRe = new RegExp(ctx.artSuffix + '$');
+        table.querySelectorAll('a[href$="' + ctx.artSuffix + '"]').forEach(a => {
+            const pth = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(suffixRe, '');
+            if (!pth || !paths.has(pth)) return;
+            delete a.dataset[ctx.enrichedAttr];
+            const td = a.closest('td');
+            if (td && td.dataset[ctx.multiBuiltAttr]) delete td.dataset[ctx.multiBuiltAttr];
+        });
+        paths.forEach(pth => ctx.failedCache.delete(pth));
+        _artEnrichTable(ctx, table);
+        _artRefreshFailedRetryButton(ctx);
+        _artRefreshPerTableFailedButtons(ctx);
+    }
+
     function _artRefreshFailedRetryButton(ctx) {
         const id = ctx.btnPrefix + '-retry-failed';
         const existing = document.getElementById(id);
@@ -78762,6 +79084,10 @@ a { color: #1565c0; }`;
         requestAnimationFrame(() => {
             _artFailedBtnRefreshPending.delete(ctx.key);
             _artRefreshFailedRetryButton(ctx);
+            // Per-table siblings are throttled, NOT per frame: their count is a
+            // source-row walk rather than a Set.size read. See
+            // _artRefreshPerTableFailedButtons() for the measurement.
+            _artSchedulePerTableFailedRefresh(ctx);
         });
     }
 
@@ -78970,6 +79296,20 @@ a { color: #1565c0; }`;
         // Zone 2 of org/503-handling.org's retry design: the summary opener,
         // inserted after this table's ⟳ so the run reads as one group.
         _artCreateSummaryButton(ctx, table, tableIndex);
+
+        // Zone 4, per table. Hooked HERE because this runs once per table on
+        // every render, which is exactly when the controls need re-counting and
+        // re-anchoring — a filter re-render rebuilds the run around them. The
+        // throttle collapses the N per-table calls of one render into a single
+        // walk, so this costs one walk per render rather than N.
+        //
+        // Without this hook the controls are merely STALE rather than wrong,
+        // which is worse: a test asserting they survive a filter passes whether
+        // or not the count is filter-proof, because nothing recomputes it. That
+        // is exactly how the first version of
+        // tests/fixtures/per-table-failed-retry.spec.js passed against a
+        // deliberately broken build.
+        _artSchedulePerTableFailedRefresh(ctx);
 
         // ── Per-subtable Relationships retry button ───────────────────────
         const relRetryBtnId = 'mb-rel-retry-' + tableIndex;
@@ -82872,6 +83212,29 @@ a { color: #1565c0; }`;
                     totalRowsAccumulated: _resumeState.totalRowsAccumulated,
                     maxPageKnown: _resumeState.maxPageKnown,
                 };
+            },
+
+            /**
+             * Recomputes the per-table failed-retry counts NOW, bypassing the
+             * 1 s throttle, and returns them.
+             *
+             * Exposed because nothing recomputes them after a filter: the
+             * refresh is driven by the enrich pass, which has finished by then.
+             * That staleness is benign in production — the counts only change
+             * while failures are being recorded — but it makes the property
+             * that matters untestable from the DOM alone. A spec that merely
+             * filtered and re-read the buttons would pass whether the count
+             * came from the filter-proof source rows or from the live tbody,
+             * because neither is consulted again. Mutation-testing is what
+             * caught that: the "read the live table only" mutation passed.
+             *
+             * @param   {string} which  'caa' or 'eaa'.
+             * @returns {Array<number>} per-table counts, in table order.
+             */
+            artRefreshPerTableFailed(which) {
+                const ctx = which === 'eaa' ? EAA_CTX : CAA_CTX;
+                _artRefreshPerTableFailedButtons(ctx);
+                return _artFailedPathsByTable(ctx).map(e => e.paths.size);
             },
 
             relAutoRetryState() {

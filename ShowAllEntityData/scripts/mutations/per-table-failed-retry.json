@@ -1,0 +1,42 @@
+[
+  {
+    "name": "the per-table count is read from the live table only",
+    "why": "THE trap org/503-handling.org names for this design. runFilter() REMOVES non-matching rows, so a live-DOM tally collapses toward zero as rows are filtered out — and a control that hides itself at zero then vanishes exactly when a filter excludes the rows it is the only way back to. CLAUDE.md records the identical bug for _updateLengthMismatchButtons() and _updateLiveDateFlagButtons().",
+    "edits": [
+      { "find": "            pick(table, paths);\n            rows.forEach(r => pick(r, paths));", "replace": "            pick(table, paths);" }
+    ],
+    "spec": "tests/fixtures/per-table-failed-retry.spec.js",
+    "grep": "does not shrink the counts",
+    "expect": "fail"
+  },
+  {
+    "name": "every per-table control shows the page-wide count",
+    "why": "A control rendered per table but carrying the page-wide number would pass any 'the controls exist' check while partitioning nothing. The sum assertion is what distinguishes them.",
+    "edits": [
+      { "find": "            const n = paths.size;\n            if (!n) { if (existing) existing.remove(); return; }\n            live.add(id);", "replace": "            const n = ctx.failedCache.size;\n            if (!n) { if (existing) existing.remove(); return; }\n            live.add(id);" }
+    ],
+    "spec": "tests/fixtures/per-table-failed-retry.spec.js",
+    "grep": "partitioned across per-table controls",
+    "expect": "fail"
+  },
+  {
+    "name": "entity paths are not deduped within a table",
+    "why": "KNOWN GAP, recorded rather than hidden. A sticky-column duplicate of a row carries the same art anchor, and a release-group breadcrumb can repeat one, so a tally that counts occurrences rather than distinct paths over-reports. A Set is used, and swapping it for an array would show the defect — but this fixture has no repeated art anchor within one table, so the sum assertion still holds. Covering it needs a fixture with a sticky column over an artwork column.",
+    "edits": [
+      { "find": "                if (pth && ctx.failedCache.has(pth)) into.add(pth);", "replace": "                if (pth && ctx.failedCache.has(pth)) into.add(pth + '');" }
+    ],
+    "spec": "tests/fixtures/per-table-failed-retry.spec.js",
+    "grep": "partitioned across per-table controls",
+    "expect": "pass"
+  },
+  {
+    "name": "the Relationships done-set is partitioned instead of page-wide",
+    "why": "KNOWN GAP, recorded rather than hidden. The same entity can appear in several tables and _relWriteResult() clears the error marker only on the cells it writes, so an MBID answered in table A must not still count as failed in table B — which is why the done set accumulates across every table before any subtraction. This spec disables the Relationships column (its ws/2 traffic is unrouted here), so the Rel half is exercised only indirectly, by the rel specs in the suite calling the refresh on every pass. Covering it needs a multi-table fixture with a repeated entity and routed ws/2.",
+    "edits": [
+      { "find": "        _entries.forEach(e => _done.forEach(m => e.mbids.delete(m)));", "replace": "        _entries.forEach(e => { const d = new Set(); d.forEach(m => e.mbids.delete(m)); });" }
+    ],
+    "spec": "tests/fixtures/per-table-failed-retry.spec.js",
+    "grep": "partitioned across per-table controls",
+    "expect": "pass"
+  }
+]

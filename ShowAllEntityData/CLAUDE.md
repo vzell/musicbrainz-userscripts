@@ -2245,12 +2245,33 @@ exists for the plausible future simplification that collapses them.
   answered the trap: it did not — a filter still dimmed it into uselessness.
   The control is absent at zero, which is safe only BECAUSE the count is
   filter-proof.
-- **It is page-wide, not per table, and that is a decision.** Scoping to one
-  table needs a table → source-rows mapping this file says is unreliable (see
-  `_relScheduleProgressRefresh()`: merged view folds other groups' rows into the
-  first-occurrence table). It also saves nothing — F7 is about not re-requesting
-  the SUCCESSES. That mapping is the first problem to solve when the segmented
-  per-table pill gets built.
+- **There is now one per table AND one page-wide**, the same split the global
+  and per-table `🔗⟳` already have — "recover everything" and "recover what
+  failed in THIS table" are different intentions. It was page-wide only until
+  9.99.1128, on the grounds that scoping needed "a table → source-rows mapping
+  this file says is unreliable". **That was wrong, and the mapping was already
+  in use**: `_tableSourceRows()` now names it, and it is the binding
+  `runFilter()`'s own multi-table loop uses (`tables[groupIdx]` over the
+  `.mb-col-filter-row` tables) and that `_pendingEditsGroups()` had relied on
+  all along. Merged view does not break it — the merge pass CLONES, so
+  `groupedRows` stays intact.
+- **The per-table counts read SOURCE rows, and the artwork one is THROTTLED,
+  not per-frame.** The page-wide artwork count is `ctx.failedCache.size`, O(1),
+  which is why it can afford a `requestAnimationFrame`. A per-table count
+  cannot be O(1) — it attributes paths to tables, which is a source-row walk,
+  **measured at ~5 ms for 4174 rows (`NB-3641`, 2026-09-20)**, about a third of
+  a 60 fps frame budget sustained for the whole artwork load. At one walk per
+  second it is ~0.5%. Do not "simplify" `_artSchedulePerTableFailedRefresh()`
+  into the per-frame path. Settle-only is also wrong: the CAA completion never
+  fires on a large listing, so the controls would never appear there at all.
+- **Nothing recomputes the per-table counts after a filter**, because the
+  refresh is driven by the enrich pass, which has finished by then. That is
+  benign — the counts only change while failures are being recorded — but it
+  means a spec that filters and re-reads the buttons proves NOTHING about
+  filter-proofness. Mutation-testing caught exactly that: "read the live table
+  only" passed against the first version of the test.
+  `__saTest.artRefreshPerTableFailed()` forces the real recompute so the
+  property can actually be pinned.
 - **`_relRetryMbids()` clears markers on the source rows too.** It used to clear
   only the live DOM, so a filtered-out failure kept `data-rel-error` — which the
   impl's candidate scan and `_relQueueStillWants()` both read as "leave alone",
