@@ -1953,3 +1953,31 @@ so a test that pins it needs more than 5 failures; and reaching past the rate
 gate to go faster would be testing something other than what ships. Recorded
 here so the next person reading the suite's wall clock knows which spec owns
 the increase and why, rather than treating it as drift.
+
+* 2026-09-20 — resume-from-failed-page.spec.js wall clock (NB-3641)
+
+| host                                    | =NB-3641=                                        |
+| date (UTC)                              | 2026-09-20                                       |
+| script version                          | 9.99.1124 (branch =feat/resume-from-failed-page=) |
+| =resume-from-failed-page.spec.js= alone | *84 s* (7 tests, =--workers=1=)                  |
+| the same spec, =--workers=2=            | 84 s                                             |
+
+Ordinary for a spec that fails pages on purpose: each failing page costs
+=fetchHtml()='s three attempts with its 2 s + 5 s backoff, i.e. ~7 s, and four
+of the seven tests pay it twice (once to interrupt the run, once for a resume
+that also fails or for a second interrupted run). Nothing here is near
+=rel-auto-retry-failed='s 324 s, so the slowest-spec row in =tests/README.org=
+is unchanged.
+
+Not comparable to any other host's figure; captured in the same session as the
+suite total below.
+
+** Full fixture suite with this spec added
+
+| host                        | =NB-3641=                       |
+| date (UTC)                  | 2026-09-20                      |
+| before (9.99.1124 on =main=) | 396 tests, *5.3 min*            |
+| after  (9.99.1124 + this branch) | 403 tests, *5.2 min*        |
+
+The 7 new tests are additive; the suite is still dominated by
+=rel-auto-retry-failed='s rate-gate waits.

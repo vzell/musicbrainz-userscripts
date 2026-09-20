@@ -13673,3 +13673,86 @@ breaker's own threshold is 5 and a test that pins it needs more failures than
 that. `tests/README.org` and `tests/MEASUREMENTS.org` now both say so, with the
 host, so the next person reading the suite's wall clock knows which spec owns
 the increase.
+
+## 2026-09-20 — a resume cannot re-enter `startFetchingProcess()`: `isLoaded` reloads the page
+
+`org/503-handling.org` item 5 ("↻ Load remaining pages") was designed before any
+code, as that entry demanded. The design's feasibility argument rested on four
+facts; three held, and the fourth was false in a way that only building it
+showed.
+
+**The false one.** *"The render tail is already re-entrant against a rendered
+page — the critical error arm's own advice is 'repress the Show all button',
+which is a second full pass over one."* The render halves really are re-entrant
+(`renderFinalTable()`/`renderGroupedTable()` clear before inserting, and
+`runFilter()` drives them on every keystroke). But a re-press is not a pass at
+all:
+
+```js
+// Reload the page if a fetch process has already run to fix column-level
+// filter unresponsiveness
+if (isLoaded) {
+    sessionStorage.setItem('mb_show_all_reload_pending', 'true');
+    window.location.reload();
+    return;
+}
+```
+
+Nothing re-presses afterwards — init only clears the flag — so "repress the
+button" means *reload, then press again*. The inference had been drawn from a
+comment in an error arm rather than from the code that comment describes.
+
+**How it presented.** The first five runs of
+`tests/fixtures/resume-from-failed-page.spec.js` failed as a status line that
+never settled, with the renderer blocked so hard that `page.evaluate()` itself
+timed out and Playwright reported *"Target page, context or browser has been
+closed"*. No console error, no page error, nothing in the trace: the reload was
+racing the fixture's own route and the page never came back. Bisected with six
+`console.log` markers through the setup — the last one to print was
+`const activeBtn = e.target`, which bracketed it to a 350-line window, and the
+reload block is in it.
+
+**The fix, and its price.** `if (isLoaded && !_isResume)`. The exemption is not
+free: the guard's stated reason is "column-level filter unresponsiveness" after
+a second fetch — a 2026-05 workaround whose mechanism is not recorded anywhere,
+so it cannot be reasoned about, only tested. The spec therefore filters a
+COLUMN after a resume, asserts the rows narrow to exactly the matching count,
+and clears it again. They do. A mutation in the other direction (dropping
+`isLoaded &&` outright) is in `scripts/mutations/resume-from-failed-page.json`
+too, so the reload for a genuine second press cannot be removed by accident.
+
+**A second defect, found by reading and NOT yet reproduced.** The heading
+pre-processing block is idempotent per function but not as a group.
+`applyInsertH2()` guards itself with a `data-mb-injected-h2="1"` marker it
+stamps and then queries for. `applyRenameH2ToH3()` runs *before* it, renames
+**every** `<h2>` in the document, and copies all attributes onto the `<h3>` it
+substitutes — so a second pass turns the injected `<h2 data-mb-injected-h2="1">`
+into an `<h3 data-mb-injected-h2="1">`, the marker query finds nothing, and
+another heading is injected beside the orphan. **18 pageTypes declare both
+features** (every `*-tags` type plus `user-ratings`, `popular-tags`,
+`reports-index`, `edit-types`, `instrument-list`, `privileged-accounts`,
+`notes-received`). It is reachable today by pressing the button twice — which
+is what the script tells the user to do after a critical error. Not on the
+resume path (the resume skips the block), so it keeps its own entry in
+`org/503-handling.org` and its own future branch.
+
+**Smaller things the same build turned up**, each recorded because each is
+invisible when wrong:
+
+- The synthetic click event needs three members, not one.
+  `startFetchingProcess()` reads `e.target` and then calls `e.preventDefault()`
+  and `e.stopPropagation()`; a bare `{target}` throws on the second and aborts
+  the resumed run before its first fetch.
+- The loop's "this page is the page we are standing on, use `document`"
+  shortcut must be disabled on a resume, or it re-extracts this script's own
+  rendered table as page N. Reachable on a real page (standing on `?page=7`
+  with page 5 failing), but not from the `artist-events` fixture, so it is an
+  `expect: "pass"` entry in the mutation list rather than an untested claim.
+- The column-filter inputs are `readonly` until a trusted interaction
+  (anti-autofill hardening), so `locator.fill()` never applies —
+  `columnFilterInput()` plus `click()` and `pressSequentially()` is the only
+  route. Documented in `tests/support/filterSortAssertions.js`; rediscovered
+  here as a 150 s timeout.
+
+Seven tests, 1.4 min on `NB-3641`. Eleven mutations: nine `fail`, two recorded
+`pass` with their reasons above.

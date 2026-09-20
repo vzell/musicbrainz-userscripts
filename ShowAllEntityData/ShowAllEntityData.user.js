@@ -37176,6 +37176,35 @@ a { color: #1565c0; }`;
      */
     let _lastFetchIncomplete = null;
 
+    /**
+     * What an interrupted fetch left behind, so the "↻ Load remaining pages"
+     * button can pick up at the page that failed instead of re-fetching
+     * everything from page 1.
+     *
+     * **Only the values that cannot be re-derived are kept here.** `maxPage`
+     * comes from a request and a dialog, and the counters are the running
+     * totals of the interrupted run; everything else the fetch loop reads —
+     * `overrideParams`, `targetHeader`, `currentPageNum`,
+     * `isAmbiguousEditsPagination` — is derived from `activeDefinition`, the
+     * URL or the live pagination widget, none of which change between the
+     * interrupted run and the resume.
+     *
+     * `pendingGroupCellHtml` is a STRING, not the `<td>`: the cell is already a
+     * `cloneNode(true)` and its only reader takes `.innerHTML`, so nothing has
+     * to hold a reference into the parsed document that iteration discarded.
+     *
+     * Set only by the fetch loop's page-failure arm, and cleared at the top of
+     * every run — so a fresh press of any button removes the offer, and a
+     * resumed run that succeeds leaves nothing behind.
+     *
+     * @type {?{nextPage: number, maxPage: number, pagesProcessed: number,
+     *          totalRowsAccumulated: number, cumulativeFetchTime: number,
+     *          lastCategory: ?string, pendingGroupCellHtml: ?string,
+     *          maxPageKnown: boolean, button: HTMLElement,
+     *          buttonConfig: object, baseDef: object}}
+     */
+    let _resumeState = null;
+
     let multiTableSortStates = new Map();
     // Registry of per-table tint functions so renderFinalTable can re-apply tints after re-render
     let multiSortTintRegistry = new Map(); // sortKey → { applyTints, clearTints }
@@ -46554,9 +46583,22 @@ a { color: #1565c0; }`;
      *   (may carry `params`, `features`, `virtualPath`, `labelFromH2`, etc.).
      * @param   {object}      baseDef      - The matched page definition object
      *   (the base `activeDefinition` before button-specific overrides are applied).
+     * @param   {?object}     [resumeFrom] - A `_resumeState` record, when this run
+     *   is continuing an interrupted one rather than starting a fresh fetch. It
+     *   changes six things and nothing else: the second-fetch page RELOAD is
+     *   skipped (this is the only exemption from it, and without it a resume
+     *   destroys the rows it exists to keep); the page count is reused instead of
+     *   re-probed, with its two threshold dialogs shut; the four HEADING
+     *   pre-processing steps are skipped; the discography pre-fetch and the
+     *   `h3_*_category_header_array` reset in front of it are skipped; the row
+     *   accumulators are NOT cleared; and the loop starts at the page that
+     *   failed, never taking the "use the live `document`" shortcut. See
+     *   CLAUDE.md's "`startFetchingProcess()` is entered TWICE only by a resume"
+     *   and org/503-handling.org's "DESIGN — item 5".
      * @returns {Promise<void>}
      */
-    async function startFetchingProcess(e, buttonConfig, baseDef) {
+    async function startFetchingProcess(e, buttonConfig, baseDef, resumeFrom = null) {
+        const _isResume = !!resumeFrom;
         // A new fetch replaces the row set, so last time's "this page has no
         // live-date flags" is no longer an answer about these rows. Cheap to
         // re-determine: one walk, on the first filter pass after the render.
@@ -46720,6 +46762,11 @@ a { color: #1565c0; }`;
         // record alone could never reach it, and a file that does not say it is
         // partial looks complete forever.
         _lastFetchIncomplete = fetchIncomplete;
+        // Every run starts with no resume offer, including a resumed one: the
+        // loop's page-failure arm below is the only thing that creates it. That
+        // is what makes a fresh press of any button remove a stale offer, and
+        // what makes a resumed run that succeeds leave nothing behind.
+        _resumeState = null;
 
         // ── BEGIN: Artist-Releasegroups pre-fetch pass ────────────────────────────────────────
         //
@@ -46739,12 +46786,18 @@ a { color: #1565c0; }`;
         // user can see that work is happening.
         //
         // Reset arrays unconditionally so a second button press always gets fresh data.
-        h3_official_category_header_array   = [];
-        h3_all_category_header_array        = [];
-        h3_non_official_category_header_array = [];
-        discographyViewState = 'all';
+        // A RESUME is the one press that is not a second one: it continues the
+        // same row set, so the headers already collected still describe it, and
+        // re-collecting them would re-run the whole official-only pagination
+        // pass below for nothing.
+        if (!_isResume) {
+            h3_official_category_header_array   = [];
+            h3_all_category_header_array        = [];
+            h3_non_official_category_header_array = [];
+            discographyViewState = 'all';
+        }
 
-        if (pageType === 'artist-releasegroups') {
+        if (!_isResume && pageType === 'artist-releasegroups') {
             // Locate the subType definition and find the matching button by mainLabel
             // so we know which official-only params to use for this pre-fetch.
             const _subTypeDef = pageDefinitions.find(
@@ -46931,7 +46984,20 @@ a { color: #1565c0; }`;
         }
 
         // Reload the page if a fetch process has already run to fix column-level filter unresponsiveness
-        if (isLoaded) {
+        //
+        // A RESUME is exempt, and the distinction is the point: this is the
+        // answer to a SECOND fetch, which replaces the row set, and it works by
+        // throwing the page away — which is exactly what a resume must not do,
+        // since the rows it is continuing live in module state that a reload
+        // destroys. Nothing re-presses the button after the reload either, so a
+        // resume that took this path would simply leave the user on a bare page
+        // having lost the pages that did arrive.
+        //
+        // The property this guard exists for is pinned directly instead:
+        // `tests/fixtures/resume-from-failed-page.spec.js` filters a COLUMN
+        // after a resume and asserts the rows narrow, which is the behaviour the
+        // reload was introduced to protect.
+        if (isLoaded && !_isResume) {
             Lib.debug('meta', 'Second fetch attempt detected. Setting reload flag and reloading page to ensure filter stability.');
             sessionStorage.setItem('mb_show_all_reload_pending', 'true');
             window.location.reload();
@@ -47003,17 +47069,17 @@ a { color: #1565c0; }`;
         // containers.  Internal order is also significant: renameH2ToH3/
         // renameH2ToH1 must run before insertH2 so the newly inserted <h2> is
         // NOT immediately demoted/promoted itself.
-        if (activeDefinition.features?.renameH2ToH3) {
+        if (!_isResume && activeDefinition.features?.renameH2ToH3) {
             applyRenameH2ToH3(activeDefinition);
         }
-        if (activeDefinition.features?.renameH2ToH1) {
+        if (!_isResume && activeDefinition.features?.renameH2ToH1) {
             applyRenameH2ToH1(activeDefinition);
         }
-        if (activeDefinition.features?.insertH2) {
+        if (!_isResume && activeDefinition.features?.insertH2) {
             applyInsertH2(activeDefinition);
         }
         // insertPrependH2: inject an h2 BEFORE the existing one (e.g. search pages).
-        if (activeDefinition.features?.insertPrependH2) {
+        if (!_isResume && activeDefinition.features?.insertPrependH2) {
             applyInsertPrependH2(activeDefinition);
         }
 
@@ -47130,7 +47196,14 @@ a { color: #1565c0; }`;
             _hasAmbiguousEditsPagination(document);
 
         // Determine maxPage based on context
-        if (isAmbiguousEditsPagination) {
+        if (_isResume) {
+            // The page count was settled by the run this one continues, and the
+            // widget it was read from has not changed. Re-probing would cost a
+            // request and — worse — put "⚠️ High Page Count" in front of the
+            // user a second time for the same set of pages.
+            maxPage = resumeFrom.maxPage;
+            Lib.debug('fetch', `Resuming from page ${resumeFrom.nextPage}: reusing maxPage ${maxPage} from the interrupted run.`);
+        } else if (isAmbiguousEditsPagination) {
             // MusicBrainz edit-listing pagination never reveals a true last page
             // (the widget is a sliding window around the current page, and
             // "Found at least N edits" keeps growing the deeper you page — see
@@ -47171,7 +47244,7 @@ a { color: #1565c0; }`;
         // pageTypes, and edits pages with a non-ambiguous pagination widget)
         // or just the configured safety cap standing in for an unknown total
         // (edits pages with an ambiguous widget — see isAmbiguousEditsPagination above).
-        if (isAmbiguousEditsPagination) {
+        if (!_isResume && isAmbiguousEditsPagination) {
             const proceedConfirmed = await Lib.showCustomConfirm(
                 `This MusicBrainz edit listing does not report an exact page count — MusicBrainz's pagination keeps going indefinitely for large result sets.\n\nFetching will stop automatically once no more edits are found, up to a safety cap of ${maxThreshold} pages (configurable in Settings).\n\nProceed?`,
                 'ℹ️ Unknown Page Count',
@@ -47185,7 +47258,7 @@ a { color: #1565c0; }`;
                 _setInfoSub('mb-info-display-generic', '');
                 return;
             }
-        } else if (maxPage > maxThreshold) {
+        } else if (!_isResume && maxPage > maxThreshold) {
             const proceedConfirmed = await Lib.showCustomConfirm(
                 `Warning: This MusicBrainz entity has ${maxPage} pages. It's more than the configured maximum value (${maxThreshold}) and could result in severe performance, memory consumption and timing issues.\n\nProceed?`,
                 '⚠️ High Page Count',
@@ -47203,23 +47276,34 @@ a { color: #1565c0; }`;
 
         stopRequested = false;
         _invalidateFilterCache();
-        allRows = [];
-        originalAllRows = [];
-        groupedRows = [];
-        _seenTopCdStubHrefs = new Set();
-        expandedCells.clear();
-        _inlineArtSettled.clear();
-        _areaFlagRegionCorrected.clear();
-        _editsProseDefaultExpandedCols.clear();
-        _mbRowIdxCounter = 0;
 
-        // Reset the arrays that are populated by the MAIN fetch pass.
-        // NOTE: h3_official_category_header_array is intentionally NOT reset here —
-        // it was already populated by the pre-fetch pass above and must be preserved
-        // so that the post-render discography view logic can use it.
-        // discographyViewState is also preserved (still 'all' from the pre-fetch reset).
-        h3_all_category_header_array          = [];
-        h3_non_official_category_header_array = [];
+        // Everything below this point is what a RESUME must not do: it is the
+        // row set the resume exists to keep. `_mbRowIdxCounter` matters most —
+        // leaving it running is what gives the resumed pages fresh
+        // `data-mb-row-idx` values continuing from where the interrupted run
+        // stopped, so every map keyed "rowIdx:colIdx" (`expandedCells`,
+        // `_inlineArtSettled`, `_areaFlagRegionCorrected`) stays consistent
+        // with no merge step and no renumbering pass. Clearing those maps is
+        // skipped for the same reason: their keys still name live rows.
+        if (!_isResume) {
+            allRows = [];
+            originalAllRows = [];
+            groupedRows = [];
+            _seenTopCdStubHrefs = new Set();
+            expandedCells.clear();
+            _inlineArtSettled.clear();
+            _areaFlagRegionCorrected.clear();
+            _editsProseDefaultExpandedCols.clear();
+            _mbRowIdxCounter = 0;
+
+            // Reset the arrays that are populated by the MAIN fetch pass.
+            // NOTE: h3_official_category_header_array is intentionally NOT reset here —
+            // it was already populated by the pre-fetch pass above and must be preserved
+            // so that the post-render discography view logic can use it.
+            // discographyViewState is also preserved (still 'all' from the pre-fetch reset).
+            h3_all_category_header_array          = [];
+            h3_non_official_category_header_array = [];
+        }
 
         // Run refactored clutter removal
         performClutterCleanup();
@@ -47260,17 +47344,28 @@ a { color: #1565c0; }`;
         const currentUrlParams = new URLSearchParams(window.location.search);
         const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);
 
-        let pagesProcessed = 0;
-        let cumulativeFetchTime = 0;
-        let lastCategorySeenAcrossPages = null;
-        let totalRowsAccumulated = 0;
+        // A resume continues the interrupted run's running totals rather than
+        // restarting them, or the status line would say "Loaded 3 pages" over a
+        // table holding forty pages' rows.
+        let pagesProcessed = _isResume ? resumeFrom.pagesProcessed : 0;
+        let cumulativeFetchTime = _isResume ? resumeFrom.cumulativeFetchTime : 0;
+        let lastCategorySeenAcrossPages = _isResume ? resumeFrom.lastCategory : null;
+        let totalRowsAccumulated = _isResume ? resumeFrom.totalRowsAccumulated : 0;
         // report-multiple-linked: carries the colspan group-header cell forward
         // across rows (and across page boundaries — a group's rows can
-        // legitimately be split across a pagination boundary).
+        // legitimately be split across a pagination boundary, and across a
+        // resume, which is a boundary of exactly that kind). Rebuilt from its
+        // HTML rather than carried as a node: the captured cell is already a
+        // detached clone and only its `innerHTML` is ever read.
         let pendingUrlLinkedGroupCell = null;
+        if (_isResume && resumeFrom.pendingGroupCellHtml !== null) {
+            pendingUrlLinkedGroupCell = document.createElement('td');
+            pendingUrlLinkedGroupCell.innerHTML = resumeFrom.pendingGroupCellHtml;
+        }
 
         try {
-            for (let p = 1; p <= maxPage; p++) {
+            const startPage = _isResume ? resumeFrom.nextPage : 1;
+            for (let p = startPage; p <= maxPage; p++) {
                 if (stopRequested) {
                     Lib.debug('cleanup', 'Fetch loop stopped at page ' + p);
                     break;
@@ -47300,6 +47395,11 @@ a { color: #1565c0; }`;
                 try {
                     // If this page matches the current browser page and no specific overrides are requested, use the
                     // existing document instead of a redundant network fetch.
+                    // Never on a RESUME: by then this script's own render has
+                    // replaced the live table with the consolidated one, so the
+                    // shortcut would re-extract our own output as page N. It is
+                    // reachable — standing on ?page=7 with page 5 failing puts
+                    // p === currentPageNum inside the resumed range.
                     // For search pages the table is rendered by MusicBrainz JS after page load.
                     // Using the live `document` on first visit causes a race: the script reads the
                     // DOM before MusicBrainz has finished rendering, seeing either no table or
@@ -47307,7 +47407,7 @@ a { color: #1565c0; }`;
                     // Fix: always fetch search pages fresh from the network so the DOMParser
                     // receives a fully server-rendered response, regardless of whether p===1.
                     const _isSearchPage = activeDefinition && activeDefinition.type === 'search';
-                    if (!_isSearchPage && !buttonConfig.virtualPath && p === currentPageNum && (!overrideParams || Object.keys(overrideParams).length === 0)) {
+                    if (!_isResume && !_isSearchPage && !buttonConfig.virtualPath && p === currentPageNum && (!overrideParams || Object.keys(overrideParams).length === 0)) {
                         Lib.debug('fetch', `Page ${p} is current page. Using existing document.`);
                         doc = document;
                    } else {
@@ -47327,6 +47427,24 @@ a { color: #1565c0; }`;
                     // 3-of-40 (org/503-handling.org F1). `fetchHtml()` has
                     // already spent its three attempts by the time we are here.
                     fetchIncomplete.pageFailure = { page: p, detail: _httpFailureDetail(e) };
+                    // Everything the "↻ Load remaining pages" button needs, taken
+                    // here because here is the only place all of it is in scope
+                    // and correct: page `p` failed BEFORE `pagesProcessed++`, so
+                    // every counter still describes pages 1..p-1 exactly.
+                    _resumeState = {
+                        nextPage: p,
+                        maxPage,
+                        pagesProcessed,
+                        totalRowsAccumulated,
+                        cumulativeFetchTime,
+                        lastCategory: lastCategorySeenAcrossPages,
+                        pendingGroupCellHtml: pendingUrlLinkedGroupCell
+                            ? pendingUrlLinkedGroupCell.innerHTML : null,
+                        maxPageKnown: !fetchIncomplete.maxPageUnknown,
+                        button: activeBtn,
+                        buttonConfig,
+                        baseDef,
+                    };
                     break; // Stop fetching further pages on error
                 }
 
@@ -48941,6 +49059,11 @@ a { color: #1565c0; }`;
                         globalStatusDisplay.style.color = 'green';
                     }
                     globalStatusDisplay.title = _saveIncomplete ? _saveIncomplete.tip : '';
+                    // This branch writes the status with `textContent`, which wipes
+                    // any child it already had — so the offer has to be (re)built
+                    // AFTER it, not once at the end of the function this exit
+                    // never reaches.
+                    _createResumeFetchButton();
                     fetchProgressWrap.style.display = 'none';
 
                     Lib.debug('success', `Process complete. Data saved without rendering. Row Count: ${totalRows}. Fetch Time: ${fetchSeconds}s`);
@@ -49534,6 +49657,7 @@ a { color: #1565c0; }`;
                 'Time to fetch all pages from the MusicBrainz server.');
             _sdAppend(`Rendering: ${renderSeconds}s`, ', ',
                 'Time to build and insert the fetched rows into the DOM.');
+            _createResumeFetchButton();
             fetchProgressWrap.style.display = 'none';
 
             // The status block above cleared #mb-info-display-rel and reset
@@ -63890,6 +64014,77 @@ a { color: #1565c0; }`;
      *          `pagesPhrase` is the "N pages" fragment every caller prints, so
      *          the three of them cannot word the same run differently.
      */
+    /**
+     * Builds the "↻ Load remaining pages" button into the status line, when the
+     * run that just finished left a resume point behind.
+     *
+     * Placed at the END of the status block rather than beside the `⚠️ Loaded N
+     * of M pages` span it explains: that block is rebuilt wholesale by every
+     * run, and the CAA and Relationships completions append their own segments
+     * to it afterwards, so a control wedged between the segments would have to
+     * be re-created by each of them.
+     *
+     * Offered whenever a page fetch finally failed — including when the page
+     * COUNT was never learned, where the resume is still the right move (it
+     * re-asks for the one page that failed) and only the wording of the tooltip
+     * differs.
+     *
+     * @returns {void}
+     */
+    function _createResumeFetchButton() {
+        if (!_resumeState) return;
+        if (document.getElementById('mb-resume-fetch-btn')) return;
+        const st = _resumeState;
+        const _b = document.createElement('button');
+        _b.id = 'mb-resume-fetch-btn';
+        _b.type = 'button';
+        _b.textContent = '↻ Load remaining pages';
+        _b.style.cssText = _REL_RETRY_BTN_CSS;
+        _b.title = st.maxPageKnown
+            ? `Continue the interrupted load at page ${st.nextPage} of ${st.maxPage}. ` +
+              `The ${st.pagesProcessed} page(s) already loaded are kept — nothing is re-fetched.`
+            : `Continue the interrupted load at page ${st.nextPage}. The page count was ` +
+              `never established, so this re-asks for that page and carries on from there. ` +
+              `The ${st.pagesProcessed} page(s) already loaded are kept.`;
+        _b.addEventListener('click', ev => {
+            ev.stopPropagation();
+            _resumeFetchFromFailedPage();
+        });
+        globalStatusDisplay.appendChild(_b);
+    }
+
+    /**
+     * Continues an interrupted fetch from the page that failed.
+     *
+     * Re-enters `startFetchingProcess()` — the same function, not a copy of its
+     * loop — with the stashed record as `resumeFrom`. That is what keeps the
+     * render tail, the threshold dialogs, the artwork and Relationships wiring
+     * and every other thing the tail does on a single code path; the resume
+     * changes only where the loop starts and which four setup steps are skipped.
+     *
+     * The synthetic event stands in for the original click. Three members are
+     * needed, not one: `startFetchingProcess()` reads `e.target` for the active
+     * button and then calls `e.preventDefault()` and `e.stopPropagation()`. A
+     * bare `{target}` throws on the second of those, which aborts the resumed
+     * run before its first fetch — and the only visible symptom is a run that
+     * never finishes.
+     *
+     * @returns {Promise<void>}
+     */
+    async function _resumeFetchFromFailedPage() {
+        const st = _resumeState;
+        if (!st) return;
+        document.getElementById('mb-resume-fetch-btn')?.remove();
+        Lib.debug('fetch', `Resuming interrupted fetch at page ${st.nextPage} of ${st.maxPage} ` +
+                           `(${st.pagesProcessed} pages, ${st.totalRowsAccumulated} rows kept).`);
+        const _synthetic = {
+            target: st.button,
+            preventDefault() {},
+            stopPropagation() {},
+        };
+        await startFetchingProcess(_synthetic, st.buttonConfig, st.baseDef, st);
+    }
+
     function _fetchIncompleteSummary(rec, maxPage, pagesProcessed) {
         const reasons = [];
         if (rec.pageFailure) {
@@ -69227,7 +69422,7 @@ a { color: #1565c0; }`;
         _relAutoRetry.timer = setTimeout(() => {
             _relAutoRetry.timer = null;
             // Re-checked on FIRING, not only on scheduling: half a minute is
-            // long enough for the user to have pressed \u26a0\u27f3 themselves, for a
+            // long enough for the user to have pressed ⚠⟳ themselves, for a
             // re-render to have recovered the rows, or for the column to have
             // been collapsed.
             if (Lib.settings.sa_rel_auto_retry_failed === false) return;
@@ -70825,6 +71020,13 @@ a { color: #1565c0; }`;
             // or Rels completion segment) writes its default leading ", " separator with
             // nothing in front of it — a stray leading comma.
             globalStatusDisplay.innerHTML = '';
+            // A resume point belongs to a FETCH of this page, not to a row set:
+            // these rows came from a file and there is no page K to carry on
+            // from. The `innerHTML` clear above already removes the button, so
+            // this is the invariant said out loud rather than a live bug —
+            // `_createResumeFetchButton()` is reachable only from
+            // `startFetchingProcess()`, which clears this at its top anyway.
+            _resumeState = null;
             _caaGlobalStatusDone = false;  // allow the first CAA completion to append its segment
             _relGlobalStatusDone = false;  // allow the first Rels completion to append its segment
             const _sdLoadedFromDisk = document.createElement('span');
@@ -82466,12 +82668,34 @@ a { color: #1565c0; }`;
              *
              * Exposed because none of it has a DOM surface: a declined schedule,
              * a spent budget and a tripped breaker all look identical on screen
-             * (\u26a0 cells, unchanged), and the only other evidence is a request
+             * (⚠ cells, unchanged), and the only other evidence is a request
              * that does or does not happen 30 seconds later.
              *
              * @returns {{passes: number, tripped: boolean, pending: boolean,
              *            consecutiveErrors: number}}
              */
+            /**
+             * The resume point an interrupted fetch left behind, or null.
+             *
+             * Exposed because the interesting half is invisible: whether the
+             * resumed run KEPT the earlier pages' rows or silently re-fetched
+             * them looks identical on screen once it finishes, and the counters
+             * that would tell them apart are function locals.
+             *
+             * @returns {?{nextPage: number, maxPage: number, pagesProcessed: number,
+             *            totalRowsAccumulated: number, maxPageKnown: boolean}}
+             */
+            resumeState() {
+                if (!_resumeState) return null;
+                return {
+                    nextPage: _resumeState.nextPage,
+                    maxPage: _resumeState.maxPage,
+                    pagesProcessed: _resumeState.pagesProcessed,
+                    totalRowsAccumulated: _resumeState.totalRowsAccumulated,
+                    maxPageKnown: _resumeState.maxPageKnown,
+                };
+            },
+
             relAutoRetryState() {
                 return {
                     passes: _relAutoRetry.passes,
@@ -82487,7 +82711,7 @@ a { color: #1565c0; }`;
              *
              * Deliberately exercises the REAL decision path
              * (`_relScheduleAutoRetry()`) and then fires the timer it set, so
-             * every ceiling is still applied \u2014 a helper that skipped straight
+             * every ceiling is still applied — a helper that skipped straight
              * to the retry would test nothing.
              *
              * @returns {boolean} whether a pass was scheduled at all.
