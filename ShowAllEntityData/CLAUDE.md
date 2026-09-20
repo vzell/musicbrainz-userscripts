@@ -508,6 +508,18 @@ much, and what the alternative would be.
   the mechanical half of the re-read only — a step whose bug description is no
   longer true reads perfectly well to a script (Step 25 did, for four commits
   after 9.99.1100 fixed it).
+- **`PERFORMANCE.org` carries NO `~:NNNNN~` line references, and
+  `audit-docs.py` fails if one reappears.** It used to carry 118, and a survey
+  on 2026-09-20 found *every single one* pointing at unrelated code — the file
+  had even recorded that conclusion for one paragraph of Step 30 on its own
+  ("already ~600 lines stale before they were removed") without generalising
+  it. This is the same rule, and the same reason, as the File-structure table
+  above: the userscript grows on nearly every commit, so a number is stale
+  within days and is worse than nothing, because it reads as precise. Name the
+  symbol; where a pointer cannot be recovered, rewrite the sentence to stand
+  without one rather than guess an anchor. `scripts/strip-perf-line-refs.py`
+  did the conversion and records which shapes were mechanical and which needed
+  a judgement call.
 - **Record the machine and the wall-clock time. Every timing, every time.**
   `capture-interaction-perf.js` and `capture-snapshots.js` write a `machine`
   block (hostname, cores, node and Playwright versions, plus `uptimeHours` and
