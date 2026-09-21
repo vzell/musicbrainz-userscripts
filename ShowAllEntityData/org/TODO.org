@@ -702,6 +702,27 @@ second bullet: yes, but as a *generated* artifact that nothing reads at runtime
 (that file's "Question 2" section has the reasoning, including why a
 runtime-fetched defaults file is the wrong shape).
 
+* Show me instructions for the end-users of the current configuration handling after implementing new features
 
+1.)
 
+[Image #1] [Image #2] I set the treshold to 0 and used https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases for testing, but the "Relationships" column still is collapsed
 
+2.)
+
+I reformatted the tables for better human reading already in the file @og/config-handling.org
+
+3.)
+
+I also made changes to the @org/TODO.org file
+
+4.)
+
+Show me instructions for the end-users of the current configuration handling after implementing new features, so that
+when I post the new MusicBrainz forum updates to our script, the users know what to do with teir respective edits to
+their configuation
+
+5.)
+
+- I will be shipping at least 1129 (even better all the configuration handling improvements)
+- start with Item 2
