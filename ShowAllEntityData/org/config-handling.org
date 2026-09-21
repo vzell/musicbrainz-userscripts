@@ -3,8 +3,14 @@
 
 * Status
 
-Analysis only, read off the code at 9.99.1129. Nothing here is fixed yet; each
-finding below names the branch it should ship on.
+Read off the code at 9.99.1129. Each finding below names the branch it ships
+on; the table's Branch column is the authority on what has landed.
+
+*Shipped since:*
+
+| Finding | Branch                          | Spec                                              |
+|---------+---------------------------------+---------------------------------------------------|
+| [[#F2][F2]]      | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js= |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -467,3 +473,10 @@ applies to =tests/=.
   the config-button observer from the library's two menu paths as well.
 - *[[#F6][F6]]* — republish the mirror, or point the dev repo's runtime URLs at it
   consciously rather than by inheritance.
+- *A stale HELP line, found while resyncing for [[#F2][F2]].*
+  =ShowAllEntityData_HELP.txt= still lists a "Sort progress threshold" setting
+  under ⚡ PERFORMANCE SETTINGS, but =sa_sort_progress_threshold= was removed
+  from =configSchema= before 9.99.1129 — =grep -c= returns 0. So HELP documents
+  a control that does not exist. Left for [[#item-4][Item 4]], whose Stage 2 audit is the
+  thing that should have caught it: a schema-vs-docs cross-check belongs
+  alongside the schema-vs-fallback one, and both need the generated snapshot.

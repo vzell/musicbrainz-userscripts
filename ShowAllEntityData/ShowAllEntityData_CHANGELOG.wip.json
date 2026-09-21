@@ -1,0 +1,23 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Numeric settings are honoured again after you have pressed SAVE once. The settings dialog stores every non-checkbox value as a string, and it writes ALL settings on the first SAVE — not just the ones you edited — so every numeric setting became a string in storage. Four settings read their value through a `typeof v === 'number'` check, which a string fails, so your value was silently discarded in favour of the built-in default: the Relationships auto-collapse threshold, the Relationships auto-retry \"too many failures\" limit, and the two completion-toast durations. The visible symptom was an auto-collapse threshold of 0 (\"never auto-collapse\") still collapsing a large table, because the read fell back to 200. Values are now coerced back to real numbers on read, which also repairs profiles that are already stored as strings — no re-save needed.",
+          "\"0 to disable\" now works for the Large Dataset Threshold and the Chunked Rendering Threshold. Both were read with `|| <default>`, and `0 || 5000` is 5000, so the save-or-render prompt could not be switched off and \"always use simple render\" could not be selected. Both now read with `??`, matching the Render Warning Threshold, which was always written that way. This had to ship together with the coercion above: before it, the stored string \"0\" was truthy, survived the `||`, and then failed the `> 0` test — so the setting worked by accident, and coercing it to a real 0 alone would have broken it.",
+          "An emptied numeric settings field falls back to that setting's default instead of being read as a deliberate 0. `Number('')` is 0 in JavaScript, which for a threshold documented as \"0 to disable\" would have silently switched the feature off."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Added `org/config-handling.org` (on `main` since the previous version): the end-user analysis of configuration handling, findings F1-F6, and the decision to commit a generated defaults snapshot that nothing reads at runtime. This change is its F2.",
+          "`ShowAllEntityData_HELP.txt` needed no edit: it already documented \"set the threshold to 0 to never auto-collapse\" and \"0 to disable\" for both render thresholds. Those statements were simply untrue for anyone who had pressed SAVE, and are now true."
+        ]
+      }
+    ]
+  }
+]

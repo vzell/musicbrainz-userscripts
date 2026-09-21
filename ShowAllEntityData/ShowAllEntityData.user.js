@@ -3069,6 +3069,68 @@
     const scriptVersion = (typeof GM_info !== 'undefined' && GM_info.script) ? GM_info.script.version : 'unknown';
     const libVersion = (Lib && Lib.version) ? Lib.version : 'unknown';
 
+    /**
+     * Coerces every `type: 'number'` setting in `Lib.settings` back to a real
+     * Number, in place.
+     *
+     * VZ_MBLibrary's settings dialog writes `input.value` for every
+     * non-checkbox widget, and `input.value` is always a string — so the FIRST
+     * time a user presses SAVE, all 38 numeric settings become strings in GM
+     * storage, and `settingsInterface.init()` hands them straight back on every
+     * later load without re-coercing. Four settings are read with a
+     * `typeof v === 'number'` guard — `_relTableExpanded()`,
+     * `_relAutoRetryMaxFailed()`, `_showRelCompletionToast()` and
+     * `_showCaaCompletionToast()` — and that guard fails on a string, so the
+     * user's value was silently discarded in favour of the hardcoded fallback.
+     * Confirmed live: an auto-collapse threshold of 0 ("never auto-collapse")
+     * still collapsed a 1000-entity table, because the read fell back to 200.
+     * See `org/config-handling.org` F2 and DEBUG-NOTES.md's 2026-09-21 entry.
+     *
+     * Four things here are load-bearing:
+     *
+     * - **It coerces on READ, not on save.** A save-side fix in the library
+     *   would stop producing strings but would leave every already-saved
+     *   profile broken for good. `_buildConfigJson()` has always done this same
+     *   coercion on export, for the same stated reason; only the runtime read
+     *   path was missing it.
+     * - **It runs BEFORE `Object.assign(settings, Lib.settings)`.** `settings`
+     *   is a shallow COPY (`const settings = {}` above), not a reference —
+     *   despite that line's own comment — so coercing first is what lets the
+     *   copy inherit corrected values. Safe because nothing reads a setting
+     *   earlier: there is no module-level `const x = Lib.settings…` anywhere in
+     *   the file, and `Lib.settings` is already populated (the library calls
+     *   `settingsInterface.init()` during construction).
+     * - **An empty string must NOT become 0.** Clearing a number field and
+     *   saving stores `''`, and `Number('') === 0` — which for a threshold
+     *   reads as the deliberate "0 to disable". An unparseable value falls back
+     *   to the schema default instead.
+     * - **A key absent from `Lib.settings` is left absent.** That is the
+     *   `VZ_MBLibrary`-failed-to-load stub path, where `Lib.settings` is `{}`
+     *   and each consumer's own `?? default` is what must apply. Writing
+     *   defaults in would silently change that path's behaviour.
+     *
+     * `Lib.settings` is the very object the library exposes as
+     * `settingsInterface.values`, so mutating it in place is what all ~546
+     * `Lib.settings.sa_*` reads see.
+     *
+     * @returns {void}
+     */
+    function _coerceNumericSettings() {
+        for (const key of Object.keys(configSchema)) {
+            const cfg = configSchema[key];
+            if (!cfg || cfg.type !== 'number') continue;
+            if (!(key in Lib.settings)) continue;
+            const raw = Lib.settings[key];
+            // Already a usable number — skip. Number.isFinite() rather than
+            // `typeof === 'number'` so a stored NaN/Infinity is repaired too.
+            if (Number.isFinite(raw)) continue;
+            const text = String(raw).trim();
+            const num  = (text === '') ? NaN : Number(text);
+            Lib.settings[key] = Number.isFinite(num) ? num : cfg.default;
+        }
+    }
+    _coerceNumericSettings();
+
     // Copy settings reference so the callback can access them
     Object.assign(settings, Lib.settings);
 
@@ -49164,7 +49226,15 @@ a { color: #1565c0; }`;
 
             // --- LARGE DATASET HANDLING ---
             // If the dataset is very large, offer the user a choice before rendering
-            const renderThreshold = Lib.settings.sa_render_threshold || 5000;
+            //
+            // `??`, never `||`: this setting documents `0` as "disable", and
+            // `0 || 5000` is 5000 — so the `> 0` test below was dead code and
+            // the dialog could not be switched off. `_coerceNumericSettings()`
+            // guarantees a real number here, so `??` only has to cover the
+            // library-failed-to-load stub path. Matches the
+            // `sa_render_warning_threshold` read further down, which was always
+            // written this way.
+            const renderThreshold = Lib.settings.sa_render_threshold ?? 5000;
             if (renderThreshold > 0 && totalRows > renderThreshold) {
                 const userChoice = await showRenderDecisionDialog(
                     totalRows, pagesProcessed,
@@ -51215,7 +51285,10 @@ a { color: #1565c0; }`;
         }
 
         // Use threshold setting for when to enable chunked rendering
-        const chunkThreshold = Lib.settings.sa_chunked_render_threshold || 1000;
+        // `??`, never `||` — see the `sa_render_threshold` read in
+        // `startFetchingProcess()`. `0` documents "always use simple render",
+        // and `0 || 1000` is 1000, which made the `=== 0` test below dead code.
+        const chunkThreshold = Lib.settings.sa_chunked_render_threshold ?? 1000;
 
         // For small datasets, use fast simple append
         if (chunkThreshold === 0 || rowCount < chunkThreshold) {
@@ -53015,7 +53088,10 @@ a { color: #1565c0; }`;
             // (`r.cloneNode(true)`) before calling this function, so on
             // every later (query-truthy) pass this is a clone-of-a-clone —
             // harmless, just belt-and-suspenders.
-            const chunkThreshold = Lib.settings.sa_chunked_render_threshold || 1000;
+            // `??`, never `||` — see `renderFinalTable()`'s read of the same
+            // setting. `0` means "always use simple render", and `0 || 1000`
+            // made the `> 0` test below unreachable.
+            const chunkThreshold = Lib.settings.sa_chunked_render_threshold ?? 1000;
             if (chunkThreshold > 0 && group.rows.length >= chunkThreshold) {
                 const fragment = document.createDocumentFragment();
                 group.rows.forEach(r => fragment.appendChild(r.cloneNode(true)));
@@ -82922,6 +82998,37 @@ a { color: #1565c0; }`;
              */
             masterRowScans() {
                 return _masterRowScanCount;
+            },
+
+            /**
+             * The live value and JS type of every `type: 'number'` setting,
+             * as `{ key: { value, type } }`.
+             *
+             * Exposed because `_coerceNumericSettings()` has no DOM surface at
+             * all, and its most important case is not falsifiable through
+             * behaviour on any committed fixture. The sharpest instance of the
+             * bug it fixes is a stored `"0"` on `sa_rel_collapse_threshold`
+             * meaning "never auto-collapse" — but the biggest fixture table has
+             * 6 distinct entities, so the broken read's fallback of 200 renders
+             * it EXPANDED, which is also what a correctly-honoured 0 does. Same
+             * outcome, so a behavioural assertion there would pass on unfixed
+             * code. Reproducing it in the DOM would need a fixture with more
+             * than 200 distinct entities, i.e. hundreds of routed WS/2 calls.
+             *
+             * So the coercion is pinned here, on the mechanism, and the
+             * user-visible half is pinned separately with a threshold value
+             * that DOES change the rendered outcome (see
+             * `tests/fixtures/settings-numeric-coercion.spec.js`).
+             *
+             * @returns {Object<string, {value: *, type: string}>}
+             */
+            numericSettings() {
+                const out = {};
+                for (const key of Object.keys(configSchema)) {
+                    if (!configSchema[key] || configSchema[key].type !== 'number') continue;
+                    out[key] = { value: Lib.settings[key], type: typeof Lib.settings[key] };
+                }
+                return out;
             },
 
             /**
