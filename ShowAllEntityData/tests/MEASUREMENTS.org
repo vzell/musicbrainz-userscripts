@@ -686,24 +686,31 @@ is the evidence here, not that argument.
 
 =petri= (24 cores, 31 GB, node v24.16.0, Playwright 1.62.1), uptime *6 d 17 h*,
 ONE resident =claude= session (the one that ran it), branch
-=fix/config-import-tables= at 9.99.1135, chromium-fixtures only, Playwright's
-own default worker count (half the logical CPUs = *12*).
+=fix/config-import-tables= at 9.99.1135 for the first two rows and =main= at
+9.99.1136 for the third, chromium-fixtures only, Playwright's own default
+worker count (half the logical CPUs = *12*).
 
-| Selection                     | Tests | Wall clock | Basis                                  |
-|-------------------------------+-------+------------+----------------------------------------|
-| =npm test= (=@slow= excluded) |   432 | ≈ 2 m 42 s | Playwright's own figure, twice         |
-| =npm run test:full=           |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
+| Selection                       | Tests | Wall clock | Basis                                  |
+|---------------------------------+-------+------------+----------------------------------------|
+| =npm test= (=@slow= excluded)   |   432 | ≈ 2 m 42 s | Playwright's own figure, twice         |
+| =npm run test:full=             |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
+| =npm run test:full=, merge gate |   447 | *5 m 40 s* | =/usr/bin/time=, 22:42:52-22:48:32 UTC |
 
-Both green. The =npm test= figure is Playwright's own "2.7m", taken from two
+All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
 Playwright start-up; the =test:full= figure is real wall clock and includes
 them. Do not compare the two columns as if they were the same measurement —
 Playwright reported *5.6 m* for the run this file records as 5 m 37 s.
 
-*The counts are what RAN, and are deliberately one behind the current suite.*
-An eighth test landed on the same branch after this arm, so =tests/README.org=
-now says 433/447. Do not "correct" the rows above to match it — the numbers
-here belong to the tree that was timed.
+*The third row is the merge gate for the same branch*, on =main= after the
+merge and the WIP fold, an eighth test having landed in between. 447 tests in
+340 s against 446 in 337 s, 50 minutes apart on an otherwise unchanged host:
+**0.9% apart for 0.2% more tests**, which is the closest thing this file has to
+a run-to-run repeatability figure for the fixture suite. Treat anything under
+a couple of percent here as noise.
+
+*Each row's count is what RAN.* Do not "correct" them to whatever
+=tests/README.org= says today — the numbers belong to the tree that was timed.
 
 *The first =npm test= run had one failure that did not reproduce*:
 =uniq-drop-join-phrases.spec.js= — "unchecking the last entry restores the
