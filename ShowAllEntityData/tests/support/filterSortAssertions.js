@@ -359,12 +359,20 @@ async function waitForColHeaderCountsStable(page, { stableFor = 4, pollIntervalM
 /**
  * Reads the text content of every `.mb-column-filter-highlight` span
  * currently present in one column's cells (across all visible rows) —
- * written by `highlightText()`/`highlightCrossTag()`
- * (`ShowAllEntityData.user.js:33961`/`34060`) for a plain-text column
+ * written by `highlightText()`/`highlightCrossTag()` for a plain-text column
  * filter, or by one of the uniq-dropdown compound-mode highlighters
- * (`_highlightCountryMatch()`, `_highlightArtValueMatch()`, etc.) for a
- * dropdown-driven value-set filter. `colIndex` is the same `row.cells`
- * zero-based index `getColFilters()`/`highlightText()` use — see
+ * (`_highlightCountryMatch()`, `_highlightJoinPhraseMatch()`,
+ * `_highlightArtValueMatch()`, etc.) for a dropdown-driven value-set filter.
+ * Grep those names rather than trusting a line number: this JSDoc used to
+ * carry two, and both were some 7000 lines stale by the time anyone read them.
+ *
+ * ONE COLUMN CAN PRODUCE BOTH KINDS AT ONCE. Since `getColFilters()` grew its
+ * two-descriptor shape, a value set picked on top of typed text AND's with it
+ * rather than replacing it, so both highlighters run on the same cells — see
+ * `uniq-drop-join-phrases.spec.js`, which counts each kind separately.
+ *
+ * `colIndex` is the same `row.cells` zero-based index
+ * `getColFilters()`/`highlightText()` use — see
  * `bodeansArtistReleasesFixture.js`'s `COLUMN_INDEX` map.
  *
  * @param {import('@playwright/test').Page} page

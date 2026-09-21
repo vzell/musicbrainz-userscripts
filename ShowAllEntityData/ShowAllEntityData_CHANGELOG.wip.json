@@ -1,0 +1,43 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A join phrase is no longer dropped when MusicBrainz marks one of the two credited entities as having pending edits. On a credit like \"Guns N’ Roses feat. Bruce Springsteen\", MusicBrainz wraps the pending entity's link in its own `<span class=\"mp\">`; the join-phrase finder only accepted a link that was a DIRECT child of the shared name element, so it saw one entity instead of two and \" feat. \" simply did not exist — no entry in the 📊 \"Join phrases\" section, nothing to filter on, nothing to highlight.",
+          "The boundary is now resolved structurally rather than by a list of known wrapper classes: for each pair of credited links the finder takes their nearest common ancestor and reads the nodes between them. That covers MusicBrainz's `mp` wrapper, jesus2099's `name-variation` wrapper, the two nested in either order, one wrapper around BOTH links, and whatever comes next.",
+          "This was a disagreement between two finders looking at the same cell: the entity finder already walked through the wrapper, which is why the very same row still offered its \"» artist name: Guns N’ Roses\" entry while its join phrase was missing.",
+          "The highlight for a picked join phrase now lands on the phrase itself. Where each credited entity carries its own disambiguation comment — MusicBrainz's ordinary shape — the text between the two links is split across several nodes, and the mark was going onto the non-breaking space in front of the previous entity's comment instead."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Picking a value from a column's 📊 panel now NARROWS text already typed into that column's filter box instead of replacing it, so the number on an entry's badge is the number of rows you get. The panel counts the rows currently VISIBLE, so with \"bruce\" typed into the Artist column its \"» join phrase: with\" entry read (3) — and clicking it returned 9, because the typed filter was thrown away.",
+          "The filter box now shows both halves, e.g. `bruce + » join phrase: with`, or `bruce + 2 selected` with several ticked. Unticking the last box restores the typed text and leaves the column filtered on it rather than clearing the column, and the typed text keeps its own match highlighting alongside the picked value's.",
+          "Typing into a box that is showing a selection still replaces that selection. That asymmetry is deliberate: the box's text IS the selection's summary, so editing it can only mean editing that text."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Every place that clears a column filter's checkbox selection now goes through one helper, so the newly stored typed text cannot be orphaned at one of them. \"Clear ALL filters\" was in fact already leaving the selection behind and relying on the next filter pass to tidy it up."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData_HELP.txt`: the 📊 panel's \"whichever you use last wins and clears the other\" rule is no longer true in one direction, and has been replaced with the new behaviour and the retained asymmetry. Its \"🔀 Join phrases\" description was re-read against the code and needed no change — it already described the feature correctly; the defect was that one phrase never reached it."
+        ]
+      }
+    ]
+  }
+]

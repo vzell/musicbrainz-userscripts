@@ -1469,6 +1469,81 @@ green; only removing both reproduces the defect, and
 combined entry plus two `expect: "pass"` singles. Do not "tidy" either guard
 away on the evidence that its own mutation passes.
 
+## The cell finders must agree on where one entity ends, and a 📊 pick AND's a typed filter
+
+Two defects from the same report
+(`org/uvd-filtering-join-phrases-missing-bug.org`, DEBUG-NOTES 2026-09-21), on
+`/work/<mbid>`'s native Artist column. They are unrelated in mechanism and
+worth keeping apart.
+
+**`_findCellJoinPhrases()` and `_findCellEntityRefs()` answer the same
+question** — where does one credited entity end and the next begin — and they
+disagreed for the whole life of the feature. The entity finder walks up with
+`a.closest('bdi')`, so MusicBrainz's own native `<span class="mp">` open-edits
+wrapper is transparent to it. The join-phrase finder demanded a DIRECT-child
+`<a>` (or a direct-child `span.name-variation`), so
+`<bdi><span class="mp"><a>Guns N’ Roses</a></span> feat. <a>Bruce
+Springsteen</a></bdi>` reported ONE entity and `" feat. "` existed nowhere: not
+in the 📊 "Join phrases" section, not for `_cellMatchesStructureMode()`'s
+`joinphrase:` mode, not for `_highlightJoinPhraseMatch()`. **The symptom that
+identified it was what the same cell DID offer** — its "» artist name: Guns N’
+Roses" entry. A finder that disagrees with its neighbour about one cell is the
+shape to look for here.
+
+- **The boundary is now structural, not an allowlist of wrapper classes.** For
+  each consecutive anchor pair: their nearest common ancestor inside the
+  `<bdi>`, then each anchor's own highest ancestor strictly below it. Do not
+  "simplify" that to a walk up to the `<bdi>` — that handles `.mp`,
+  `.name-variation` and both nesting orders, and still drops the phrase when
+  ONE wrapper encloses both anchors. Fixture row H is the only guard on that
+  half, which is why `uniq-drop-join-phrases.spec.js` asserts each cell
+  separately rather than in aggregate.
+- **The highlight anchor is the first text node that CARRIES TEXT**, not the
+  first text node. MusicBrainz nests each entity's own `<span class="comment">`
+  inside the shared `<bdi>`, so the slice between two anchors is routinely
+  `[ " ", <span class="comment">, " & " ]` — three nodes for a
+  one-character phrase — and the mark was landing on the non-breaking space in
+  front of the PREVIOUS entity's comment.
+
+**A 📊 selection NARROWS a typed column filter; it does not replace it.** The
+panel counts the rows currently VISIBLE, so with text already in the box its
+badges mean "…and that text". Overwriting the text made the badge and the
+result disagree: `(3)` on "» join phrase: with" produced 9 rows. The typed text
+is stashed on `input.dataset.mbUniqTypedText` at the transition into value-set
+mode, and **`getColFilters()` can now return TWO descriptors for one column
+index** — the `isMultiValueFilter` one and a plain one built from the stash.
+
+- **Nothing downstream needed teaching, and that is the design.**
+  `testRowMatch()` iterates `colFilters` and breaks on the first miss (so they
+  AND), both highlight loops iterate it (so the typed text keeps its mark), and
+  `_buildFilterKey()`/`_buildIncrPartialKey()` map over it (so the stash enters
+  both cache keys with no new field, and no pre-selection row list is replayed).
+  **Anything NEW that indexes `colFilters` by column must not assume one entry
+  per column.**
+- **Every clear path goes through `_clearColFilterValueSet()`.** The stash is
+  INVISIBLE — the input shows a summary label — so a site that clears only
+  `mbUniqValues` leaves the column narrowed by text the user can neither see nor
+  reach. `mbUniqValues` alone was forgiving about this, because
+  `getColFilters()`'s empty-field early return deletes it; that return is
+  unreachable while the field displays a label. `clearAllFilters()` had in fact
+  been relying on exactly that self-heal.
+- **The stash is written ONCE, on the transition.** From the second checkbox on,
+  `input.value` holds the composite label, so re-reading it appends the label to
+  itself.
+- **The reverse order stays asymmetric on purpose**: typing into a field holding
+  a value set still drops it. The field's text IS the summary, so editing it can
+  only mean editing that string.
+
+**Two testing notes.** This pageType's tbody is led by a `<tr class="subh">`, so
+it renders GROUPED — and on a grouped render `#mb-filter-status-display` reports
+only the GLOBAL filter, reading `"✓ Global filter"` from the first column-filter
+change onward and never changing again. `waitForFilterSettled()` therefore works
+exactly ONCE per test and then times out on a baseline identical to its last
+read. Poll the visible row set for a KNOWN value instead, which also refuses a
+trigger that silently did nothing. And assert the badge count against the row
+count rather than against a literal: the agreement is the guarantee, and a
+literal passes while both sides drift together.
+
 ## Track length precision (`Length` column) and the `treleases` trap
 
 **`treleases` is a NATIVE MusicBrainz class**, not a jesus2099 marker. A

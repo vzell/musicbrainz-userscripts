@@ -1,4 +1,4 @@
-* TODO bug: additionally filtered with "join phrase: with " from the open unique value drop-down menu in the "Join phrases" section
+* DONE bug: additionally filtered with "join phrase: with " from the open unique value drop-down menu in the "Join phrases" section
 
 The following unique value drop-down filtering bug is reproduced with the following steps on
 https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d
@@ -25,3 +25,93 @@ work-ComeTogether-final-filtered.html - "Artist" column filtered with filter str
 work-ComeTogether-final-filtered-uvd.html - "Artist" column filtered with filter string "bruce", open unique value drop-down menu
 work-ComeTogether-final-filtered-uvd-filtered.html - "Artist" column filtered with filter string "bruce", additionally filtered with "join phrase: with " from the open unique value drop-down menu in the "Join phrases" section
 #+end_example
+
+* Root cause (read from the three =debug/work-ComeTogether-*.html= snapshots, 2026-09-21)
+
+Two independent defects that happen to meet on the same panel.
+
+** Bug A — =" feat. "= missing from "Join phrases"
+
+Row 46 of =debug/work-ComeTogether-final-filtered.html= is literally:
+
+#+begin_src html
+<bdi><span class="mp"><a href="/artist/eeb1195b-…" title="Guns N’ Roses (…)">Guns N’ Roses</a></span> feat. <a href="/artist/70248960-…" title="Springsteen, Bruce">Bruce Springsteen</a></bdi>
+#+end_src
+
+=_findCellJoinPhrases()= accepted an entity boundary only as a DIRECT CHILD of
+the =<bdi>= — a bare =<a>=, or a =span.name-variation= wrapping exactly one.
+MusicBrainz's own native =<span class="mp">= open-edits marker is neither, so
+that =<bdi>= reported ONE entity, =entityIdx.length < 2= short-circuited, and
+the phrase never existed at all: not as a 📊 entry, not for
+=_cellMatchesStructureMode()='s =joinphrase:= filter, not for
+=_highlightJoinPhraseMatch()=.
+
+The telling detail is that the SAME row's "» artist name: Guns N’ Roses" entry
+IS offered (visible in =…-uvd.html=): =_findCellEntityRefs()= resolves its
+governing =<bdi>= with =a.closest('bdi')= and walks through =.mp= transparently.
+So the two finders disagreed about where an entity boundary is in one cell.
+
+** Bug B — the badge count and the filtered result disagree
+
+With =Artist= typed-filtered to ="bruce"= (7 rows) the panel offers
+=(3) » join phrase: with=; checking it yields 9 rows.
+
+A column filter input is architecturally EITHER typed text OR a checkbox value
+set: =applyUniqValueSet()= overwrites =input.value= and =getColFilters()=
+returns one descriptor shape or the other. =…-uvd-filtered.html= shows the end
+state — =data-mb-uniq-values="[&quot;\u0003joinphrase:with&quot;]"= with the
+typed ="bruce"= simply gone.
+
+But =openUniqDrop()= collects its counts from the CURRENTLY VISIBLE rows, i.e.
+from the typed filter's 7. So the count answers "and" while the filter answers
+"instead". The two can only be reconciled by ANDing.
+
+* Fix (branch =fix/uvd-join-phrase-wrappers-and-typed-filter-and=)
+
+- A: =_findCellJoinPhrases()= resolves each qualifying anchor's boundary through
+  ANY wrapper — nearest common ancestor inside the =<bdi>=, then each anchor's
+  own highest ancestor strictly below it. Subsumes =.mp=, =.name-variation=,
+  either nesting order, and a single wrapper enclosing BOTH anchors.
+- B: the typed text is stashed on =input.dataset.mbUniqTypedText= when a value
+  set is first applied over it; =getColFilters()= emits a SECOND, plain
+  descriptor for the same column index, which =testRowMatch()='s existing
+  =for (const f of colFilters)= loop ANDs. Unchecking everything restores it.
+  Input reads =bruce + » join phrase: with=.
+- Deliberate asymmetry, kept: TYPING into a field that already holds a value set
+  still drops the value set. The input's text IS the summary label, so editing
+  it can only mean editing that string.
+
+* Live pre-test — run in a real browser BEFORE the branch is merged
+
+URL: https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d
+(pageType =work-recordings=, =tableMode: 'single'=)
+
+| # | Exact click                                               | Prediction                                                                |
+|---+-----------------------------------------------------------+---------------------------------------------------------------------------|
+| 1 | Press "Show all Recordings for Work"                      | 100 rows, 1 page                                                          |
+| 2 | Artist 📊 → expand "Join phrases"                         | =feat.= now listed beside =&=, =and=, =with=, =/=                         |
+| 3 | Close panel, type "bruce" into the Artist column filter   | 7 rows — unchanged from before the fix                                    |
+| 4 | Re-open Artist 📊                                         | =» join phrase: with= badged (3); =» join phrase: feat.= badged (1)       |
+| 5 | Check =» join phrase: with=                               | *3 rows* (was 9); input reads =bruce + » join phrase: with=; both "Bruce" |
+|   |                                                           | and "with" highlighted; status =1 COLUMN FILTER ['Artist':"bruce + …"]=   |
+| 6 | Uncheck it                                                | back to the 7-row "bruce" set; input reads =bruce=; still tinted active   |
+| 7 | Check =» join phrase: feat.= instead                      | 1 row — the Guns N’ Roses one — with " feat. " highlighted                |
+| 8 | Clear the column, re-open 📊, check =» join phrase: with= | 9 rows — the no-typed-filter behaviour is untouched                       |
+
+Step 8 is the counter-guard: the AND must not change anything when there is
+nothing to AND with.
+
+* Coverage
+
+- =tests/fixtures/uniq-drop-join-phrases.html= / =…spec.js= — 10 tests. Rows
+  A-J reproduce every wrapper nesting plus the "each entity carries its own
+  comment" shape; the AND test asserts the badge count against the row count
+  rather than a literal, because the AGREEMENT is the guarantee.
+- =tests/fixtures/entity-refs-mp-wrapper.spec.js= — one added test pins the two
+  finders as agreeing on its existing =#qb-cell=.
+- =scripts/mutations/uniq-drop-join-phrases.json= — 10 planted defects, 9
+  =expect: "fail"= and one honest =expect: "pass"= (the =closest('bdi')= de-dup,
+  which no committed fixture can exercise). All 10 behave as recorded.
+- =scripts/bench-join-phrase-scan.js= + =tests/MEASUREMENTS.org= 2026-09-21 —
+  the boundary change costs +2.5 ms over 4174 cells and finds twice as many
+  phrases.

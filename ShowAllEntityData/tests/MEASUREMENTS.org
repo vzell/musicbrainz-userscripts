@@ -2087,3 +2087,63 @@ gated on settle would never appear on exactly the pages with the most failures.
 The Relationships half needed no such decision — its refresh was already not
 hooked per frame, and partitioning its existing page-wide pass costs the same
 total as the pass it replaces.
+
+* 2026-09-21 — cost of making the join-phrase entity boundary structural (vzell-lap)
+
+Taken because =openUniqDrop()= calls =_findCellJoinPhrases()= once per VISIBLE
+ROW of the column being opened, and PERFORMANCE.org Step 4 measures a cold
+uniq-dropdown open in tens of seconds on a 4174-row page. The fix
+(DEBUG-NOTES.md 2026-09-21) stopped requiring a credited =<a>= to be a DIRECT
+CHILD of its =<bdi>= — MusicBrainz's own =<span class="mp">= open-edits wrapper
+broke that assumption and hid a whole join phrase — trading a =childNodes= scan
+for one =querySelectorAll= per =<bdi>= plus a =closest()= per anchor. The
+question was whether that is a visible part of the dropdown's cost or noise
+inside it.
+
+| host                     | =vzell-lap= (4 cores, node v24.11.1, uptime 13.9 h) |
+| date/time (UTC)          | 2026-09-21T19:15:14Z                                 |
+| script                   | =scripts/bench-join-phrase-scan.js=                  |
+| cells                    | 4174, synthetic, both algorithms over the SAME DOM   |
+| repeats                  | 5, median reported                                   |
+| direct-child boundary    | *16.8 ms* for the whole pass                         |
+| common-ancestor boundary | *19.3 ms* for the whole pass                         |
+| delta                    | *+2.5 ms* (x1.15), *0.6 µs per cell*                 |
+| phrases found            | 834 -> *1668*                                        |
+
+The cells reproduce the four shapes in
+=tests/fixtures/uniq-drop-join-phrases.html= in roughly a real Artist column's
+proportion (6 solo : 2 plain pair : 1 =.mp=-wrapped : 1 with per-entity
+comments). Both implementations live in the bench script and run over the same
+nodes, so the only thing measured is the boundary resolution.
+
+*Read the two numbers together.* +2.5 ms is 15% of this one function's own
+cost and is invisible against a cold dropdown open of tens of seconds — and it
+is paid to find TWICE AS MANY phrases, because the old shape could not see an
+=.mp=-wrapped anchor at all. The old number is not a baseline to defend; it is
+the cost of a pass that was silently skipping work.
+
+No PERFORMANCE.org statement changes: Step 4's "computed on open, then memoized
+per (table, column, row set)" is untouched, and nothing there quantifies this
+function.
+
+* 2026-09-21 — =npm run test:full= on a 4-core box (vzell-lap)
+
+The merge gate, run on a machine with a quarter of the cores every other
+figure in =tests/README.org= was taken on. Recorded because a 22-minute gate
+reads like a hang or a regression when the documented number is 5 m 18 s, and
+nothing said which worker count that number assumed.
+
+| host        | =vzell-lap= (4 cores, node v24.11.1)      |
+| date (UTC)  | 2026-09-21                                |
+| command     | =npm run test:full=                       |
+| tests       | 439 in 113 files, *all passed*            |
+| workers     | *2* (Playwright sizes the pool from CPUs) |
+| wall clock  | *22 m 36 s*                               |
+| for compare | 5 m 18 s at 403 tests, =NB-3641=, 14 workers, 2026-09-20 |
+
+*The ratio is 4.3x, and it is parallelism alone.* The two =@slow= specs
+(~324 s + ~84 s) are rate gates and retry backoffs, so they cost the same on
+any box — on =NB-3641= they ARE the floor and hide behind 14 workers, while
+here the other 111 files no longer drain around them. Nothing in this branch is
+implicated: the same 439 tests pass, and per-test times are in line with the
+2026-09-19 medians.

@@ -14188,3 +14188,87 @@ becomes `"Recording location for release"`. The first attempt at
 `tests/fixtures/place-performances-mixed-sections.html` used two `<h3>`
 sections and rendered as a single unnamed group ("Unknown (2)"), which is how
 this was found.
+
+## 2026-09-21 — one join phrase missing, and a 📊 badge that disagreed with its own result
+
+Reported on `https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d`
+(`work-recordings`), tracked in
+`org/uvd-filtering-join-phrases-missing-bug.org`. Two independent defects that
+happened to meet on the same panel. Read from three snapshots captured on the
+final rendered page: `debug/work-ComeTogether-final-filtered.html` (Artist
+filtered to "bruce"), `…-uvd.html` (with the panel open) and
+`…-uvd-filtered.html` (after picking "join phrase: with").
+
+**Bug A — `<span class="mp">` hid a join phrase.** Row 46 of the first
+snapshot is, verbatim:
+
+```html
+<bdi><span class="mp"><a href="/artist/eeb1195b-…">Guns N’ Roses</a></span> feat. <a href="/artist/70248960-…">Bruce Springsteen</a></bdi>
+```
+
+`_findCellJoinPhrases()` accepted an entity boundary only as a DIRECT CHILD of
+the `<bdi>` — a bare `<a>`, or a `span.name-variation` wrapping exactly one.
+MusicBrainz's own native open-edits marker is neither, so that `<bdi>` reported
+ONE entity, `entityIdx.length < 2` short-circuited, and `" feat. "` did not
+exist anywhere: no 📊 entry, no `joinphrase:` filter, no highlight.
+
+**The diagnosis came from what the same cell DID offer.** `…-uvd.html` shows
+"» artist name: Guns N’ Roses" present with count (1). `_findCellEntityRefs()`
+resolves its governing `<bdi>` with `a.closest('bdi')` and walks through the
+wrapper transparently — it has done since the `.mp` work recorded above. So the
+two finders disagreed about where an entity boundary is in one cell, and the
+fix is to make the boundary structural rather than a list of wrapper classes:
+nearest common ancestor of each consecutive anchor pair, then each anchor's own
+highest ancestor below it. `tests/fixtures/entity-refs-mp-wrapper.spec.js` now
+pins the agreement on its existing `#qb-cell`.
+
+The nearest-common-ancestor form is not decoration over "walk up to the
+`<bdi>`". The latter handles `.mp`, `.name-variation` and both nesting orders,
+but collapses `<span class="mp"><a>A</a> feat. <a>B</a></span>` — one wrapper
+around both anchors — to a single host and drops the phrase. Fixture row H is
+the only guard on that half, and the mutation list records it as such.
+
+**An adjacent defect the fix made reachable.** MusicBrainz nests each entity's
+own `<span class="comment">` INSIDE the shared `<bdi>`, so the nodes between
+two anchors are routinely `[ " ", <span class="comment">, " & " ]` — three
+nodes for a one-character phrase. The highlight anchor was "the first text node
+in the slice", i.e. the non-breaking space in front of the PREVIOUS entity's
+comment. It now prefers a text node that carries text. Pinned by fixture row J,
+which is `#qb-cell`'s shape.
+
+**Bug B — the badge counted one thing and the click did another.** With Artist
+typed-filtered to "bruce" (7 rows) the panel offered `(3) » join phrase: with`;
+clicking it produced 9. `…-uvd-filtered.html` shows the end state:
+`data-mb-uniq-values="[&quot;\u0003joinphrase:with&quot;]"` with the typed
+"bruce" gone. A column filter input was architecturally EITHER typed text OR a
+checkbox value set — `applyUniqValueSet()` overwrote `input.value` and
+`getColFilters()` returned one descriptor shape or the other — while
+`openUniqDrop()` collects its counts from the rows currently VISIBLE. So the
+badge answered "…and" and the filter answered "…instead".
+
+The fix needed no new matching machinery: the typed text is stashed on
+`input.dataset.mbUniqTypedText` at the transition into value-set mode, and
+`getColFilters()` emits a SECOND, plain descriptor for the same column index.
+`testRowMatch()`'s own `for (const f of colFilters)` loop AND's them and breaks
+on the first miss; both highlight loops iterate the same array, so the typed
+text keeps its mark; and `_buildFilterKey()`/`_buildIncrPartialKey()` map over
+it, so the stash enters both cache keys with no new field. **Anything new that
+indexes `colFilters` by column must stop assuming one entry per column** — that
+is the one invariant this change breaks, and it is recorded in
+`getColFilters()`'s own JSDoc.
+
+**The risk in the stash is that it is invisible**, so every clear path now goes
+through one `_clearColFilterValueSet()`. `mbUniqValues` alone was forgiving
+about a missed site — `getColFilters()`'s empty-field early return deletes it —
+but that return is unreachable while the input displays a summary label.
+`clearAllFilters()` turned out to have been relying on exactly that self-heal.
+
+**A test note that cost a run.** This pageType's tbody is led by a
+`<tr class="subh">`, so it renders GROUPED, and on a grouped render
+`#mb-filter-status-display` only ever reports the GLOBAL filter. It reads
+"✓ Global filter" from the first column-filter change onward and never changes
+again, so `waitForFilterSettled()` works exactly once per test and then times
+out on a baseline identical to its last read. `uniq-drop-join-phrases.spec.js`
+polls the visible row set for a KNOWN value instead — which also refuses to
+accept a trigger that silently did nothing, the way a stability-based wait
+would.
