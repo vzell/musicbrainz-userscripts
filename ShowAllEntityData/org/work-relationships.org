@@ -1,0 +1,50 @@
+* DONE work releationships 
+** DONE i
+
+1.)
+
+a.)
+
+On the pageType 'artist-works' e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works, although
+the "Relationships" column is present, there is no '<button id="mb-rel-retry-0"' button
+
+The following are the raw HTML in @debug on the final rendered page after pressing the button
+
+#+begin_example
+<button id="mb-pending-edits-btn" type="button" style="font-size: 0.8em; padding: 2px 6px; border-radius: 4px; background: rgb(255, 243, 205); border: 1px solid rgb(224, 193, 74); cursor: pointer; vertical-align: middle; display: inline-block; color: rgb(138, 109, 0); font-weight: bold;" title="5 rows with pending edits. Click again to show all rows." aria-pressed="true">(5) ⏳</button>
+#+end_example
+
+#+begin_example
+artist-works-pending-edits-uncollapsed.html - all multi-row columns uncollapsed
+artist-works-pending-edits-collapsed.html - all multi-row columns collapsed
+#+end_example
+
+b.)
+
+Check if there are other pageTypes mising the relationships retry buttons
+
+2.)
+
+The "mb-cell-collapse-toggle" glyphs, e.g.
+
+#+begin_example
+<span class="mb-cell-collapse-toggle" title="Show all multi-row cell items (3)" role="button" aria-expanded="false" aria-label="Expand: 3 items are collapsed"><span class="mb-cell-collapse-glyph">▶</span><span class="mb-cell-collapse-count">3</span><span class="mb-cell-collapse-rack">▤</span></span>
+#+end_example
+
+are missing the background highlightning telling the end-user there is/are hidden filtered elements, in this case the pending edits on entities e.g.
+
+#+begin_example
+<span class="mp"><a href="/artist/c981b771-e3d8-4709-bf00-3b3ce479b675" title="Child, Desmond"><bdi>Desmond Child</bdi></a></span>
+#+end_example
+
+** DONE fixed and still bugs
+
+1.) and 2.) are fixed
+
+On https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances the first 4 sub-tables now have the
+relationships retry button althout there is NO "Releationships" column. The 5-th sub-table "Recording location for release"
+correctly shows THE relationships retry button
+
+#+begin_example
+place-performances-bug.html - raw final HTML all sub-tables uncollapsed
+#+end_example
