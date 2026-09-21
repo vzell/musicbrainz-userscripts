@@ -656,8 +656,10 @@ in =playwright.config.js=, so half the logical CPUs = *2*).
 |   1 | 15:17:33      |   427 | 22.7 m     | 425 passed, *2 failed* |
 |   2 | 15:44:06      |   427 | 22.2 m     | 427 passed             |
 |   3 | 17:12:23      |   428 | 23.9 m     | 428 passed             |
+|   4 | 17:47:30      |   428 | 24.5 m     | 428 passed             |
 
-Run 3 is the same tree plus the per-table retry-button gate and its own test.
+Run 3 is the same tree plus the per-table retry-button gate and its own test;
+run 4 is the merge gate, on =main= after the merge and the WIP fold.
 
 *All three are ~4.2-4.5x =NB-3641='s 5 m 18 s at 403 tests*, which is what 2
 workers against 14 buys. Do not compare any of them to the =NB-3641= rows above

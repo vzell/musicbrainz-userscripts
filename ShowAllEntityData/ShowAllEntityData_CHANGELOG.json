@@ -1,5 +1,67 @@
 [
   {
+    "version": "9.99.1133",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A sub-section with no Relationships column no longer offers a 🔗⟳ retry button for it. A place's Performances tab groups by relationship type, so its recording sections have no Relationships column while its release section does — and all five sections were being given a retry button, four of which could only ever have re-fetched nothing. Both places that create the button asked \"does this PAGE have the column\" instead of \"does this table have it\".",
+          "The same applies to the ⚠⟳ \"retry only what failed\" button, which attaches itself to the 🔗⟳ and so followed it onto those sections.",
+          "This is older than it looked: the buttons were always created there, but until 9.99.1131 they were inserted inside the sub-section's own filter box, where they were easy to miss. Putting them in the right place is what made them visible."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData_HELP.txt` needed no edit: it never claimed the retry buttons appear on every sub-section, and its description of what they do was and remains correct."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1132",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The ⏳ pending-edits filter now MARKS what it matched. Every other filter highlights its match; this one could not, because MusicBrainz's open-edits marker is a colour with no text behind it, so the filter tested a property of the row instead of a string. It now highlights each pending entity inside that orange marker, in every column of every matching row — the same marking the 📊 dropdown's \"⏳ has pending edits\" entry already applied to a single column.",
+          "A collapsed multi-row cell now tells you when the pending entity is one of the items it is hiding. Collapsed cells show only their first item, so a pending author sitting in item 2 of an \"Authors\" cell looked exactly like a cell with nothing pending. Its ▶N▤ expander is now tinted while the ⏳ filter is on, and so are the sub-section's ▤ button and the global collapse button — so you can see which cells are worth opening without opening all of them. Expanding a cell clears its own tint, because nothing is hidden any more."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData_HELP.txt`'s \"⏳ PENDING-EDITS FILTER TOGGLE\" section describes the new marking and the collapsed-cell tint.",
+          "`CLAUDE.md` gained a section on the collapsed-cell tint: it is computed ONLY from the four filter-highlight classes found in a cell's HIDDEN items, which is why a structural filter gets no tint until it writes one — and why the fix is one hook rather than an edit to the ten places that read them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1131",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The per-table Relationships retry buttons (🔗⟳ and ⚠⟳) appear on pages where they were silently missing. MusicBrainz wraps many listings' table in a `<form>` for its merge checkboxes — an artist's Works tab is one — and the code looked for the section heading by walking backwards through the table's own siblings, which never leaves that wrapper. It gave up and threw the button away. The heading is now located the same way the artwork buttons already located it, which does not care what the table is nested inside.",
+          "On a sub-section whose heading has no artwork buttons, the 🔗⟳ retry button no longer lands inside the sub-table filter's input box. It was inserted after \"the heading's last button\", which in CSS terms picks the first button that is the last one among its own parent's children — on a heading carrying a filter panel, that is the filter's own ✗ clear button, several levels down. Measured on a place's Performances tab: 4 of 5 sub-sections. It now goes at the end of the heading's own row of controls, next to the row count.",
+          "Because both ⚠⟳ \"retry only what failed\" buttons attach themselves to the 🔗⟳ button, they were missing or misplaced in exactly the same cases and are fixed with it.",
+          "On a page carrying both cover art and event art, the page-wide 🔗⟳ no longer wedges itself between the two artwork button groups."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`CLAUDE.md`'s Relationships-retry section records both failure shapes with the snapshot each was measured on, and the rule that replaced them; the segmented-pill section documents `_hdrCtlAnchor()` — where the FIRST control in a heading goes, as distinct from `_ctlRunEnd()`, which places the ones after it.",
+          "`ShowAllEntityData_HELP.txt` needed no edit here: it describes what the two retry buttons do and never claimed where they sit. Its \"TWO retry buttons\" paragraph was simply untrue on the affected pages, because there were none, and is now true."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1130",
     "date": "2026-09-21",
     "sections": [
