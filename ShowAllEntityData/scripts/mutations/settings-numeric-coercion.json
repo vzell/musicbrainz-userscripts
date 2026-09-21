@@ -1,0 +1,110 @@
+[
+  {
+    "name": "the coercion pass never runs",
+    "why": "The original org/config-handling.org F2 defect, reverted wholesale: without the call, numeric settings stay exactly as VZ_MBLibrary stored them. Both the mechanism assertions and the user-visible collapse assertion must notice, so this is the entry that proves the spec is testing the fix rather than something adjacent.",
+    "edits": [
+      {
+        "find": "    _coerceNumericSettings();",
+        "replace": "    /* mutation: coercion disabled */"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "a numeric string is coerced to a Number",
+    "expect": "fail"
+  },
+  {
+    "name": "coercion runs AFTER the settings copy instead of before",
+    "why": "Placement guard. `settings` is a shallow copy, not a reference, so coercing after Object.assign leaves the copy holding strings. Only ONE read consumes that copy today (the debug-logging callback, a checkbox), so this is expected to PASS — recorded so the next person to move the call knows the ordering is deliberate and currently unpinned, rather than discovering it by breaking something subtle later.",
+    "edits": [
+      {
+        "find": "    _coerceNumericSettings();\n\n    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);",
+        "replace": "    // Copy settings reference so the callback can access them\n    Object.assign(settings, Lib.settings);\n    _coerceNumericSettings();"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "a numeric string is coerced to a Number",
+    "expect": "pass"
+  },
+  {
+    "name": "an empty string becomes 0 instead of the schema default",
+    "why": "Number('') === 0, so this is the natural way to write the coercion and it is wrong: a cleared number field would silently mean the documented '0 to disable'. Only the empty-string test may notice — if the '0' or 'abc' tests fail too, the fallback branch is being reached for inputs that should parse.",
+    "edits": [
+      {
+        "find": "            const num  = (text === '') ? NaN : Number(text);",
+        "replace": "            const num  = Number(text);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "an empty string falls back to the schema default",
+    "expect": "fail"
+  },
+  {
+    "name": "an unparseable value is written through as NaN",
+    "why": "Drops the fallback to cfg.default. The 'unparseable' test must notice, and so must the whole-schema sweep, which asserts no setting is left NaN — that second failure is the point of having the sweep at all.",
+    "edits": [
+      {
+        "find": "            Lib.settings[key] = Number.isFinite(num) ? num : cfg.default;",
+        "replace": "            Lib.settings[key] = num;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "an unparseable value falls back to the schema default",
+    "expect": "fail"
+  },
+  {
+    "name": "already-valid numbers are re-coerced instead of skipped",
+    "why": "Efficiency guard only. Removing the early-out makes every number take the String()/Number() round trip, which produces the identical value — so this is expected to PASS. Recorded rather than left unmentioned: the skip exists so an untouched profile costs nothing, not for correctness.",
+    "edits": [
+      {
+        "find": "            if (Number.isFinite(raw)) continue;",
+        "replace": "            if (false) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "a NUMBER threshold still behaves exactly as before",
+    "expect": "pass"
+  },
+  {
+    "name": "absent keys get the schema default written in",
+    "why": "The VZ_MBLibrary-failed-to-load stub path has Lib.settings === {}, where each consumer's own `?? default` must apply. No fixture exercises that path — the library always loads — so this is expected to PASS. Recorded so the guard's reason survives: removing it would change stub behaviour with nothing to catch it.",
+    "edits": [
+      {
+        "find": "            if (!(key in Lib.settings)) continue;",
+        "replace": "            if (false) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "every numeric setting ends up a real Number",
+    "expect": "pass"
+  },
+  {
+    "name": "sa_render_threshold back to || 5000",
+    "why": "The falsy-zero defect, restored. Expected to PASS, and the reason is structural rather than an oversight: `||` and `??` only differ when the value is 0 AND the row count exceeds the hardcoded fallback of 5000. Every fixture in this suite renders 12 rows, so both operators take the same branch. Pinning it needs a >5000-row fixture, which costs a multi-minute fetch for one boolean. The change is still required — the coercion makes the stored '0' falsy, where before it was the truthy string '0' that survived `||` and then failed `> 0`, i.e. it worked by accident.",
+    "edits": [
+      {
+        "find": "            const renderThreshold = Lib.settings.sa_render_threshold ?? 5000;",
+        "replace": "            const renderThreshold = Lib.settings.sa_render_threshold || 5000;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "a numeric string is coerced to a Number",
+    "expect": "pass"
+  },
+  {
+    "name": "sa_chunked_render_threshold back to || 1000 in both renderers",
+    "why": "As above, with a fallback of 1000 against 12 rendered rows. Both call sites are mutated together deliberately: they are the same guarantee in the two table modes, and a spec that could see one would see the other.",
+    "edits": [
+      {
+        "find": "        const chunkThreshold = Lib.settings.sa_chunked_render_threshold ?? 1000;\n\n        // For small datasets, use fast simple append",
+        "replace": "        const chunkThreshold = Lib.settings.sa_chunked_render_threshold || 1000;\n\n        // For small datasets, use fast simple append"
+      },
+      {
+        "find": "            const chunkThreshold = Lib.settings.sa_chunked_render_threshold ?? 1000;\n            if (chunkThreshold > 0 && group.rows.length >= chunkThreshold) {",
+        "replace": "            const chunkThreshold = Lib.settings.sa_chunked_render_threshold || 1000;\n            if (chunkThreshold > 0 && group.rows.length >= chunkThreshold) {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-numeric-coercion.spec.js",
+    "grep": "a string threshold BELOW the entity count collapses",
+    "expect": "pass"
+  }
+]

@@ -13907,3 +13907,91 @@ real regression gets shipped.
 
 Both spec names are worth knowing, but the pattern to expect is "some spec,
 about 1 run in 3", not "that spec".
+
+## 2026-09-21 — every numeric setting is a string after the first SAVE, and four reads throw the value away
+
+Reported from a real browser, which is the only place it was ever visible: the
+Relationships auto-collapse threshold was set to `0` — documented, in
+`configSchema` and in HELP, as "never auto-collapse" — and
+`https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases`
+still rendered the column collapsed, its badge reading `0/1000`.
+
+**Root cause, two layers deep.** VZ_MBLibrary's SAVE handler writes
+`input.value` for every non-checkbox widget, and `input.value` is always a
+string. It also iterates the whole `configSchema` rather than a dirty-set, so
+the FIRST press of SAVE — even with nothing changed — writes all 38 numeric
+settings to GM storage as strings, and `settingsInterface.init()` hands them
+straight back on every later load without re-coercing.
+
+`_relTableExpanded()` then reads:
+
+```javascript
+const _raw = Lib.settings.sa_rel_collapse_threshold;
+const _thr = (typeof _raw === 'number' && _raw >= 0) ? _raw : 200;
+_expanded = (_thr === 0) || (_relTableUniqueMbidCount(table) <= _thr);
+```
+
+`typeof "0"` is `'string'`, so `_thr` became 200, and `1000 <= 200` is false.
+The arithmetic is exact and the screenshot confirmed both numbers.
+
+**The part worth remembering.** That guard is not sloppy code — it is the
+*documented correct fix* for the falsy-zero defect, and its own JSDoc explains
+at length that it avoids `||` precisely because `0 || 200` is `200`. It traded
+a falsy-zero bug for a wrong-type bug with the identical symptom for the
+identical input. Three other reads share it: `_relAutoRetryMaxFailed()`,
+`_showRelCompletionToast()`, `_showCaaCompletionToast()`.
+
+**`_buildConfigJson()` already knew.** The config-export path has always
+coerced `number` back with `Number()`, and its comment says why — "after a
+RESET → SAVE cycle the settings dialog stores all values via input.value which
+is always a string". Only the runtime read path never got the same treatment.
+
+**Why no test caught it.** Every numeric seed under `tests/` is a real number —
+98 of them, checked mechanically; not one string. So the post-SAVE state the
+bug lives in was never exercised anywhere in the suite.
+
+**Fixed** on `fix/settings-numeric-coercion` by coercing in
+`_coerceNumericSettings()`, on READ rather than on save. Coercing on read is
+what repairs profiles that are *already* stringified; a library-side save fix
+would stop producing them but leave every existing user broken.
+
+Three things that fix had to get right, each of which is a trap:
+
+- **`Number('') === 0`.** Clearing a number field stores `''`, so naive
+  coercion invents a deliberate-looking `0` — which for a threshold is exactly
+  the documented "disable". Empty falls back to the schema default instead.
+- **`sa_render_threshold || 5000` had to change in the same commit.** Before
+  the coercion the stored `"0"` was *truthy*, survived the `||`, and then failed
+  `"0" > 0` — so "0 to disable" worked **by accident**, and the `> 0` test just
+  below it was dead code. Coercing to a real `0` alone would have made `||`
+  swallow it, turning a fix into a regression. Same shape at
+  `sa_chunked_render_threshold` in both renderers.
+- **Absent keys stay absent**, for the `VZ_MBLibrary`-failed-to-load stub path
+  where `Lib.settings` is `{}` and each consumer's own `?? default` must apply.
+
+**Two things the tests cannot see, both recorded as `expect: "pass"` in
+`scripts/mutations/settings-numeric-coercion.json` rather than left unsaid.**
+The `"0"`-means-never case is not falsifiable on any committed fixture: the
+largest shell has 12 distinct entities, so the broken fallback of 200 renders
+it expanded and a correctly-honoured `0` renders it expanded too. Identical
+outcome. It is pinned on the mechanism instead, through a new
+`__saTest.numericSettings()` hook, while the user-visible half uses the string
+`"2"` against those 12 entities — where broken gives expanded and fixed gives
+collapsed. And the `||` → `??` change is unobservable on fixtures at all: the
+two operators differ only when the value is `0` AND the row count exceeds the
+hardcoded fallback, and every fixture here renders 12 rows.
+
+**One mutation-testing lesson.** The empty-string mutation first failed by a
+**91-second Playwright timeout** instead of an assertion, because the spec also
+seeded `sa_max_page: '   '` and a page count of `0` stalls the fetch loop. A
+mutation has to fail *legibly*, not merely fail — the seed was moved to
+`sa_uniq_dropdown_visible_rows` and the same mutation now fails in 2 s with a
+one-line value mismatch.
+
+**Unrelated defect noticed in passing, not fixed here:**
+`ShowAllEntityData_HELP.txt` still documents a "Sort progress threshold"
+setting under ⚡ PERFORMANCE SETTINGS. `sa_sort_progress_threshold` was removed
+from `configSchema` some time before 9.99.1129 (`grep -c` returns 0), so that
+line documents a control that does not exist. It belongs with the
+defaults-snapshot work in `org/config-handling.org`, which is meant to catch
+exactly this kind of schema-vs-docs drift.
