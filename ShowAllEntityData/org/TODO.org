@@ -290,10 +290,10 @@ remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-re
 
 Full raw HTML @debug/artist-recordings-standalone.html
 
+
 * TODO remove "Search YouTube"-button from the pageType 'release-tracks'
 
 remove "Search YouTube"-button from the pageType 'release-tracks'
-
 
 * TODO add acoustid support
 
@@ -328,7 +328,7 @@ remove "Search YouTube"-button from the pageType 'release-tracks'
 #+end_example
 
 
-* AUDIT.md
+* DONE AUDIT.md
 ** i
 
 Create an "AUDIT.md" file in the current directory with your current information about auditing which should be done
@@ -378,22 +378,18 @@ what is the best strategy when bugs in this area show up and implementations are
 as branches from main or from the current branch, given the fact that I still want to live test the current branch in a
 live browser for some time to maybe catch some more bugs.
 
-
-* Parking lot in AUDIT.org
-
-_adoptJesus2099MsLength() — none of them examined yet
-
-
 * DONE Step 25's cost half
 
 unchanged: Step 25's cost half — _countLiveDateFlags() running querySelectorAll('.mb-live-date-flag') over every cell of every row on every filter pass, ~87 700 failing subtree scans on
 artist-events, on every pageType including the majority with no live-date flags at all. The fix has a stated shape already (gate the walk behind one table-wide querySelector, as _updateAllColHeaderCounts
 does for its inline-art probe), and it's real userscript work: fixture spec, mutation list, and a measured A/B in one session.
 
-* Still open
+* TODO What's left from the parking lot in AUDIT.org
 
-Step 26's memoization
-
+- Step 26's memoization of updateFilterButtonsVisibility's tallies
+- that icon-mirror half
+- _adoptJesus2099MsLength()
+  
 * TODO The two recorded (unfixed) harness weaknesses:
 
   1. CDN dependency on every fixture load (DEBUG-NOTES, 2026-09-18). loadPage.js pulls iro and pako from cdn.jsdelivr.net / cdnjs on every fixture page load, so a network blip fails whichever spec happens to be loading at that moment — it hit tag-value-entity-column-leak, which
@@ -404,12 +400,6 @@ Step 26's memoization
   actually asserts (the WS/2 request count, or the row set), not on a text transition, and that choice belongs to whoever owns the test's intent.
 
 The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
-  
-* What's left from the parking lot
-
-- Step 26's memoization of updateFilterButtonsVisibility's tallies
-- that icon-mirror half
-- _adoptJesus2099MsLength()
   
 * DONE test I did
 
@@ -543,17 +533,6 @@ everything and merge to main so I can start over on another machine
 
 
 
-* TODO analyze the save/load settings regarding end-user handling/versioning
-
-1.)
-
-analyze the save/load settings regarding end-user handling/versioning
-
-2.)
-
-we should probably always commit a current settings file with the default settings and add any changes when new stuff is
-implemented/changed
-
 * TODO 503
 ** CAA/EAA and Relationships multi section button
 
@@ -594,7 +573,6 @@ show me a mock of the buttons if that's a workable solution
 4.)
 
 tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
-
 
 
 ** DONE sa_art_idb_metadata_ttl_days
@@ -658,7 +636,6 @@ Tracking lives in =org/503-handling.org='s Status section, on =main=.
 in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
 days change
 
-
 ** DONE How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
 
 ❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
@@ -671,7 +648,6 @@ days change
   3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
      `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
      go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
-
 
 ** TODO Two things this batch surfaced that aren't tracked anywhere yet
 
@@ -694,7 +670,38 @@ they are very long and probaly not worth it now that I've checked in a live brow
 
 ** TODO pick up the heading pre-processing defect
 
-
 Two honest gaps, both recorded rather than buried:
-- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
+- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on
+  that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
+  assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
 - Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
+
+
+* DONE analyze the save/load settings regarding end-user handling/versioning
+
+Analysed 2026-09-20 — see [[file:config-handling.org][org/config-handling.org]].
+
+Both halves are answered there. (1) is findings F1-F6; the sharp ones are F2
+(=number= settings are stored as strings after any SAVE, so four settings read
+with the ~typeof v === 'number'~ guard silently ignore the user's value) and F3
+(importing a config file silently wipes all five hand-edited lookup tables).
+(2) is answered *yes, as a generated artifact nothing reads at runtime* —
+=scripts/dump-config-defaults.py= → =ShowAllEntityData_CONFIG_DEFAULTS.json=,
+Item 4 in that file. The reason is F4: 17 inline =|| literal= fallbacks already
+disagree with their own schema default, and nothing can see that today.
+
+* DONE analyze the current handling of the configuration handling
+
+- analyze the current handling of the configuration handling regrading end-user handling
+- is it a good idea to store the actual config defaults to git
+
+Analysed 2026-09-20 — see [[file:config-handling.org][org/config-handling.org]].
+Same question as the =save/load settings= headline further up this file, asked
+seven weeks later; both are folded into that document. Short answer to the
+second bullet: yes, but as a *generated* artifact that nothing reads at runtime
+(that file's "Question 2" section has the reasoning, including why a
+runtime-fetched defaults file is the wrong shape).
+
+
+
+
