@@ -65,17 +65,30 @@
     "expect": "fail"
   },
   {
-    "name": "the unseeded-table drop is removed from _buildConfigJson()",
-    "why": "EXPECTED TO PASS, recorded rather than left unmentioned. Without the explicit `continue`, an unseeded table key is assigned `undefined` — and JSON.stringify drops a property whose value is undefined, so the emitted file is byte-identical. The `continue` exists to make the behaviour deliberate and readable, not to change the output; no test can tell the two apart, and one that claimed to would be asserting something else.",
+    "name": "the export reads Lib.settings for tables instead of GM storage",
+    "why": "The defect reported from a real browser on 2026-09-21, one day after the import half was fixed: VZ_MBLibrary's table editor writes GM_setValue and neither updates settingsInterface.values nor reloads, so Lib.settings keeps its page-load snapshot. Exporting from it omitted the user's edit, and importing that file wrote the pre-edit rows back over the good ones. The mid-session-edit test must notice; the plain round-trip test must NOT, since it reloads before exporting and the two sources agree there.",
     "edits": [
       {
-        "find": "                // Never seeded yet — omit the key rather than inventing a value.\n                if (!Array.isArray(live)) continue;\n                coerced = live;",
-        "replace": "                coerced = live;"
+        "find": "                const rows = _configLiveTableRows(key);\n                if (!rows) continue;   // nothing stored — omit rather than invent\n                coerced = rows;",
+        "replace": "                if (!Array.isArray(live)) continue;\n                coerced = live;"
       }
     ],
     "spec": "tests/fixtures/config-import-export.spec.js",
-    "grep": "an unseeded table is dropped from the export",
-    "expect": "pass"
+    "grep": "a table edited AFTER page load exports its current rows",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty stored table is exported as [] instead of being dropped",
+    "why": "Drops the `length > 0` half of the guard. An emptied table cannot survive a reload anyway — every seeder reads an empty list as 'refill from the built-ins' — so `[]` is a state the file format cannot honestly promise, and exporting it ACTIVELY empties the destination's table on import. The deleted-key half of that test cannot see this (GM_getValue returns undefined there, which fails Array.isArray either way), which is why the test stores an explicit [] as well.",
+    "edits": [
+      {
+        "find": "        return (Array.isArray(rows) && rows.length > 0) ? rows : null;",
+        "replace": "        return Array.isArray(rows) ? rows : null;"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "a table with no stored rows is dropped from the export",
+    "expect": "fail"
   },
   {
     "name": "the table arm is placed AHEAD of the number arm",

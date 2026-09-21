@@ -207,22 +207,73 @@ test.describe('config save/load round trip preserves the editable lookup tables'
             .toEqual(CUSTOM_TABLES.sa_unicode_char_picker_mappings);
     });
 
-    test('an unseeded table is dropped from the export rather than invented', async ({ page }) => {
-        // A fresh profile has no rows for any table yet — they are lazy-seeded
-        // from code on first use, and none of them carries a `default:`. The
-        // key is omitted, so the importer's "missing keys keep their current
-        // value" rule leaves the seeders to do their job.
-        await loadSeriesPage(page);
-        const exported = await exportConfig(page);
+    test('a table edited AFTER page load exports its current rows, not the snapshot',
+        async ({ page }) => {
+            // Reported from a real browser on 2026-09-21: add a symbol in the
+            // Unicode picker's table editor, 💾 Save configuration, 📂 Load it
+            // back — and the new symbol is gone.
+            //
+            // The import was not at fault. VZ_MBLibrary's table editor writes
+            // GM_setValue(key, rows) and, unlike the settings dialog's own SAVE,
+            // neither updates settingsInterface.values nor reloads the page. So
+            // `Lib.settings` keeps its page-load snapshot for the rest of the
+            // session, and an export taken from it silently omits the edit.
+            // Importing that file then writes the PRE-EDIT rows back over the
+            // good ones — the same destruction as F3, arriving from the export.
+            await seedTablesAndReload(page);
 
-        for (const key of TABLE_KEYS) {
-            expect(Object.keys(exported.settings), `${key} omitted while unseeded`)
-                .not.toContain(key);
-        }
-        // The export is otherwise a FULL dump, not a delta — guards against
-        // "dropped the tables" being mistaken for "dropped everything default".
-        expect(Object.keys(exported.settings).length).toBeGreaterThan(200);
-    });
+            // Exactly what the table editor's 💾 Save does: GM storage only.
+            const edited = [
+                ...CUSTOM_TABLES.sa_unicode_char_picker_mappings,
+                ['♫', 'Beamed notes', 'false', 'added mid-session'],
+            ];
+            await page.evaluate((rows) => {
+                window.GM_setValue('sa_unicode_char_picker_mappings', rows);
+            }, edited);
+
+            const exported = await exportConfig(page);
+            expect(exported.settings.sa_unicode_char_picker_mappings,
+                'the export reflects GM storage, not the page-load snapshot')
+                .toEqual(edited);
+
+            // And the round trip keeps it, which is what the user was after.
+            await importConfig(page, exported.settings);
+            const after = await readGmValues(page, ['sa_unicode_char_picker_mappings']);
+            expect(after.sa_unicode_char_picker_mappings).toEqual(edited);
+        });
+
+    test('a table with no stored rows is dropped from the export rather than invented',
+        async ({ page }) => {
+            // The five tables carry no `default:` — they are lazy-seeded from
+            // code on first use. With nothing stored there is genuinely nothing
+            // to record, and omitting the key leaves the importer's "missing
+            // keys keep their current value" rule to let the seeders do their
+            // job. Exporting `[]` instead would actively empty the destination's
+            // table, which is the destruction this whole file exists to prevent.
+            //
+            // The keys are deleted explicitly rather than relying on a fresh
+            // profile: three of the five are seeded during startup, so "fresh"
+            // stopped meaning "empty" once the export began reading GM storage
+            // live.
+            await loadSeriesPage(page);
+            // Two shapes of "nothing stored", covered separately because they
+            // reach the guard differently: a key GM storage has never held, and
+            // one holding `[]` because the user deleted every row. Only the
+            // second exercises the `length > 0` half.
+            await page.evaluate((keys) => {
+                keys.forEach((k) => window.GM_deleteValue(k));
+                window.GM_setValue(keys[0], []);
+            }, TABLE_KEYS);
+
+            const exported = await exportConfig(page);
+            for (const key of TABLE_KEYS) {
+                expect(Object.keys(exported.settings), `${key} omitted while empty`)
+                    .not.toContain(key);
+            }
+            // The export is otherwise a FULL dump, not a delta — guards against
+            // "dropped the tables" being mistaken for "dropped everything default".
+            expect(Object.keys(exported.settings).length).toBeGreaterThan(200);
+        });
 
     test('non-table settings import exactly as they did before', async ({ page }) => {
         // The regression control. Every assertion above is about the new table

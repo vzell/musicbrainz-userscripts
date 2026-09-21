@@ -65310,6 +65310,53 @@ a { color: #1565c0; }`;
     const _CFG_SCHEMA_VERSION = 1;
 
     /**
+     * Reads one `type: 'table'` setting's rows STRAIGHT FROM GM STORAGE, never
+     * from `Lib.settings`.
+     *
+     * **`Lib.settings` is a page-load snapshot, and for these five keys alone it
+     * goes stale within the session.** VZ_MBLibrary populates
+     * `settingsInterface.values` once, in `settingsInterface.init()`, during
+     * construction. Its settings dialog can afford that because its SAVE ends in
+     * `location.reload()` — but the table editor's own 💾 Save does
+     * `GM_setValue(key, rows)` and neither updates `settingsInterface.values`
+     * nor reloads. So after a table edit, `Lib.settings[key]` still holds the
+     * rows as they were when the page loaded.
+     *
+     * Reported from a real browser on 2026-09-21, one day after the import half
+     * was fixed: add a symbol in the Unicode picker's table editor, 💾 Save
+     * configuration, 📂 Load configuration — and the symbol is gone. The import
+     * was faithful; the FILE never had it. Exporting a stale snapshot and then
+     * importing it writes the pre-edit rows back over the good ones, which is
+     * the same destruction as org/config-handling.org F3 arriving from the other
+     * end.
+     *
+     * Only the 5 `type: 'table'` keys need this. Every other configSchema key is
+     * written solely by the library's SAVE, which reloads; a grep for
+     * `GM_setValue('sa_…')` in this file turns up nothing but the lazy table
+     * seeders.
+     *
+     * **An empty array is reported as "nothing stored", deliberately.** The
+     * seeders (`_loadDefaultHiddenColumnsMap()`, `_initRelMappings()`'s
+     * `_loadMap()`, `_loadUnicodeCharsMappings()`) all treat an empty list as
+     * "re-seed the built-ins", so an emptied table cannot survive a reload and
+     * `[]` is a state the format cannot honestly promise. Exporting it would
+     * actively empty the destination's table on import; omitting the key leaves
+     * the destination's own rows alone.
+     *
+     * @param {string} key  A `type: 'table'` configSchema key.
+     * @returns {Array|null}  The stored rows, or null when nothing is stored.
+     */
+    function _configLiveTableRows(key) {
+        let rows;
+        if (typeof GM_getValue !== 'undefined') {
+            rows = GM_getValue(key, undefined);
+        } else if (typeof Lib.getTableRows === 'function') {
+            rows = Lib.getTableRows(key);
+        }
+        return (Array.isArray(rows) && rows.length > 0) ? rows : null;
+    }
+
+    /**
      * Builds the versioned configuration JSON string for the current settings.
      *
      * Every importable setting is included — this is a full dump, not a delta
@@ -65335,6 +65382,13 @@ a { color: #1565c0; }`;
      * A table WITH rows is exported as a real JSON array and must stay that way:
      * those hand-entered rows are the most valuable thing in the file, and
      * `Lib.getTableRows()` rejects anything that is not an array.
+     *
+     * **Table rows come from `_configLiveTableRows()`, NOT from `Lib.settings`.**
+     * That object is a page-load snapshot, and the table editor's 💾 Save
+     * updates neither it nor the page — so reading it here exported the rows as
+     * they were before the user's edit, and importing the file put them back.
+     * Read that function's JSDoc before changing this arm; it is the one place
+     * in this function where `Lib.settings` is the wrong source.
      *
      * Values are type-coerced according to the schema type before serialization
      * so that a round-trip through the browser's settings dialog (which returns
@@ -65372,9 +65426,12 @@ a { color: #1565c0; }`;
                 const n = Number(live);
                 coerced = Number.isFinite(n) ? n : (typeof dflt === 'number' ? dflt : n);
             } else if (schemaCfg.type === 'table') {
-                // Never seeded yet — omit the key rather than inventing a value.
-                if (!Array.isArray(live)) continue;
-                coerced = live;
+                // Read GM storage LIVE, not `live` — `Lib.settings` is a
+                // page-load snapshot and the table editor does not refresh it.
+                // See _configLiveTableRows()'s own JSDoc.
+                const rows = _configLiveTableRows(key);
+                if (!rows) continue;   // nothing stored — omit rather than invent
+                coerced = rows;
             } else {
                 coerced = live;
             }

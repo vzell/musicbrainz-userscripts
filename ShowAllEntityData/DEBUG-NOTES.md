@@ -14392,3 +14392,73 @@ fixture can drive — the export hands a Blob to the browser as a download, the
 import reads a `File` from a hidden input inside the library's modal and ends in
 `location.reload()`. The block's header comment said "read-only introspection
 surface"; it now says which members are not, and why.
+
+## 2026-09-22 — the OTHER half of F3: the export read a stale snapshot (same branch)
+
+Found by the user in a real browser, hours after the entry above was written,
+doing exactly the hand-check that entry's own coverage note could not do: add a
+symbol in the Unicode picker's table editor, 💾 Save configuration, 📂 Load
+configuration — **and the symbol was gone.**
+
+**The import was faithful. The file never had the symbol.**
+
+`_buildConfigJson()` read `Lib.settings[key]`. VZ_MBLibrary populates
+`settingsInterface.values` exactly once, in `settingsInterface.init()`, during
+construction. Its settings dialog can live with that because its SAVE ends in
+`location.reload()` — but the TABLE EDITOR's own 💾 Save
+(`_openTableEditor()`'s footer button, `lib/VZ_MBLibrary.user.js`) does
+`GM_setValue(key, rows)` and then sets its label to "✓ Saved". It updates
+neither `settingsInterface.values` nor the page. So for the five
+`type: 'table'` keys, and only for those, `Lib.settings` is stale for the rest
+of the session.
+
+The full chain: edit → GM storage has the new row, `Lib.settings` does not →
+💾 export writes the PRE-EDIT rows → 📂 import faithfully restores them over
+the good ones → reload → the row is gone. Same destruction as F3, arriving from
+the opposite end, and the fixed import is what carried it out.
+
+**The evidence that identified it, before reading any code.** The user's
+summary dialog said `Applied: 237 settings / Skipped: 1 key`. The wording is
+the new one, so the fixed import was running; 237 + 1 = 238 keys, i.e. the file
+held every setting including the five tables. So the tables were in the file
+and were applied — which rules out the import and points at what was IN them.
+
+**The fix.** `_configLiveTableRows(key)` reads GM storage directly, and the
+export's `table` arm calls it instead of using `Lib.settings`. Only these five
+keys need it: `grep -oE "GM_setValue\(\s*'(sa_[a-z0-9_]+)'"` over the userscript
+returns `sa_default_hidden_columns` and `sa_unicode_char_picker_mappings` and
+nothing else, plus `_initRelMappings()`'s `_loadMap()` writing its three through
+a variable key. Every other configSchema key is written only by the library's
+SAVE, which reloads.
+
+An empty array is reported as "nothing stored". Every seeder reads an empty
+list as "refill from the built-ins", so `[]` cannot survive a reload and is a
+state the file format cannot honestly promise; exporting it would actively
+empty the destination's table on import, while omitting the key leaves the
+destination's own rows alone.
+
+**What this says about the previous entry, which is the part worth keeping.**
+That entry *documented this mechanism* — "`_buildConfigJson()` reads
+`Lib.settings`, which is a snapshot … a `GM_setValue` made mid-session is
+invisible to the export" — and filed it under *two things learned while making
+this testable*. It was written up as a constraint on the SPEC (hence the two
+page loads) and never once as a fact about the FEATURE. The spec's own
+`seedTablesAndReload()` reloads before exporting, which is precisely the step
+that made every test agree with the buggy code.
+
+So the bug was not missed for lack of information; it was in the notes, in the
+right words, pointed the wrong way. A sentence that begins "the export cannot
+see a mid-session write" is a user-facing defect whatever else it is also true
+of. Worth asking, next time a test needs an unexpected step to pass: *is that
+step compensating for something the user cannot do?* Here the user cannot
+reload between editing a table and exporting — the buttons are in the same
+dialog.
+
+**Coverage.** Two tests added to
+`tests/fixtures/config-import-export.spec.js` (8 total): the mid-session edit
+reproduces the report end to end, and the "nothing stored" test now covers both
+a deleted key and an explicitly empty one — the deleted half cannot see the
+`length > 0` guard, since `GM_getValue` returns `undefined` there and fails
+`Array.isArray` either way. Mutation list now 8 entries, all as predicted; the
+old "unseeded-table drop" entry was removed rather than repaired, its anchor
+and its premise having both been replaced by the live read.

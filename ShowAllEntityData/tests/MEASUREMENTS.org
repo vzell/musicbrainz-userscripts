@@ -700,6 +700,11 @@ Playwright start-up; the =test:full= figure is real wall clock and includes
 them. Do not compare the two columns as if they were the same measurement —
 Playwright reported *5.6 m* for the run this file records as 5 m 37 s.
 
+*The counts are what RAN, and are deliberately one behind the current suite.*
+An eighth test landed on the same branch after this arm, so =tests/README.org=
+now says 433/447. Do not "correct" the rows above to match it — the numbers
+here belong to the tree that was timed.
+
 *The first =npm test= run had one failure that did not reproduce*:
 =uniq-drop-join-phrases.spec.js= — "unchecking the last entry restores the
 typed filter rather than clearing the column". Green in the second full run and
