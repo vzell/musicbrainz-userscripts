@@ -1,0 +1,929 @@
+{
+  "_meta": {
+    "generated_by": "scripts/dump-config-defaults.py",
+    "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
+    "script_version": "9.99.1136+2026-09-22",
+    "schema_entries": 276,
+    "sections": 38,
+    "settings": 238,
+    "settings_with_default": 233,
+    "settings_without_default": [
+      "sa_default_hidden_columns",
+      "sa_rel_other_db_classes",
+      "sa_rel_streaming_classes",
+      "sa_rel_url_icon_classes",
+      "sa_unicode_char_picker_mappings"
+    ],
+    "types": {
+      "checkbox": 92,
+      "color_picker": 61,
+      "divider": 38,
+      "number": 38,
+      "keyboard_shortcut": 23,
+      "popup_dialog": 13,
+      "table": 5,
+      "text": 5,
+      "function": 1
+    }
+  },
+  "sections": [
+    {
+      "key": "divider_",
+      "label": "🛠️ GENERIC SETTINGS"
+    },
+    {
+      "key": "divider_experimental",
+      "label": "🔬 EXPERIMENTAL FEATURES"
+    },
+    {
+      "key": "divider_page_header",
+      "label": "🏷️ PAGE HEADER AND BODY CONFIGURATION"
+    },
+    {
+      "key": "divider_collabsable_sidebar",
+      "label": "⭲ COLLABSABLE SIDEBAR"
+    },
+    {
+      "key": "divider_overflow_tables",
+      "label": "≡ OVERFLOW TABLES"
+    },
+    {
+      "key": "divider_tooltips",
+      "label": "💬 TOOLTIPS"
+    },
+    {
+      "key": "divider_numeric_alignment",
+      "label": "🔢 NUMERIC COLUMN ALIGNMENT"
+    },
+    {
+      "key": "divider_column_removal",
+      "label": "🧮 OPTIONAL COLUMN REMOVAL FROM FINAL RENDERED PAGE"
+    },
+    {
+      "key": "divider_keyboard_shortcuts",
+      "label": "🎹 KEYBOARD SHORTCUTS"
+    },
+    {
+      "key": "divider_filter_colors",
+      "label": "🎨 TABLE FILTER CONFIGURATION"
+    },
+    {
+      "key": "divider_unique_column_values_drop_down",
+      "label": "#₁ UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION"
+    },
+    {
+      "key": "divider_thresholds",
+      "label": "Σ THRESHOLD SETTINGS"
+    },
+    {
+      "key": "divider_performance",
+      "label": "⚡ PERFORMANCE SETTINGS"
+    },
+    {
+      "key": "divider_ui_features",
+      "label": "🎨 UI FEATURES"
+    },
+    {
+      "key": "divider_table_stickiness",
+      "label": "📌 TABLE STICKINESS"
+    },
+    {
+      "key": "divider_ui_appearance",
+      "label": "🖌️ ELEMENT UI STYLES"
+    },
+    {
+      "key": "divider_relationships_col",
+      "label": "🔗 RELATIONSHIPS COLUMN"
+    },
+    {
+      "key": "divider_column_resize",
+      "label": "↔️ COLUMN RESIZE FEATURE"
+    },
+    {
+      "key": "divider_export",
+      "label": "📤 EXPORT"
+    },
+    {
+      "key": "divider_stats_panel",
+      "label": "📊 STATISTICS PANEL"
+    },
+    {
+      "key": "divider_save_load",
+      "label": "💾 LOAD AND SAVE DATA TO/FROM DISK"
+    },
+    {
+      "key": "divider_show_single_table_btn",
+      "label": "📑 SHOW SINGLE-TABLE BUTTON"
+    },
+    {
+      "key": "divider_release_tracks",
+      "label": "💿 RELEASE TRACKLIST"
+    },
+    {
+      "key": "divider_expand_rgs",
+      "label": "🔍 EXPAND RELEASE AND RELEASE GROUPS"
+    },
+    {
+      "key": "divider_barcode_highlight",
+      "label": "🔖 BARCODE HIGHLIGHT"
+    },
+    {
+      "key": "divider_artist_role_colours",
+      "label": "🎨 ARTIST ROLE COLOURS"
+    },
+    {
+      "key": "divider_caa_pics",
+      "label": "🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY"
+    },
+    {
+      "key": "divider_art_idb",
+      "label": "🗄️ ART ARCHIVE INDEXEDDB CACHE"
+    },
+    {
+      "key": "divider_ms_track_length",
+      "label": "⏱️ TRACK LENGTH PRECISION"
+    },
+    {
+      "key": "divider_release_events_col",
+      "label": "📅 RELEASE EVENTS COLUMN"
+    },
+    {
+      "key": "divider_expand_show_all",
+      "label": "▶️ EXPAND TRUNCATED CELLS"
+    },
+    {
+      "key": "divider_resource_timing",
+      "label": "⏱️ RESOURCE TIMING API"
+    },
+    {
+      "key": "divider_unicode_char_picker",
+      "label": "🔤 UNICODE CHARACTER PICKER"
+    },
+    {
+      "key": "divider_picard_tagger",
+      "label": "🎵 PICARD TAGGER"
+    },
+    {
+      "key": "divider_annotation",
+      "label": "📝 ANNOTATION COLUMNS"
+    },
+    {
+      "key": "divider_native_annotation",
+      "label": "📖 ANNOTATION SECTION (Entity Pages)"
+    },
+    {
+      "key": "divider_annotations_page",
+      "label": "🔀 ANNOTATION HISTORY PAGE"
+    },
+    {
+      "key": "divider_edits_colors",
+      "label": "🎨 EDITS PAGE"
+    }
+  ],
+  "labels": {
+    "sa_annotation_column_max_height_em": "Annotation column collapsed height (em)",
+    "sa_annotation_column_max_width": "Annotation column max width (px)",
+    "sa_annotation_h2_bg": "Annotation sub-heading background color",
+    "sa_annotation_h2_color": "Annotation sub-heading text color",
+    "sa_annotations_compare_new_tab": "Open \"Compare versions\" in a new tab",
+    "sa_ars_column_max_height_em": "ARs column collapsed height (em)",
+    "sa_ars_column_max_width": "ARs column max width (px)",
+    "sa_art_idb_enable": "Enable IndexedDB art image/metadata cache",
+    "sa_art_idb_image_ttl_days": "Image blob cache TTL (days)",
+    "sa_art_idb_metadata_ttl_days": "Metadata (JSON) cache TTL (days)",
+    "sa_auto_expand": "Auto-Expand Rows in Multi-Table page types",
+    "sa_auto_resize_columns": "Auto-resize columns on load",
+    "sa_auto_resize_columns_threshold": "Auto-resize columns threshold (rows)",
+    "sa_caa_big_img_size": "Big CAA/EAA image fetch size (250 / 500 / 1200)",
+    "sa_caa_big_max_height": "Big CAA/EAA image max display height (px)",
+    "sa_caa_completion_toast_duration": "CAA load-complete toast duration (seconds)",
+    "sa_caa_fetch_concurrency": "CAA/EAA request concurrency limit",
+    "sa_caa_highlight_colour": "CAA/EAA hover highlight colour",
+    "sa_caa_hover_preview": "Enable hover preview of artwork",
+    "sa_caa_pics_big": "Enable big CAA/EAA picture strip",
+    "sa_caa_pics_initially_collapsed": "Start with CAA/EAA picture strip collapsed",
+    "sa_caa_pics_inline": "Enable inline CAA/EAA thumbnails in Release/Title column",
+    "sa_caa_pics_small": "Enable small CAA/EAA thumbnails",
+    "sa_caa_small_img_size": "Small CAA/EAA image fetch size (250 / 500 / 1200)",
+    "sa_chunked_render_threshold": "Chunked Rendering Threshold",
+    "sa_col_filter_active_bg": "Column Filter Active Background",
+    "sa_col_filter_focus_bg": "Column Filter Focus Background",
+    "sa_collabsable_sidebar": "Collabsable sidebar",
+    "sa_column_filter_highlight_bg": "Column Filter Highlight Background",
+    "sa_column_filter_highlight_color": "Column Filter Highlight Color",
+    "sa_count_stat_tooltip_bg": "Row-count tooltip — background color",
+    "sa_count_stat_tooltip_color": "Row-count tooltip — foreground (text) color",
+    "sa_credit_attr_color": "Credit attribute color",
+    "sa_default_hidden_columns": "Default Hidden Columns per Page Type",
+    "sa_dialog_save_export_autoclose_ms": "Save / Export dialog auto-close delay (ms)",
+    "sa_edits_color_add_closed": "Edit action — Add (closed/applied)",
+    "sa_edits_color_add_open": "Edit action — Add (open)",
+    "sa_edits_color_cancelled": "Edit action — Cancelled",
+    "sa_edits_color_diff_new": "Edit details diff — new value",
+    "sa_edits_color_diff_old": "Edit details diff — old value",
+    "sa_edits_color_edit_closed": "Edit action — Edit (closed/applied)",
+    "sa_edits_color_edit_open": "Edit action — Edit (open)",
+    "sa_edits_color_merge_closed": "Edit action — Merge (closed/applied)",
+    "sa_edits_color_merge_open": "Edit action — Merge (open)",
+    "sa_edits_color_other_closed": "Edit action — Other (closed/applied)",
+    "sa_edits_color_other_open": "Edit action — Other (open)",
+    "sa_edits_color_remove_closed": "Edit action — Remove (closed/applied)",
+    "sa_edits_color_remove_open": "Edit action — Remove (open)",
+    "sa_edits_color_zebra_even": "Edit details tracklist — even row",
+    "sa_edits_color_zebra_odd": "Edit details tracklist — odd row",
+    "sa_edits_enable_details_collapse": "Start \"Edit details\" column collapsed",
+    "sa_edits_enable_notes_collapse": "Start \"Edit notes\" column collapsed",
+    "sa_enable_annotation_auto_expand": "Auto-expand native \"Annotation\" section",
+    "sa_enable_annotation_collapse": "Enable collapsible \"Annotation\" columns",
+    "sa_enable_ars_collapse": "Enable collapsible \"ARs\" column",
+    "sa_enable_art_cache_fetch_debug_logging": "Enable CAA/EAA low-level cache/network fetch debug logging",
+    "sa_enable_art_diagnostic_logging": "Enable CAA/EAA artwork diagnostic logging",
+    "sa_enable_art_fetch_debug_logging": "Enable CAA/EAA image fetch debug logging",
+    "sa_enable_barcode_highlight": "Enable Barcode Highlight",
+    "sa_enable_caa_inline_jesus2099_observer": "Watch for late jesus2099 cover-art icon re-injection",
+    "sa_enable_caa_pics": "Enable CAA/EAA Illustrated Discography",
+    "sa_enable_column_resizing": "Enable Column Resizing",
+    "sa_enable_column_visibility": "Enable Column Visibility Toggle",
+    "sa_enable_count_stat_tooltip": "Enable rich row-count tooltips on h2/h3 count spans",
+    "sa_enable_debug_logging": "Enable debug logging",
+    "sa_enable_density_control": "Enable Table Density Control",
+    "sa_enable_direct_ctrl_char_shortcuts": "Enable Direct Ctrl+Letter Shortcuts",
+    "sa_enable_dropdown_flag_icons": "Show Flag Icons In Unique-Values Dropdown",
+    "sa_enable_edits_diff_colors": "Enable old/new value diff colors in \"Edit details\"",
+    "sa_enable_edits_type_colors": "Enable \"Edit#\"/\"Edit action\" column background colors",
+    "sa_enable_event_parts_extractor": "Enable 'Event Parts' synthetic column extractor",
+    "sa_enable_expand_release_events": "Auto-expand truncated \"Country/Date\" release-event cells",
+    "sa_enable_expand_rgs": "Enable Expand Release and Release Groups",
+    "sa_enable_export": "Enable Export",
+    "sa_enable_h1_comment_span_relocation_on_final_page": "Relocate H1 comment-span alias block (final rendered page)",
+    "sa_enable_h1_comment_span_relocation_on_initial_page": "Relocate H1 comment-span alias block (initial page)",
+    "sa_enable_h2_section_relocation_on_final_page": "Relocate trailing h2 sections before data table (final rendered page)",
+    "sa_enable_keyboard_shortcut_tooltip": "Enable Keyboard Shortcut Tooltip",
+    "sa_enable_keyboard_shortcuts": "Enable Keyboard Shortcuts",
+    "sa_enable_legal_name_relocation_on_final_page": "Relocate legal name below subheader (final rendered page)",
+    "sa_enable_length_deviation_section": "Enable \"Length info - Deviation\"/\"Live status\" dropdown sections",
+    "sa_enable_ms_length_debug": "Enable millisecond track length debug logging",
+    "sa_enable_ms_track_length": "Enable millisecond track lengths",
+    "sa_enable_numeric_alignment": "Enable numeric column alignment",
+    "sa_enable_pending_edits_section": "Enable \"Pending edits\" Filtering",
+    "sa_enable_picard_tagger": "Enable Picard Tagger column",
+    "sa_enable_relationship_debug": "Enable Relationships column debug logging",
+    "sa_enable_relationships_column": "Enable Relationships column",
+    "sa_enable_release_events_column": "Enable Release events column",
+    "sa_enable_release_events_debug": "Enable Release events column debug logging",
+    "sa_enable_release_tracks": "Enable Release Tracklist consolidation",
+    "sa_enable_release_tracks_acoustid_column": "Show \"AcoustIDs\" column",
+    "sa_enable_release_tracks_acoustid_isrc_observer": "Watch for late-arriving AcoustID/ISRC data",
+    "sa_enable_release_tracks_credit_role_columns": "Show engineer/producer/mixer/performer/copyright credit columns",
+    "sa_enable_release_tracks_disambiguation_observer": "Watch for late-arriving Disambiguation data",
+    "sa_enable_release_tracks_dynamic_ar_columns": "Auto-discover columns for every other relationship type",
+    "sa_enable_release_tracks_instrument_vocal_columns": "Show \"Instruments\" / \"Vocals\" columns",
+    "sa_enable_release_tracks_isrc_column": "Show \"ISRCs\" column",
+    "sa_enable_release_tracks_length_mismatch_flag": "Flag tracks whose two lengths disagree",
+    "sa_enable_release_tracks_live_date_check": "Flag live-recording credit dates that don't match \"Recording date\"",
+    "sa_enable_release_tracks_recording_of_columns": "Show \"Recording of\" / \"Recorded at\" / \"Recorded in\" / \"Mixed at\" columns",
+    "sa_enable_save_load": "Enable Save/Load to Disk",
+    "sa_enable_show_single_table_btn": "Enable \"Show single-table\" button",
+    "sa_enable_stats_panel": "Enable Quick Stats Panel",
+    "sa_enable_sticky_columns": "Enable Sticky Columns",
+    "sa_enable_sticky_headers": "Enable Sticky Headers",
+    "sa_enable_tooltip_debug": "Enable tooltip debug logging",
+    "sa_enable_uniq_drop_context_debug": "Enable unique-values dropdown debug logging",
+    "sa_export_convert_multirow_glyphs": "Convert multi-row collapse glyphs on export",
+    "sa_export_include_sort_state": "Include sort-state glyph in exported column headers",
+    "sa_export_include_uniq_counts": "Include unique-value counts in exported column headers",
+    "sa_export_strip_caa_glyphs": "Strip CAA/EAA collapse glyphs on export",
+    "sa_export_strip_title_glyphs": "Strip title-prefix collapse glyphs on export",
+    "sa_filename_include_detail": "Include detail segment in filename",
+    "sa_filename_include_row_count": "Include row count in filename",
+    "sa_filename_include_timestamp": "Include timestamp in filename",
+    "sa_filename_prefix": "Save filename prefix",
+    "sa_filter_border_error": "Filter border — error (invalid regexp) — all filter types",
+    "sa_filter_debounce_delay": "Filter debounce delay (ms)",
+    "sa_filter_focus_prefix": "Filter Focus Prefix",
+    "sa_fn_edit_pinned_filter_list": "Edit Pinned Filter List",
+    "sa_global_filter_border_active": "Global filter border — active (has filter text)",
+    "sa_global_filter_border_idle": "Global filter border — idle (empty)",
+    "sa_global_filter_highlight_bg": "Global Filter Highlight Background",
+    "sa_global_filter_highlight_color": "Global Filter Highlight Color",
+    "sa_global_filter_initial_width": "Global filter initial width (px)",
+    "sa_keyboard_shortcut_prefix": "Keyboard Shortcut Prefix",
+    "sa_ld_auto_resize_after_load": "Auto-resize columns after loading from disk",
+    "sa_ld_dialog_header_font_size": "Load dialog header description font size",
+    "sa_ld_dialog_min_width": "Load dialog minimum width (px)",
+    "sa_ld_dialog_width": "Load dialog width (px)",
+    "sa_ld_status_font_size": "Load dialog status message font size",
+    "sa_load_history_dropdown_size": "Load Filter History → visible rows in dropdown",
+    "sa_load_history_limit": "Load Filter History → max stored entries",
+    "sa_max_page": "Max Page Warning",
+    "sa_ms_idb_enable": "Enable IndexedDB millisecond length cache",
+    "sa_ms_idb_ttl_days": "Millisecond length IDB cache TTL (days)",
+    "sa_ms_length_trim_zero_ms": "Hide a \".000\" millisecond part",
+    "sa_picard_tagger_default_port": "Picard default port",
+    "sa_picard_tagger_host": "Picard host",
+    "sa_picard_tagger_initially_collapsed": "Start the Picard column collapsed",
+    "sa_picard_tagger_max_port": "Picard max probe port",
+    "sa_pre_filter_highlight_bg": "Global Prefilter Highlight Background",
+    "sa_pre_filter_highlight_color": "Global Prefilter Highlight Color",
+    "sa_rel_auto_retry_failed": "Relationships: retry failed lookups once, automatically",
+    "sa_rel_auto_retry_max_failed": "Relationships: largest failure count still worth retrying automatically",
+    "sa_rel_browse_batch_enable": "Relationships: fetch whole pages at once where MusicBrainz allows it",
+    "sa_rel_cell_state_glyphs": "Relationships: show a load-state glyph in each cell",
+    "sa_rel_collapse_threshold": "Relationships auto-collapse threshold (unique entities)",
+    "sa_rel_completion_toast_duration": "Relationships load-complete toast duration (seconds)",
+    "sa_rel_idb_ttl_days": "Relationships IDB cache TTL (days)",
+    "sa_rel_other_db_classes": "Other-database domain → icon CSS class",
+    "sa_rel_streaming_classes": "Streaming service URL pattern → icon CSS class",
+    "sa_rel_tooltip_bg": "Relationships rich tooltip: background color",
+    "sa_rel_tooltip_color": "Relationships rich tooltip: text color",
+    "sa_rel_url_icon_classes": "Relation type → icon CSS class",
+    "sa_release_tracks_length_mismatch_severe_bg": "Length-mismatch ❌ cell background color",
+    "sa_release_tracks_length_mismatch_severe_factor": "Length-mismatch \"far over\" multiple",
+    "sa_release_tracks_length_mismatch_threshold_ms": "Length-mismatch threshold (milliseconds)",
+    "sa_release_tracks_length_mismatch_warn_bg": "Length-mismatch ⚠️ cell background color",
+    "sa_rels_idb_enable": "Enable IndexedDB Relationships WS2 data cache",
+    "sa_remove_checkbox_cell": "Remove Checkbox-Cell column",
+    "sa_remove_rating": "Remove Rating column",
+    "sa_render_overflow_tables_in_new_tab": "Render overflow tables in a new browser tab",
+    "sa_render_threshold": "Large Dataset Threshold",
+    "sa_render_warning_threshold": "Render Warning Threshold",
+    "sa_rt_enable": "Enable Resource Timing cache-hint indicators",
+    "sa_rt_show_bigbox": "Show cache-hint overlay on big-picture strip images",
+    "sa_rt_show_icon_column": "Show cache-hint in CAA/EAA icon column",
+    "sa_rt_show_inline": "Show cache-hint overlay on inline thumbnails",
+    "sa_shortcut_auto_resize": "Shortcut: Toggle Auto-Resize Columns",
+    "sa_shortcut_clear_filters": "Shortcut: Clear All Filters",
+    "sa_shortcut_col_sort_asc": "Shortcut: Sort Ascending (column filter focused)",
+    "sa_shortcut_col_sort_desc": "Shortcut: Sort Descending (column filter focused)",
+    "sa_shortcut_col_toggle_caa": "Shortcut: Toggle CAA Cover Art Images (column filter focused)",
+    "sa_shortcut_col_toggle_collapse": "Shortcut: Toggle Multi-Row Cell Collapse (column filter focused)",
+    "sa_shortcut_col_unique_dropdown": "Shortcut: Show Unique Values Dropdown (column filter focused)",
+    "sa_shortcut_col_unsort": "Shortcut: Restore Original Sort Order (column filter focused)",
+    "sa_shortcut_focus_column_filter": "Shortcut: Focus First Column Filter",
+    "sa_shortcut_focus_global_filter": "Shortcut: Focus Global Filter",
+    "sa_shortcut_load_from_disk": "Shortcut: Load from Disk",
+    "sa_shortcut_open_density": "Shortcut: Open Density Menu",
+    "sa_shortcut_open_export": "Shortcut: Open Export Menu",
+    "sa_shortcut_open_settings": "Shortcut: Open Settings",
+    "sa_shortcut_open_statistics": "Shortcut: Open Statistics Menu",
+    "sa_shortcut_open_visible_columns": "Shortcut: Open Visible Columns Menu",
+    "sa_shortcut_save_to_disk": "Shortcut: Save to Disk",
+    "sa_shortcut_show_shortcuts_help": "Shortcut: Show Keyboard Shortcuts Help",
+    "sa_shortcut_toggle_h2": "Shortcut: Toggle h2 Headers",
+    "sa_shortcut_toggle_h3": "Shortcut: Toggle h3 Headers",
+    "sa_shortcut_unicode_chars": "Shortcut: Unicode Character Picker",
+    "sa_sidebar_collapsed": "Start with sidebar collapsed",
+    "sa_sort_chunk_size": "Sort chunk size",
+    "sa_stats_panel_max_height": "Statistics panel max height (vh)",
+    "sa_stats_panel_width": "Statistics panel max width (px)",
+    "sa_subtable_filter_border_active": "Sub-table filter border — active (has filter text)",
+    "sa_subtable_filter_border_idle": "Sub-table filter border — idle (empty)",
+    "sa_subtable_filter_initial_width": "Sub-table filter initial width (px)",
+    "sa_toggle_barcode_highlighting": "Shortcut: Toggle Barcode Highlighting",
+    "sa_ui_action_btn_style": "Action button base style",
+    "sa_ui_artist_role_guest_performer_color": "Guest performer role colour",
+    "sa_ui_artist_role_main_performer_color": "Main performer role colour",
+    "sa_ui_button_divider_style": "Button divider style",
+    "sa_ui_checkbox_style": "Filter bar checkbox style",
+    "sa_ui_column_filter_input_style": "Column filter input style",
+    "sa_ui_filter_bar_btn_style": "Filter bar utility button style",
+    "sa_ui_global_filter_input_style": "Global filter input style",
+    "sa_ui_h2_bg": "H2 section-header background color",
+    "sa_ui_h2_hover_bg": "H2 section-header hover background color",
+    "sa_ui_h3_bg": "H3 sub-table-header background color",
+    "sa_ui_h3_hover_bg": "H3 sub-table-header hover background color",
+    "sa_ui_help_btn_style": "Help ❓ button colors",
+    "sa_ui_load_btn_style": "Load button colors",
+    "sa_ui_prefilter_input_style": "Pre-load filter input style",
+    "sa_ui_row_count_bg": "Row-count stat tooltip: count background color",
+    "sa_ui_row_count_color": "Row-count stat tooltip: count text color",
+    "sa_ui_row_hover_bg": "Table row hover background color",
+    "sa_ui_save_btn_style": "Save button colors",
+    "sa_ui_settings_btn_style": "Settings ⚙️ button colors",
+    "sa_ui_show_all_subtable_btn_bg": "\"Show all N rows\" button initial background color",
+    "sa_ui_show_all_subtable_btn_bg_clicked": "\"Show all N rows\" button clicked background color",
+    "sa_ui_show_single_table_btn_bg": "\"Show single-table\" button initial background color",
+    "sa_ui_show_single_table_btn_bg_clicked": "\"Show single-table\" button clicked background color",
+    "sa_ui_stop_btn_style": "Stop button colors",
+    "sa_ui_subtable_btn_style": "Sub-table button style",
+    "sa_ui_thead_filter_row_bg": "Table column-filter row background color",
+    "sa_ui_thead_th_bg": "Table header-row background color",
+    "sa_ui_thead_th_color": "Table header-row text color",
+    "sa_ui_thead_th_derived_bg": "Derived column header background color",
+    "sa_ui_thead_th_extracted_bg": "Extracted column header background color",
+    "sa_ui_thead_th_injected_bg": "Injected column header background color",
+    "sa_unicode_char_picker": "Enable Unicode Character Picker",
+    "sa_unicode_char_picker_mappings": "Unicode Character Picker Mapping: Unicode code symbol → Name",
+    "sa_uniq_count_bg": "Unique-Values Count Badge Background Color",
+    "sa_uniq_count_color": "Unique-Values Count Badge Text Color",
+    "sa_uniq_dropdown_visible_rows": "Unique-Values Dropdown Visible Rows",
+    "sa_uniq_quickfilter_highlight_bg": "Unique-Values Quickfilter Highlight Background",
+    "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color"
+  },
+  "defaults": {
+    "sa_annotation_column_max_height_em": 5.6,
+    "sa_annotation_column_max_width": 480,
+    "sa_annotation_h2_bg": "#e3f2fd",
+    "sa_annotation_h2_color": "#1565c0",
+    "sa_annotations_compare_new_tab": true,
+    "sa_ars_column_max_height_em": 5.6,
+    "sa_ars_column_max_width": 480,
+    "sa_art_idb_enable": true,
+    "sa_art_idb_image_ttl_days": 30,
+    "sa_art_idb_metadata_ttl_days": 30,
+    "sa_auto_expand": 50,
+    "sa_auto_resize_columns": true,
+    "sa_auto_resize_columns_threshold": 10000,
+    "sa_caa_big_img_size": 250,
+    "sa_caa_big_max_height": 125,
+    "sa_caa_completion_toast_duration": 10,
+    "sa_caa_fetch_concurrency": 4,
+    "sa_caa_highlight_colour": "#ffff00",
+    "sa_caa_hover_preview": true,
+    "sa_caa_pics_big": true,
+    "sa_caa_pics_initially_collapsed": true,
+    "sa_caa_pics_inline": true,
+    "sa_caa_pics_small": true,
+    "sa_caa_small_img_size": 250,
+    "sa_chunked_render_threshold": 1000,
+    "sa_col_filter_active_bg": "#fff9c4",
+    "sa_col_filter_focus_bg": "#fffde7",
+    "sa_collabsable_sidebar": true,
+    "sa_column_filter_highlight_bg": "#add8e6",
+    "sa_column_filter_highlight_color": "red",
+    "sa_count_stat_tooltip_bg": "#1e1e2e",
+    "sa_count_stat_tooltip_color": "#cdd6f4",
+    "sa_credit_attr_color": "#2e7d32",
+    "sa_dialog_save_export_autoclose_ms": 1800,
+    "sa_edits_color_add_closed": "#D0EBD7",
+    "sa_edits_color_add_open": "lightgreen",
+    "sa_edits_color_cancelled": "lightgrey",
+    "sa_edits_color_diff_new": "#e4fbe4",
+    "sa_edits_color_diff_old": "#fbe3e4",
+    "sa_edits_color_edit_closed": "#F1E3BF",
+    "sa_edits_color_edit_open": "khaki",
+    "sa_edits_color_merge_closed": "#DEC6D5",
+    "sa_edits_color_merge_open": "plum",
+    "sa_edits_color_other_closed": "#CFDDE0",
+    "sa_edits_color_other_open": "lightblue",
+    "sa_edits_color_remove_closed": "#FFE2E8",
+    "sa_edits_color_remove_open": "pink",
+    "sa_edits_color_zebra_even": "#f2f2f2",
+    "sa_edits_color_zebra_odd": "#ffffff",
+    "sa_edits_enable_details_collapse": false,
+    "sa_edits_enable_notes_collapse": false,
+    "sa_enable_annotation_auto_expand": true,
+    "sa_enable_annotation_collapse": true,
+    "sa_enable_ars_collapse": false,
+    "sa_enable_art_cache_fetch_debug_logging": false,
+    "sa_enable_art_diagnostic_logging": false,
+    "sa_enable_art_fetch_debug_logging": false,
+    "sa_enable_barcode_highlight": true,
+    "sa_enable_caa_inline_jesus2099_observer": true,
+    "sa_enable_caa_pics": true,
+    "sa_enable_column_resizing": true,
+    "sa_enable_column_visibility": true,
+    "sa_enable_count_stat_tooltip": true,
+    "sa_enable_debug_logging": false,
+    "sa_enable_density_control": true,
+    "sa_enable_direct_ctrl_char_shortcuts": false,
+    "sa_enable_dropdown_flag_icons": true,
+    "sa_enable_edits_diff_colors": true,
+    "sa_enable_edits_type_colors": true,
+    "sa_enable_event_parts_extractor": true,
+    "sa_enable_expand_release_events": true,
+    "sa_enable_expand_rgs": true,
+    "sa_enable_export": true,
+    "sa_enable_h1_comment_span_relocation_on_final_page": true,
+    "sa_enable_h1_comment_span_relocation_on_initial_page": true,
+    "sa_enable_h2_section_relocation_on_final_page": true,
+    "sa_enable_keyboard_shortcut_tooltip": true,
+    "sa_enable_keyboard_shortcuts": true,
+    "sa_enable_legal_name_relocation_on_final_page": true,
+    "sa_enable_length_deviation_section": true,
+    "sa_enable_ms_length_debug": false,
+    "sa_enable_ms_track_length": true,
+    "sa_enable_numeric_alignment": true,
+    "sa_enable_pending_edits_section": true,
+    "sa_enable_picard_tagger": true,
+    "sa_enable_relationship_debug": false,
+    "sa_enable_relationships_column": true,
+    "sa_enable_release_events_column": true,
+    "sa_enable_release_events_debug": false,
+    "sa_enable_release_tracks": true,
+    "sa_enable_release_tracks_acoustid_column": false,
+    "sa_enable_release_tracks_acoustid_isrc_observer": true,
+    "sa_enable_release_tracks_credit_role_columns": true,
+    "sa_enable_release_tracks_disambiguation_observer": true,
+    "sa_enable_release_tracks_dynamic_ar_columns": true,
+    "sa_enable_release_tracks_instrument_vocal_columns": true,
+    "sa_enable_release_tracks_isrc_column": false,
+    "sa_enable_release_tracks_length_mismatch_flag": true,
+    "sa_enable_release_tracks_live_date_check": true,
+    "sa_enable_release_tracks_recording_of_columns": true,
+    "sa_enable_save_load": true,
+    "sa_enable_show_single_table_btn": true,
+    "sa_enable_stats_panel": true,
+    "sa_enable_sticky_columns": true,
+    "sa_enable_sticky_headers": true,
+    "sa_enable_tooltip_debug": false,
+    "sa_enable_uniq_drop_context_debug": false,
+    "sa_export_convert_multirow_glyphs": false,
+    "sa_export_include_sort_state": true,
+    "sa_export_include_uniq_counts": false,
+    "sa_export_strip_caa_glyphs": false,
+    "sa_export_strip_title_glyphs": false,
+    "sa_filename_include_detail": true,
+    "sa_filename_include_row_count": true,
+    "sa_filename_include_timestamp": true,
+    "sa_filename_prefix": "MB-",
+    "sa_filter_border_error": "#cc0000",
+    "sa_filter_debounce_delay": 300,
+    "sa_filter_focus_prefix": "🔍 ",
+    "sa_fn_edit_pinned_filter_list": "_openEditPinnedFilterListFromSettings",
+    "sa_global_filter_border_active": "orange",
+    "sa_global_filter_border_idle": "#000000",
+    "sa_global_filter_highlight_bg": "#FFD700",
+    "sa_global_filter_highlight_color": "red",
+    "sa_global_filter_initial_width": 500,
+    "sa_keyboard_shortcut_prefix": "Ctrl+M",
+    "sa_ld_auto_resize_after_load": false,
+    "sa_ld_dialog_header_font_size": "1.00em",
+    "sa_ld_dialog_min_width": 640,
+    "sa_ld_dialog_width": 600,
+    "sa_ld_status_font_size": "0.95em",
+    "sa_load_history_dropdown_size": 10,
+    "sa_load_history_limit": 50,
+    "sa_max_page": 50,
+    "sa_ms_idb_enable": true,
+    "sa_ms_idb_ttl_days": 30,
+    "sa_ms_length_trim_zero_ms": false,
+    "sa_picard_tagger_default_port": 8000,
+    "sa_picard_tagger_host": "127.0.0.1",
+    "sa_picard_tagger_initially_collapsed": true,
+    "sa_picard_tagger_max_port": 8010,
+    "sa_pre_filter_highlight_bg": "#FFFFE0",
+    "sa_pre_filter_highlight_color": "#008000",
+    "sa_rel_auto_retry_failed": true,
+    "sa_rel_auto_retry_max_failed": 25,
+    "sa_rel_browse_batch_enable": true,
+    "sa_rel_cell_state_glyphs": true,
+    "sa_rel_collapse_threshold": 200,
+    "sa_rel_completion_toast_duration": 8,
+    "sa_rel_idb_ttl_days": 30,
+    "sa_rel_tooltip_bg": "#ffffff",
+    "sa_rel_tooltip_color": "#000000",
+    "sa_release_tracks_length_mismatch_severe_bg": "#f8d7da",
+    "sa_release_tracks_length_mismatch_severe_factor": 3,
+    "sa_release_tracks_length_mismatch_threshold_ms": 1000,
+    "sa_release_tracks_length_mismatch_warn_bg": "#fff3cd",
+    "sa_rels_idb_enable": true,
+    "sa_remove_checkbox_cell": true,
+    "sa_remove_rating": false,
+    "sa_render_overflow_tables_in_new_tab": true,
+    "sa_render_threshold": 5000,
+    "sa_render_warning_threshold": 10000,
+    "sa_rt_enable": true,
+    "sa_rt_show_bigbox": true,
+    "sa_rt_show_icon_column": true,
+    "sa_rt_show_inline": true,
+    "sa_shortcut_auto_resize": "Ctrl+R",
+    "sa_shortcut_clear_filters": "Ctrl+Shift+G",
+    "sa_shortcut_col_sort_asc": "Ctrl+ArrowUp",
+    "sa_shortcut_col_sort_desc": "Ctrl+ArrowDown",
+    "sa_shortcut_col_toggle_caa": "Ctrl+A",
+    "sa_shortcut_col_toggle_collapse": "Ctrl+O",
+    "sa_shortcut_col_unique_dropdown": "Ctrl+Q",
+    "sa_shortcut_col_unsort": "Ctrl+#",
+    "sa_shortcut_focus_column_filter": "Ctrl+C",
+    "sa_shortcut_focus_global_filter": "Ctrl+G",
+    "sa_shortcut_load_from_disk": "Ctrl+L",
+    "sa_shortcut_open_density": "Ctrl+D",
+    "sa_shortcut_open_export": "Ctrl+E",
+    "sa_shortcut_open_settings": "Ctrl+,",
+    "sa_shortcut_open_statistics": "Ctrl+I",
+    "sa_shortcut_open_visible_columns": "Ctrl+V",
+    "sa_shortcut_save_to_disk": "Ctrl+S",
+    "sa_shortcut_show_shortcuts_help": "Ctrl+K",
+    "sa_shortcut_toggle_h2": "Ctrl+2",
+    "sa_shortcut_toggle_h3": "Ctrl+3",
+    "sa_shortcut_unicode_chars": "Ctrl+U",
+    "sa_sidebar_collapsed": true,
+    "sa_sort_chunk_size": 5000,
+    "sa_stats_panel_max_height": 82,
+    "sa_stats_panel_width": 860,
+    "sa_subtable_filter_border_active": "#008000",
+    "sa_subtable_filter_border_idle": "#cccccc",
+    "sa_subtable_filter_initial_width": 320,
+    "sa_toggle_barcode_highlighting": "Ctrl+B",
+    "sa_ui_action_btn_style": "0.8em|2px 8px|24px|6px",
+    "sa_ui_artist_role_guest_performer_color": "#e07000",
+    "sa_ui_artist_role_main_performer_color": "#57ff5a",
+    "sa_ui_button_divider_style": "#999|0 4px",
+    "sa_ui_checkbox_style": "0.8em|2px",
+    "sa_ui_column_filter_input_style": "1em|1px 18px 1px 4px",
+    "sa_ui_filter_bar_btn_style": "0.8em|2px 6px|4px|#f0f0f0|1px solid #ccc",
+    "sa_ui_global_filter_input_style": "1em|2px 6px|2px solid #000|3px|500px|24px",
+    "sa_ui_h2_bg": "#ffd787",
+    "sa_ui_h2_hover_bg": "#f99f50",
+    "sa_ui_h3_bg": "#f7dfdf",
+    "sa_ui_h3_hover_bg": "#eb7231",
+    "sa_ui_help_btn_style": "#78909C|white|1px solid #607D8B",
+    "sa_ui_load_btn_style": "#2196F3|white|1px solid #0b7dda|#0b7dda",
+    "sa_ui_prefilter_input_style": "1em|2px 4px|1px solid #ccc|3px|150px|24px",
+    "sa_ui_row_count_bg": "#e8e8e8",
+    "sa_ui_row_count_color": "#111111",
+    "sa_ui_row_hover_bg": "#c2d2e9",
+    "sa_ui_save_btn_style": "#4CAF50|white|1px solid #45a049|#45a049",
+    "sa_ui_settings_btn_style": "#607D8B|white|1px solid #546E7A",
+    "sa_ui_show_all_subtable_btn_bg": "#FFE0B2",
+    "sa_ui_show_all_subtable_btn_bg_clicked": "#CCFFCC",
+    "sa_ui_show_single_table_btn_bg": "#B3E5FC",
+    "sa_ui_show_single_table_btn_bg_clicked": "#CCFFCC",
+    "sa_ui_stop_btn_style": "#f44336|white|1px solid #d32f2f",
+    "sa_ui_subtable_btn_style": "0.8em|2px 6px|4px|#f0f0f0|1px solid #ccc|#e0e0e0",
+    "sa_ui_thead_filter_row_bg": "#d1d1d1",
+    "sa_ui_thead_th_bg": "#bababa",
+    "sa_ui_thead_th_color": "#333333",
+    "sa_ui_thead_th_derived_bg": "#c8c8b0",
+    "sa_ui_thead_th_extracted_bg": "#b8c8b8",
+    "sa_ui_thead_th_injected_bg": "#b8b8d0",
+    "sa_unicode_char_picker": true,
+    "sa_uniq_count_bg": "#fffacd",
+    "sa_uniq_count_color": "#111111",
+    "sa_uniq_dropdown_visible_rows": 30,
+    "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
+    "sa_uniq_quickfilter_highlight_color": "#c0392b"
+  },
+  "tables": {
+    "sa_default_hidden_columns": {
+      "seed_source": "SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT",
+      "seed_rows": [
+        [
+          "release-tracks",
+          "\"ARs\""
+        ]
+      ]
+    },
+    "sa_unicode_char_picker_mappings": {
+      "seed_source": "SA_UNICODE_CHARS_DEFAULT",
+      "seed_rows": [
+        [
+          "‘",
+          "Left Single Quote",
+          "false",
+          "‘text"
+        ],
+        [
+          "’",
+          "Apostrophe, Right Single Quote",
+          "false",
+          "it’s, don’t, rock ’n’ roll"
+        ],
+        [
+          "‘’",
+          "Left+Right Single Quotes",
+          "false",
+          "‘quoted’"
+        ],
+        [
+          "“",
+          "Left Double Quotes",
+          "false",
+          "“text"
+        ],
+        [
+          "”",
+          "Right Double Quotes",
+          "false",
+          "text”"
+        ],
+        [
+          "“”",
+          "Left+Right Double Quotes",
+          "false",
+          "“quoted”"
+        ],
+        [
+          "「」",
+          "Left+Right Corner Brackets",
+          "false",
+          "「日本語」"
+        ],
+        [
+          "『』",
+          "Left+Right White Corner Brackets",
+          "false",
+          "『白括弧』"
+        ],
+        [
+          "…",
+          "Horizontal Ellipsis",
+          "false",
+          "to be continued…, and so on…"
+        ],
+        [
+          "‐",
+          "Hyphen",
+          "true",
+          "well‐known, self‐aware"
+        ],
+        [
+          "–",
+          "En Dash",
+          "false",
+          "pp.†12–15, 2010–2020"
+        ],
+        [
+          "—",
+          "Em Dash",
+          "false",
+          "word—and another—here"
+        ],
+        [
+          "‒",
+          "Figure Dash",
+          "false",
+          "tel. 555‒0100"
+        ],
+        [
+          "〜",
+          "Wave Dash",
+          "false",
+          "〜波ダッシュ〜"
+        ],
+        [
+          "′",
+          "Prime",
+          "false",
+          "5′ (feet), 45′ (minutes of arc)"
+        ],
+        [
+          "″",
+          "Double Prime",
+          "false",
+          "5″ (inches), 30″ (seconds of arc)"
+        ],
+        [
+          "−",
+          "Minus Sign",
+          "false",
+          "−2, a−b, −40 °C"
+        ],
+        [
+          "×",
+          "Multiplication Sign",
+          "false",
+          "3 × 4 = 12"
+        ],
+        [
+          "©",
+          "Copyright Symbol",
+          "false",
+          "© 2024 Artist Name"
+        ],
+        [
+          "℗",
+          "Phonographic Copyright Symbol",
+          "false",
+          "℗ 2024 Record Label"
+        ]
+      ]
+    },
+    "sa_rel_url_icon_classes": {
+      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_rows": [
+        [
+          "allmusic",
+          "allmusic"
+        ],
+        [
+          "amazon asin",
+          "amazon"
+        ],
+        [
+          "creative commons licensed download",
+          "creativecommons"
+        ],
+        [
+          "discogs",
+          "discogs"
+        ],
+        [
+          "imdb",
+          "imdb"
+        ],
+        [
+          "lyrics",
+          "lyrics"
+        ],
+        [
+          "secondhandsongs",
+          "secondhandsongs"
+        ],
+        [
+          "vgmdb",
+          "vgmdb"
+        ],
+        [
+          "wikidata",
+          "wikidata"
+        ]
+      ]
+    },
+    "sa_rel_other_db_classes": {
+      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_rows": [
+        [
+          "d-nb.info",
+          "dnb"
+        ],
+        [
+          "www.musik-sammler.de",
+          "musiksammler"
+        ],
+        [
+          "rateyourmusic.com",
+          "rateyourmusic"
+        ],
+        [
+          "www.worldcat.org",
+          "worldcat"
+        ],
+        [
+          "nocs.acum.org.il",
+          "acum"
+        ],
+        [
+          "stereo-ve-mono.com",
+          "stereo-ve-mono"
+        ]
+      ]
+    },
+    "sa_rel_streaming_classes": {
+      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_rows": [
+        [
+          "music.amazon.",
+          "amazonmusic"
+        ],
+        [
+          "music.apple.com",
+          "applemusic"
+        ],
+        [
+          "bandcamp.com",
+          "bandcamp"
+        ],
+        [
+          "www.deezer.com",
+          "deezer"
+        ],
+        [
+          "www.hdtracks.com",
+          "hdtracks"
+        ],
+        [
+          "itunes.apple.com",
+          "itunes"
+        ],
+        [
+          "qobuz.com",
+          "qobuz"
+        ],
+        [
+          "soundcloud.com",
+          "soundcloud"
+        ],
+        [
+          "open.spotify.com",
+          "spotify"
+        ],
+        [
+          "tidal.com",
+          "tidal"
+        ],
+        [
+          "beatport.com",
+          "beatport"
+        ],
+        [
+          "youtube.com",
+          "youtube"
+        ],
+        [
+          "archive.org",
+          "archive"
+        ],
+        [
+          "mediafire.com",
+          "mediafire"
+        ],
+        [
+          "store.steampowered.com",
+          "steam"
+        ]
+      ]
+    }
+  }
+}
