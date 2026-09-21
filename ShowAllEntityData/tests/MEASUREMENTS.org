@@ -687,14 +687,15 @@ is the evidence here, not that argument.
 =petri= (24 cores, 31 GB, node v24.16.0, Playwright 1.62.1), uptime *6 d 17 h*,
 ONE resident =claude= session (the one that ran it), branch
 =fix/config-import-tables= at 9.99.1135 for the first two rows and =main= at
-9.99.1136 for the third, chromium-fixtures only, Playwright's own default
+9.99.1136 for rows 3 and 4, chromium-fixtures only, Playwright's own default
 worker count (half the logical CPUs = *12*).
 
-| Selection                       | Tests | Wall clock | Basis                                  |
-|---------------------------------+-------+------------+----------------------------------------|
-| =npm test= (=@slow= excluded)   |   432 | ≈ 2 m 42 s | Playwright's own figure, twice         |
-| =npm run test:full=             |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
-| =npm run test:full=, merge gate |   447 | *5 m 40 s* | =/usr/bin/time=, 22:42:52-22:48:32 UTC |
+| Selection                         | Tests | Wall clock | Basis                                  |
+|-----------------------------------+-------+------------+----------------------------------------|
+| =npm test= (=@slow= excluded)     |   432 | ≈ 2 m 42 s | Playwright's own figure, twice         |
+| =npm run test:full=               |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
+| =npm run test:full=, merge gate A |   447 | *5 m 40 s* | =/usr/bin/time=, 22:42:52-22:48:32 UTC |
+| =npm run test:full=, merge gate B |   447 | *5 m 40 s* | =/usr/bin/time=, 23:14:34-23:20:14 UTC |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -702,12 +703,20 @@ Playwright start-up; the =test:full= figure is real wall clock and includes
 them. Do not compare the two columns as if they were the same measurement —
 Playwright reported *5.6 m* for the run this file records as 5 m 37 s.
 
-*The third row is the merge gate for the same branch*, on =main= after the
-merge and the WIP fold, an eighth test having landed in between. 447 tests in
-340 s against 446 in 337 s, 50 minutes apart on an otherwise unchanged host:
-**0.9% apart for 0.2% more tests**, which is the closest thing this file has to
-a run-to-run repeatability figure for the fixture suite. Treat anything under
-a couple of percent here as noise.
+*Rows 3 and 4 are two merge gates*, =fix/config-import-tables= and
+=feat/config-defaults-snapshot=, and together they give this file its first
+real repeatability figure for the fixture suite.
+
+**Same test count, same host, 32 minutes apart: 340.07 s and 340.40 s — 0.1%.**
+That is the useful number, and it is far tighter than the 0.9% the 446-vs-447
+pair suggested (which this note claimed as the figure until row 4 existed, and
+which was measuring a test-count difference as much as anything). The second
+gate is also the stronger measurement for a second reason: its branch changed
+no runtime code at all, only =scripts/= and docs, so the two runs executed a
+byte-identical userscript.
+
+Practical reading: on this host, a =test:full= wall clock outside roughly
+±1% is worth looking at; inside it is noise.
 
 *Each row's count is what RAN.* Do not "correct" them to whatever
 =tests/README.org= says today — the numbers belong to the tree that was timed.
