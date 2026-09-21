@@ -13885,11 +13885,11 @@ it picks a different victim each run.
 
 Today's instance, on the `fix/summary-btn-height` merge gate:
 
-| Run | Tree | Result |
-|-----|------|--------|
-| 1 | `fix/summary-btn-height` | 412 passed, 0 failed |
-| 2 | merged `main` (same userscript + version bump) | 411 passed, **1 failed** |
-| 3 | merged `main`, unchanged | 412 passed, 0 failed |
+| Run | Tree                                           | Result                   |
+|-----|------------------------------------------------|--------------------------|
+| 1   | `fix/summary-btn-height`                       | 412 passed, 0 failed     |
+| 2   | merged `main` (same userscript + version bump) | 411 passed, **1 failed** |
+| 3   | merged `main`, unchanged                       | 412 passed, 0 failed     |
 
 The failure in run 2 was
 `tests/fixtures/length-column-filter-colon-gap.spec.js:25` — a spec with no
