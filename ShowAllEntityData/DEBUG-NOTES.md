@@ -14320,3 +14320,75 @@ measure/9.99.1049-arm-e` (never pushed; tip `c17a8b4`). `pgrep -x claude`
 matched this session's own PID beforehand, so the gate's process name was still
 right. No `// @version` bump or changelog entry: nothing under the userscript
 changed.
+
+## 2026-09-21 — config import destroys the five editable lookup tables (branch fix/config-import-tables)
+
+`org/config-handling.org` F3, Item 3. Read off the code at 9.99.1135.
+
+**The chain.** `_loadSettingsConfig()` skipped only `type: 'divider'` and ran
+every other value through `String(value)`. The five `type: 'table'` settings are
+row ARRAYS, so `[['discogs','discogs']]` was stored as the string
+`"discogs,discogs"`. `Lib.getTableRows()` (VZ_MBLibrary's public-API block) is
+`Array.isArray(rows) ? rows : (defaultRows || [])`, so all three lazy seeders —
+`_loadDefaultHiddenColumnsMap()`, `_initRelMappings()`'s `_loadMap()` and
+`_loadUnicodeCharsMappings()` — saw an empty list and refilled from their
+built-in defaults. **Importing a config file therefore discarded every
+hand-entered row** in Default Hidden Columns, the three Relationships icon
+tables and the Unicode picker, while the summary dialog counted them as applied.
+
+Nothing crashed and nothing warned. The loss is invisible at import time and
+surfaces a whole page load later as tables quietly back at their defaults —
+which is why this shipped in 9.99.273 and survived until now.
+
+**`type: 'function'` was wrong at both ends.** `sa_fn_edit_pinned_filter_list`'s
+`default:` is the internal method name `_openEditPinnedFilterListFromSettings`,
+resolved through the `functionRegistry` the library's `showModal()` takes.
+`_buildConfigJson()` exported it and `_loadSettingsConfig()` wrote it back into
+GM storage as if it were a user value. VZ_MBLibrary's own
+save/snapshot/reset loops all skip `['divider','function','table']`; this
+consumer's two loops skipped only `divider`.
+
+**The fix.** `_applyConfigSettings(settingsObj)` is split out of
+`_loadSettingsConfig()` — same decisions, no dialog and no `location.reload()`.
+It skips `function` alongside `divider`, stores a `table` value verbatim when
+`Array.isArray()` and counts a non-array `invalid` rather than stringifying it.
+`_buildConfigJson()` skips `function` and omits a table with no stored rows.
+Tables keep being exported: arrays round-trip through JSON correctly, and those
+rows are the most valuable thing in the file.
+
+**Two things learned while making this testable, both non-obvious.**
+
+- **`_buildConfigJson()` reads `Lib.settings`, which is a snapshot.**
+  `settingsInterface.init()` populates it once at library construction, so a
+  `GM_setValue` made mid-session is invisible to the export. On a fresh profile
+  all five table keys are therefore `undefined` at export time *even after* the
+  lazy seeders have written them, because the seeders run after `init()`. That
+  is what forces the spec's two page loads: seed with `GM_setValue` on load #1,
+  let `init()` pick it up on load #2.
+- **`settingsOverride` cannot be used to seed a two-load test.**
+  `loadUserscriptPage()` registers it through `context.addInitScript()`, which
+  re-runs on EVERY navigation in the context — so it would re-seed the pristine
+  table over whatever the import had just written, hiding the exact defect under
+  test. Not a harness bug; worth knowing before reaching for it.
+
+The user-visible assertion works inside load #2 because
+`_seedDefaultHiddenColumnsForPageType()` runs from the render tail (two call
+sites, both after the fetch) and calls `_loadDefaultHiddenColumnsMap()`
+unconditionally, reading GM storage LIVE rather than the `Lib.settings`
+snapshot. So the "Show all" click has to come *after* the import, not before.
+
+**Coverage.** `tests/fixtures/config-import-export.spec.js` (7 tests, ~11 s) —
+the feature's first, 3 years after it shipped. Mutation list
+`scripts/mutations/config-import-tables.json`, 7 entries, all as predicted: the
+original defect fails both the mechanism test and the user-visible one (kept as
+two entries so the consequence is recorded, not just the mechanism), and two
+honest `expect: "pass"` entries — the unseeded-table `continue` (JSON.stringify
+drops an `undefined` property anyway, so the emitted file is byte-identical) and
+the coercion arms' order (the four type tests are mutually exclusive).
+
+Two hooks were added to `__saTest`: `buildConfigJson()` (read-only) and
+`applyConfigSettings()` (writes). Neither half of this feature has a surface a
+fixture can drive — the export hands a Blob to the browser as a download, the
+import reads a `File` from a hidden input inside the library's modal and ends in
+`location.reload()`. The block's header comment said "read-only introspection
+surface"; it now says which members are not, and why.

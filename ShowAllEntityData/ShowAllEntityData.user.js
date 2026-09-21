@@ -65292,9 +65292,18 @@ a { color: #1565c0; }`;
     //     }
     //   }
     //
-    // The settings block contains ONLY non-divider keys whose value differs from
-    // the schema default, making files short and trivially diffable.  On import
-    // unknown keys are ignored; missing keys remain at their current saved value.
+    // The settings block is a FULL DUMP of every importable configSchema key —
+    // not a delta against the schema defaults.  This comment claimed the
+    // opposite from 9.99.273 until 2026-09-21; there has never been a delta
+    // filter, and one is deliberately not wanted: a full dump is what makes an
+    // exported file diffable against another export, and against the generated
+    // defaults snapshot (org/config-handling.org Item 4).  "Importable" excludes
+    // three entry types — `divider` and `function` carry no user value at all,
+    // and a `table` key that has never been seeded has no value yet.
+    //
+    // On import unknown keys are ignored; missing keys remain at their current
+    // saved value.  The five `type: 'table'` settings are arrays and round-trip
+    // as arrays, in both directions — see _applyConfigSettings().
     // ──────────────────────────────────────────────────────────────────────────
 
     /** Current config-file format version (bump when structure changes). */
@@ -65303,13 +65312,37 @@ a { color: #1565c0; }`;
     /**
      * Builds the versioned configuration JSON string for the current settings.
      *
-     * Only non-divider settings are included in the "settings" block.  Values
-     * are type-coerced according to the schema type before serialization so that
-     * a round-trip through the browser's settings dialog (which returns all
-     * input.value strings) does not turn number settings into JSON strings.
+     * Every importable setting is included — this is a full dump, not a delta
+     * against the schema defaults (see the format comment above).  Three entry
+     * types are excluded, and each for its own reason:
+     *
+     *   • `divider`  — a section heading, not a setting.  Always was excluded.
+     *   • `function` — its `default:` is an INTERNAL METHOD NAME
+     *     (`sa_fn_edit_pinned_filter_list` → `'_openEditPinnedFilterListFromSettings'`),
+     *     resolved by the library through the `functionRegistry` passed to
+     *     `showModal()`.  It is not a user value, and exporting it meant
+     *     `_applyConfigSettings()` wrote that method name into GM storage on
+     *     import.  VZ_MBLibrary's own save/snapshot/reset loops all skip
+     *     `['divider','function','table']`; this pair of loops skipped only
+     *     `divider` until 2026-09-21.
+     *   • `table` with no stored rows — the 5 `type: 'table'` settings carry no
+     *     `default:` at all (they are lazy-seeded from code on first use), so
+     *     there is genuinely nothing to record yet.  Dropping the key leaves the
+     *     importer's "missing keys keep their current value" rule to do the
+     *     right thing.  The `continue` is explicit rather than relying on
+     *     `JSON.stringify` silently dropping an `undefined` property value.
+     *
+     * A table WITH rows is exported as a real JSON array and must stay that way:
+     * those hand-entered rows are the most valuable thing in the file, and
+     * `Lib.getTableRows()` rejects anything that is not an array.
+     *
+     * Values are type-coerced according to the schema type before serialization
+     * so that a round-trip through the browser's settings dialog (which returns
+     * all input.value strings) does not turn number settings into JSON strings.
      * Specifically:
      *   • checkbox  → boolean  (GM may store string "true"/"false" after RESET+SAVE)
      *   • number    → Number() (input.value is always a string; must coerce back)
+     *   • table     → the array, verbatim
      *   • all other → kept as-is (already strings)
      *
      * The JSON is formatted with 2-space indent so each key appears on its own
@@ -65322,7 +65355,7 @@ a { color: #1565c0; }`;
         const settingsBlock = {};
         for (const key of Object.keys(configSchema)) {
             const schemaCfg = configSchema[key];
-            if (schemaCfg.type === 'divider') continue;
+            if (schemaCfg.type === 'divider' || schemaCfg.type === 'function') continue;
 
             const raw = Lib.settings[key];
             const dflt = schemaCfg.default;
@@ -65338,6 +65371,10 @@ a { color: #1565c0; }`;
             } else if (schemaCfg.type === 'number') {
                 const n = Number(live);
                 coerced = Number.isFinite(n) ? n : (typeof dflt === 'number' ? dflt : n);
+            } else if (schemaCfg.type === 'table') {
+                // Never seeded yet — omit the key rather than inventing a value.
+                if (!Array.isArray(live)) continue;
+                coerced = live;
             } else {
                 coerced = live;
             }
@@ -65450,21 +65487,113 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Writes one imported settings block into GM storage, key by key, and
+     * reports what happened to each.
+     *
+     * Split out of {@link _loadSettingsConfig} so the decision table below can
+     * be exercised at all: that function's only entry point is a button inside
+     * a library-rendered modal, and it ends in `location.reload()`, which no
+     * test can survive.  This half touches no DOM and never reloads.
+     *
+     * Per-key disposition, in order:
+     *   • `divider` / `function`, or a key absent from configSchema → SKIPPED,
+     *     nothing written.  `function` is not "unknown": its `default:` is an
+     *     internal method name and writing it into GM storage was meaningless.
+     *     It is no longer exported either, so this only fires for a file
+     *     written before 2026-09-21.
+     *   • `table` → written VERBATIM when `Array.isArray(value)`, otherwise
+     *     counted INVALID and left alone.
+     *   • `checkbox` → boolean;  `number` → `Number()`, INVALID on NaN.
+     *   • everything else (text / color_picker / popup_dialog /
+     *     keyboard_shortcut) → `String(value)`.
+     *
+     * **The `table` branch is the whole point of this function's existence.**
+     * The 5 `type: 'table'` settings are row ARRAYS, and until 2026-09-21 they
+     * fell through to the `String(value)` arm — which turned
+     * `[['discogs','discogs']]` into the string `"discogs,discogs"`.
+     * `Lib.getTableRows()` returns `Array.isArray(rows) ? rows : defaultRows`,
+     * so each of the three lazy seeders — `_loadDefaultHiddenColumnsMap()`,
+     * `_initRelMappings()`'s `_loadMap()` and `_loadUnicodeCharsMappings()` —
+     * then saw an empty list and refilled from the built-in defaults.  Importing
+     * a config file therefore DESTROYED every hand-entered row in Default Hidden
+     * Columns, the three Relationships icon tables and the Unicode picker — the
+     * settings that are by far the most laborious to re-enter — while the
+     * summary dialog reported them as applied.  See org/config-handling.org F3.
+     *
+     * A rejected non-array is counted INVALID rather than skipped silently,
+     * because the summary is the only feedback the user gets.
+     *
+     * No shape validation beyond `Array.isArray` is done, deliberately: the
+     * consumers read `row[0]`/`row[1]` tolerantly and `Lib.getTableRows()`
+     * itself checks only the outer array, so a stricter check here would reject
+     * files the rest of the code copes with perfectly well.
+     *
+     * @param {Object<string, *>} settingsObj  The file's "settings" block.
+     * @returns {{applied: number, skipped: number, invalid: number,
+     *            skippedKeys: string[]}}  Per-key tallies for the summary.
+     */
+    function _applyConfigSettings(settingsObj) {
+        let applied = 0, skipped = 0, invalid = 0;
+        const skippedKeys = [];
+
+        for (const [key, value] of Object.entries(settingsObj)) {
+            const schemaCfg = configSchema[key];
+
+            // Not in the schema, or an entry type that carries no user value.
+            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function') {
+                skipped++;
+                skippedKeys.push(key);
+                continue;
+            }
+
+            // Type coercion
+            let coerced = value;
+            try {
+                if (schemaCfg.type === 'checkbox') {
+                    coerced = value === true || value === 'true';
+                } else if (schemaCfg.type === 'number') {
+                    const n = Number(value);
+                    if (isNaN(n)) { invalid++; continue; }
+                    coerced = n;
+                } else if (schemaCfg.type === 'table') {
+                    // Row arrays are stored as-is. NEVER String() — see above.
+                    if (!Array.isArray(value)) { invalid++; continue; }
+                    coerced = value;
+                } else {
+                    // string / text / color_picker / popup_dialog / keyboard_shortcut
+                    coerced = String(value);
+                }
+            } catch (_) {
+                invalid++;
+                continue;
+            }
+
+            GM_setValue(key, coerced);
+            applied++;
+        }
+
+        return { applied, skipped, invalid, skippedKeys };
+    }
+
+    /**
      * Reads a user-selected .json configuration file, validates the payload,
-     * applies matching settings keys, saves them via GM_setValue, and reloads
-     * the page (matching the behaviour of the native SAVE button).
+     * applies matching settings keys via {@link _applyConfigSettings}, and
+     * reloads the page (matching the behaviour of the native SAVE button).
      *
      * Validation rules:
      *   1. JSON must parse without error.
      *   2. Payload must contain a "settings" object.
      *   3. _meta.schema_version (when present) must equal _CFG_SCHEMA_VERSION.
      *   4. Unknown keys (not in configSchema) are silently skipped.
-     *   5. Divider keys are silently skipped.
-     *   6. Type coercion: stored string "true"/"false" → boolean for checkbox
-     *      type keys; numeric strings → number for number type keys.
+     *   5. `divider` and `function` keys are silently skipped — neither carries
+     *      a user value.
+     *   6. Type coercion, per {@link _applyConfigSettings}: "true"/"false" →
+     *      boolean for checkbox keys; numeric strings → number for number keys;
+     *      a `table` key's row array is stored verbatim, and a non-array offered
+     *      for one is rejected rather than stringified.
      *
-     * A summary dialog reports how many keys were applied, skipped (unknown),
-     * and ignored (type mismatch / parse error) before reloading.
+     * A summary dialog reports how many keys were applied, skipped (not
+     * applicable), and ignored (type mismatch / parse error) before reloading.
      *
      * @param {File} file  The .json file chosen by the user.
      */
@@ -65505,55 +65634,24 @@ a { color: #1565c0; }`;
                 'importing with best-effort compatibility.');
         }
 
-        let applied = 0, skipped = 0, invalid = 0;
-        const skippedKeys = [];
-
-        for (const [key, value] of Object.entries(payload.settings)) {
-            const schemaCfg = configSchema[key];
-
-            // Skip dividers and keys not in the schema
-            if (!schemaCfg || schemaCfg.type === 'divider') {
-                skipped++;
-                skippedKeys.push(key);
-                continue;
-            }
-
-            // Type coercion
-            let coerced = value;
-            try {
-                if (schemaCfg.type === 'checkbox') {
-                    coerced = value === true || value === 'true';
-                } else if (schemaCfg.type === 'number') {
-                    const n = Number(value);
-                    if (isNaN(n)) { invalid++; continue; }
-                    coerced = n;
-                } else {
-                    // string / text / color_picker / popup_dialog / keyboard_shortcut
-                    coerced = String(value);
-                }
-            } catch (_) {
-                invalid++;
-                continue;
-            }
-
-            GM_setValue(key, coerced);
-            applied++;
-        }
+        const { applied, skipped, invalid, skippedKeys } = _applyConfigSettings(payload.settings);
 
         Lib.info('settings',
             `Configuration imported from "${file.name}": ` +
-            `${applied} applied, ${skipped} unknown/skipped, ${invalid} invalid`);
+            `${applied} applied, ${skipped} not applicable, ${invalid} invalid`);
 
         if (skipped > 0) {
-            Lib.debug('settings', `Skipped unknown keys: ${skippedKeys.join(', ')}`);
+            Lib.debug('settings', `Keys not applied: ${skippedKeys.join(', ')}`);
         }
 
-        // Build summary for the user
+        // Build summary for the user. "Skipped" is deliberately NOT worded as
+        // "unknown keys": a `function` key from a pre-2026-09-21 export is
+        // perfectly well known and is skipped on purpose.
         const lines = [
             `File: ${file.name}`,
             `Applied:  ${applied} setting${applied !== 1 ? 's' : ''}`,
         ];
-        if (skipped > 0) lines.push(`Skipped:  ${skipped} unknown key${skipped !== 1 ? 's' : ''}`);
+        if (skipped > 0) lines.push(`Skipped:  ${skipped} key${skipped !== 1 ? 's' : ''} (unknown or not importable)`);
         if (invalid > 0) lines.push(`Invalid:  ${invalid} value${invalid !== 1 ? 's' : ''} (type error)`);
         if (metaVer !== undefined && metaVer !== _CFG_SCHEMA_VERSION) {
             lines.push(`\nNote: file uses schema v${metaVer}; current is v${_CFG_SCHEMA_VERSION}.`);
@@ -83160,10 +83258,18 @@ a { color: #1565c0; }`;
     };
 
     // ── Test-mode debug hook (__saTest) ─────────────────────────────────────
-    // Read-only introspection surface for the Playwright test harness (see
+    // Introspection surface for the Playwright test harness (see
     // tests/support/loadPage.js's `testMode` option, which sets
     // window.__SA_TEST_MODE__ before this script loads). Never defined
     // outside test mode; adds no UI and changes no user-visible behavior.
+    //
+    // MOSTLY read-only, but not entirely: a few members drive a real code path
+    // whose only production trigger is unreachable from a fixture — e.g.
+    // `artRefreshPerTableFailed()` forces the real per-table recompute, and
+    // `applyConfigSettings()` runs the config importer's write loop, whose only
+    // entry point is a button in a library-rendered modal followed by
+    // `location.reload()`. Such a member calls the SHIPPING function and adds
+    // no test-only behaviour of its own; that is what keeps it honest.
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
             /**
@@ -83349,6 +83455,50 @@ a { color: #1565c0; }`;
                     out[key] = { value: Lib.settings[key], type: typeof Lib.settings[key] };
                 }
                 return out;
+            },
+
+            /**
+             * The 💾 Save configuration export, as the JSON string the user
+             * would receive.
+             *
+             * Exposed because the export has no reachable surface in a fixture:
+             * `_saveSettingsConfig()` is wired to a button that
+             * `_injectSettingsConfigButtons()` appends to VZ_MBLibrary's
+             * settings modal, and it hands its result to the browser as a Blob
+             * download. This returns `_buildConfigJson()`'s own output —
+             * nothing is re-derived here, so what a test reads is exactly what
+             * would be written to disk.
+             *
+             * @returns {string} Pretty-printed configuration JSON.
+             */
+            buildConfigJson() {
+                return _buildConfigJson();
+            },
+
+            /**
+             * Runs the 📂 Load configuration write loop over one settings
+             * block, and returns its tallies.
+             *
+             * This one WRITES — see the note on the block comment above. It is
+             * the only way to test the importer: `_loadSettingsConfig()` takes
+             * a `File` from a hidden `<input type="file">` inside the library's
+             * modal and ends with `location.reload()`, so the interesting half
+             * is gone before any assertion could run. Everything this skips is
+             * dialog and navigation; the per-key decisions are
+             * `_applyConfigSettings()`'s own, called here directly.
+             *
+             * The defect it exists to pin is invisible: a `type: 'table'` value
+             * that went through `String()` still LOOKS applied (the summary
+             * counted it), and only shows up a whole page load later as a set
+             * of lookup tables quietly reset to their built-in defaults.
+             *
+             * @param {Object<string, *>} settingsObj  A config file's
+             *   "settings" block.
+             * @returns {{applied: number, skipped: number, invalid: number,
+             *            skippedKeys: string[]}}
+             */
+            applyConfigSettings(settingsObj) {
+                return _applyConfigSettings(settingsObj);
             },
 
             /**

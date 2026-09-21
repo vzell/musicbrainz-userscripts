@@ -682,6 +682,71 @@ Neither touches the code the branch changed — the quickfilter one engages no
 ⏳ filter and no Relationships column at all — but "it passed the second time"
 is the evidence here, not that argument.
 
+** =npm run test:full= on =petri=, 2026-09-21 — the third host, and the cross-host comparison
+
+=petri= (24 cores, 31 GB, node v24.16.0, Playwright 1.62.1), uptime *6 d 17 h*,
+ONE resident =claude= session (the one that ran it), branch
+=fix/config-import-tables= at 9.99.1135, chromium-fixtures only, Playwright's
+own default worker count (half the logical CPUs = *12*).
+
+| Selection                     | Tests | Wall clock | Basis                                  |
+|-------------------------------+-------+------------+----------------------------------------|
+| =npm test= (=@slow= excluded) |   432 | ≈ 2 m 42 s | Playwright's own figure, twice         |
+| =npm run test:full=           |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
+
+Both green. The =npm test= figure is Playwright's own "2.7m", taken from two
+consecutive runs and *not* separately wall-clocked, so it excludes npm and
+Playwright start-up; the =test:full= figure is real wall clock and includes
+them. Do not compare the two columns as if they were the same measurement —
+Playwright reported *5.6 m* for the run this file records as 5 m 37 s.
+
+*The first =npm test= run had one failure that did not reproduce*:
+=uniq-drop-join-phrases.spec.js= — "unchecking the last entry restores the
+typed filter rather than clearing the column". Green in the second full run and
+green standalone (10 tests, 13.3 s) in between. Same family as the flakes
+recorded below and on =vzell-lap=: a fixed =page.fill= with no settle after it.
+
+*** The three hosts, side by side
+
+| Host        | Cores | Workers | Tests | Wall clock | Measured   | Result     |
+|-------------+-------+---------+-------+------------+------------+------------|
+| =petri=     |    24 |      12 |   446 | *5 m 37 s* | 2026-09-21 | 446 passed |
+| =NB-3641=   |    28 |      14 |   403 |   5 m 18 s | 2026-09-20 | green      |
+| =vzell-lap= |     4 |       2 |   428 |     23.9 m | 2026-09-21 | 428 passed |
+
+*The test counts differ, so these are not a clean ratio* — =petri= ran 10.7%
+more tests than =NB-3641= for 6% more wall clock. Read it as "=petri= and
+=NB-3641= are the same machine for this purpose, and =vzell-lap= is roughly
+4.3x slower", not as a three-way benchmark. The rows are two days apart and no
+two ran the same tree.
+
+*What actually separates them is worker count, not clock speed.* 12 vs 14
+workers is invisible; 2 vs 12 is the whole 4.3x. =vzell-lap='s own entry above
+already reached that conclusion from one side; this row is the other side of it.
+
+*Parallel efficiency on =petri=: 1932 s of summed test time in 337 s of wall
+clock, a 5.7x speed-up on 12 workers.* Lower than the ~10.7x this file records
+for =NB-3641= at 14 workers and 353 tests — but that arm predates the =@slow=
+pair and three other Relationships specs, and the suite now has a long tail of
+individually slow tests that no worker count shortens. The six heaviest specs,
+by summed test time:
+
+| Seconds | Spec                                                     |
+|---------+----------------------------------------------------------|
+|   149.7 | =rel-auto-retry-failed.spec.js= (=@slow=)                |
+|   111.7 | =rel-column-collapse-toggle.spec.js=                     |
+|    94.4 | =rel-column-browse-batch.spec.js=                        |
+|    90.7 | =rel-retry-failed-only.spec.js=                           |
+|    89.9 | =resume-from-failed-page.spec.js= (=@slow=)              |
+|    77.4 | =rel-cell-state-glyphs.spec.js=                          |
+
+*=rel-auto-retry-failed= is NOT a 324 s floor inside a parallel run*, and
+=tests/README.org= should not be read as saying so. That figure was measured
+=--workers=1=, on the spec alone. Here its 7 tests spread across workers and
+sum to 149.7 s, with the longest SINGLE test at 56.4 s — which is the real
+floor a parallel run cannot go below. Every one of the top six is the
+Relationships 1100 ms rate gate, not slow code.
+
 ** Unsharded vs. worker count — =NB-3641=, 2026-09-18
 
 =NB-3641= (28 cores, 31 GB, uptime 2 d 7 h, one resident =claude= session),
