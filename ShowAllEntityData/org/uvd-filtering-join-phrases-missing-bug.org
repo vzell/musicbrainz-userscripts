@@ -1,0 +1,27 @@
+* TODO bug: additionally filtered with "join phrase: with " from the open unique value drop-down menu in the "Join phrases" section
+
+The following unique value drop-down filtering bug is reproduced with the following steps on
+https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d
+
+1.)
+
+Filter the "Artist" column with filter string "bruce" ==> 7 rows filtered - [Image #3]
+
+2.)
+
+Open the unique value drop down in the "Artists" column ==> BUG: the join phrase " feat. " is missing from the "Join phrases" section, present on "Guns N’ Roses feat. Bruce Springsteen" - [Image #4]
+
+2.)
+
+Additionally filter on the "Artist" column with "join phrase: with" from the open unique value drop-down menu in the
+"Join phrases" section ==> 9 rows filtered, although only 3 should be rendered which have "bruce" and the join phrase " with " - [Image #5]
+
+3.)
+
+See the following raw HTML files in @debug on the final rendered page
+
+#+begin_example
+work-ComeTogether-final-filtered.html - "Artist" column filtered with filter string "bruce"
+work-ComeTogether-final-filtered-uvd.html - "Artist" column filtered with filter string "bruce", open unique value drop-down menu
+work-ComeTogether-final-filtered-uvd-filtered.html - "Artist" column filtered with filter string "bruce", additionally filtered with "join phrase: with " from the open unique value drop-down menu in the "Join phrases" section
+#+end_example
