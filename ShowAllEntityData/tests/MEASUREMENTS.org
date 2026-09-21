@@ -689,10 +689,10 @@ is the evidence here, not that argument.
 14:00-14:20 UTC. Playwright's default worker count here is 14 (half the cores);
 on =vzell-lap= it is 2.
 
-| Workers      | Runs | Green | Wall clock | Failing spec, when red                                                |
-|--------------+------+-------+------------+-----------------------------------------------------------------------|
-| 14 (default) |    3 |   2/3 | 1.7-1.8 m  | =rel-column-fetch-failure.spec.js:109=                                |
-|            4 |    3 |   1/3 | 4.4-4.5 m  | =rel-cell-state-glyphs.spec.js:328=, =area-flag-region-filter.spec.js:142= |
+| Workers      | Runs | Green | Wall clock | Failing spec, when red                                                     |
+|--------------+------+-------+------------+----------------------------------------------------------------------------|
+| 14 (default) |    3 | 2/3   | 1.7-1.8 m  | =rel-column-fetch-failure.spec.js:109=                                     |
+| 4            |    3 | 1/3   | 4.4-4.5 m  | =rel-cell-state-glyphs.spec.js:328=, =area-flag-region-filter.spec.js:142= |
 
 *Sharding is not needed on this host, and not for the reason it was introduced.*
 339 tests run unsharded in 1.7 m with ~24 GB free throughout. AUDIT.md §6's
