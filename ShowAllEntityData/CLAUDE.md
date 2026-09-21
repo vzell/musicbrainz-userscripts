@@ -682,10 +682,26 @@ When in plan mode, do not edit files. Present the plan first and explicitly stat
 ## Settings keys (GM storage via `Lib.settings`)
 
 All settings are prefixed `sa_`. This is a curated "key ones" subset, and a
-small fraction of the whole — grep `const configSchema` and read the block for
-the full set rather than assuming this list is complete or that a key you
-remember still has the name you remember. (`sa_enable_expand_rg` was documented
-here for a long time; the real key is `sa_enable_expand_rgs`, plural.)
+small fraction of the whole — **`ShowAllEntityData_CONFIG_DEFAULTS.json` is the
+full set**, generated from `configSchema` by `scripts/dump-config-defaults.py`
+and kept current by `scripts/audit-config-defaults.py`. Read it rather than
+assuming this list is complete or that a key you remember still has the name you
+remember. (`sa_enable_expand_rg` was documented here for a long time; the real
+key is `sa_enable_expand_rgs`, plural.) **Nothing in the userscript reads that
+file** — it is an artifact for review and for the audit, and
+org/config-handling.org's "Why it must not be read at runtime" says why it must
+stay that way.
+
+**A default has two places it can be wrong.** The schema's `default:` is what
+the settings dialog shows; an inline `Lib.settings.sa_X || literal` is what
+applies while the key is unset. 15 sites currently disagree with their own
+schema default, so the same setting resolves differently depending on which path
+reads it — `scripts/audit-config-defaults.py` is what makes that visible, and
+`scripts/config-fallback-drift-baseline.json` is the accepted set, so a NEW one
+fails. It also fails on an ORPHAN — an inline read of a key no longer in the
+schema, which is always its fallback, silently and for ever. Run
+`scripts/check-config-defaults-gate.py` after touching the audit; it
+mutation-checks all four arms, and is what caught the ORPHAN case exiting 0.
 
 - `sa_enable_debug_logging` — enables `Lib.debug(channel, …)` output
 - `sa_ui_h2_bg`, `sa_ui_h3_bg` — h2/h3 header background colours

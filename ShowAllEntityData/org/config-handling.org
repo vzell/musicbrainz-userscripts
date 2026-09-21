@@ -26,14 +26,18 @@ that it makes [[#F4][F4]]'s class of defect mechanically checkable, and this cod
 changes a =default:= about monthly (=bfb8ac3=, 2026-08-17, flipped seven in one
 commit).
 
-| Finding | What                                             | Branch                          |
-|---------+--------------------------------------------------+---------------------------------|
-| [[#F1][F1]]      | one SAVE pins every setting forever              | none — recorded, not fixed      |
-| [[#F2][F2]]      | =number= settings stored as strings; 4 read dead | =fix/settings-numeric-coercion= |
-| [[#F3][F3]]      | config import silently wipes the editable tables | =fix/config-import-tables=      |
-| [[#F4][F4]]      | 17 inline fallbacks disagree with their default  | =feat/config-defaults-snapshot= |
-| [[#F5][F5]]      | settings-dialog friction                         | none — recorded, not fixed      |
-| [[#F6][F6]]      | publish mirror 383 versions behind               | none — distribution, not code   |
+| Finding | What                                             | Status                        |
+|---------+--------------------------------------------------+-------------------------------|
+| [[#F1][F1]]      | one SAVE pins every setting forever              | none — recorded, not fixed    |
+| [[#F2][F2]]      | =number= settings stored as strings; 4 read dead | *fixed* 9.99.1130             |
+| [[#F3][F3]]      | config import silently wipes the editable tables | *fixed* 9.99.1136             |
+| [[#F4][F4]]      | inline fallbacks disagree with their default     | *audited, not fixed* — [[#item-4][Item 4]] |
+| [[#F5][F5]]      | settings-dialog friction                         | none — recorded, not fixed    |
+| [[#F6][F6]]      | publish mirror 383 versions behind               | none — distribution, not code |
+
+[[#F4][F4]]'s count was 17 when it was written; the audit measures 15, and the two are
+the same set — see [[#item-4][Item 4]]'s "F4's numbers, reconciled". The heading below still
+says 17, deliberately: it is what was measured at 9.99.1129.
 
 *Anchors are symbols, not line numbers*, per the rule =CLAUDE.md= states for the
 File-structure table and =PERFORMANCE.org=: the userscript grows on nearly every
@@ -42,9 +46,11 @@ Grep the anchor.
 
 * The system as it stands
 
-Counts as of 9.99.1129 — =scripts/dump-config-defaults.py= becomes the authority
-for these once [[#item-4][Item 4]] lands, and they should be read from it rather than
-carried here.
+Counts as of 9.99.1129. *=ShowAllEntityData_CONFIG_DEFAULTS.json= is now the
+authority* — [[#item-4][Item 4]] has landed, so read them from its =_meta= block rather than
+from this table, which is frozen at the version it was written against.
+Every figure below was independently reproduced by the generator at 9.99.1136,
+including the by-type breakdown, which is the main evidence its parser is right.
 
 | Measure                         | Value                                 |
 |---------------------------------+---------------------------------------|
@@ -468,7 +474,7 @@ file holds, what it does not ([[#F5][F5]]'s last bullet), and that import reload
 page. Version bump, changelog entry, and
 =tests/fixtures/config-import-export.spec.js=, the feature's first coverage.
 
-** Item 4 — the committed defaults snapshot
+** DONE Item 4 — the committed defaults snapshot
 :PROPERTIES:
 :CUSTOM_ID: item-4
 :END:
@@ -494,10 +500,86 @@ same mechanical-guard pattern as =scripts/audit-changelog.py= and
 =Lib.settings.sa_X || LITERAL= / =?? LITERAL= site against the schema default and
 fail on disagreement. That is [[#F4][F4]]'s 17 drifted fallbacks. *Expect the first run
 to fail*; fixing those 17 is its own branch after this one, not part of it.
+(It does not fail — see "What shipped" below for why that was changed.)
 
 No version bump and no changelog entry for this item — =scripts/= and a generated
 artifact are not part of the userscript runtime, the same reasoning =CLAUDE.md=
 applies to =tests/=.
+
+*** What shipped, and where it departs from the plan above
+
+Four files, no runtime change:
+
+| File                                            | What                                                  |
+|-------------------------------------------------+-------------------------------------------------------|
+| =scripts/dump-config-defaults.py=               | writes the snapshot; =--verify= self-checks           |
+| =ShowAllEntityData_CONFIG_DEFAULTS.json=        | the artifact — 276 entries, nothing reads it          |
+| =scripts/audit-config-defaults.py=              | stages 1 + 2, plus a =--docs= worklist                |
+| =scripts/config-fallback-drift-baseline.json=   | the known drift, so a NEW one fails                   |
+| =scripts/check-config-defaults-gate.py=         | mutation-checks the audit's four arms                 |
+
+**The audit is GREEN, where the plan said it would be red.** Both halves of the
+plan still hold — the drifting fallbacks are unfixed and fixing them is its own
+branch — but a permanently-failing gate is one nobody runs, so the known set is
+baselined and only a NEW drift, an ORPHAN or a fixed-but-not-rebaselined entry
+fails. A deliberate departure, in the direction of the check being used.
+
+**A third failure mode was added that the plan did not name, and it is the
+worst one.** An ORPHAN: an inline read of a key no longer in =configSchema=.
+=Lib.settings.sa_typo || 8= is always 8, silently and for ever, and it is
+exactly what a setting rename leaves behind at a site someone missed. It fails
+the audit. *It was found by mutation-testing the audit* — the arm was written
+as a NOTE, =check-config-defaults-gate.py= showed it exiting 0, and that is why
+that script exists.
+
+*** Three traps the plan's own Stage-1 sketch would have walked into
+
+Each fails SILENTLY, which is why they are recorded rather than just fixed.
+
+1. **A naive brace-count ends the block 24 entries early.** Counting braces
+   without skipping string literals stops at userscript line 3045, because a
+   =}= inside a description decrements a depth nothing incremented. It yields
+   214 =type:= keys against the real 238 — a plausible number, off by 10%, with
+   no error. The plan says "brace-counting"; it needs to say "brace-counting in
+   code state only".
+2. **The cross-check needs the same care as the parser.** [[#F1][F1]] already warns that
+   the obvious entry regex drops the last entry; the fix it proposes is to
+   assert the count against a =grep -c "type:"=. That grep reports *277*
+   against 276 real entries — one description contains the prose /"…on every
+   page type: "Pending edits - Presence"…"/. A check fooled by the thing it
+   checks is worse than none, so the count is taken over code positions only.
+3. **The last-entry trap never fired**, because entries are split structurally
+   rather than on =\n        },=. =sa_edits_color_zebra_even= is present, and
+   =--verify= asserts it by name so the guard cannot evaporate.
+
+*** F4's numbers, reconciled
+
+The audit reports *165 sites, 150 agreeing, 15 drifting across 11 settings* at
+9.99.1136, against [[#F4][F4]]'s *167 / 150 / 17* at 9.99.1129. **The drift sets are the
+same set.** The two-site difference is =sa_global_filter_border_idle=, ='#000'=
+against ='#000000'= — the same colour in every browser, which the audit excuses
+and F4 counted. F4 is not wrong about what it measured; the audit measures
+something narrower, namely drift a user could SEE. The 2-site gap in the totals
+is six versions of churn and was not chased.
+
+All seven of F4's sample rows are found, including =sa_uniq_dropdown_visible_rows=
+— which the audit's first version MISSED, because that site reads
+=Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8= and the regex did not
+cross the coercion wrapper. The fix was to sweep every settings read in the file
+and ask which ones a =||=/=??= follows, rather than to guess at more forms; that
+turned up exactly two missed spellings and no others.
+
+*** The docs cross-check: a worklist, not a gate
+
+The follow-up below asks for a schema-vs-docs check beside the schema-vs-fallback
+one. It half works, and the honest half is =--docs=. It *does* find the stale
+line — =ShowAllEntityData_HELP.txt= still documents a "Sort progress threshold"
+setting whose =sa_sort_progress_threshold= is gone — but it flags *41 of 119*
+HELP bullets, and most of the other 40 are correct prose summarising several
+settings in one line ("Cache TTL, max entries, store sizes"). A 34% false-positive
+rate is not a gate; wiring it into the exit code would train everyone to ignore
+the whole script. It never affects the exit code, and making it a gate is a
+DOCUMENTATION change — HELP naming one setting per bullet — not a script change.
 
 * Follow-ups, recorded so they are not lost
 
