@@ -43603,6 +43603,50 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Row-level counterpart of `_highlightPendingEditsMatch()`, for the ⏳
+     * filter-bar toggle.
+     *
+     * The toggle is STRUCTURAL — `.mp` is a CSS-only orange marker with no text
+     * of its own, so `testRowMatch()` consults `_rowHasPendingEdits()` as a
+     * predicate and, until this existed, marked nothing at all. Every other
+     * filter marks what it matched, and one consumer depends on that rather
+     * than merely benefiting from it: `mb-collapse-toggle-has-match` is
+     * computed ONLY from `_COLLAPSE_MATCH_SEL` spans found inside a collapsed
+     * cell's HIDDEN `<li>`s, so a pending author sitting in item 2 of an
+     * "Authors" cell left the cell looking identical to one with nothing
+     * pending. Measured on `debug/artist-works-pending-edits-collapsed.html`:
+     * 12 `.mb-cell-collapse-toggle`, 0 tinted, `span.mp` at `<li>` index 1
+     * and 2 of `td.mb-has-collapse-toggle` cells.
+     *
+     * Delegates per cell to `_highlightPendingEditsMatch()` rather than
+     * re-deriving anything, so `_findCellPendingEdits()` stays the single
+     * source of truth and the class stays `mb-column-filter-highlight` —
+     * already in `_COLLAPSE_MATCH_SEL`, already cleared by `testRowMatch()`'s
+     * own reset, already unwrapped by `getCleanColumnText()`. A new class would
+     * have to be added to all three plus the ~10 sites that spell the four
+     * highlight classes out by hand.
+     *
+     * ONE `querySelectorAll` per row, then only the cells that actually carry a
+     * marker, because `_findCellPendingEdits()` costs a `getCleanColumnText()`
+     * clone-and-strip per marker. Bounded by construction: the only rows
+     * reaching here are the ones the ⏳ filter kept, i.e. the rows that have a
+     * marker at all.
+     *
+     * @param {?HTMLTableRowElement} row - The CLONE `testRowMatch()` is
+     *   highlighting, never a source row.
+     * @returns {void}
+     */
+    function _highlightRowPendingEdits(row) {
+        if (!row) return;
+        const _cells = new Set();
+        row.querySelectorAll('td span.mp').forEach(span => {
+            const _td = span.closest('td');
+            if (_td) _cells.add(_td);
+        });
+        _cells.forEach(td => _highlightPendingEditsMatch(td, 'pending-edits-yes'));
+    }
+
+    /**
      * Highlights the comment text for an `instrument-has-comment` fixed
      * structure-mode filter — re-derives from `_findCellInstrumentFacets()`
      * directly, then scopes the highlight to the cell's own direct-child
@@ -44382,6 +44426,13 @@ a { color: #1565c0; }`;
 
         const finalHit = globalHit && colHit;
         if (finalHit && !matchOnly) {
+            // The ⏳ pending-edits toggle matched this row on a DOM predicate,
+            // not on a string, so nothing below can mark what it matched — and
+            // a collapsed multi-row cell then hides its own match, because
+            // `mb-collapse-toggle-has-match` is computed only from
+            // `_COLLAPSE_MATCH_SEL` spans inside the hidden `<li>`s. See
+            // _highlightRowPendingEdits().
+            if (ctx.pendingEditsOnly) _highlightRowPendingEdits(row);
             // Highlighting on excluded matches would be misleading, so skip it
             if (globalQuery && !isExclude) highlightText(row, globalQueryRaw, isCaseSensitive, -1, isRegExp);
             // Value-set filters carry no matchable text for a whole-cell match —
@@ -69414,28 +69465,6 @@ a { color: #1565c0; }`;
      * No-ops when `sa_enable_relationships_column` is disabled or no injected
      * columns are active.
      */
-    /**
-     * The element a per-table Relationships retry button is inserted after.
-     *
-     * Preference order: this table's artwork retry button (so the run reads as
-     * one group of controls), then its own `<h3>` sub-heading.
-     *
-     * **On a SINGLE-table page the `<h2>` counts as that heading; on a
-     * multi-table page it does not.** There the `<h2>` is the page heading and
-     * belongs to `#mb-rel-retry-global`, so a sub-table's own button must not
-     * land on it and the walk stops. On a single-table page it is this table's
-     * only heading — and before this, the walk stopped there too and returned
-     * `null`, so the button was built and then dropped on the floor whenever
-     * there was no artwork retry button to anchor to. That is every
-     * single-table page with cover art switched off, which is also every
-     * single-table FIXTURE (`loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces
-     * `sa_enable_caa_pics` off), which is why no spec had ever seen these
-     * buttons.
-     *
-     * @param   {HTMLTableElement} tbl
-     * @param   {number} i  The table's index among `table.tbl`.
-     * @returns {?Element}  `null` when there is nowhere sensible to put it.
-     */
     /** Inline style shared by every Relationships retry control. */
     const _REL_RETRY_BTN_CSS = 'cursor:pointer;padding:1px 4px;border:1px solid #aaa;border-radius:3px;background:#f5f5f5;vertical-align:middle;font-size:0.8em;margin-left:3px;line-height:1;display:inline-flex;align-items:center;box-sizing:border-box;transition:transform 0.1s,box-shadow 0.1s;';
 
@@ -69476,6 +69505,84 @@ a { color: #1565c0; }`;
         return last;
     }
 
+    /**
+     * The element the FIRST control of a heading's run must be inserted after.
+     *
+     * `_ctlRunEnd()` answers "this control belongs beside that one"; this
+     * answers "there is no run here yet, where does the first one go". Both are
+     * needed, and getting this one wrong puts a control OUTSIDE the run rather
+     * than merely mis-ordered inside it.
+     *
+     * **Never `header.querySelector('button:last-of-type')`**, which is what
+     * `_relRetryAnchorFor()` used to do. That selector means *the first
+     * `<button>` in document order that is the last `<button>` among ITS OWN
+     * parent's children* — not "the heading's last button". On an `<h3>`
+     * carrying a sub-table filter it resolves to `#mb-stf-<col>-clear`, several
+     * levels deep, so the control was appended inside `span.mb-stf-input-wrap`.
+     * Measured on `debug/right-flags-release-events.html` (place-performances,
+     * 2026-09-18): 4 of 5 sub-tables, the exception being the one sub-table
+     * that had artwork and so never reached this path.
+     *
+     * Every query is `:scope >`, so nothing nested can win. The
+     * `.mb-row-count-stat` default is the slot
+     * `_artCreateOrUpdateToggleButton()` already targets (`countStat.after()`),
+     * and `updateH2Count()` re-anchors every `:scope > [id^="mb-rel-retry-"]`
+     * after the rebuilt stat — so an `<h2>`-hosted control survives a filter
+     * re-render with no new hook.
+     *
+     * @param   {?Element} header  An `<h2>`/`<h3>` that owns a table.
+     * @returns {?Element}  `null` only for an empty heading, in which case the
+     *   caller has nowhere to put the control and must say so.
+     */
+    function _hdrCtlAnchor(header) {
+        if (!header) return null;
+        const _run = header.querySelectorAll(
+            ':scope > [id^="mb-caa-toggle-btn-"],' +
+            ' :scope > [id^="mb-eaa-toggle-btn-"],' +
+            ' :scope > [id^="mb-rel-retry-"]'
+        );
+        if (_run.length) return _run[_run.length - 1];
+        return header.querySelector(':scope > .mb-row-count-stat')
+            || header.querySelector(':scope > .mb-toggle-icon')
+            || header.lastElementChild
+            || null;
+    }
+
+    /**
+     * The element a per-table Relationships retry button is inserted after.
+     *
+     * Preference order: this table's artwork retry button (so the run reads as
+     * one group of controls), then the end of its heading's own control run.
+     *
+     * **The heading is resolved with `caaFindHeaderForTable()`, never a
+     * `previousElementSibling` walk.** MusicBrainz nests many listings'
+     * `table.tbl` inside `<form action="/<entity>/merge_queue…"><nav></nav>`
+     * (works, events, user edits) or a plain `<div>` (notes-received,
+     * recording-fingerprints), so a sibling walk runs out of siblings INSIDE
+     * the wrapper and returns `null` — and `_relCreateRetryButtons()` then
+     * discards the button it had just built, taking both `⚠⟳` controls with it
+     * since they anchor on `#mb-rel-retry-{i}`/`#mb-rel-retry-0`. Measured on
+     * `debug/artist-works-pending-edits-uncollapsed.html` at 9.99.1130: 5
+     * `td.mb-rel-cell`, zero `mb-rel-retry-*`. `caaFindHeaderForTable()` is
+     * document-order (`findH3ForTable()`, then the last `<h2>` preceding the
+     * table), so wrapper nesting stops mattering; it is the same resolver
+     * `_artCreateOrUpdateToggleButton()` was already using.
+     *
+     * **On a SINGLE-table page the `<h2>` counts as that heading; on a
+     * multi-table page it does not.** There the `<h2>` is the page heading and
+     * belongs to `#mb-rel-retry-global`, so a sub-table's own button must not
+     * land on it.
+     *
+     * Every `mb-rel-retry-{i}` in every saved snapshot was built by the
+     * artwork branch above, which is why both defects survived: this fallback
+     * had essentially never produced a correctly placed control, and the spec
+     * naming `#mb-rel-retry-0` asserts that it EXISTS. A test here must assert
+     * the parent element.
+     *
+     * @param   {HTMLTableElement} tbl
+     * @param   {number} i  The table's index among `table.tbl`.
+     * @returns {?Element}  `null` when there is nowhere sensible to put it.
+     */
     function _relRetryAnchorFor(tbl, i) {
         const _art = document.getElementById('mb-caa-toggle-btn-retry-' + i)
                   || document.getElementById('mb-eaa-toggle-btn-retry-' + i);
@@ -69484,15 +69591,17 @@ a { color: #1565c0; }`;
         // between two artwork controls. See _ctlRunEnd().
         if (_art) return _ctlRunEnd(_art);
         const _single = !(activeDefinition && activeDefinition.tableMode === 'multi');
-        let el = tbl.previousElementSibling;
-        while (el) {
-            if (el.tagName === 'H3') return el.querySelector('button:last-of-type') || el;
-            if (el.tagName === 'H2') {
-                return _single ? (el.querySelector('button:last-of-type') || el) : null;
-            }
-            el = el.previousElementSibling;
+        const _hdr = caaFindHeaderForTable(tbl);
+        if (!_hdr) {
+            Lib.debug('rel', `_relRetryAnchorFor: no heading found for table ${i} — no retry control`);
+            return null;
         }
-        return null;
+        if (_hdr.tagName === 'H2' && !_single) return null;
+        const _a = _hdrCtlAnchor(_hdr);
+        if (!_a) {
+            Lib.debug('rel', `_relRetryAnchorFor: heading for table ${i} is empty — no retry control`);
+        }
+        return _a;
     }
 
     function _relCreateRetryButtons() {
@@ -69513,8 +69622,14 @@ a { color: #1565c0; }`;
                 () => _relRetryAll()
             );
             if (gb) {
-                const a = document.querySelector('h2 [id$="-global-retry"]')
-                       || document.querySelector('h2 .mb-row-count-stat');
+                // The LAST global artwork retry, then that run's end. A page
+                // carrying both archives has two of these, and taking the
+                // first wedged this control between the CAA and EAA runs —
+                // the same defect _ctlRunEnd() exists for, one level up.
+                const _globals = document.querySelectorAll('h2 [id$="-global-retry"]');
+                const a = _globals.length
+                    ? _ctlRunEnd(_globals[_globals.length - 1])
+                    : document.querySelector('h2 .mb-row-count-stat');
                 if (a) a.after(gb);
             }
 

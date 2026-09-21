@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the heading is resolved by a previousElementSibling walk again",
+    "why": "Defect 1 verbatim. MusicBrainz wraps a merge-able listing's table in <form><nav>, so a sibling walk runs out of siblings inside the wrapper and _relCreateRetryButtons() discards the button. The <form>-wrapped test must go from 'a direct child of the H2' to 'the control exists' failing outright.",
+    "edits": [
+      {
+        "find": "        const _hdr = caaFindHeaderForTable(tbl);",
+        "replace": "        let _hdr = null;\n        { let _el = tbl.previousElementSibling;\n          while (_el) { if (_el.tagName === 'H3' || _el.tagName === 'H2') { _hdr = _el; break; } _el = _el.previousElementSibling; } }"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "a <form>-wrapped single table still gets its",
+    "expect": "fail"
+  },
+  {
+    "name": "the insertion point is button:last-of-type again",
+    "why": "Defect 2 verbatim. On an <h3> carrying a sub-table filter that selector resolves to #mb-stf-<col>-clear, several levels deep, so the control lands inside span.mb-stf-input-wrap. The multi-table test asserts the parent IS the h3, so it must fail. Note the single-table test can also see this, which is why both are listed separately below.",
+    "edits": [
+      {
+        "find": "        const _a = _hdrCtlAnchor(_hdr);",
+        "replace": "        const _a = _hdr.querySelector('button:last-of-type') || _hdr;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "is a direct child of its OWN h3",
+    "expect": "fail"
+  },
+  {
+    "name": "the insertion point is button:last-of-type again (single-table arm)",
+    "why": "The same mutation seen from the other page shape: on the <form>-wrapped h2 the selector resolves into #mb-filter-container, so the control is no longer a direct child of the heading. Listed separately because the two page shapes fail it for different reasons and a fix for one would not necessarily fix the other.",
+    "edits": [
+      {
+        "find": "        const _a = _hdrCtlAnchor(_hdr);",
+        "replace": "        const _a = _hdr.querySelector('button:last-of-type') || _hdr;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "a <form>-wrapped single table still gets its",
+    "expect": "fail"
+  },
+  {
+    "name": "the control is inserted at the heading's end instead of its control run",
+    "why": "The plausible simplification: 'just append it to the heading'. It survives every existence check and puts the control after the global filter bar on an h2 — outside the row of controls it is meant to join, and out of reach of updateH2Count()'s re-anchor ordering. The position assertion (immediately after .mb-row-count-stat) is the only thing that sees it.",
+    "edits": [
+      {
+        "find": "        return header.querySelector(':scope > .mb-row-count-stat')\n            || header.querySelector(':scope > .mb-toggle-icon')\n            || header.lastElementChild\n            || null;",
+        "replace": "        return header.lastElementChild || null;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "a <form>-wrapped single table still gets its",
+    "expect": "fail"
+  },
+  {
+    "name": "the multi-table <h2> guard is dropped",
+    "why": "An honest expect: \"pass\". The guard keeps a per-table control off the PAGE heading, which belongs to #mb-rel-retry-global. No committed multi-table fixture can exercise it: caaFindHeaderForTable() tries findH3ForTable() first, and on every multi-table fixture here renderGroupedTable() puts an h3.mb-toggle-h3 immediately before each table, so the h2 fallback is never reached and removing the guard changes nothing. Reproducing it needs a multi-table page whose sub-table has no h3 within five element-siblings — which would be a rendering bug in its own right. Recorded rather than left unmentioned.",
+    "edits": [
+      {
+        "find": "        if (_hdr.tagName === 'H2' && !_single) return null;",
+        "replace": "        if (false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "is a direct child of its OWN h3",
+    "expect": "pass"
+  }
+]

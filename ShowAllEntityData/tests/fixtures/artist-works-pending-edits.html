@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bruce Springsteen - Works - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /artist/<mbid>/works skeleton, captured from
+        debug/artist-works-initial.html and
+        debug/artist-works-pending-edits-collapsed.html. Two things here are
+        load-bearing and are what artist-works-attributes.html does NOT have.
+
+        1. THE <form> WRAPPER IS REAL AND MUST STAY.
+
+               div#content
+                 h2 "Works"
+                 script type="application/json"
+                 form action="/work/merge_queue?returnto=…"
+                   nav
+                   table.tbl.mergeable-table
+
+           MusicBrainz wraps every merge-able listing this way. The table is
+           therefore NOT an element-sibling of its own heading, which is what
+           broke _relRetryAnchorFor()'s previousElementSibling walk: it ran out
+           of siblings inside the <form>, returned null, and the Relationships
+           retry control was built and then dropped on the floor.
+           artist-works-attributes.html renders <h2>Works</h2> as a direct
+           sibling of the table — a reasonable-looking simplification, and
+           exactly why no spec ever saw the defect. Do not "tidy" the form away.
+
+        2. THE PENDING-EDITS MARKERS SIT AT DIFFERENT LIST POSITIONS ON PURPOSE.
+           MusicBrainz's `<span class="mp">` is a CSS-only orange highlight on
+           an entity with open edits. Per row, in the "Authors" column
+           (native markup: <td><script …><div class="artist-roles-container">
+           <ul class="artist-roles"><li>…):
+
+             row 1  "Livin' on a Prayer"        3 authors, .mp on li #3
+                    -> pending, and the marker is HIDDEN while collapsed:
+                       its ▶3▤ toggle must be tinted.
+                       Its "Recording artists" cell is also multi-row and has
+                       NO marker, so that toggle must stay untinted on the same
+                       row — the control that stops "tint everything" passing.
+             row 2  "Wanted Dead or Alive"      3 authors, .mp on li #1
+                    -> pending, but the marker is the VISIBLE item: nothing is
+                       hidden, so its toggle must stay untinted.
+             row 3  "You Give Love a Bad Name"  3 authors, no marker
+                    -> not pending; the ⏳ filter removes the row entirely.
+             row 4  "Blaze of Glory"            1 author
+                    -> single-item cell, never a collapse toggle at all.
+
+           So: 2 of 4 rows pending, and exactly ONE toggle on the page may be
+           tinted when ⏳ is engaged.
+
+        Every row links /work/<mbid> in its own title cell, which is where the
+        injected Relationships column (entityType 'work') gets its data-mbid.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere artistheader person-icon">
+            <h1><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul class="tabs">
+                <li class="sel"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works"><bdi>Works</bdi></a></li>
+            </ul>
+        </div>
+        <h2>Works</h2>
+        <script type="application/json">{"ajaxFormUrl":"https://musicbrainz.org/ajax/filter_artist_works_form?artist_id=813","initialFilterForm":null}</script>
+        <form action="/work/merge_queue?returnto=%2Fartist%2F70248960-cb53-4ea4-943a-edb18f7d336f%2Fworks" method="post">
+            <nav></nav>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th colspan="1" class="checkbox-cell"><input type="checkbox"></th>
+                        <th colspan="1">Work</th>
+                        <th colspan="1">Authors</th>
+                        <th colspan="1">Recording artists</th>
+                        <th colspan="1">Other artists</th>
+                        <th colspan="1">ISWC</th>
+                        <th colspan="1">Type</th>
+                        <th colspan="1">Lyrics languages</th>
+                        <th colspan="1">Attributes</th>
+                        <th colspan="1" class="rating c">Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Row 1: .mp on the THIRD author — hidden while collapsed. -->
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="7616501"></td>
+                        <td><a class="wrap-anywhere" href="/work/11111111-1111-4111-8111-111111111111"><bdi>Livin&#8217; on a Prayer</bdi></a></td>
+                        <td><div class="artist-roles-container"><ul aria-label="Artist roles" class="artist-roles"><li><a href="/artist/3ae4a23a-80a2-408f-9079-d6571c2525ae" title="Sambora, Richie"><bdi>Richie Sambora</bdi></a> (writer)</li><li><a href="/artist/5ace9b0c-cc21-4d8f-8e08-a70234439f2a" title="Bon Jovi, Jon"><bdi>Jon Bon Jovi</bdi></a> (writer)</li><li><span class="mp"><a href="/artist/c981b771-e3d8-4709-bf00-3b3ce479b675" title="Child, Desmond"><bdi>Desmond Child</bdi></a></span> (writer)</li></ul></div></td>
+                        <td><div class="work-artists-container"><ul aria-label="Work artists" class="work-artists"><li><bdi><a href="/artist/5ace9b0c-cc21-4d8f-8e08-a70234439f2a" title="Bon Jovi">Bon Jovi</a></bdi></li><li><bdi><a href="/artist/713da80b-d836-4a0e-8347-3c9944474a25" title="Coyote Dax">Coyote Dax</a></bdi></li><li><bdi><a href="/artist/e0160147-2ace-47b9-9413-dba6ef53e327" title="Black Lace">Black Lace</a></bdi></li></ul></div></td>
+                        <td><div class="artist-roles-container"></div></td>
+                        <td class="iswc"><div class="iswc-list-container"></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td><div class="entity-attributes-container"></div></td>
+                        <td class="c"></td>
+                    </tr>
+                    <!-- Row 2: .mp on the FIRST author — visible even while collapsed. -->
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="7616502"></td>
+                        <td><a class="wrap-anywhere" href="/work/22222222-2222-4222-8222-222222222222"><bdi>Wanted Dead or Alive</bdi></a></td>
+                        <td><div class="artist-roles-container"><ul aria-label="Artist roles" class="artist-roles"><li><span class="mp"><a href="/artist/c981b771-e3d8-4709-bf00-3b3ce479b675" title="Child, Desmond"><bdi>Desmond Child</bdi></a></span> (writer)</li><li><a href="/artist/5ace9b0c-cc21-4d8f-8e08-a70234439f2a" title="Bon Jovi, Jon"><bdi>Jon Bon Jovi</bdi></a> (writer)</li><li><a href="/artist/3ae4a23a-80a2-408f-9079-d6571c2525ae" title="Sambora, Richie"><bdi>Richie Sambora</bdi></a> (writer)</li></ul></div></td>
+                        <td><div class="work-artists-container"></div></td>
+                        <td><div class="artist-roles-container"></div></td>
+                        <td class="iswc"><div class="iswc-list-container"></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td><div class="entity-attributes-container"></div></td>
+                        <td class="c"></td>
+                    </tr>
+                    <!-- Row 3: multi-row Authors, no pending marker anywhere. -->
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="7616503"></td>
+                        <td><a class="wrap-anywhere" href="/work/33333333-3333-4333-8333-333333333333"><bdi>You Give Love a Bad Name</bdi></a></td>
+                        <td><div class="artist-roles-container"><ul aria-label="Artist roles" class="artist-roles"><li><a href="/artist/5ace9b0c-cc21-4d8f-8e08-a70234439f2a" title="Bon Jovi, Jon"><bdi>Jon Bon Jovi</bdi></a> (writer)</li><li><a href="/artist/3ae4a23a-80a2-408f-9079-d6571c2525ae" title="Sambora, Richie"><bdi>Richie Sambora</bdi></a> (writer)</li><li><a href="/artist/c05d843a-c06c-4c0f-8e7b-fc478a9256a2" title="Capurro, Giovanni"><bdi>Giovanni Capurro</bdi></a> (lyricist)</li></ul></div></td>
+                        <td><div class="work-artists-container"></div></td>
+                        <td><div class="artist-roles-container"></div></td>
+                        <td class="iswc"><div class="iswc-list-container"></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td><div class="entity-attributes-container"></div></td>
+                        <td class="c"></td>
+                    </tr>
+                    <!-- Row 4: single author — no collapse toggle is ever built. -->
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="7616504"></td>
+                        <td><a class="wrap-anywhere" href="/work/44444444-4444-4444-8444-444444444444"><bdi>Blaze of Glory</bdi></a></td>
+                        <td><div class="artist-roles-container"><ul aria-label="Artist roles" class="artist-roles"><li><a href="/artist/5ace9b0c-cc21-4d8f-8e08-a70234439f2a" title="Bon Jovi, Jon"><bdi>Jon Bon Jovi</bdi></a> (writer)</li></ul></div></td>
+                        <td><div class="work-artists-container"></div></td>
+                        <td><div class="artist-roles-container"></div></td>
+                        <td class="iswc"><div class="iswc-list-container"></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td><div class="entity-attributes-container"></div></td>
+                        <td class="c"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+    </div>
+</body>
+</html>

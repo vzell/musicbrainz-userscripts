@@ -215,6 +215,12 @@ once with ~matchOnly=true~ on the source row, where every read goes through
 is a fresh ~getCleanColumnText~. The second call is the expensive one and it is
 the one with no cache.
 
+Since 9.99.1131 that second call also does one ~querySelectorAll('td span.mp')~
+per row *while the ⏳ pending-edits filter is engaged*, to mark what a
+structural filter otherwise leaves unmarked. Bounded by construction: the only
+rows reaching it are the ones that filter kept, i.e. the rows that have a
+pending-edits marker at all, so it cannot scale with the table.
+
 On top of the five: ~applyZebraStriping~, ~normalizeCommentSpans~ and
 ~initBarcodeHighlight~ (three more O(M) walks);
 ~_countLengthMismatchRows~ and ~_pendingEditsGroups~, which walk all *source*

@@ -644,6 +644,39 @@ during a busy session; on an idle machine those same five run in *6.7-7.8 s
 each*. They were starved by concurrent perf captures, not marginal. Do not raise
 that file's timeout.
 
+** =npm run test:full= on the slow box — =vzell-lap=, 2026-09-21
+
+=vzell-lap= (4 cores, 16 GB), branch
+=fix/rel-retry-anchor-and-pending-edits-highlight= at 9.99.1130, 427
+chromium-fixtures tests in 112 files, Playwright's own default worker count (no
+=workers= key in =playwright.config.js=, so half the logical CPUs = *2*).
+
+| Run | Started (UTC) | Wall clock | Result                    |
+|-----+---------------+------------+---------------------------|
+|   1 | 15:17:33      | 22.7 m     | 425 passed, *2 failed*    |
+|   2 | 15:44:06      | 22.2 m     | 427 passed                |
+
+*Both figures are ~4.3x =NB-3641='s 5 m 18 s at 403 tests*, which is what 2
+workers against 14 buys. Do not compare either number to the =NB-3641= rows
+above as if they measured the same thing.
+
+*The two failures did not reproduce, and are recorded below rather than
+dismissed.* Both passed in run 2, and both passed standalone (14 tests, 1.5 m)
+between the two runs:
+
+  - =rel-cell-state-glyphs.spec.js= — "clicking one cell loads ONLY that row;
+    the table stays collapsed; a filter keeps it"
+  - =uniq-drop-quickfilter-multi-occurrence.spec.js= — "flag-icon
+    (flagSegments) list entry". Its =marks= came back =[]=, not =null=: the
+    dropdown item was found and simply carried no =<mark>= yet, i.e. the
+    =page.fill()= of the quickfilter input had not been processed. A fixed
+    =page.fill= with no poll after it, same shape as the
+    =rel-column-collapse-toggle= flake below.
+
+Neither touches the code the branch changed — the quickfilter one engages no
+⏳ filter and no Relationships column at all — but "it passed the second time"
+is the evidence here, not that argument.
+
 ** Unsharded vs. worker count — =NB-3641=, 2026-09-18
 
 =NB-3641= (28 cores, 31 GB, uptime 2 d 7 h, one resident =claude= session),
@@ -1035,6 +1068,17 @@ in isolation (3.2-4.0 s against a 30 s budget), on both =main= and a feature
 branch. Unlike the =pending-edits-filter= five, an idle machine does not make it
 go away — it just makes it rarer. Re-run the file alone before believing it
 caught anything; if it starts reproducing, that is new information worth a look.
+
+*Known intermittent, seen once under parallel load*:
+=rel-cell-state-glyphs.spec.js='s "clicking one cell loads ONLY that row" and
+=uniq-drop-quickfilter-multi-occurrence.spec.js='s "flag-icon (flagSegments)
+list entry" both failed in ONE =npm run test:full= on =vzell-lap= (2026-09-21,
+15:17 UTC, branch =fix/rel-retry-anchor-and-pending-edits-highlight=) and both
+passed in an immediate repeat of the same run and standalone in between. The
+quickfilter one's =marks= was =[]=, not =null= — the item existed and had no
+=<mark>= yet, so its =page.fill()= had not been processed: the same missing-poll
+shape as the entry below. Full figures in the =vzell-lap= wall-clock section
+above.
 
 *Known intermittent, seen once under parallel load*:
 =rel-column-collapse-toggle.spec.js='s "multi-table: the threshold is decided per
