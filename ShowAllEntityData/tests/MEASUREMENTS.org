@@ -1981,15 +1981,15 @@ baseline for the fixture suite and this row does not create one.
 
 * 2026-09-20 — rel-auto-retry-failed.spec.js wall clock (NB-3641)
 
-| What                                   | Value     |
-|----------------------------------------+-----------|
-| host                                   | =NB-3641= |
-| cores                                  | 28        |
-| captured (UTC)                         | 2026-09-20T01:50:49Z |
-| script version                         | 9.99.1123 (branch =feat/rel-auto-retry-failed=) |
-| =rel-auto-retry-failed.spec.js= alone  | *324.1 s* (7 tests, =--workers=1=) |
-| full fixture suite before this spec    | ≈ 120 s (389 tests) |
-| full fixture suite with it             | ≈ 318 s (395 tests), same host, under load |
+| What                                  | Value                                           |
+|---------------------------------------+-------------------------------------------------|
+| host                                  | =NB-3641=                                       |
+| cores                                 | 28                                              |
+| captured (UTC)                        | 2026-09-20T01:50:49Z                            |
+| script version                        | 9.99.1123 (branch =feat/rel-auto-retry-failed=) |
+| =rel-auto-retry-failed.spec.js= alone | *324.1 s* (7 tests, =--workers=1=)              |
+| full fixture suite before this spec   | ≈ 120 s (389 tests)                             |
+| full fixture suite with it            | ≈ 318 s (395 tests), same host, under load      |
 
 Four times the previous slowest fixture spec (=rel-column-collapse-toggle=,
 ≈ 73 s). None of it is slow CODE: it is =_relAwaitRateSlot()=, one request per
@@ -2005,11 +2005,11 @@ the increase and why, rather than treating it as drift.
 
 * 2026-09-20 — resume-from-failed-page.spec.js wall clock (NB-3641)
 
-| host                                    | =NB-3641=                                        |
-| date (UTC)                              | 2026-09-20                                       |
+| host                                    | =NB-3641=                                         |
+| date (UTC)                              | 2026-09-20                                        |
 | script version                          | 9.99.1124 (branch =feat/resume-from-failed-page=) |
-| =resume-from-failed-page.spec.js= alone | *84 s* (7 tests, =--workers=1=)                  |
-| the same spec, =--workers=2=            | 84 s                                             |
+| =resume-from-failed-page.spec.js= alone | *84 s* (7 tests, =--workers=1=)                   |
+| the same spec, =--workers=2=            | 84 s                                              |
 
 Ordinary for a spec that fails pages on purpose: each failing page costs
 =fetchHtml()='s three attempts with its 2 s + 5 s backoff, i.e. ~7 s, and four
@@ -2023,10 +2023,10 @@ suite total below.
 
 ** Full fixture suite with this spec added
 
-| host                        | =NB-3641=                       |
-| date (UTC)                  | 2026-09-20                      |
-| before (9.99.1124 on =main=) | 396 tests, *5.3 min*            |
-| after  (9.99.1124 + this branch) | 403 tests, *5.2 min*        |
+| host                             | =NB-3641=            |
+| date (UTC)                       | 2026-09-20           |
+| before (9.99.1124 on =main=)     | 396 tests, *5.3 min* |
+| after  (9.99.1124 + this branch) | 403 tests, *5.2 min* |
 
 The 7 new tests are additive; the suite is still dominated by
 =rel-auto-retry-failed='s rate-gate waits.
@@ -2038,14 +2038,14 @@ covering org/503-handling.org items 7 and 5 — were tagged =@slow= and taken ou
 of =npm test='s default selection. All three selections measured in one
 session, same host, same 14 workers.
 
-| Selection                                  | Tests | Wall clock |
-|--------------------------------------------+-------+------------|
-| =npm test= (=--grep-invert @slow=)         |   389 | *2 m 6 s*  |
-| =npm run test:slow= (=--grep @slow=)       |    14 | *4 m 48 s* |
-| =npm run test:full= (the whole project)    |   403 | *5 m 18 s* |
+| Selection                               | Tests | Wall clock |
+|-----------------------------------------+-------+------------|
+| =npm test= (=--grep-invert @slow=)      |   389 | *2 m 6 s*  |
+| =npm run test:slow= (=--grep @slow=)    |    14 | *4 m 48 s* |
+| =npm run test:full= (the whole project) |   403 | *5 m 18 s* |
 
-| host       | =NB-3641=                                    |
-| date (UTC) | 2026-09-20                                   |
+| host       | =NB-3641=                                   |
+| date (UTC) | 2026-09-20                                  |
 | version    | 9.99.1125 (branch =test/slow-specs-opt-in=) |
 
 *The two parts cost more than the whole*: 2 m 6 s + 4 m 48 s = 6 m 54 s
@@ -2068,11 +2068,11 @@ recomputed. The page-wide count is =ctx.failedCache.size=, an O(1) read, which
 is why it can afford a =requestAnimationFrame= for the whole artwork load. A
 per-table count has to attribute entity paths to tables, which is a walk.
 
-| host                    | =NB-3641=                                        |
-| date (UTC)              | 2026-09-20                                       |
+| host                    | =NB-3641=                                         |
+| date (UTC)              | 2026-09-20                                        |
 | page                    | =artist-events= disk fixture, =tableMode: single= |
-| rows                    | 4174                                             |
-| one walk (median of 10) | *~5 ms*                                          |
+| rows                    | 4174                                              |
+| one walk (median of 10) | *~5 ms*                                           |
 
 What the walk is: one =querySelectorAll('a[href$="/cover-art"]')= per source
 row. 5 ms is roughly a third of a 60 fps frame budget, sustained for as long as
@@ -2101,14 +2101,14 @@ question was whether that is a visible part of the dropdown's cost or noise
 inside it.
 
 | host                     | =vzell-lap= (4 cores, node v24.11.1, uptime 13.9 h) |
-| date/time (UTC)          | 2026-09-21T19:15:14Z                                 |
-| script                   | =scripts/bench-join-phrase-scan.js=                  |
-| cells                    | 4174, synthetic, both algorithms over the SAME DOM   |
-| repeats                  | 5, median reported                                   |
-| direct-child boundary    | *16.8 ms* for the whole pass                         |
-| common-ancestor boundary | *19.3 ms* for the whole pass                         |
-| delta                    | *+2.5 ms* (x1.15), *0.6 µs per cell*                 |
-| phrases found            | 834 -> *1668*                                        |
+| date/time (UTC)          | 2026-09-21T19:15:14Z                                |
+| script                   | =scripts/bench-join-phrase-scan.js=                 |
+| cells                    | 4174, synthetic, both algorithms over the SAME DOM  |
+| repeats                  | 5, median reported                                  |
+| direct-child boundary    | *16.8 ms* for the whole pass                        |
+| common-ancestor boundary | *19.3 ms* for the whole pass                        |
+| delta                    | *+2.5 ms* (x1.15), *0.6 µs per cell*                |
+| phrases found            | 834 -> *1668*                                       |
 
 The cells reproduce the four shapes in
 =tests/fixtures/uniq-drop-join-phrases.html= in roughly a real Artist column's
@@ -2133,12 +2133,12 @@ figure in =tests/README.org= was taken on. Recorded because a 22-minute gate
 reads like a hang or a regression when the documented number is 5 m 18 s, and
 nothing said which worker count that number assumed.
 
-| host        | =vzell-lap= (4 cores, node v24.11.1)      |
-| date (UTC)  | 2026-09-21                                |
-| command     | =npm run test:full=                       |
-| tests       | 439 in 113 files, *all passed*            |
-| workers     | *2* (Playwright sizes the pool from CPUs) |
-| wall clock  | *22 m 36 s*                               |
+| host        | =vzell-lap= (4 cores, node v24.11.1)                     |
+| date (UTC)  | 2026-09-21                                               |
+| command     | =npm run test:full=                                      |
+| tests       | 439 in 113 files, *all passed*                           |
+| workers     | *2* (Playwright sizes the pool from CPUs)                |
+| wall clock  | *22 m 36 s*                                              |
 | for compare | 5 m 18 s at 403 tests, =NB-3641=, 14 workers, 2026-09-20 |
 
 *The ratio is 4.3x, and it is parallelism alone.* The two =@slow= specs
