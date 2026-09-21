@@ -4,6 +4,91 @@
 
 ## Changes since last version (9.99.746 -> 9.99.1079)
 
+### Your settings and this update --- read this first (60 seconds)
+
+[EDITOR NOTE --- two things still to do before posting.
+
+1. Shipping at 9.99.1129 or later was confirmed 2026-09-21, so the numbers in
+   this section (5 changed defaults, 45 new settings, 4 removed) are correct as
+   measured against 9.99.746. Update the `## Changes since last version`
+   heading above from 9.99.1079 to the real shipped version --- and note the
+   feature list below it still only covers up to 1079, so 1079 -> ship needs
+   writing up.
+
+2. The last two paragraphs of this section describe bugs that are being fixed.
+   DELETE each one once its fix ships:
+     * "One caveat on Load configuration" --- delete once Item 3
+       (`fix/config-import-tables`) has shipped.
+     * "one known quirk with 0 to disable" --- delete once Item 2
+       (`fix/settings-numeric-coercion`) has shipped, and consider replacing it
+       with a one-line Fixes entry instead.
+   See org/config-handling.org F2 and F3.]
+
+**Short version: you don't have to do anything.** Updating the script never
+touches your saved settings. The 45 settings this release adds all arrive
+switched to their defaults, and the 4 that were removed simply stop appearing.
+
+Two things are still worth a minute of your time.
+
+**1. Take a backup --- it costs one click.** Open ⚙️ Settings and press
+**💾 Save configuration** (bottom left). That writes a small JSON file
+containing every setting. **📂 Load configuration** puts it all back later, on
+this browser or another one. Please read the "one caveat" note at the end of
+this section before you use Load.
+
+**2. Five defaults changed --- and a changed default does *not* reach you
+automatically.**
+
+This is the one thing that genuinely needs your attention, and it is easy to
+miss. The first time you ever press **SAVE** in the settings dialog, the script
+writes down *every* setting at its current value --- not just the ones you
+edited. From then on your copy is pinned: if a later release changes what a
+setting's default *is*, you keep the old value, forever, because as far as the
+script can tell you chose it.
+
+So if you have ever pressed SAVE --- even once, even without changing
+anything --- these five are still on their old values:
+
+| Setting (as it appears in ⚙️ Settings)        | Section                        | Old | New  |
+|-----------------------------------------------|--------------------------------|-----|------|
+| Start with sidebar collapsed                  | ⭲ COLLABSABLE SIDEBAR          | off | **on** |
+| Show Flag Icons In Unique-Values Dropdown     | #₁ UNIQUE COLUMN VALUES ...    | off | **on** |
+| Auto-resize columns on load                   | ↔️ COLUMN RESIZE FEATURE        | off | **on** |
+| Auto-expand native "Annotation" section       | 📖 ANNOTATION SECTION           | off | **on** |
+| Metadata (JSON) cache TTL (days)              | 🗄️ ART ARCHIVE INDEXEDDB CACHE  | 7   | **30** |
+
+That last one is the one I'd actually recommend changing. Cover-art metadata is
+now cached for 30 days instead of 7, which noticeably cuts how often big
+discography pages re-query the Cover Art Archive. It was only safe to raise once
+a separate bug was fixed (a temporary archive outage used to be remembered as
+"this release has no cover art"), which is why it waited until now.
+
+**How to check whether any of this applies to you:** open ⚙️ Settings and look
+at the greyed-out **Default** column on the right of each row. It always shows
+what the setting's default *currently* is. If the widget on the left disagrees
+with it and you don't remember making that choice, you're sitting on an old
+default --- just set it yourself and press SAVE.
+
+**Please don't use RESET for this.** RESET is all-or-nothing: it returns *every*
+setting to its default and your customisations go with it. Change the individual
+settings you care about instead. (If you do want a clean slate, press
+💾 Save configuration first so you can pick values back out of the file.)
+
+**One caveat on 📂 Load configuration.** If you have hand-edited any of the
+five 📋 table settings --- Default Hidden Columns, the three Relationships icon
+tables, or the Unicode Character Picker list --- importing a configuration file
+currently discards those rows and restores the built-in ones. Everything else
+imports correctly. Until that's fixed, either avoid Load if you've customised
+those tables, or take a screenshot of them first. Exporting is unaffected: your
+rows *are* written to the file correctly, it's only the reading side that drops
+them.
+
+**And one known quirk with "0 to disable".** A few numeric settings document
+`0` as "switch this off" --- the Relationships auto-collapse threshold is the
+one people hit. Typing `0` there doesn't currently work; the setting falls back
+to its default of 200. A fix is coming. In the meantime, use the **▶🔗** button
+in the Relationships column header to expand a table by hand.
+
 ### New: consolidated Release tracklists
 
 * **Every track on a release, in one table** --- a new button on any release page pulls every disc/medium's tracklist into a single view you can filter and sort, instead of scrolling through separate native tables per medium. Configurable in settings (on by default).
