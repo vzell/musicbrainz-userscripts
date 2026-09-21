@@ -1065,6 +1065,8 @@ change.
 |       Date | Host    | Condition                                                                                                                                                                                  |
 |------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2026-09-07 | =petri= | musicbrainz.org intermittently unreachable — roughly 1 probe in 3 timing out, ending in =ERR_CONNECTION_RESET=. Two complete 20-minute perf runs lost to a single 30 s navigation timeout. |
+| 2026-09-11 | =petri= | Slow window, 1.45-1.98x the floor, at 43-68 h uptime (lasting 24-69 h); it cleared with no reboot. A Claude Code session had run on 2026-09-10. See Arm E results.                          |
+| 2026-09-15 | =petri= | WSL VM down 03:43-23:15 CEST, both arm-E slots lost; the new boot's monotonic clock started at 16.36 h, so logged =uptimeHours= runs 16.36 h high. See Arm E results.                       |
 
 *Known intermittent, not load-explained*: =release-tracks-ms-length-overflow.spec.js='s
 "a row already stamped by the embedded payload is never re-sent to the network"
@@ -1103,7 +1105,7 @@ is *not* offline. It makes the table DATA deterministic, but passes no
 =fixtureFile= to =loadUserscriptPage()=, so no route is registered and the page
 SHELL is fetched from the live site. "No network" only ever described the data.
 
-** PARTLY ANSWERED (arm E outstanding; D and F answered, D replicated) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
+** PARTLY ANSWERED (arm E ran, but only 156 h of its 432 h; D and F answered, D replicated) — what changed on =petri= on 2026-09-07: a resident session, or uptime?
 
 *Status: written 2026-09-08 as an untested hypothesis; arms A, R and F were run
 on 2026-09-08, arm D followed the same evening (23:25, same reboot as R), and
@@ -1116,8 +1118,10 @@ across two independent reboot events, not a one-off. What a closed session
 LEAVES BEHIND (as opposed to whether one is currently running) is still
 untested — arm A carries exactly that confound — and is what arm E would
 settle. Arm B is impossible; arms D and F are answered, D is replicated by
-D2; only E is outstanding — read "The answer" before citing anything in
-between.*
+D2; arm E ran 2026-09-09 to 2026-09-21 and reached 156 h of the 432 h it
+needed, so it answers the uptime half only and gave the residue candidate one
+confounded supporting episode — see "Arm E results" below, and read "The
+answer" before citing anything in between.*
 
 *The observation.* =petri= changed against itself on the afternoon of
 2026-09-07 and never changed back — the same 9.99.1045 script measured 1735 on
@@ -1286,12 +1290,16 @@ outstanding.
   reproduces across two independent reboot events on two different days; it
   is not a one-off.
 - *Arm E — ~18 days of uptime on a =petri= that has never run Claude Code.*
-  Still outstanding. Fast (~2400) means uptime alone is harmless and the
-  residue hypothesis stands. Slow (~2800) means uptime accumulates on its own
-  and Claude Code is fully cleared. Now that D confirms the reboot floor is
-  real and reproducible, E is the ONLY remaining arm that can separate "uptime
-  in general" from "residue a Claude Code session leaves behind" — every other
-  cell of the matrix has run.
+  RAN 2026-09-09 to 2026-09-21 and fell short of its own protocol: 156 h of
+  uptime, not 432 h, across two boots, with one Claude Code session on the box
+  (see "Arm E results" below). Pre-registered: fast (~2400) means uptime alone
+  is harmless and the residue hypothesis stands; slow (~2800) means uptime
+  accumulates on its own and Claude Code is fully cleared. What came back is
+  FAST — 18 of 21 samples sit at the reboot floor (global filter median 2176)
+  with no drift out to 156 h — plus one outcome neither branch anticipated: a
+  three-sample slow window at 43-68 h that followed the one session and cleared
+  with no reboot. Uptime to 6.5 days is exonerated, uptime to 18 days is not
+  tested, and the residue candidate is neither confirmed nor killed.
 - *Arm F — =NB-3641=, freshly rebooted, 9.99.1049, =--label=rebooted=. RUN
   2026-09-08 23:40.* Not about the step change at all; it repaired the
   CROSS-MACHINE comparison. Every petri/NB ratio in this file rested on one
@@ -1305,13 +1313,15 @@ outstanding.
   records its own uptime (0.2h) and =claudeResident= (count 0), retiring the
   recollection either way.
 
-E costs 18 days of discipline rather than 16 minutes of runtime, which is why
-it has not been run. D and D2 are both in hand now: "reboot recency" is the
-accurate, REPRODUCED description of what CLEARS the slow state, and *"a
-Claude Code session leaves something behind" is still a live, unfalsified
-candidate for what CAUSES it* — not the exonerated one this section's first
-reading claimed. D cannot distinguish that candidate from plain uptime
-accumulation (a rebooted box has neither); only E can.
+E costs 18 days of discipline rather than 16 minutes of runtime, and it did not
+get them: it stopped at 12 days and 156 h (see "Arm E results"). D and D2 are
+both in hand: "reboot recency" is the accurate, REPRODUCED description of what
+CLEARS the slow state — though arm E saw the state clear once with no reboot at
+all — and *"a Claude Code session leaves something behind" is still a live,
+unfalsified candidate for what CAUSES it*, now with one confounded supporting
+episode — not the exonerated one this section's first reading claimed. D
+cannot distinguish that candidate from plain uptime accumulation (a rebooted
+box has neither); E separated them only up to 156 h.
 
 | Arm | Finished (UTC)   | Uptime  | =claude= resident        | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
 |-----+------------------+---------+--------------------------+--------+--------+------+-----------+-----------+----------+-------------|
@@ -1388,12 +1398,27 @@ matters" above, and arm E.
 and record =uptimeHours= with every arm. This was written as provisional
 "pending arm D"; D has run, and D2 replicated it on an independent reboot. Not
 yet promoted into CLAUDE.md — that is a separate decision to make explicitly,
-not an automatic consequence of this file.
+not an automatic consequence of this file. Arm E qualifies it rather than
+overturning it: a reboot cleared the slow state on 2026-09-08, but arm E saw it
+clear without one, so a reboot is a sufficient reset and not a necessary one —
+and the slow state appeared at 43 h of uptime, so a recorded =uptimeHours= is no
+certificate that an arm is at the floor. Compare a sample against the floor in
+"Arm E results" before trusting it.
 
 *Consequence for the Results table above*: the =NB-3641= vs =petri= 1.5-1.85x
 is not a machine ratio. See the correction under that table.
 
 *** Arm E tooling — reboot once, then 18 days with zero Claude Code on petri
+
+*Status, 2026-09-21: RAN, AND STOPPED SHORT — 21 samples over 12 days, 156 h of
+uptime, not 18 days.* What it found, and every way the run departed from the
+protocol below, is in "Arm E results" at the end of this section. Everything
+from here to that heading describes the plan as it was set up, in the present
+tense it was written in. *The tooling was retired the same day*: crontab
+emptied, worktree removed, branch =measure/9.99.1049-arm-e= deleted. It was
+never pushed and this file is now its record; its tip was =c17a8b4= (full SHA
+=c17a8b4d5aca5979ee1dce9d31ad63c6354b5121=), still resolvable in the object store
+until =git gc= prunes it, two weeks by default.
 
 Set up 2026-09-09, to run unattended rather than depend on 18 days of manual
 discipline. *The protocol is one reboot to zero the clock, then NO further
@@ -1429,10 +1454,237 @@ gap.
   Claude Code session — including implementation work on the new Steps in
   point (2) below — off petri entirely for the 18 days. That work is
   happening on =NB-3641= instead, decided 2026-09-09.
-- *Folding back*: after 18 days, pull =measure/9.99.1049-arm-e='s commits,
-  read =arm-e-runs.log= for the day-by-day =uptimeHours= trend (smooth climb
-  vs. a step, per the open question above), and add the results here as a
-  proper dated table — this bullet list is signpost, not the data.
+- *Folding back* — DONE 2026-09-21, after 12 days rather than 18. The wrapper
+  overwrote each =interaction-perf-arm-e-<slot>.json= on every run, so the
+  branch's history was the only place the per-run medians lived; they were read
+  from there and are tabulated in full below.
+
+*** Arm E results — 21 samples, 12 days, two boots (2026-09-09 to 2026-09-21)
+
+| pageType      | tableMode | page title        | URL                                                 |
+|---------------+-----------+-------------------+-----------------------------------------------------|
+| artist-events | single    | Bruce Springsteen | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events |
+
+All on =petri=, all at =9.99.1049= (=git diff a56f1b1 --
+ShowAllEntityData.user.js= was empty at the last sample), 4174 rows x 21 columns
+from the disk fixture, median of 5 — the page and the seven metrics of the
+Results table above. All times in ms. Times are UTC and mark when the run
+STARTED: cron fires at 05:00 and 17:00 UTC (07:00 and 19:00 CEST) and a run
+takes 10-12 minutes.
+
+*What ran, against what was planned.* The plan was one reboot, then 18 days
+(432 h) with no further reboot and no Claude Code on the box. What happened:
+
+- *Duration.* 12 days. The longest uptime reached was 156.1 h — 36% of the
+  plan. The 18-day case, which is what arm A's 459.6 h actually was, was never
+  sampled.
+- *Two boots, not one.* The VM shut down on 2026-09-15 at 03:43 CEST after
+  136.35 h and started again at 23:15 CEST (=journalctl --list-boots=). Both
+  2026-09-15 slots fall in the gap and produced nothing, and the logged uptime
+  restarts at 24.1 h. The "Boot" column below separates the two.
+- *One Claude Code session*, 2026-09-10 12:53-21:06 UTC (first and last
+  timestamp in its transcript). The gate caught it once (=SKIPPED=, 17:00). It
+  is the only session transcript touching the window — the other one, this
+  analysis's own, starts at 20:16 UTC on 2026-09-21, after the last sample. So
+  boot 2 (12 samples, 24-156 h) is a zero-Claude arm on two independent checks,
+  the gate, which never fired there, and the transcripts; boot 1 has exactly
+  one session in it.
+- *Seven failed attempts.* Six on the evening of 2026-09-09 — the captured
+  output shows the distro's Node 18 failing to find =playwright= (cron's
+  minimal =PATH=, per DEBUG-NOTES.md), then "Executable doesn't exist" for
+  Chromium revision 1243 — and the 05:00 run on 2026-09-10 (DEBUG-NOTES.md,
+  2026-09-10). With the =SKIPPED= slot that is all of 2026-09-10 lost.
+
+| Date       | Time (UTC) | Boot | Uptime (h) | Regime    | global | column | sort | uniq cold | uniq warm | hdr init | hdr restore |
+|------------+------------+------+------------+-----------+--------+--------+------+-----------+-----------+----------+-------------|
+| 2026-09-09 |      20:04 |    1 |       10.7 | floor     |   2097 |   2107 | 4569 |     25559 |      1243 |     6009 |        6686 |
+| 2026-09-10 |      05:00 |    1 |       19.6 | FAILED    |      — |      — |    — |         — |         — |        — |           — |
+| 2026-09-10 |      17:00 |    1 |          — | SKIPPED   |      — |      — |    — |         — |         — |        — |           — |
+| 2026-09-11 |      05:00 |    1 |       43.6 | slow      |   3418 |   3346 | 6387 |     49780 |      2003 |     7942 |        9551 |
+| 2026-09-11 |      17:00 |    1 |       55.6 | slow      |   3930 |   3271 | 6636 |     48756 |      1715 |     8833 |        9082 |
+| 2026-09-12 |      05:00 |    1 |       67.6 | slow      |   3680 |   3925 | 7509 |     56030 |      2151 |     9162 |        9739 |
+| 2026-09-12 |      17:00 |    1 |       79.6 | floor     |   2196 |   2199 | 4519 |     30983 |      1080 |     6039 |        6621 |
+| 2026-09-13 |      05:00 |    1 |       91.6 | floor     |   2178 |   2222 | 4487 |     25555 |      1181 |     5906 |        6150 |
+| 2026-09-13 |      17:00 |    1 |      103.6 | floor     |   1990 |   2326 | 4452 |     26283 |      1224 |     6122 |        6263 |
+| 2026-09-14 |      05:00 |    1 |      115.6 | floor     |   2230 |   2150 | 4513 |     25688 |      1125 |     6000 |        6447 |
+| 2026-09-14 |      17:00 |    1 |      127.6 | floor     |   2124 |   2339 | 4695 |     25229 |      1076 |     6066 |        6649 |
+| 2026-09-15 |      05:00 |    — |          — | host down |      — |      — |    — |         — |         — |        — |           — |
+| 2026-09-15 |      17:00 |    — |          — | host down |      — |      — |    — |         — |         — |        — |           — |
+| 2026-09-16 |      05:00 |    2 |       24.1 | floor     |   2139 |   2534 | 4577 |     24425 |      1300 |     6122 |        6199 |
+| 2026-09-16 |      17:00 |    2 |       36.1 | floor     |   2164 |   2151 | 4647 |     25111 |      1147 |     5942 |        6296 |
+| 2026-09-17 |      05:00 |    2 |       48.1 | floor     |   2184 |   2333 | 4316 |     24888 |      1122 |     5921 |        6017 |
+| 2026-09-17 |      17:00 |    2 |       60.1 | floor     |   2350 |   2150 | 4707 |     27791 |      1149 |     5987 |        6540 |
+| 2026-09-18 |      05:00 |    2 |       72.1 | floor     |   2098 |   2435 | 4728 |     25112 |      1078 |     6078 |        6670 |
+| 2026-09-18 |      17:00 |    2 |       84.1 | floor     |   2446 |   2261 | 4688 |     24817 |      1453 |     6237 |        6348 |
+| 2026-09-19 |      05:00 |    2 |       96.1 | floor     |   2173 |   2099 | 4795 |     24504 |      1476 |     5934 |        6863 |
+| 2026-09-19 |      17:00 |    2 |      108.1 | floor     |   2500 |   2308 | 4805 |     24780 |      1145 |     6217 |        6250 |
+| 2026-09-20 |      05:00 |    2 |      120.1 | floor     |   2417 |   2148 | 4524 |     25031 |      1039 |     5878 |        6403 |
+| 2026-09-20 |      17:00 |    2 |      132.1 | floor     |   2185 |   2365 | 4570 |     27058 |      1117 |     6047 |        6246 |
+| 2026-09-21 |      05:00 |    2 |      144.1 | floor     |   1994 |   2296 | 4777 |     24482 |      1412 |     5773 |        6975 |
+| 2026-09-21 |      17:00 |    2 |      156.1 | floor     |   2165 |   2303 | 4362 |     26507 |      1093 |     5893 |        6587 |
+
+"floor" is a run at the reboot floor, "slow" one of the three whose global filter
+exceeds 3000 ms. The floor's maximum is 2500 and the slow minimum 3418, and all
+seven metrics move together, so the split does not depend on the cut.
+=FAILED= and =SKIPPED= are the two lost slots of 2026-09-10 (the =FAILED= row's
+uptime is the wrapper's), =host down= the two inside the VM outage.
+
+| Metric                | floor median | floor range | R/D/D2 median | floor / ref | slow median | slow / floor | slow / arm C |
+|-----------------------+--------------+-------------+---------------+-------------+-------------+--------------+--------------|
+| =globalFilter=        |         2176 |   1990-2500 |          2328 |       0.93x |        3680 |        1.69x |        1.01x |
+| =columnFilter=        |         2279 |   2099-2534 |          2116 |       1.08x |        3346 |        1.47x |        1.06x |
+| =sort=                |         4574 |   4316-4805 |          4462 |       1.02x |        6636 |        1.45x |        0.96x |
+| =uniqDropCold=        |        25171 | 24425-30983 |         25583 |       0.98x |       49780 |        1.98x |        1.07x |
+| =uniqDropWarm=        |         1146 |   1039-1476 |          1304 |       0.88x |        2003 |        1.75x |        1.16x |
+| =headerCountsInitial= |         6005 |   5773-6237 |          5844 |       1.03x |        8833 |        1.47x |        1.08x |
+| =headerCountsRestore= |         6425 |   6017-6975 |          6264 |       1.03x |        9551 |        1.49x |        1.11x |
+
+Floor is the 18 "floor" runs, slow the 3 "slow" ones; "ref" is the median of the
+fresh-reboot arms R, D and D2 above, and arm C is the 9.99.1049 =main= arm on
+2026-09-08 at 18 days of uptime.
+
+*1. The floor is stable, and it is the floor arms R, D and D2 found.* Every
+median sits within 0.88-1.08x of theirs, the per-metric spread is 1.08-1.42x
+(coefficient of variation 1.9-10.9%), and the floor was measured after four
+separate boots now — the three of 2026-09-09 in =journalctl --list-boots= and
+the one of 2026-09-15. The noisy metrics are =uniqDropWarm= and =uniqDropCold=;
+the latter's 30983 maximum is the first sample after the slow window and may be
+its tail, but 27791 and 27058 turn up mid-boot-2 with no window anywhere near,
+so it was not removed.
+
+*2. No drift with uptime, out to 156 h.* Boot 2 alone, 12 samples at 24-156 h,
+no slow run among them:
+
+| Metric                | slope / 24 h (ms) | as % of median | Spearman rho | p (permutation) |
+|-----------------------+-------------------+----------------+--------------+-----------------|
+| =globalFilter=        |               0.2 |          0.01% |         0.11 |           0.732 |
+| =columnFilter=        |             -10.9 |         -0.48% |        -0.17 |           0.609 |
+| =sort=                |               0.0 |          0.00% |         0.04 |           0.902 |
+| =uniqDropCold=        |             121.1 |          0.49% |         0.13 |           0.685 |
+| =uniqDropWarm=        |              -1.8 |         -0.15% |        -0.24 |           0.458 |
+| =headerCountsInitial= |             -25.1 |         -0.42% |        -0.42 |           0.176 |
+| =headerCountsRestore= |              73.8 |          1.16% |         0.48 |           0.122 |
+
+Ordinary least squares slope against the logged uptime; the p-value is a
+20 000-shuffle permutation test on Spearman's rho, seeded. Nothing is
+significant and three of seven signs are negative; over all 18 floor samples
+(10.7-156 h) the smallest p is 0.24. This bounds a slow linear creep only
+loosely: at n=12 a +1%/day drift is not excluded, and that would be +21% at 18
+days — nowhere near the 1.5-2x the original event was. What it does rule out is
+that event's SHAPE, a step of that size inside one uptime, arising by 156 h on
+a box with no session.
+
+*3. An independent second boot reproduces the first.* Boot 1's six floor
+samples (10.7 h and 79.6-127.6 h) against boot 2's twelve: medians 0.96-1.03x
+on all seven metrics, no direction.
+
+*4. Time of day does nothing.* Among the floor runs, 8 mornings against 10
+evenings: medians 0.96-1.01x. One of seven tests is under p=0.05
+(=uniqDropCold=, 0.96x, p=0.044), which is what chance gives at that count. The
+slow window covers a morning, an evening and a morning while both slots are
+fast on every other day, which is not the shape of a site-load or time-of-day
+effect either — and five of the seven metrics touch no network inside their
+bracket, as noted above.
+
+*5. The slow window — the one thing arm E found that nobody predicted.*
+
+- *Timeline.* Last floor sample before it: 2026-09-09 20:04 (10.7 h). The next
+  33 h are blank — =FAILED= at 05:00, the Claude session 12:53-21:06, =SKIPPED=
+  at 17:00 — so its onset was not observed. Slow at 43.6, 55.6 and 67.6 h
+  (2026-09-11 05:00 to 2026-09-12 05:00). Floor again from 2026-09-12 17:00
+  (79.6 h) and at every later sample of boot 1 and all of boot 2. No reboot
+  in between: boot 1 ran until 2026-09-15. So the window lasted between 24 h
+  (three samples) and 69 h (last floor to first floor) and *cleared on its own*.
+- *Size.* 1.32-2.23x the floor per sample, medians 1.45-1.98x — and 0.96-1.16x
+  of arm C. It is quantitatively the state =petri= was in on 2026-09-07/08, not
+  a milder one.
+- *What it is not.* Not uptime accumulation: it opened at 43 h on a box whose
+  10.7 h and 79-156 h samples are at the floor. Not the script: one pinned
+  commit throughout. Not the toolchain, as far as the record shows: cron's
+  =PATH= is the same either side of the window and, per DEBUG-NOTES.md
+  2026-09-10, so is the Playwright/Chromium build. Not site load (finding 4).
+- *What it coincides with.* The session. The first slow sample is 7 h 54 min
+  after that session's last transcript write, the last slow one 31 h 54 min
+  after, and the first floor sample 43 h 54 min after. The earlier episode
+  fits the same shape: arm C's 30-hour session started 2026-09-07 at 16:40,
+  inside the 11:41-18:58 bracket the step fell in, and that slow state ran at
+  least until arm A at 21:52 the next day; the 22:23 reboot ended it. Two
+  episodes, each around a session and each at least a day long; 12 samples over
+  6 days of boot 2 with no session and no slow state.
+- *Why that is a coincidence in time and not a finding.* n=2 episodes and no
+  mechanism. The same day's DEBUG-NOTES entry records =npm ci= and a Chromium
+  download inside this very worktree, so the session also changed the files the
+  cron samples then ran from — though the floor samples that followed used
+  those same files, which argues against them. And nothing else on the box or
+  the Windows host was instrumented: Defender scans, host memory pressure and
+  other WSL distros are untested candidates.
+
+*6. Against the pre-registered readings.* "Fast means uptime alone is harmless
+and the residue hypothesis stands" — fast, yes, but only to 156 h, a third of
+the way to the condition it was meant to test. Neither pre-registered branch
+anticipated a slow state that arrives inside a young uptime and leaves without
+a reboot, and that bites the residue hypothesis in its original form as much
+as the uptime one: "residue that outlives the process and is cleared only by a
+reboot" is not compatible with 2026-09-12. A weaker form survives — a session is
+followed by a slow state that lasts one to two days — and both episodes fit it;
+the 2026-09-07/08 one is the one a reboot happened to interrupt. Net:
+
+| Candidate                                             | After arm E                                          |
+|-------------------------------------------------------+------------------------------------------------------|
+| Uptime accumulates, within 6.5 days                   | Exonerated: no drift, no step, two boots             |
+| Uptime accumulates, at 18 days                        | Untested — arm A's 459.6 h is still the only sample  |
+| A session leaves residue, cleared only by a reboot    | Contradicted by the 2026-09-12 recovery              |
+| A session is followed by a slow state of 1-2 days     | One confounded episode plus arm C/A; not confirmed   |
+| Something else on 2026-09-10 to 12 (host, toolchain)  | Not excluded — nothing else was recorded             |
+
+*What would settle it.* Provoke it rather than wait for it: reboot, confirm the
+floor, run a real Claude Code session on =petri= for about 8 h of representative
+work (Playwright suites), close it, then sample every ~4 h for three days. The
+weaker residue form predicts slow by the first sample and back at the floor in
+one to two days; if nothing happens, the session is off the list and the
+2026-09-10 to 12 window needs a different explanation. That is three days
+instead of eighteen, and it puts the trigger under control. During any slow
+sample, also capture what differs — =free -m=, =/proc/pressure/{cpu,memory,io}=,
+=ps -eo pid,pcpu,rss,args --sort=-pcpu | head=, and the Windows Task Manager —
+because the mechanism is unidentified and a slow window is only visible while
+it lasts. The 18-day uptime case is worth running only if that comes back
+negative, and with the current harness so that it records its own =machine=
+block.
+
+*Caveats on the data itself.*
+
+- *Old harness.* The pinned 9.99.1049 harness writes no =machine= block and no
+  =startedAt=/=finishedAt=, and each run overwrote the slot's JSON, so the
+  medians above were recovered from the branch's 21 capture commits. Start
+  times are the cron log's, uptime is =/proc/uptime= as the wrapper read it, and
+  the host is =petri= because that is where the crontab lives. Filenames
+  therefore do not carry version, date or hostname as the convention now asks;
+  the pinned script could not be changed to.
+- *Boot 2's logged uptime runs 16.36 h high.* The kernel's first journal line
+  is at 2026-09-15 23:15:43 CEST but its monotonic timestamp already reads
+  58 899 s (16.36 h) there, and =/proc/uptime=, which the wrapper logs, counts
+  from that. Realtime and monotonic then advance together for the whole boot,
+  so the offset is constant: it shifts every boot-2 point by the same 16.36 h
+  and cannot create or hide a trend, but "logged 24.1 h" was 7.7 h of wall
+  clock since the kernel started. Cause not identified. Boot 1 has no such
+  offset: its first line is at 0.0 s and its logged uptimes track wall clock
+  since boot to within 0.15 h. The current harness reads =os.uptime()=, the same
+  source, and derives =claudeSinceBoot= from it, so both would inherit an
+  offset like this one; cross-check against =journalctl --list-boots= whenever
+  the number decides something.
+- *The first sample is not quite like the others.* Per DEBUG-NOTES.md
+  2026-09-10 it ran on an uncommitted =playwright ^1.63.0= drift (Chromium
+  revision 1243) that was reverted the next day to the committed 1.62.1 (1234).
+  It sits inside the floor, and nothing here depends on it, but it is not the
+  same toolchain as the other 20. Node itself is not recorded per sample; the
+  one run whose output shows Node 18 produced no sample, and the crontab's
+  =PATH= line puts nvm's v24.16.0 first.
+- *The gate looks twice a day.* A =claude= started and finished between slots
+  is invisible to it, which is why the transcripts were checked as well. Its
+  process name is still right: =pgrep -x claude= matched this analysis's own
+  session on 2026-09-21.
+- *n.* Twenty-one medians of five, one host, one page. Enough to see a 1.5-2x
+  state; not enough to bound a 1-2% drift.
 
 * Interaction latency — =artist-releases-dylan= (the Relationships arms, 2026-09-11)
 

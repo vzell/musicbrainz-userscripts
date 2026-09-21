@@ -14272,3 +14272,51 @@ out on a baseline identical to its last read. `uniq-drop-join-phrases.spec.js`
 polls the visible row set for a KNOWN value instead — which also refuses to
 accept a trigger that silently did nothing, the way a stability-based wait
 would.
+
+## 2026-09-21 — arm E folded back: 156 h not 432 h, an unpredicted slow window, and a boot whose clock started at 16 h
+
+`org/TODO.org` asked for the arm-E cron results (worktree
+`saed-perf-9.99.1049-arm-e`, 2026-09-09 to 2026-09-21) to be analysed, folded
+into `tests/MEASUREMENTS.org` and the worktree cleaned up. Everything
+quantitative is in that file's "Arm E results" section; this entry keeps only
+what a future session needs to avoid re-deriving.
+
+**Headline.** 21 samples, two boots, longest uptime 156 h — not the 18 days
+planned. 18 of 21 sit at the reboot floor (global filter median 2176) with no
+drift against uptime (boot 2 alone: every metric within ±1.2%/day, smallest
+p 0.12). Three consecutive samples (2026-09-11 05:00 to 2026-09-12 05:00 UTC,
+43-68 h of uptime) were 1.45-1.98x slower — the size of the 2026-09-07/08
+state, arm C — and the box recovered by itself with no reboot. That is the
+result no pre-registered reading anticipated, and it breaks "cleared only by a
+reboot". The one Claude Code session in the window (2026-09-10 12:53-21:06 UTC)
+ends 7 h 54 min before the first slow sample; two episodes, n=2, no mechanism.
+The 18-day uptime case is still untested.
+
+**The mid-run reboot was a VM shutdown, and the journal is the witness.**
+`journalctl --list-boots`: boot 1 ended 2026-09-15 03:43 CEST after 136.35 h,
+boot 2 began 23:15:43 CEST, so both 2026-09-15 slots simply did not exist.
+Nothing in the run's own artefacts said so — `arm-e-runs.log` has no line for a
+slot that never ran.
+
+**`/proc/uptime` can be tens of hours ahead of the kernel's own start.** Boot
+2's first journal line already carries a monotonic timestamp of 58 899 s
+(16.36 h); realtime and monotonic then advance together to the end of the boot.
+The logged `uptimeHours` (24.1 ... 156.1) is therefore 16.36 h more than time
+since the kernel started, by a constant. Cause not found. `runMetadata.js`
+reads `os.uptime()`, the same source, and `claudeSinceBoot()` derives its boot
+epoch from it, so the harness's own `machine` block is exposed to this too —
+worth cross-checking against the journal whenever a claim rests on uptime.
+
+**Data-recovery trap.** The pinned wrapper committed a JSON that the next run
+overwrote (`interaction-perf-arm-e-<slot>.json`), so the 21 sets of medians
+existed only as branch history; they were read with `git show <sha>:<path>` per
+capture commit. The pinned 9.99.1049 harness also predates the `machine` block,
+so hostname and start times came from the cron log. If this arm is ever re-run,
+use the current harness and the filename convention (version, date, host).
+
+**Cleanup done.** `crontab -r` (the crontab held only the `PATH=` line and the
+two arm-E jobs), `git worktree remove --force`, `git branch -D
+measure/9.99.1049-arm-e` (never pushed; tip `c17a8b4`). `pgrep -x claude`
+matched this session's own PID beforehand, so the gate's process name was still
+right. No `// @version` bump or changelog entry: nothing under the userscript
+changed.
