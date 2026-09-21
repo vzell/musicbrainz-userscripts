@@ -567,6 +567,22 @@ itself the signal that something on the page is mid-edit.
 The toggle composes with every other filter (type a query and press ⏳, in
 either order).  It is held by no input, so "✗ Clear all filters" becomes
 visible while it is engaged and releases it, page-wide.
+
+While the toggle is engaged it MARKS what it matched, the same way every other
+filter does: each entity with open edits is highlighted inside MusicBrainz's own
+orange marker, in every column of every matching row.  That is the same marking
+the 📊 dropdown's "⏳ has pending edits" entry applies to one column; the toggle
+simply applies it to the whole row.
+
+The marking matters most where you cannot see it directly.  A collapsed
+multi-row cell shows only its first item, so a pending author sitting in item 2
+of an "Authors" cell is hidden — and the cell looks exactly like one with
+nothing pending at all.  With the toggle on, that cell's ▶N▤ expander is
+tinted, and so is the global ▶/◀ collapse button (plus, on a page with
+sub-sections, that sub-section's own ▤ button) — so you can see which cells are
+worth opening without opening all of them.  Expanding the cell clears its own
+tint, because nothing is hidden there any more.
+
     — 🎭 Entity info - Role (combined) — "» role:" entries, one per distinct
                        artist event-role found in a native artist-roles list
                        or the plain-text "Role" column on an artist's own

@@ -87,7 +87,8 @@ Not affected, and worth knowing so the diff is not over-read:
     byte-identically and must NOT change. A diff there IS a script change.
   - Every pending-edits TEST runs against committed static fixtures
     (pending-edits-multi.html, uniq-drop-pending-edits.html,
-    entity-refs-mp-wrapper.html) with hand-written markers, and nothing in
+    entity-refs-mp-wrapper.html, artist-works-pending-edits.html) with
+    hand-written markers, and nothing in
     `npm test` reads a snapshot baseline at all. The review window expiring can
     never turn the suite red.
 

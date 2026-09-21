@@ -659,6 +659,7 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 | `.mb-rel-col-hdr-btn`                       | Per-table ▶🔗/▼🔗 Relationships load/empty toggle; glyph from CSS `::before` keyed on `aria-pressed`                                                                                            |
 | `.mb-sticky-col`                            | Sticky first column                                                                                                                                                                             |
 | `.mb-cell-collapse-toggle`                  | Per-cell ▶/▼ collapse toggle — drives BOTH list cells (`ul>li`) and prose cells (`.mb-text-clamp-inner`)                                                                                        |
+| `.mb-collapse-toggle-has-match`             | Tint on a collapsed cell's toggle meaning "a filter match is hidden in here" — driven ONLY by `_COLLAPSE_MATCH_SEL` spans; see its own section                     |
 | `.mb-text-clamp-marker`                     | Unconditional marker on every prose-collapse column's wrapper — `_isProseCollapseColumn` keys off this, independent of the `.mb-text-clamp-inner` clamp itself (see `collapsableColumns` below) |
 | `.mb-text-clamp-inner`                      | Wrapper around a "prose" collapsable cell's content (e.g. "Annotation"); height-clamped by default                                                                                              |
 | `.mb-text-clamp-expanded`                   | Toggled on `.mb-text-clamp-inner` to lift the height clamp                                                                                                                                      |
@@ -765,7 +766,7 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
 
   **`@slow` is opt-in for iteration, mandatory at a merge.** Two specs carry
   it — `rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s),
-  14 tests of 403 — and between them they are most of the suite's wall clock
+  14 tests of 428 — and between them they are most of the suite's wall clock
   and *all* of its coverage of org/503-handling.org items 5 and 7. Neither is
   slow because of slow code: both spend their time in rate gates and retry
   backoffs that the feature under test exists to respect, so shortening them
@@ -1155,6 +1156,54 @@ column WITH empty cells still got a Structure section (containing only
 `// @version` header names; `tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js`
 pins the header count and the dropdown count against each other, and asserts the
 U+200B trap itself so the guard's reason cannot evaporate unnoticed.
+
+## The collapsed-cell "there is a match in here" tint is highlight-driven
+
+`mb-collapse-toggle-has-match` on a `.mb-cell-collapse-toggle` (and on a
+`[data-caa-expand-btn]`) means "expanding this cell reveals something the
+current filter matched". Its ONLY input is `_COLLAPSE_MATCH_SEL` — the four
+highlight classes — found inside the HIDDEN `<li>`s (`lis.slice(1)`), or
+anywhere inside a prose cell's `.mb-text-clamp-inner`. Roughly ten sites read
+it: `initCollapsableColumns()`'s initial stamp, `_syncCollapseHasMatchInTable()`'s
+three passes, four arms of `ensureCollapseDelegate()`/`_applyCollapseState()`,
+`updateSubTableCollapseButton()` and `updateGlobalCollapseButtonHighlight()`.
+
+**So a STRUCTURAL filter — one with no text to type — gets no tint unless it
+writes a highlight span of its own.** That is not a quirk of the tint; it is
+what makes adding one cheap. The `⏳` pending-edits toggle had exactly this
+gap: `.mp` is a CSS-only marker carrying no text, `testRowMatch()` consulted
+`ctx.pendingEditsOnly` as a predicate and marked nothing, and a collapsed
+"Authors" cell hiding the pending author looked identical to one with no
+pending author at all. Measured on
+`debug/artist-works-pending-edits-collapsed.html`: 12 toggles, 0 tinted, with
+`span.mp` at `<li>` index 1 and 2 of `td.mb-has-collapse-toggle` cells.
+
+**The fix is one hook, not ten.** `_highlightRowPendingEdits(row)` is called
+from `testRowMatch()`'s existing `if (finalHit && !matchOnly)` block and
+delegates to `_highlightPendingEditsMatch(td, 'pending-edits-yes')`, the helper
+the 📊 `⏳ has pending edits` entry already used — so the class is
+`mb-column-filter-highlight`, which is already in `_COLLAPSE_MATCH_SEL`, already
+cleared by `testRowMatch()`'s own reset, and already unwrapped by
+`getCleanColumnText()`. **Do not invent a new highlight class for a case like
+this**: it would have to be added to `_COLLAPSE_MATCH_SEL`, to the reset, to
+`getCleanColumnText()`/`getCleanVisibleText()`'s unwrap, to `clearAllFilters()`
+and to the ~10 sites that spell the four classes out by hand.
+
+Three properties that make the hook safe, each of which a different rule in
+this file would otherwise demand work for:
+
+- **It runs on the CLONE.** `runFilter()` calls `testRowMatch(clone, matchCtx)`
+  with `matchOnly` false; the source rows are matched with `matchOnly` true and
+  never mutated. So none of the "Writing cell text AFTER the render" obligations
+  apply — no `_rowTextCache` clear, no uniq-dropdown invalidation.
+- **`_buildFilterKey()` already carries `p: !!matchCtx.pendingEditsOnly`**, so
+  `_filterResultCache` cannot replay a pre-toggle row list.
+- **`initCollapsableColumns()` runs after the highlight pass**, from the render
+  tail, so the tint needs no extra sync call.
+
+Pinned by `tests/fixtures/pending-edits-collapsed-cell.spec.js`, which asserts
+that EXACTLY the toggles whose hidden `<li>`s carry a `span.mp` are tinted — "a
+toggle is tinted" would also pass if every toggle were.
 
 ## `release-tracks`: dynamic AR-column classification
 
@@ -2285,15 +2334,71 @@ exists for the plausible future simplification that collapses them.
   is expensive, since `_relFailedMbidsPageWide()` walks every source row, so a
   per-frame call is thousands of `querySelectorAll()`s per frame on a big page.
   Mutation-testing is what found the redundancy.
-- **`_relRetryAnchorFor()` treats `<h2>` as an anchor on SINGLE-table pages
-  only.** On a multi-table page the `<h2>` is the page heading and belongs to
-  the global button. Before this the walk stopped there and returned `null`, so
-  on a single-table page with cover art off the retry buttons were created and
-  dropped on the floor — which is every single-table FIXTURE
-  (`FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` off), and why no spec
-  had ever seen them.
+- **`_relRetryAnchorFor()` resolves its heading with `caaFindHeaderForTable()`,
+  never a `previousElementSibling` walk, and anchors on that heading's own
+  control run via `_hdrCtlAnchor()`, never `button:last-of-type`.** Both halves
+  replaced a rule that was wrong in a different way, and each had its own
+  silent symptom:
+  - **The sibling walk never left a wrapper.** MusicBrainz nests many listings'
+    `table.tbl` inside `<form action="/<entity>/merge_queue…"><nav></nav>` (works,
+    events, user edits) or a plain `<div>` (notes-received,
+    recording-fingerprints), so the walk ran out of siblings inside the wrapper,
+    returned `null`, and `_relCreateRetryButtons()`'s `if (sb && a)` dropped the
+    built button on the floor — taking `⚠⟳` with it, since both failed-retry
+    controls anchor on `#mb-rel-retry-{i}` / `#mb-rel-retry-0`. Measured on
+    `debug/artist-works-pending-edits-uncollapsed.html` at 9.99.1130: 5
+    `td.mb-rel-cell`, zero `mb-rel-retry-*`. `caaFindHeaderForTable()` is
+    document-order (`findH3ForTable()`, then the last `<h2>` preceding the
+    table), so wrapper nesting stops mattering; it is the same resolver
+    `_artCreateOrUpdateToggleButton()` already used.
+  - **`button:last-of-type` matched the wrong button.** It means "the first
+    `<button>` in document order that is the last `<button>` among ITS OWN
+    parent's children" — not "the heading's last button". On an `<h3>` carrying
+    a sub-table filter it resolves to `#mb-stf-<col>-clear`, several levels deep,
+    so the control was inserted INSIDE `span.mb-stf-input-wrap`. Measured on
+    `debug/right-flags-release-events.html` (place-performances, 2026-09-18): 4
+    of 5 sub-tables, the exception being the one sub-table that had artwork and
+    so took the `_art` branch instead.
+  - **The multi-table `<h2>` guard stays.** There the `<h2>` is the page heading
+    and belongs to `#mb-rel-retry-global`; only an `<h3>` may own a per-table
+    control. On a SINGLE-table page the `<h2>` is this table's only heading —
+    before 9.99.1121 the walk stopped there and returned `null` too, which is
+    why no spec had ever seen these buttons: `FIXTURE_SETTINGS_OVERRIDE` forces
+    `sa_enable_caa_pics` off, so every single-table fixture took the null path.
+  - **The gate is `_relTableHasColumn(table)`, per TABLE, not
+    `_relPageHasColumn()`.** Both creation sites — the loop in
+    `_relCreateRetryButtons()` and the block inside
+    `_artCreateOrUpdateRetryButton()` — asked the PAGE-wide question, so on a
+    page whose sub-tables differ, every sub-table got a `🔗⟳` for a column it
+    does not have. `place-performances` groups by relationship type, so one page
+    mixes recording-targeted sub-tables (column stripped by
+    `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`) with
+    release-targeted ones: `debug/place-performances-bug.html` (2026-09-21) has
+    4 strays of 5. **`_relTableHasColumn()` asks the `<thead>` first, and that
+    is the load-bearing half** — `runFilter()` REMOVES non-matching rows, so a
+    tbody-only test reports "no column" for a sub-table a filter has narrowed to
+    nothing, and these callers do not re-run on a keystroke. A sweep alongside
+    the loop drops a stray left by the other site, matched on
+    `/^mb-rel-retry-(\d+)$/` — **the numeric form only**, since
+    `mb-rel-retry-global` and `mb-rel-retry-failed` share the prefix and are not
+    per-table.
+  - **Every `mb-rel-retry-{i}` in every saved snapshot was built by the `_art`
+    branch**, i.e. by `_artCreateOrUpdateRetryButton()` anchoring on the artwork
+    run. That is why both defects survived: the fallback had essentially never
+    produced a correctly placed control, and the spec that names
+    `#mb-rel-retry-0` asserts EXISTENCE. On `series-releases` with artwork off
+    it existed, inside `#mb-filter-container`, and the spec was green. **Assert
+    the parent element, not the id's presence.**
 
-Covered by `tests/fixtures/rel-retry-failed-only.spec.js`; mutation list
+Where the controls LAND is covered separately, by
+`tests/fixtures/rel-retry-anchor-placement.spec.js` (mutation list
+`scripts/mutations/rel-retry-anchor-placement.json`), on the new
+`tests/fixtures/artist-works-pending-edits.html` fixture — which keeps the
+real `<form>` wrapper that `artist-works-attributes.html` drops, and is the
+reason the missing-control half is reproducible at all.
+
+What they DO is covered by `tests/fixtures/rel-retry-failed-only.spec.js`;
+mutation list
 `scripts/mutations/rel-retry-failed-only.json`, which carries one honest
 `expect: "pass"` — the done-wins rule needs a fixture listing the same entity
 twice, and no committed fixture has one. `__saTest.relFailedMbids()` exists
@@ -2564,6 +2669,29 @@ re-anchors after a filter re-creates `.mb-row-count-stat`.
 Before the pill this was invisible — the buttons merely looked shuffled — so
 there was nothing to notice. Do not "simplify" any of those four back to
 `anchor.after(...)`.
+
+**`_hdrCtlAnchor(header)` is the sibling rule for the OTHER direction — where a
+run does not exist yet.** `_ctlRunEnd()` answers "this control belongs beside
+that one"; this answers "this is the first control in that heading, where does
+it go". Both are needed, and getting the second wrong is how a control ends up
+outside the run entirely rather than merely mis-ordered inside it.
+
+It queries `:scope >` only, in the order
+`[id^="mb-caa-toggle-btn-"] / [id^="mb-eaa-toggle-btn-"] / [id^="mb-rel-retry-"]`
+(last match) → `.mb-row-count-stat` → `.mb-toggle-icon` → `lastElementChild`
+→ `null`. **Never `header.querySelector('button:last-of-type')`**, which is
+what `_relRetryAnchorFor()` used and which means "the first `<button>` in
+document order that is the last `<button>` among ITS OWN parent's children" —
+on an `<h3>` carrying a sub-table filter that is `#mb-stf-<col>-clear`, so the
+control was appended INSIDE `span.mb-stf-input-wrap`. See the Relationships
+retry section for the measurement.
+
+`.mb-row-count-stat` is the right default because it is the slot
+`_artCreateOrUpdateToggleButton()` already targets (`countStat.after(btn)`), and
+because `updateH2Count()` re-anchors every `:scope > [id^="mb-rel-retry-"]`
+after the rebuilt stat — so an `<h2>`-hosted control survives a filter
+re-render with no new hook. An `<h3>` gets no such re-anchor, but
+`renderGroupedTable()` rebuilds the whole heading and the controls with it.
 
 ### The sort group — a segmented pill, with zero DOM change
 

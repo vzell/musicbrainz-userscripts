@@ -1,0 +1,67 @@
+[
+  {
+    "name": "the ⏳ filter marks nothing (the defect itself)",
+    "why": "Restores the shipped behaviour: a structural filter that writes no highlight span. mb-collapse-toggle-has-match is computed only from _COLLAPSE_MATCH_SEL inside the hidden <li>s, so the collapsed cell hiding the pending author goes dark and looks identical to one with nothing pending.",
+    "edits": [
+      {
+        "find": "            if (ctx.pendingEditsOnly) _highlightRowPendingEdits(row);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-collapsed-cell.spec.js",
+    "grep": "tints exactly the toggles whose HIDDEN items carry a marker",
+    "expect": "fail"
+  },
+  {
+    "name": "the ⏳ filter marks the whole ROW instead of the markers",
+    "why": "The obvious over-broad implementation: mark everything in a matching row rather than the entities that are actually pending. Every multi-row cell of a pending row then tints, including 'Livin' on a Prayer / Recording artists', which holds no marker at all. This is why the assertion is 'tinted === hiddenHasMarker cell by cell' and not 'something is tinted'.",
+    "edits": [
+      {
+        "find": "        _cells.forEach(td => _highlightPendingEditsMatch(td, 'pending-edits-yes'));",
+        "replace": "        Array.from(row.cells).forEach(td => { td.normalize(); highlightCrossTag(td, /[\\s\\S]+/g, 'mb-column-filter-highlight'); });\n        void _cells;"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-collapsed-cell.spec.js",
+    "grep": "tints exactly the toggles whose HIDDEN items carry a marker",
+    "expect": "fail"
+  },
+  {
+    "name": "the marking also runs on the SOURCE rows",
+    "why": "An honest expect: \"pass\", and the prediction that produced it was WRONG in an instructive way. The reasoning was: testRowMatch()'s highlight reset only runs on the !matchOnly pass, so a marker written during the matchOnly pass lands on a source row nothing cleans, survives releasing the filter, and comes back on the next clone. The first two steps are true and the last is not — the reset at the top of testRowMatch() strips .mb-column-filter-highlight from the CLONE unconditionally, so however dirty the source row is, the rendered row is clean. Source-row pollution is therefore invisible to every DOM assertion here (and harmless to text, since getCleanColumnText() unwraps these spans). The real reason to keep the call inside the !matchOnly block is cost — the matchOnly pass runs over EVERY source row, not just the survivors — and cost is not what this spec measures.",
+    "edits": [
+      {
+        "find": "        if (ctx.pendingEditsOnly && !_rowHasPendingEdits(row)) return false;",
+        "replace": "        if (ctx.pendingEditsOnly && !_rowHasPendingEdits(row)) return false;\n        if (ctx.pendingEditsOnly) _highlightRowPendingEdits(row);"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-collapsed-cell.spec.js",
+    "grep": "releasing the filter clears every tint",
+    "expect": "pass"
+  },
+  {
+    "name": "the marking uses a class of its own instead of an existing one",
+    "why": "The plausible 'keep it separate' variant. The entity is still visibly marked, so a screenshot looks right, but the class is not in _COLLAPSE_MATCH_SEL and the collapsed cell advertises nothing — which is the whole point of the change. It would also escape testRowMatch()'s own highlight reset and getCleanColumnText()'s unwrap.",
+    "edits": [
+      {
+        "find": "        _cells.forEach(td => _highlightPendingEditsMatch(td, 'pending-edits-yes'));",
+        "replace": "        _cells.forEach(td => _findCellPendingEdits(td).forEach(pe => {\n            pe.node.normalize();\n            highlightCrossTag(pe.node, /[\\s\\S]+/g, 'mb-pending-edits-highlight');\n        }));"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-collapsed-cell.spec.js",
+    "grep": "tints exactly the toggles whose HIDDEN items carry a marker",
+    "expect": "fail"
+  },
+  {
+    "name": "the marker search is scoped to the row instead of per cell",
+    "why": "An honest expect: \"pass\". _highlightRowPendingEdits() resolves each marker's owning <td> via closest('td') purely so _findCellPendingEdits() is called once per marker-bearing cell rather than once per cell; handing it the row would highlight the same nodes. The grouping is an efficiency choice, not a correctness one, and no assertion here can tell the two apart.",
+    "edits": [
+      {
+        "find": "            const _td = span.closest('td');\n            if (_td) _cells.add(_td);",
+        "replace": "            const _td = span.parentElement && span.closest('td');\n            if (_td) _cells.add(_td.closest('tr') === row ? _td : _td);"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-collapsed-cell.spec.js",
+    "grep": "tints exactly the toggles whose HIDDEN items carry a marker",
+    "expect": "pass"
+  }
+]

@@ -13995,3 +13995,196 @@ from `configSchema` some time before 9.99.1129 (`grep -c` returns 0), so that
 line documents a control that does not exist. It belongs with the
 defaults-snapshot work in `org/config-handling.org`, which is meant to catch
 exactly this kind of schema-vs-docs drift.
+
+## 2026-09-21 — the Relationships retry control was anchored two different wrong ways (branch fix/rel-retry-anchor-and-pending-edits-highlight)
+
+Reported live on `/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works`
+(`artist-works`, `tableMode: 'single'`): the Relationships column renders, but
+there is no `#mb-rel-retry-0`. Snapshots:
+`debug/artist-works-pending-edits-uncollapsed.html` and
+`debug/artist-works-pending-edits-collapsed.html`, both captured 2026-09-21 at
+9.99.1130 with the ⏳ pending-edits filter engaged (5 of 200 rows).
+
+`_relRetryAnchorFor(tbl, i)` had two independent defects. The `_art` branch —
+anchor on `#mb-caa-toggle-btn-retry-{i}` — masked both, because **every
+`mb-rel-retry-{i}` in every saved snapshot in `debug/` was created by
+`_artCreateOrUpdateRetryButton()`, not by this fallback**. The fallback had
+essentially never produced a correctly placed control in its life.
+
+**Defect 1 — the sibling walk cannot leave a wrapper.** The walk was
+`tbl.previousElementSibling` in a loop. On this page the DOM is
+
+```
+div#content
+  h2 "Works"                                   <- the heading
+  script type="application/json"
+  form action="/work/merge_queue?returnto=…"
+    nav
+    table.tbl.mergeable-table                  <- the table
+```
+
+so the walk sees `<nav>`, then `null`, and returns `null` from inside the
+`<form>`. `_relCreateRetryButtons()`'s `if (sb && a) a.after(sb)` then discards
+the button it had just built, and with it both `⚠⟳` controls, which anchor on
+`#mb-rel-retry-{i}` / `#mb-rel-retry-0`.
+
+This shape is not rare and was already on record: the 2026-07-01 entry at the
+top of this file notes `report_dup.html` as `table class="tbl mergeable-table"`,
+`wrapped in <form action="/artist/merge_queue" method="post">`. A structural
+sweep of the committed `tests/snapshots/*/rendered.html` finds the same
+wrapper-nesting on `artist-events` and `user-open-edits` (`<form>`) and on
+`notes-received` (`div.edit-notes`) and `recording-fingerprints`
+(`div.acoustid-fingerprints`) — those four carry no Relationships column, but
+they are the same shape, which is what makes this a class rather than one page.
+
+**Defect 2 — `button:last-of-type` is not "the heading's last button".** It
+means *the first `<button>` in document order that is the last `<button>` among
+ITS OWN parent's children*. On an `<h3>` carrying a sub-table filter that
+resolves to the STF's own clear button, several levels down, so the control was
+appended inside the filter's input wrapper. Measured on
+`debug/right-flags-release-events.html` (place-performances "Madison Square
+Garden", 2026-09-18), 4 of 5 sub-tables:
+
+```
+mb-rel-retry-0 -> span.mb-stf-input-wrap < span.mb-subtable-filter-wrapper
+                  < span.mb-subtable-filter-container < h3.mb-toggle-h3
+   siblings: [input#mb-stf-engineering_location_for_recording-input,
+              button#mb-stf-engineering_location_for_recording-clear,
+              button#mb-rel-retry-0]
+mb-rel-retry-4 -> h3.mb-toggle-h3            <- the one sub-table WITH artwork
+```
+
+**Fix.** The heading is resolved with `caaFindHeaderForTable()` (document
+order, wrapper-agnostic — the resolver `_artCreateOrUpdateToggleButton()` was
+already using), and the insertion point with a new `_hdrCtlAnchor(header)`
+querying `:scope >` only: the last existing run member
+(`mb-caa-toggle-btn-*` / `mb-eaa-toggle-btn-*` / `mb-rel-retry-*`), else
+`.mb-row-count-stat`, else `.mb-toggle-icon`, else `lastElementChild`. The
+multi-table `<h2>` guard is unchanged — there the `<h2>` belongs to
+`#mb-rel-retry-global`.
+
+**Why no spec saw it.** `tests/fixtures/artist-works-attributes.html` renders
+`<h2>Works</h2>` as a direct sibling of `<table class="tbl mergeable-table">`,
+dropping the `<form>`; and `tests/fixtures/rel-retry-failed-only.spec.js`
+asserts `#mb-rel-retry-0` EXISTS. On its `series-releases` shell with
+`sa_enable_caa_pics: false` it did exist — buried inside `#mb-filter-container`
+— and the spec was green throughout. The new spec asserts the PARENT ELEMENT.
+
+## 2026-09-21 — the ⏳ pending-edits filter marked nothing, so collapsed cells hid their own matches
+
+Same report, same two snapshots. With the ⏳ toggle engaged, 12
+`.mb-cell-collapse-toggle` spans, **0** carrying `mb-collapse-toggle-has-match`,
+and **0** `.mb-column-filter-highlight` anywhere on the page — while the in-table
+`span.mp` markers sat at `<li>` index 1 and 2 of `td.mb-has-collapse-toggle`
+cells (`ul.work-artists` and `ul.artist-roles`), i.e. exactly the hidden items
+the tint exists to advertise.
+
+Root cause is a property of the tint rather than of the filter:
+`mb-collapse-toggle-has-match` is computed ONLY from `_COLLAPSE_MATCH_SEL`
+spans found inside `lis.slice(1)`. A structural filter — one with no text to
+type — writes no such span, so it gets no tint. `.mp` is a CSS-only orange
+marker with no text of its own, `testRowMatch()` consults
+`ctx.pendingEditsOnly` as a predicate and marks nothing, and a collapsed
+"Authors" cell hiding a pending author was byte-identical to one with no
+pending author at all.
+
+The 📊 dropdown's `⏳ has pending edits` entry already did the right thing via
+`_highlightPendingEditsMatch()`, for one column. The fix gives the row-level
+toggle the same treatment: `_highlightRowPendingEdits(row)`, called from
+`testRowMatch()`'s existing `if (finalHit && !matchOnly)` block, collects the
+distinct `<td>`s holding a `span.mp` in one `querySelectorAll` and delegates to
+that same helper. The class is therefore `mb-column-filter-highlight`, which is
+already in `_COLLAPSE_MATCH_SEL`, already cleared by `testRowMatch()`'s own
+reset and already unwrapped by `getCleanColumnText()` — so the cell toggle, the
+per-sub-table `▤` button and the global collapse button all light up with no
+further change, and no sort key, cached row text or filter key moves.
+
+Considered and rejected: teaching the ~10 sites that spell out the four
+highlight classes to additionally count `span.mp` in a hidden `<li>` while that
+table's ⏳ toggle is engaged. It needs a per-table state lookup at every one of
+them and still leaves the matched entity unmarked in the visible rows.
+
+**One mutation-testing finding, from a prediction that was wrong.** The planted
+defect "call the highlighter on the SOURCE rows too" was expected to fail, on
+the reasoning that `testRowMatch()`'s highlight reset runs only on the
+`!matchOnly` pass, so a marker written during the `matchOnly` pass lands on a
+source row nothing ever cleans and comes back on the next render. The first two
+steps hold; the last does not. That reset strips
+`.mb-column-filter-highlight` from the CLONE **unconditionally**, so however
+dirty a source row is, the rendered row is clean — and `getCleanColumnText()`
+unwraps the spans, so the row's text is unaffected too. Source-row pollution
+here is invisible to every DOM assertion. The real reason to keep the call
+inside the `!matchOnly` block is COST: the `matchOnly` pass runs over every
+source row, not just the survivors. Recorded as an `expect: "pass"` in
+`scripts/mutations/pending-edits-collapsed-cell.json` rather than deleted,
+because the wrong half of the reasoning is the part worth keeping.
+
+## 2026-09-21 — the retry control was offered on sub-tables with no Relationships column (same branch)
+
+Reported after the anchoring fix above landed, on
+`/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances`
+(`place-performances`, `tableMode: 'multi'`, 5 sub-tables): the first four each
+show a `🔗⟳` although they have no Relationships column at all. Only the fifth,
+"Recording location for release", legitimately has one.
+Snapshot: `debug/place-performances-bug.html`, all sub-tables uncollapsed.
+
+Measured from it:
+
+```
+ [0] relCells=   0  relTh=0  btn=mb-rel-retry-0     Engineering location for recording
+ [1] relCells=   0  relTh=0  btn=mb-rel-retry-1     Producing location for recording
+ [2] relCells=   0  relTh=0  btn=mb-rel-retry-2     Recording location for recording
+ [3] relCells=   0  relTh=0  btn=mb-rel-retry-3     Shooting location for recording
+ [4] relCells=  16  relTh=1  btn=mb-rel-retry-4     Recording location for release
+```
+
+`place-performances` groups by RELATIONSHIP TYPE, not by entity kind, so one
+page mixes recording-targeted sub-tables with release-targeted ones.
+`_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` correctly strips the
+`<th>` and every `.mb-rel-cell` from the first four. **Both sites that create a
+per-table `🔗⟳` then asked the PAGE-wide question** —
+`_relCreateRetryButtons()` gated on `_relPageHasColumn()`, and
+`_artCreateOrUpdateRetryButton()`'s block on `activeInjectedColumns.length` —
+so all five got one.
+
+**This is older than the anchoring fix, and the anchoring fix is what made it
+visible.** `debug/right-flags-release-events.html` (2026-09-18) is the same page
+one version earlier, with the same four strays — but
+`_relRetryAnchorFor()`'s `button:last-of-type` anchor had buried each of them
+inside `span.mb-stf-input-wrap`, next to the sub-table filter's ✗ clear button,
+where nobody noticed them. Placing the control where it belongs is what put a
+`🔗⟳` visibly beside four section headings that have nothing to retry.
+
+Fix: `_relTableHasColumn(table)`, used at both sites, plus a sweep beside the
+loop for a stray the loop's own `return` cannot reach. **The `<thead>` arm is
+the load-bearing one**: `runFilter()` REMOVES non-matching rows, so a
+`tbody td.mb-rel-cell` test alone would report "no column" for any sub-table a
+filter has narrowed to nothing — and since neither caller re-runs on a
+keystroke, the button would go and not come back. The `<th>` is what the
+suppression actually removes, it carries `data-col-name` (unlike Picard's), and
+`runFilter()` never touches the `<thead>`.
+
+**Two mutation-testing findings.** First, the loop guard and the sweep COVER FOR
+EACH OTHER on any committed fixture — removing either alone leaves the spec
+green, and only removing both reproduces the defect. Recorded as one combined
+`expect: "fail"` plus two `expect: "pass"` singles in
+`scripts/mutations/rel-retry-anchor-placement.json`, so a future tidy-up of
+either has to fail the combined entry rather than find a passing suite. Second,
+the first attempt at the "sweep is not restricted to the numeric id form"
+mutation relaxed `(\d+)` to `(\d*)`, which changes nothing —
+`mb-rel-retry-global` still fails to match, because `global` is not digits
+followed by end-of-string. `(.*)` is the mutation that bites: `Number('global')`
+is `NaN`, `_tbls[NaN]` is `undefined`, and the sweep deletes the page-wide
+controls.
+
+**A fixture note worth keeping.** `place-performances` does NOT group by
+`<h3>` + `<table>` pairs. That shape is gated on
+`features.listToTable`/`groupByH3`; this pageType has neither, and its sections
+are `<tr class="subh">` rows inside ONE `<table class="tbl">`.
+`startFetchingProcess()`'s generic branch takes the subh `<th>`'s text as the
+raw group name and appends the entity type read from the first following data
+row's main-column link — so `"Recording location for"` plus a `/release/` link
+becomes `"Recording location for release"`. The first attempt at
+`tests/fixtures/place-performances-mixed-sections.html` used two `<h3>`
+sections and rendered as a single unnamed group ("Unknown (2)"), which is how
+this was found.

@@ -15,8 +15,8 @@ For *which pageTypes are covered and which are planned*, see
 #+begin_src sh
 cd ShowAllEntityData
 npm install          # first time only
-npm test             # the safe default: 389 fixture tests, ~2 m, no network
-npm run test:full    # all 403, incl. the two @slow specs — what a merge needs
+npm test             # the safe default: 414 fixture tests, ~2 m, no network
+npm run test:full    # all 428, incl. the two @slow specs — what a merge needs
 #+end_src
 
 =npm test= needs no network, no login, and no MusicBrainz cooperation. Start
@@ -174,8 +174,8 @@ on any of them for a decision.
 
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
-| =npm test= (389 tests, =@slow= excluded)    | *≈ 2 m 6 s*  | measured 2026-09-20, =NB-3641=, 14 workers              |
-| =npm run test:full= (403 tests)             | *≈ 5 m 18 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
+| =npm test= (414 now, =@slow= excluded)      | *≈ 2 m 6 s*  | measured 2026-09-20 at 389 tests, =NB-3641=, 14 workers |
+| =npm run test:full= (428 now)               | *≈ 5 m 18 s* | measured 2026-09-20 at 403 tests, =NB-3641=, 14 workers |
 | =npm run test:slow= (14 tests, 2 files)     | *≈ 4 m 48 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
 | — the whole suite at 353 tests, pre-=@slow= | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
 | slowest single fixture spec                 | *≈ 324 s*    | measured 2026-09-20, =NB-3641= — =rel-auto-retry-failed= (7 tests, =--workers=1=) |
