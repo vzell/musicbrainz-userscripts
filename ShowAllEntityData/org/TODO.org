@@ -702,7 +702,7 @@ second bullet: yes, but as a *generated* artifact that nothing reads at runtime
 (that file's "Question 2" section has the reasoning, including why a
 runtime-fetched defaults file is the wrong shape).
 
-* Show me instructions for the end-users of the current configuration handling after implementing new features
+* DONE Show me instructions for the end-users of the current configuration handling after implementing new features
 
 1.)
 
@@ -726,3 +726,16 @@ their configuation
 
 - I will be shipping at least 1129 (even better all the configuration handling improvements)
 - start with Item 2
+
+* DONE Arm E tooling — reboot once, then 18 days with zero Claude Code on petri
+
+Read the @tests/MEASUREMENTS.org specifically the section "Arm E tooling — reboot once, then 18 days with zero Claude Code on petri"
+
+I ran now tests under cron for almost 2 weeks, see worktree at @/home/vzell/git/saed-perf-9.99.1049-arm-e
+
+Analyze the results, and adjust MEASUREMENTS.org accordingly and cleanup the worktree
+
+* Item 3 in config-handling.org
+
+Tackle Item 3 in @org/config-handling.org
+Item 2 has been done, but it looks like it's not flagged as done

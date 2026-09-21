@@ -4,13 +4,15 @@
 * Status
 
 Read off the code at 9.99.1129. Each finding below names the branch it ships
-on; the table's Branch column is the authority on what has landed.
+on; the table's Version column is the authority on what has landed. Branch
+names are kept for the archaeology only — a merged branch is deleted, so the
+version is the part that stays resolvable.
 
 *Shipped since:*
 
-| Finding | Branch                          | Spec                                              |
-|---------+---------------------------------+---------------------------------------------------|
-| [[#F2][F2]]      | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js= |
+| Finding | Version   | Branch                          | Spec                                               |
+|---------+-----------+---------------------------------+----------------------------------------------------|
+| [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js= |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -364,19 +366,31 @@ drift. If one is ever wanted, it belongs beside =PICARD_ARMS=/=REL_ARMS= as a
 
 Four items, each its own branch and its own session.
 
-** Item 1 — this file
+** DONE Item 1 — this file
 :PROPERTIES:
 :CUSTOM_ID: item-1
 :END:
 
-Branch =docs/config-handling-analysis=. This document, plus folding the two
-=org/TODO.org= headlines into pointers here. No =// @version= bump and no
-changelog entry — nothing in the userscript runtime changes.
+*Shipped 2026-09-21* as commit =127c7c3=, on =main= while the header still read
+9.99.1129. No =// @version= bump and no changelog entry — nothing in the
+userscript runtime changed.
 
-** Item 2 — numeric coercion, and the two zero-disable reads
+Branch =docs/config-handling-analysis=. This document, plus folding the two
+=org/TODO.org= headlines into pointers here.
+
+** DONE Item 2 — numeric coercion, and the two zero-disable reads
 :PROPERTIES:
 :CUSTOM_ID: item-2
 :END:
+
+*Shipped 2026-09-21 as 9.99.1130* (merge =5cee02c=). Both halves landed in one
+commit as required. =_coerceNumericSettings()= runs immediately before
+=Object.assign(settings, Lib.settings)= and rewrites every =type: 'number'= key
+in =Lib.settings= in place; an empty or unparseable value falls back to the
+schema default rather than to =0=. The three =|| N= reads became =?? N=.
+Covered by =tests/fixtures/settings-numeric-coercion.spec.js= (7 tests) and
+=scripts/mutations/settings-numeric-coercion.json=. Confirmed live beforehand:
+an auto-collapse threshold of =0= still collapsed a 1000-entity table.
 
 Branch =fix/settings-numeric-coercion=. *Both halves in one commit* — see [[#F2][F2]]'s
 last subsection for why shipping 2a alone is a regression.

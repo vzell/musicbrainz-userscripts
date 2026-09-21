@@ -1,0 +1,106 @@
+[
+  {
+    "name": "a table value goes back through String() (the original F3 defect)",
+    "why": "The shipped bug, reverted exactly: dropping the `table` arm from _applyConfigSettings() lets a row array fall through to the String() arm, so [['series-releases','\"Artist\"']] becomes the string 'series-releases,\"Artist\"'. Lib.getTableRows() then rejects the non-array, the lazy seeders refill from the built-in defaults, and every hand-entered row is gone. The round-trip test must notice.",
+    "edits": [
+      {
+        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);",
+        "replace": "                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "every hand-entered table survives an export",
+    "expect": "fail"
+  },
+  {
+    "name": "the same defect, seen from the user's side",
+    "why": "Identical edit to the entry above, scored against the user-visible test instead. Kept separate on purpose: the mechanism test reads GM storage, and a reader could reasonably ask whether `Array.isArray` is merely an internal detail. This shows the consequence — a column configured to start hidden comes back visible after an import, which is what a person would actually report.",
+    "edits": [
+      {
+        "find": "                } else if (schemaCfg.type === 'table') {\n                    // Row arrays are stored as-is. NEVER String() — see above.\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);",
+        "replace": "                } else {\n                    // string / text / color_picker / popup_dialog / keyboard_shortcut\n                    coerced = String(value);"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "a column configured to start hidden still starts hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "the Array.isArray guard is dropped, so a non-array is stored unmodified",
+    "why": "The plausible over-simplification of the fix: 'tables are stored verbatim' taken to mean EVERY value offered for a table key. A corrupt or hand-edited file would then write a string into GM storage just as the original bug did, but via the new arm. The rejection test must notice — and must notice on the STORED VALUE, not just the invalid count, which is why that test asserts both.",
+    "edits": [
+      {
+        "find": "                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;",
+        "replace": "                    coerced = value;"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "a non-array offered for a table key is rejected",
+    "expect": "fail"
+  },
+  {
+    "name": "the type:function skip is removed on import",
+    "why": "Restores the pre-fix behaviour of writing sa_fn_edit_pinned_filter_list's internal method name into GM storage as if it were a user value. Only the import half of that test may notice — if the export assertion fails too, the two skips have been conflated.",
+    "edits": [
+      {
+        "find": "            if (!schemaCfg || schemaCfg.type === 'divider' || schemaCfg.type === 'function') {",
+        "replace": "            if (!schemaCfg || schemaCfg.type === 'divider') {"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "the export omits the type:function key",
+    "expect": "fail"
+  },
+  {
+    "name": "the type:function skip is removed on export",
+    "why": "The export half of the same pair, mutated separately so each skip is its own guard. VZ_MBLibrary's own save/snapshot/reset loops skip ['divider','function','table']; this consumer's two loops skipped only 'divider', and both halves needed fixing.",
+    "edits": [
+      {
+        "find": "            if (schemaCfg.type === 'divider' || schemaCfg.type === 'function') continue;",
+        "replace": "            if (schemaCfg.type === 'divider') continue;"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "the export omits the type:function key",
+    "expect": "fail"
+  },
+  {
+    "name": "the export reads Lib.settings for tables instead of GM storage",
+    "why": "The defect reported from a real browser on 2026-09-21, one day after the import half was fixed: VZ_MBLibrary's table editor writes GM_setValue and neither updates settingsInterface.values nor reloads, so Lib.settings keeps its page-load snapshot. Exporting from it omitted the user's edit, and importing that file wrote the pre-edit rows back over the good ones. The mid-session-edit test must notice; the plain round-trip test must NOT, since it reloads before exporting and the two sources agree there.",
+    "edits": [
+      {
+        "find": "                const rows = _configLiveTableRows(key);\n                if (!rows) continue;   // nothing stored — omit rather than invent\n                coerced = rows;",
+        "replace": "                if (!Array.isArray(live)) continue;\n                coerced = live;"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "a table edited AFTER page load exports its current rows",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty stored table is exported as [] instead of being dropped",
+    "why": "Drops the `length > 0` half of the guard. An emptied table cannot survive a reload anyway — every seeder reads an empty list as 'refill from the built-ins' — so `[]` is a state the file format cannot honestly promise, and exporting it ACTIVELY empties the destination's table on import. The deleted-key half of that test cannot see this (GM_getValue returns undefined there, which fails Array.isArray either way), which is why the test stores an explicit [] as well.",
+    "edits": [
+      {
+        "find": "        return (Array.isArray(rows) && rows.length > 0) ? rows : null;",
+        "replace": "        return Array.isArray(rows) ? rows : null;"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "a table with no stored rows is dropped from the export",
+    "expect": "fail"
+  },
+  {
+    "name": "the table arm is placed AHEAD of the number arm",
+    "why": "EXPECTED TO PASS. Arm order within the coercion chain is not load-bearing — the four type tests are mutually exclusive, so no value can reach two arms. Recorded so the next person to reorder them knows it was checked rather than discovering it by breaking something subtle later.",
+    "edits": [
+      {
+        "find": "                if (schemaCfg.type === 'checkbox') {\n                    coerced = value === true || value === 'true';\n                } else if (schemaCfg.type === 'number') {",
+        "replace": "                if (schemaCfg.type === 'table') {\n                    if (!Array.isArray(value)) { invalid++; continue; }\n                    coerced = value;\n                } else if (schemaCfg.type === 'checkbox') {\n                    coerced = value === true || value === 'true';\n                } else if (schemaCfg.type === 'number') {"
+      }
+    ],
+    "spec": "tests/fixtures/config-import-export.spec.js",
+    "grep": "every hand-entered table survives an export",
+    "expect": "pass"
+  }
+]

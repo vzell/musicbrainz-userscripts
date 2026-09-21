@@ -2132,6 +2132,52 @@ SETTINGS DIALOG SAFETY GUARDS
   Defaults") before any defaults are applied. Click OK to proceed, or Cancel
   to abort.
 
+SAVE / LOAD CONFIGURATION
+--------------------------
+Two buttons in the bottom-left corner of the ⚙️ Settings dialog let you keep a
+copy of your whole configuration and move it between browsers or profiles.
+
+• 💾 Save configuration — writes every setting to a versioned JSON file.  The
+  familiar filename dialog appears first (draggable, editable filename, Alt+S
+  to confirm, Escape to cancel) with a FILE METADATA block showing the script
+  version, the file-format version and the number of keys.
+• 📂 Load configuration — pick a previously saved file.  A summary reports how
+  many settings were applied, skipped and rejected, and the page then reloads
+  so the imported settings take effect (same as pressing SAVE).
+
+WHAT THE FILE CONTAINS
+• Every setting in the ⚙️ Settings dialog — the full set, not just the ones you
+  changed.  Each key is on its own line, so two saved files (or a file from
+  before and after a change) diff cleanly in any text-diff tool.
+• All five editable lookup tables, with your own rows: Default Hidden Columns,
+  the three Relationships icon tables (relation type / other database /
+  streaming service) and the Unicode Character Picker catalogue.
+• A _meta header: script version, file-format version and export timestamp.
+  A file from a different format version still imports, with a note in the
+  summary; unknown keys are ignored, and any key missing from the file keeps
+  whatever value it has now.
+
+WHAT THE FILE DOES NOT CONTAIN
+These live outside the Settings dialog and are NOT carried over — recreate them
+by hand on a new machine:
+• Which columns you have hidden per page type (the 👁️ Visible menu's own
+  memory).  The Default Hidden Columns *table* is saved; the per-page-type
+  state you build up by clicking is not.
+• The pinned filter list.  Note this one: you edit it from inside the Settings
+  dialog via 🔧 Edit Pinned Filter List, so it looks like part of the
+  configuration, and it is not in the file.
+• Filter history, the Statistics- and Load-dialog positions and sizes, the
+  Settings dialog's own size and column widths, the 📊 dropdown's collapsed
+  sections, and the shared library's own preferences.
+
+WHERE THE BUTTONS APPEAR
+The two buttons are added by this script, so they are present only when the
+Settings dialog is opened from one of its own entry points: the ⚙️ button in
+the controls bar, Ctrl+, or the prefix key followed by ",".  Opening Settings
+from the Tampermonkey script menu ("⚙️ Userscript Settings Manager") or from
+the MusicBrainz "Editing" menu opens the shared library's own dialog instead —
+there the 💾/📂 buttons are absent and 🔧 Edit Pinned Filter List does nothing.
+
 CHANGELOG DIALOG (📜 ChangeLog in the Tampermonkey menu)
 ----------------------------------------------------------
 • The changelog is loaded from GitHub (with a 1-hour GM cache) at startup.
