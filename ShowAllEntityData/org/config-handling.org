@@ -13,6 +13,7 @@ version is the part that stays resolvable.
 | Finding | Version   | Branch                          | Spec                                               |
 |---------+-----------+---------------------------------+----------------------------------------------------|
 | [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js= |
+| [[#F3][F3]]      | 9.99.1136 | =fix/config-import-tables=      | =tests/fixtures/config-import-export.spec.js=      |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -420,10 +421,34 @@ settings. Test: =tests/fixtures/settings-numeric-coercion.spec.js=, seeding the
 values as *strings* to reproduce post-SAVE storage — which no existing fixture
 does — plus =scripts/mutations/settings-numeric-coercion.json=.
 
-** Item 3 — config import must not destroy the editable tables
+** DONE Item 3 — config import must not destroy the editable tables
 :PROPERTIES:
 :CUSTOM_ID: item-3
 :END:
+
+*Shipped 2026-09-22 as 9.99.1136* (merge =7f3efbf=). Covered by
+=tests/fixtures/config-import-export.spec.js= (8 tests) and
+=scripts/mutations/config-import-tables.json= (8 entries).
+
+*It shipped with a second defect the plan did not contain, found by hand in a
+real browser and worth recording here because the plan's own reasoning is what
+hid it.* The import fix was correct, and a symbol added to the Unicode picker
+still vanished across a 💾/📂 round trip — because =_buildConfigJson()= read
+=Lib.settings=, which VZ_MBLibrary populates ONCE in =settingsInterface.init()=.
+The settings dialog can live with that (its SAVE reloads); the TABLE EDITOR's
+own 💾 Save writes =GM_setValue= and neither refreshes that object nor reloads.
+So the export shipped the pre-edit rows and the import faithfully restored them
+— F3's destruction arriving from the opposite end, carried out by the fixed
+import. Fixed by =_configLiveTableRows()=, which reads GM storage directly.
+
+**The mechanism was already written down** — in the branch's own DEBUG-NOTES
+entry, filed under /two things learned while making this testable/, because the
+spec needs two page loads to see past the snapshot. It was recorded as a
+constraint on the TEST and never read as a fact about the FEATURE, and the
+spec's reload is precisely what made all seven tests agree with the buggy code.
+The transferable question, for any item still on this list: *does a test need a
+step the user cannot perform?* Here there is no reload between the table editor
+and the export button — they are in the same dialog.
 
 Branch =fix/config-import-tables=. In =_loadSettingsConfig()=: skip
 =type: 'function'= alongside =divider=, and for =type: 'table'= accept the value
