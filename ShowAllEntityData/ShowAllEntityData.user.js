@@ -67165,6 +67165,48 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether THIS table has a Relationships column, as opposed to the page
+     * having one somewhere.
+     *
+     * `_relPageHasColumn()` above answers the page-wide question, and both
+     * sites that create a per-table `🔗⟳` used to be gated on it alone — so on a
+     * page where SOME sub-table has the column, EVERY sub-table got a retry
+     * button, including the ones
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` had just stripped
+     * the column from. Measured on `debug/place-performances-bug.html`
+     * (Madison Square Garden, 5 sub-tables): tables 0-3 hold zero
+     * `td.mb-rel-cell` and no Relationships `<th>`, and each carried a
+     * `🔗⟳` that could only ever have re-fetched nothing. Only table 4,
+     * "Recording location for release", actually has the column.
+     *
+     * The defect is older than it looks: the buttons were always created, but
+     * `_relRetryAnchorFor()`'s `button:last-of-type` anchor buried them inside
+     * `span.mb-stf-input-wrap`, where they were easy to miss —
+     * `debug/right-flags-release-events.html` is the same page with the same
+     * four strays, one version earlier. Placing them correctly is what made
+     * them visible.
+     *
+     * **The `<thead>` test comes first because it is filter-proof.**
+     * `runFilter()` REMOVES non-matching rows, so a tbody-only test reports
+     * "no column" for any sub-table a filter has narrowed to nothing, and the
+     * button would vanish and not come back — this function's callers do not
+     * run on every keystroke. The `<th>` is what
+     * `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` actually removes,
+     * it carries `data-col-name` (unlike Picard's, see CLAUDE.md), and
+     * `runFilter()` never touches it. The tbody arm stays as a fallback for any
+     * path that has rel cells before `makeTableSortableUnified()` has stamped
+     * the header.
+     *
+     * @param   {?HTMLTableElement} table
+     * @returns {boolean}
+     */
+    function _relTableHasColumn(table) {
+        if (!table) return false;
+        return !!table.querySelector('thead th[data-col-name="Relationships"]')
+            || !!table.querySelector('tbody td.mb-rel-cell');
+    }
+
+    /**
      * Whether the page has the Relationships column OR still needs it built —
      * the predicate for the sites that CREATE the column's cells and toggles,
      * as opposed to those acting on ones already rendered.
@@ -69634,11 +69676,24 @@ a { color: #1565c0; }`;
             }
 
         }
-        Array.from(document.querySelectorAll('table.tbl')).forEach((tbl,i)=>{
+        const _tbls = Array.from(document.querySelectorAll('table.tbl'));
+        _tbls.forEach((tbl,i)=>{
+            // Per TABLE, not per page: a sub-table whose column
+            // _suppressRelationshipsIfNoReleaseOrReleaseGroupLinks() removed has
+            // nothing for this button to retry. See _relTableHasColumn().
+            if (!_relTableHasColumn(tbl)) return;
             const sb=mk('mb-rel-retry-'+i,'Retry Relationship icons for this sub-table (network reload, clears IDB)',()=>_relRetryTable(tbl));
             const a=_relRetryAnchorFor(tbl,i);
             if(sb&&a)a.after(sb);
             if(!sb)return;
+        });
+        // Drop a stray left by an earlier pass — by the other creation site in
+        // `_artCreateOrUpdateRetryButton()`, or by a table that has since lost
+        // its column. Matched on the NUMERIC form alone: `mb-rel-retry-global`
+        // and `mb-rel-retry-failed*` share the prefix and are not per-table.
+        document.querySelectorAll('[id^="mb-rel-retry-"]').forEach(el => {
+            const m = /^mb-rel-retry-(\d+)$/.exec(el.id);
+            if (m && !_relTableHasColumn(_tbls[Number(m[1])])) el.remove();
         });
         // A freshly built ⚠⟳ carries no count yet, and on a settled page no
         // further cell write is coming to trigger the coalesced refresh. Paint
@@ -79520,9 +79575,13 @@ a { color: #1565c0; }`;
 
         // ── Per-subtable Relationships retry button ───────────────────────
         const relRetryBtnId = 'mb-rel-retry-' + tableIndex;
+        // _relTableHasColumn(table), not activeInjectedColumns alone: that is a
+        // PAGE-wide answer, so on a page where only some sub-tables carry the
+        // column every other one got a retry button too. See its own JSDoc.
         if (!document.getElementById(relRetryBtnId) &&
                 Lib.settings.sa_enable_relationships_column &&
-                typeof activeInjectedColumns !== 'undefined' && activeInjectedColumns.length) {
+                typeof activeInjectedColumns !== 'undefined' && activeInjectedColumns.length &&
+                _relTableHasColumn(table)) {
             const relRetryBtn2   = document.createElement('button');
             relRetryBtn2.id      = relRetryBtnId;
             relRetryBtn2.type    = 'button';

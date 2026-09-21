@@ -647,18 +647,21 @@ that file's timeout.
 ** =npm run test:full= on the slow box — =vzell-lap=, 2026-09-21
 
 =vzell-lap= (4 cores, 16 GB), branch
-=fix/rel-retry-anchor-and-pending-edits-highlight= at 9.99.1130, 427
-chromium-fixtures tests in 112 files, Playwright's own default worker count (no
-=workers= key in =playwright.config.js=, so half the logical CPUs = *2*).
+=fix/rel-retry-anchor-and-pending-edits-highlight= at 9.99.1130,
+chromium-fixtures only, Playwright's own default worker count (no =workers= key
+in =playwright.config.js=, so half the logical CPUs = *2*).
 
-| Run | Started (UTC) | Wall clock | Result                    |
-|-----+---------------+------------+---------------------------|
-|   1 | 15:17:33      | 22.7 m     | 425 passed, *2 failed*    |
-|   2 | 15:44:06      | 22.2 m     | 427 passed                |
+| Run | Started (UTC) | Tests | Wall clock | Result                 |
+|-----+---------------+-------+------------+------------------------|
+|   1 | 15:17:33      |   427 | 22.7 m     | 425 passed, *2 failed* |
+|   2 | 15:44:06      |   427 | 22.2 m     | 427 passed             |
+|   3 | 17:12:23      |   428 | 23.9 m     | 428 passed             |
 
-*Both figures are ~4.3x =NB-3641='s 5 m 18 s at 403 tests*, which is what 2
-workers against 14 buys. Do not compare either number to the =NB-3641= rows
-above as if they measured the same thing.
+Run 3 is the same tree plus the per-table retry-button gate and its own test.
+
+*All three are ~4.2-4.5x =NB-3641='s 5 m 18 s at 403 tests*, which is what 2
+workers against 14 buys. Do not compare any of them to the =NB-3641= rows above
+as if they measured the same thing.
 
 *The two failures did not reproduce, and are recorded below rather than
 dismissed.* Both passed in run 2, and both passed standalone (14 tests, 1.5 m)

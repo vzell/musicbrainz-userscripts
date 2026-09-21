@@ -1,5 +1,25 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-09-21",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A sub-section with no Relationships column no longer offers a 🔗⟳ retry button for it. A place's Performances tab groups by relationship type, so its recording sections have no Relationships column while its release section does — and all five sections were being given a retry button, four of which could only ever have re-fetched nothing. Both places that create the button asked \"does this PAGE have the column\" instead of \"does this table have it\".",
+          "The same applies to the ⚠⟳ \"retry only what failed\" button, which attaches itself to the 🔗⟳ and so followed it onto those sections.",
+          "This is older than it looked: the buttons were always created there, but until the previous fix in this release they were inserted inside the sub-section's own filter box, where they were easy to miss. Putting them in the right place is what made them visible."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData_HELP.txt` needed no edit: it never claimed the retry buttons appear on every sub-section, and its description of what they do was and remains correct."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-09-21",
     "sections": [

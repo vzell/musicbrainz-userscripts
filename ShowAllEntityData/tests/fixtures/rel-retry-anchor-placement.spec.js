@@ -60,6 +60,12 @@ const WORKS_FIXTURE = path.join(__dirname, 'artist-works-pending-edits.html');
 const RG_URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0';
 const RG_FIXTURE = path.join(__dirname, 'pending-edits-multi.html');
 
+// Multi-table with MIXED sub-sections: place-performances groups by
+// relationship type, so its recording-targeted sub-table has no Relationships
+// column while its release-targeted one does.
+const PLACE_URL = 'https://musicbrainz.org/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances';
+const PLACE_FIXTURE = path.join(__dirname, 'place-performances-mixed-sections.html');
+
 const OK_BODY = JSON.stringify({
     relations: [{
         'target-type': 'url',
@@ -239,5 +245,58 @@ test.describe('Relationships retry controls sit in their heading\'s control run'
         const g = await placement(page, 'mb-rel-retry-global');
         expect(g, 'a multi-table page gets the global control').not.toBeNull();
         expect(g.parentTag, 'the global control lives on the page h2').toBe('H2');
+    });
+
+    test('a sub-table with no Relationships column gets no \ud83d\udd17\u27f3 at all', async ({ page }) => {
+        test.setTimeout(120000);
+        // place-performances groups by relationship type, so one page mixes a
+        // recording-targeted sub-table (column suppressed) with a
+        // release-targeted one (column present). Both creation sites used to
+        // gate on the PAGE-wide answer, so the first section got a retry button
+        // for a column it does not have — 4 strays of 5 sub-tables on the real
+        // page (debug/place-performances-bug.html).
+        await render(page, {
+            url: PLACE_URL, fixtureFile: PLACE_FIXTURE,
+            label: 'Show all Performances for Place',
+            routeGlob: 'https://musicbrainz.org/place/**/performances*',
+        });
+
+        // Wait past the 200 ms timer that builds these, and past the render
+        // tail, so "absent" means absent rather than "not yet".
+        await expect.poll(() => page.locator('#mb-rel-retry-1').count(),
+            { timeout: 30000 }).toBe(1);
+
+        const shape = await page.evaluate(() => Array.from(
+            document.querySelectorAll('table.tbl')).map((t, i) => ({
+                i,
+                // The label is the h3's own TEXT NODES: everything else in there
+                // is a control span (toggle icon, row-count stat, filter panel,
+                // and — on the section under test — the 🔗⟳ itself).
+                section: (() => {
+                    let el = t.previousElementSibling;
+                    while (el && el.tagName !== 'H3') el = el.previousElementSibling;
+                    return el ? Array.from(el.childNodes)
+                        .filter((n) => n.nodeType === 3)
+                        .map((n) => n.textContent).join('').trim() : null;
+                })(),
+                hasColumn: !!t.querySelector('thead th[data-col-name="Relationships"]'),
+                relCells: t.querySelectorAll('tbody td.mb-rel-cell').length,
+                hasRetry: !!document.getElementById('mb-rel-retry-' + i),
+            })));
+
+        expect(shape.length, 'the fixture renders both sections').toBe(2);
+        // The fixture's own asymmetry, asserted so an edit to it cannot quietly
+        // remove the case under test.
+        expect(shape.map((r) => [r.section, r.hasColumn])).toEqual([
+            ['Engineering location for recording', false],
+            ['Recording location for release', true],
+        ]);
+        expect(shape[0].relCells, 'the suppressed section really has no rel cells').toBe(0);
+
+        // THE assertion: the control tracks the COLUMN, not the page.
+        expect(shape.map((r) => [r.section, r.hasRetry])).toEqual([
+            ['Engineering location for recording', false],
+            ['Recording location for release', true],
+        ]);
     });
 });

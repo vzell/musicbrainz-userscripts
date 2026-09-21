@@ -63,5 +63,74 @@
     "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
     "grep": "is a direct child of its OWN h3",
     "expect": "pass"
+  },
+  {
+    "name": "_relTableHasColumn reads the tbody only",
+    "why": "An honest expect: \"pass\". The <thead> arm is there because runFilter() REMOVES non-matching rows, so a tbody-only test reports \"no column\" for a sub-table filtered to nothing and the button would be swept and not come back — these callers do not run on every keystroke. No fixture here filters a sub-table to zero rows and then re-triggers _relCreateRetryButtons(), so the two arms agree throughout and the spec cannot separate them.",
+    "edits": [
+      {
+        "find": "        return !!table.querySelector('thead th[data-col-name=\"Relationships\"]')\n            || !!table.querySelector('tbody td.mb-rel-cell');",
+        "replace": "        return !!table.querySelector('tbody td.mb-rel-cell');"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "gets no",
+    "expect": "pass"
+  },
+  {
+    "name": "the per-table guard AND the stray sweep are both dropped",
+    "why": "The defect reported on 2026-09-21, restored in full: _relCreateRetryButtons()'s loop gated only on the page-wide _relPageHasColumn(), so on a page whose sub-tables differ every one of them got a 🔗⟳. Measured on debug/place-performances-bug.html: 4 strays of 5 sub-tables, each offering to re-fetch a column that is not there. BOTH edits are needed to reproduce it — see the two singles below.",
+    "edits": [
+      {
+        "find": "            if (!_relTableHasColumn(tbl)) return;\n",
+        "replace": ""
+      },
+      {
+        "find": "        document.querySelectorAll('[id^=\"mb-rel-retry-\"]').forEach(el => {\n            const m = /^mb-rel-retry-(\\d+)$/.exec(el.id);\n            if (m && !_relTableHasColumn(_tbls[Number(m[1])])) el.remove();\n        });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "gets no",
+    "expect": "fail"
+  },
+  {
+    "name": "only the per-table loop guard is dropped",
+    "why": "An honest expect: \"pass\", and mutation-testing is what established it. The sweep that follows removes the stray the loop just created, so the guard's removal is invisible here. Keep the guard anyway: it is what stops the button being built and inserted at all, and the sweep is a cleanup for the OTHER creation site, not a substitute. Pinned as a pair by the combined entry above.",
+    "edits": [
+      {
+        "find": "            if (!_relTableHasColumn(tbl)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "gets no",
+    "expect": "pass"
+  },
+  {
+    "name": "only the stray sweep is dropped",
+    "why": "The other half of the pair, and also an honest expect: \"pass\" — the loop guard covers for it on this fixture. The sweep exists for what the loop cannot reach: a button left by _artCreateOrUpdateRetryButton() (which runs from the artwork pipeline, off in every fixture) or by a table that has since lost its column.",
+    "edits": [
+      {
+        "find": "        document.querySelectorAll('[id^=\"mb-rel-retry-\"]').forEach(el => {\n            const m = /^mb-rel-retry-(\\d+)$/.exec(el.id);\n            if (m && !_relTableHasColumn(_tbls[Number(m[1])])) el.remove();\n        });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "gets no",
+    "expect": "pass"
+  },
+  {
+    "name": "the sweep is not restricted to the per-table numeric id form",
+    "why": "mb-rel-retry-global and mb-rel-retry-failed share the prefix and are NOT per-table. With the digits relaxed, Number('global') is NaN, _tbls[NaN] is undefined, _relTableHasColumn(undefined) is false — and the sweep deletes the page-wide controls. The multi-table test asserts #mb-rel-retry-global is present on the page h2.",
+    "edits": [
+      {
+        "find": "            const m = /^mb-rel-retry-(\\d+)$/.exec(el.id);",
+        "replace": "            const m = /^mb-rel-retry-(.*)$/.exec(el.id);"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-anchor-placement.spec.js",
+    "grep": "is a direct child of its OWN h3",
+    "expect": "fail"
   }
 ]

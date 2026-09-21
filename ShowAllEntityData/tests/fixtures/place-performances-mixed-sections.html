@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Place “Madison Square Garden” - Performances - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        A place-performances page (no link_type_id => tableMode 'multi'),
+        reduced from the real /place/a727b970-…/performances to the ONE thing
+        that makes it interesting: its sub-sections do not all carry the
+        Relationships column.
+
+        place-performances groups by RELATIONSHIP TYPE, not by entity kind, so
+        one page mixes recording-targeted and release-targeted sub-tables:
+
+          "Recording location for recording"  rows link /recording/<mbid> only
+                                              -> _suppressRelationshipsIfNoRelease
+                                                 OrReleaseGroupLinks() finds no
+                                                 /release/ or /release-group/
+                                                 link and no /work/ or /label/
+                                                 one either, so it strips the
+                                                 column: no <th>, no <td>.
+          "Recording location for release"    rows link /release/<mbid>
+                                              -> the column is kept and stamped
+                                                 entityType 'release'.
+
+        That asymmetry is the whole fixture. Both sites that create a per-table
+        🔗⟳ used to gate on the PAGE-wide _relPageHasColumn() /
+        activeInjectedColumns, so the first section got a retry button for a
+        column it does not have. On the real page that was 4 strays out of 5
+        sub-tables (debug/place-performances-bug.html, 2026-09-21).
+
+        The sections are `<tr class="subh">` rows inside ONE `<table class="tbl">`,
+        which is how MusicBrainz actually marks them here and what
+        startFetchingProcess()'s generic branch groups on: it takes the subh
+        `<th>`'s text as the raw name and appends the entity type read from the
+        first data row's main-column link, so "Recording location for" + a
+        /release/ link becomes the group "Recording location for release". An
+        `<h3>`-per-table fixture does NOT work for this pageType (that shape is
+        gated on features.listToTable / groupByH3) — it collapses into one
+        unnamed group.
+
+        Two rows per section: enough for a group, few enough to stay fast.
+        Column order is the native one (Date, Title, Attributes, Artist,
+        Length); the injected "Release events" and "Relationships" columns are
+        appended by the script.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere placeheader">
+            <h1><a href="/place/a727b970-8ea0-4f75-abc8-db131f72aecb"><bdi>Madison Square Garden</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul class="tabs">
+                <li class="sel"><a href="/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances">Performances</a></li>
+            </ul>
+        </div>
+        <h2>Performances</h2>
+
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="subh"><th colspan="5">Engineering location for</th></tr>
+                <tr class="odd">
+                    <td>1979-09-22</td>
+                    <td><a class="wrap-anywhere" href="/recording/aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa"><bdi>The River</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>5:05</td>
+                </tr>
+                <tr class="even">
+                    <td>1979-09-23</td>
+                    <td><a class="wrap-anywhere" href="/recording/bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb"><bdi>Thunder Road</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td>4:49</td>
+                </tr>
+                <tr class="subh"><th colspan="5">Recording location for</th></tr>
+                <tr class="odd">
+                    <td>1979-09-22</td>
+                    <td><a class="wrap-anywhere" href="/release/cccccccc-3333-4333-8333-cccccccccccc"><bdi>No Nukes</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td></td>
+                </tr>
+                <tr class="even">
+                    <td>1979-09-23</td>
+                    <td><a class="wrap-anywhere" href="/release/dddddddd-4444-4444-8444-dddddddddddd"><bdi>The Legendary No Nukes Concerts</bdi></a></td>
+                    <td></td>
+                    <td><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f"><bdi>Bruce Springsteen</bdi></a></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

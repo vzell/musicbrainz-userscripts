@@ -14118,3 +14118,73 @@ inside the `!matchOnly` block is COST: the `matchOnly` pass runs over every
 source row, not just the survivors. Recorded as an `expect: "pass"` in
 `scripts/mutations/pending-edits-collapsed-cell.json` rather than deleted,
 because the wrong half of the reasoning is the part worth keeping.
+
+## 2026-09-21 — the retry control was offered on sub-tables with no Relationships column (same branch)
+
+Reported after the anchoring fix above landed, on
+`/place/a727b970-8ea0-4f75-abc8-db131f72aecb/performances`
+(`place-performances`, `tableMode: 'multi'`, 5 sub-tables): the first four each
+show a `🔗⟳` although they have no Relationships column at all. Only the fifth,
+"Recording location for release", legitimately has one.
+Snapshot: `debug/place-performances-bug.html`, all sub-tables uncollapsed.
+
+Measured from it:
+
+```
+ [0] relCells=   0  relTh=0  btn=mb-rel-retry-0     Engineering location for recording
+ [1] relCells=   0  relTh=0  btn=mb-rel-retry-1     Producing location for recording
+ [2] relCells=   0  relTh=0  btn=mb-rel-retry-2     Recording location for recording
+ [3] relCells=   0  relTh=0  btn=mb-rel-retry-3     Shooting location for recording
+ [4] relCells=  16  relTh=1  btn=mb-rel-retry-4     Recording location for release
+```
+
+`place-performances` groups by RELATIONSHIP TYPE, not by entity kind, so one
+page mixes recording-targeted sub-tables with release-targeted ones.
+`_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()` correctly strips the
+`<th>` and every `.mb-rel-cell` from the first four. **Both sites that create a
+per-table `🔗⟳` then asked the PAGE-wide question** —
+`_relCreateRetryButtons()` gated on `_relPageHasColumn()`, and
+`_artCreateOrUpdateRetryButton()`'s block on `activeInjectedColumns.length` —
+so all five got one.
+
+**This is older than the anchoring fix, and the anchoring fix is what made it
+visible.** `debug/right-flags-release-events.html` (2026-09-18) is the same page
+one version earlier, with the same four strays — but
+`_relRetryAnchorFor()`'s `button:last-of-type` anchor had buried each of them
+inside `span.mb-stf-input-wrap`, next to the sub-table filter's ✗ clear button,
+where nobody noticed them. Placing the control where it belongs is what put a
+`🔗⟳` visibly beside four section headings that have nothing to retry.
+
+Fix: `_relTableHasColumn(table)`, used at both sites, plus a sweep beside the
+loop for a stray the loop's own `return` cannot reach. **The `<thead>` arm is
+the load-bearing one**: `runFilter()` REMOVES non-matching rows, so a
+`tbody td.mb-rel-cell` test alone would report "no column" for any sub-table a
+filter has narrowed to nothing — and since neither caller re-runs on a
+keystroke, the button would go and not come back. The `<th>` is what the
+suppression actually removes, it carries `data-col-name` (unlike Picard's), and
+`runFilter()` never touches the `<thead>`.
+
+**Two mutation-testing findings.** First, the loop guard and the sweep COVER FOR
+EACH OTHER on any committed fixture — removing either alone leaves the spec
+green, and only removing both reproduces the defect. Recorded as one combined
+`expect: "fail"` plus two `expect: "pass"` singles in
+`scripts/mutations/rel-retry-anchor-placement.json`, so a future tidy-up of
+either has to fail the combined entry rather than find a passing suite. Second,
+the first attempt at the "sweep is not restricted to the numeric id form"
+mutation relaxed `(\d+)` to `(\d*)`, which changes nothing —
+`mb-rel-retry-global` still fails to match, because `global` is not digits
+followed by end-of-string. `(.*)` is the mutation that bites: `Number('global')`
+is `NaN`, `_tbls[NaN]` is `undefined`, and the sweep deletes the page-wide
+controls.
+
+**A fixture note worth keeping.** `place-performances` does NOT group by
+`<h3>` + `<table>` pairs. That shape is gated on
+`features.listToTable`/`groupByH3`; this pageType has neither, and its sections
+are `<tr class="subh">` rows inside ONE `<table class="tbl">`.
+`startFetchingProcess()`'s generic branch takes the subh `<th>`'s text as the
+raw group name and appends the entity type read from the first following data
+row's main-column link — so `"Recording location for"` plus a `/release/` link
+becomes `"Recording location for release"`. The first attempt at
+`tests/fixtures/place-performances-mixed-sections.html` used two `<h3>`
+sections and rendered as a single unnamed group ("Unknown (2)"), which is how
+this was found.

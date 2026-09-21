@@ -766,7 +766,7 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
 
   **`@slow` is opt-in for iteration, mandatory at a merge.** Two specs carry
   it — `rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s),
-  14 tests of 427 — and between them they are most of the suite's wall clock
+  14 tests of 428 — and between them they are most of the suite's wall clock
   and *all* of its coverage of org/503-handling.org items 5 and 7. Neither is
   slow because of slow code: both spend their time in rate gates and retry
   backoffs that the feature under test exists to respect, so shortening them
@@ -2365,6 +2365,23 @@ exists for the plausible future simplification that collapses them.
     before 9.99.1121 the walk stopped there and returned `null` too, which is
     why no spec had ever seen these buttons: `FIXTURE_SETTINGS_OVERRIDE` forces
     `sa_enable_caa_pics` off, so every single-table fixture took the null path.
+  - **The gate is `_relTableHasColumn(table)`, per TABLE, not
+    `_relPageHasColumn()`.** Both creation sites — the loop in
+    `_relCreateRetryButtons()` and the block inside
+    `_artCreateOrUpdateRetryButton()` — asked the PAGE-wide question, so on a
+    page whose sub-tables differ, every sub-table got a `🔗⟳` for a column it
+    does not have. `place-performances` groups by relationship type, so one page
+    mixes recording-targeted sub-tables (column stripped by
+    `_suppressRelationshipsIfNoReleaseOrReleaseGroupLinks()`) with
+    release-targeted ones: `debug/place-performances-bug.html` (2026-09-21) has
+    4 strays of 5. **`_relTableHasColumn()` asks the `<thead>` first, and that
+    is the load-bearing half** — `runFilter()` REMOVES non-matching rows, so a
+    tbody-only test reports "no column" for a sub-table a filter has narrowed to
+    nothing, and these callers do not re-run on a keystroke. A sweep alongside
+    the loop drops a stray left by the other site, matched on
+    `/^mb-rel-retry-(\d+)$/` — **the numeric form only**, since
+    `mb-rel-retry-global` and `mb-rel-retry-failed` share the prefix and are not
+    per-table.
   - **Every `mb-rel-retry-{i}` in every saved snapshot was built by the `_art`
     branch**, i.e. by `_artCreateOrUpdateRetryButton()` anchoring on the artwork
     run. That is why both defects survived: the fallback had essentially never
