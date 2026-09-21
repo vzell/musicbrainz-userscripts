@@ -52,10 +52,10 @@ put first.
 
 The harness is split into two Playwright projects, by directory.
 
-| Project             | Directory         | Tests           | Network     | Per-test timeout |
-|---------------------+-------------------+-----------------+-------------+------------------|
-| =chromium-fixtures= | =tests/fixtures/= | 353 in 97 files | none        | 30 s (default)   |
-| =chromium-live=     | =tests/live/=     | 77 in 38 files  | real MB.org | 120 s            |
+| Project             | Directory         | Tests            | Network     | Per-test timeout |
+|---------------------+-------------------+------------------+-------------+------------------|
+| =chromium-fixtures= | =tests/fixtures/= | 439 in 113 files | none        | 30 s (default)   |
+| =chromium-live=     | =tests/live/=     | 77 in 38 files   | real MB.org | 120 s            |
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
@@ -172,10 +172,18 @@ The fixture rows are *measured*; most live rows are estimates or declared
 ceilings, and the "Basis" column says which is which. Re-measure before relying
 on any of them for a decision.
 
+*Every fixture figure below is at 14 workers on a 28-core box, and Playwright
+sizes its worker pool from the CPU count.* On a 4-core machine it runs TWO
+workers, and =test:full= takes *≈ 22 m 36 s* — measured 2026-09-21 on
+=vzell-lap= at 439 tests, against the 5 m 18 s below. That is 4.3x, not a
+regression: the =@slow= pair's ~324 s and ~84 s are rate gates rather than CPU
+and do not grow, so on a small box they stop being the floor and the other 111
+files become it. Budget accordingly before running the merge gate there.
+
 | Suite / spec                                | Wall clock   | Basis                                                   |
 |---------------------------------------------+--------------+---------------------------------------------------------|
-| =npm test= (414 now, =@slow= excluded)      | *≈ 2 m 6 s*  | measured 2026-09-20 at 389 tests, =NB-3641=, 14 workers |
-| =npm run test:full= (428 now)               | *≈ 5 m 18 s* | measured 2026-09-20 at 403 tests, =NB-3641=, 14 workers |
+| =npm test= (425 now, =@slow= excluded)      | *≈ 2 m 6 s*  | measured 2026-09-20 at 389 tests, =NB-3641=, 14 workers |
+| =npm run test:full= (439 now)               | *≈ 5 m 18 s* | measured 2026-09-20 at 403 tests, =NB-3641=, 14 workers |
 | =npm run test:slow= (14 tests, 2 files)     | *≈ 4 m 48 s* | measured 2026-09-20, =NB-3641=, 14 workers              |
 | — the whole suite at 353 tests, pre-=@slow= | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)      |
 | slowest single fixture spec                 | *≈ 324 s*    | measured 2026-09-20, =NB-3641= — =rel-auto-retry-failed= (7 tests, =--workers=1=) |

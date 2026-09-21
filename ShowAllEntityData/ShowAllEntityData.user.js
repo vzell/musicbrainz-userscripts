@@ -21278,20 +21278,41 @@
      * "Artist" column) — inside `cell`.
      *
      * Only text sitting strictly BETWEEN two qualifying entity-reference
-     * boundary markers — a DIRECT-child `<a href="/{type}/{mbid}">` (same
-     * href-type check `_findCellEntityRefs()` uses via `_ENTITY_TYPE_GLYPH`),
-     * OR a DIRECT-child jesus2099 `<span class="name-variation">` wrapping
-     * exactly one such `<a>` (see `_findCellNameVariations()` — this span
-     * can sit directly between `<bdi>` and `<a>`, e.g. debug/nv.org's two
-     * "+"-joined, both-wrapped artists) — of the same `<bdi>`, counts,
-     * matching the exact shape MusicBrainz (optionally decorated by
-     * jesus2099) renders a joined artist credit in (see debug/join.html,
-     * debug/and.html, debug/slash.html, debug/nv.org). Leading/trailing
-     * text elsewhere in the cell, or a `<bdi>` with fewer than two such
-     * entities, is not a join phrase. Deliberately scoped to this one shape
-     * only — the reverse `<a><bdi>Name</bdi></a>` nesting
-     * `_findCellEntityRefs()` also recognizes (e.g. "Recording of work")
-     * has no evidenced multi-entity joined-by-phrase case to cover here.
+     * anchors of the same `<bdi>` counts — an `<a href="/{type}/{mbid}">`
+     * passing the same href-type check `_findCellEntityRefs()` uses via
+     * `_ENTITY_TYPE_GLYPH`. Leading/trailing text elsewhere in the cell, or
+     * a `<bdi>` with fewer than two such anchors, is not a join phrase.
+     * Deliberately scoped to this one shape only — the reverse
+     * `<a><bdi>Name</bdi></a>` nesting `_findCellEntityRefs()` also
+     * recognizes (e.g. "Recording of work") has no evidenced multi-entity
+     * joined-by-phrase case to cover here.
+     *
+     * **An anchor need NOT be a direct child of the `<bdi>`, and requiring
+     * that was a real bug.** MusicBrainz's own native
+     * `<span class="mp">` open-edits wrapper (see `_findCellPendingEdits()`)
+     * and jesus2099's `<span class="name-variation">` (see
+     * `_findCellNameVariations()`) both sit between `<bdi>` and `<a>`, in
+     * either nesting order, and a future wrapper could too. This function
+     * used to accept only a direct-child `<a>` or a direct-child
+     * `.name-variation`, so `<bdi><span class="mp"><a>Guns N’ Roses</a>
+     * </span> feat. <a>Bruce Springsteen</a></bdi>`
+     * (debug/work-ComeTogether-final-filtered.html, row 46) reported ONE
+     * entity and its `" feat. "` simply did not exist — no 📊 entry, no
+     * `joinphrase:` filter, no highlight — while the very same cell's
+     * "» artist name: Guns N’ Roses" entry WAS offered, because
+     * `_findCellEntityRefs()` resolves its `<bdi>` with `a.closest('bdi')`
+     * and walks through the wrapper. The two finders must agree on where an
+     * entity boundary is, so this one resolves the boundary structurally
+     * instead of by wrapper allowlist: for each consecutive anchor pair it
+     * takes their NEAREST COMMON ANCESTOR inside the `<bdi>` and each
+     * anchor's own highest ancestor strictly below it (its "host"), then
+     * reads the nodes between those two hosts. Where both anchors are
+     * direct children — the plain shape in debug/join.html, debug/and.html,
+     * debug/slash.html — the ancestor IS the `<bdi>` and each host IS the
+     * `<a>`, i.e. the original behaviour exactly. The common ancestor is
+     * used rather than a walk up to the `<bdi>` so that ONE wrapper
+     * enclosing both anchors AND the phrase still yields the phrase instead
+     * of collapsing to a single host.
      *
      * Join phrases are free text with no fixed enum — an editor can type
      * anything (e.g. "w/special guest", debug/join.html's third row), not
@@ -21311,17 +21332,22 @@
             const m = (href || '').match(/^\/([a-z][a-z-]*)\/[0-9a-f-]+/i);
             return !!(m && _ENTITY_TYPE_GLYPH[m[1]]);
         };
-        const isEntityAnchor = (node) => {
-            if (node.nodeType !== Node.ELEMENT_NODE) return false;
-            if (node.tagName === 'A') return isQualifyingHref(node.getAttribute('href'));
-            // A jesus2099 <span class="name-variation"> can sit directly
-            // between <bdi> and <a> — treat it as the entity boundary too
-            // when it wraps exactly one qualifying <a>.
-            if (node.tagName === 'SPAN' && node.classList.contains('name-variation')) {
-                const innerA = node.querySelector(':scope > a[href]');
-                return !!innerA && isQualifyingHref(innerA.getAttribute('href'));
-            }
-            return false;
+        // The highest ancestor of `node` that is still strictly BELOW
+        // `stop` — i.e. which of `stop`'s own children this node lives in.
+        // `null` when `node` is not a descendant of `stop` at all.
+        const hostUnder = (node, stop) => {
+            let n = node;
+            while (n && n.parentNode && n.parentNode !== stop) n = n.parentNode;
+            return (n && n.parentNode === stop) ? n : null;
+        };
+        // Nearest common ancestor of two anchors, bounded to `root` (their
+        // shared <bdi>, which is always an ancestor of both, so this never
+        // returns null in practice).
+        const commonAncestor = (a, b, root) => {
+            const chain = new Set();
+            for (let n = a; n; n = n.parentNode) { chain.add(n); if (n === root) break; }
+            for (let n = b; n; n = n.parentNode) { if (chain.has(n)) return n; if (n === root) break; }
+            return root;
         };
         // A previous _highlightJoinPhraseMatch() (or a global-filter
         // highlightCrossTag() pass — both use these two classes, see the
@@ -21339,12 +21365,22 @@
             (node.classList.contains('mb-column-filter-highlight') ||
              node.classList.contains('mb-global-filter-highlight'));
         cell.querySelectorAll('bdi').forEach(bdi => {
-            const kids = Array.from(bdi.childNodes);
-            const entityIdx = [];
-            kids.forEach((n, i) => { if (isEntityAnchor(n)) entityIdx.push(i); });
-            if (entityIdx.length < 2) return; // need two entities for a "between" phrase
-            for (let k = 0; k < entityIdx.length - 1; k++) {
-                const between = kids.slice(entityIdx[k] + 1, entityIdx[k + 1])
+            // Every qualifying anchor GOVERNED BY this <bdi>, in document
+            // order. The closest('bdi') test is what keeps a nested <bdi>
+            // (the reverse <a><bdi>Name</bdi></a> shape) from having its
+            // anchor counted twice, once for each enclosing <bdi>.
+            const anchors = Array.from(bdi.querySelectorAll('a[href]')).filter(a =>
+                isQualifyingHref(a.getAttribute('href')) && a.closest('bdi') === bdi);
+            if (anchors.length < 2) return; // need two entities for a "between" phrase
+            for (let k = 0; k < anchors.length - 1; k++) {
+                const anc   = commonAncestor(anchors[k], anchors[k + 1], bdi);
+                const hostA = hostUnder(anchors[k], anc);
+                const hostB = hostUnder(anchors[k + 1], anc);
+                // Same host means one is nested inside the other's wrapper —
+                // there is no "between" to read.
+                if (!hostA || !hostB || hostA === hostB) continue;
+                const kids = Array.from(anc.childNodes);
+                const between = kids.slice(kids.indexOf(hostA) + 1, kids.indexOf(hostB))
                     .filter(n => n.nodeType === Node.TEXT_NODE || isOwnHighlightSpan(n));
                 if (!between.length) continue;
                 const phrase = between
@@ -21352,10 +21388,17 @@
                     .join('').trim().replace(/\s+/g, ' ');
                 if (!phrase) continue;
                 // Highlighting needs a real text-node reference. Prefer a
-                // bare text node; if the only "between" content is an
-                // already-highlighted span, fall back to the text node
-                // nested inside it (the exact node that span wraps).
-                const rawTextNode = between.find(n => n.nodeType === Node.TEXT_NODE);
+                // bare text node that actually CARRIES text: MusicBrainz puts
+                // each entity's own `<span class="comment">` inside the shared
+                // <bdi>, so the slice between two anchors is routinely
+                // [ "\u00a0", <span class="comment">, " & " ] — three nodes for
+                // a one-character phrase. Taking the first text node there
+                // highlights the non-breaking space in front of the PREVIOUS
+                // entity's comment instead of the phrase. Fall back to any
+                // text node, then to the text nested inside an
+                // already-highlighted span (the exact node that span wraps).
+                const rawTextNode = between.find(n => n.nodeType === Node.TEXT_NODE && n.nodeValue.trim())
+                    || between.find(n => n.nodeType === Node.TEXT_NODE);
                 const node = rawTextNode ||
                     (between.find(isOwnHighlightSpan)?.firstChild ?? null);
                 out.push({ phrase, node, container: bdi });
@@ -26316,10 +26359,14 @@ ${sections.join('\n')}
             filterInput.value = getFilterFocusPrefix();
         }
 
-        // Clear all column filters
+        // Clear all column filters. The value-set drop is not decorative:
+        // `getColFilters()`'s empty-field early return used to be the only
+        // thing removing `dataset.mbUniqValues` here, and it cannot reach the
+        // typed-text stash on a field whose displayed value is non-empty.
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
+            _clearColFilterValueSet(input);
         });
 
         // The length-mismatch summary filter is structural, not a query, so
@@ -28449,7 +28496,7 @@ ${sections.join('\n')}
                         const _pfx = getFilterFocusPrefix();
                         e.target.value = _pfx;
                         e.target.setSelectionRange(_pfx.length, _pfx.length);
-                        delete e.target.dataset.mbUniqValues;
+                        _clearColFilterValueSet(e.target);
                         runFilter();
                         Lib.debug('shortcuts', `${filterType} filter cleared via Escape (first press, focus kept)`);
                     }
@@ -34214,7 +34261,7 @@ a { color: #1565c0; }`;
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbUniqValues;
+            _clearColFilterValueSet(input);
         });
 
         // Re-run filter to update display
@@ -34817,7 +34864,7 @@ a { color: #1565c0; }`;
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbUniqValues;
+            _clearColFilterValueSet(input);
         });
         _getAllStfInputs().forEach(input => {
             if (input.value) { input.value = ''; _dispatchInternalInputEvent(input, { bubbles: false }); }
@@ -35015,7 +35062,7 @@ a { color: #1565c0; }`;
         table.querySelectorAll('.mb-col-filter-input').forEach(input => {
             input.value = '';
             input.style.backgroundColor = '';
-            delete input.dataset.mbUniqValues;
+            _clearColFilterValueSet(input);
         });
 
         // Also clear the sub-table (STF) filter input for this table and restore
@@ -41393,6 +41440,31 @@ a { color: #1565c0; }`;
     const stripColFilterPrefix = stripFilterPrefix;
 
     /**
+     * Drops EVERY piece of checkbox-driven state a column filter input can
+     * carry: the value set itself (`dataset.mbUniqValues`, written by
+     * `applyUniqValueSet()`) and the plain text that was typed UNDERNEATH it
+     * (`dataset.mbUniqTypedText`, stashed by the same function so the two can
+     * be AND'd — see `getColFilters()`'s two-descriptor shape).
+     *
+     * Every "this column filter is being cleared / replaced" site must go
+     * through this one function. The stash is the reason: it contributes a
+     * real, row-narrowing filter descriptor while being INVISIBLE — the input
+     * shows a summary label, not the stashed text — so a single site that
+     * clears only `mbUniqValues` leaves the column silently filtered by text
+     * the user can neither see nor reach. `mbUniqValues` alone was forgiving
+     * about this (`getColFilters()`'s empty-field early return deletes it, so
+     * a missed site self-healed on the next pass); the stash is not, because
+     * a non-empty display value never reaches that early return.
+     *
+     * @param {?HTMLInputElement} input - A `.mb-col-filter-input`; no-op when falsy.
+     */
+    function _clearColFilterValueSet(input) {
+        if (!input || !input.dataset) return;
+        delete input.dataset.mbUniqValues;
+        delete input.dataset.mbUniqTypedText;
+    }
+
+    /**
      * Apply the focus-mode visual state to any filter input:
      * prepend the search-icon prefix (if absent) and tint the background.
      * Positions the text cursor right after the prefix so the user can type immediately.
@@ -41721,7 +41793,7 @@ a { color: #1565c0; }`;
                 e.stopPropagation();
                 // Drop any active checkbox value-set so the cleared field
                 // reverts to normal text-filter behaviour.
-                delete input.dataset.mbUniqValues;
+                _clearColFilterValueSet(input);
                 // Clicking ✕ is identical to pressing Escape the first time while
                 // the field is focused: clear any user-entered text, keep the field
                 // focused with the decorative prefix in place.
@@ -41759,8 +41831,8 @@ a { color: #1565c0; }`;
                 // If the user manually edits a field that carried a checkbox
                 // value-set, drop it so subsequent key strokes act as a normal
                 // text filter.
-                if (input.dataset.mbUniqValues) {
-                    delete input.dataset.mbUniqValues;
+                if (input.dataset.mbUniqValues || input.dataset.mbUniqTypedText) {
+                    _clearColFilterValueSet(input);
                 }
                 // If the user just started typing into a focused-but-empty field the prefix
                 // was deliberately kept out of the value (so the placeholder hint was visible).
@@ -42515,6 +42587,18 @@ a { color: #1565c0; }`;
      *     shape). A corrupt/unparseable `dataset.mbUniqValues` fails safe to an
      *     empty `valueSet` rather than throwing.
      *
+     * ONE INPUT CAN YIELD TWO DESCRIPTORS. When text was already typed into a
+     * column and the user then ticks boxes in its 📊 panel, `applyUniqValueSet()`
+     * stashes that text on `dataset.mbUniqTypedText` and this function emits
+     * BOTH shapes for the same `idx` — because the panel counts only the rows
+     * that are currently VISIBLE, so its badges already mean "…and the typed
+     * filter". Nothing downstream needed teaching: `testRowMatch()` iterates
+     * `colFilters` and breaks on the first miss (so they AND), both highlight
+     * loops iterate it too (so the typed text keeps its highlight), and
+     * `_buildFilterKey()`/`_buildIncrPartialKey()` map over it (so the stashed
+     * text enters the cache keys with no separate field). Anything NEW that
+     * indexes `colFilters` by column must not assume one entry per column.
+     *
      * An empty field clears any stale `dataset.mbUniqValues`/error styling and
      * contributes no descriptor. Regexp validation failures are skipped from
      * the result (so they never break row-matching) but are still reported via
@@ -42555,7 +42639,7 @@ a { color: #1565c0; }`;
 
             if (!raw) {
                 // Empty field: clear any stale value-set and error styling, skip
-                delete inp.dataset.mbUniqValues;
+                _clearColFilterValueSet(inp);
                 inp.style.boxShadow   = '';
                 inp.style.borderColor = '';
                 inp.style.borderWidth = '';
@@ -42573,6 +42657,7 @@ a { color: #1565c0; }`;
             // Bypasses normal text matching; testRowMatch() checks cell-text set
             // membership, entity/item fallbacks, and — via structureModes —
             // "Cell structure" DOM-state membership (_cellMatchesStructureMode).
+            let valueSetPushed = false;
             if (inp.dataset.mbUniqValues) {
                 inp.style.boxShadow   = '0 0 2px 2px green';
                 inp.style.borderColor = '';
@@ -42613,46 +42698,68 @@ a { color: #1565c0; }`;
                     isCaseSensitive,
                     isExclude
                 });
-                return;
+                // Falls through to pushPlainFilter() below for the typed text
+                // stashed underneath this value set, if any.
+                valueSetPushed = true;
             }
 
-            if (isRegExp) {
-                // Validate the regexp before accepting it
-                try {
-                    new RegExp(raw, isCaseSensitive ? '' : 'i'); // dry-run
-                    // Valid: normal active indicator
+            // Builds and pushes ONE plain text/regexp descriptor for this
+            // input. Extracted so the value-set branch above can reuse it
+            // verbatim for `dataset.mbUniqTypedText` — the two must not drift
+            // in how they validate a regexp or fold case, and a stashed
+            // pattern has to report its errors through the same
+            // statusSpan/_rxErrors channel or an invalid one fails silently
+            // on a field whose visible value is a summary label.
+            const pushPlainFilter = (text) => {
+                if (isRegExp) {
+                    // Validate the regexp before accepting it
+                    try {
+                        new RegExp(text, isCaseSensitive ? '' : 'i'); // dry-run
+                        // Valid: normal active indicator
+                        inp.style.boxShadow   = '0 0 2px 2px green';
+                        inp.style.borderColor = '';
+                        inp.style.borderWidth = '';
+                        // ── Bug-fix 1: keep `val` as the raw pattern — do NOT lowercase
+                        // regexp patterns. The 'i' flag in testRowMatch handles case.
+                        // Lowercasing would break character-class ranges like [A-Z].
+                        const val = isRegExp ? text : (isCaseSensitive ? text : text.toLowerCase());
+                        result.push({ val, idx: colIdx, isRegExp, isCaseSensitive, isExclude });
+                    } catch (e) {
+                        // Invalid: 4 px error border
+                        inp.style.boxShadow   = '';
+                        inp.style.borderColor = filterBorderError();
+                        inp.style.borderWidth = '4px';
+                        const msg = `⚠ Column "${colName}": invalid regexp: ${e.message}`;
+                        // ── Multi-table: write directly to the h3 status span and tag it
+                        //    so the post-filter loop knows not to overwrite it.
+                        if (statusSpan) {
+                            statusSpan.textContent = msg;
+                            statusSpan.style.color = filterBorderError();
+                            statusSpan.dataset.colRxError = '1';
+                        }
+                        // ── Single-table (and multi-table): also collect for the caller.
+                        result._rxErrors.push(msg);
+                        // Skip this filter so it doesn't silently break row-matching
+                    }
+                } else {
                     inp.style.boxShadow   = '0 0 2px 2px green';
                     inp.style.borderColor = '';
                     inp.style.borderWidth = '';
-                    // ── Bug-fix 1: keep `val` as the raw pattern — do NOT lowercase
-                    // regexp patterns. The 'i' flag in testRowMatch handles case.
-                    // Lowercasing would break character-class ranges like [A-Z].
-                    const val = isRegExp ? raw : (isCaseSensitive ? raw : raw.toLowerCase());
+                    const val = isCaseSensitive ? text : text.toLowerCase();
                     result.push({ val, idx: colIdx, isRegExp, isCaseSensitive, isExclude });
-                } catch (e) {
-                    // Invalid: 4 px error border
-                    inp.style.boxShadow   = '';
-                    inp.style.borderColor = filterBorderError();
-                    inp.style.borderWidth = '4px';
-                    const msg = `⚠ Column "${colName}": invalid regexp: ${e.message}`;
-                    // ── Multi-table: write directly to the h3 status span and tag it
-                    //    so the post-filter loop knows not to overwrite it.
-                    if (statusSpan) {
-                        statusSpan.textContent = msg;
-                        statusSpan.style.color = filterBorderError();
-                        statusSpan.dataset.colRxError = '1';
-                    }
-                    // ── Single-table (and multi-table): also collect for the caller.
-                    result._rxErrors.push(msg);
-                    // Skip this filter so it doesn't silently break row-matching
                 }
-            } else {
-                inp.style.boxShadow   = '0 0 2px 2px green';
-                inp.style.borderColor = '';
-                inp.style.borderWidth = '';
-                const val = isCaseSensitive ? raw : raw.toLowerCase();
-                result.push({ val, idx: colIdx, isRegExp, isCaseSensitive, isExclude });
+            };
+
+            if (valueSetPushed) {
+                // A typed filter that was live when the first checkbox was
+                // ticked. It is AND'd, not replaced — see applyUniqValueSet()'s
+                // own JSDoc for why the panel's counts demand that.
+                const typedUnderneath = (inp.dataset.mbUniqTypedText || '').trim();
+                if (typedUnderneath) pushPlainFilter(typedUnderneath);
+                return;
             }
+
+            pushPlainFilter(raw);
         });
 
         return result;
@@ -60018,6 +60125,23 @@ a { color: #1565c0; }`;
      * ANY checked entry. An empty `selectedValues` array means "no
      * constraint" — the column filter is fully cleared, not "match nothing."
      *
+     * **A value set narrows a typed filter; it does not replace it.** The
+     * panel collects its per-entry counts from the CURRENTLY VISIBLE rows
+     * (`openUniqDrop()`), so with text already typed into this column those
+     * badges answer "…and", while overwriting the text made the filter answer
+     * "…instead": on the reported case the badge read `(3)` and the click
+     * produced 9 rows (org/uvd-filtering-join-phrases-missing-bug.org). So the
+     * typed text is stashed ONCE, on the transition into value-set mode, on
+     * `input.dataset.mbUniqTypedText`, and `getColFilters()` emits a SECOND,
+     * plain descriptor for the same column index — which `testRowMatch()`'s
+     * existing `for (const f of colFilters)` loop AND's for free. Unchecking
+     * everything puts the text back rather than clearing the column.
+     *
+     * The reverse order is deliberately NOT symmetric: typing into a field
+     * that already holds a value set still drops it (the column filter's own
+     * `input` listener, via `_clearColFilterValueSet()`). The field's text IS
+     * the summary label, so editing it can only mean editing that string.
+     *
      * State is stashed on `input.dataset.mbUniqValues` (JSON-encoded array), a
      * human-readable summary label is written to `input.value` so existing "is
      * this column filter active" checks elsewhere (which just test non-empty `input.value`)
@@ -60041,18 +60165,38 @@ a { color: #1565c0; }`;
         const values = Array.from(new Set(selectedValues || []));
 
         if (values.length === 0) {
-            // Empty checked-set = "no constraint" = fully clear this column filter.
-            delete input.dataset.mbUniqValues;
-            input.value = '';
-            input.style.backgroundColor = '';
-            input.style.boxShadow       = '';
+            // Empty checked-set = "no constraint" from the CHECKBOXES. Any
+            // text that was typed before the first box was ticked is still a
+            // filter the user set deliberately, so it comes back rather than
+            // being collected as collateral — including its active-filter
+            // styling, since the column stays filtered.
+            const _restored = input.dataset.mbUniqTypedText || '';
+            _clearColFilterValueSet(input);
+            input.value = _restored;
+            if (_restored) {
+                input.style.backgroundColor = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
+                input.style.boxShadow       = '0 0 2px 2px green';
+            } else {
+                input.style.backgroundColor = '';
+                input.style.boxShadow       = '';
+            }
             input.style.borderColor     = '';
             input.style.borderWidth     = '';
             if (typeof runFilter === 'function') {
                 runFilter();
             }
-            Lib.debug('filter', `Uniq-drop: value-set cleared on col ${colIndex}`);
+            Lib.debug('filter', `Uniq-drop: value-set cleared on col ${colIndex}`
+                              + (_restored ? `, typed filter "${_restored}" restored` : ''));
             return;
+        }
+
+        // Stash the typed text ONCE, on the transition into value-set mode.
+        // After that `input.value` holds the summary label built below, not
+        // anything the user typed, so re-reading it per checkbox toggle would
+        // append the label to itself ("bruce + bruce + …").
+        if (!input.dataset.mbUniqValues && input.dataset.mbUniqTypedText === undefined) {
+            const _typedNow = stripColFilterPrefix(input.value).trim();
+            if (_typedNow) input.dataset.mbUniqTypedText = _typedNow;
         }
 
         input.dataset.mbUniqValues = JSON.stringify(values);
@@ -60087,7 +60231,9 @@ a { color: #1565c0; }`;
             if (v.startsWith(MB_UNIQ_STRUCTURE_MODE_PREFIX)) return _structureModeLabel(v.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length));
             return v;
         };
-        input.value = values.length === 1 ? _label(values[0]) : `${values.length} selected`;
+        const _summary = values.length === 1 ? _label(values[0]) : `${values.length} selected`;
+        const _typed   = input.dataset.mbUniqTypedText || '';
+        input.value = _typed ? `${_typed} + ${_summary}` : _summary;
 
         const activeBg = Lib.settings.sa_col_filter_active_bg || '#fff9c4';
         input.style.backgroundColor = activeBg;
@@ -83364,6 +83510,31 @@ a { color: #1565c0; }`;
                 return _findCellEntityCommentParts(cell).map(p => ({
                     name: p.name, comment: p.comment, alias: p.alias,
                     type: p.type, glyphClass: p.glyphClass, href: p.href,
+                }));
+            },
+
+            /**
+             * Thin, JSON-serializable wrapper around the internal
+             * `_findCellJoinPhrases()` — the single source of truth for the
+             * 📊 "Join phrases" section, `_cellMatchesStructureMode()`'s
+             * `joinphrase:` filter and `_highlightJoinPhraseMatch()`.
+             *
+             * `node`/`container` are live nodes and cannot cross the
+             * `page.evaluate()` boundary, so `hasNode` reports `!!node`
+             * instead of dropping it: a phrase with no resolvable text node
+             * is found and counted but CANNOT be highlighted, which is a
+             * different state from "no phrase here" and is invisible in the
+             * DOM either way.
+             *
+             * @param {string} selector - CSS selector for the target cell.
+             * @returns {?Array<{phrase: string, hasNode: boolean}>} `null`
+             *   when `selector` matches nothing.
+             */
+            findCellJoinPhrases(selector) {
+                const cell = document.querySelector(selector);
+                if (!cell) return null;
+                return _findCellJoinPhrases(cell).map(jp => ({
+                    phrase: jp.phrase, hasNode: !!jp.node,
                 }));
             },
 

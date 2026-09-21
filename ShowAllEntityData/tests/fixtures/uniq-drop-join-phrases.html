@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Song “Come Together” - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Regression fixture for _findCellJoinPhrases() and for the 📊 panel's
+        "Join phrases" section — both halves of
+        org/uvd-filtering-join-phrases-missing-bug.org.
+
+        Skeleton copied from tests/fixtures/work-recordings-ms-length.html
+        (pageType `work-recordings`, tableMode 'single', native header
+        Date | Title | Attributes | Artist | Length, tbody led by a
+        <tr class="subh"> group row) — the same shape as the reported page,
+        https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d.
+
+        The Artist cells are the real ones from
+        debug/work-ComeTogether-final-filtered.html, with the
+        .mb-column-filter-highlight spans that snapshot happened to carry
+        stripped back out (native markup has none), plus four shapes that page
+        does not happen to contain. What each row pins:
+
+          Row A — solo credit, no join phrase at all. Control: it matches the
+                  typed "bruce" filter but must appear under no phrase entry.
+          Row B — "and", both anchors direct children of the <bdi>. The plain
+                  shape that always worked; guards against a regression.
+          Row C — "with", Axl Rose first.
+          Row D — "with", Bruce Springsteen first.  C+D are the pair the
+                  AND-vs-replace test counts.
+          Row E — MusicBrainz's own native <span class="mp"> open-edits wrapper
+                  around the LEADING anchor, verbatim from the snapshot's row
+                  46. THIS IS THE REPORTED BUG: the wrapper stops the anchor
+                  being a direct child of the <bdi>, so " feat. " was not
+                  offered, not filterable and not highlightable — while the
+                  same cell's "» artist name: Guns N’ Roses" entry WAS offered,
+                  because _findCellEntityRefs() walks through .mp.
+          Row F — the mirror: .mp around the TRAILING anchor. A fix that only
+                  looked left would pass row E and fail this one.
+          Row G — .mp wrapping a jesus2099 <span class="name-variation">, which
+                  in turn wraps the <a> — two nested wrappers, the nesting an
+                  allowlist approach would have had to enumerate.
+          Row H — ONE .mp wrapping BOTH anchors and the phrase between them.
+                  Only the nearest-common-ancestor walk finds this; hosting
+                  every anchor on the <bdi> collapses it to a single host and
+                  silently drops the phrase.
+          Row I — "with" on a credit containing no "bruce". The row the typed
+                  filter must exclude: without it, checking "» join phrase:
+                  with" on top of "bruce" would return the same rows whether
+                  the two are AND'd or the typed text is thrown away, and the
+                  test would prove nothing.
+          Row J — each entity carries its own <span class="comment">, so the
+                  nodes BETWEEN the two anchors are
+                  [ "\u00a0", <span class="comment">, " vs. " ] — three nodes
+                  for a four-character phrase, and MusicBrainz's ordinary
+                  shape for any credit with disambiguated artists (copied from
+                  tests/fixtures/entity-refs-mp-wrapper.html's #qb-cell). It
+                  pins WHICH node the highlight lands on: the first text node
+                  there is the non-breaking space in front of the PREVIOUS
+                  entity's comment, not the phrase.
+
+        Phrase counts over all 10 rows: and 1, with 3, feat. 3, & 1, vs. 1.
+        With "bruce" typed into the Artist column (9 rows — every row but I):
+        and 1, with 2, feat. 3, & 1, vs. 1.
+    -->
+    <div id="content">
+        <div class="wrap-anywhere workheader">
+            <h1><a href="/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d"><bdi>Come Together</bdi></a></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d">Overview</a></li></ul>
+        </div>
+        <h2 class="relationships">Relationships</h2>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th>Attributes</th>
+                    <th>Artist</th>
+                    <th>Length</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="subh"><th></th><th colspan="4">recordings</th></tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550a"><bdi>Come Together A</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-a"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                    <td>4:26</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550b"><bdi>Come Together B</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-b"><bdi><a href="/artist/db4da9ba-c52b-4df9-876f-7c6db3582256" title="Rose, Axl">Axl Rose</a> and <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                    <td>4:23</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550c"><bdi>Come Together C</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-c"><bdi><a href="/artist/db4da9ba-c52b-4df9-876f-7c6db3582256" title="Rose, Axl">Axl Rose</a> with <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                    <td>4:27</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550d"><bdi>Come Together D</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-d"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a> with <a href="/artist/db4da9ba-c52b-4df9-876f-7c6db3582256" title="Rose, Axl">Axl Rose</a></bdi></td>
+                    <td>4:19</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550e"><bdi>Come Together E</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-e"><bdi><span class="mp"><a href="/artist/eeb1195b-f213-4ce1-b28c-8565211f8e43" title="Guns N’ Roses (American hard rock band from Los Angeles)">Guns N’ Roses</a></span> feat. <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                    <td>4:27</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-55555555550f"><bdi>Come Together F</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-f"><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a> feat. <span class="mp"><a href="/artist/db4da9ba-c52b-4df9-876f-7c6db3582256" title="Rose, Axl">Axl Rose</a></span></bdi></td>
+                    <td>4:31</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-555555555510"><bdi>Come Together G</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-g"><bdi><span class="mp"><span class="name-variation"><a href="/artist/e8a0c1f1-1c0c-4a22-8e0c-5f0e4c8ec1f2" title="The E Street Band">The E Street Band</a></span></span> &amp; <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></bdi></td>
+                    <td>4:41</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-555555555511"><bdi>Come Together H</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-h"><bdi><span class="mp"><a href="/artist/eeb1195b-f213-4ce1-b28c-8565211f8e43" title="Guns N’ Roses (American hard rock band from Los Angeles)">Guns N’ Roses</a> feat. <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce">Bruce Springsteen</a></span></bdi></td>
+                    <td>4:29</td>
+                </tr>
+                <tr>
+                    <td>1972-08-30</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-555555555512"><bdi>Come Together I</bdi></a></td>
+                    <td>live</td>
+                    <td id="jp-cell-i"><bdi><a href="/artist/4d5447d7-c61c-4120-ba1b-d7f471d385b9" title="Lennon, John">John Lennon</a> with <a href="/artist/b0b33754-a664-43b7-ba00-be0dc4ec2396" title="Ono, Yoko">Yoko Ono</a></bdi></td>
+                    <td>4:52</td>
+                </tr>
+                <tr>
+                    <td>1994-01-20</td>
+                    <td><a href="/recording/11111111-2222-4333-8444-555555555513"><bdi>Come Together J</bdi></a></td>
+                    <td>cover and live</td>
+                    <td id="jp-cell-j"><bdi><a href="/artist/0383dadf-2a4e-4d10-a46a-e9e041da8eb3" title="Queen (UK rock group)">Queen</a>&nbsp;<span class="comment"><bdi>(UK rock group)</bdi></span> vs. <span class="mp"><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce (American singer&#8208;songwriter)">Bruce Springsteen</a></span>&nbsp;<span class="comment"><bdi>(American singer&#8208;songwriter)</bdi></span></bdi></td>
+                    <td>4:35</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -279,9 +279,20 @@ every distinct non-empty value currently visible in that column.
   value (or pressing Enter on a keyboard-focused value) toggles its
   checkbox and keeps the panel open instead of replacing the filter and
   closing; every checked value is OR'd together into a single column
-  filter. Typing plain text or picking a "Cell structure" entry is mutually
-  exclusive with checkbox selection — whichever you use last wins and
-  clears the other.
+  filter.
+• Checked values NARROW text you already typed — they do not replace it.
+  The counts in the panel are counts of the rows CURRENTLY VISIBLE, so when
+  a column already has text in its filter box those numbers already mean
+  "…and that text": picking an entry has to give you exactly the number on
+  its badge. The filter box then shows both halves, e.g.
+      bruce + » join phrase: with
+  or, with several boxes ticked, "bruce + 2 selected". Unticking the last
+  box puts the typed text back and leaves the column filtered on it — it
+  does not clear the column. ✕, Escape, "Clear ALL COLUMN filters" and
+  "Clear ALL filters" clear both halves together.
+  The reverse is NOT symmetric, deliberately: TYPING into a box that is
+  showing a selection replaces that selection, because the box's text IS
+  the selection's summary, so editing it can only mean editing that text.
 • "Cell structure" — an optional block of synthetic filter entries below the
   regular value list, offering structural/derived filters beyond plain text
   matching.  Appears only when at least one such entry actually applies to

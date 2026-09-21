@@ -1,0 +1,132 @@
+[
+  {
+    "name": "the entity boundary must be a DIRECT child of the <bdi> again",
+    "why": "Restores the pre-fix rule: only a direct-child <a> (or a direct-child span.name-variation) counts as an entity boundary, so MusicBrainz's own <span class=\"mp\"> open-edits wrapper hides one of the two entities and the <bdi> reports fewer than two. This is the reported bug — \" feat. \" simply does not exist. Must fail on the section's own label->count map.",
+    "edits": [
+      {
+        "find": "            const anchors = Array.from(bdi.querySelectorAll('a[href]')).filter(a =>\n                isQualifyingHref(a.getAttribute('href')) && a.closest('bdi') === bdi);",
+        "replace": "            const anchors = Array.from(bdi.children).filter(a =>\n                a.tagName === 'A' && isQualifyingHref(a.getAttribute('href')));"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "offers every phrase in the table",
+    "expect": "fail"
+  },
+  {
+    "name": "host every anchor on the <bdi> instead of on their common ancestor",
+    "why": "The plausible simpler fix: walk each anchor up to whichever child of the <bdi> contains it. It handles .mp and .name-variation in either nesting order, so rows E, F and G still pass — but ONE wrapper enclosing both anchors AND the phrase collapses to a single host and its phrase is silently dropped. Row H is the only guard on that half, which is why the boundary test asserts each cell separately rather than in aggregate.",
+    "edits": [
+      {
+        "find": "                const anc   = commonAncestor(anchors[k], anchors[k + 1], bdi);",
+        "replace": "                const anc   = bdi;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "resolves the entity boundary through every wrapper nesting",
+    "expect": "fail"
+  },
+  {
+    "name": "nested <bdi> anchors are counted under both enclosing <bdi>s",
+    "why": "Drops the closest('bdi') qualifier, so an anchor inside a nested <bdi> (the reverse <a><bdi>Name</bdi></a> shape, and the <span class=\"comment\"><bdi>…</bdi></span> MusicBrainz nests INSIDE the credit) is attributed to the outer <bdi> as well. KNOWN UNCOVERED and recorded rather than left silent: no committed fixture puts a qualifying entity anchor inside a nested <bdi> of a joined credit, so nothing here can see it.",
+    "edits": [
+      {
+        "find": "                isQualifyingHref(a.getAttribute('href')) && a.closest('bdi') === bdi);",
+        "replace": "                isQualifyingHref(a.getAttribute('href')));"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "resolves the entity boundary through every wrapper nesting",
+    "expect": "pass"
+  },
+  {
+    "name": "highlight the first text node between the anchors, whatever it holds",
+    "why": "Reverts the highlight anchor to the first text node in the slice. MusicBrainz puts each entity's own <span class=\"comment\"> inside the shared <bdi>, so that node is the non-breaking space in front of the PREVIOUS entity's comment — the mark lands on a blank and names nothing. Must fail on the phrase-vs-nbsp test.",
+    "edits": [
+      {
+        "find": "                const rawTextNode = between.find(n => n.nodeType === Node.TEXT_NODE && n.nodeValue.trim())\n                    || between.find(n => n.nodeType === Node.TEXT_NODE);",
+        "replace": "                const rawTextNode = between.find(n => n.nodeType === Node.TEXT_NODE);"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "the highlight lands on the phrase",
+    "expect": "fail"
+  },
+  {
+    "name": "getColFilters() drops the typed text stashed under a value set",
+    "why": "The pre-fix behaviour: a column filter is EITHER typed text OR a checkbox value set, so ticking a box throws the typed filter away. The panel's badges count only VISIBLE rows, so the badge says 2 and the click returns 3 — a count and its rows disagreeing, which is the reported bug. Must fail on the badge-equals-row-count test.",
+    "edits": [
+      {
+        "find": "                const typedUnderneath = (inp.dataset.mbUniqTypedText || '').trim();\n                if (typedUnderneath) pushPlainFilter(typedUnderneath);",
+        "replace": "                const typedUnderneath = '';\n                if (typedUnderneath) pushPlainFilter(typedUnderneath);"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "NARROWS a typed filter instead of replacing it",
+    "expect": "fail"
+  },
+  {
+    "name": "applyUniqValueSet() re-reads the input on every checkbox toggle",
+    "why": "Drops the once-only transition guard on the stash. The first tick is correct; from the second on the input already holds the composite label, so the label is stashed as if the user had typed it and grows without bound (\"bruce + » join phrase: with + 2 selected\"). Must fail on the stashed-once test.",
+    "edits": [
+      {
+        "find": "        if (!input.dataset.mbUniqValues && input.dataset.mbUniqTypedText === undefined) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "stays visible in the input, stays highlighted, and is stashed once",
+    "expect": "fail"
+  },
+  {
+    "name": "unchecking the last entry blanks the field instead of restoring",
+    "why": "Reverts the clear path to 'clear the whole column filter'. Every checkbox the user ticks then costs them the text they typed before it, silently and with no undo. Must fail on the restore test — which asserts the ROW SET as well as the input, so a mutation that restores the text but not the filter also fails.",
+    "edits": [
+      {
+        "find": "            const _restored = input.dataset.mbUniqTypedText || '';",
+        "replace": "            const _restored = '';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "unchecking the last entry restores the typed filter",
+    "expect": "fail"
+  },
+  {
+    "name": "_clearColFilterValueSet() leaves the typed-text stash behind",
+    "why": "The chokepoint stops clearing half its state. Nothing on screen changes — the input is empty or holds fresh text — while the stashed text keeps narrowing rows through getColFilters()'s second descriptor: an active filter the user can neither see nor reach. Must fail on the asymmetry test (typing over a selection).",
+    "edits": [
+      {
+        "find": "        delete input.dataset.mbUniqValues;\n        delete input.dataset.mbUniqTypedText;",
+        "replace": "        delete input.dataset.mbUniqValues;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "still replaces it",
+    "expect": "fail"
+  },
+  {
+    "name": "the composite label hides the typed half",
+    "why": "Shows only the checkbox summary, as before the fix, while the typed text still filters underneath. The rows are RIGHT and only the label is wrong, which is the whole argument for showing both: a filter nobody can see is a filter nobody can undo. Must fail on the input-label test.",
+    "edits": [
+      {
+        "find": "        input.value = _typed ? `${_typed} + ${_summary}` : _summary;",
+        "replace": "        input.value = _summary;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "stays visible in the input, stays highlighted, and is stashed once",
+    "expect": "fail"
+  },
+  {
+    "name": "the restored typed filter loses its active-filter styling",
+    "why": "Unchecking the last box restores the text and the rows but clears the tint and the green glow, so a filtered column looks unfiltered — the state that makes a user type into a field that is already narrowing. Must fail on the restore test's `tinted` assertion.",
+    "edits": [
+      {
+        "find": "                input.style.backgroundColor = Lib.settings.sa_col_filter_active_bg || '#fff9c4';\n                input.style.boxShadow       = '0 0 2px 2px green';",
+        "replace": "                input.style.backgroundColor = '';\n                input.style.boxShadow       = '';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-join-phrases.spec.js",
+    "grep": "unchecking the last entry restores the typed filter",
+    "expect": "fail"
+  }
+]

@@ -14,7 +14,7 @@ const { loadUserscriptPage } = require('../support/loadPage');
 const ARTIST_RECORDINGS_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
 const FIXTURE_FILE = path.join(__dirname, 'entity-refs-mp-wrapper.html');
 
-test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-edits wrapper', () => {
+test.describe('_findCellEntityRefs()/_findCellEntityCommentParts()/_findCellJoinPhrases(): "mp" open-edits wrapper', () => {
     test('finds every entity in a joined credit even when MusicBrainz wraps one in <span class="mp">', async ({ page }) => {
         await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
 
@@ -81,6 +81,28 @@ test.describe('_findCellEntityRefs()/_findCellEntityCommentParts(): "mp" open-ed
         expect(gilmourSoloParts).toEqual([
             { name: 'David Gilmour', comment: 'Pink Floyd', alias: null, type: 'artist', glyphClass: 'artistlink', href: '/artist/1dce970e-34bc-48b2-ab51-48d87544a4c2' },
         ]);
+    });
+
+    test('_findCellJoinPhrases() agrees with _findCellEntityRefs() about where the entity boundary is', async ({ page }) => {
+        await loadUserscriptPage(page, { url: ARTIST_RECORDINGS_URL, fixtureFile: FIXTURE_FILE, testMode: true });
+
+        // The two finders answer the same question — "where does one credited
+        // entity end and the next begin" — and they disagreed. #qb-cell's
+        // Bowie anchor sits inside MusicBrainz's own <span class="mp">, so
+        // _findCellJoinPhrases() saw ONE entity here and its "&" did not
+        // exist: no 📊 "Join phrases" entry, no `joinphrase:` filter, no
+        // highlight — while the tests above show _findCellEntityRefs() has
+        // always resolved both entities in this very cell. The control cell
+        // (#jl-yo-cell, no wrapper) found its "&" all along.
+        const qb = await page.evaluate(() => window.__saTest.findCellJoinPhrases('#qb-cell'));
+        expect(qb).toEqual([{ phrase: '&', hasNode: true }]);
+
+        const jlYo = await page.evaluate(() => window.__saTest.findCellJoinPhrases('#jl-yo-cell'));
+        expect(jlYo).toEqual([{ phrase: '&', hasNode: true }]);
+
+        // A solo credit has no "between" at all, wrapper or not.
+        expect(await page.evaluate(() => window.__saTest.findCellJoinPhrases('#bowie-solo-cell'))).toEqual([]);
+        expect(await page.evaluate(() => window.__saTest.findCellJoinPhrases('#gilmour-solo-cell'))).toEqual([]);
     });
 
     test('the same "» name:" value matches both a joined AND a solo occurrence of the same entity', async ({ page }) => {
