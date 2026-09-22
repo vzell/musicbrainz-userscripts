@@ -735,7 +735,14 @@ I ran now tests under cron for almost 2 weeks, see worktree at @/home/vzell/git/
 
 Analyze the results, and adjust MEASUREMENTS.org accordingly and cleanup the worktree
 
-* Item 3 in config-handling.org
+* DONE Item 3 in config-handling.org
 
 Tackle Item 3 in @org/config-handling.org
 Item 2 has been done, but it looks like it's not flagged as done
+
+* TODO still left
+
+All four Items DONE; F2, F3 and F4 fixed at 9.99.1130, 9.99.1136 and 9.99.1137. Remaining follow-ups: F1's dirty-set
+save and migration table (the real fix for defaults never reaching existing users), F5's second-class entry points, F6's
+mirror republish, and the library-side root cause of F2 — each of which needs a VZ_MBLibrary change rather than a
+userscript one
