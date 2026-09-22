@@ -15,8 +15,8 @@ For *which pageTypes are covered and which are planned*, see
 #+begin_src sh
 cd ShowAllEntityData
 npm install          # first time only
-npm test             # the safe default: 433 fixture tests, ~3 m, no network
-npm run test:full    # all 447, incl. the two @slow specs — what a merge needs
+npm test             # the safe default: 436 fixture tests, ~3 m, no network
+npm run test:full    # all 450, incl. the two @slow specs — what a merge needs
 #+end_src
 
 =npm test= needs no network, no login, and no MusicBrainz cooperation. Start
@@ -54,7 +54,7 @@ The harness is split into two Playwright projects, by directory.
 
 | Project             | Directory         | Tests            | Network     | Per-test timeout |
 |---------------------+-------------------+------------------+-------------+------------------|
-| =chromium-fixtures= | =tests/fixtures/= | 447 in 114 files | none        | 30 s (default)   |
+| =chromium-fixtures= | =tests/fixtures/= | 450 in 115 files | none        | 30 s (default)   |
 | =chromium-live=     | =tests/live/=     | 77 in 38 files   | real MB.org | 120 s            |
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
@@ -189,9 +189,9 @@ rows ran the same tree: =tests/MEASUREMENTS.org=, "Test-suite wall clocks".
 
 | Suite / spec                                | Wall clock   | Basis                                                                             |
 |---------------------------------------------+--------------+-----------------------------------------------------------------------------------|
-| =npm test= (433 now, =@slow= excluded)      | *≈ 2 m 6 s*  | measured 2026-09-20 at 389 tests, =NB-3641=, 14 workers                           |
+| =npm test= (436 now, =@slow= excluded)      | *≈ 2 m 6 s*  | measured 2026-09-20 at 389 tests, =NB-3641=, 14 workers                           |
 | — the same selection on =petri=             | ≈ 2 m 42 s   | measured 2026-09-21 at 432 tests, =petri=, 12 workers                             |
-| =npm run test:full= (447 now)               | *≈ 5 m 18 s* | measured 2026-09-20 at 403 tests, =NB-3641=, 14 workers                           |
+| =npm run test:full= (450 now)               | *≈ 5 m 18 s* | measured 2026-09-20 at 403 tests, =NB-3641=, 14 workers                           |
 | — the same selection on =petri=             | *≈ 5 m 37 s* | measured 2026-09-21 at 446 tests, =petri=, 12 workers                             |
 | =npm run test:slow= (14 tests, 2 files)     | *≈ 4 m 48 s* | measured 2026-09-20, =NB-3641=, 14 workers                                        |
 | — the whole suite at 353 tests, pre-=@slow= | ≈ 1 m 50 s   | measured 2026-09-19, =NB-3641=, 14 workers (108 s)                                |

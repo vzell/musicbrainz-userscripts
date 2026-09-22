@@ -10,10 +10,11 @@ version is the part that stays resolvable.
 
 *Shipped since:*
 
-| Finding | Version   | Branch                          | Spec                                               |
-|---------+-----------+---------------------------------+----------------------------------------------------|
-| [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js= |
-| [[#F3][F3]]      | 9.99.1136 | =fix/config-import-tables=      | =tests/fixtures/config-import-export.spec.js=      |
+| Finding | Version   | Branch                          | Spec                                                       |
+|---------+-----------+---------------------------------+------------------------------------------------------------|
+| [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js=         |
+| [[#F3][F3]]      | 9.99.1136 | =fix/config-import-tables=      | =tests/fixtures/config-import-export.spec.js=              |
+| [[#F4][F4]]      | 9.99.1137 | =fix/config-fallback-drift=     | =tests/fixtures/settings-fallback-matches-default.spec.js= |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -31,13 +32,14 @@ commit).
 | [[#F1][F1]]      | one SAVE pins every setting forever              | none — recorded, not fixed    |
 | [[#F2][F2]]      | =number= settings stored as strings; 4 read dead | *fixed* 9.99.1130             |
 | [[#F3][F3]]      | config import silently wipes the editable tables | *fixed* 9.99.1136             |
-| [[#F4][F4]]      | inline fallbacks disagree with their default     | *audited, not fixed* — [[#item-4][Item 4]] |
+| [[#F4][F4]]      | inline fallbacks disagree with their default     | *fixed* 9.99.1137             |
 | [[#F5][F5]]      | settings-dialog friction                         | none — recorded, not fixed    |
 | [[#F6][F6]]      | publish mirror 383 versions behind               | none — distribution, not code |
 
-[[#F4][F4]]'s count was 17 when it was written; the audit measures 15, and the two are
-the same set — see [[#item-4][Item 4]]'s "F4's numbers, reconciled". The heading below still
-says 17, deliberately: it is what was measured at 9.99.1129.
+[[#F4][F4]]'s count was 17 when it was written and the audit measured 15 of the same
+set — see [[#item-4][Item 4]]'s "F4's numbers, reconciled". Both are now 0. The headings below
+keep their original numbers, deliberately: they are what was measured at
+9.99.1129, and the reasoning is worth more than the tally.
 
 *Anchors are symbols, not line numbers*, per the rule =CLAUDE.md= states for the
 File-structure table and =PERFORMANCE.org=: the userscript grows on nearly every
@@ -224,6 +226,12 @@ consumer's two loops skip only =divider=.
 :CUSTOM_ID: F4
 :END:
 
+*FIXED in 9.99.1137.* All 165 fallback sites now agree; the audit's baseline is
+empty and a new disagreement fails it. The finding below is left as written, at
+9.99.1129, because the reasoning is what matters and the numbers are the
+measurement it was based on — see "What the fix established" at the end of this
+section for what changed and what it cost.
+
 167 sites read =Lib.settings.sa_X || literal= or =?? literal=. *150 agree with
 the schema default; 17 do not* — so the same setting resolves to different values
 depending on which code path reads it while unset. A sample:
@@ -252,6 +260,48 @@ with no schema key at all. Some literals are copy-pasted heavily —
 *This is the finding that justifies [[#item-4][Item 4]].* None of it is visible today: there
 is no artifact recording what the defaults are, so nothing can compare a
 fallback against one.
+
+** What the fix established (9.99.1137)
+
+*The direction was not a judgement call, and git settled it.* =bfb8ac3=
+("adjust configuration setting defaults to sensible values", 2026-08-17)
+contains =default: 8= → =default: 30= on =sa_uniq_dropdown_visible_rows=, and
+left =Number(Lib.settings.…) || 8= untouched several thousand lines away. The
+schema default is the deliberate value; the inline literal is what that commit
+missed. So every one of the 15 was fixed by moving the LITERAL, never the
+default — and the same is true of the descriptions.
+
+*The drift was almost entirely INERT, which is why it survived a year.*
+=settingsInterface.init()= writes =GM_getValue(key, schema.default)= into
+=Lib.settings= for every schema key, so =Lib.settings.sa_X= is never undefined
+in normal operation and the =||= never fires. It fires in exactly two places:
+
+1. the stored value is FALSY — a colour field the user cleared and saved
+   (=''=), or a =0=; and
+2. the =VZ_MBLibrary= =@require= failed, where =Lib= is the stub whose
+   =settings= is ={}= and each consumer's own fallback is all there is.
+
+This matters for how the change is described: *nobody's colours were wrong*.
+The fix removes a trap, it does not repair a visible fault. Anyone tempted to
+write the changelog entry as "your headers were the wrong colour" should read
+this paragraph first.
+
+*The four contradicting descriptions were the user-visible half*, and they were
+worse than the literals, because the settings dialog SHOWS them:
+=sa_ui_h3_bg= said /"Default is a light green"/ while =#f7dfdf= is a pale rose
+(the light green was =#f0fff4=, the inline fallback); both hover settings
+claimed /"the original MusicBrainz light grey (#f9f9f9)"/ while their defaults
+are oranges; both non-hover settings promised /"the existing grey hover
+background is preserved"/, which the orange hover defaults had already broken.
+=sa_ui_thead_th_bg= claimed its default /"matches the original MusicBrainz
+grey"/, which stopped being true when it became =#bababa=.
+
+*A count this file got right and a script got wrong at first.* F4 says "four
+descriptions"; a scripted check that only compares NAMED hex colours finds two.
+The other two contradict in words rather than hex ("a light green", "the
+existing grey hover background is preserved"). Prose contradictions are not
+mechanically checkable, which is the same conclusion [[#item-4][Item 4]]'s =--docs= worklist
+reached from the other side.
 
 * F5 — settings-dialog friction
 :PROPERTIES:

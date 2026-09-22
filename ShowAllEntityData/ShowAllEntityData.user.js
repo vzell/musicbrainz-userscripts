@@ -1221,28 +1221,28 @@
             label: 'H2 section-header background color',
             type: 'color_picker',
             default: '#ffd787',
-            description: 'Background color for collapsible H2 section headers (.mb-toggle-h2) when the cursor is NOT hovering. The existing grey hover background is preserved. Default is a light orange.'
+            description: 'Background color for collapsible H2 section headers (.mb-toggle-h2) when the cursor is NOT hovering. Default is a light orange (#ffd787); the hover colour is set separately by sa_ui_h2_hover_bg.'
         },
 
         sa_ui_h3_bg: {
             label: 'H3 sub-table-header background color',
             type: 'color_picker',
             default: '#f7dfdf',
-            description: 'Background color for collapsible H3 sub-table headers (.mb-toggle-h3) in multi-table mode when the cursor is NOT hovering. The existing grey hover background is preserved. Default is a light green.'
+            description: 'Background color for collapsible H3 sub-table headers (.mb-toggle-h3) in multi-table mode when the cursor is NOT hovering. Default is a pale rose (#f7dfdf); the hover colour is set separately by sa_ui_h3_hover_bg.'
         },
 
         sa_ui_h2_hover_bg: {
             label: 'H2 section-header hover background color',
             type: 'color_picker',
             default: '#f99f50',
-            description: 'Background color applied to H2 section headers when the cursor hovers over them (.mb-toggle-h2:hover). Default is the original MusicBrainz light grey (#f9f9f9). Takes precedence over the non-hover H2 background (sa_ui_h2_bg).'
+            description: 'Background color applied to H2 section headers when the cursor hovers over them (.mb-toggle-h2:hover). Default is a mid orange (#f99f50), a shade darker than the non-hover H2 background. Takes precedence over the non-hover H2 background (sa_ui_h2_bg).'
         },
 
         sa_ui_h3_hover_bg: {
             label: 'H3 sub-table-header hover background color',
             type: 'color_picker',
             default: '#eb7231',
-            description: 'Background color applied to H3 sub-table headers when the cursor hovers over them (.mb-toggle-h3:hover). Default is the original MusicBrainz light grey (#f9f9f9). Takes precedence over the non-hover H3 background (sa_ui_h3_bg).'
+            description: 'Background color applied to H3 sub-table headers when the cursor hovers over them (.mb-toggle-h3:hover). Default is a strong orange (#eb7231), clearly darker than the non-hover H3 background. Takes precedence over the non-hover H3 background (sa_ui_h3_bg).'
         },
 
         sa_ui_row_hover_bg: {
@@ -1262,7 +1262,7 @@
             label: 'Table header-row background color',
             type: 'color_picker',
             default: '#bababa',
-            description: 'Background color for all table column-header cells (table.tbl thead th). The default matches the original MusicBrainz grey used before the consolidated view is rendered.'
+            description: 'Background color for all table column-header cells (table.tbl thead th). Default is a mid grey (#bababa), deliberately darker than the light grey MusicBrainz uses before the consolidated view is rendered, so the consolidated header stands out.'
         },
 
         sa_ui_thead_th_color: {
@@ -19567,7 +19567,7 @@
 
             /* Ensure headers have a solid background so scrolling content doesn't bleed through */
             table.tbl thead th {
-                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#e8e8e8'};
+                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#bababa'};
                 color: ${Lib.settings.sa_ui_thead_th_color || '#333333'};
                 border-bottom: 1px solid #ddd;
                 border-top: 1px solid #ddd;
@@ -19577,7 +19577,7 @@
 
             /* Filter row specific styling */
             table.tbl thead tr.mb-col-filter-row th {
-                background-color: ${Lib.settings.sa_ui_thead_filter_row_bg || '#f4f4f4'};
+                background-color: ${Lib.settings.sa_ui_thead_filter_row_bg || '#d1d1d1'};
                 border-bottom: 2px solid #ccc;
                 border-top: none;
             }
@@ -19952,8 +19952,8 @@
         function _apply() {
             const left = _leftOffset();
             const leftPx = `${left}px`;
-            const bgHeader = Lib.settings.sa_ui_thead_th_bg    || '#e8e8e8';
-            const bgFilter = Lib.settings.sa_ui_thead_filter_row_bg || '#f4f4f4';
+            const bgHeader = Lib.settings.sa_ui_thead_th_bg    || '#bababa';
+            const bgFilter = Lib.settings.sa_ui_thead_filter_row_bg || '#d1d1d1';
 
             // Header rows
             table.querySelectorAll('thead tr').forEach(tr => {
@@ -34150,7 +34150,7 @@ a { color: #1565c0; }`;
             prefilterToggleBtn.style.border = '';
         } else {
             // Highlighting is OFF - use highlight background color to indicate it will restore highlighting
-            const highlightBg = Lib.settings.sa_pre_filter_highlight_bg || '#ffeb3b';
+            const highlightBg = Lib.settings.sa_pre_filter_highlight_bg || '#FFFFE0';
             prefilterToggleBtn.style.backgroundColor = highlightBg;
             prefilterToggleBtn.style.color = '#000';
             prefilterToggleBtn.style.border = '1px solid #ccc';
@@ -34197,7 +34197,7 @@ a { color: #1565c0; }`;
             unhighlightAllBtn.style.border = '';
         } else {
             // Highlighting is OFF - use highlight background color to indicate it will restore highlighting
-            const highlightBg = Lib.settings.sa_global_filter_highlight_bg || Lib.settings.sa_column_filter_highlight_bg || '#90caf9';
+            const highlightBg = Lib.settings.sa_global_filter_highlight_bg || Lib.settings.sa_column_filter_highlight_bg || '#add8e6';
             unhighlightAllBtn.style.backgroundColor = highlightBg;
             unhighlightAllBtn.style.color = '#000';
             unhighlightAllBtn.style.border = '1px solid #ccc';
@@ -35538,22 +35538,22 @@ a { color: #1565c0; }`;
         }
         .mb-toggle-h2:hover {
             color: #222;
-            background-color: ${Lib.settings.sa_ui_h2_hover_bg || '#f9f9f9'};
+            background-color: ${Lib.settings.sa_ui_h2_hover_bg || '#f99f50'};
         }
         .mb-toggle-h3:hover {
             color: #222;
-            background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#f9f9f9'};
+            background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
-        .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f0fff4'}; }
+        .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
         .mb-credits-toggle-h3:hover {
             color: #222;
-            background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#f9f9f9'};
+            background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         /* "Release"/"Release group" sub-headings inside the native Credits
            section (div#bottom-credits) — see _makeCreditsH3sCollapsible()'s
            JSDoc for why this is a separate class from .mb-toggle-h3 rather
            than sharing it. Visually mirrors .mb-toggle-h3 for consistency. */
-        .mb-credits-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; background-color: ${Lib.settings.sa_ui_h3_bg || '#f0fff4'}; }
+        .mb-credits-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
         .mb-subtable-controls { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; vertical-align: middle; }
         .mb-subtable-clear-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-subtable-clear-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
@@ -35573,7 +35573,7 @@ a { color: #1565c0; }`;
            .mb-credit-task's own fixed <i> styling. */
         .mb-credit-attr { color: ${Lib.settings.sa_credit_attr_color || '#2e7d32'}; font-style: italic; }
         .mb-credit-altname { font-style: italic; }
-        .mb-toggle-h2 { cursor: pointer; user-select: none; background-color: ${Lib.settings.sa_ui_h2_bg || '#fff3e0'}; }
+        .mb-toggle-h2 { cursor: pointer; user-select: none; background-color: ${Lib.settings.sa_ui_h2_bg || '#ffd787'}; }
         /* Wiki-rendered <h2> sub-headings nested inside table.tbl cells (e.g. an
            "Annotation" column's "== Known performances ==") reuse the same
            .mb-toggle-h2 class as page-level H2 sections (see makeH2sCollapsible() /
@@ -49789,7 +49789,7 @@ a { color: #1565c0; }`;
                 // Skipped when totalRows exceeds sa_auto_resize_columns_threshold (default
                 // 2000) to avoid a slow measurement pass on large datasets.
                 if (Lib.settings.sa_auto_resize_columns && !isAutoResized) {
-                    const _arThreshold = Lib.settings.sa_auto_resize_columns_threshold ?? 2000;
+                    const _arThreshold = Lib.settings.sa_auto_resize_columns_threshold ?? 10000;
                     const _arBelowThreshold = _arThreshold === 0 || totalRows <= _arThreshold;
                     if (_arBelowThreshold) {
                         setTimeout(async () => {
@@ -59797,7 +59797,7 @@ a { color: #1565c0; }`;
         // of the button (above/below) has more room, so it always wins over
         // the CSS fallback of that same 320px default on #mb-col-uniq-dropdown
         // without needing a stylesheet change.
-        const _uniqVisibleRows = Math.max(1, Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8);
+        const _uniqVisibleRows = Math.max(1, Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 30);
         const maxDropH = _uniqVisibleRows * 29 + 88;
 
         const bRect = btn.getBoundingClientRect();
@@ -75195,7 +75195,7 @@ a { color: #1565c0; }`;
         }
 
         // Configurable role colours (settings → palette → hard-coded defaults).
-        const _mainColor  = Lib.settings.sa_ui_artist_role_main_performer_color  || '#006400';
+        const _mainColor  = Lib.settings.sa_ui_artist_role_main_performer_color  || '#57ff5a';
         const _guestColor = Lib.settings.sa_ui_artist_role_guest_performer_color || '#e07000';
 
         /**

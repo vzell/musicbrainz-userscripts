@@ -1,0 +1,29 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-22",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Four descriptions in the ⚙️ Settings dialog described a colour the setting no longer uses, and now describe the real one. The H3 sub-table header background said \"Default is a light green\" when it is a pale rose; both the H2 and H3 hover backgrounds said \"Default is the original MusicBrainz light grey (#f9f9f9)\" when both are oranges; and both non-hover heading settings promised \"the existing grey hover background is preserved\", which those orange hover colours had already replaced. The table column-header setting also claimed its default matches the grey MusicBrainz uses, which stopped being true when it was darkened.",
+          "Fifteen places in the script carried a hardcoded colour or number that no longer matched the setting it was standing in for — so the same setting could resolve two different ways depending on which part of the script asked. The hardcoded copies now match the settings. This is normally invisible, and nobody's colours have been wrong: the stand-in value is only reached if you CLEAR a colour field and save it, or set a numeric setting to 0, or if the shared library fails to load. In those cases you now get the setting's real default instead of a value left over from an earlier release."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "A cleared \"Unique-Values Dropdown Visible Rows\" now falls back to 30 rows rather than 8 — 8 was the default until it was raised to 30 in an earlier release, and this copy of it was missed at the time.",
+          "Likewise the auto-resize row limit falls back to 10 000 rather than 2 000 when the shared library is unavailable."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "`ShowAllEntityData_HELP.txt` needed no change: it documents these settings by name and never quotes their colour values, so nothing in it had gone stale.",
+          "The configuration-defaults audit added in the previous release is what found all fifteen, and its list of known mismatches is now empty — a new one fails the audit rather than sitting unnoticed until someone reads two files side by side."
+        ]
+      }
+    ]
+  }
+]

@@ -692,16 +692,30 @@ file** — it is an artifact for review and for the audit, and
 org/config-handling.org's "Why it must not be read at runtime" says why it must
 stay that way.
 
-**A default has two places it can be wrong.** The schema's `default:` is what
-the settings dialog shows; an inline `Lib.settings.sa_X || literal` is what
-applies while the key is unset. 15 sites currently disagree with their own
-schema default, so the same setting resolves differently depending on which path
-reads it — `scripts/audit-config-defaults.py` is what makes that visible, and
-`scripts/config-fallback-drift-baseline.json` is the accepted set, so a NEW one
-fails. It also fails on an ORPHAN — an inline read of a key no longer in the
-schema, which is always its fallback, silently and for ever. Run
-`scripts/check-config-defaults-gate.py` after touching the audit; it
-mutation-checks all four arms, and is what caught the ORPHAN case exiting 0.
+**A default has two places it can be wrong, and changing one is how they
+drift.** The schema's `default:` is what the settings dialog shows and what
+RESET restores; an inline `Lib.settings.sa_X || literal` is what applies when
+that key reads falsy. All **165** fallback sites now agree with their own
+schema default — 15 did not until 9.99.1137, because `bfb8ac3` changed seven
+defaults "to sensible values" and left the literals thousands of lines away
+untouched. **When you change a `default:`, grep for that key's inline
+fallbacks and change them too**, or run the audit, which is there precisely so
+you do not have to remember.
+
+`scripts/audit-config-defaults.py` fails on a NEW disagreement, and on an
+ORPHAN — an inline read of a key no longer in the schema, which is always its
+fallback, silently and for ever. `scripts/config-fallback-drift-baseline.json`
+is the accepted set and is currently EMPTY; keep it that way rather than
+baselining a new one. A version bump alone is a NOTE, never a failure, so the
+gate survives `merge-push-remove`'s fold. Run
+`scripts/check-config-defaults-gate.py` after touching the audit: it
+mutation-checks all six arms, and is what caught the ORPHAN case exiting 0.
+
+**The drift is mostly invisible, which is why it lasted.**
+`settingsInterface.init()` writes the schema default into `Lib.settings` for
+every key, so the `||` is inert unless the stored value is falsy (a cleared
+colour field, a `0`) or the `VZ_MBLibrary` `@require` failed and `Lib.settings`
+is `{}`. Do not conclude from "nothing looks wrong" that the literals agree.
 
 - `sa_enable_debug_logging` — enables `Lib.debug(channel, …)` output
 - `sa_ui_h2_bg`, `sa_ui_h3_bg` — h2/h3 header background colours

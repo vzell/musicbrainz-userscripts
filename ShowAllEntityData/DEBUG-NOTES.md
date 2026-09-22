@@ -14462,3 +14462,67 @@ a deleted key and an explicitly empty one — the deleted half cannot see the
 `Array.isArray` either way. Mutation list now 8 entries, all as predicted; the
 old "unseeded-table drop" entry was removed rather than repaired, its anchor
 and its premise having both been replaced by the live read.
+
+## 2026-09-22 — F4: the 15 inline fallbacks that disagreed with their own default (branch fix/config-fallback-drift)
+
+`org/config-handling.org` F4, the branch Item 4 was built to make possible.
+The audit named the sites; this fixed them.
+
+**The direction was settled by git, not by taste.** `bfb8ac3` ("adjust
+configuration setting defaults to sensible values", 2026-08-17) contains
+`default: 8` → `default: 30` on `sa_uniq_dropdown_visible_rows`, and left
+`Number(Lib.settings.sa_uniq_dropdown_visible_rows) || 8` untouched about
+10 000 lines away. So the schema default is the deliberate value and the inline
+literal is what that commit missed — every one of the 15 was fixed by moving
+the LITERAL. Worth checking that way round before any similar sweep: the
+opposite conclusion would have quietly reverted seven deliberate decisions.
+
+**The drift was almost entirely inert, and saying so is the important part.**
+`settingsInterface.init()` writes `GM_getValue(key, schema.default)` into
+`Lib.settings` for every schema key, so `Lib.settings.sa_X` is never `undefined`
+in normal operation and the `||` never fires. It fires in exactly two places:
+a FALSY stored value (a colour field the user cleared and saved, or a `0`), and
+the stub path where the `VZ_MBLibrary` `@require` failed and `Lib.settings` is
+`{}`. Nobody's colours were wrong. The changelog entry says so explicitly,
+because "15 wrong colours fixed" would have been a much better story and a
+false one.
+
+**The user-visible half was the descriptions, not the literals.** Four
+statements in the settings dialog were false: `sa_ui_h3_bg` said "Default is a
+light green" while `#f7dfdf` is a pale rose (`#f0fff4`, the inline fallback, IS
+a light green — the description was written against it); both hover settings
+claimed "the original MusicBrainz light grey (#f9f9f9)" while their defaults
+are oranges; both non-hover settings promised "the existing grey hover
+background is preserved", already falsified by those orange hover defaults. A
+fifth, `sa_ui_thead_th_bg`, claimed its default "matches the original
+MusicBrainz grey", which stopped being true at `#bababa`.
+
+A scripted check comparing NAMED hex colours finds only two of them. The others
+contradict in prose. That is the same wall `--docs` hit from the other side, and
+it is why F4's hand-written "four descriptions" was right where a script said
+two.
+
+**One design change the fix forced, in the audit rather than the userscript.**
+The snapshot records `_meta.script_version`, so a release bump makes it stale —
+and `merge-push-remove` bumps the version during its fold, AFTER the audit has
+run. Left alone, the gate would be red after every merge, for a file whose
+content is entirely correct: the exact state in which a gate gets regenerated
+blindly and stops being read. A version-only difference is now a NOTE with an
+exit code of 0, while every difference that is actually about the schema —
+a default, a label, a table seed, a count in `_meta` — still fails.
+`check-config-defaults-gate.py` gained an arm asserting the NOTE path does NOT
+fail, and one asserting a rename DOES.
+
+**Coverage.** `tests/fixtures/settings-fallback-matches-default.spec.js`
+(3 tests) pins the half a person could see: a cleared colour renders the schema
+default, an unset one still does, and a colour the user chose beats both. That
+third test is the one that catches the plausible wrong fix — hardcoding
+`#bababa` and dropping the setting read entirely, which both other tests would
+happily pass. Mutation list `scripts/mutations/config-fallback-drift.json`,
+4 entries, one an honest `expect: "pass"`: reverting the literal cannot change
+what an UNSET setting renders, and that pass is what pins the "when does the
+fallback actually fire" reasoning above.
+
+The other 14 sites are not covered by Playwright and should not be. The
+guarantee is about all 165, and `scripts/audit-config-defaults.py` checks it
+mechanically; its baseline is now empty.
