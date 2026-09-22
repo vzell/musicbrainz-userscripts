@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the header-background fallback goes back to the stale literal",
+    "why": "org/config-handling.org F4, reverted at the site a person actually sees: the CSS block's `Lib.settings.sa_ui_thead_th_bg || '#e8e8e8'` against a schema default of '#bababa'. With the colour field cleared, the header renders the literal instead of the default. Only the CLEARED test may notice — the unset-setting control must stay green, because that path never reaches the `||`.",
+    "edits": [
+      {
+        "find": "                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#bababa'};",
+        "replace": "                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#e8e8e8'};"
+      }
+    ],
+    "spec": "tests/fixtures/settings-fallback-matches-default.spec.js",
+    "grep": "a CLEARED colour falls back to the schema default",
+    "expect": "fail"
+  },
+  {
+    "name": "the filter-row fallback goes back to the stale literal",
+    "why": "The second colour the same test pins, mutated separately so each is its own guard rather than one assertion covering for the other. Same shape: '#f4f4f4' inline against a '#d1d1d1' default.",
+    "edits": [
+      {
+        "find": "                background-color: ${Lib.settings.sa_ui_thead_filter_row_bg || '#d1d1d1'};",
+        "replace": "                background-color: ${Lib.settings.sa_ui_thead_filter_row_bg || '#f4f4f4'};"
+      }
+    ],
+    "spec": "tests/fixtures/settings-fallback-matches-default.spec.js",
+    "grep": "a CLEARED colour falls back to the schema default",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting stops being read at all, and the colour is hardcoded",
+    "why": "The plausible wrong fix: 'make the header #bababa' taken to mean hardcoding it. The two cleared/unset tests would BOTH still pass, because #bababa is what they expect — only the counter-guard, which sets a colour of its own, can see it. That is why that third test exists.",
+    "edits": [
+      {
+        "find": "                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#bababa'};",
+        "replace": "                background-color: #bababa;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-fallback-matches-default.spec.js",
+    "grep": "a colour the user actually chose still wins",
+    "expect": "fail"
+  },
+  {
+    "name": "the unset-setting control, under the header mutation",
+    "why": "EXPECTED TO PASS, and recorded because the pass is the point. Reverting the inline literal cannot change what an UNSET setting renders: `settingsInterface.init()` has already put the schema default into Lib.settings, so the `||` never fires. This pins the claim the spec's header comment makes about when the fallback is live — if this ever starts failing, that reasoning is wrong and the whole framing of F4 needs revisiting.",
+    "edits": [
+      {
+        "find": "                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#bababa'};",
+        "replace": "                background-color: ${Lib.settings.sa_ui_thead_th_bg || '#e8e8e8'};"
+      }
+    ],
+    "spec": "tests/fixtures/settings-fallback-matches-default.spec.js",
+    "grep": "an unset setting already rendered the schema default",
+    "expect": "pass"
+  }
+]

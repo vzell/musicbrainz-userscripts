@@ -120,12 +120,33 @@ def run_stage1():
     for key in sorted(set(a.get('tables', {})) | set(b.get('tables', {}))):
         if a.get('tables', {}).get(key) != b.get('tables', {}).get(key):
             problems.append(f'table seed changed: {key}')
-    if a['_meta']['script_version'] != b['_meta']['script_version']:
-        problems.append(f"script_version: {a['_meta']['script_version']} -> "
-                        f"{b['_meta']['script_version']}")
+    for key in sorted(set(a.get('labels', {})) | set(b.get('labels', {}))):
+        old, new = a.get('labels', {}).get(key), b.get('labels', {}).get(key)
+        if old != new:
+            problems.append(f'label changed: {key}: {old!r} -> {new!r}')
+    for key in sorted(k for k in set(a['_meta']) | set(b['_meta'])
+                      if k != 'script_version'):
+        if a['_meta'].get(key) != b['_meta'].get(key):
+            problems.append(f'schema shape changed: _meta.{key}: '
+                            f'{a["_meta"].get(key)!r} -> {b["_meta"].get(key)!r}')
+
+    # **A version-only difference is a NOTE, not a failure, and that is what
+    # keeps this gate usable.** `_meta.script_version` moves on every release,
+    # and the release bump happens during `merge-push-remove`'s fold — after
+    # this audit has already run. Failing on it would leave the audit red after
+    # every single merge, for a file whose content is entirely correct, which is
+    # how a gate gets regenerated blindly and then stops being read. Every
+    # difference that is actually about the SCHEMA is checked above and fails.
     if not problems:
-        problems.append('snapshot differs from a fresh dump in formatting or '
-                        'metadata only — regenerate it')
+        stale = (a['_meta']['script_version'] != b['_meta']['script_version'])
+        return [('NOTE: %s records %s, the userscript is now %s — regenerate it '
+                 'with python3 scripts/dump-config-defaults.py (the defaults '
+                 'themselves are current)'
+                 % (os.path.basename(SNAPSHOT), a['_meta']['script_version'],
+                    b['_meta']['script_version']))] if stale else \
+               ['NOTE: snapshot differs from a fresh dump in formatting only — '
+                'regenerate it with python3 scripts/dump-config-defaults.py']
+
     return [f'{os.path.basename(SNAPSHOT)} is out of date:'] + \
            [f'    {p}' for p in problems] + \
            ['    fix: python3 scripts/dump-config-defaults.py']
@@ -320,7 +341,12 @@ def main():
     failed = False
 
     stage1 = run_stage1()
-    if stage1:
+    # A NOTE means the snapshot's CONTENT is correct and only its version stamp
+    # (or formatting) has moved — stage 2 can still trust it, and the run stays
+    # green. Anything else means the schema itself changed underneath the file.
+    stage1_fatal = bool(stage1) and not stage1[0].startswith('NOTE:')
+
+    if stage1_fatal:
         failed = True
         for line in stage1:
             print(line, file=sys.stderr)
@@ -330,10 +356,12 @@ def main():
         print(f"{os.path.basename(SNAPSHOT)}: up to date — {meta['schema_entries']} "
               f"entries, {meta['settings_with_default']} defaults, "
               f"{len(snapshot['tables'])} seeded tables, at {meta['script_version']}")
+        for line in stage1:
+            print(line)
 
     if args.stage1_only:
         return 1 if failed else 0
-    if stage1:
+    if stage1_fatal:
         print('stage 2 skipped — it reads the snapshot, which is stale', file=sys.stderr)
         return 1
 

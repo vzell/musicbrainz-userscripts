@@ -3,50 +3,5 @@
     "generated_by": "scripts/audit-config-defaults.py --baseline",
     "purpose": "org/config-handling.org F4: the inline fallbacks known to disagree with their schema default. Fixing these is its own branch; this file exists so a NEW one fails the audit while the known set stays quiet."
   },
-  "drifting": {
-    "sa_auto_resize_columns_threshold": {
-      "schema": 10000,
-      "inline": 2000
-    },
-    "sa_column_filter_highlight_bg": {
-      "schema": "#add8e6",
-      "inline": "#90caf9"
-    },
-    "sa_pre_filter_highlight_bg": {
-      "schema": "#FFFFE0",
-      "inline": "#ffeb3b"
-    },
-    "sa_ui_artist_role_main_performer_color": {
-      "schema": "#57ff5a",
-      "inline": "#006400"
-    },
-    "sa_ui_h2_bg": {
-      "schema": "#ffd787",
-      "inline": "#fff3e0"
-    },
-    "sa_ui_h2_hover_bg": {
-      "schema": "#f99f50",
-      "inline": "#f9f9f9"
-    },
-    "sa_ui_h3_bg": {
-      "schema": "#f7dfdf",
-      "inline": "#f0fff4"
-    },
-    "sa_ui_h3_hover_bg": {
-      "schema": "#eb7231",
-      "inline": "#f9f9f9"
-    },
-    "sa_ui_thead_filter_row_bg": {
-      "schema": "#d1d1d1",
-      "inline": "#f4f4f4"
-    },
-    "sa_ui_thead_th_bg": {
-      "schema": "#bababa",
-      "inline": "#e8e8e8"
-    },
-    "sa_uniq_dropdown_visible_rows": {
-      "schema": 30,
-      "inline": 8
-    }
-  }
+  "drifting": {}
 }
