@@ -28,6 +28,7 @@ usage:
 """
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -80,12 +81,24 @@ CASES = [
      '"drifting": {"sa_max_page": {"schema": 50, "inline": 99}}',
      'fail', 'stage 2: asks for a re-baseline'),
 
-    ('the version is bumped but the snapshot is not regenerated',
-     'userscript',
-     '// @version      9.99.1136+2026-09-22',
-     '// @version      9.99.9999+2026-09-22',
-     'pass', 'stage 1: a NOTE, never a failure — see the module docstring'),
+    # The version case is appended by _version_case() below: hardcoding the
+    # anchor made this ERROR on the first release after it was written, which
+    # is the staleness this script's own "a missing anchor is an ERROR" rule
+    # exists to catch. It caught it — on 9.99.1137, the very next merge.
 ]
+
+
+def _version_case():
+    """Build the version-bump case against whatever version is in the file now."""
+    src = open(TARGETS['userscript'], encoding='utf-8').read()
+    m = re.search(r'^(// @version\s+)(\S+)$', src, re.M)
+    if not m:
+        return None
+    return ('the version is bumped but the snapshot is not regenerated',
+            'userscript',
+            m.group(0),
+            f'{m.group(1)}9.99.9999+2026-01-01',
+            'pass', 'stage 1: a NOTE, never a failure — see the module docstring')
 
 
 def sha256(path):
@@ -128,7 +141,15 @@ def main():
             return 2
         print('baseline: audit exits 0 on the unmutated tree')
 
-        for name, target, find, replace, expect, note in CASES:
+        cases = list(CASES)
+        vc = _version_case()
+        if vc:
+            cases.append(vc)
+        else:
+            print('WARNING: no // @version line found — the version-stamp '
+                  'arm is not being checked', file=sys.stderr)
+
+        for name, target, find, replace, expect, note in cases:
             path = TARGETS[target]
             src = open(path, encoding='utf-8').read()
             if find not in src:
