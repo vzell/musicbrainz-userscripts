@@ -17,7 +17,8 @@ version is the part that stays resolvable.
 | [[#F4][F4]]      | 9.99.1137 | =fix/config-fallback-drift=             | =tests/fixtures/settings-fallback-matches-default.spec.js= |
 | [[#F1][F1]]      | 9.99.1138 | =fix/settings-dirty-set-and-migration=  | =tests/fixtures/settings-migration.spec.js=                |
 | [[#F5][F5]]      | 9.99.1139 | =fix/settings-dialog-friction=          | =tests/fixtures/settings-dialog.spec.js=                   |
-| [[#F5][F5]]·7    | WIP.1     | =feat/config-export-workspace=          | =tests/fixtures/config-workspace-roundtrip.spec.js=        |
+| [[#F5][F5]]·7    | 9.99.1140 | =feat/config-export-workspace=          | =tests/fixtures/config-workspace-roundtrip.spec.js=        |
+| —       | 9.99.1141 | =feat/config-export-workspace=          | =tests/fixtures/settings-dialog-header.spec.js=            |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -36,7 +37,7 @@ commit).
 | [[#F2][F2]]      | =number= settings stored as strings; 4 read dead | *fixed* 9.99.1130             |
 | [[#F3][F3]]      | config import silently wipes the editable tables | *fixed* 9.99.1136             |
 | [[#F4][F4]]      | inline fallbacks disagree with their default     | *fixed* 9.99.1137             |
-| [[#F5][F5]]      | settings-dialog friction                         | *fixed* 9.99.1139 + WIP.1     |
+| [[#F5][F5]]      | settings-dialog friction                         | *fixed* 9.99.1139 + 9.99.1140 |
 | [[#F6][F6]]      | publish mirror 383 versions behind               | none — distribution, not code |
 
 [[#F4][F4]]'s count was 17 when it was written and the audit measured 15 of the same
@@ -847,10 +848,10 @@ DOCUMENTATION change — HELP naming one setting per bullet — not a script cha
 :CUSTOM_ID: item-5
 :END:
 
-[[#F5][F5]]'s seventh bullet, on =feat/config-export-workspace=. Shipped as WIP.1;
-spec =tests/fixtures/config-workspace-roundtrip.spec.js= (13 tests), mutation
-list =scripts/mutations/config-workspace.json= (13 entries, 12 =fail= + 1 honest
-=pass=).
+[[#F5][F5]]'s seventh bullet, on =feat/config-export-workspace=. Shipped as
+*9.99.1140*; spec =tests/fixtures/config-workspace-roundtrip.spec.js= (13
+tests), mutation list =scripts/mutations/config-workspace.json= (13 entries, 12
+=fail= + 1 honest =pass=).
 
 The file gained an optional =workspace= block beside =settings=, carrying the GM
 state that is not a =configSchema= key: the pinned filter list, filter history,
@@ -927,6 +928,56 @@ mirror is still at 9.99.746 ([[#F6][F6]]), so every file a user already has is v
 every file this version writes will be read by a v1 script somewhere. The
 summary says which of the two happened, because "my window positions did not
 come across" is otherwise indistinguishable from a bug.
+
+** DONE Item 6 — the dialog header, and tooltips everywhere
+:PROPERTIES:
+:CUSTOM_ID: item-6
+:END:
+
+Shipped as *9.99.1141* on the same branch, at the user's request rather than
+from this file's findings — recorded here because it is settings-dialog work
+and a reader arriving at [[#F5][F5]] would otherwise wonder why the dialog changed again
+one version later. Library *4.3.0*; spec
+=tests/fixtures/settings-dialog-header.spec.js= (19 tests), mutation list
+=scripts/mutations/settings-dialog-header.json= (17 entries, 14 =fail= + 3
+honest =pass=).
+
+*** The library version chip is the part with a reason behind it
+
+A =@require='d library has *no entry of its own* in Tampermonkey's
+installed-scripts list, so before this there was nowhere at all to read which
+library a script was paired with. [[#F6][F6]] is exactly that failure: 9.99.1138 ran
+against library *4.0.0* for everyone who installed from the mirror, so 4.1.0's
+dirty-set SAVE and 4.2.0's whole dialog rewrite did not execute — silently, with
+a dialog that looked entirely normal. Two chips rather than one, because a
+single number can never expose a PAIRING.
+
+=GM_info= is feature-detected, like =GM_deleteValue= and =GM_listValues= before
+it: the library runs in the consumer's sandbox with the consumer's grants, so a
+missing one costs the word "unknown", not the dialog.
+
+*** Tooltips carry the one thing the UI never showed
+
+Each setting's label, widget, Default cell and Description share ONE string
+holding the label, the description, the default and *the GM storage key*. That
+key appears nowhere else in the dialog and is exactly what someone hand-editing
+an exported config file needs — [[#item-5][Item 5]]'s whole =settings= block is keyed by it,
+so the two halves of this branch meet here.
+
+*** Mutation-testing corrected the branch twice, both worth keeping
+
+- *The drag fix was written against the wrong control.* Every control except
+  SAVE sits inside the drag handle, and pressing one armed a drag. I claimed the
+  SEARCH FIELD was the broken case and wrote the test against it; removing the
+  new guard left that test GREEN, because the input has carried its own
+  =mousedown= =stopPropagation= since 3.9.0. The field was never broken; the
+  buttons were, and they had no local guard. Both guards are kept and the
+  overlap is two honest =expect: "pass"= entries — the same shape =CLAUDE.md=
+  records for the ↺ section-reset pair.
+- *A real CSS defect, caught on the test's first run.* =.vz-hdr-chip= sets
+  =display=, which OUTRANKS the UA stylesheet's =[hidden] { display: none }= —
+  so =el.hidden = true= left the "changed" badge as a bordered, padded, empty
+  pill on precisely the profile it exists to say nothing about.
 
 * Follow-ups, recorded so they are not lost
 

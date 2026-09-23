@@ -703,6 +703,7 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=, merge gate E |   490 | *5 m 40 s* | =date=, 2026-09-23 11:10:52-11:16:32   |
 | =npm run test:full=, branch check |   503 | *5 m 45 s* | =date=, 2026-09-23 12:04:41-12:10:26   |
 | =npm run test:full=, branch check |   522 | *5 m 44 s* | =date=, 2026-09-23 13:44:41-13:50:25   |
+| =npm run test:full=, merge gate F |   522 | *5 m 47 s* | =date=, 2026-09-23 14:42:51-14:48:38   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -723,7 +724,12 @@ no runtime code at all, only =scripts/= and docs, so the two runs executed a
 byte-identical userscript.
 
 Practical reading: on this host, a =test:full= wall clock outside roughly
-±1% is worth looking at; inside it is noise.
+*±2%* is worth looking at; inside it is noise. **This said ±1% until
+2026-09-23**, derived from six runs that all fell in 337-341 s; rows 10, 11 and
+12 then landed at 345, 344 and 347 s on two different trees, which is 1.5-2.0%
+above that centre and is not an excursion. See row 12's note — the band was
+fitted to a narrower sample than it deserved, and the restatement is what the
+row-10 note said to do if a merge gate confirmed it.
 
 *Rows 5 and 6 hold that reading up, and row 6 strengthens it.* 340.03 s at 450
 tests (the =fix/config-fallback-drift= merge gate) sits with the other two
@@ -770,6 +776,24 @@ now; it is to look at the next MERGE gate, which will run a different tree. If
 that one also sits at ~344 s, the ±1% band was fitted to a narrower sample than
 it deserved and should be restated as ±2%. Until then this row and row 10 are
 one observation, not two.
+
+*Row 12 is that merge gate, and it says yes: 347 s on the merged tree.* Three
+runs at 344-347 s across two different trees, against six at 337-341 s. **So
+the ±1% band above has been restated as ±2%**, which is the follow-through row
+10's own note committed to rather than a convenient widening after the fact —
+the distinction being that the threshold for changing it was written down
+BEFORE the deciding run, and names which run would decide.
+
+What it is not: an explanation. The 13 + 19 tests this branch added are all
+sub-2 s and cannot account for ~7 s under this file's own "the suite costs
+whatever its slowest spec costs, plus about 15 s" reading, so the extra is
+either in =rel-auto-retry-failed= itself or in host conditions nothing here
+recorded. Both are testable — a standalone timing of that one spec against an
+older =main= would separate them — and neither has been tested, so the band is
+widened and the cause left open rather than guessed at. That is the same
+discipline the 9.99.1045-vs-1048 entry arrived at from the other direction,
+where the environment guess happened to be right and was still a guess until
+it was measured.
 
 *Row 6's run had one failure that did not reproduce*:
 =work-recordings-ms-length.spec.js= — "the response is cached for the page:
