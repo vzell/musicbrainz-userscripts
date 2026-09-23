@@ -1,0 +1,108 @@
+{
+  "_meta": {
+    "revisions": 623,
+    "script": "ShowAllEntityData/ShowAllEntityData.user.js"
+  },
+  "first_seen": {
+    "sa_unicode_char_picker_mappings": {
+      "sha": "cf5042c05f043b194bdcf858768b469d3ca23624",
+      "date": "2026-05-16",
+      "subject": "rename",
+      "rows": 20
+    },
+    "sa_rel_discography_mappings": {
+      "sha": "cf5042c05f043b194bdcf858768b469d3ca23624",
+      "date": "2026-05-16",
+      "subject": "rename",
+      "rows": 3
+    },
+    "sa_rel_url_icon_classes": {
+      "sha": "cf5042c05f043b194bdcf858768b469d3ca23624",
+      "date": "2026-05-16",
+      "subject": "rename",
+      "rows": 9
+    },
+    "sa_rel_other_db_classes": {
+      "sha": "cf5042c05f043b194bdcf858768b469d3ca23624",
+      "date": "2026-05-16",
+      "subject": "rename",
+      "rows": 6
+    },
+    "sa_rel_streaming_classes": {
+      "sha": "cf5042c05f043b194bdcf858768b469d3ca23624",
+      "date": "2026-05-16",
+      "subject": "rename",
+      "rows": 15
+    },
+    "sa_default_hidden_columns": {
+      "sha": "c62d8a733d6c9f58684096fff5c3d34f714b58eb",
+      "date": "2026-08-21",
+      "subject": "[ShowAllEntityData] feat: default hidden columns per pageType",
+      "rows": 1
+    }
+  },
+  "changes": [],
+  "current": {
+    "sa_default_hidden_columns": [
+      "release-tracks"
+    ],
+    "sa_unicode_char_picker_mappings": [
+      "\\u00A9",
+      "\\u00D7",
+      "\\u2010",
+      "\\u2012",
+      "\\u2013",
+      "\\u2014",
+      "\\u2018",
+      "\\u2018\\u2019",
+      "\\u2019",
+      "\\u201C",
+      "\\u201C\\u201D",
+      "\\u201D",
+      "\\u2026",
+      "\\u2032",
+      "\\u2033",
+      "\\u2117",
+      "\\u2212",
+      "\\u300C\\u300D",
+      "\\u300E\\u300F",
+      "\\u301C"
+    ],
+    "sa_rel_url_icon_classes": [
+      "allmusic",
+      "amazon asin",
+      "creative commons licensed download",
+      "discogs",
+      "imdb",
+      "lyrics",
+      "secondhandsongs",
+      "vgmdb",
+      "wikidata"
+    ],
+    "sa_rel_other_db_classes": [
+      "d-nb.info",
+      "nocs.acum.org.il",
+      "rateyourmusic.com",
+      "stereo-ve-mono.com",
+      "www.musik-sammler.de",
+      "www.worldcat.org"
+    ],
+    "sa_rel_streaming_classes": [
+      "archive.org",
+      "bandcamp.com",
+      "beatport.com",
+      "itunes.apple.com",
+      "mediafire.com",
+      "music.amazon.",
+      "music.apple.com",
+      "open.spotify.com",
+      "qobuz.com",
+      "soundcloud.com",
+      "store.steampowered.com",
+      "tidal.com",
+      "www.deezer.com",
+      "www.hdtracks.com",
+      "youtube.com"
+    ]
+  }
+}

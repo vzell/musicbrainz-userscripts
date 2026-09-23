@@ -88,6 +88,12 @@ const WORKSPACE = {
     [`${SCRIPT_ID}-changelog-size`]: { width: 900, height: 600 },
     // libprefs — object of strings
     'vz-lib-prefs': { lib_content_font_size: '1.6em' },
+    // seedledger — object of string arrays. Unlike every other key here this
+    // one is written by the script itself, on every load: `_seedNewTableRows()`
+    // records which built-in lookup-table rows this profile has been offered.
+    // It is in the workspace block because its DIFFERENCE from the stored rows
+    // is the only record anywhere that the user deleted a built-in row.
+    'sa_table_seed_ledger': { sa_rel_url_icon_classes: ['discogs', 'imdb'] },
 };
 
 const WORKSPACE_KEYS = Object.keys(WORKSPACE);
@@ -220,6 +226,11 @@ test.describe('config file schema_version 2 — the workspace block', () => {
             // current value", so omitting is how the file says "no opinion".
             // Exporting null would make every export actively erase whatever
             // the exporter happened not to have used.
+            //
+            // `sa_table_seed_ledger` has to be deleted along with the rest and
+            // is the one key here the SCRIPT writes by itself, on every load —
+            // so this also pins that a profile with nothing in it exports an
+            // empty block rather than the ledger alone.
             await loadSeriesPage(page);
             await page.evaluate((keys) => {
                 keys.forEach((k) => window.GM_deleteValue(k));
@@ -364,6 +375,7 @@ test.describe('config file schema_version 2 — the workspace block', () => {
                 dropdown: 1,
                 dialog: 4,
                 libprefs: 1,
+                seedledger: 1,
             });
         });
 
