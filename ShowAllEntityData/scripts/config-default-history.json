@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8803d15b2ea25647c019413819788990adca8e0e",
-    "revisions_walked": 598
+    "head": "c77725c35e4f2582d4ce33fe4a06bb62bfdf2890",
+    "revisions_walked": 600
   },
   "changes": [
     {
@@ -267,6 +267,7 @@
     "sa_global_filter_highlight_bg": "#FFD700",
     "sa_column_filter_highlight_color": "red",
     "sa_column_filter_highlight_bg": "#add8e6",
+    "sa_pending_edits_match_outline": "#cc0000",
     "sa_col_filter_focus_bg": "#fffde7",
     "sa_col_filter_active_bg": "#fff9c4",
     "sa_filter_focus_prefix": "🔍 ",
