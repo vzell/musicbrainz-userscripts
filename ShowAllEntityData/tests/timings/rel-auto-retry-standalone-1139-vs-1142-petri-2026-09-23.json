@@ -1,0 +1,125 @@
+{
+  "_meta": {
+    "question": "does rel-auto-retry-failed itself account for the test:full step from 337-341 s to 344-347 s between 9.99.1139 and 9.99.1140, or is it host conditions?",
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "project": "chromium-fixtures",
+    "interleaved": true,
+    "warmup_discarded": 1,
+    "machine": {
+      "hostname": "petri",
+      "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+      "cores": 24,
+      "python": "3.12.3",
+      "uptimeHours": 205.18,
+      "loadavg": [
+        0.17,
+        0.21,
+        0.52
+      ]
+    },
+    "startedAt": "2026-09-23T18:04:41Z",
+    "finishedAt": "2026-09-23T18:44:03Z"
+  },
+  "arms": [
+    {
+      "label": "9.99.1142",
+      "tree": "/home/vzell/git/musicbrainz-userscripts/ShowAllEntityData",
+      "version": "9.99.1142+2026-09-23",
+      "samples": [
+        {
+          "wall_s": 294.43,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:04:41Z",
+          "tail": "   Fix: npm run auth:login   (file: /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/playwright/.auth/vzell.json)",
+          "warmup": true,
+          "round": 0
+        },
+        {
+          "wall_s": 294.54,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:14:31Z",
+          "tail": "   Fix: npm run auth:login   (file: /home/vzell/git/musicbrainz-userscripts/ShowAllEntityData/playwright/.auth/vzell.json)",
+          "warmup": false,
+          "round": 1
+        },
+        {
+          "wall_s": 294.18,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:24:20Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 2
+        },
+        {
+          "wall_s": 300.24,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:34:09Z",
+          "tail": "  7 passed (5.0m)",
+          "warmup": false,
+          "round": 3
+        }
+      ],
+      "summary": {
+        "n": 3,
+        "median_s": 294.54,
+        "min_s": 294.18,
+        "max_s": 300.24,
+        "spread_pct": 2.06
+      }
+    },
+    {
+      "label": "9.99.1139",
+      "tree": "/tmp/claude-1002/-home-vzell-git-musicbrainz-userscripts-ShowAllEntityData/2ccf920c-ca4a-4e6a-ab25-82359089dc1a/scratchpad/v1139/ShowAllEntityData",
+      "version": "9.99.1139+2026-09-23",
+      "samples": [
+        {
+          "wall_s": 294.98,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:09:36Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": true,
+          "round": 0
+        },
+        {
+          "wall_s": 294.73,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:19:25Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 1
+        },
+        {
+          "wall_s": 294.7,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:29:14Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 2
+        },
+        {
+          "wall_s": 293.94,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T18:39:09Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 3
+        }
+      ],
+      "summary": {
+        "n": 3,
+        "median_s": 294.7,
+        "min_s": 293.94,
+        "max_s": 294.73,
+        "spread_pct": 0.27
+      }
+    }
+  ]
+}

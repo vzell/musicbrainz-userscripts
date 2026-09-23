@@ -212,11 +212,24 @@ test time was parallelism doing its job — 14 workers on a 28-core box, a ~10.7
 speed-up. At 446 tests on =petri= it is 337 s against 1932 s, a 5.7x speed-up
 on 12 workers.
 
-*Its 324 s is NOT a floor for the whole run, despite what this file said until
-2026-09-21.* That figure is =--workers=1= on the spec alone. Inside a parallel
-run its 7 tests spread across workers and sum to ~150 s, and what actually
-floors the run is the longest SINGLE test — 56 s on =petri=. Parallelism helps
-this spec; it just cannot break up one test.
+*It IS the floor for the whole run, and this file said the opposite from
+2026-09-21 until 2026-09-23.* The claim was that its 7 tests "spread across
+workers and sum to ~150 s", so the real floor was the longest SINGLE test at
+56 s. All three parts are wrong, and =playwright.config.js= says why in one
+line: *=fullyParallel: false=*, there since the harness was created. Tests
+inside a FILE cannot spread across workers at all unless the file opts in with
+=test.describe.configure({mode: 'parallel'})=, and this one does not.
+
+Measured on =petri=, 2026-09-23, from the run's own JSON report
+(=scripts/report-slow-spec-shape.py=): all 7 tests on *worker 5*, back to back,
+sum 296.84 s and span 296.89 s — a 0.05 s gap. Longest single test 71.8 s, not
+56 s. The file ends 1.5 s before the whole suite does, in both arms of a
+two-version comparison, so it is not merely heavy: it is the critical path.
+
+=--workers=1= on =NB-3641= gave 324 s for the same spec. That is a host
+difference, not staleness — the two numbers are ~10% apart and this file
+records =petri= and =NB-3641= as "the same machine for this purpose", which at
+this precision they are not quite.
 
 *Running the two selections separately costs MORE than running everything
 once*: 2 m 6 s + 4 m 48 s = 6 m 54 s against =test:full='s 5 m 18 s, because
@@ -226,9 +239,11 @@ skip the slow specs for a while. If you are going to run both anyway, run
 =npm run test:full= once.
 
 *=rel-auto-retry-failed.spec.js= is an outlier worth knowing about*: 324 s on
-its own (=NB-3641=, 2026-09-20, =--workers=1=), four times the previous slowest
-spec — though only ~150 s when a full run spreads its tests across workers
-(=petri=, 2026-09-21). Nothing in it is slow code — it is the Relationships
+its own (=NB-3641=, 2026-09-20, =--workers=1=) and *~295 s on =petri=* (six
+standalone runs, 2026-09-23, spanning 9.99.1136 to 9.99.1142 with no
+version-to-version difference), four times the previous slowest spec. It costs
+the same inside a full run — 296.9 s — because its tests cannot spread; see the
+=fullyParallel= note above. Nothing in it is slow code — it is the Relationships
 rate gate, one request per 1100 ms, paid twice over. Its setup deliberately
 makes 10-12 entities FAIL, and a failure costs =_REL_WS2_TRIES= (3) attempts,
 so a single setup is ~33-40 s before the body starts; the automatic pass retries

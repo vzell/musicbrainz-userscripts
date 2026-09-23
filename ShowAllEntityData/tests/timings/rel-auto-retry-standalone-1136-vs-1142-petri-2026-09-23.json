@@ -1,0 +1,89 @@
+{
+  "_meta": {
+    "question": "does rel-auto-retry-failed itself account for the test:full step from 337-341 s to 344-347 s between 9.99.1139 and 9.99.1140, or is it host conditions?",
+    "spec": "tests/fixtures/rel-auto-retry-failed.spec.js",
+    "project": "chromium-fixtures",
+    "interleaved": true,
+    "warmup_discarded": 1,
+    "machine": {
+      "hostname": "petri",
+      "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+      "cores": 24,
+      "python": "3.12.3",
+      "uptimeHours": 206.1,
+      "loadavg": [
+        0.21,
+        1.33,
+        1.54
+      ]
+    },
+    "startedAt": "2026-09-23T19:00:01Z",
+    "finishedAt": "2026-09-23T19:19:39Z"
+  },
+  "arms": [
+    {
+      "label": "9.99.1142",
+      "tree": "/home/vzell/git/musicbrainz-userscripts/ShowAllEntityData",
+      "version": "9.99.1142+2026-09-23",
+      "samples": [
+        {
+          "wall_s": 294.18,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T19:00:01Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": true,
+          "round": 0
+        },
+        {
+          "wall_s": 295.15,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T19:09:49Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 1
+        }
+      ],
+      "summary": {
+        "n": 1,
+        "median_s": 295.15,
+        "min_s": 295.15,
+        "max_s": 295.15,
+        "spread_pct": 0.0
+      }
+    },
+    {
+      "label": "9.99.1136",
+      "tree": "/tmp/claude-1002/-home-vzell-git-musicbrainz-userscripts-ShowAllEntityData/2ccf920c-ca4a-4e6a-ab25-82359089dc1a/scratchpad/v1136/ShowAllEntityData",
+      "version": "9.99.1136+2026-09-22",
+      "samples": [
+        {
+          "wall_s": 294.15,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T19:04:55Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": true,
+          "round": 0
+        },
+        {
+          "wall_s": 294.65,
+          "passed": 7,
+          "exit": 0,
+          "startedAt": "2026-09-23T19:14:44Z",
+          "tail": "  7 passed (4.9m)",
+          "warmup": false,
+          "round": 1
+        }
+      ],
+      "summary": {
+        "n": 1,
+        "median_s": 294.65,
+        "min_s": 294.65,
+        "max_s": 294.65,
+        "spread_pct": 0.0
+      }
+    }
+  ]
+}
