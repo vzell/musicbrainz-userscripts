@@ -19,6 +19,7 @@ version is the part that stays resolvable.
 | [[#F5][F5]]      | 9.99.1139 | =fix/settings-dialog-friction=          | =tests/fixtures/settings-dialog.spec.js=                   |
 | [[#F5][F5]]·7    | 9.99.1140 | =feat/config-export-workspace=          | =tests/fixtures/config-workspace-roundtrip.spec.js=        |
 | —       | 9.99.1141 | =feat/config-export-workspace=          | =tests/fixtures/settings-dialog-header.spec.js=            |
+| [[#F1][F1]]·t    | WIP.1     | =feat/table-seed-ledger=                | =tests/fixtures/table-seed-ledger.spec.js=                 |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -979,6 +980,93 @@ so the two halves of this branch meet here.
   so =el.hidden = true= left the "changed" badge as a bordered, padded, empty
   pill on precisely the profile it exists to say nothing about.
 
+** DONE Item 7 — rows shipped later reach the five lookup tables
+:PROPERTIES:
+:CUSTOM_ID: item-7
+:END:
+
+[[#F1][F1]]'s closing note, on =feat/table-seed-ledger=; spec
+=tests/fixtures/table-seed-ledger.spec.js= (12 tests), mutation list
+=scripts/mutations/table-seed-ledger.json= (14 entries, 13 =fail= + 1 honest
+=pass=).
+
+*** F1 was right about the obstacle and wrong about the conclusion
+
+The note said:
+
+#+begin_quote
+Merging built-in rows into stored ones cannot tell "the user deleted this row"
+from "the user has never seen it", and unlike the scalar case there is no
+historical value to recognise — a row is not a default.
+#+end_quote
+
+Both halves hold. What does not follow is that nothing can be done: the
+distinction cannot be INFERRED, so it is RECORDED. =sa_table_seed_ledger= holds,
+per table, every built-in row key this profile has been offered. Absent ⇒ new,
+add it. In the ledger but not in the rows ⇒ deleted on purpose, leave it gone.
+
+The pattern was already in this codebase, one screen from the problem:
+=vz-mb-colvis-touched-*= exists to tell "the user chose this column's
+visibility" from "never asked", for exactly this reason.
+
+*** The measurement is what made it exact rather than a bet
+
+=scripts/dump-table-seed-history.py= walks all *623* revisions of the userscript
+and extracts the built-in rows of all five tables:
+
+#+begin_example
+0 change(s) to the built-in rows after their introduction:
+  none — the built-in tables have never gained or lost a row.
+#+end_example
+
+So every profile in existence was seeded from *precisely today's built-ins*, and
+recording today's keys as "already offered" is a fact about every install rather
+than a guess. **This was the last moment that was true.** Ship one row first and
+an absent key becomes permanently ambiguous, which is the state [[#F1][F1]] describes.
+The strongest argument for building it now is that there is currently nothing to
+fix — the finding is LATENT, and nobody has been harmed because nothing has been
+added. Contrast [[#F1][F1]]'s own scalar migration, which had to bet on ten values
+because the drift had already happened.
+
+*** A duplication removed on the way, and one branch deleted because of it
+
+The three Relationships icon maps had their built-ins written out TWICE — once
+as the =let REL_*= initializer, once as the object literal passed to =_loadMap()=
+inside =_initRelMappings()=. Two copies thousands of lines apart with nothing
+keeping them equal: a row added to one and not the other would make the seeded
+table disagree with the fallback a failed =@require= drops to, silently.
+
+One =REL_*_DEFAULT= constant each now. That is what let all five tables go
+through one registry, and it let =scripts/dump-config-defaults.py= delete its
+whole second parsing branch (it used to chase the =_loadMap()= call site). The
+regenerated snapshot's =seed_rows= are byte-identical, which is the evidence the
+hoist changed nothing.
+
+*** The ledger is exported; the migration level is not
+
+It looks like the same kind of install bookkeeping. The difference is worth
+stating because the two sit five lines apart in =_CFG_WORKSPACE_GROUPS=: the
+migration level records what the SCRIPT did to this install, while the ledger's
+difference from the stored rows is the only record anywhere that the USER
+deleted a built-in row. Leave it out of an export and a config file stops
+meaning what it says — the destination has no entry saying the row was offered,
+so the next load hands it back, and the file that recorded the deletion is what
+undid it.
+
+*** Three things mutation-testing established that reasoning did not
+
+- *A mutation that ADDS an early call proves nothing* — the foot-of-IIFE call
+  still ran. It has to MOVE the call.
+- *And the moved call still passed, twice*, because every test drove
+  =__saTest.seedNewTableRows()=, which runs after the whole IIFE has evaluated
+  and so succeeds wherever the production call sits. The fix was to read the
+  ledger the PAGE LOAD produced, before touching the hook. A hook that re-runs
+  the thing under test is a hook that can hide where it is called from.
+- *Deleting a whole ledger entry is harmless; deleting part of one is not.* The
+  first falls into the pre-ledger branch, which re-adopts and adds nothing. So
+  the undo's realistic failure is forgetting only the keys it just offered —
+  which is what the mutation now plants.
+
 * Follow-ups, recorded so they are not lost
 
 - *The library-side root cause of [[#F2][F2]]*: coerce by schema type in
@@ -994,8 +1082,10 @@ so the two halves of this branch meet here.
     Without it the library's dirty-set SAVE feature-detects its way back to
     4.0.0's behaviour there, so that script would go on freezing profiles.
   - The five =type: 'table'= settings still never see rows shipped in a later
-    version — see [[#F1][F1]]'s closing note for why the same mechanism does not extend
-    to them.
+    version. — /done; the Shipped-since table above has the version, and
+    [[#item-7][Item 7]] has the reasoning./ [[#F1][F1]]'s closing note called this unsolvable and was
+    right about the reason; the way out was to stop inferring the distinction
+    it named and start *recording* it.
 - *[[#F5][F5]]'s second-class entry points* — /done; the Shipped-since table above has
   the version./ Solved the other way round from the way this bullet proposed it:
   rather than threading the =functionRegistry= and the observer through the
