@@ -777,6 +777,43 @@ records the `functionRegistry` and the `beforeOpen` hook ONCE, at bootstrap,
 and every path falls back to it — **do not go back to passing either at a call
 site**, which fixes only the paths you remember.
 
+**The config file carries a second block, and `_CFG_WORKSPACE_GROUPS` is the
+only thing that declares its keys.** `schema_version` 2 added `workspace`
+beside `settings`: the pinned filter list, per-pageType *and per-sub-table*
+column visibility, filter history, the two panel geometries, the 📊 dropdown's
+section collapse, the settings dialog's own size/column widths/section
+collapse, and `vz-lib-prefs`. `configSchema` is what types the `settings` half;
+these keys have nothing, so that registry is read by BOTH the exporter and the
+importer — one list, twice — because the `settings` half's two loops skipped
+different entry types for three months when each had its own (F3).
+
+Three rules, each of which fails silently if broken:
+
+- **Verbatim, both directions. Never `String()`, never a helpful `JSON.parse()`.**
+  The shapes genuinely differ per key: `vz-mb-colvis-*` holds a
+  `JSON.stringify()`ed STRING (both readers parse it), `persistent-sa-hist-list`
+  an array, the geometries objects. This is F3's defect in a worse place —
+  those five tables had `Lib.getTableRows()` re-seeding built-ins behind them,
+  and nothing re-seeds a pinned filter list.
+- **An allowlist, never a sweep.** `GM_listValues()` also returns
+  `mb_sa_subtable_snapshot_*` payloads and the library's caches — and the file
+  is user-supplied data, so without the gate a hand-edited one could set
+  `sa_settings_migration_level` and disable F1's repair for good. The migration
+  trio is deliberately out of the registry in both directions: it is INSTALL
+  state, not user state.
+- **An empty `[]`/`{}` IS exported here**, unlike an unseeded `type: 'table'`
+  key. Copying that arm across is the plausible mistake and is wrong for the
+  opposite reason — the table seeders read `[]` as "re-seed from the built-ins",
+  and nothing re-seeds these. There is also no prune: no schema, no default,
+  nothing to compare against.
+
+`// @grant GM_listValues` exists for the sub-table colvis keys
+(`vz-mb-colvis-<pageType>-sub-<safeId>` is built from a runtime heading id and
+cannot be derived from `pageDefinitions`). Feature-detected like
+`GM_deleteValue`; the fallback's gap is documented and asserted rather than
+papered over. `gmStubs.js` stubs it, so tests exercise the sweep rather than
+only the fallback.
+
 **Nothing but `applyVisibility()` may assign `display` to a settings row, a
 section header or a popup sub-grid.** Search and per-section collapse used to
 be two mechanisms both writing `row.style.display`, last writer winning; the
