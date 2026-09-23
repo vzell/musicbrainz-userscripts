@@ -12,7 +12,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=musicbrainz.org
 // @require      https://cdn.jsdelivr.net/npm/@jaames/iro@5
 // @require      https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js
-// @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
@@ -43,6 +43,29 @@
  * and evolved, I switched to Claude and only now and then asked the other two for help.
  *
  * NOTICE: This script has only been tested with Tampermonkey (>=v5.4.1) on Vivaldi, Chrome, Firefox, Opera and Brave.
+ *
+ * ── PUBLISHING: the VZ_MBLibrary @require above MUST be rewritten ────────────
+ *
+ * This is the DEVELOPMENT repository (vzell/musicbrainz-userscripts), and its
+ * library @require points at the WORKING COPY:
+ *
+ *     // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+ *
+ * The published copy (vzell/mb-userscripts, the announced one) must carry the
+ * network URL instead:
+ *
+ *     // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
+ *
+ * It used to point at the network URL here too, because the library barely
+ * changed — but 4.1.0 and 4.2.0 both altered the settings dialog, and against
+ * the published 4.0.0 none of that work runs at all. A live "browser check" of
+ * a library change is worth nothing while this line names the mirror.
+ *
+ * SHIPPING A file:// @require TO USERS FAILS SILENTLY, which is why this note
+ * is this loud: Lib falls back to a stub whose `settings` is `{}` (see
+ * `const Lib = (typeof VZ_MBLibrary !== 'undefined')`), every setting quietly
+ * resolves to its inline fallback, and nothing reports an error. Rewrite the
+ * line when publishing — see org/config-handling.org F6.
  */
 
 /*
@@ -3550,6 +3573,11 @@
 
     _migrateFrozenSettings();
     _coerceNumericSettings();
+    // Registered here rather than at each entry point, so the library's own two
+    // menu paths open the same dialog the toolbar button does — see
+    // _registerSettingsIntegration()'s JSDoc. Safe this early: it only records
+    // the hooks, and both are function declarations, hoisted.
+    _registerSettingsIntegration();
 
     // Copy settings reference so the callback can access them
     Object.assign(settings, Lib.settings);
@@ -70924,24 +70952,58 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Opens the settings dialog and simultaneously arms the one-shot
-     * MutationObserver that injects the Save/Load configuration buttons.
+     * Registers, once, what EVERY settings-open should do — whichever of the
+     * six entry points the user takes.
      *
-     * All three call sites that previously called Lib.showSettings() directly
-     * are replaced with calls to this wrapper so the buttons are present every
-     * time the dialog is opened — whether via the ⚙️ toolbar button, the
-     * Ctrl+, shortcut, or the prefix-mode shortcut.
+     * **Three of them used to be second class, and both failures were silent.**
+     * The ⚙️ toolbar button, `Ctrl+,` and `Ctrl+M ,` all came through this
+     * file, which armed the button-injecting observer and passed a
+     * `functionRegistry`. The Tampermonkey menu item and the MusicBrainz
+     * *Editing* menu link are registered by VZ_MBLibrary itself and called
+     * `showModal()` with no arguments — so opened either of those ways, the
+     * 💾/📂 configuration buttons never appeared and the 🔧 *Edit Pinned Filter
+     * List* button did nothing at all when pressed. Nothing said so; the dialog
+     * simply had less in it. See org/config-handling.org F5.
      *
-     * A functionRegistry is passed so that type:'function' entries in the
-     * configSchema can invoke named callbacks when their button is clicked.
+     * Registering the intent on the library rather than passing it at each call
+     * site is what makes the six paths identical by construction. Anything that
+     * adds a seventh gets it for free.
+     *
+     * `beforeOpen` must run before the overlay exists — it arms a one-shot
+     * MutationObserver that waits for it — which is why the library calls the
+     * hook rather than accepting an already-built element.
+     *
+     * @returns {void}
      */
-    function openSettingsWithConfigButtons() {
-        _injectSettingsConfigButtons(); // arm observer before showModal adds the overlay
-        Lib.showSettings({
+    function _registerSettingsIntegration() {
+        if (typeof Lib.configureSettings !== 'function') {
+            // A mirror still serving VZ_MBLibrary < 4.2.0. The dialog opens and
+            // works; it is the two menu paths that stay second class, exactly
+            // as before. Worth a line in the log rather than a silent downgrade.
+            Lib.warn('settings',
+                '_registerSettingsIntegration: library predates configureSettings() — ' +
+                'the Tampermonkey and Editing-menu entry points will open a settings ' +
+                'dialog without the 💾/📂 buttons');
+            return;
+        }
+        Lib.configureSettings({
             functionRegistry: {
                 '_openEditPinnedFilterListFromSettings': _openEditPinnedFilterListFromSettings
-            }
+            },
+            beforeOpen: _injectSettingsConfigButtons
         });
+    }
+
+    /**
+     * Opens the settings dialog.
+     *
+     * Kept as a named wrapper because three shortcuts and a toolbar button
+     * reference it, but it no longer carries the registry or arms the observer
+     * itself — {@link _registerSettingsIntegration} does that once, for every
+     * entry point including the two this file does not own.
+     */
+    function openSettingsWithConfigButtons() {
+        Lib.showSettings();
     }
 
     /**
