@@ -3,7 +3,8 @@
 /**
  * Builds a plain-JS source string that stubs every Tampermonkey `@grant`
  * the userscript declares (GM_xmlhttpRequest, GM_addStyle, GM_info,
- * GM_setValue/GM_getValue/GM_deleteValue, GM_registerMenuCommand/
+ * GM_setValue/GM_getValue/GM_deleteValue/GM_listValues,
+ * GM_registerMenuCommand/
  * GM_unregisterMenuCommand). Meant to be injected via `page.addInitScript()`
  * (or, from `loadPage.js`, `page.context().addInitScript()` — see its own
  * doc for why) so it exists before any page or userscript code runs.
@@ -87,6 +88,20 @@ function buildGmStubsScript(initialValues = {}) {
             window.GM_deleteValue = function (key) {
                 delete gmValues[key];
                 persist();
+            };
+
+            // Real Tampermonkey returns every key this script has stored.
+            // Merges localStorage in for the same reason GM_getValue does:
+            // a same-origin popup may have written keys this tab's cache has
+            // never seen, and the config exporter's prefix sweep
+            // (vz-mb-colvis-*) is exactly the kind of caller that would then
+            // export an incomplete set and look like it had lost them.
+            window.GM_listValues = function () {
+                let fresh = {};
+                try {
+                    fresh = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+                } catch (e) { /* ignore — fall back to the in-memory cache */ }
+                return Array.from(new Set(Object.keys(gmValues).concat(Object.keys(fresh))));
             };
 
             window.__gmMenuCommands = window.__gmMenuCommands || {};

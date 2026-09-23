@@ -701,6 +701,8 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=, merge gate D |   468 | *5 m 40 s* | =date=, 2026-09-23 08:05:32-08:11:12   |
 | =npm run test:full=, branch check |   490 | *5 m 41 s* | =date=, 2026-09-23 09:12:34-09:18:15   |
 | =npm run test:full=, merge gate E |   490 | *5 m 40 s* | =date=, 2026-09-23 11:10:52-11:16:32   |
+| =npm run test:full=, branch check |   503 | *5 m 45 s* | =date=, 2026-09-23 12:04:41-12:10:26   |
+| =npm run test:full=, branch check |   522 | *5 m 44 s* | =date=, 2026-09-23 13:44:41-13:50:25   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -747,6 +749,27 @@ and everything else distributes into the slack around it. So the useful reading
 is not "the suite costs X per test" but "the suite costs whatever its slowest
 spec costs, plus about 15 s". A new test is free until it is slower than 324 s;
 a new test that IS slower than that moves the whole figure by its own excess.
+
+*Row 10 is the first row outside the ±1% band, and it is worth saying why it is
+not evidence of anything.* 345 s at 503 tests (=feat/config-export-workspace=)
+against row 9's 340 s at 490 — 1.5%, where the stated threshold is ±1%. The 13
+new tests are all sub-1.5 s, so they cannot account for it under the reading
+above; this is one sample on a shared desktop and the honest answer is that the
+band was derived from six runs and one excursion does not move it. Recorded
+rather than smoothed over, because a band that quietly widens to fit whatever
+arrives has stopped being a threshold. If the next two gates also land near
+345 s, the band is what needs rewriting, not this row.
+
+*Row 11 is the first of those two, and it lands in the same place: 344 s at 522
+tests*, on the same branch one session later. Two consecutive runs at 344-345 s
+against six earlier ones at 337-341 s is no longer comfortably an excursion —
+but it is also not yet a measurement of anything, because both come from the
+same tree on the same afternoon, which is exactly the same-session pairing rows
+6/7 warn against reading as precision. The thing to do is NOT to widen the band
+now; it is to look at the next MERGE gate, which will run a different tree. If
+that one also sits at ~344 s, the ±1% band was fitted to a narrower sample than
+it deserved and should be restated as ±2%. Until then this row and row 10 are
+one observation, not two.
 
 *Row 6's run had one failure that did not reproduce*:
 =work-recordings-ms-length.spec.js= — "the response is cached for the page:

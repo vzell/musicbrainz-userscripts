@@ -1,0 +1,248 @@
+[
+  {
+    "name": "the library chip prints the consumer's version instead of its own",
+    "why": "The plausible slip, and the one that destroys the chip's whole reason for existing: two chips showing the same number tell you nothing about the PAIRING, which is the only thing a @require'd library's version can tell you. ShowAllEntityData 9.99.1138 against library 4.0.0 is the case this exists to expose.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                const _libVer = _splitVer(LIBRARY_VERSION);",
+        "replace": "                const _libVer = _splitVer((typeof GM_info !== 'undefined' && GM_info && GM_info.script) ? GM_info.script.version : '');"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "the library chip shows the version",
+    "expect": "fail"
+  },
+  {
+    "name": "GM_info is assumed present rather than feature-detected",
+    "why": "A @require'd library runs in the consumer's sandbox with the CONSUMER's grants, so a consumer that has not granted GM_info must still get a working dialog. Same rule 4.1.0 applies to GM_deleteValue. Without the guard the header throws while building and the user gets no settings dialog at all.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                const _scriptVer = _splitVer(\n                    (typeof GM_info !== 'undefined' && GM_info && GM_info.script)\n                        ? GM_info.script.version : '');",
+        "replace": "                const _scriptVer = _splitVer(GM_info.script.version);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "a missing GM_info costs a word",
+    "expect": "fail"
+  },
+  {
+    "name": "the changed badge loses its [hidden] display rule",
+    "why": "The defect the spec caught on its first run. `.vz-hdr-chip` sets `display: inline-flex`, which OUTRANKS the UA stylesheet's `[hidden] { display: none }` — so `el.hidden = true` leaves a bordered, padded, empty pill sitting beside the version chips on exactly the profile that has changed nothing. Invisible to any assertion about text content.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    .vz-hdr-chip[hidden] {\n                        display: none;\n                    }",
+        "replace": "                    .vz-hdr-chip[data-never-matches-anything] {\n                        display: none;\n                    }"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "the changed badge is absent on an untouched profile",
+    "expect": "fail"
+  },
+  {
+    "name": "the header badge is never updated after the first paint",
+    "why": "It is recomputed from the widgets on every event rather than tracked, because RESET, the colour pickers and the popup sub-editors all write values with no common choke point. A badge wired only at open looks perfect until you change something.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (changedChipEl) {\n                        changedChipEl.textContent = total",
+        "replace": "                    if (false) {\n                        changedChipEl.textContent = total"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "the changed badge is absent on an untouched profile",
+    "expect": "fail"
+  },
+  {
+    "name": "the counts chip is hardcoded instead of counted",
+    "why": "A number that has to be edited by hand when a setting is added is a number that will be wrong. Counting during the same pass that builds the rows is what keeps it honest.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    _settingCount++;\n                    const isCheck         = cfg.type === 'checkbox';",
+        "replace": "                    const isCheck         = cfg.type === 'checkbox';"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "the counts chip matches the schema",
+    "expect": "fail"
+  },
+  {
+    "name": "the drag guard is removed, so a header button drags the dialog",
+    "why": "Every control except SAVE lives inside the drag handle. Without the guard, pressing one armed a drag — the dialog followed the pointer while you decided whether to release on the button, and the `didDrag` flag it set (whose job is to suppress the overlay click that ends a drag) could swallow the very click meant to dismiss the dialog. Silent: nothing errors.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (e.target.closest('input, button, a, select, textarea, label')) return;\n                    isDragging = true;",
+        "replace": "                    isDragging = true;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "pressing a header BUTTON does not drag",
+    "expect": "fail"
+  },
+  {
+    "name": "the same, seen from the search field",
+    "why": "An honest PASS, and the reason this file exists. The first version of this branch claimed the SEARCH FIELD was the broken case and wrote the test against it; mutation-testing showed the test green with the guard gone, because the input has carried its own mousedown stopPropagation since 3.9.0 (\"Prevent dragging when clicking in search input\"). The field was never broken. The two guards overlap there and NEITHER is removed — this one is structural and picks up a control added later, that one is local and survives someone narrowing the selector. Recorded here so it is not rediscovered as dead code and tidied away.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (e.target.closest('input, button, a, select, textarea, label')) return;\n                    isDragging = true;",
+        "replace": "                    isDragging = true;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "neither does pressing in the search field",
+    "expect": "pass"
+  },
+  {
+    "name": "the search field's own stopPropagation is removed",
+    "why": "The other half of that overlap, mutated separately so each guard is attributed. Also an honest PASS: the structural guard in the mousedown handler covers the input too. Both singles pass and only removing BOTH reproduces anything — the same shape CLAUDE.md records for the ↺ section-reset pair, and the same rule applies: do not tidy either away on the evidence that its own mutation passes.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                document.getElementById(`${scriptId}-search`)\n                    .addEventListener('mousedown', e => e.stopPropagation());",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "neither does pressing in the search field",
+    "expect": "pass"
+  },
+  {
+    "name": "the drag guard refuses everything, so the dialog cannot be moved",
+    "why": "The overshoot in the other direction, and the reason the guard has a counter-guard: a header that no longer drags is a worse regression than the one being fixed, and 'the search box does not drag' would pass throughout.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (e.target.closest('input, button, a, select, textarea, label')) return;\n                    isDragging = true;",
+        "replace": "                    if (e.target) return;\n                    isDragging = true;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "the header bar itself still drags",
+    "expect": "fail"
+  },
+  {
+    "name": "the row tooltip drops the GM storage key",
+    "why": "The key appears NOWHERE else in the dialog, and it is exactly what someone hand-editing an exported config file is looking for — org/config-handling.org's whole export half is keyed by it. The tooltip still reads plausibly without it, which is why the assertion names the key rather than checking a title exists.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    lines.push(`Stored as: ${key}`);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "names its GM storage key",
+    "expect": "fail"
+  },
+  {
+    "name": "the Default and Description cells get no tooltip",
+    "why": "Both columns are droppable in width — Default is narrow and word-break:break-all, so a font stack or a pipe-separated popup_dialog value is legible ONLY as a tooltip, and Description is the first thing squeezed when the dialog is narrowed. The four surfaces of a row deliberately share one string so a user can hover whichever is nearest.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    col2.title = rowTitle;",
+        "replace": ""
+      },
+      {
+        "find": "                    col3.title = rowTitle;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "names its GM storage key",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Collapse all\" goes back to a static tooltip",
+    "why": "It is DISABLED while a filter is active, and a dead control with no explanation is precisely the class of friction org/config-handling.org F5 is a list of. The static text is not wrong, it just does not answer the question the user has at the moment they cannot press it.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    collapseAllBtn.title = filtering\n                        ? 'Unavailable while a filter is active\\n\\n' +",
+        "replace": "                    collapseAllBtn.title = false\n                        ? 'Unavailable while a filter is active\\n\\n' +"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "explains why it is disabled while filtering",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-section reset tooltip stops saying it is scoped",
+    "why": "The ↺ sits INSIDE the section header, which has its own tooltip, so the inner one has to say something of its own or hovering the button explains the header instead. What it must say is the scope: this resets one section, only what differs, and nothing is stored until SAVE.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        secReset.title = `Reset \"${cfg.label}\" to defaults\\n\\n` +\n                                         'Only the settings in this section, and only the ones that\\n' +\n                                         'actually differ — you are told how many first.\\n' +\n                                         'Nothing is stored until you press SAVE.';",
+        "replace": "                        secReset.title = `Reset \"${cfg.label}\" to defaults`;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "carry different tooltips",
+    "expect": "fail"
+  },
+  {
+    "name": "RESET and CLOSE go back to being bare anchors",
+    "why": "An <a> with no href takes no tab stop, so the dialog could not be dismissed from the keyboard except by Escape, and the two read as links of equal weight when one of them discards every setting on screen.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                                <button type=\"button\" id=\"${scriptId}-close\"",
+        "replace": "                                <a id=\"${scriptId}-close\""
+      },
+      {
+        "find": "                        'You are asked to confirm if anything has been changed.')}\">✕ CLOSE</button>",
+        "replace": "                        'You are asked to confirm if anything has been changed.')}\">✕ CLOSE</a>"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "focusable controls, not bare anchors",
+    "expect": "fail"
+  },
+  {
+    "name": "the function button stops saying it is an action",
+    "why": "A type:'function' row runs immediately and has nothing for SAVE to store, which is true of no other row in this dialog. Recorded as an honest PASS candidate and kept as a fail: the Default column also says '(an action, not a value)', but that column is the first one a user drags narrow, so the two are not redundant in practice.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                            'Runs straight away. This is an action, not a setting —\\n' +\n                            'there is nothing here for SAVE to store.')}\">",
+        "replace": "                            '')}\">"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "says it is an action, not a value",
+    "expect": "fail"
+  },
+  {
+    "name": "the version chips lose their own tooltips",
+    "why": "A chip reading 'library 4.3.0' is meaningless to anyone who does not already know what a @require'd library is — the tooltip is where it says why the number is there and why Tampermonkey does not show it.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                                    <span class=\"vz-hdr-chip vz-hdr-chip-lib\"\n                                          title=\"${escAttr(",
+        "replace": "                                    <span class=\"vz-hdr-chip vz-hdr-chip-lib\"\n                                          data-title-removed=\"${escAttr("
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "all three version chips carry one",
+    "expect": "fail"
+  },
+  {
+    "name": "the shared row tooltip is built per surface instead of once",
+    "why": "Recorded as an honest PASS. The spec asserts the four surfaces of a row hold the SAME string, which this still satisfies — widgetTitle() is deterministic, so calling it four times produces four equal strings. What the single call buys is that they cannot drift when one caller is edited, and no test can see the difference until someone actually edits one.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    col2.title = rowTitle;",
+        "replace": "                    col2.title = widgetTitle(cfg, key, defaultText, defaultNote);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog-header.spec.js",
+    "grep": "names its GM storage key",
+    "expect": "pass"
+  }
+]

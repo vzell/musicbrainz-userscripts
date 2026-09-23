@@ -1,0 +1,171 @@
+[
+  {
+    "name": "workspace values go back through String() on import",
+    "why": "org/config-handling.org F3 arriving in a new block. Every reader of these keys expects its own shape — persistent-sa-hist-list an array, the geometries objects — and String() turns each into a comma-joined or [object Object] string. Worse than F3 was: no Lib.getTableRows() guard re-seeds anything here, so a pinned filter list destroyed this way is simply gone.",
+    "edits": [
+      {
+        "find": "                GM_setValue(key, value);\n            } catch (err) {\n                Lib.warn('settings', `Could not restore workspace key \"${key}\":`, err);",
+        "replace": "                GM_setValue(key, String(value));\n            } catch (err) {\n                Lib.warn('settings', `Could not restore workspace key \"${key}\":`, err);"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "every workspace group survives an export",
+    "expect": "fail"
+  },
+  {
+    "name": "the colvis JSON string is helpfully parsed on export",
+    "why": "The single shape most likely to be 'tidied'. vz-mb-colvis-* is stored as a JSON STRING because loadColVisState() and _seedDefaultHiddenColumnsForPageType() both JSON.parse() it; exporting the parsed object makes the file prettier and hands the reader something it will throw on. A deep-equal alone would not catch it, which is why the spec asserts typeof.",
+    "edits": [
+      {
+        "find": "            if (value === undefined || value === null) continue;\n            block[key] = value;",
+        "replace": "            if (value === undefined || value === null) continue;\n            block[key] = (typeof value === 'string' && value.startsWith('{')) ? JSON.parse(value) : value;"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the colvis value stays a STRING",
+    "expect": "fail"
+  },
+  {
+    "name": "the registry no longer gates what the file may write",
+    "why": "The workspace block is user-supplied data. Without _configWorkspaceGroupFor() as a gate, a hand-edited file can write ANY key in this script's GM storage — sa_settings_migration_level would permanently disable F1's one-shot repair, and a planted mb_sa_subtable_snapshot_* payload would be consumed by the next sub-table tab.",
+    "edits": [
+      {
+        "find": "            const group = _configWorkspaceGroupFor(key);\n            if (!group || value === undefined) {",
+        "replace": "            const group = _configWorkspaceGroupFor(key) || 'pinned';\n            if (value === undefined) {"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "a key outside the registry is refused",
+    "expect": "fail"
+  },
+  {
+    "name": "an absent key is exported as null instead of being omitted",
+    "why": "The importer's rule is 'a missing key keeps the destination's current value'. Export null and every file actively erases whatever the exporter happened not to have used — so importing a colleague's config would wipe your own column visibility for every pageType they had never visited.",
+    "edits": [
+      {
+        "find": "            if (value === undefined || value === null) continue;\n            block[key] = value;",
+        "replace": "            block[key] = (value === undefined) ? null : value;"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "a key GM storage has never held is omitted",
+    "expect": "fail"
+  },
+  {
+    "name": "the prefix sweep is dropped, leaving only the fallback",
+    "why": "vz-mb-colvis-<pageType>-sub-<safeId> is built from a runtime heading id, so no walk of pageDefinitions can derive it. Losing the sweep means a sub-table's column visibility is silently absent from every export — the file looks complete and restores less than it claims.",
+    "edits": [
+      {
+        "find": "            if (Array.isArray(stored)) {\n                for (const key of stored) {\n                    if (typeof key === 'string' && key.startsWith(grp.prefix)) add(key, grp.group);\n                }\n            } else if (typeof grp.fallback === 'function') {",
+        "replace": "            if (false) {\n                for (const key of stored) {\n                    if (typeof key === 'string' && key.startsWith(grp.prefix)) add(key, grp.group);\n                }\n            } else if (typeof grp.fallback === 'function') {"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the prefix sweep finds a sub-table colvis key",
+    "expect": "fail"
+  },
+  {
+    "name": "GM_listValues is assumed present rather than feature-detected",
+    "why": "The same rule VZ_MBLibrary 4.1.0 applies to GM_deleteValue: a grant a consumer has not declared must degrade, not throw. Without the typeof guard the export throws a ReferenceError inside the settings modal and the user gets no file at all.",
+    "edits": [
+      {
+        "find": "        const stored = (typeof GM_listValues === 'function')\n            ? (() => { try { return GM_listValues(); } catch (_) { return null; } })()\n            : null;",
+        "replace": "        const stored = GM_listValues();"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "without GM_listValues the fallback still derives",
+    "expect": "fail"
+  },
+  {
+    "name": "the workspace block is dropped from the export payload",
+    "why": "The crudest possible regression — the whole feature reverts to schema_version 1's scope while the version number still says 2, so a file claims to carry workspace state and carries none.",
+    "edits": [
+      {
+        "find": "            settings:  settingsBlock,\n            workspace: _buildWorkspaceBlock()",
+        "replace": "            settings:  settingsBlock"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "every workspace group survives an export",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty array or object is skipped like an unseeded table",
+    "why": "Copying _buildConfigJson()'s table arm here is the plausible mistake, and it is wrong for the opposite reason: no seeder refills these, so '[] means re-seed from the built-ins' does not apply and an emptied pinned filter list is a real state the format can honestly carry.",
+    "edits": [
+      {
+        "find": "            if (value === undefined || value === null) continue;\n            block[key] = value;",
+        "replace": "            if (value === undefined || value === null) continue;\n            if (Array.isArray(value) && value.length === 0) continue;\n            if (value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) continue;\n            block[key] = value;"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "an empty array or object IS carried",
+    "expect": "fail"
+  },
+  {
+    "name": "the colvis -touched- companion is left out of the fallback",
+    "why": "COLVIS_TOUCHED_KEY_PREFIX starts with COLVIS_KEY_PREFIX, so the prefix SWEEP covers it for free and only the hand-written fallback can get this wrong. Without it, a profile without GM_listValues exports the visibility state but not the record of which columns the user chose deliberately — and _seedDefaultHiddenColumnsForPageType() then re-asserts the configured defaults over the imported choice on the next render.",
+    "edits": [
+      {
+        "find": "                    out.push(COLVIS_KEY_PREFIX + def.type,\n                             COLVIS_TOUCHED_KEY_PREFIX + def.type);",
+        "replace": "                    out.push(COLVIS_KEY_PREFIX + def.type);"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "without GM_listValues the fallback still derives",
+    "expect": "fail"
+  },
+  {
+    "name": "_applyWorkspaceState accepts a non-object block",
+    "why": "payload.workspace is whatever the file says. A v1 file has none at all (undefined), and a hand-edited one can carry a string or an array; Object.entries() on those yields character or index pairs, so a string block would be walked key by key.",
+    "edits": [
+      {
+        "find": "        if (!workspaceObj || typeof workspaceObj !== 'object' || Array.isArray(workspaceObj)) {\n            return { restored, skipped, skippedKeys, byGroup };\n        }",
+        "replace": "        if (!workspaceObj) {\n            return { restored, skipped, skippedKeys, byGroup };\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "a malformed workspace block is ignored",
+    "expect": "fail"
+  },
+  {
+    "name": "every key resolves to one flat group",
+    "why": "The summary dialog names groups rather than counting keys, because '14 keys restored' does not answer 'did my pinned filter list come across'. Collapsing the groups keeps every total correct and mislabels every line.",
+    "edits": [
+      {
+        "find": "            restored++;\n            byGroup[group] = (byGroup[group] || 0) + 1;",
+        "replace": "            restored++;\n            byGroup['pinned'] = (byGroup['pinned'] || 0) + 1;"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the exporter resolves each key to the group",
+    "expect": "fail"
+  },
+  {
+    "name": "the migration keys are added to the registry",
+    "why": "The tempting addition: they are sa_-prefixed GM keys this script owns, so they look like they belong. They are INSTALL state — importing another profile's level marks a frozen profile as already migrated and F1's one-shot repair never runs; importing its backup offers to undo a migration that never happened here.",
+    "edits": [
+      {
+        "find": "        {\n            group: 'libprefs',\n            label: 'Library display preferences',\n            keys: ['vz-lib-prefs'],\n        },",
+        "replace": "        {\n            group: 'libprefs',\n            label: 'Library display preferences',\n            keys: ['vz-lib-prefs', 'sa_settings_migration_level', 'sa_settings_migration_backup', 'sa_settings_migration_notice'],\n        },"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the migration keys are absent from the export",
+    "expect": "fail"
+  },
+  {
+    "name": "the exact-name pass is dropped from _configWorkspaceGroupFor",
+    "why": "Recorded as an honest pass. Every fixed key in the registry is matched by no prefix, and every prefixed key is in no `keys` list, so the two passes cannot disagree on any key that exists today. The ordering matters only if a future group's fixed name starts with another group's prefix — which is why it is written exact-first rather than left to chance.",
+    "edits": [
+      {
+        "find": "        for (const grp of _CFG_WORKSPACE_GROUPS) {\n            if ((grp.keys || []).includes(key)) return grp.group;\n        }\n        for (const grp of _CFG_WORKSPACE_GROUPS) {\n            if (grp.prefix && key.startsWith(grp.prefix)) return grp.group;\n        }",
+        "replace": "        for (const grp of _CFG_WORKSPACE_GROUPS) {\n            if (grp.prefix && key.startsWith(grp.prefix)) return grp.group;\n        }\n        for (const grp of _CFG_WORKSPACE_GROUPS) {\n            if ((grp.keys || []).includes(key)) return grp.group;\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the exporter resolves each key to the group",
+    "expect": "pass"
+  }
+]

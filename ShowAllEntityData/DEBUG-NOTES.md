@@ -14829,3 +14829,107 @@ The scratch mirror is built in a temp directory from the dev repo's own files,
 with the library `@require` rewritten the way a real publish does it — so the
 "clean" case exercises the actual publish contract rather than a guess at it,
 and nothing ever reads or writes the real publish repo.
+
+## 2026-09-23 — the config file never carried the pinned filter list (branch feat/config-export-workspace)
+
+`org/config-handling.org` F5's seventh and last bullet, and the only one of the
+seven that needed a file-format change. 💾 Save configuration had covered
+`configSchema` keys and nothing else since it shipped in 9.99.273.
+
+**The sharp edge is the pinned filter list.** `persistent-sa-hist-list` is
+edited from *inside* the ⚙️ Settings dialog, via the 🔧 Edit Pinned Filter List
+button, so it has always looked like part of the configuration — and the file
+that dialog writes did not contain it. Nothing said so; the summary reported a
+successful import and the list was simply still whatever the destination had.
+The laborious one is column visibility: one `vz-mb-colvis-<pageType>` state per
+page type, built up over months of clicking the 👁️ Visible menu, and a second
+browser meant redoing all of it.
+
+### Why a sweep, and why a grant
+
+`vz-mb-colvis-<pageType>` is derivable from `pageDefinitions`.
+`vz-mb-colvis-<pageType>-sub-<safeId>` is not — `safeId` comes from a runtime
+heading id, so no walk of the definitions can produce it, and those are the
+states for the sub-tables on a multi-table page. Hence `// @grant
+GM_listValues`, feature-detected the way VZ_MBLibrary 4.1.0 feature-detects
+`GM_deleteValue`, falling back to the `pageDefinitions` walk.
+
+The fallback's gap is real and is asserted rather than glossed: the spec pins
+that *without* `GM_listValues` the per-pageType keys still resolve and the
+sub-table key genuinely does not. `tests/support/gmStubs.js` gained a
+`GM_listValues` stub in the same commit — its own docstring promises it stubs
+every `@grant` the userscript declares, and without it every test would have
+silently exercised the fallback arm, leaving the sweep with no coverage at all.
+
+### The defect this was most likely to reintroduce
+
+`String(value)`, i.e. F3 arriving from a third direction, and this block is a
+strictly worse place for it. The five `type: 'table'` settings at least had
+`Lib.getTableRows()`'s `Array.isArray` check re-seeding the built-ins behind
+them, so the damage was recoverable by re-entering rows. **Nothing re-seeds a
+pinned filter list.**
+
+It is also the one block where the shapes differ per key, so there is no
+correct coercion even in principle:
+
+| key                        | stored as                                     |
+|----------------------------|-----------------------------------------------|
+| `vz-mb-colvis-*`           | a `JSON.stringify()`ed STRING — both readers `JSON.parse()` it |
+| `persistent-sa-hist-list`  | an array of strings                           |
+| `sa_stats_panel_geometry`  | an object of numbers                          |
+
+A "helpful" `JSON.parse()` on the colvis value makes the file prettier and
+hands `loadColVisState()` something it throws on — and a deep-equal assertion
+does not catch it, which is why the spec asserts `typeof` separately. There is
+a mutation for exactly that.
+
+### The registry is a security boundary, not just a lookup
+
+A `workspace` block is user-supplied data. `_configWorkspaceGroupFor()` gating
+what may be written is what stops a hand-edited or unfamiliar file reaching
+into this installation's own bookkeeping — setting
+`sa_settings_migration_level` would permanently disable F1's one-shot repair,
+and a planted `mb_sa_subtable_snapshot_*` payload would be consumed by the next
+sub-table tab. The `settings` half is only safe because `configSchema` gates it
+the same way; this block had nothing until the registry existed.
+
+The migration trio (`_level` / `_backup` / `_notice`) is deliberately out of
+the registry in **both** directions. They describe what this INSTALL has
+repaired, not what the user chose: importing another profile's level marks a
+still-frozen browser as already migrated, and importing its backup offers to
+undo a migration that never ran there.
+
+### Two carve-outs that look like inconsistencies and are not
+
+- **An empty `[]`/`{}` IS exported here**, where an unseeded `type: 'table'`
+  key is omitted. Copying that arm across is the plausible mistake and is wrong
+  for the opposite reason: the three table seeders read `[]` as "re-seed from
+  the built-ins", so an emptied table cannot survive a reload and the format
+  cannot honestly promise it. Nothing re-seeds these, so "no pinned filters" is
+  a real state. Mutated in both directions.
+- **There is no prune.** `_applyConfigSettings()` deletes a value equal to its
+  schema default so the key keeps following future defaults (F1). These have no
+  schema and no default — the closest thing is a literal baked into each reader
+  (`{width: 940, height: 680}`) — so there is nothing to compare against.
+
+### The version guard, and why v1↔v2 is not hypothetical
+
+Both blocks are optional in both directions. A v1 file has no `workspace` key,
+so nothing is restored and the settings import is byte-for-byte what it was; a
+v2 file read by a pre-2026-09-23 script reads its own `payload.settings` and
+ignores the rest. The mirror is still at **9.99.746** (F6), so every file a
+user already has is v1, and every file this version writes will be read by a v1
+script somewhere. A mismatch is therefore a NOTE in the summary, naming which
+of the two happened — "my window positions did not come across" is otherwise
+indistinguishable from a bug.
+
+Geometry is carried even though it holds absolute viewport pixels, which is a
+decision rather than an oversight: both readers clamp what they load to the
+current viewport (`_clampGeo()` in `showStatsPanel()` and in the load dialog),
+so a 4K desktop's coordinates cannot strand a panel off a laptop screen.
+Without those clamps the group would have had to be excluded.
+
+Covered by `tests/fixtures/config-workspace-roundtrip.spec.js` (13 tests);
+mutation list `scripts/mutations/config-workspace.json` — 13 entries, 12 `fail`
+and one honest `expect: "pass"` for the exact-name-before-prefix ordering in
+`_configWorkspaceGroupFor()`, which no key that exists today can distinguish.
