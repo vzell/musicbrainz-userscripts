@@ -3129,10 +3129,441 @@
             Lib.settings[key] = Number.isFinite(num) ? num : cfg.default;
         }
     }
+    // ──────────────────────────────────────────────────────────────────────────
+    // One-time repair of a profile frozen by VZ_MBLibrary's old SAVE handler
+    //
+    // See org/config-handling.org F1. Until VZ_MBLibrary 4.1.0 the settings
+    // dialog's SAVE wrote EVERY key it rendered, on every save, whether or not
+    // anything had changed. `settingsInterface.init()` then reads
+    // `GM_getValue(key, configSchema[key].default)`, so a stored value shadows
+    // the schema permanently — and the first SAVE a user ever pressed, even
+    // having changed nothing, froze all ~232 settings into their profile.
+    //
+    // The library fix stops NEW profiles freezing. It does nothing for one that
+    // already is, and it only reaches anyone once the publish mirror is
+    // republished (F6). This runs here instead, on the consumer side, for the
+    // same reason `_coerceNumericSettings()` does: it ships with the userscript
+    // and repairs profiles that are already broken.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /** Highest migration step this version knows how to apply. */
+    const _SETTINGS_MIGRATION_LEVEL = 1;
+
+    /** GM key recording the highest migration step already applied. */
+    const _SETTINGS_MIGRATION_LEVEL_KEY = 'sa_settings_migration_level';
+
+    /** GM key holding the pre-migration values, so the step is reversible. */
+    const _SETTINGS_MIGRATION_BACKUP_KEY = 'sa_settings_migration_backup';
+
+    /** GM key holding the report for a notice not yet dismissed. */
+    const _SETTINGS_MIGRATION_NOTICE_KEY = 'sa_settings_migration_notice';
+
+    /**
+     * Settings whose `default:` changed after they shipped, with every value
+     * they ever carried as a default BEFORE the current one.
+     *
+     * **Derived from git, not from memory.** `scripts/dump-default-history.py`
+     * replays all 591 revisions of this file, parses `configSchema` at each and
+     * diffs the `default:` values; `scripts/config-default-history.json` is its
+     * output and `scripts/audit-config-defaults.py` Stage 3 fails when this
+     * table and that file disagree — so the next `default:` flip cannot ship
+     * without an entry here.
+     *
+     * **An endpoint diff would have missed three of these, and did.**
+     * org/config-handling.org F1 measured 9.99.746 against 9.99.1129 and
+     * reported five. A setting ADDED after 746 whose default then changed
+     * before 1129 reads as "added" to a two-point diff, so its frozen old value
+     * is invisible — that is `sa_uniq_dropdown_visible_rows` (F4's own worked
+     * example), `sa_enable_show_single_table_btn` and `sa_enable_ars_collapse`.
+     * Two more changed before 746 entirely.
+     *
+     * A stored value equal to one of these `was` entries is one this script
+     * once shipped as everybody's default, so a profile carrying it is far more
+     * likely to have been frozen by a SAVE than to hold a deliberate choice.
+     * That is a bet, and it is the only one available: nothing recorded which
+     * settings the user actually touched. It is made ONCE per profile, and the
+     * backup below is what makes it reversible.
+     *
+     * @type {Array<{key: string, was: Array<*>}>}
+     */
+    const _SETTINGS_MIGRATIONS = [
+        { key: 'sa_art_idb_metadata_ttl_days',     was: [7] },
+        { key: 'sa_auto_resize_columns',           was: [false] },
+        { key: 'sa_auto_resize_columns_threshold', was: [2000] },
+        { key: 'sa_enable_annotation_auto_expand', was: [false] },
+        { key: 'sa_enable_ars_collapse',           was: [true] },
+        { key: 'sa_enable_dropdown_flag_icons',    was: [false] },
+        { key: 'sa_enable_show_single_table_btn',  was: [false] },
+        { key: 'sa_sidebar_collapsed',             was: [false] },
+        { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
+        { key: 'sa_uniq_dropdown_visible_rows',    was: [8] },
+    ];
+
+    /**
+     * Keys that were in `configSchema` once and are gone now.
+     *
+     * Nothing reads them; they sit in GM storage for ever because the old SAVE
+     * wrote them and nothing has ever removed a key. `GM_listValues` is not
+     * granted, so no sweep could find them — this list is from the same git
+     * walk as {@link _SETTINGS_MIGRATIONS}, and Stage 3 of the audit keeps it
+     * complete.
+     *
+     * `sa_sort_progress_threshold` is the one worth noticing: it is the very
+     * setting `ShowAllEntityData_HELP.txt` still documented after it was
+     * removed (org/config-handling.org's stale-HELP follow-up). The doc and the
+     * storage went stale from the same deletion, six weeks apart in discovery.
+     *
+     * @type {string[]}
+     */
+    const _SETTINGS_ORPHANED_KEYS = [
+        'sa_area_flag_region_countries',
+        'sa_sort_progress_threshold',
+        'sa_ui_download_notification_font_size',
+        'sa_ui_h2_artist_rgs_global_bg',
+    ];
+
+    /**
+     * Compares a stored value against a schema value the way the settings
+     * dialog's widgets force us to.
+     *
+     * Every non-checkbox widget hands back a STRING, so a `type: 'number'`
+     * default of `30` is stored as `'30'` and a plain `===` would call the two
+     * different. `color_picker` compares case-insensitively because the schema
+     * writes `#FFD700` and iro.js writes back `#ffd700`. This mirrors
+     * VZ_MBLibrary 4.1.0's `settingsInterface.isSchemaDefault()` exactly — the
+     * two must agree, or a value the library declines to store is one this
+     * function declines to clear.
+     *
+     * @param {Object} cfg    The configSchema entry.
+     * @param {*} stored      The value in GM storage.
+     * @param {*} candidate   The value to compare it against.
+     * @returns {boolean}
+     */
+    function _settingsValueMatches(cfg, stored, candidate) {
+        if (!cfg) return String(stored) === String(candidate);
+        if (cfg.type === 'checkbox') {
+            return (stored === true || stored === 'true') ===
+                   (candidate === true || candidate === 'true');
+        }
+        if (cfg.type === 'color_picker') {
+            return String(stored).trim().toLowerCase() ===
+                   String(candidate).trim().toLowerCase();
+        }
+        return String(stored) === String(candidate);
+    }
+
+    /**
+     * Repairs a GM profile frozen by the pre-4.1.0 SAVE handler, once.
+     *
+     * Three passes, in this order, each of which only ever DELETES a GM key:
+     *
+     *   1. **Stale defaults.** A stored value equal to a default this script
+     *      once shipped ({@link _SETTINGS_MIGRATIONS}) is dropped, so the key
+     *      picks up today's default and tracks every future one. These are the
+     *      ten the user can SEE change — the sidebar collapses, auto-resize
+     *      turns on, the row-hover colour moves — which is why they are
+     *      reported to the user rather than applied silently.
+     *   2. **Orphans.** {@link _SETTINGS_ORPHANED_KEYS} are dropped outright.
+     *      Nothing reads them, so this is invisible and unconditional.
+     *   3. **Prune at default.** Every remaining schema key whose stored value
+     *      already EQUALS its current default is dropped. This changes nothing
+     *      today — `init()` falls back to that same default — and it is the
+     *      pass that actually fixes F1 going forward, because an absent key
+     *      follows the schema and a stored one does not. Without it, the next
+     *      `default:` flip is invisible again to everyone who ever pressed
+     *      SAVE, and stays invisible until they press it once more.
+     *
+     * **The cost of pass 3, stated plainly:** a value the user deliberately
+     * chose that happens to equal today's default stops being pinned, and will
+     * move if that default ever changes. There is no way to tell the two apart
+     * — storage holds values, never intentions — and today the two are already
+     * indistinguishable in effect, so nothing observable is lost now.
+     *
+     * **Everything removed is written to one backup key first**
+     * (`sa_settings_migration_backup`), with the level and a timestamp, so the
+     * whole step is reversible from the browser console by a user who disagrees
+     * with the bet. That backup is the reason this is defensible at all: it is
+     * a mass deletion of somebody else's configuration.
+     *
+     * **It runs once**, guarded by `sa_settings_migration_level`. A user who
+     * afterwards sets `sa_sidebar_collapsed` back to `false` keeps it: the pass
+     * never reconsiders. Three GM keys carry this state and none of them is a
+     * `configSchema` key — they must not appear in the settings dialog, and
+     * they must not travel in an exported configuration file.
+     *
+     * Runs BEFORE `_coerceNumericSettings()` so that one sees the corrected
+     * set, and before `Object.assign(settings, Lib.settings)` for the reason
+     * that function's JSDoc gives: `settings` is a shallow copy, not a
+     * reference, so anything written into `Lib.settings` afterwards is invisible
+     * to it.
+     *
+     * @returns {{adopted: Array<{key: string, from: *, to: *}>, orphaned: string[],
+     *            pruned: number, level: number}|null}  The report, or null when
+     *   nothing was migrated (already at level, or no GM storage at all).
+     */
+    function _migrateFrozenSettings() {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined' ||
+            typeof GM_deleteValue === 'undefined') {
+            return null;
+        }
+        const level = Number(GM_getValue(_SETTINGS_MIGRATION_LEVEL_KEY, 0)) || 0;
+        if (level >= _SETTINGS_MIGRATION_LEVEL) return null;
+
+        const backup  = {};
+        const adopted = [];
+        const orphaned = [];
+        let pruned = 0;
+
+        // 1 — a stored value equal to a default we once shipped.
+        const migrated = new Set();
+        for (const { key, was } of _SETTINGS_MIGRATIONS) {
+            const cfg = configSchema[key];
+            if (!cfg) continue;                       // removed since — pass 2's job
+            const stored = GM_getValue(key, undefined);
+            if (stored === undefined) continue;       // never frozen
+            if (!was.some(v => _settingsValueMatches(cfg, stored, v))) continue;
+            backup[key] = stored;
+            GM_deleteValue(key);
+            Lib.settings[key] = cfg.default;
+            adopted.push({ key, from: stored, to: cfg.default });
+            migrated.add(key);
+        }
+
+        // 2 — keys no longer in the schema at all.
+        for (const key of _SETTINGS_ORPHANED_KEYS) {
+            const stored = GM_getValue(key, undefined);
+            if (stored === undefined) continue;
+            backup[key] = stored;
+            GM_deleteValue(key);
+            delete Lib.settings[key];
+            orphaned.push(key);
+        }
+
+        // 3 — anything already sitting at its own current default.
+        for (const key of Object.keys(configSchema)) {
+            if (migrated.has(key)) continue;
+            const cfg = configSchema[key];
+            if (!cfg || !('default' in cfg)) continue;
+            if (cfg.type === 'divider' || cfg.type === 'function' || cfg.type === 'table') continue;
+            const stored = GM_getValue(key, undefined);
+            if (stored === undefined) continue;
+            if (!_settingsValueMatches(cfg, stored, cfg.default)) continue;
+            backup[key] = stored;
+            GM_deleteValue(key);
+            Lib.settings[key] = cfg.default;
+            pruned++;
+        }
+
+        const report = { adopted, orphaned, pruned, level: _SETTINGS_MIGRATION_LEVEL };
+
+        if (Object.keys(backup).length > 0) {
+            GM_setValue(_SETTINGS_MIGRATION_BACKUP_KEY, {
+                level: _SETTINGS_MIGRATION_LEVEL,
+                at: new Date().toISOString(),
+                script_version: scriptVersion,
+                values: backup
+            });
+        }
+        GM_setValue(_SETTINGS_MIGRATION_LEVEL_KEY, _SETTINGS_MIGRATION_LEVEL);
+
+        // Only the ten are worth telling the user about — they change what the
+        // page does. A prune changes nothing visible, and an orphan is a key
+        // nothing has read for weeks.
+        if (adopted.length > 0) {
+            GM_setValue(_SETTINGS_MIGRATION_NOTICE_KEY, report);
+        }
+
+        Lib.info('init',
+            `Settings migration ${_SETTINGS_MIGRATION_LEVEL}: ${adopted.length} adopted a ` +
+            `new default, ${orphaned.length} orphaned key(s) removed, ${pruned} pruned ` +
+            `at default.`);
+        return report;
+    }
+
+    /**
+     * Shows the one-time notice for a migration that adopted new defaults, and
+     * offers to undo it.
+     *
+     * **A silent change here would read as a bug.** The ten settings in
+     * {@link _SETTINGS_MIGRATIONS} change what the page DOES — the sidebar
+     * collapses, auto-resize turns on, the row-hover colour moves — so a user
+     * who has had the same profile for weeks would see their setup change for
+     * no stated reason. The alternative, a blocking dialog on page load, asks
+     * for a decision before the user has seen what changed; this states what
+     * happened and leaves the decision available.
+     *
+     * **↩︎ Undo restores the WHOLE backup, not just the ten**, because that is
+     * what "put my profile back" means — the pruned keys were removed in the
+     * same step. It deliberately does NOT reset the migration level: the user
+     * has decided, and re-running the pass on the next page load would undo
+     * their undo.
+     *
+     * The notice survives until it is dismissed rather than until the next
+     * page load: it is driven by a GM key, not a session flag, so navigating
+     * away before reading it does not lose it.
+     *
+     * Styling goes through `GM_addStyle`, never inline `style=` attributes —
+     * MusicBrainz's `/account/*` pages serve a `style-src` CSP with no
+     * `unsafe-inline`, which is what forced VZ_MBLibrary 4.0.0 to convert its
+     * own dialogs. A notice that renders as an unstyled stack of text in the
+     * middle of the page would be worse than none.
+     *
+     * @returns {void}
+     */
+    function _showSettingsMigrationNotice() {
+        if (typeof GM_getValue === 'undefined' || !document.body) return;
+        const report = GM_getValue(_SETTINGS_MIGRATION_NOTICE_KEY, null);
+        if (!report || !Array.isArray(report.adopted) || report.adopted.length === 0) return;
+        if (document.getElementById('mb-settings-migration-notice')) return;
+
+        if (typeof GM_addStyle === 'function') {
+            GM_addStyle([
+                '#mb-settings-migration-notice {',
+                '    position: fixed; top: 12px; right: 12px; z-index: 2147483000;',
+                '    max-width: 460px; max-height: 70vh; overflow-y: auto;',
+                '    background: #fffaf0; border: 2px solid #d38b1f; border-radius: 6px;',
+                '    box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 12px 14px;',
+                '    font-family: sans-serif; font-size: 13px; color: #222;',
+                '}',
+                '#mb-settings-migration-notice h4 {',
+                '    margin: 0 0 6px 0; font-size: 14px; color: #8a5a00;',
+                '}',
+                '#mb-settings-migration-notice p { margin: 0 0 8px 0; line-height: 1.45; }',
+                '#mb-settings-migration-notice ul {',
+                '    margin: 0 0 8px 0; padding-left: 18px; line-height: 1.5;',
+                '}',
+                '#mb-settings-migration-notice code {',
+                '    background: #f0e6d2; padding: 0 3px; border-radius: 2px;',
+                '}',
+                '#mb-settings-migration-notice .mb-smn-actions {',
+                '    display: flex; gap: 8px; justify-content: flex-end;',
+                '}',
+                '#mb-settings-migration-notice button {',
+                '    cursor: pointer; padding: 4px 10px; border-radius: 4px;',
+                '    border: 1px solid #b08030; background: #fff; font-size: 12px;',
+                '}',
+                '#mb-settings-migration-notice button:hover { background: #f4e7cf; }',
+                '#mb-settings-migration-notice .mb-smn-note {',
+                '    font-size: 11.5px; color: #555; margin-top: 2px;',
+                '}',
+            ].join('\n'));
+        }
+
+        const box = document.createElement('div');
+        box.id = 'mb-settings-migration-notice';
+
+        const h = document.createElement('h4');
+        h.textContent = '⚙️ Settings updated to current defaults';
+        box.appendChild(h);
+
+        const p = document.createElement('p');
+        p.textContent =
+            report.adopted.length + ' setting' + (report.adopted.length === 1 ? '' : 's') +
+            ' had been pinned to an older default by a previous SAVE and have now ' +
+            'adopted the current one:';
+        box.appendChild(p);
+
+        const ul = document.createElement('ul');
+        for (const item of report.adopted) {
+            const li = document.createElement('li');
+            const label = (configSchema[item.key] && configSchema[item.key].label) || item.key;
+            li.textContent = label + ': ' + JSON.stringify(item.from) +
+                             ' → ' + JSON.stringify(item.to);
+            ul.appendChild(li);
+        }
+        box.appendChild(ul);
+
+        if (report.pruned > 0 || (report.orphaned && report.orphaned.length > 0)) {
+            const note = document.createElement('p');
+            note.className = 'mb-smn-note';
+            const bits = [];
+            if (report.pruned > 0) {
+                bits.push(report.pruned + ' other setting' + (report.pruned === 1 ? '' : 's') +
+                          ' already matched the current default and were cleared from ' +
+                          'storage, so they follow future changes too. Nothing you can ' +
+                          'see changes from that.');
+            }
+            if (report.orphaned && report.orphaned.length > 0) {
+                bits.push(report.orphaned.length + ' obsolete key' +
+                          (report.orphaned.length === 1 ? '' : 's') + ' removed.');
+            }
+            note.textContent = bits.join(' ');
+            box.appendChild(note);
+        }
+
+        const actions = document.createElement('div');
+        actions.className = 'mb-smn-actions';
+
+        const undo = document.createElement('button');
+        undo.type = 'button';
+        undo.id = 'mb-smn-undo';
+        undo.textContent = '↩︎ Undo and reload';
+        undo.title = 'Restore every value this step removed, and keep it that way.';
+        undo.addEventListener('click', () => {
+            _undoSettingsMigration();
+            location.reload();
+        });
+
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.id = 'mb-smn-dismiss';
+        ok.textContent = '✓ Keep';
+        ok.addEventListener('click', () => {
+            if (typeof GM_deleteValue !== 'undefined') {
+                GM_deleteValue(_SETTINGS_MIGRATION_NOTICE_KEY);
+            }
+            box.remove();
+        });
+
+        actions.appendChild(undo);
+        actions.appendChild(ok);
+        box.appendChild(actions);
+        document.body.appendChild(box);
+    }
+
+    /**
+     * Restores every value {@link _migrateFrozenSettings} removed.
+     *
+     * The migration level is deliberately LEFT at its migrated value: the user
+     * has said no, and re-running the pass on the next load would simply undo
+     * their undo. The backup itself is kept rather than deleted, so a second
+     * thought is still possible from the console.
+     *
+     * @returns {number}  How many keys were written back.
+     */
+    function _undoSettingsMigration() {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return 0;
+        const backup = GM_getValue(_SETTINGS_MIGRATION_BACKUP_KEY, null);
+        if (!backup || !backup.values) return 0;
+        let restored = 0;
+        for (const [key, value] of Object.entries(backup.values)) {
+            GM_setValue(key, value);
+            Lib.settings[key] = value;
+            restored++;
+        }
+        if (typeof GM_deleteValue !== 'undefined') {
+            GM_deleteValue(_SETTINGS_MIGRATION_NOTICE_KEY);
+        }
+        Lib.info('init', `Settings migration undone — ${restored} value(s) restored.`);
+        return restored;
+    }
+
+    _migrateFrozenSettings();
     _coerceNumericSettings();
 
     // Copy settings reference so the callback can access them
     Object.assign(settings, Lib.settings);
+
+    // The notice is independent of pageType — it reports on GM storage, not on
+    // anything this page renders — so it is armed here rather than from a
+    // render tail, and it survives until dismissed rather than until the next
+    // navigation. `@run-at` is document-idle, so the readyState guard is
+    // belt-and-braces for a page that somehow arrives earlier.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _showSettingsMigrationNotice, { once: true });
+    } else {
+        _showSettingsMigrationNotice();
+    }
 
     //--------------------------------------------------------------------------------
 
@@ -65563,6 +65994,17 @@ a { color: #1565c0; }`;
      *   • `checkbox` → boolean;  `number` → `Number()`, INVALID on NaN.
      *   • everything else (text / color_picker / popup_dialog /
      *     keyboard_shortcut) → `String(value)`.
+     *   • then, for anything but a `table`: a coerced value EQUAL to the schema
+     *     default is CLEARED from GM storage rather than written, and counted
+     *     in `pruned` as well as `applied`.
+     *
+     * **The prune is what stops this function being a back door into F1.** The
+     * exported file is a full dump of all ~232 importable keys, so before it,
+     * one 📂 Load configuration wrote every one of them — re-freezing a profile
+     * exactly the way the library's old SAVE did, including one that
+     * `_migrateFrozenSettings()` had just repaired. An absent key and a key
+     * stored at the default resolve identically today, so nothing observable
+     * changes; what changes is whether a future `default:` reaches this user.
      *
      * **The `table` branch is the whole point of this function's existence.**
      * The 5 `type: 'table'` settings are row ARRAYS, and until 2026-09-21 they
@@ -65587,10 +66029,12 @@ a { color: #1565c0; }`;
      *
      * @param {Object<string, *>} settingsObj  The file's "settings" block.
      * @returns {{applied: number, skipped: number, invalid: number,
-     *            skippedKeys: string[]}}  Per-key tallies for the summary.
+     *            pruned: number, skippedKeys: string[]}}  Per-key tallies for
+     *   the summary. `pruned` is a SUBSET of `applied`, not a fourth outcome:
+     *   the file's value is in effect either way.
      */
     function _applyConfigSettings(settingsObj) {
-        let applied = 0, skipped = 0, invalid = 0;
+        let applied = 0, skipped = 0, invalid = 0, pruned = 0;
         const skippedKeys = [];
 
         for (const [key, value] of Object.entries(settingsObj)) {
@@ -65625,11 +66069,34 @@ a { color: #1565c0; }`;
                 continue;
             }
 
-            GM_setValue(key, coerced);
+            // A value equal to the schema default is CLEARED, not stored — the
+            // same dirty-set rule VZ_MBLibrary 4.1.0's SAVE applies, for the
+            // same reason. Without it this function is a back door straight
+            // back into org/config-handling.org F1: the exported file is a FULL
+            // DUMP of all ~232 importable keys, so one 📂 Load would re-freeze
+            // every setting in the profile that `_migrateFrozenSettings()` had
+            // just un-frozen, and no default shipped afterwards would reach
+            // that user again.
+            //
+            // Nothing observable is lost: the key's effective value is the
+            // default either way. The file said "this setting is at the
+            // default", and that is exactly what an absent key means.
+            //
+            // `table` is excluded because those five have no `default:` at all
+            // (they are lazy-seeded from code), so there is nothing to compare
+            // against — and their rows are the most valuable thing in the file.
+            if (typeof GM_deleteValue !== 'undefined' &&
+                schemaCfg.type !== 'table' && ('default' in schemaCfg) &&
+                _settingsValueMatches(schemaCfg, coerced, schemaCfg.default)) {
+                GM_deleteValue(key);
+                pruned++;
+            } else {
+                GM_setValue(key, coerced);
+            }
             applied++;
         }
 
-        return { applied, skipped, invalid, skippedKeys };
+        return { applied, skipped, invalid, pruned, skippedKeys };
     }
 
     /**
@@ -65691,11 +66158,13 @@ a { color: #1565c0; }`;
                 'importing with best-effort compatibility.');
         }
 
-        const { applied, skipped, invalid, skippedKeys } = _applyConfigSettings(payload.settings);
+        const { applied, skipped, invalid, pruned, skippedKeys } =
+            _applyConfigSettings(payload.settings);
 
         Lib.info('settings',
             `Configuration imported from "${file.name}": ` +
-            `${applied} applied, ${skipped} not applicable, ${invalid} invalid`);
+            `${applied} applied (${pruned} left at their default), ` +
+            `${skipped} not applicable, ${invalid} invalid`);
 
         if (skipped > 0) {
             Lib.debug('settings', `Keys not applied: ${skippedKeys.join(', ')}`);
@@ -65708,6 +66177,10 @@ a { color: #1565c0; }`;
             `File: ${file.name}`,
             `Applied:  ${applied} setting${applied !== 1 ? 's' : ''}`,
         ];
+        if (pruned > 0) {
+            lines.push(`          of which ${pruned} match the current default and are ` +
+                       `left unstored, so they follow future default changes`);
+        }
         if (skipped > 0) lines.push(`Skipped:  ${skipped} key${skipped !== 1 ? 's' : ''} (unknown or not importable)`);
         if (invalid > 0) lines.push(`Invalid:  ${invalid} value${invalid !== 1 ? 's' : ''} (type error)`);
         if (metaVer !== undefined && metaVer !== _CFG_SCHEMA_VERSION) {
@@ -83325,8 +83798,10 @@ a { color: #1565c0; }`;
     // `artRefreshPerTableFailed()` forces the real per-table recompute, and
     // `applyConfigSettings()` runs the config importer's write loop, whose only
     // entry point is a button in a library-rendered modal followed by
-    // `location.reload()`. Such a member calls the SHIPPING function and adds
-    // no test-only behaviour of its own; that is what keeps it honest.
+    // `location.reload()`. `runSettingsMigration()` goes further still and
+    // DELETES GM keys, because that is what the migration does. Such a member
+    // calls the SHIPPING function and adds no test-only behaviour of its own;
+    // that is what keeps it honest.
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
             /**
@@ -83552,10 +84027,87 @@ a { color: #1565c0; }`;
              * @param {Object<string, *>} settingsObj  A config file's
              *   "settings" block.
              * @returns {{applied: number, skipped: number, invalid: number,
-             *            skippedKeys: string[]}}
+             *            pruned: number, skippedKeys: string[]}}
              */
             applyConfigSettings(settingsObj) {
                 return _applyConfigSettings(settingsObj);
+            },
+
+            /**
+             * Runs the one-time settings migration and returns its report.
+             *
+             * This one WRITES, and it DELETES — see the note on the block
+             * comment above. It exists because the migration's every effect is
+             * an ABSENCE: a repaired profile and a profile that was never
+             * frozen are byte-identical, and the only difference between a key
+             * that adopted a new default and one that never diverged is which
+             * GM keys are now gone.
+             *
+             * The real entry point runs once during bootstrap, guarded by
+             * `sa_settings_migration_level`, long before a fixture can seed the
+             * frozen values it is supposed to repair. A test therefore seeds,
+             * resets that level to 0, and calls this — driving
+             * `_migrateFrozenSettings()` itself rather than a copy of it.
+             *
+             * @returns {{adopted: Array<{key: string, from: *, to: *}>,
+             *            orphaned: string[], pruned: number, level: number}|null}
+             */
+            runSettingsMigration() {
+                return _migrateFrozenSettings();
+            },
+
+            /**
+             * What this script resolves one setting to right now — i.e.
+             * `Lib.settings[key]`, the object all ~546 `Lib.settings.sa_*`
+             * reads go through.
+             *
+             * Exposed for the settings migration, whose every effect is an
+             * ABSENCE: it DELETES a GM key and patches `Lib.settings` in place,
+             * so reading GM storage alone cannot tell "repaired" from "the
+             * in-memory copy still holds the frozen value". The two have to be
+             * asserted against each other.
+             *
+             * @param {string} key  A configSchema key.
+             * @returns {*}
+             */
+            liveSetting(key) {
+                return Lib.settings[key];
+            },
+
+            /**
+             * VZ_MBLibrary's own dirty-set write path, run against the live
+             * library instance this script is using.
+             *
+             * The library has no test harness of its own, and this is the one
+             * place its settings code is exercised against a real schema. The
+             * production caller is `settingsInterface.save()`, which ends in
+             * `location.reload()` — `persist()` is the half that was split off
+             * precisely so the writes can be asserted.
+             *
+             * It goes through `Lib`, not a second `new VZ_MBLibrary(…)`, so
+             * what is tested is the instance that ships, against this script's
+             * own 238 settings rather than a toy schema.
+             *
+             * @param {Object<string, *>} newValues
+             * @returns {{stored: number, cleared: number}}
+             */
+            libPersistSettings(newValues) {
+                return Lib.settingsInterface.persist(newValues);
+            },
+
+            /**
+             * Restores everything the migration removed — the ↩︎ Undo button's
+             * own function, called directly.
+             *
+             * Exposed separately from the notice because that button lives in a
+             * banner the migration only renders when something was ADOPTED, so
+             * the undo path is unreachable from the DOM for a profile whose
+             * migration merely pruned.
+             *
+             * @returns {number} How many keys were written back.
+             */
+            undoSettingsMigration() {
+                return _undoSettingsMigration();
             },
 
             /**

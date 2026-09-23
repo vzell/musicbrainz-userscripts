@@ -1,0 +1,213 @@
+[
+  {
+    "name": "pass 1 never fires — a retired default is left frozen",
+    "why": "org/config-handling.org F1's core case. Skipping the migration table leaves every profile exactly as the old SAVE handler froze it, which is the bug, and it is INVISIBLE: the setting reads a perfectly plausible value, just not the current one.",
+    "edits": [
+      {
+        "find": "            if (!was.some(v => _settingsValueMatches(cfg, stored, v))) continue;",
+        "replace": "            if (true) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a value frozen at a RETIRED default is cleared",
+    "expect": "fail"
+  },
+  {
+    "name": "pass 1 adopts ANY stored value, not just a retired default",
+    "why": "The opposite overshoot, and the more dangerous one: it silently overwrites a value the user chose on purpose. Only the counter-guard can see it — every adoption test in the file would still pass, because deleting everything adopts everything.",
+    "edits": [
+      {
+        "find": "            if (!was.some(v => _settingsValueMatches(cfg, stored, v))) continue;",
+        "replace": "            if (false) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a value that was NEVER a default survives untouched",
+    "expect": "fail"
+  },
+  {
+    "name": "the comparison is strict, so a dialog-written string is not recognised",
+    "why": "Every non-checkbox widget hands back `input.value`, so a number frozen by the SAVE handler is the STRING \"8\". A `===` comparison would skip exactly the profiles this exists to repair — the ones the dialog wrote — while still passing on a hand-seeded number.",
+    "edits": [
+      {
+        "find": "        return String(stored) === String(candidate);\n    }",
+        "replace": "        return stored === candidate;\n    }"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a retired default is recognised through the settings dialog",
+    "expect": "fail"
+  },
+  {
+    "name": "colours are compared case-sensitively",
+    "why": "The schema writes #FFD700 and iro.js writes back #ffd700. Case-sensitive, the retired colour is not recognised AND a value identical to the current default is never pruned — so opening the picker once would pin that colour for ever. One mutation, both halves, which is why the test asserts both in one load.",
+    "edits": [
+      {
+        "find": "        if (cfg.type === 'color_picker') {\n            return String(stored).trim().toLowerCase() ===\n                   String(candidate).trim().toLowerCase();\n        }",
+        "replace": "        if (cfg.type === 'color_picker') {\n            return String(stored).trim() === String(candidate).trim();\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a colour is compared case-insensitively",
+    "expect": "fail"
+  },
+  {
+    "name": "pass 3 never fires — a key at its own current default stays stored",
+    "why": "The pass that changes nothing today and everything later. Without it, a repaired profile still shadows the schema for ~232 keys, so the NEXT default flip is invisible again to everyone who ever pressed SAVE.",
+    "edits": [
+      {
+        "find": "            if (!_settingsValueMatches(cfg, stored, cfg.default)) continue;",
+        "replace": "            if (true) continue;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a key already sitting at its CURRENT default is pruned",
+    "expect": "fail"
+  },
+  {
+    "name": "pass 2 never fires — a key dropped from the schema is left behind",
+    "why": "GM_listValues is not granted, so nothing else in the codebase could ever find these. A stray is harmless in itself; the point of the list is that it is the only record they exist.",
+    "edits": [
+      {
+        "find": "        for (const key of _SETTINGS_ORPHANED_KEYS) {",
+        "replace": "        for (const key of []) {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a key dropped from the schema is removed outright",
+    "expect": "fail"
+  },
+  {
+    "name": "the once-only guard is removed",
+    "why": "A migration that re-fires on every page load stops being a repair and becomes a policy: a user who sets a value back after it ran would be overruled again on their next navigation, with no way to keep their own choice.",
+    "edits": [
+      {
+        "find": "        if (level >= _SETTINGS_MIGRATION_LEVEL) return null;",
+        "replace": "        if (false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "it runs once",
+    "expect": "fail"
+  },
+  {
+    "name": "nothing is backed up before the deletions",
+    "why": "This is a mass deletion of somebody else's configuration. The backup is the whole reason it is defensible rather than merely well-intentioned, and without it ↩︎ Undo has nothing to restore.",
+    "edits": [
+      {
+        "find": "        if (Object.keys(backup).length > 0) {\n            GM_setValue(_SETTINGS_MIGRATION_BACKUP_KEY, {",
+        "replace": "        if (false) {\n            GM_setValue(_SETTINGS_MIGRATION_BACKUP_KEY, {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "the whole step is reversible",
+    "expect": "fail"
+  },
+  {
+    "name": "undo re-arms the migration by resetting the level",
+    "why": "The plausible-looking mistake: 'undo should put everything back, including the marker'. It would put the marker back too, and the next page load would silently redo the migration the user has just rejected.",
+    "edits": [
+      {
+        "find": "        if (typeof GM_deleteValue !== 'undefined') {\n            GM_deleteValue(_SETTINGS_MIGRATION_NOTICE_KEY);\n        }\n        Lib.info('init', `Settings migration undone",
+        "replace": "        if (typeof GM_deleteValue !== 'undefined') {\n            GM_deleteValue(_SETTINGS_MIGRATION_NOTICE_KEY);\n            GM_setValue(_SETTINGS_MIGRATION_LEVEL_KEY, 0);\n        }\n        Lib.info('init', `Settings migration undone"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "the whole step is reversible",
+    "expect": "fail"
+  },
+  {
+    "name": "the notice fires for a prune-only migration",
+    "why": "A prune changes nothing the user can see. A notice for it is a notice about nothing, and the cost is not zero — it is what teaches someone to dismiss the next one without reading it.",
+    "edits": [
+      {
+        "find": "        if (adopted.length > 0) {\n            GM_setValue(_SETTINGS_MIGRATION_NOTICE_KEY, report);\n        }",
+        "replace": "        if (adopted.length > 0 || pruned > 0) {\n            GM_setValue(_SETTINGS_MIGRATION_NOTICE_KEY, report);\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "does not appear when the migration only pruned",
+    "expect": "fail"
+  },
+  {
+    "name": "VZ_MBLibrary's SAVE goes back to writing every key",
+    "why": "The library's pre-4.1.0 behaviour, restored verbatim. This is the mechanism that froze every profile in the first place: one SAVE, nothing changed, ~232 keys written, every future default shadowed for ever.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (canDelete && this.isSchemaDefault(key, newValues[key])) {",
+        "replace": "                    if (false && canDelete && this.isSchemaDefault(key, newValues[key])) {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a value equal to the schema default is CLEARED",
+    "expect": "fail"
+  },
+  {
+    "name": "VZ_MBLibrary compares widget values strictly",
+    "why": "`input.value` is always a string, so a `type: 'number'` default of 50 arrives as \"50\". Strict, the dirty set would still store every numeric and every colour setting on every save — most of what freezing a profile consisted of — while looking like it worked for checkboxes.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                return String(value) === String(cfg.default);\n            },",
+        "replace": "                return value === cfg.default;\n            },"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a number arriving as a STRING",
+    "expect": "fail"
+  },
+  {
+    "name": "📂 Load configuration stores an imported default again",
+    "why": "The back door. The exported file is a FULL DUMP of all ~232 importable keys, so without the prune one import re-freezes everything the migration just freed — and the summary reports it as a clean success.",
+    "edits": [
+      {
+        "find": "            if (typeof GM_deleteValue !== 'undefined' &&\n                schemaCfg.type !== 'table' && ('default' in schemaCfg) &&\n                _settingsValueMatches(schemaCfg, coerced, schemaCfg.default)) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "an imported value equal to the default is left unstored",
+    "expect": "fail"
+  },
+  {
+    "name": "the notice's DOM-side empty-adopted guard is removed",
+    "why": "EXPECTED TO PASS, and the pass is the finding. Two guards keep a prune-only run quiet — the writer only records a notice when something was adopted, and the renderer bails on an empty `adopted`. With the writer's guard intact there is no record to render, so removing the renderer's changes nothing any fixture can observe. Recorded rather than left unmentioned, because the pair is only mutation-visible from the writer's side: see the entry above, which the spec now catches by asserting the RECORD as well as the DOM.",
+    "edits": [
+      {
+        "find": "        if (!report || !Array.isArray(report.adopted) || report.adopted.length === 0) return;",
+        "replace": "        if (!report || !Array.isArray(report.adopted)) return;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "does not appear when the migration only pruned",
+    "expect": "pass"
+  },
+  {
+    "name": "the import's table exclusion is removed",
+    "why": "EXPECTED TO PASS, and worth recording because the reason is a coincidence rather than a design. The `type !== 'table'` arm is fully redundant with `'default' in schemaCfg` beside it — the five table settings carry no `default:` at all — and with BOTH removed a row array is compared against `undefined`, where `String([['discogs','x']]) === String(undefined)` is false, so it is stored anyway. No committed fixture can tell the difference. The guard stays: a row array surviving because of how `String()` renders `undefined` is not a property anyone should have to re-derive before touching this branch, and F3 is what happens when the tables lose their special case.",
+    "edits": [
+      {
+        "find": "                schemaCfg.type !== 'table' && ('default' in schemaCfg) &&",
+        "replace": "                ('default' in schemaCfg || true) &&"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a table setting is never pruned",
+    "expect": "pass"
+  },
+  {
+    "name": "the harness stops pre-applying the migration for other specs",
+    "why": "EXPECTED TO PASS here, and recorded because the pass is what identifies where the real guard lives. This file seeds `sa_settings_migration_level: 0` itself, so it cannot see the harness setting at all. What the harness protects is OTHER specs — collapse-column-width-stable-on-sort.spec.js seeds `sa_auto_resize_columns: false`, which IS a retired default, so without it the migration would delete that seed and hand the spec today's value. That is checked by running the full suite, not by this file.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "    sa_settings_migration_level: 9999,",
+        "replace": "    sa_settings_migration_level_UNUSED: 9999,"
+      }
+    ],
+    "spec": "tests/fixtures/settings-migration.spec.js",
+    "grep": "a value frozen at a RETIRED default is cleared",
+    "expect": "pass"
+  }
+]

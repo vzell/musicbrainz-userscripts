@@ -23,6 +23,27 @@ const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_relationships_column: false,
 };
 
+// `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE
+// handler froze (org/config-handling.org F1), and it decides what was frozen by
+// comparing stored values against defaults this script once shipped. A SEEDED
+// setting looks exactly like a frozen one — and several specs seed a value that
+// IS a retired default, `sa_auto_resize_columns: false` above all
+// (collapse-column-width-stable-on-sort.spec.js, four call sites). Left alone,
+// the migration would delete those seeds and hand the spec today's default
+// instead, so the test would measure the opposite of what it asked for and
+// still pass or fail for reasons of its own.
+//
+// So every load starts with migrations already applied. The level is a plain
+// number the userscript compares with `>=`, and seeding one far above anything
+// it will ship keeps this from going stale on the next migration step — the
+// point is "not this profile", not "up to date".
+//
+// The one spec that exercises the migration seeds `sa_settings_migration_level:
+// 0` through `settingsOverride`, which is merged on top of this.
+const SETTINGS_MIGRATION_PRE_APPLIED = {
+    sa_settings_migration_level: 9999,
+};
+
 /**
  * Loads ShowAllEntityData.user.js onto `page`, matching the exact
  * `@require` order declared in the userscript header (iro, pako,
@@ -73,6 +94,11 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
 
     await page.context().addInitScript({
         content: buildGmStubsScript({
+            // Applied to live specs too: they run against a real page with an
+            // empty GM store, where the migration would find nothing to do —
+            // but "nothing to do" is a property of the store, not a guarantee,
+            // and a live spec that seeds a setting deserves the same protection.
+            ...SETTINGS_MIGRATION_PRE_APPLIED,
             ...(fixtureFile ? FIXTURE_SETTINGS_OVERRIDE : {}),
             ...(settingsOverride || {}),
         }),

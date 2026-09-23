@@ -696,6 +696,8 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=               |   446 | *5 m 37 s* | =/usr/bin/time=, 21:52:01-21:57:38 UTC |
 | =npm run test:full=, merge gate A |   447 | *5 m 40 s* | =/usr/bin/time=, 22:42:52-22:48:32 UTC |
 | =npm run test:full=, merge gate B |   447 | *5 m 40 s* | =/usr/bin/time=, 23:14:34-23:20:14 UTC |
+| =npm run test:full=, merge gate C |   450 | *5 m 40 s* | =date=, 2026-09-22 05:25:42-05:31:22   |
+| =npm run test:full=, branch check |   468 | *5 m 37 s* | =date=, 2026-09-22 06:30:48-06:36:25   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -717,6 +719,26 @@ byte-identical userscript.
 
 Practical reading: on this host, a =test:full= wall clock outside roughly
 ±1% is worth looking at; inside it is noise.
+
+*Rows 5 and 6 hold that reading up, and row 6 strengthens it.* 340.03 s at 450
+tests (the =fix/config-fallback-drift= merge gate) sits with the other two
+inside 0.1%. Row 6 then adds **18 more tests for 3 seconds LESS** wall clock
+(=fix/settings-dirty-set-and-migration=, 337 s at 468) — which is not a
+speed-up and should not be read as one: at 12 workers the suite's wall clock is
+set by its longest single spec, =rel-auto-retry-failed= at ~324 s, so 18 short
+tests distribute into slack that already existed. The number worth carrying is
+that four runs spanning 447→468 tests all land in 337-340 s, i.e. the count is
+not what this measurement is sensitive to. Adding a test that is not slower than
+324 s is free.
+
+*Row 6's run had one failure that did not reproduce*:
+=work-recordings-ms-length.spec.js= — "the response is cached for the page:
+sorting, filtering and re-toggling never re-request". The spec passed 11/11
+standalone immediately afterwards and the whole suite passed on the re-run
+recorded as row 6. Counted as a flake, in the same spirit as the
+=uniq-drop-join-phrases= one below: a request-count assertion under 12-worker
+load. Recorded rather than dropped, so a second sighting has something to
+attach to.
 
 *Each row's count is what RAN.* Do not "correct" them to whatever
 =tests/README.org= says today — the numbers belong to the tree that was timed.

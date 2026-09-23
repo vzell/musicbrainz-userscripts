@@ -709,7 +709,32 @@ is the accepted set and is currently EMPTY; keep it that way rather than
 baselining a new one. A version bump alone is a NOTE, never a failure, so the
 gate survives `merge-push-remove`'s fold. Run
 `scripts/check-config-defaults-gate.py` after touching the audit: it
-mutation-checks all six arms, and is what caught the ORPHAN case exiting 0.
+mutation-checks all eleven arms, and is what caught the ORPHAN case exiting 0.
+
+**Storage holds only what the user CHANGED, and changing a `default:` now owes
+a third thing.** VZ_MBLibrary 4.1.0's SAVE deletes a value equal to its schema
+default instead of writing it, so an absent key follows the schema and a stored
+one does not. Before that, one SAVE — even with nothing changed — wrote all
+~232 keys and every later default was invisible to that user for ever
+(org/config-handling.org F1). `_migrateFrozenSettings()` repairs a profile that
+already froze, once, consumer-side so it ships without waiting on the mirror
+republish.
+
+So when you change a `default:`, the third obligation is **an entry in
+`_SETTINGS_MIGRATIONS`** naming the value it moved away from — otherwise
+everyone who has ever pressed SAVE keeps the old one. You do not have to
+remember: refresh `scripts/config-default-history.json` with
+`scripts/dump-default-history.py` (a walk of all 591 revisions, ~26 s) and the
+audit's Stage 3 names what is missing. It fails on an INVENTED entry too, which
+is the worse direction — that one silently overwrites a value the user may have
+chosen on purpose.
+
+**A seeded GM value in a spec looks exactly like a frozen one**, so
+`tests/support/loadPage.js` seeds the migration level far above anything the
+script ships and every fixture starts with migrations already applied. Four
+call sites in `collapse-column-width-stable-on-sort.spec.js` seed
+`sa_auto_resize_columns: false`, which IS a retired default. Only
+`tests/fixtures/settings-migration.spec.js` opts back in.
 
 **The drift is mostly invisible, which is why it lasted.**
 `settingsInterface.init()` writes the schema default into `Lib.settings` for

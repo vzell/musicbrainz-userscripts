@@ -10,11 +10,12 @@ version is the part that stays resolvable.
 
 *Shipped since:*
 
-| Finding | Version   | Branch                          | Spec                                                       |
-|---------+-----------+---------------------------------+------------------------------------------------------------|
-| [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion= | =tests/fixtures/settings-numeric-coercion.spec.js=         |
-| [[#F3][F3]]      | 9.99.1136 | =fix/config-import-tables=      | =tests/fixtures/config-import-export.spec.js=              |
-| [[#F4][F4]]      | 9.99.1137 | =fix/config-fallback-drift=     | =tests/fixtures/settings-fallback-matches-default.spec.js= |
+| Finding | Version   | Branch                                  | Spec                                                       |
+|---------+-----------+-----------------------------------------+------------------------------------------------------------|
+| [[#F2][F2]]      | 9.99.1130 | =fix/settings-numeric-coercion=         | =tests/fixtures/settings-numeric-coercion.spec.js=         |
+| [[#F3][F3]]      | 9.99.1136 | =fix/config-import-tables=              | =tests/fixtures/config-import-export.spec.js=              |
+| [[#F4][F4]]      | 9.99.1137 | =fix/config-fallback-drift=             | =tests/fixtures/settings-fallback-matches-default.spec.js= |
+| [[#F1][F1]]      | WIP.1     | =fix/settings-dirty-set-and-migration=  | =tests/fixtures/settings-migration.spec.js=                |
 
 This file replaces two =org/TODO.org= headlines that asked the same question
 seven weeks apart — "analyze the save/load settings regarding end-user
@@ -29,7 +30,7 @@ commit).
 
 | Finding | What                                             | Status                        |
 |---------+--------------------------------------------------+-------------------------------|
-| [[#F1][F1]]      | one SAVE pins every setting forever              | none — recorded, not fixed    |
+| [[#F1][F1]]      | one SAVE pins every setting forever              | *fixed* WIP.1                 |
 | [[#F2][F2]]      | =number= settings stored as strings; 4 read dead | *fixed* 9.99.1130             |
 | [[#F3][F3]]      | config import silently wipes the editable tables | *fixed* 9.99.1136             |
 | [[#F4][F4]]      | inline fallbacks disagree with their default     | *fixed* 9.99.1137             |
@@ -98,36 +99,120 @@ This reframes =bfb8ac3='s own release note — /"Only affects fresh installs;
 existing explicit user settings are untouched"/ — which is true of more users
 than intended: it also spares everyone who pressed SAVE once and changed nothing.
 
-*Not fixed, deliberately.* A dirty-set save plus a migration table is a
-shared-library change with a real blast radius (=MB_PageEnhancer= uses the same
-schema mechanism) and no obviously-correct answer for values already frozen.
-Recorded so the next default flip is proposed with this in view.
+*Said here to be unfixable-for-now, and that was wrong.* The original note read:
+/"A dirty-set save plus a migration table is a shared-library change with a real
+blast radius (=MB_PageEnhancer= uses the same schema mechanism) and no
+obviously-correct answer for values already frozen."/ Two of those three claims
+survive and the conclusion does not. The dirty-set save IS a library change and
+does carry that blast radius — so it is feature-detected, and an ungranted
+consumer keeps its old behaviour exactly. But *the migration does not have to
+live in the library at all*: it went consumer-side, where
+=_coerceNumericSettings()= already sits for [[#F2][F2]], and ships with the userscript
+instead of waiting on [[#F6][F6]]. And "no obviously-correct answer for values already
+frozen" was really "no answer without evidence" — see below, where git turned
+out to have it.
 
-** The five defaults that are stuck right now
+** The ten defaults that are stuck, not five
 
-Measured 2026-09-21 by diffing the schema at =60df09a= (9.99.746 — the version
-the publish mirror still serves, see [[#F6][F6]]) against 9.99.1129. These are the
-defaults that changed on an *existing* setting, so nobody who has ever pressed
-SAVE has them:
+*The original count here was five, and it was measured the wrong way.* It came
+from diffing the schema at =60df09a= (9.99.746 — the version the publish mirror
+still serves, see [[#F6][F6]]) against 9.99.1129: two points, not a history. A setting
+*added* after 746 whose default then changed before 1129 reads as "added" to an
+endpoint diff, so its frozen old value is invisible. Three of =bfb8ac3='s seven
+are exactly that shape — including =sa_uniq_dropdown_visible_rows=, which is
+[[#F4][F4]]'s own worked example. Two more changed before 746 and were outside the
+window entirely.
 
-| Setting                            | Section                       | Old   | New  |
-|------------------------------------+-------------------------------+-------+------|
-| =sa_sidebar_collapsed=             | ⭲ COLLABSABLE SIDEBAR         | false | true |
-| =sa_enable_dropdown_flag_icons=    | #₁ UNIQUE COLUMN VALUES ...   | false | true |
-| =sa_auto_resize_columns=           | ↔️ COLUMN RESIZE FEATURE       | false | true |
-| =sa_enable_annotation_auto_expand= | 📖 ANNOTATION SECTION         | false | true |
-| =sa_art_idb_metadata_ttl_days=     | 🗄️ ART ARCHIVE INDEXEDDB CACHE | 7     | 30   |
+=scripts/dump-default-history.py= replays all 591 revisions of the userscript
+and diffs =configSchema='s =default:= values. 12 changes, on 10 settings whose
+current default is not the only one they ever had:
 
-Over the same span: 45 settings added (these *do* arrive at their default, so
-they need no action) and 4 removed. The range matters — 746 → 1079 gives only
-*four* changed defaults and 40 added; =sa_art_idb_metadata_ttl_days= landed
-after 1079. =TODO.org='s "mention the =sa_art_idb_metadata_ttl_days= 30 days
-change in the forum article" item is therefore only satisfiable if the release
-ships as 1129.
+| Setting                            | Old       | New       | Changed at |
+|------------------------------------+-----------+-----------+------------|
+| =sa_auto_resize_columns_threshold= | 2000      | 10000     | 9.99.654   |
+| =sa_ui_row_hover_bg=               | =#e2e2e2= | =#c2d2e9= | 9.99.714   |
+| =sa_enable_annotation_auto_expand= | false     | true      | 9.99.888   |
+| =sa_sidebar_collapsed=             | false     | true      | 9.99.888   |
+| =sa_enable_dropdown_flag_icons=    | false     | true      | 9.99.888   |
+| =sa_uniq_dropdown_visible_rows=    | 8         | 30        | 9.99.888   |
+| =sa_auto_resize_columns=           | false     | true      | 9.99.888   |
+| =sa_enable_show_single_table_btn=  | false     | true      | 9.99.888   |
+| =sa_enable_ars_collapse=           | true      | false     | 9.99.888   |
+| =sa_art_idb_metadata_ttl_days=     | 7         | 30        | 9.99.1116  |
+
+=sa_enable_annotation_auto_expand= is the one that changed twice (true → false
+at 9.99.727, back to true at 888), which is the other thing an endpoint diff
+cannot represent and a reason the table records values rather than a direction.
+
+*And four keys are in GM storage that are in no schema at all:*
+=sa_area_flag_region_countries= (last shipped 9.99.725),
+=sa_ui_download_notification_font_size=, =sa_ui_h2_artist_rgs_global_bg= and
+=sa_sort_progress_threshold= (all 9.99.913). =GM_listValues= is not granted, so
+nothing in the codebase could enumerate them — only git can. The last of those
+is the setting =ShowAllEntityData_HELP.txt= was still documenting after it was
+removed (the follow-up at the bottom of this file): *the doc and the storage
+went stale from the same deletion*, and were found six weeks apart from opposite
+directions.
 
 This list is what the end-user section in =FORUM.org= is built from, and it is
-the argument for [[#item-4][Item 4]] in miniature: it took a scripted diff of two git
-revisions to produce, and nothing in the repo would have surfaced it otherwise.
+the argument for [[#item-4][Item 4]] in miniature — with one correction to that argument:
+a scripted diff of two git revisions was not enough. It took a walk of the whole
+history, which is now =scripts/config-default-history.json= and is checked by
+[[#item-4][Item 4]]'s audit rather than re-derived by hand.
+
+=TODO.org='s "mention the =sa_art_idb_metadata_ttl_days= 30 days change in the
+forum article" item is satisfied differently now: that setting is one of the ten
+the migration adopts, so an existing user gets it whether or not they read the
+article.
+
+** What shipped
+
+Three parts, deliberately in two places, because they reach users on different
+days:
+
+1. *=lib/VZ_MBLibrary.user.js= 4.1.0 — SAVE is a dirty set.* A value equal to
+   its schema default is deleted, not written. New =settingsInterface.persist()=
+   holds the writes and returns ={stored, cleared}=; =save()= is =persist()= plus
+   the reload, split so the write half is testable at all. Comparison is
+   string-wise (every non-checkbox widget hands back =input.value=, so a number
+   default of 30 arrives as ="30"=) and case-insensitive for =color_picker= (the
+   schema writes =#FFD700=, iro.js writes back =#ffd700= — otherwise re-picking
+   the colour a setting already had would pin it for ever). *=GM_deleteValue= is
+   feature-detected*: a =@require='d library runs in the consumer's sandbox with
+   the consumer's grants, and =MB_PageEnhancer= does not grant it, so there it
+   falls back to =GM_setValue=, i.e. to 4.0.0's behaviour, rather than throwing
+   inside SAVE and losing the user's edits. This half reaches nobody until [[#F6][F6]].
+2. *=_migrateFrozenSettings()= — the one-time repair.* Consumer-side, so it
+   ships with the userscript. Three passes, each of which only DELETES: adopt
+   the ten retired defaults, drop the four orphans, then prune every remaining
+   key already sitting at its own current default. Guarded by
+   =sa_settings_migration_level=, so a value set afterwards is never revisited.
+   Everything removed goes into one backup key first.
+3. *=_applyConfigSettings()= applies the same rule.* The exported file is a FULL
+   DUMP of all ~232 importable keys, so one 📂 Load configuration re-froze
+   everything the migration had just freed — and reported a clean success.
+
+*The third pass is the one that actually fixes this finding.* Adopting the ten
+repairs what has already drifted; pruning at the current default changes nothing
+observable and is what makes the NEXT =default:= flip reach these users without
+waiting for another SAVE. Its cost, stated rather than hidden: a value
+deliberately chosen that happens to equal today's default stops being pinned.
+Storage holds values, never intentions, and today the two are already
+indistinguishable in effect.
+
+*The notice is the answer to "no obviously-correct answer".* The ten change what
+the page does, so a silent adoption would read as a bug. A one-time dismissible
+banner names them, with ↩︎ Undo restoring the whole backup — and deliberately
+NOT resetting the migration level, or the next page load would undo the user's
+undo.
+
+*Still not done, and recorded rather than attempted:* the five =type: 'table'=
+settings. They are lazy-seeded from code on first use and never reconsult the
+built-ins, so rows shipped in a later version never appear. Merging built-in
+rows into stored ones cannot tell "the user deleted this row" from "the user has
+never seen it", and unlike the scalar case there is no historical value to
+recognise — a row is not a default. The escape is still to empty the table in
+the editor, save, and reload.
 
 *A parser trap worth carrying into [[#item-4][Item 4]].* The obvious entry regex — key, body,
 =\n        },= — silently drops =sa_edits_color_zebra_even=, the LAST entry in
@@ -637,9 +722,17 @@ DOCUMENTATION change — HELP naming one setting per bullet — not a script cha
   =settingsInterface.init()= and in the SAVE handler, in
   =lib/VZ_MBLibrary.user.js=. Benefits =MB_PageEnhancer= too. Needs its own
   library version bump and a republish to the mirror before it reaches anyone.
-- *[[#F4][F4]]'s 17 drifted fallbacks*, once Stage 2 can name them.
-- *[[#F1][F1]]'s dirty-set save and a migration table* — the only real fix for defaults
-  never reaching existing users.
+- *[[#F4][F4]]'s 17 drifted fallbacks*, once Stage 2 can name them. — /done, 9.99.1137./
+- *[[#F1][F1]]'s dirty-set save and a migration table.* — /done, WIP.1./ Two
+  follow-ups it leaves behind, both small and both outside this project's
+  directory:
+  - =MB_PageEnhancer= should add =// @grant GM_deleteValue= to its own header.
+    Without it the library's dirty-set SAVE feature-detects its way back to
+    4.0.0's behaviour there, so that script keeps freezing profiles. One line,
+    and it needs its own version bump in that project.
+  - The five =type: 'table'= settings still never see rows shipped in a later
+    version — see [[#F1][F1]]'s closing note for why the same mechanism does not extend
+    to them.
 - *[[#F5][F5]]'s second-class entry points* — passing the =functionRegistry= and arming
   the config-button observer from the library's two menu paths as well.
 - *[[#F6][F6]]* — republish the mirror, or point the dev repo's runtime URLs at it
@@ -651,3 +744,8 @@ DOCUMENTATION change — HELP naming one setting per bullet — not a script cha
   a control that does not exist. Left for [[#item-4][Item 4]], whose Stage 2 audit is the
   thing that should have caught it: a schema-vs-docs cross-check belongs
   alongside the schema-vs-fallback one, and both need the generated snapshot.
+  *Still open* — =--docs= does find it, and is a worklist rather than a gate for
+  the reason above. Worth knowing that [[#F1][F1]] met the same key from the other end:
+  the same deletion left =sa_sort_progress_threshold= in every saver's GM
+  storage, which the migration now clears. Two symptoms, one removal, found six
+  weeks apart.
