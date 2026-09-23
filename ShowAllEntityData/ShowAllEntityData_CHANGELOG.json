@@ -1,5 +1,26 @@
 [
   {
+    "version": "9.99.1138",
+    "date": "2026-09-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Only the settings you have actually changed are now stored. Pressing SAVE in ⚙️ Settings used to write down all ~232 settings even when you changed nothing — and from that moment on, every improved default a later version shipped was invisible to you, permanently. Ten settings had already drifted that way, including the collapsed sidebar, auto-resizing columns, the 📊 dropdown's row count and the row hover colour.",
+          "The first run of this version repairs a profile that had already frozen, once. Settings still holding a default this script used to ship adopt the current one; a notice in the top-right corner names them, with ↩︎ Undo to put everything back and ✓ Keep to dismiss it. Anything you chose yourself is left alone — a value is adopted only when it exactly matches a default this script once shipped for that setting, checked against the whole version history rather than guessed.",
+          "Four settings that were removed from the script weeks ago were still occupying storage on every profile that had ever pressed SAVE, with no way to find or clear them. They are now cleaned up in the same pass.",
+          "📂 Load configuration no longer re-freezes your profile. The saved file is a full dump of every setting, so importing one used to write all of them back down — undoing the fix above through the back door. An imported value that matches the current default is now applied without being stored, and the summary says how many."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "❓ Help gains a KEEPING UP WITH NEW DEFAULTS section explaining what is stored, what the one-time repair does and how to undo it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1137",
     "date": "2026-09-22",
     "sections": [

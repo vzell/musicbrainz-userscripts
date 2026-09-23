@@ -698,6 +698,7 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=, merge gate B |   447 | *5 m 40 s* | =/usr/bin/time=, 23:14:34-23:20:14 UTC |
 | =npm run test:full=, merge gate C |   450 | *5 m 40 s* | =date=, 2026-09-22 05:25:42-05:31:22   |
 | =npm run test:full=, branch check |   468 | *5 m 37 s* | =date=, 2026-09-22 06:30:48-06:36:25   |
+| =npm run test:full=, merge gate D |   468 | *5 m 40 s* | =date=, 2026-09-23 08:05:32-08:11:12   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -727,9 +728,15 @@ inside 0.1%. Row 6 then adds **18 more tests for 3 seconds LESS** wall clock
 speed-up and should not be read as one: at 12 workers the suite's wall clock is
 set by its longest single spec, =rel-auto-retry-failed= at ~324 s, so 18 short
 tests distribute into slack that already existed. The number worth carrying is
-that four runs spanning 447→468 tests all land in 337-340 s, i.e. the count is
+that five runs spanning 447→468 tests all land in 337-340 s, i.e. the count is
 not what this measurement is sensitive to. Adding a test that is not slower than
 324 s is free.
+
+*Rows 6 and 7 are the same tree, 25 hours apart: 337 s and 340 s, 0.9%.* That is
+a stronger repeatability statement than rows 3 and 4's 0.1% at 32 minutes — the
+tight pair shares a machine state the wide pair does not, and an overnight gap
+is closer to how these numbers actually get compared. Read ±1% as the threshold;
+0.1% was a same-session coincidence, not a precision.
 
 *Row 6's run had one failure that did not reproduce*:
 =work-recordings-ms-length.spec.js= — "the response is cached for the page:
