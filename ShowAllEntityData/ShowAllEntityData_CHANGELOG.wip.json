@@ -1,5 +1,24 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-23",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The ⚙️ Settings dialog's header now tells you what you are running: the script version and the shared library's version side by side, how many settings and sections there are, and a live badge counting how many settings currently differ from their default. The library number is the one you could not get anywhere else — it is pulled in behind the scenes and has no entry of its own in Tampermonkey's list, so a script paired with an older library than it was built against behaved differently with nothing anywhere saying so. RESET and CLOSE became proper buttons you can reach with the keyboard, and the note about what SAVE does moved into a line of its own.",
+          "Everything you can click, type in or drag in the ⚙️ Settings dialog now has a tooltip. Each setting's name, control, Default cell and Description share one, carrying the description, the default, and the storage key the setting is kept under — that key appears nowhere else, and it is what you need when editing a saved configuration file by hand. Controls whose behaviour is not obvious say so: a 🔧 button runs at once and has nothing for SAVE to store, and a 📋 table editor's own 💾 writes immediately rather than waiting for SAVE. \"Collapse all\" now explains why it is unavailable while a search is running, instead of just being dead."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Pressing a button in the ⚙️ Settings dialog's header no longer starts dragging the dialog. Every control except SAVE sits on the drag bar, so the dialog used to follow the pointer while you were deciding whether to release on the button — and that could also swallow the click meant to close it."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-23",
     "sections": [

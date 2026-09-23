@@ -2123,6 +2123,33 @@ labels and descriptions.  Major setting groups:
     — Shortcut key (default: Ctrl+U)
     — Configure the glyph mapping table (character → name → examples)
 
+WHAT THE SETTINGS DIALOG HEADER TELLS YOU
+------------------------------------------
+The bar across the top carries the script name and, under it, four small
+chips:
+
+• script — the version installed in your browser.  Note that the ❓ Help and
+  📜 ChangeLog dialogs fetch their text from the published mirror, which can
+  be older than what you are actually running.
+• library — the version of the shared VZ_MBLibrary this script is paired with.
+  This is the only place that number appears anywhere: the library is pulled
+  in behind the scenes and has no entry of its own in Tampermonkey's list of
+  installed scripts.  If something in the settings dialog behaves differently
+  from what the changelog describes, this is the first thing to check — a
+  script running against an older library than it was built for does so
+  silently, with no error.
+• the counts — how many settings, in how many sections.
+• ● N changed — how many settings currently differ from their default.  It
+  appears only when there is something to report, and it updates as you edit,
+  before you save.
+
+Everything in the dialog has a tooltip: hover a setting's name, its control,
+its Default cell or its Description and you get the description, the default,
+and the storage key the setting is kept under.  That key is worth knowing if
+you ever edit a saved configuration file by hand — it is what the file's
+"settings" block is keyed by.  The dialog's own controls explain themselves
+too, including why ⬆ Collapse all is unavailable while a search is running.
+
 FINDING YOUR WAY AROUND THE SETTINGS DIALOG
 --------------------------------------------
 There are 238 settings in 38 sections, so the dialog has a few ways to cut
@@ -2162,9 +2189,10 @@ SAVING
 
 SETTINGS DIALOG SAFETY GUARDS
 ------------------------------
-• If you close the dialog (via the CLOSE link, Escape, or clicking outside)
-  while there are unsaved changes a confirmation dialog ("Unsaved Changes")
-  appears.  Click OK to discard the changes, or Cancel to return to the dialog.
+• If you close the dialog (via the ✕ CLOSE button, Escape, or clicking
+  outside) while there are unsaved changes a confirmation dialog ("Unsaved
+  Changes") appears.  Click OK to discard the changes, or Cancel to return to
+  the dialog.
 • Clicking RESET always opens a confirmation dialog ("Reset All Settings to
   Defaults") before any defaults are applied. Click OK to proceed, or Cancel
   to abort.
