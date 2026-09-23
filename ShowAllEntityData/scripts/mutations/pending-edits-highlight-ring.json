@@ -1,0 +1,127 @@
+[
+  {
+    "name": "the defect itself — a pending-edits match is filled like any other",
+    "why": "Restores the shipped behaviour: the highlight span carries only mb-column-filter-highlight, so it paints sa_column_filter_highlight_bg across 100% of the text inside span.mp and MusicBrainz's orange marker survives only in the padding. No ring is drawn either, since the :has() rule keys on the modifier. This is the whole bug in one edit.",
+    "edits": [
+      {
+        "find": "            highlightCrossTag(p.node, /[\\s\\S]+/g, 'mb-column-filter-highlight mb-pending-edits-match');",
+        "replace": "            highlightCrossTag(p.node, /[\\s\\S]+/g, 'mb-column-filter-highlight');"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "fail"
+  },
+  {
+    "name": "the modifier REPLACES the base class instead of joining it",
+    "why": "The plausible tidy-up, and the one that fails silently in production: the ring still looks exactly right, but the span no longer answers _COLLAPSE_MATCH_SEL (the collapsed-cell tint goes dark), no longer matches testRowMatch()'s reset (it is never removed), and no longer matches getCleanColumnText()'s unwrap. Asserting the ring alone would pass throughout, which is why the spec asserts hasBase and matchesCollapseSel separately.",
+    "edits": [
+      {
+        "find": "            highlightCrossTag(p.node, /[\\s\\S]+/g, 'mb-column-filter-highlight mb-pending-edits-match');",
+        "replace": "            highlightCrossTag(p.node, /[\\s\\S]+/g, 'mb-pending-edits-match');"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "fail"
+  },
+  {
+    "name": "the fill is left on under the ring",
+    "why": "Drawing the ring without suppressing the background. The marker is now ringed AND painted over, so the ring reads as a fix while the orange it was added to protect is still gone. Separates 'the ring exists' from 'the fill is off'.",
+    "edits": [
+      {
+        "find": "        .mb-column-filter-highlight.mb-pending-edits-match {\n            background-color: transparent;\n            color: inherit;\n        }",
+        "replace": "        .mb-column-filter-highlight.mb-pending-edits-match {\n            color: inherit;\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "fail"
+  },
+  {
+    "name": "the ring rule is dropped",
+    "why": "The converse of the entry above: the fill is suppressed but nothing marks the match, so a filtered pending entity becomes indistinguishable from an unfiltered one — the orange is preserved and the filter now marks nothing at all. Separates 'the fill is off' from 'the ring exists'.",
+    "edits": [
+      {
+        "find": "        table.tbl td span.mp:has(.mb-pending-edits-match) {\n            outline: 2px solid ${Lib.settings.sa_pending_edits_match_outline || '#cc0000'};\n            border-radius: 2px;\n        }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "fail"
+  },
+  {
+    "name": "the ring colour is hard-coded, ignoring the setting",
+    "why": "The schema entry and its inline fallback would then be dead weight that nothing reads, and every other test in this file still passes because they all check the default colour. This is what the dedicated colour test exists for.",
+    "edits": [
+      {
+        "find": "            outline: 2px solid ${Lib.settings.sa_pending_edits_match_outline || '#cc0000'};",
+        "replace": "            outline: 2px solid #cc0000;"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ring colour comes from sa_pending_edits_match_outline",
+    "expect": "fail"
+  },
+  {
+    "name": "the ring colour reverts to the yellow this first shipped with",
+    "why": "Pins the DEFAULT, which is the half that was wrong in the field. #FFD700 was applied and computed correctly on the real page and was still invisible — MusicBrainz paints span.mp rgb(255, 221, 153), so the ring scored 1.07:1 against the marker it rings and 1.39:1 against the white row behind it. Note precisely what this arm does and does not prove: it proves the suite reads the schema default rather than a literal, NOT that the colour can be seen. No fixture can prove that — none loads MusicBrainz's stylesheet, so .mp has no colour in a test at all. scripts/probe-pending-edits-ring.js is the only thing here that measures what the ring is drawn against, and it needs the live page.",
+    "edits": [
+      {
+        "find": "            default: \"#cc0000\",",
+        "replace": "            default: \"#FFD700\","
+      },
+      {
+        "find": "            outline: 2px solid ${Lib.settings.sa_pending_edits_match_outline || '#cc0000'};",
+        "replace": "            outline: 2px solid ${Lib.settings.sa_pending_edits_match_outline || '#FFD700'};"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "fail"
+  },
+  {
+    "name": "the ring is widened to EVERY highlight landing inside a marker",
+    "why": "The tempting generalisation — 'the orange is destroyed by any fill, so ring them all' — done as a pure CSS descendant rule with no modifier needed. It preserves the orange in more cases and is still wrong: for a global/column/sub-table filter the highlight COLOUR is what says which filter matched, and three different filters would all render as the same ring. The two 'a typed filter …' tests are the only guard on the scope decision.",
+    "edits": [
+      {
+        "find": "        .mb-column-filter-highlight.mb-pending-edits-match {\n            background-color: transparent;\n            color: inherit;\n        }\n        table.tbl td span.mp:has(.mb-pending-edits-match) {",
+        "replace": "        table.tbl td span.mp .mb-column-filter-highlight {\n            background-color: transparent;\n            color: inherit;\n        }\n        table.tbl td span.mp:has(.mb-column-filter-highlight) {"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "a typed filter matching INSIDE a marker keeps its own fill",
+    "expect": "fail"
+  },
+  {
+    "name": "the ring rule is not scoped to a rendered table",
+    "why": "An honest expect: \"pass\". table.tbl td exists so the rule can never reach the span.mp elements in jesus2099's page-header PendingEdits widget (5 of the 8 markers in the debug snapshots live there). No committed fixture loads that widget, so nothing here can see the difference — but the scoping is still the right default, since a rule keyed only on a MusicBrainz class is one third-party script away from painting something this one does not own.",
+    "edits": [
+      {
+        "find": "        table.tbl td span.mp:has(.mb-pending-edits-match) {",
+        "replace": "        span.mp:has(.mb-pending-edits-match) {"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "pass"
+  },
+  {
+    "name": "the modifier rule is moved AHEAD of the class it overrides",
+    "why": "An honest expect: \"pass\", and the prediction behind it was WRONG in a way worth keeping. It was written as expect: \"fail\" on the reasoning CLAUDE.md records for the column-header pill family — same specificity, so source order decides, and a per-control delta placed before the family rule silently loses. That rule is real there and does not apply here: .mb-column-filter-highlight.mb-pending-edits-match is TWO classes against the base rule's ONE, so it wins on specificity from either position. The run is what said so — expected fail, got pass. The CSS comment used to assert the ordering requirement and has been corrected to say this instead, so the next reader does not re-derive a constraint that was never load-bearing and then 'preserve' it.",
+    "edits": [
+      {
+        "find": "        .mb-column-filter-highlight.mb-pending-edits-match {\n            background-color: transparent;\n            color: inherit;\n        }\n",
+        "replace": ""
+      },
+      {
+        "find": "        .mb-column-filter-highlight {\n            color: ${Lib.settings.sa_column_filter_highlight_color};\n            background-color: ${Lib.settings.sa_column_filter_highlight_bg};\n        }",
+        "replace": "        .mb-column-filter-highlight.mb-pending-edits-match {\n            background-color: transparent;\n            color: inherit;\n        }\n        .mb-column-filter-highlight {\n            color: ${Lib.settings.sa_column_filter_highlight_color};\n            background-color: ${Lib.settings.sa_column_filter_highlight_bg};\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/pending-edits-highlight-ring.spec.js",
+    "grep": "the ⏳ toggle rings MusicBrainz's marker instead of painting over it",
+    "expect": "pass"
+  }
+]
