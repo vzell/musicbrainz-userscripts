@@ -2143,7 +2143,9 @@ copy of your whole configuration and move it between browsers or profiles.
   version, the file-format version and the number of keys.
 • 📂 Load configuration — pick a previously saved file.  A summary reports how
   many settings were applied, skipped and rejected, and the page then reloads
-  so the imported settings take effect (same as pressing SAVE).
+  so the imported settings take effect (same as pressing SAVE).  A setting
+  whose value in the file matches the current default is applied without being
+  stored, and the summary says how many — see KEEPING UP WITH NEW DEFAULTS.
 
 WHAT THE FILE CONTAINS
 • Every setting in the ⚙️ Settings dialog — the full set, not just the ones you
@@ -2177,6 +2179,35 @@ the controls bar, Ctrl+, or the prefix key followed by ",".  Opening Settings
 from the Tampermonkey script menu ("⚙️ Userscript Settings Manager") or from
 the MusicBrainz "Editing" menu opens the shared library's own dialog instead —
 there the 💾/📂 buttons are absent and 🔧 Edit Pinned Filter List does nothing.
+
+KEEPING UP WITH NEW DEFAULTS
+----------------------------
+Only the settings you have actually changed are stored.  A setting left at its
+default is not written down at all, so when a later version ships a better
+default, you get it.
+
+It did not always work that way.  Until now, pressing SAVE once — even without
+changing anything — wrote down all ~232 settings, and from then on every new
+default was invisible to you.  Ten settings had already drifted that way, and
+four keys were still stored for settings that no longer exist.
+
+So the first time you run this version, that is repaired once:
+
+• Settings still holding a default this script used to ship adopt the current
+  one.  A notice in the top-right corner names them, because several change
+  what you see — the sidebar starts collapsed, columns auto-resize, the row
+  hover colour is different.
+• ↩︎ Undo in that notice puts everything back and reloads, and the repair does
+  not run again afterwards.  ✓ Keep dismisses the notice for good.
+• Anything you chose yourself is left alone.  A value is only adopted when it
+  exactly matches a default this script once shipped for that setting, which
+  is checked against its whole version history, not guessed.
+• Settings already sitting at today's default are quietly cleared from storage.
+  Nothing changes now — that is the same value either way — but from here on
+  they follow future defaults.
+
+The repair happens once per browser profile.  Anything you set after it runs is
+yours and is never revisited.
 
 CHANGELOG DIALOG (📜 ChangeLog in the Tampermonkey menu)
 ----------------------------------------------------------

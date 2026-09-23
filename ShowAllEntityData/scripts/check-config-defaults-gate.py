@@ -23,6 +23,13 @@ before adding a case: `sa_enable_barcode_highlight` is never read WITH a
 fallback, so renaming it proves nothing about an audit that only looks at
 fallback sites. Pick an anchor the audit actually sees.
 
+Stage 3 (org/config-handling.org F1) is checked in BOTH directions, and that is
+not symmetry for its own sake. A migration entry missing from the table leaves a
+frozen setting frozen — bad, but inert. An INVENTED one adopts a new default
+over a value the user may have chosen on purpose, once, silently, on somebody
+else's profile. The second is the worse failure and the easier one to introduce
+by hand, so it gets its own arm.
+
 usage:
   python3 scripts/check-config-defaults-gate.py
 """
@@ -42,6 +49,7 @@ AUDIT = os.path.join(ROOT, 'scripts', 'audit-config-defaults.py')
 TARGETS = {
     'userscript': os.path.join(ROOT, 'ShowAllEntityData.user.js'),
     'baseline': os.path.join(ROOT, 'scripts', 'config-fallback-drift-baseline.json'),
+    'history': os.path.join(ROOT, 'scripts', 'config-default-history.json'),
 }
 
 # (name, target, find, replace, expected verdict, what the audit must say).
@@ -80,6 +88,45 @@ CASES = [
      '"drifting": {}',
      '"drifting": {"sa_max_page": {"schema": 50, "inline": 99}}',
      'fail', 'stage 2: asks for a re-baseline'),
+
+    # ── Stage 3 ──────────────────────────────────────────────────────────────
+    # org/config-handling.org F1. The migration table adopts a new default over
+    # a stored value, once, on somebody else's profile — so BOTH directions of
+    # disagreement have to fail. A missing entry leaves a frozen setting
+    # frozen; an invented one overwrites a value the user may have chosen.
+
+    ('a retired default loses its migration entry',
+     'userscript',
+     "        { key: 'sa_sidebar_collapsed',             was: [false] },\n",
+     '',
+     'fail', 'stage 3: retired default with no migration entry'),
+
+    ('a migration entry claims a value that was never a default',
+     'userscript',
+     "        { key: 'sa_uniq_dropdown_visible_rows',    was: [8] },",
+     "        { key: 'sa_uniq_dropdown_visible_rows',    was: [8, 12] },",
+     'fail', 'stage 3: invented migration entry'),
+
+    ('a key dropped from the schema is not listed as orphaned',
+     'userscript',
+     "        'sa_sort_progress_threshold',\n",
+     '',
+     'fail', 'stage 3: unlisted orphan'),
+
+    # Isolated as an ADDITION, not a substitution: swapping one entry for
+    # another trips the missing-orphan arm at the same time, and a case that
+    # fails for two reasons proves neither.
+    ('a listed orphan is actually still in the schema',
+     'userscript',
+     "        'sa_ui_h2_artist_rgs_global_bg',",
+     "        'sa_ui_h2_artist_rgs_global_bg',\n        'sa_max_page',",
+     'fail', 'stage 3: listed orphan still in the schema'),
+
+    ('the history file stops describing the current schema',
+     'history',
+     '"sa_max_page": 50',
+     '"sa_max_page": 51',
+     'fail', 'stage 3: history file stale, asks for a refresh'),
 
     # The version case is appended by _version_case() below: hardcoding the
     # anchor made this ERROR on the first release after it was written, which

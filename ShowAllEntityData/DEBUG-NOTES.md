@@ -14526,3 +14526,127 @@ fallback actually fire" reasoning above.
 The other 14 sites are not covered by Playwright and should not be. The
 guarantee is about all 165, and `scripts/audit-config-defaults.py` checks it
 mechanically; its baseline is now empty.
+
+## 2026-09-22 — one SAVE froze every setting for ever (branch fix/settings-dirty-set-and-migration)
+
+org/config-handling.org F1, the finding that file recorded and declined to fix.
+VZ_MBLibrary's settings dialog wrote EVERY key it rendered on every SAVE,
+whether or not anything had changed, and `settingsInterface.init()` reads
+`GM_getValue(key, configSchema[key].default)` — so a stored value shadows the
+schema permanently. The first SAVE a user ever pressed, having changed nothing,
+froze all ~232 settings into their profile, and every default shipped
+afterwards was invisible to them.
+
+**The org file said five settings were stuck. It is ten, and the reason the
+count was wrong is worth keeping.** F1 measured by diffing the schema at
+9.99.746 against 9.99.1129 — two points, not a history. A setting ADDED after
+746 whose default then changed before 1129 reads as "added" to an endpoint
+diff, so its frozen old value is invisible. Three of `bfb8ac3`'s seven are
+exactly that shape, including `sa_uniq_dropdown_visible_rows`, which is F4's
+own worked example. Two more (`sa_auto_resize_columns_threshold`,
+`sa_ui_row_hover_bg`) changed before 746 entirely and were outside the window.
+
+`scripts/dump-default-history.py` replays all 591 revisions of the userscript,
+parses `configSchema` at each with `dump-config-defaults.py`'s own parser and
+diffs the `default:` values. 12 changes, 10 settings whose current default is
+not the only one they ever had, and **4 keys that were in the schema once and
+are gone now** — `sa_area_flag_region_countries`,
+`sa_ui_download_notification_font_size`, `sa_ui_h2_artist_rgs_global_bg` and
+`sa_sort_progress_threshold`. That last one is the setting HELP was still
+documenting after it was removed: the doc and the storage went stale from the
+same deletion, and were found six weeks apart, from opposite directions.
+`GM_listValues` is not granted, so nothing in the codebase could have
+enumerated the strays — only git could.
+
+**The fix is in two places because the two halves reach users on different
+days.** `lib/VZ_MBLibrary.user.js` 4.1.0 makes SAVE a dirty set — a value equal
+to its schema default is deleted, not written — which stops NEW profiles
+freezing, and reaches nobody until the publish mirror is republished (F6). The
+repair of profiles that are already frozen is consumer-side, in
+`_migrateFrozenSettings()`, which ships with the userscript. That is the same
+split `_coerceNumericSettings()` made for F2, and its JSDoc gives the reason
+verbatim: a save-side fix "would leave every already-saved profile broken for
+good".
+
+**`GM_deleteValue` is feature-detected, and that is not defensive
+programming.** A `@require`d library runs in the CONSUMER's sandbox with the
+consumer's grants. ShowAllEntityData grants `GM_deleteValue`; MB_PageEnhancer,
+which uses the same schema mechanism, does not. Calling it there would throw
+inside SAVE and lose the user's edits outright, so an ungranted consumer falls
+back to `GM_setValue` — to exactly its pre-4.1.0 behaviour, not to a
+half-applied dirty set.
+
+**Three passes, and the third is the one that actually fixes F1.** Adopting the
+ten retired defaults repairs what has already drifted. Pruning every key that
+already equals its CURRENT default changes nothing observable — `init()` falls
+back to the same value — and is what makes the NEXT default flip reach these
+users without waiting for another SAVE. Its cost, stated rather than hidden: a
+value deliberately chosen that happens to equal today's default stops being
+pinned. Storage holds values, never intentions, and the two are already
+indistinguishable in effect today.
+
+**Everything removed is written to one backup key first.** This is a mass
+deletion of somebody else's configuration, and the backup is what makes it
+defensible rather than merely well-intentioned; ↩︎ Undo in the notice restores
+it and deliberately does NOT reset the migration level, or the next page load
+would undo the user's undo.
+
+**The importer was a back door into the same bug.** The exported config file is
+a FULL DUMP of all ~232 importable keys, so one 📂 Load configuration re-froze
+every setting the migration had just freed, and reported a clean success.
+`_applyConfigSettings()` now applies the same dirty-set rule.
+
+### Two things the test harness had to learn
+
+**A seeded setting looks exactly like a frozen one.** Four call sites in
+`collapse-column-width-stable-on-sort.spec.js` seed `sa_auto_resize_columns:
+false`, which IS a retired default — the migration would have deleted the seed
+and handed the spec today's value, so the test would measure the opposite of
+what it asked for. `loadPage.js` now seeds the migration level far above
+anything the script will ship, and `settings-migration.spec.js` is the one file
+that opts back in. The mutation list records that as an honest `expect: "pass"`:
+the spec that exercises the migration cannot see the harness setting at all,
+because it overrides it.
+
+**One pre-existing assertion was made false BY DESIGN, and that is the right
+kind of failure.** `config-import-export.spec.js`'s "non-table settings import
+exactly as they did before" imported `sa_enable_barcode_highlight: 'true'` —
+which is that setting's own default, so the importer now clears it instead of
+storing `true`. Changed to `'false'`, with the reason written next to it. The
+test is about the coercion table; keeping its values clear of the prune rule is
+what keeps it about that.
+
+### Coverage
+
+`tests/fixtures/settings-migration.spec.js`, 18 tests across four groups (the
+migration, its notice, the library's dirty-set SAVE, the importer). Mutation
+list `scripts/mutations/settings-migration.json`, 16 entries, 13 failing as
+planted and **three honest `expect: "pass"`**:
+
+- the notice's DOM-side empty-`adopted` guard — with the writer's guard intact
+  there is no record to render, so removing the renderer's is unobservable.
+  Found BY the mutation check: the first version of that test asserted only the
+  DOM, and the writer-side mutation passed. It now asserts the stored record
+  too, which is what survives to the next page load.
+- the importer's `type !== 'table'` arm — fully redundant with `'default' in
+  schemaCfg` beside it (the five tables carry no default at all), and with both
+  removed a row array is compared against `undefined`, where
+  `String([['a','b']]) === 'undefined'` is false, so it is stored anyway. The
+  guard stays: a row array surviving because of how `String()` renders
+  `undefined` is not a property anyone should have to re-derive, and F3 is what
+  happens when the tables lose their special case.
+- the harness's pre-applied level, above.
+
+`scripts/mutation-check.py` gained an optional per-entry `file`, so the library
+and the harness can be mutated too — each target gets its own backup and its
+own SHA-256 check. The library's settings code has no test harness of its own;
+this is the only place it is exercised against a real schema.
+
+`scripts/audit-config-defaults.py` gained Stage 3: the migration table must
+match the git-derived history in BOTH directions. A missing entry leaves a
+frozen profile frozen; an INVENTED one silently overwrites a value the user may
+have chosen on purpose, which is why both fail. It does not re-walk git (~26 s;
+a gate nobody waits for is a gate nobody runs) — it compares the history file's
+`current` block against the snapshot Stage 1 has just verified, which catches
+the only case that matters: a default that moved since the last refresh.
+`check-config-defaults-gate.py` is up to 11 arms, all correct.

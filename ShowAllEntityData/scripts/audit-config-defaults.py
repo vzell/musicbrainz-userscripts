@@ -18,6 +18,22 @@ because they fail for completely different reasons:
       It also fails on an ORPHAN — an inline read of a key no longer in the
       schema, which is always its fallback, silently and forever.
 
+  STAGE 3 — every retired default has a migration entry.
+      org/config-handling.org F1. `_migrateFrozenSettings()` repairs a profile
+      that VZ_MBLibrary's old SAVE froze, by recognising stored values this
+      script once shipped as everybody's default. That table has to stay
+      complete as defaults keep changing, and only git knows when one did — so
+      scripts/dump-default-history.py walks every revision and writes
+      scripts/config-default-history.json, and this stage fails when the table
+      and that file disagree in either direction. A missing entry leaves a
+      frozen profile frozen; an INVENTED one silently overwrites a value the
+      user may have chosen on purpose, which is why both fail.
+
+      It does not re-walk git (~26 s; a gate nobody waits for is a gate nobody
+      runs). It compares the history file's own `current` block against the
+      snapshot Stage 1 has just verified, which is O(1) and catches the one
+      case that matters — a default that moved since the last refresh.
+
 == Why this is green today, when the plan said it would be red ==
 
 org/config-handling.org predicted Stage 2 would fail on its first run and said
@@ -39,7 +55,7 @@ sites, one colour), which F4 counted as drift. The 2-site difference in the
 total is six versions of churn and was not chased.
 
 usage:
-  python3 scripts/audit-config-defaults.py                # both stages
+  python3 scripts/audit-config-defaults.py                # all three stages
   python3 scripts/audit-config-defaults.py --stage1-only  # snapshot freshness
   python3 scripts/audit-config-defaults.py --docs         # + a HELP worklist
   python3 scripts/audit-config-defaults.py --baseline     # re-record known drift
@@ -327,6 +343,174 @@ def run_docs_report(snapshot_labels):
     return out
 
 
+# ── Stage 3: every retired default has a migration entry ────────────────────
+
+HISTORY = os.path.join(ROOT, 'scripts', 'config-default-history.json')
+
+
+def _js_array_after(src, anchor):
+    """Parse the `[ … ]` literal that follows `anchor` in the userscript."""
+    i = dumpcfg()._find_literal_after(src, anchor, opener='[')
+    value, _ = dumpcfg().parse_value(src, i)
+    return value
+
+
+_DUMPCFG = None
+
+
+def dumpcfg():
+    """Lazily load scripts/dump-config-defaults.py as a module."""
+    global _DUMPCFG
+    if _DUMPCFG is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            'dumpcfg', os.path.join(ROOT, 'scripts', 'dump-config-defaults.py'))
+        _DUMPCFG = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_DUMPCFG)
+    return _DUMPCFG
+
+
+def run_stage3(snapshot):
+    """Check the migration table against the git-derived default history.
+
+    org/config-handling.org F1. `_migrateFrozenSettings()` un-freezes a profile
+    by recognising stored values that this script once shipped as everybody's
+    default — so the table it consults has to stay complete as defaults keep
+    changing, and nothing but git knows when one did.
+
+    This does NOT re-walk git; that takes ~26 s and a gate nobody waits for is
+    a gate nobody runs. It compares `scripts/config-default-history.json`'s own
+    `current` block against the snapshot Stage 1 has just verified, which is
+    O(1) and catches the only case that matters: a default that moved since the
+    history file was last refreshed.
+
+    Four failures, each naming its own fix:
+
+      • the history file is stale        → run scripts/dump-default-history.py
+      • a retired default has no entry   → add one to _SETTINGS_MIGRATIONS
+      • an entry matches no real history → remove it, or refresh the history
+      • an orphaned key is unlisted      → add it to _SETTINGS_ORPHANED_KEYS
+
+    The third matters as much as the second. An invented entry adopts a new
+    default over a value the user may well have chosen deliberately, and it
+    would do it silently — the migration runs once and keeps no record of which
+    entries fired for which reason beyond the backup blob.
+
+    @returns a (lines, failed) pair.
+    """
+    if not os.path.exists(HISTORY):
+        return ([f'ERROR: {os.path.relpath(HISTORY, ROOT)} is missing — run '
+                 f'scripts/dump-default-history.py'], True)
+
+    history = json.load(open(HISTORY, encoding='utf-8'))
+    src = open(USERSCRIPT, encoding='utf-8').read()
+
+    try:
+        table = _js_array_after(src, 'const _SETTINGS_MIGRATIONS')
+        orphan_list = _js_array_after(src, 'const _SETTINGS_ORPHANED_KEYS')
+    except Exception as exc:                                      # noqa: BLE001
+        return ([f'ERROR: could not read the migration table from the '
+                 f'userscript: {exc}'], True)
+
+    lines, failed = [], False
+
+    # ── is the history file still describing this tree? ──────────────────────
+    # The snapshot carries every entry with a `default:`, including the one
+    # `type: 'function'` key whose "default" is an internal method name; the
+    # history deliberately holds neither that nor the five tables. So the
+    # comparable universe is the history's own keys plus whatever the snapshot
+    # has gained, and the three outcomes are reported apart because they mean
+    # different things.
+    hist_current = history.get('current', {})
+    snap_defaults = snapshot['defaults']
+    non_value = set(snapshot['_meta'].get('settings_without_default', []))
+    fn_keys = {k for k in snap_defaults if k.startswith('sa_fn_')}
+    comparable = {k: v for k, v in snap_defaults.items()
+                  if k not in non_value and k not in fn_keys}
+
+    changed = {k: (hist_current[k], comparable[k]) for k in hist_current
+               if k in comparable and hist_current[k] != comparable[k]}
+    removed = sorted(k for k in hist_current if k not in comparable)
+    added = sorted(k for k in comparable if k not in hist_current)
+
+    if changed or removed or added:
+        failed = True
+        lines.append(f'FAILED: {os.path.relpath(HISTORY, ROOT)} no longer describes '
+                     f'this schema — run scripts/dump-default-history.py, then give '
+                     f'any newly retired default an entry in _SETTINGS_MIGRATIONS.')
+        for k, (was, now) in sorted(changed.items()):
+            lines.append(f'  default changed: {k}  {json.dumps(was)} -> {json.dumps(now)}')
+        for k in removed:
+            lines.append(f'  setting removed: {k}  (a new orphan)')
+        for k in added:
+            lines.append(f'  setting added:   {k}')
+        return (lines, failed)
+
+    # ── every retired default is covered, and nothing is invented ────────────
+    stale = history.get('stale', {})
+    declared = {}
+    for entry in table:
+        if not isinstance(entry, dict) or 'key' not in entry:
+            lines.append(f'FAILED: unreadable _SETTINGS_MIGRATIONS entry: {entry!r}')
+            return (lines, True)
+        declared[entry['key']] = entry.get('was', [])
+
+    missing = []
+    for key, info in sorted(stale.items()):
+        if key not in declared:
+            missing.append(f'  {key}: no entry — was {", ".join(json.dumps(v) for v in info["was"])}, '
+                           f'now {json.dumps(info["current"])}')
+            continue
+        uncovered = [v for v in info['was'] if v not in declared[key]]
+        if uncovered:
+            missing.append(f'  {key}: entry omits {", ".join(json.dumps(v) for v in uncovered)}')
+
+    invented = []
+    for key, was in sorted(declared.items()):
+        if key not in stale:
+            invented.append(f'  {key}: not a default this script ever retired')
+            continue
+        extra = [v for v in was if v not in stale[key]['was']]
+        if extra:
+            invented.append(f'  {key}: claims {", ".join(json.dumps(v) for v in extra)}, '
+                            f'which was never a default')
+
+    orphan_keys = set(history.get('orphans', {}))
+    declared_orphans = set(orphan_list)
+    missing_orphans = sorted(orphan_keys - declared_orphans)
+    invented_orphans = sorted(declared_orphans - orphan_keys)
+
+    if missing:
+        failed = True
+        lines.append(f'FAILED: {len(missing)} retired default(s) with no migration '
+                     f'entry — a profile frozen on one keeps it for ever.')
+        lines += missing
+    if invented:
+        failed = True
+        lines.append(f'FAILED: {len(invented)} migration entry/entries match no real '
+                     f'history — each would silently overwrite a value the user may '
+                     f'have chosen.')
+        lines += invented
+    if missing_orphans:
+        failed = True
+        lines.append(f'FAILED: {len(missing_orphans)} key(s) dropped from the schema '
+                     f'are not in _SETTINGS_ORPHANED_KEYS — they stay in GM storage '
+                     f'for ever, and GM_listValues is not granted, so nothing else '
+                     f'could find them:')
+        lines += [f'  {k}' for k in missing_orphans]
+    if invented_orphans:
+        failed = True
+        lines.append(f'FAILED: {len(invented_orphans)} key(s) listed as orphaned are '
+                     f'still in the schema:')
+        lines += [f'  {k}' for k in invented_orphans]
+
+    if not failed:
+        lines.append(f'migration table: {len(declared)} retired default(s) and '
+                     f'{len(declared_orphans)} orphaned key(s), all matching '
+                     f'{history["_meta"]["revisions_walked"]} revisions of git history')
+    return (lines, failed)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('--stage1-only', action='store_true',
@@ -410,6 +594,14 @@ def main():
     elif drift:
         print(f'\nOK: {len(drift)} drifting settings, all baselined '
               f'(org/config-handling.org F4 — fixing them is its own branch).')
+
+    stage3_lines, stage3_failed = run_stage3(json.load(open(SNAPSHOT, encoding='utf-8')))
+    print()
+    if stage3_failed:
+        failed = True
+        print('\n'.join(stage3_lines), file=sys.stderr)
+    else:
+        print('\n'.join(stage3_lines))
 
     if args.docs:
         # Labels come from the snapshot, not a fresh regex over the source: a

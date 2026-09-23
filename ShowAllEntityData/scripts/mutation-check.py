@@ -11,6 +11,7 @@ A mutation file is JSON: a list of
     {
       "name":   "short label",
       "why":    "what this mutation removes, and what the spec should notice",
+      "file":   "../lib/VZ_MBLibrary.user.js",   // optional; see below
       "edits":  [{"find": "exact text", "replace": "exact text"}, ...],
       "spec":   "tests/fixtures/some.spec.js",
       "grep":   "substring of the test title (Playwright -g)",
@@ -20,18 +21,26 @@ A mutation file is JSON: a list of
 `expect: "pass"` is for recording a KNOWN overlap honestly — a guard whose
 removal the spec cannot see because another guard covers for it.
 
+`file` targets something other than the userscript, relative to
+`ShowAllEntityData/`; it defaults to `ShowAllEntityData.user.js`. Two things
+outside the userscript are real shipped behaviour the fixture harness exercises
+and nothing else covers: `../lib/VZ_MBLibrary.user.js`, whose settings code has
+no test harness of its own, and `tests/support/loadPage.js`, where a seeded GM
+value can decide what a spec measures. Each target gets its own backup and its
+own hash check.
+
 Safety:
-  - every `find` must occur EXACTLY once, or that mutation is reported as
-    ERROR and not run;
+  - every `find` must occur EXACTLY once IN ITS OWN TARGET FILE, or that
+    mutation is reported as ERROR and not run;
   - a `grep` that selects NO test is reported as ERROR as well, never as a
     failure — Playwright exits non-zero for "no tests found" exactly as it does
     for a real assertion failure, so without this a stale grep silently scores
     an `expect: "fail"` entry as OK while proving nothing;
-  - the original file is copied to `<userscript>.mutation-backup` first, and the
-    run refuses to start if that backup already exists (a previous run died
+  - every target file is copied to `<file>.mutation-backup` first, and the run
+    refuses to start if any of those backups already exists (a previous run died
     mid-mutation — inspect and restore it by hand);
-  - the original is restored in a `finally` after every mutation, and its
-    SHA-256 is verified against the pre-run hash at the very end.
+  - every target is restored in a `finally` after each mutation, and each one's
+    SHA-256 is verified against its pre-run hash at the very end.
 
 usage:
   python3 scripts/mutation-check.py scripts/mutations/rel-column-fetch-failure.json
@@ -46,7 +55,17 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USERSCRIPT = os.path.join(ROOT, 'ShowAllEntityData.user.js')
-BACKUP = USERSCRIPT + '.mutation-backup'
+DEFAULT_TARGET = 'ShowAllEntityData.user.js'
+BACKUP_SUFFIX = '.mutation-backup'
+
+
+def target_path(rel):
+    """Absolute path of a mutation target, which must stay inside the repo."""
+    path = os.path.normpath(os.path.join(ROOT, rel))
+    repo = os.path.dirname(ROOT)
+    if not path.startswith(repo + os.sep):
+        raise ValueError(f'mutation target escapes the repository: {rel!r}')
+    return path
 
 
 def sha256(path):
@@ -84,26 +103,41 @@ def main():
     with open(sys.argv[1], encoding='utf-8') as fh:
         mutations = json.load(fh)
 
-    if os.path.exists(BACKUP):
-        print(f'REFUSING TO RUN: {BACKUP} exists — a previous run did not finish. '
-              'Compare it with the userscript and restore by hand.')
-        return 2
+    # Every file any mutation names, backed up once for the whole run.
+    targets = sorted({m.get('file', DEFAULT_TARGET) for m in mutations} |
+                     {DEFAULT_TARGET})
+    paths = {rel: target_path(rel) for rel in targets}
+    backups = {rel: p + BACKUP_SUFFIX for rel, p in paths.items()}
 
-    original_hash = sha256(USERSCRIPT)
-    shutil.copyfile(USERSCRIPT, BACKUP)
-    with open(BACKUP, encoding='utf-8') as fh:
-        original = fh.read()
+    for rel, bak in backups.items():
+        if os.path.exists(bak):
+            print(f'REFUSING TO RUN: {bak} exists — a previous run did not finish. '
+                  f'Compare it with {rel} and restore by hand.')
+            return 2
+
+    original_hash = {rel: sha256(p) for rel, p in paths.items()}
+    original = {}
+    for rel, p in paths.items():
+        shutil.copyfile(p, backups[rel])
+        with open(backups[rel], encoding='utf-8') as fh:
+            original[rel] = fh.read()
+
+    def restore_all():
+        for rel, p in paths.items():
+            shutil.copyfile(backups[rel], p)
 
     results = []
     try:
         for m in mutations:
             name = m['name']
-            text = original
+            rel = m.get('file', DEFAULT_TARGET)
+            text = original[rel]
             problem = ''
             for e in m['edits']:
                 count = text.count(e['find'])
                 if count != 1:
-                    problem = f'find text occurs {count} times (must be exactly 1): {e["find"][:80]!r}'
+                    problem = (f'find text occurs {count} times in {rel} '
+                               f'(must be exactly 1): {e["find"][:80]!r}')
                     break
                 text = text.replace(e['find'], e['replace'], 1)
             if problem:
@@ -113,11 +147,11 @@ def main():
 
             started = time.time()
             try:
-                with open(USERSCRIPT, 'w', encoding='utf-8') as fh:
+                with open(paths[rel], 'w', encoding='utf-8') as fh:
                     fh.write(text)
                 passed, detail, selected = run_spec(m['spec'], m['grep'])
             finally:
-                shutil.copyfile(BACKUP, USERSCRIPT)
+                restore_all()
             if not selected:
                 problem = (f'grep selected NO tests: {m["grep"]!r} — fix the grep; '
                            'this result proves nothing either way')
@@ -130,10 +164,12 @@ def main():
             print(f'[{name}] expected {m["expect"]}, got {actual} — {verdict} '
                   f'({time.time() - started:.0f}s) {detail}', flush=True)
     finally:
-        shutil.copyfile(BACKUP, USERSCRIPT)
-        restored_ok = sha256(USERSCRIPT) == original_hash
+        restore_all()
+        bad = [rel for rel, p in paths.items() if sha256(p) != original_hash[rel]]
+        restored_ok = not bad
         if restored_ok:
-            os.remove(BACKUP)
+            for bak in backups.values():
+                os.remove(bak)
 
     print('\n== SUMMARY ==')
     unexpected = 0
@@ -142,9 +178,10 @@ def main():
         if flag != 'OK':
             unexpected += 1
         print(f'{flag:>10}  {name:<44} expected {expect:<4} got {actual:<5} {detail}')
-    print(f'userscript restored and verified: {restored_ok}')
+    print(f'{len(paths)} file(s) restored and verified: {restored_ok}')
     if not restored_ok:
-        print(f'!!! HASH MISMATCH — backup kept at {BACKUP}')
+        for rel in bad:
+            print(f'!!! HASH MISMATCH on {rel} — backup kept at {backups[rel]}')
         return 3
     return 1 if unexpected else 0
 

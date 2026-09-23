@@ -278,19 +278,28 @@ test.describe('config save/load round trip preserves the editable lookup tables'
     test('non-table settings import exactly as they did before', async ({ page }) => {
         // The regression control. Every assertion above is about the new table
         // branch; this pins that adding it left the other four arms alone.
+        //
+        // Every value here is deliberately OFF its schema default, because an
+        // imported value that MATCHES the default is now cleared from storage
+        // rather than written — org/config-handling.org F1's dirty set, which
+        // `tests/fixtures/settings-migration.spec.js` covers. This test is
+        // about the coercion table, so it keeps its values clear of that rule:
+        // `sa_enable_barcode_highlight` used to read `'true'` here, which is
+        // its own default, so it asserted a stored `true` that the importer no
+        // longer writes.
         await loadSeriesPage(page);
         const summary = await importConfig(page, {
-            sa_enable_barcode_highlight: 'true',   // checkbox: string → boolean
+            sa_enable_barcode_highlight: 'false',  // checkbox: string → boolean
             sa_max_page: '7',                      // number:   string → Number
             sa_ui_h2_bg: '#123456',                // colour:   String()
             sa_uniq_dropdown_visible_rows: 'abc',  // number:   unparseable
         });
-        expect(summary).toMatchObject({ applied: 3, skipped: 0, invalid: 1 });
+        expect(summary).toMatchObject({ applied: 3, skipped: 0, invalid: 1, pruned: 0 });
 
         const after = await readGmValues(page, [
             'sa_enable_barcode_highlight', 'sa_max_page', 'sa_ui_h2_bg',
         ]);
-        expect(after.sa_enable_barcode_highlight).toBe(true);
+        expect(after.sa_enable_barcode_highlight).toBe(false);
         expect(after.sa_max_page).toBe(7);
         expect(after.sa_ui_h2_bg).toBe('#123456');
     });
