@@ -1,0 +1,140 @@
+[
+  {
+    "name": "the memo is never consulted",
+    "why": "Drops the hit path, so every filter pass walks every source row again — the state PERFORMANCE.org Step 26 describes. Must fail on all three gate tests: the per-refresh query probe reads nonzero and the scan counter moves.",
+    "edits": [
+      {
+        "find": "        if (hit && hit.length === rows.length) return hit;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "stop walking rows|stop re-walking",
+    "expect": "fail"
+  },
+  {
+    "name": "the memo is never stored",
+    "why": "Keeps the lookup but never fills it — the other half of the same defect, and the one a refactor that 'tidies' the set into a helper can lose without the lookup looking wrong. Same observable as above.",
+    "edits": [
+      {
+        "find": "        _srcRowTallyMemo.set(rows, tally);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "stop walking rows|stop re-walking",
+    "expect": "fail"
+  },
+  {
+    "name": "the tally walks the rows but never counts a pending edit",
+    "why": "Keeps the walk (so the scan counter still moves once, and the query probe still reads zero afterwards) but drops the pending count. This is what makes the GUARANTEE assertions earn their place: both gate probes pass perfectly, and only the labels — the whole table's counts, under a filter that excludes the counted rows — can see it. (An earlier draft returned the empty tally without walking; that is caught sooner, by the 'the first tally walked every source row' sanity check, and so did not isolate the labels.)",
+    "edits": [
+      {
+        "find": "            if (_rowHasPendingEdits(row)) tally.pending++;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "multi-table|single-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the tally walks the rows but never counts a length flag",
+    "why": "The LENGTH half of the entry above: the walk and both probes are intact, the ⚠️/❌ counts are gone. Only the release-tracklist test's labels can see it.",
+    "edits": [
+      {
+        "find": "                if (kind === 'severe') tally.lenSevere++;\n                else if (kind === 'warn') tally.lenWarn++;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "release tracklist",
+    "expect": "fail"
+  },
+  {
+    "name": "one global answer: identity AND length both ignored",
+    "why": "Keys the memo on a constant and drops the length check, i.e. a memo that is never invalidated. A new row set loaded into the same page then shows the replaced page's count — (4) where the hydrated rows have (3). Must fail on the re-key test, which is the one arrangement where a stale memo shows a wrong number.",
+    "edits": [
+      {
+        "find": "        const hit = _srcRowTallyMemo.get(rows);\n        if (hit && hit.length === rows.length) return hit;",
+        "replace": "        const hit = _srcRowTallyMemo.get(_srcRowTallyMemo);\n        if (hit) return hit;"
+      },
+      {
+        "find": "        _srcRowTallyMemo.set(rows, tally);",
+        "replace": "        _srcRowTallyMemo.set(_srcRowTallyMemo, tally);"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "re-key",
+    "expect": "fail"
+  },
+  {
+    "name": "identity ignored, length still checked",
+    "why": "Keys the memo on a constant but keeps the length check. On a multi-table page two DIFFERENT sub-tables of the SAME size then share one answer: the fixture's Single and Live sections both have 2 rows, so Live reports Single's pending count, and every refresh re-walks the sections whose lengths alternate. Must fail on the multi-table test — this is why the key is the array, not just its length.",
+    "edits": [
+      {
+        "find": "        const hit = _srcRowTallyMemo.get(rows);",
+        "replace": "        const hit = _srcRowTallyMemo.get(_srcRowTallyMemo);"
+      },
+      {
+        "find": "        _srcRowTallyMemo.set(rows, tally);",
+        "replace": "        _srcRowTallyMemo.set(_srcRowTallyMemo, tally);"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "multi-table",
+    "expect": "fail"
+  },
+  {
+    "name": "length ignored, identity still checked",
+    "why": "Drops the length half of the validation. It guards an array that GROWS after it was tallied — the fetch loop's and a resume's push into the same array — and no fixture tallies an array and then pushes marker-carrying rows into it: every fixture fetch is one page, and the resume spec's rows carry no markers. The re-key test cannot see it either, because a hydrate replaces the array and identity catches that. KNOWN UNCOVERED; kept because a resume is the one real path where only this guard stands.",
+    "edits": [
+      {
+        "find": "        if (hit && hit.length === rows.length) return hit;",
+        "replace": "        if (hit) return hit;"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "stop walking rows|stop re-walking|re-key",
+    "expect": "pass"
+  },
+  {
+    "name": "_pendingEditsGroups() walks its rows again",
+    "why": "Reverts the multi-table ⏳ count to its pre-memo per-pass reduce. The scan counter cannot see this — it instruments _sourceRowTally() only — which is exactly why the spec also probes querySelector directly. Must fail on the multi-table test through that probe; it runs twice per multi-table pass, once via _pendingEditsAnyActive().",
+    "edits": [
+      {
+        "find": "            count: _sourceRowTally(group.rows).pending,",
+        "replace": "            count: (group.rows || []).reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0),"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "multi-table",
+    "expect": "fail"
+  },
+  {
+    "name": "_countPendingEditRowsSingle() walks its rows again",
+    "why": "Same revert on the single-table ⏳ count. Invisible to the scan counter; must fail on the single-table test through the query probe.",
+    "edits": [
+      {
+        "find": "        return _sourceRowTally(allRows).pending;",
+        "replace": "        return allRows.reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0);"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "single-table",
+    "expect": "fail"
+  },
+  {
+    "name": "_countLengthMismatchRows() walks its rows again",
+    "why": "Reverts the LENGTH count to a per-pass walk of _msSourceRows(). Invisible to the scan counter; must fail on the release-tracklist test through the query probe.",
+    "edits": [
+      {
+        "find": "        const add = (rows) => {\n            const t = _sourceRowTally(rows);",
+        "replace": "        const add = (rows) => {\n            (rows || []).forEach(r => r.querySelector('td[data-mb-len-flag]'));\n            const t = _sourceRowTally(rows);"
+      }
+    ],
+    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
+    "grep": "release tracklist",
+    "expect": "fail"
+  }
+]

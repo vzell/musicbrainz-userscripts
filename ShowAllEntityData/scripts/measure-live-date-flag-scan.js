@@ -111,7 +111,7 @@ function measureInPage(samples) {
 
     const out = {
         what: 'live-date flag scan shapes, PERFORMANCE.org Step 25',
-        page: { url: URL, pageType: 'artist-events', tableMode: 'multi',
+        page: { url: URL, pageType: 'artist-events', tableMode: 'single',
                 title: "Bruce Springsteen — Events" },
         samples: SAMPLES,
         machine: {

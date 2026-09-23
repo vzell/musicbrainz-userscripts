@@ -1818,14 +1818,24 @@ sync with it, each of which broke in testing:
   key, so "no query, no column filters" hashed identically whether the flag
   filter was on or off — `_filterResultCache` returned the previous pass's
   rows and pressing the button a second time did nothing at all.
-- **`_countLengthMismatchRows()` must count `_msSourceRows()`, not the live
-  tbody.** `runFilter()` REMOVES non-matching rows from a multi-table tbody
-  rather than hiding them, so a live-DOM tally reports only what the current
-  filter left — filtering to ⚠️ made the ❌ button vanish.
+- **`_countLengthMismatchRows()` must count the SOURCE rows (the arrays
+  `_msSourceRows()` flattens), not the live tbody.** `runFilter()` REMOVES
+  non-matching rows from a multi-table tbody rather than hiding them, so a
+  live-DOM tally reports only what the current filter left — filtering to ⚠️
+  made the ❌ button vanish.
 - **`updateFilterButtonsVisibility()` must count it as an active filter**, or
   the rows narrow while every "clear" affordance stays hidden. It is the one
   active filter with no input holding it, so `clearAllFilters()` resets it
   explicitly too.
+- **Its count and the ⏳ pending-edits counts are memoized per source-row
+  ARRAY** (`_sourceRowTally()`, PERFORMANCE.org Step 26), validated by the
+  array's length, with no invalidation hook: every way the row set changes —
+  fetch, hydrate, sort, resume — replaces or grows an array. The one thing
+  that would go stale is a write of `data-mb-len-flag` or `span.mp` into a row
+  that is ALREADY captured; no such writer exists, and one that ever does must
+  replace the array. Don't "simplify" the key to the length alone: two
+  same-sized sub-tables would then share one answer, and
+  `source-row-tally-memo.spec.js`'s multi-table fixture is built to catch it.
 It counts TRACKS, not cells — each flagged track marks two.
 
 **Millisecond precision** is opt-in per page via the `▶⏱`/`▼⏱`

@@ -18494,6 +18494,12 @@
      * cells' native class stripped and the tooltips themselves removed. Same
      * trap the column headers hit; see `_isOwnColumnTooltip()`.
      *
+     * Runs during pre-processing, BEFORE the rows are captured — and
+     * `_sourceRowTally()` relies on that: it memoizes the LENGTH ⚠️/❌ counts
+     * per source-row array. Calling this on a row that is already in
+     * `allRows`/`groupedRows` would leave those buttons on the old count
+     * unless the array is replaced.
+     *
      * @param   {?HTMLTableCellElement} trackTd  The native "Length" cell.
      * @param   {?HTMLTableCellElement} recTd    The "Recording length" cell.
      * @param   {?number|undefined} trackMs
@@ -23775,6 +23781,11 @@
      * a boolean — resolving every entity's display name here would do real
      * work (a `getCleanColumnText()` clone-and-strip per marker) and throw all
      * of it away. Scoped to `td` so a `span.mp` in a header can never match.
+     *
+     * The ⏳ summary COUNTS do not call this per pass: `_sourceRowTally()`
+     * asks it once per source-row array and memoizes the answer, which is
+     * sound only because `span.mp` is MusicBrainz's own markup and nothing
+     * here adds or removes one after capture.
      *
      * @param {?HTMLTableRowElement} row
      * @returns {boolean}
@@ -35335,6 +35346,81 @@ a { color: #1565c0; }`;
     let _lenMismatchFilterKind = null;
 
     /**
+     * Per-ARRAY memo of the two source-row tallies every filter pass asks for,
+     * keyed by the `allRows` / `groupedRows[i].rows` array itself.
+     * PERFORMANCE.org Step 26 — see `_sourceRowTally()`.
+     *
+     * @type {WeakMap<HTMLTableRowElement[], {length: number, lenWarn: number, lenSevere: number, pending: number}>}
+     */
+    const _srcRowTallyMemo = new WeakMap();
+
+    /**
+     * How many rows `_sourceRowTally()` has walked since the page loaded.
+     * Read by `__saTest.sourceRowTallyScans()`, for the reason
+     * `_liveDateFlagRowScans` exists: "walked every row and counted nothing"
+     * and "did not walk" leave byte-identical DOM behind.
+     */
+    let _srcRowTallyRowScans = 0;
+
+    /**
+     * Counts, over ONE array of captured source rows, the rows carrying a
+     * length-mismatch flag (by severity) and the rows carrying a pending-edits
+     * marker — the inputs of the ⏳ and LENGTH ⚠️/❌ summary buttons.
+     *
+     * Memoized, because `updateFilterButtonsVisibility()` asks on EVERY filter
+     * pass and the answer cannot change between passes: these are SOURCE rows,
+     * which a filter never mutates, and both markers are fixed before capture —
+     * `data-mb-len-flag` is stamped by `_applyLengthMismatchFlag()` during
+     * pre-processing, and `span.mp` is MusicBrainz's own markup, which this
+     * script never creates (the ⏳ highlight only wraps text INSIDE one, on
+     * clones). Unmemoized, that was one `querySelector` per row per counter
+     * per pass — 2N a keystroke on a single-table page, 3N on a multi-table
+     * one — flat at the full row count however narrow the filter was
+     * (PERFORMANCE.org Step 26).
+     *
+     * **Keyed by the array, and validated by its length — no invalidation
+     * hooks.** Every way the row set changes today either REPLACES an array (a
+     * new fetch's `allRows = []` / `groupedRows = []`, a disk or sub-table
+     * hydrate, a sort's `allRows = sortedData` / `targetGroup.rows =
+     * sortedData`) or GROWS one (the fetch loop's and a resume's `push`).
+     * Nothing splices, assigns by index or truncates. So a stale entry can only
+     * be reached by a writer that puts `data-mb-len-flag` or `span.mp` into a
+     * row that is ALREADY captured — none exists; one that ever does must
+     * replace the array, or the buttons keep the old count. The two guards
+     * cover for each other in every path a fixture reaches, which
+     * `scripts/mutations/source-row-tally-memo.json` records honestly.
+     *
+     * The returned object is shared with the memo: read it, never mutate it.
+     *
+     * @param   {HTMLTableRowElement[]} rows - One source-row array.
+     * @returns {{length: number, lenWarn: number, lenSevere: number, pending: number}}
+     */
+    function _sourceRowTally(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return { length: 0, lenWarn: 0, lenSevere: 0, pending: 0 };
+        }
+        const hit = _srcRowTallyMemo.get(rows);
+        if (hit && hit.length === rows.length) return hit;
+        const tally = { length: rows.length, lenWarn: 0, lenSevere: 0, pending: 0 };
+        rows.forEach(row => {
+            _srcRowTallyRowScans++;
+            // Severity is per-row, and both of a row's cells always carry the
+            // same kind, so the first flagged cell settles it.
+            const flagged = row.querySelector('td[data-mb-len-flag]');
+            if (flagged) {
+                const kind = flagged.dataset.mbLenFlag;
+                if (kind === 'severe') tally.lenSevere++;
+                else if (kind === 'warn') tally.lenWarn++;
+            }
+            if (_rowHasPendingEdits(row)) tally.pending++;
+        });
+        _srcRowTallyMemo.set(rows, tally);
+        Lib.debug('filter', `_sourceRowTally(): walked ${rows.length} source row(s) — `
+                          + `${tally.lenWarn} warn, ${tally.lenSevere} severe, ${tally.pending} pending.`);
+        return tally;
+    }
+
+    /**
      * Tallies rows carrying a length-mismatch flag, by severity.
      *
      * Counts ROWS, not cells: `_applyLengthMismatchFlag()` marks BOTH duration
@@ -35356,19 +35442,21 @@ a { color: #1565c0; }`;
      * stamps them during pre-processing, before row extraction — the same
      * ride-along the millisecond stamps rely on.
      *
+     * Sums `_sourceRowTally()` over the same arrays `_msSourceRows()` flattens
+     * (every `groupedRows[i].rows`, then `allRows`), so the rows counted are
+     * unchanged — only the per-pass walk and the per-pass flattening are gone.
+     *
      * @returns {{warn: number, severe: number}}
      */
     function _countLengthMismatchRows() {
         const counts = { warn: 0, severe: 0 };
-        _msSourceRows().forEach(row => {
-            // Severity is per-row, and both of a row's cells always carry the
-            // same kind, so the first flagged cell settles it.
-            const flagged = row.querySelector('td[data-mb-len-flag]');
-            if (!flagged) return;
-            const kind = flagged.dataset.mbLenFlag;
-            if (kind === 'severe') counts.severe++;
-            else if (kind === 'warn') counts.warn++;
-        });
+        const add = (rows) => {
+            const t = _sourceRowTally(rows);
+            counts.warn   += t.lenWarn;
+            counts.severe += t.lenSevere;
+        };
+        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => add(g.rows));
+        if (typeof allRows !== 'undefined') add(allRows);
         return counts;
     }
 
@@ -35511,6 +35599,12 @@ a { color: #1565c0; }`;
      * `.mb-col-filter-row`-bearing table set — so a group and its table can
      * never disagree about which rows belong to which.
      *
+     * Only the COUNT is memoized (`_sourceRowTally()`, per group array); the
+     * table and `<h3>` are resolved live on every call. That matters because
+     * this runs twice per multi-table filter pass — once from
+     * `_updatePendingEditsButtons()`, once from `_pendingEditsAnyActive()`,
+     * which needs only the `<h3>`s — and each used to walk every source row.
+     *
      * @returns {Array<{table: HTMLTableElement, h3: ?HTMLElement, count: number}>}
      */
     function _pendingEditsGroups() {
@@ -35520,20 +35614,20 @@ a { color: #1565c0; }`;
         return groupedRows.map((group, i) => ({
             table: tables[i] || null,
             h3: tables[i] ? findH3ForTable(tables[i]) : null,
-            count: (group.rows || []).reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0),
+            count: _sourceRowTally(group.rows).pending,
         })).filter(g => g.table);
     }
 
     /**
      * Total rows carrying a pending-edits marker on a SINGLE-table page.
      * Reads `allRows` for the same source-not-DOM reason as
-     * `_pendingEditsGroups()`.
+     * `_pendingEditsGroups()`, through the same per-array memo.
      *
      * @returns {number}
      */
     function _countPendingEditRowsSingle() {
         if (typeof allRows === 'undefined' || !Array.isArray(allRows)) return 0;
-        return allRows.reduce((n, r) => n + (_rowHasPendingEdits(r) ? 1 : 0), 0);
+        return _sourceRowTally(allRows).pending;
     }
 
     /**
@@ -84883,6 +84977,22 @@ a { color: #1565c0; }`;
              */
             liveDateFlagRowScans() {
                 return _liveDateFlagRowScans;
+            },
+
+            /**
+             * How many source rows `_sourceRowTally()` has walked since the
+             * page loaded.
+             *
+             * Exposed for the same reason as `liveDateFlagRowScans()` above:
+             * the ⏳ and LENGTH ⚠️/❌ counts it feeds read identically whether
+             * a pass re-walked every source row or served the memo. A test
+             * types a filter keystroke and asserts this did not move
+             * (PERFORMANCE.org Step 26).
+             *
+             * @returns {number}
+             */
+            sourceRowTallyScans() {
+                return _srcRowTallyRowScans;
             },
 
             /**

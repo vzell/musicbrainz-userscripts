@@ -223,8 +223,10 @@ pending-edits marker at all, so it cannot scale with the table.
 
 On top of the five: ~applyZebraStriping~, ~normalizeCommentSpans~ and
 ~initBarcodeHighlight~ (three more O(M) walks);
-~_countLengthMismatchRows~ and ~_pendingEditsGroups~, which walk all *source*
-rows and so cost the same 4174 no matter how narrow the filter is;
+~_countLengthMismatchRows~ and ~_pendingEditsGroups~, which walked all *source*
+rows and so cost the same 4174 no matter how narrow the filter was — /Step 26
+memoizes both per source-row array, so a pass now makes none of those queries
+(measured 8 348 -> 0 per pass on ~artist-events~)/;
 ~initPicardTaggerColumn(true)~ and ~initExpandRGsFeature()~ rebuilding every
 interactive cell (see Step 23 — since 9.99.1057 that is ERG alone on a
 default-configured page, because a collapsed Picard column builds nothing); and
@@ -268,7 +270,8 @@ reference for everything that is not about this column.
 JSDoc claims the totals "stay a stable page-wide summary independent of
 whatever filter happens to be active", but ~runFilter~ REMOVES
 non-matching rows rather than hiding them. This is the identical bug already
-fixed for ~_countLengthMismatchRows~, which now counts ~_msSourceRows()~ for
+fixed for ~_countLengthMismatchRows~, which now counts the source rows (the
+same arrays ~_msSourceRows()~ flattens; memoized per array since Step 26) for
 exactly this reason. Its buttons are created unconditionally in
 ~mb-global-summary-container~ (asserted by
 ~tests/fixtures/filter-bar-containers.spec.js~), so its early-out
@@ -448,7 +451,10 @@ the same code twice:
   tbody.
 - *26* removes ~8 300 source-row ~querySelector~ per pass. It is the item that
   matters most on a *narrow* filter, which is the case Steps 1/2 measured
-  worst on: ~M~ shrinks, these three tallies stay at 4174.
+  worst on: ~M~ shrinks, these three tallies stay at 4174. /Implemented on
+  branch ~perf/step-26-source-row-tally-memo~ (2026-09-24): measured *8 348 -> 0*
+  queries per pass on ~artist-events~ and *6 429 -> 0* on
+  ~artist-releasegroups~; see the step./
 - *23* removes the remaining per-pass teardown-and-rebuild of interactive cell
   elements. On a DEFAULT-configured page that is *ERG alone*, and it is now
   MEASURED rather than estimated: on ~artist-releasegroups~ a single filter
@@ -2540,6 +2546,77 @@ wherever a flag is stamped asynchronously.
 *This is the item that matters most on a narrow filter*, which is the case
 Steps 1/2 measured worst on — every other per-pass cost scales with ~M~ and
 shrinks as the query narrows, while these three stay flat at the full row count.
+
+**** Implemented — branch ~perf/step-26-source-row-tally-memo~, 2026-09-24
+
+One memo, ~_sourceRowTally(rows)~, keyed by the source-row ARRAY itself
+(~allRows~, or one ~groupedRows[i].rows~) in a ~WeakMap~ and validated by that
+array's length. One walk fills both counts — length-mismatch severity and
+pending edits — and all three counters read it: ~_countLengthMismatchRows()~
+sums it over the same arrays ~_msSourceRows()~ flattens (dropping that per-pass
+spread too), ~_pendingEditsGroups()~ takes each group's ~pending~, and
+~_countPendingEditRowsSingle()~ takes ~allRows~'. The table and ~<h3>~
+resolution in ~_pendingEditsGroups()~ stays live; only the count is memoized.
+
+*It deliberately has NO invalidation hooks*, which is where this departs from
+the fix sketched above. Every way the row set changes on ~main~ either REPLACES
+an array — a fetch's ~allRows = []~ / ~groupedRows = []~, a disk or sub-table
+hydrate, a sort's ~allRows = sortedData~ / ~targetGroup.rows = sortedData~ — or
+GROWS one, through the fetch loop's or a resume's ~push~. Nothing splices,
+assigns by index or truncates (checked by grepping every write to both). So
+identity plus length already notices each of them, and there is no call site
+for a future change to forget. A sort costs one re-walk of the sorted array,
+harmlessly, since the counts do not depend on order.
+
+*"Wherever a flag is stamped asynchronously" turned out to be nowhere.*
+~data-mb-len-flag~ is written only by ~_applyLengthMismatchFlag()~, from
+~applyExtractTrackTitleData()~, during pre-processing and before capture, and
+~span.mp~ is MusicBrainz's own markup, never created here — the ⏳ highlight
+wraps text INSIDE one, on clones. The one obligation this leaves is written on
+both sources' JSDoc and in CLAUDE.md: a future writer that puts either marker
+into a row that is ALREADY captured must replace the array.
+
+*The step's "~8 300" was exact, and multi-table pages paid more than it said.*
+On a multi-table page ~_pendingEditsGroups()~ ran TWICE per pass — the second
+time from ~_pendingEditsAnyActive()~, which needs only the ~<h3>~s — so an
+unfiltered pass there was 3N, not 2N. (With a global query active it is 2N:
+~clearAllFiltersBtn~'s ~||~ chain short-circuits before reaching it.)
+
+*Measured*, 2026-09-23 22:34-22:37 UTC on ~vzell-lap~ (4 cores, node v24.11.1,
+playwright 1.62.1, uptime 56.3 h, one resident ~claude~ session), two runs,
+~scripts/measure-source-row-tallies.js~. Each arm times
+~updateFilterButtonsVisibility()~ itself — the function every pass ends with —
+over 21 calls, on ~main~'s userscript and the branch's in one session. Timer
+resolution is 0.1 ms.
+
+| Page                                      | Filter               | Tally queries per call | ms per call, run 1 | ms per call, run 2 |
+|-------------------------------------------+----------------------+------------------------+--------------------+--------------------|
+| ~artist-events~ (single, 4174 rows)       | none                 | 8 348 -> 0             | 14.3 -> 4.8        | 13.5 -> 4.7        |
+| ~artist-events~                           | "Stockholm", 26 rows | 8 348 -> 0             | 8.6 -> 0.0         | 10.9 -> 0.1        |
+| ~artist-releasegroups~ (multi, 2143 rows) | none                 | 6 429 -> 0             | 6.8 -> 3.7         | 6.8 -> 4.0         |
+| ~artist-releasegroups~                    | "Stockholm", 26 rows | 4 286 -> 0             | 3.7 -> 1.5         | 3.8 -> 1.6         |
+
+*On a narrow filter the function now costs nothing measurable*, which is the
+case the step was filed for. *What remains on an unfiltered page is not the
+tallies* — the probe counts zero tally queries there. It is the function's own
+document-wide selector sweeps (~.mb-col-filter-input~, ~.mb-subtable-clear-btn~,
+~table.tbl~), whose cost scales with the RENDERED row count and so vanishes
+when a filter leaves 26 rows. Not worth a step of its own at ~5 ms on the
+largest page in the repo.
+
+Covered by ~tests/fixtures/source-row-tally-memo.spec.js~. Each gate check —
+~__saTest.sourceRowTallyScans()~ does not move, and a direct
+~querySelector~ probe counts zero tally queries in one refresh — is paired with
+the guarantee a broken memo would lose: the whole table's counts, under a
+filter that excludes the counted rows, after a sort, and after a pre-filtered
+Load from Disk into the same page (the one arrangement where a memo that is
+never invalidated shows a wrong number). The probe exists because the counter
+instruments ~_sourceRowTally()~ only, and so reads zero for a call site
+reverted to its own per-pass walk. Mutation list
+~scripts/mutations/source-row-tally-memo.json~: 10 entries, one honest
+~expect: "pass"~ — the length check alone, which guards an array that grows
+after it was tallied, a path (a resume adding marker-carrying rows) that no
+fixture reaches.
 
 *** TODO Step 27: Scope ~_applyPostRenderRowPasses()~ to the dirty tables
 

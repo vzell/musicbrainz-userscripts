@@ -15167,3 +15167,83 @@ single- and multi-table); mutation list
 `scripts/mutations/pending-edits-highlight-ring.json` — 9 entries, 7 `fail` and
 two honest `expect: "pass"` (the `table.tbl td` scoping, which no committed
 fixture loads jesus2099's widget to exercise, and the rule ordering above).
+
+## 2026-09-24 — Step 26: the summary-button tallies re-walked every source row on every keystroke (branch perf/step-26-source-row-tally-memo)
+
+PERFORMANCE.org Step 26, a cost, not a defect. `runFilter()` ends every pass
+with `updateFilterButtonsVisibility()`, whose tail feeds the ⏳ pending-edits
+and LENGTH ⚠️/❌ summary buttons. Both count the captured SOURCE rows, and must:
+AUDIT.md §3.6 is what happens when they count the live tbody instead. That made
+each pass cost one `querySelector` per source row per counter, however narrow
+the filter was, for an answer that cannot change between passes.
+
+### What the measurement found that the step did not say
+
+- "~8 300 per pass" was exact on `artist-events`: **8 348 = 2 x 4174**.
+- **A multi-table page paid 3N.** `_pendingEditsGroups()` ran twice per pass:
+  once for the buttons, and once more from `_pendingEditsAnyActive()`, which
+  only reads the `<h3>`s. On `artist-releasegroups` that was 6 429 = 3 x 2143.
+  Under a global query it is 2N, because `clearAllFiltersBtn`'s `||` chain
+  short-circuits before reaching it.
+- The step proposed invalidating the memo "wherever a flag is stamped
+  asynchronously". **There is no such site.** `data-mb-len-flag` is written only
+  by `_applyLengthMismatchFlag()`, during pre-processing and before capture.
+  `span.mp` is MusicBrainz's own markup; the ⏳ highlight wraps text inside it,
+  and only on clones.
+
+### The design choice: a self-validating key, not invalidation hooks
+
+`_sourceRowTally(rows)` memoizes per ARRAY in a `WeakMap`, validated by the
+array's length. I grepped every write to `allRows` and `groupedRows`. Each
+either replaces an array (fetch reset, hydrate, sort) or grows one (fetch loop
+`push`, resume). None splices, assigns by index, or truncates. So there is no
+hook for a future change to forget. The step's own list of sites to hook
+("fetch, sort, disk load") would have worked today, because the fetch-start
+`_invalidateFilterCache()` sits above the resume guard and so runs on a resume
+too. The argument for the key is only that it needs no site at all.
+
+**Mutation-testing showed the key must be the array, not only its length.**
+With identity dropped, two same-sized sub-tables share one answer. The
+multi-table fixture's Single and Live sections have 2 rows each, so Live
+reported Single's pending count.
+
+### A test-design note worth keeping
+
+The `__saTest.sourceRowTallyScans()` counter instruments `_sourceRowTally()`
+and nothing else. If a call site is reverted to its own per-pass
+`reduce(... _rowHasPendingEdits ...)`, the counter reads zero and the gate test
+passes. So the spec also wraps `Element.prototype.querySelector` around one
+`updateFilterButtonsVisibility()` call and counts the two tally selectors. The
+three call-site reverts in the mutation list are caught only by that probe.
+The counter still earns its place: it shows the first tally walked the rows at
+all.
+
+Measured on `vzell-lap`, 2026-09-23 22:34–22:37 UTC, two runs, `main` versus
+the branch in one session (`tests/MEASUREMENTS.org`). On a narrow filter,
+`updateFilterButtonsVisibility()` fell from 8.6–10.9 ms to under 0.1 ms per
+call.
+
+Covered by `tests/fixtures/source-row-tally-memo.spec.js`, with 4 tests. Its
+mutation list is `scripts/mutations/source-row-tally-memo.json`: 10 entries,
+one honest `expect: "pass"`. That one is the length check alone, which only a
+resume that adds marker-carrying rows reaches.
+
+### Found on the way, NOT fixed here: LENGTH flags do not survive Save to Disk
+
+`_buildDiskCellData()` stores a cell's `innerHTML` plus colSpan/rowSpan, and
+nothing else. A length mismatch is marked by `data-mb-len-flag` ON the `<td>`,
+and `_applyLengthMismatchFlag()` is attributes-only by design. So a reopened
+tracklist loses the marking entirely. `scripts/probe-len-flag-disk-roundtrip.js`,
+`vzell-lap`, 2026-09-23 22:59 UTC, on "Born to Run" at a 500 ms threshold:
+8 flagged cells and `(3) LENGTH ⚠️` / `(1) LENGTH ❌` before the save; **0
+flagged cells and both buttons hidden** after the load. The cell tints and
+glyphs go with them, since both are CSS keyed on the same attribute.
+
+This predates Step 26 and is independent of it: the memo counts what the rows
+carry, and after a load they carry nothing. The sub-table handoff
+(`captureSubtableSnapshot()`, also `innerHTML`) presumably has the same gap, but
+it was not probed. The ⏳ pending-edits markers are not affected, because
+`span.mp` lives inside the cell's HTML. Two candidate fixes, both open: persist
+the attribute in the cell record (a format addition the loader must read back),
+or re-derive the flag on hydrate from the two duration cells' text. The second
+would lose sub-second precision, since `data-mb-ms` does not survive either.

@@ -2248,7 +2248,9 @@ posters) and a 10 000-row page.
 Decides whether gating `_countLiveDateFlags()` is worth doing, and how much of
 the win comes from the gate versus from scanning per ROW instead of per CELL.
 Measured on the real rendered DOM of the =artist-events= disk fixture (4174
-rows, 21 columns, =tableMode: 'multi'=, Bruce Springsteen's "Events" listing),
+rows, 21 columns, =tableMode: 'single'= — corrected 2026-09-24, this entry and
+its script's JSON used to say ='multi'=, which the pageDefinition does not;
+Bruce Springsteen's "Events" listing),
 replaying each scan shape over the same live rows in the same page — a
 like-for-like comparison of the removed work.
 
@@ -2279,6 +2281,58 @@ nothing either way.
   the first. A page that HAS flags keeps paying the per-row cost, which is what
   correctness requires — and a tracklist is tens of rows, not thousands.
 - =flagsFound= is 0 here, which is the point: this is the majority case.
+
+* The source-row tallies — PERFORMANCE.org Step 26 (2026-09-23 UTC)
+
+Decides whether memoizing =updateFilterButtonsVisibility()='s two source-row
+tallies (the ⏳ pending-edits counts and the LENGTH ⚠️/❌ counts) is worth it,
+and whether "~8 300 queries per pass" was right. Unlike Step 25's replay this
+times the REAL function, =window.updateFilterButtonsVisibility()= — the call
+every filter pass ends with — on =main='s userscript (9.99.1143) and the
+branch's, in one session, 21 calls per arm, back to back per page. Each arm
+also counts the =querySelector= calls one call makes with the two tally
+selectors (=td span.mp=, =td[data-mb-len-flag]=).
+
+| pageType             | tableMode | page title                         | URL                                                     |
+|----------------------+-----------+------------------------------------+---------------------------------------------------------|
+| artist-events        | *single*  | Bruce Springsteen — Events         | /artist/70248960-cb53-4ea4-943a-edb18f7d336f/events     |
+| artist-releasegroups | *multi*   | Bruce Springsteen — Release groups | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 |
+
+Both from their committed disk fixtures (4174 rows; 2143 rows in 47 tables),
+page shells fetched live. "Stockholm" is the narrow filter: 26 rows on each.
+
+| Host        | UTC run          | Page                 | Filter      | Tally queries / call | Median ms / call, =main= -> branch |
+|-------------+------------------+----------------------+-------------+----------------------+------------------------------------|
+| =vzell-lap= | 2026-09-23 22:34 | artist-events        | none        | 8 348 -> 0           | 14.3 -> 4.8                        |
+| =vzell-lap= | 2026-09-23 22:34 | artist-events        | "Stockholm" | 8 348 -> 0           | 8.6 -> 0.0                         |
+| =vzell-lap= | 2026-09-23 22:34 | artist-releasegroups | none        | 6 429 -> 0           | 6.8 -> 3.7                         |
+| =vzell-lap= | 2026-09-23 22:34 | artist-releasegroups | "Stockholm" | 4 286 -> 0           | 3.7 -> 1.5                         |
+| =vzell-lap= | 2026-09-23 22:35 | artist-events        | none        | 8 348 -> 0           | 13.5 -> 4.7                        |
+| =vzell-lap= | 2026-09-23 22:35 | artist-events        | "Stockholm" | 8 348 -> 0           | 10.9 -> 0.1                        |
+| =vzell-lap= | 2026-09-23 22:35 | artist-releasegroups | none        | 6 429 -> 0           | 6.8 -> 4.0                         |
+| =vzell-lap= | 2026-09-23 22:35 | artist-releasegroups | "Stockholm" | 4 286 -> 0           | 3.8 -> 1.6                         |
+
+=node scripts/measure-source-row-tallies.js=, 4 cores, node v24.11.1,
+playwright 1.62.1, uptime 56.3 h, one resident =claude= session. Runs
+22:34:02-22:35:23 and 22:35:43-22:37:00 UTC. =performance.now()= resolution in
+this harness is 0.1 ms, so "0.0" means under one tick.
+
+** What these establish
+
+- The step's "~8 300" was exact: *8 348 = 2 x 4174*, one query per source row
+  per counter, every pass, however narrow the filter.
+- *Multi-table pages paid 3N, not 2N*: 6 429 = 3 x 2143. =_pendingEditsGroups()=
+  also ran from =_pendingEditsAnyActive()=, which needs only the =<h3>=s. Under
+  a global query it drops to 2N (4 286), because =clearAllFiltersBtn='s =||=
+  chain short-circuits before reaching it.
+- *On a narrow filter the function now costs nothing measurable* — 8.6-10.9 ms
+  per keystroke on =artist-events= down to under one timer tick.
+- *The ~4-5 ms left on an unfiltered page is not the tallies*: the probe counts
+  zero tally queries there. It is the function's own document-wide selector
+  sweeps, which scale with the RENDERED row count and so disappear when a filter
+  leaves 26 rows.
+- Only within-session ratios are quotable here, per CLAUDE.md. Both runs agree
+  to within 0.3 ms on every branch figure.
 
 * Resolving EVERY master row: per-row scan vs one shared index (2026-09-18)
 
