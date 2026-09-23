@@ -125,6 +125,28 @@ header; a capture taken while MusicBrainz was refusing requests would show
 =data-re-state="error"=. Neither is expected, and either means the capture is
 worth repeating rather than committing.
 
+** Pending-edits match ring stylesheet (branch fix/pending-edits-highlight-ring)
+
+A script change, not upstream movement — recorded here for the same reason as
+the two entries above. Every =rendered.html= gains two rules next to
+=.mb-column-filter-highlight= in the one =GM_addStyle= block: the
+=.mb-pending-edits-match= modifier that turns the fill off, and the
+=table.tbl td span.mp:has(...)= rule that draws the ring. They land in every
+baseline, including pageTypes that carry no =mp= marker at all, because that
+block is injected on every page.
+
+There is NO markup change on ANY capture, not merely on a clean one — which is
+what distinguishes this entry from the two above. The modifier class is written
+only by =_highlightPendingEditsMatch()=, i.e. only while a pending-edits filter
+is engaged, and =capture-snapshots.js= never engages one. The =span.mp= itself
+is MusicBrainz's and is not touched: the ring is a =:has()= rule keyed on a
+descendant, so nothing is stamped on it. A baseline showing
+=span.mb-pending-edits-match= means the capture ran with a filter on and should
+be repeated, not committed.
+
+The ⏳ pending-edits entry at the top of this section is unaffected: it is about
+whether the =mp= marker is present at all, which this change does not touch.
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not

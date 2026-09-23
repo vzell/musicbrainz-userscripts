@@ -15033,3 +15033,137 @@ Covered by `tests/fixtures/table-seed-ledger.spec.js` (12 tests); mutation list
 `scripts/mutations/table-seed-ledger.json` — 14 entries, 13 `fail` and one
 honest `expect: "pass"` for the `String()` coercion on row keys, which nothing
 can exercise while every built-in key is already a string.
+
+## 2026-09-23 — the ⏳ filter erased the marker it filtered on (branch fix/pending-edits-highlight-ring)
+
+Reported from `https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d`
+with two snapshots taken minutes apart:
+`debug/work-recordings-pending-edits-final.html` (not filtered) and
+`debug/work-recordings-pending-edits-filtered-final.html` (⏳ engaged). Pressing
+the toggle narrowed the rows correctly and made MusicBrainz's orange
+"modification pending" highlight disappear — the one signal the button exists
+to find.
+
+### Root cause, confirmed by diffing the two snapshots
+
+`_highlightPendingEditsMatch()` called
+`highlightCrossTag(p.node, /[\s\S]+/g, 'mb-column-filter-highlight')` with
+`p.node` being the `span.mp` itself. `highlightCrossTag()` descends to TEXT
+NODES, so the span it builds is not the marker — it is a new innermost wrapper
+covering all of the marker's text:
+
+```
+.mp → a → bdi → span.mb-column-filter-highlight → text
+```
+
+`.mb-column-filter-highlight` paints `sa_column_filter_highlight_bg` (`#add8e6`),
+so 100% of the text area went light blue and the orange survived only in the
+padding, which is visually nothing. The `.mp` element is **byte-identical**
+between the two snapshots — nothing marked it, and the script defines no CSS
+for `.mp` at all; the orange is purely MusicBrainz's own stylesheet.
+
+Both snapshots carry 8 `.mp`, of which only 3 are inside a `<td>`; the other 5
+belong to jesus2099's page-header `PendingEdits` widget, which
+`_findCellPendingEdits()`'s descendant-of-`<td>` scoping already excludes. 3
+in-table markers, 3 highlight spans in the filtered file — a clean 1:1, which is
+what ruled out the highlighter running somewhere it should not.
+
+A second symptom in the same files, easy to miss: on the `mp mp-rel` shape the
+marker also encloses the entity-kind icon span, so the filtered render showed
+an orange band under the icon and a blue band under the title **inside one
+marker**.
+
+### The fix is a MODIFIER class, not a fifth highlight class
+
+CLAUDE.md's standing rule is that a new highlight class costs entries in
+`_COLLAPSE_MATCH_SEL`, in `testRowMatch()`'s reset, in
+`getCleanColumnText()`/`getCleanVisibleText()`'s unwrap, in `clearAllFilters()`
+and in the ~10 sites that spell the four classes out by hand. So the span now
+carries `mb-column-filter-highlight mb-pending-edits-match` — additional, never
+instead of. `highlightCrossTag()` assigns `span.className = className`, so a
+space-separated string needed no signature change, and every one of those
+consumers already matches the span because the base class never left it.
+
+Two CSS rules do the rest: the modifier turns the fill and the text colour off,
+and `table.tbl td span.mp:has(.mb-pending-edits-match)` draws the ring around
+the whole marker. `outline`, not `border`, so nothing reflows — the same reason
+`td.mb-rel-cell a.mb-rel-icon-match` uses one. Colour is the new
+`sa_pending_edits_match_outline` (gold by default).
+
+Nothing downstream needed a hook, and two of those are worth naming because
+they are where a change like this usually leaks:
+
+- `testRowMatch()`'s reset is `replaceWith(document.createTextNode(...))` — it
+  removes the whole span, so the modifier cannot outlive it or strand an orphan.
+- `applySubFilter()` Step 2 clears only `.mb-subtable-filter-highlight`, so a
+  ring survives a sub-table filter with **no** re-derivation pass of the kind
+  `mb-rel-icon-match` needs there.
+
+### Scoped to the pending-edits filters, deliberately
+
+The generalisation — "any fill inside a `.mp` destroys the orange, so ring them
+all" — is wrong, and it is a pure-CSS one-liner, so it is in the mutation list.
+For every other filter the highlight COLOUR is what says which filter matched
+(gold global, blue column, green sub-table); collapsing three of them into one
+ring trades a real distinction for a marginal gain. A ring has one meaning.
+
+The multi-table fixture is the sharpest guard on this, because every Artist cell
+on it reads "Bruce Springsteen" whether or not it is wrapped: a typed filter
+highlights all of them and must ring none.
+
+### One prediction that was wrong, kept because it reads plausible
+
+The CSS comment first asserted that the modifier rule MUST sit after the rule it
+overrides — same specificity, source order decides — citing the column-header
+pill family, where that is genuinely true. It is not true here:
+`.mb-column-filter-highlight.mb-pending-edits-match` is TWO classes against the
+base rule's ONE, so it wins from either position. The mutation run is what said
+so (expected fail, got pass), and both the comment and the mutation entry now
+record it, so nobody re-derives a constraint that was never load-bearing and
+then preserves it.
+
+### The first colour shipped was invisible, and no fixture could have said so
+
+Reported back the same day as "there is still NO surrounding marker", with
+`debug/work-recordings-pending-edits-filtered-final-bug.html`. That file
+confirmed the markup — 4 spans, both classes, each inside a `span.mp` — and
+could say nothing about the ring, because the save stripped **every** `<style>`
+element, MusicBrainz's own included: `<style` appears 0 times in it, as do
+`.mb-column-filter-highlight {` and every other rule from the one `GM_addStyle`
+block. A snapshot with no CSS cannot answer a CSS question.
+
+`scripts/probe-pending-edits-ring.js` was written to answer it against the live
+page, and is the durable record:
+
+```
+"hasSelectorHas": true,                    :has() is supported
+"ringRuleFound": true,                     both rules are in a live stylesheet
+"mpBackground":   "rgb(255, 221, 153)"     MusicBrainz's marker, #FFDD99
+"mpOutlineColor": "rgb(255, 215, 0)"       the ring, #FFD700
+"mpOutlineStyle": "solid", "mpOutlineWidth": "2px"
+"innerBackground": "rgba(0, 0, 0, 0)"      fill correctly suppressed
+```
+
+Everything worked. The ring was computed, applied, 2px solid — and **1.07:1**
+against the marker it rings, **1.39:1** against the white row behind it.
+MusicBrainz's own pending-edit marker is a yellow, so "a bold yellow border"
+was the single hue that could not work, and it was taken from the report
+without measuring what it would sit on. The default is now `#cc0000` — 4.5:1
+and 5.9:1 — which is what `td.mb-rel-cell a.mb-rel-icon-match` has always used,
+for this reason.
+
+**Why the suite was green throughout.** No fixture loads MusicBrainz's
+stylesheet, so `.mp` has no background in a test at all; the spec asserted
+`outlineColor === the schema default` and every fact it checked was true. This
+is the same class of blind spot CLAUDE.md already records for flag sprites
+(`resolveFlagVisual()` legitimately returns null in every fixture), reached
+from a different direction: a fixture can pin which colour is applied, never
+whether it can be seen. The mutation list carries the yellow default as a
+`fail` arm and says in its own `why` that it proves the suite reads the schema
+default and **not** that the colour is visible.
+
+Covered by `tests/fixtures/pending-edits-highlight-ring.spec.js` (9 tests,
+single- and multi-table); mutation list
+`scripts/mutations/pending-edits-highlight-ring.json` — 9 entries, 7 `fail` and
+two honest `expect: "pass"` (the `table.tbl td` scoping, which no committed
+fixture loads jesus2099's widget to exercise, and the rule ordering above).

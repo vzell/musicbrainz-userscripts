@@ -784,6 +784,13 @@
             description: "Background color for column filter matches"
         },
 
+        sa_pending_edits_match_outline: {
+            label: "Pending-Edits Match Outline Color",
+            type: "color_picker",
+            default: "#cc0000",
+            description: "Outline colour drawn around a pending-edit entity matched by the ⏳ filter or the 📊 pending-edits entries. These matches are ringed rather than filled, so MusicBrainz's own orange marker stays visible. Dark red for contrast — MusicBrainz's marker is itself yellow (#FFDD99), so a yellow ring on it is invisible"
+        },
+
         sa_col_filter_focus_bg: {
             label: "Column Filter Focus Background",
             type: "color_picker",
@@ -36513,6 +36520,40 @@ a { color: #1565c0; }`;
             color: ${Lib.settings.sa_column_filter_highlight_color};
             background-color: ${Lib.settings.sa_column_filter_highlight_bg};
         }
+        /* Pending-edits modifier, written by _highlightPendingEditsMatch()
+           alongside the class above. MusicBrainz paints its own orange fill on
+           span.mp, and the highlight span sits INSIDE it wrapping all of the
+           text — so a fill here hides the marker the filter selected on. Drop
+           the fill and the text colour, and mark the whole marker with a ring
+           instead (same idea as td.mb-rel-cell a.mb-rel-icon-match).
+
+           This one wins on SPECIFICITY, not on source order — two classes
+           against the base rule's one — so it may sit either side of it. It is
+           written here to keep the pair readable, and the mutation list
+           records an honest expect: "pass" for moving it, so nobody re-derives
+           an ordering rule that was never load-bearing. That IS the rule for
+           the column-header pill family, where the deltas are same-specificity;
+           it is not the rule here.
+
+           Scoped to table.tbl td so it can never reach the span.mp elements in
+           jesus2099's page-header PendingEdits widget.
+
+           The ring is DARK RED, not the yellow first shipped here, and that is
+           a measurement rather than a taste: MusicBrainz paints .mp
+           rgb(255, 221, 153), so the original #FFD700 scored 1.07:1 against
+           the marker it ringed and 1.39:1 against the white row behind it —
+           applied, computed, and invisible. scripts/probe-pending-edits-ring.js
+           reads all of that off the live page; run it before changing this
+           colour, because a fixture has no MusicBrainz stylesheet and so
+           cannot show what the ring is drawn against.                        */
+        .mb-column-filter-highlight.mb-pending-edits-match {
+            background-color: transparent;
+            color: inherit;
+        }
+        table.tbl td span.mp:has(.mb-pending-edits-match) {
+            outline: 2px solid ${Lib.settings.sa_pending_edits_match_outline || '#cc0000'};
+            border-radius: 2px;
+        }
         .mb-global-filter-highlight {
             color: ${Lib.settings.sa_global_filter_highlight_color};
             background-color: ${Lib.settings.sa_global_filter_highlight_bg};
@@ -44554,6 +44595,31 @@ a { color: #1565c0; }`;
      * point at, same reasoning as `'locale-not-primary'`/`'catalog-has-
      * prefix'`/etc. (see the big dispatch comment in `testRowMatch`).
      *
+     * The span carries a SECOND class, `mb-pending-edits-match`, and that is a
+     * cosmetic MODIFIER — not a fifth highlight class. It exists because the
+     * fill this function used to paint destroyed the very signal it filtered
+     * on: `highlightCrossTag()` descends to text nodes, so the span it builds
+     * wraps 100% of the entity's text INSIDE `span.mp`, leaving MusicBrainz's
+     * own orange marker visible only in the padding. The modifier turns that
+     * fill off and moves the mark to an outline around the whole `span.mp`
+     * (see the two rules next to `.mb-column-filter-highlight` in the main
+     * stylesheet) — the same "ring, don't fill" idea as `mb-rel-icon-match`,
+     * for the same reason: the target already carries a visual of its own.
+     *
+     * It is deliberately ADDITIONAL rather than INSTEAD OF, so nothing
+     * downstream has to learn about it. The span still matches
+     * `_COLLAPSE_MATCH_SEL` (so the collapsed-cell tint keeps working), is
+     * still removed whole by `testRowMatch()`'s own reset (so the modifier
+     * cannot outlive it or strand an orphan), and is still unwrapped by
+     * `getCleanColumnText()`. Do NOT add it to `_COLLAPSE_MATCH_SEL`, to that
+     * reset, or to the ~10 sites that spell the four highlight classes out by
+     * hand: it never appears alone, so every one of them already matches it.
+     *
+     * Scoped to the pending-edits filters alone on purpose. A typed global /
+     * column / sub-table match that happens to land inside a `span.mp` keeps
+     * its own fill, because there the fill COLOUR is what says which filter
+     * matched; here there is only one filter it can be.
+     *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
      * @param {string} mode - `"pending-edits-yes"`, or a compound
      *   `"pendingedit:David Bowie"`.
@@ -44565,7 +44631,7 @@ a { color: #1565c0; }`;
         _findCellPendingEdits(cell).forEach(p => {
             if (_want !== null && p.name !== _want) return;
             p.node.normalize();
-            highlightCrossTag(p.node, /[\s\S]+/g, 'mb-column-filter-highlight');
+            highlightCrossTag(p.node, /[\s\S]+/g, 'mb-column-filter-highlight mb-pending-edits-match');
         });
     }
 

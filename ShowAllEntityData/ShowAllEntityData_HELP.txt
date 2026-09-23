@@ -534,12 +534,16 @@ every distinct non-empty value currently visible in that column.
                        pending, which is the overwhelming majority — so
                        spotting a column with in-flight edits is just a
                        matter of the section appearing at all. Checking
-                       "⏳ has pending edits" highlights every pending
-                       entity in each matching row; checking a single
-                       "» pending edit:" entry highlights only that one, so
-                       on a joined "Queen & David Bowie" credit where only
-                       Bowie has open edits, only Bowie is marked. Reads
-                       markup already on the page — no extra request.
+                       "⏳ has pending edits" RINGS every pending entity in
+                       each matching row; checking a single "» pending edit:"
+                       entry rings only that one, so on a joined "Queen &
+                       David Bowie" credit where only Bowie has open edits,
+                       only Bowie is marked. A ring, not a coloured
+                       background, so MusicBrainz's own orange marker stays
+                       visible underneath — see the ⏳ PENDING-EDITS FILTER
+                       TOGGLE section below for why, and for the setting that
+                       picks its colour. Reads markup already on the page —
+                       no extra request.
                        Toggled by the "Enable 'Pending edits' Filtering"
                        setting (default on), which also controls the ⏳
                        filter-bar toggle described below.  The two compose:
@@ -580,10 +584,23 @@ either order).  It is held by no input, so "✗ Clear all filters" becomes
 visible while it is engaged and releases it, page-wide.
 
 While the toggle is engaged it MARKS what it matched, the same way every other
-filter does: each entity with open edits is highlighted inside MusicBrainz's own
-orange marker, in every column of every matching row.  That is the same marking
-the 📊 dropdown's "⏳ has pending edits" entry applies to one column; the toggle
-simply applies it to the whole row.
+filter does: each entity with open edits is RINGED, in every column of every
+matching row.  That is the same marking the 📊 dropdown's "⏳ has pending edits"
+entry applies to one column; the toggle simply applies it to the whole row.
+
+A ring rather than a coloured background, because the thing being marked already
+has a background of its own.  Every other filter paints its matches — gold for
+the global filter, blue for a column one, green for a sub-table one — but here
+the match IS MusicBrainz's orange "modification pending" marker, and painting
+over it erased the one signal you had pressed the button to find.  So the text
+is left exactly as it reads unfiltered and a bold outline is drawn around the
+whole marker instead, orange and all.  The colour is "Pending-Edits Match
+Outline Color" in the settings, dark red by default — MusicBrainz's marker is
+itself a yellow (#FFDD99), so a yellow ring on it is very nearly invisible.
+
+This applies only to the pending-edits filters.  Typing a query that happens to
+match inside a pending entity still highlights it the usual way, because there
+the colour is what tells you WHICH filter matched; a ring has only one meaning.
 
 The marking matters most where you cannot see it directly.  A collapsed
 multi-row cell shows only its first item, so a pending author sitting in item 2

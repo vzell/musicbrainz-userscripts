@@ -1,4 +1,4 @@
-* TODO pending edits highlight handling
+* DONE pending edits highlight handling
 
 This is all on https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d:
 
@@ -8,16 +8,98 @@ Currently when filtering with the "<button id="mb-pending-edits-btn" or the sub-
 the entities with the pending edit background (orange by default)
 
 #+begin_example
-@debug/work-recordings-pending-edits-final.html - pending edits non-filtered - [Image #1]
+@debug/work-recordings-pending-edits-final.html - pending edits non-filtered - [Image #5]
 #+end_example
 
-get the same background highglightning as a normal column level filter would do and the pending edit highligtning is
+get the same background highglightning as a normal column level filter would do and the pending edit highligthning is
 lost.
 
 #+begin_example
-@debug/work-recordings-pending-edits-filtered-final.html - pending edits filtered - [Image #2]
+@debug/work-recordings-pending-edits-filtered-final.html - pending edits filtered - [Image #6]
 #+end_example
 
 We could maybe put a bold yellow border in that case around the entities which have pending edits, like what we do when
 filtering relationship icons which get a bold red border when filter-matched.
 
+** DONE — branch fix/pending-edits-highlight-ring
+
+Done as suggested, as an outline rather than a border so nothing reflows —
+the same reason =td.mb-rel-cell a.mb-rel-icon-match= uses one.
+
+The span =highlightCrossTag()= builds now carries a SECOND class,
+=mb-pending-edits-match=, alongside =mb-column-filter-highlight=. Additional,
+never instead of: the span still answers =_COLLAPSE_MATCH_SEL= (so the
+collapsed-cell tint keeps working), is still removed whole by
+=testRowMatch()='s reset, and is still unwrapped by =getCleanColumnText()=, so
+none of the ~10 sites that spell the four highlight classes out by hand had to
+learn about it. Two CSS rules do the rest: the modifier turns the fill and the
+text colour off, and =table.tbl td span.mp:has(.mb-pending-edits-match)= draws
+the ring around MusicBrainz's whole marker, entity-kind icon included.
+
+Colour is =sa_pending_edits_match_outline=, next to the other filter-highlight
+colours. DARK RED (=#cc0000=) by default, not the gold it first shipped with —
+see the bug below.
+
+Scoped to the pending-edits filters alone — the ⏳ toggle and the 📊
+=pending-edits-yes= / =pendingedit:<name>= entries. A typed global/column/
+sub-table query that happens to match inside a =span.mp= keeps its own fill,
+because there the COLOUR is what says which filter matched; a ring has only one
+meaning. The two "a typed filter …" tests are the only guard on that decision.
+
+One thing that turned out not to be true, recorded because it reads plausible:
+the ordering of the two rules is NOT load-bearing. The modifier is two classes
+against the base rule's one, so it wins on specificity from either position —
+unlike the column-header pill family, where the deltas are same-specificity and
+source order really does decide. The mutation list carries it as an honest
+=expect: "pass"=.
+
+Covered by =tests/fixtures/pending-edits-highlight-ring.spec.js= (9 tests, both
+table modes); mutation list =scripts/mutations/pending-edits-highlight-ring.json=
+(8 arms, 6 fail / 2 honest pass).
+
+** bug
+
+1.)
+
+There is still NO surrounding marker
+
+#+begin_example
+@debug/work-recordings-pending-edits-filtered-final-bug.html - [Image #8]
+#+end_example
+
+2.)
+
+[Image #9] - I typed "Come" into the column filter ("Title") that matches a pending entity
+
+*** DONE 1.) — the ring was applied and invisible
+
+Not a missing rule. =scripts/probe-pending-edits-ring.js= (written for this,
+re-runnable) drives the real page and reads the computed styles back:
+
+#+begin_example
+"hasSelectorHas": true,          :has() is supported
+"ringRuleFound": true,           both rules are in a live stylesheet
+"mpBackground":   "rgb(255, 221, 153)"    MusicBrainz's own marker, #FFDD99
+"mpOutlineColor": "rgb(255, 215, 0)"      the ring, #FFD700
+"mpOutlineStyle": "solid", "mpOutlineWidth": "2px"
+"innerBackground": "rgba(0, 0, 0, 0)"     fill correctly suppressed
+#+end_example
+
+So the marker came back and the ring was drawn — in a colour 1.07:1 against
+the thing it rings, and 1.39:1 against the white row behind it. Gold was the
+one hue that could not work here, and "bold yellow" was chosen from the
+report without measuring what it would sit on. Default is now =#cc0000=:
+4.5:1 against the marker, 5.9:1 against the row. The rel-icon precedent uses
+red for exactly this reason.
+
+The transferable part: a fixture cannot catch this. None loads MusicBrainz's
+stylesheet, so =.mp= has no colour in a test at all — the suite asserted
+=outlineColor === the schema default= and was right about every fact it
+checked. Contrast is only measurable against the live page, which is what the
+probe is for. Run it before changing this colour.
+
+*** DONE 2.) — working as intended
+
+Confirmed with the user. A typed query keeps its own fill inside a marker,
+because there the COLOUR is what says which filter matched; a ring has only
+one meaning. The two "a typed filter …" tests are the guard.
