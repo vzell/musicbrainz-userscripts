@@ -49,13 +49,13 @@ script can tell you chose it.
 So if you have ever pressed SAVE --- even once, even without changing
 anything --- these five are still on their old values:
 
-| Setting (as it appears in ⚙️ Settings)        | Section                        | Old | New  |
-|-----------------------------------------------|--------------------------------|-----|------|
-| Start with sidebar collapsed                  | ⭲ COLLABSABLE SIDEBAR          | off | **on** |
-| Show Flag Icons In Unique-Values Dropdown     | #₁ UNIQUE COLUMN VALUES ...    | off | **on** |
-| Auto-resize columns on load                   | ↔️ COLUMN RESIZE FEATURE        | off | **on** |
-| Auto-expand native "Annotation" section       | 📖 ANNOTATION SECTION           | off | **on** |
-| Metadata (JSON) cache TTL (days)              | 🗄️ ART ARCHIVE INDEXEDDB CACHE  | 7   | **30** |
+| Setting (as it appears in ⚙️ Settings)    | Section                        | Old | New    |
+|-------------------------------------------+--------------------------------+-----+--------|
+| Start with sidebar collapsed              | ⭲ COLLABSABLE SIDEBAR         | off | **on** |
+| Show Flag Icons In Unique-Values Dropdown | #₁ UNIQUE COLUMN VALUES ...    | off | **on** |
+| Auto-resize columns on load               | ↔️ COLUMN RESIZE FEATURE       | off | **on** |
+| Auto-expand native "Annotation" section   | 📖 ANNOTATION SECTION          | off | **on** |
+| Metadata (JSON) cache TTL (days)          | 🗄️ ART ARCHIVE INDEXEDDB CACHE | 7   | **30** |
 
 That last one is the one I'd actually recommend changing. Cover-art metadata is
 now cached for 30 days instead of 7, which noticeably cuts how often big

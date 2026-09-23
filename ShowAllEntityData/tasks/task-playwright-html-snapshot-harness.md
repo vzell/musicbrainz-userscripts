@@ -321,10 +321,10 @@ corrections found by actually running it, not by inspection alone:
 An org-mode table at `tests/snapshots/registry.org`, one row per pageType:
 
 ```org
-| pageType              | URL                                                                  | tableMode | script version | last captured | feature/change verified                  | notes                                  |
-|-----------------------+-----------------------------------------------------------------------+-----------+-----------------+----------------+-------------------------------------------+-----------------------------------------|
-| artist-releasegroups   | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0               | multi     | 9.99.xxx         | 2026-08-23     | pilot harness setup                        |                                         |
-| release-tracks         | /release/1d404e1d-fcb6-3a52-b478-e706e893c897                        | multi     | 9.99.xxx         | 2026-08-23     | pilot harness setup                        | requires sa_enable_release_tracks=true |
+| pageType             | URL                                                     | tableMode | script version | last captured | feature/change verified | notes                                  |
+|----------------------+---------------------------------------------------------+-----------+----------------+---------------+-------------------------+----------------------------------------|
+| artist-releasegroups | /artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0 | multi     |       9.99.xxx |    2026-08-23 | pilot harness setup     |                                        |
+| release-tracks       | /release/1d404e1d-fcb6-3a52-b478-e706e893c897           | multi     |       9.99.xxx |    2026-08-23 | pilot harness setup     | requires sa_enable_release_tracks=true |
 ```
 
 Update this table (new "last captured"/"feature verified" row values, plus a

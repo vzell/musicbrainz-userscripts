@@ -2057,11 +2057,11 @@ typed column filter of ~"no"~ would otherwise match ~"not readable"~,
 ~"known"~, and the sentinel text itself. What is missing is that the other two
 consumers were each given a replacement and sorting was not:
 
-| Consumer               | How it survives the strip                                                                                  |
-|------------------------+------------------------------------------------------------------------------------------------------------|
-| Column filter          | explicit bypass in ~testRowMatch()~ — exact-match test straight against the span                           |
+| Consumer               | How it survives the strip                                                                                   |
+|------------------------+-------------------------------------------------------------------------------------------------------------|
+| Column filter          | explicit bypass in ~testRowMatch()~ — exact-match test straight against the span                            |
 | Unique-values dropdown | migrated to structure-mode relabeling ("✓ has artwork" / "✗ no artwork" via ~_cellMatchesStructureMode()~) |
-| *Sort*                 | *nothing*                                                                                                  |
+| *Sort*                 | *nothing*                                                                                                   |
 
 *Update (9.99.1047): the "Column filter" row above no longer describes*
 ~main~. That bypass was REMOVED on user report: it made one typed word mean

@@ -14872,11 +14872,11 @@ pinned filter list.**
 It is also the one block where the shapes differ per key, so there is no
 correct coercion even in principle:
 
-| key                        | stored as                                     |
-|----------------------------|-----------------------------------------------|
-| `vz-mb-colvis-*`           | a `JSON.stringify()`ed STRING — both readers `JSON.parse()` it |
-| `persistent-sa-hist-list`  | an array of strings                           |
-| `sa_stats_panel_geometry`  | an object of numbers                          |
+| key                       | stored as                                                      |
+|---------------------------|----------------------------------------------------------------|
+| `vz-mb-colvis-*`          | a `JSON.stringify()`ed STRING — both readers `JSON.parse()` it |
+| `persistent-sa-hist-list` | an array of strings                                            |
+| `sa_stats_panel_geometry` | an object of numbers                                           |
 
 A "helpful" `JSON.parse()` on the colvis value makes the file prettier and
 hands `loadColVisState()` something it throws on — and a deep-equal assertion
