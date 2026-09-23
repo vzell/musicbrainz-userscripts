@@ -14933,3 +14933,103 @@ Covered by `tests/fixtures/config-workspace-roundtrip.spec.js` (13 tests);
 mutation list `scripts/mutations/config-workspace.json` — 13 entries, 12 `fail`
 and one honest `expect: "pass"` for the exact-name-before-prefix ordering in
 `_configWorkspaceGroupFor()`, which no key that exists today can distinguish.
+
+## 2026-09-23 — the five lookup tables never see a row shipped later (branch feat/table-seed-ledger)
+
+`org/config-handling.org` F1's closing note, and the last item left in that
+file. All five `type: 'table'` settings are lazy-seeded from code on FIRST USE
+and never reconsult the built-ins, so a row added in a later version reaches
+nobody who already has the table. The documented escape has been to empty the
+table in the editor, save and reload — which throws away every row the user
+entered by hand to gain one they did not.
+
+### F1 said this was unsolvable, and was right about the reason
+
+> Merging built-in rows into stored ones cannot tell "the user deleted this
+> row" from "the user has never seen it", and unlike the scalar case there is
+> no historical value to recognise — a row is not a default.
+
+Both halves hold. The way out is to stop trying to INFER the distinction and
+start RECORDING it: `sa_table_seed_ledger` holds, per table, every built-in row
+key this profile has been offered. Absent from the ledger ⇒ new, add it.
+Present in the ledger but not in the rows ⇒ deleted on purpose, leave it gone.
+
+That is the same shape, and the same reason, as `vz-mb-colvis-touched-*`, which
+already distinguishes "the user chose this column's visibility" from "never
+asked" — the pattern was in the codebase, one screen away from the problem.
+
+### The measurement is what made it exact instead of a bet
+
+`scripts/dump-table-seed-history.py` walks all **623** revisions of the
+userscript and extracts the built-in rows of all five tables. Result:
+
+    0 change(s) to the built-in rows after their introduction:
+      none — the built-in tables have never gained or lost a row.
+
+So every profile in existence was seeded from **precisely today's built-ins**,
+and recording today's keys as "already offered" is a fact rather than a guess.
+This is the last moment that is true: ship one row first and an absent key
+becomes permanently ambiguous, exactly as F1 describes. The strongest argument
+for building it was that there is currently nothing to fix.
+
+It also reframes the finding honestly — it is a LATENT defect. Nobody has been
+harmed, because nothing has been added.
+
+### Three things the tests found that reasoning did not
+
+- **`page.reload()` drops the userscript.** `loadPage.js` injects it with
+  `addScriptTag` AFTER `goto`, so a reload brings the page back bare — the
+  notice never renders and the 90 s timeout reads as the feature being broken.
+  Call `loadUserscriptPage()` again instead; GM storage survives either way,
+  being backed by localStorage through a context-level init script.
+- **A mutation that ADDS an early call proves nothing.** The foot-of-IIFE call
+  still ran and did the work. The mutation has to MOVE the call.
+- **And the moved call still passed**, twice, because every test drove
+  `__saTest.seedNewTableRows()` — which runs after the whole IIFE has evaluated
+  and therefore succeeds wherever the production call sits. The fix was to read
+  the ledger the PAGE LOAD produced, before touching the hook. A hook that
+  re-runs the thing under test is a hook that can hide where it is called from.
+
+### Why the early call is silent, and what was added because of it
+
+`_TABLE_SEED_REGISTRY()` reads `SA_UNICODE_CHARS_DEFAULT` and the three
+`REL_*_DEFAULT` maps, all declared tens of thousands of lines BELOW the startup
+block. Module-level `const`s sit in the temporal dead zone until evaluated, so
+calling the pass there throws `ReferenceError` — and `node --check` cannot see
+it, because the TDZ is a runtime rule and not a syntax one.
+
+Worse, the try/catch around `rows()` swallows it per entry: all five tables are
+skipped, the ledger stays empty, and the only trace is a `Lib.warn` that is off
+by default. `_seedNewTableRows()` now returns an **`unreadable`** count for
+exactly that, so a registry entry pointing at a constant that does not exist is
+assertable rather than invisible. (It is NOT what catches a moved call — see
+above.)
+
+### A duplication removed on the way
+
+The three Relationships icon maps had their built-ins written out TWICE: once
+as the `let REL_*` initializer, once as the object literal passed to
+`_loadMap()` inside `_initRelMappings()`. Two copies thousands of lines apart
+with nothing keeping them equal — a row added to one and not the other would
+make the seeded table disagree with the fallback a failed `@require` falls back
+to, silently. They are one `REL_*_DEFAULT` constant each now, which is also
+what let all five tables go through one registry, and what let
+`scripts/dump-config-defaults.py` delete its whole second parsing branch. The
+regenerated snapshot's `seed_rows` are byte-identical, which is the evidence
+the hoist changed nothing.
+
+### The ledger is in the config file's workspace block, and that is a decision
+
+It looks like install bookkeeping — the same shape as
+`sa_settings_migration_level`, which is deliberately NOT exported. The
+difference: the migration level records what the SCRIPT did to this install,
+while the ledger's DIFFERENCE from the stored rows is the only record anywhere
+that the USER deleted a built-in row. Leave it behind and a config file stops
+meaning what it says: the destination has no entry saying the row was offered,
+so the next load hands it straight back — the file recorded the deletion and
+the import undid it.
+
+Covered by `tests/fixtures/table-seed-ledger.spec.js` (12 tests); mutation list
+`scripts/mutations/table-seed-ledger.json` — 14 entries, 13 `fail` and one
+honest `expect: "pass"` for the `String()` coercion on row keys, which nothing
+can exercise while every built-in key is already a string.

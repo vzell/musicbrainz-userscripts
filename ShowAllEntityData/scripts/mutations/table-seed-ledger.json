@@ -1,0 +1,192 @@
+[
+  {
+    "name": "the ledger check is dropped — every built-in row is merged in",
+    "why": "The naive fix org/config-handling.org F1 rejected, and it is worse than the defect it replaces: without the ledger, a built-in row the user DELETED comes back on every single page load, silently and forever. F1's whole argument is that stored rows alone cannot tell 'deleted' from 'never seen'.",
+    "edits": [
+      {
+        "find": "            const seen = new Set(ledger[entry.key].map(String));",
+        "replace": "            const seen = new Set();"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "never handed back",
+    "expect": "fail"
+  },
+  {
+    "name": "a pre-ledger profile is offered every built-in it is missing",
+    "why": "The upgrade path for every profile in existence. Treating an absent ledger as 'offered nothing' hands back every built-in row the user has ever deleted, on the first load after upgrading — the exact damage the ledger exists to prevent, delivered once to everybody.",
+    "edits": [
+      {
+        "find": "            if (!Array.isArray(ledger[entry.key])) {\n                ledger[entry.key] = builtinKeys;\n                ledgerChanged = true;",
+        "replace": "            if (false) {\n                ledger[entry.key] = builtinKeys;\n                ledgerChanged = true;"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "adopts the built-ins, adding nothing",
+    "expect": "fail"
+  },
+  {
+    "name": "a new built-in row is never appended",
+    "why": "The feature reduced to bookkeeping: the ledger is maintained perfectly and nothing is ever offered, so the defect this branch exists to fix survives behind a mechanism that looks like it fixed it.",
+    "edits": [
+      {
+        "find": "            GM_setValue(entry.key, have.concat(fresh));",
+        "replace": "            GM_setValue(entry.key, have);"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "never been offered is added",
+    "expect": "fail"
+  },
+  {
+    "name": "the stored-rows check is dropped, so a hand-added key is duplicated",
+    "why": "Not redundant with the ledger check, and this is what separates them: a user can add a row by hand that a later version then ships as a built-in. Appending it again gives the table two rows with one key, and `_loadMap()`'s last-writer-wins loop silently overrides the value the user typed.",
+    "edits": [
+      {
+        "find": "            const fresh = builtins.filter(r => !seen.has(String(r[0])) && !present.has(String(r[0])));",
+        "replace": "            const fresh = builtins.filter(r => !seen.has(String(r[0])));"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "is not duplicated when it becomes a built-in",
+    "expect": "fail"
+  },
+  {
+    "name": "an empty table is written by this pass instead of the lazy seeder",
+    "why": "Two writers for one case. The lazy seeders own the empty table and always write the FULL current built-in set; this pass writing a partial one beside them means the result depends on which ran first. 'Empty' is also the documented escape hatch for this very problem, so it is the case most likely to be exercised by someone who already knows about it.",
+    "edits": [
+      {
+        "find": "            if (!have || have.length === 0) {\n                // The lazy seeder owns this case and seeds the full set.\n                if (String(ledger[entry.key] || '') !== String(builtinKeys)) {\n                    ledger[entry.key] = builtinKeys;\n                    ledgerChanged = true;\n                }\n                continue;\n            }",
+        "replace": "            if (!have || have.length === 0) {\n                GM_setValue(entry.key, builtins.slice(0, 1));\n                ledger[entry.key] = builtinKeys;\n                ledgerChanged = true;\n                continue;\n            }"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "left to the lazy seeder",
+    "expect": "fail"
+  },
+  {
+    "name": "the ledger is not updated after an offer, so the row is re-offered forever",
+    "why": "The row is added, the user deletes it, and the next page load adds it again — a loop with no exit that looks, from inside the table editor, exactly like the editor being broken.",
+    "edits": [
+      {
+        "find": "            for (const k of builtinKeys) {\n                if (!seen.has(k)) { ledger[entry.key].push(k); ledgerChanged = true; }\n            }",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "never been offered is added",
+    "expect": "fail"
+  },
+  {
+    "name": "the undo forgets the rows, so they are offered again next load",
+    "why": "Exactly the rule `_undoSettingsMigration()` states for the migration level, arriving here for the same reason: the user has said no. A pass that re-offers on the next load undoes their undo, and there is no way for them to win. The mutation removes only the UNDONE keys from the ledger entry, which is the realistic slip — deleting the whole entry is harmless, because the pre-ledger branch then re-adopts the built-ins and adds nothing. That asymmetry is worth knowing: losing the ledger entirely is safe, losing part of it is not.",
+    "edits": [
+      {
+        "find": "        if (typeof GM_deleteValue !== 'undefined') {\n            GM_deleteValue(_TABLE_SEED_NOTICE_KEY);\n        }\n        Lib.info('init', `Seeded table rows undone — ${removed} row(s) removed.`);",
+        "replace": "        if (typeof GM_deleteValue !== 'undefined') {\n            GM_deleteValue(_TABLE_SEED_NOTICE_KEY);\n            const _led = GM_getValue(_TABLE_SEED_LEDGER_KEY, {}) || {};\n            for (const t of report.tables) {\n                const _drop = new Set((t.rows || []).map(r => String(r[0])));\n                if (Array.isArray(_led[t.key])) _led[t.key] = _led[t.key].filter(k => !_drop.has(String(k)));\n            }\n            GM_setValue(_TABLE_SEED_LEDGER_KEY, _led);\n        }\n        Lib.info('init', `Seeded table rows undone — ${removed} row(s) removed.`);"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "announces itself, and can be undone",
+    "expect": "fail"
+  },
+  {
+    "name": "every table announces its additions",
+    "why": "Four of the five are additive and invisible until you go looking — a character in the Unicode picker, an icon for a relationship you may never meet. A banner that fires for those as well is a banner people learn to dismiss unread, which costs the one case that genuinely needs reading.",
+    "edits": [
+      {
+        "find": "            if (entry.announce) {",
+        "replace": "            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "adds its row silently",
+    "expect": "fail"
+  },
+  {
+    "name": "the hidden-columns table stops announcing",
+    "why": "The other direction. A new row there HIDES A COLUMN, and a column disappearing on upgrade with nothing on screen saying why reads as a bug — which is how the whole settings-dialog finding (F5) came to be written in the first place.",
+    "edits": [
+      {
+        "find": "                key: 'sa_default_hidden_columns',\n                label: 'Default Hidden Columns',\n                announce: true,",
+        "replace": "                key: 'sa_default_hidden_columns',\n                label: 'Default Hidden Columns',\n                announce: false,"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "announces itself, and can be undone",
+    "expect": "fail"
+  },
+  {
+    "name": "the notice queue is cleared on render rather than on dismissal",
+    "why": "The queue is a GM key and not a session flag precisely so that navigating away before reading it does not lose the message. Clearing on render looks tidier and silently reintroduces that loss for anyone who clicks a link before noticing the banner.",
+    "edits": [
+      {
+        "find": "        const total = report.tables.reduce((n, t) => n + (t.described || []).length, 0);\n        if (total === 0) return;",
+        "replace": "        const total = report.tables.reduce((n, t) => n + (t.described || []).length, 0);\n        if (total === 0) return;\n        if (typeof GM_deleteValue !== 'undefined') GM_deleteValue(_TABLE_SEED_NOTICE_KEY);"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "survives navigating away without reading it",
+    "expect": "fail"
+  },
+  {
+    "name": "three of the five tables drop out of the registry",
+    "why": "The three Relationships icon tables are the ones whose built-ins used to be inline literals inside `_initRelMappings()`, duplicated from the `let REL_*` defaults. Hoisting them to one constant each is what let all five go through one registry rather than two mechanisms with different coverage.",
+    "edits": [
+      {
+        "find": "            {\n                key: 'sa_rel_url_icon_classes',\n                label: 'Relationships — URL icon classes',\n                announce: false,\n                rows: () => Object.entries(REL_URL_ICON_CLASSES_DEFAULT),\n                describe: (row) => `${row[0]} → ${row[1]}`,\n            },",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "the PAGE LOAD covers all five tables",
+    "expect": "fail"
+  },
+  {
+    "name": "the seeding pass is MOVED to the startup block from the IIFE's foot",
+    "why": "`_TABLE_SEED_REGISTRY()` reads constants declared tens of thousands of lines BELOW the startup block, and module-level `const`s sit in the temporal dead zone until evaluated. `node --check` cannot see it, because the TDZ is a runtime rule and not a syntax one.\n\nThe mutation has to MOVE the call, not add one: an earlier version merely added it, and the test passed because the foot call still ran and did the work. Worse, it passed silently — the try/catch around `rows()` swallowed five ReferenceErrors and the pass simply covered nothing. That is what the `unreadable` counter in the result now exists to make visible, and it is the assertion this mutation now trips.",
+    "edits": [
+      {
+        "find": "    _migrateFrozenSettings();\n    _coerceNumericSettings();",
+        "replace": "    _seedNewTableRows();\n    _migrateFrozenSettings();\n    _coerceNumericSettings();"
+      },
+      {
+        "find": "    _seedNewTableRows();\n    if (document.readyState !== 'loading') _showTableSeedNotice();",
+        "replace": "    if (document.readyState !== 'loading') _showTableSeedNotice();"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "the PAGE LOAD covers all five tables",
+    "expect": "fail"
+  },
+  {
+    "name": "the seed ledger is dropped from the config file's workspace block",
+    "why": "The ledger's DIFFERENCE from the stored rows is the only record anywhere that the user deleted a built-in row. Leave it out of an export and a config file stops meaning what it says: the destination has no entry saying the row was ever offered, so the next load hands it straight back — the file recorded the deletion and the import undid it.",
+    "edits": [
+      {
+        "find": "        {\n            group: 'seedledger',\n            label: 'Lookup-table seed ledger',",
+        "replace": "        {\n            group: 'seedledger',\n            label: 'Lookup-table seed ledger',\n            keys: [],\n            _disabled: true,"
+      },
+      {
+        "find": "            keys: [_TABLE_SEED_LEDGER_KEY],\n        },\n    ];",
+        "replace": "        },\n    ];"
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "the exporter resolves each key to the group",
+    "expect": "fail"
+  },
+  {
+    "name": "the row-key comparison drops its String() coercion",
+    "why": "Recorded as an honest PASS. Every built-in row key in all five tables is already a string, so === and String()-normalised comparison cannot disagree today. The coercion is there because a stored row arrives from JSON and from a table editor that hands back whatever the user typed — a numeric-looking key would round-trip as a number from one path and a string from the other. Nothing can exercise that until such a row exists.",
+    "edits": [
+      {
+        "find": "            const present = new Set(have.filter(r => Array.isArray(r)).map(r => String(r[0])));",
+        "replace": "            const present = new Set(have.filter(r => Array.isArray(r)).map(r => r[0]));"
+      }
+    ],
+    "spec": "tests/fixtures/table-seed-ledger.spec.js",
+    "grep": "is not duplicated when it becomes a built-in",
+    "expect": "pass"
+  }
+]

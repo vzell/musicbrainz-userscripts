@@ -3434,47 +3434,80 @@
      *
      * @returns {void}
      */
+    /**
+     * Injects the shared stylesheet for the startup notices, once.
+     *
+     * Two notices use it — {@link _showSettingsMigrationNotice} and
+     * {@link _showTableSeedNotice} — and they look alike on purpose: both say
+     * "this version changed something in your profile, here is what, and here
+     * is how to put it back". Two copies of the same 30 lines would drift, and
+     * the second notice arriving in a slightly different yellow would read as
+     * a different kind of message than it is.
+     *
+     * Keyed on a CLASS rather than each notice's id, so a third one costs a
+     * class name and nothing else. The ids stay — they are what the specs and
+     * the dismiss handlers address individually.
+     *
+     * `GM_addStyle`, never an inline `style=` attribute: MusicBrainz's
+     * `/account/*` pages serve a `style-src` CSP with no `unsafe-inline`, and
+     * a notice that renders as an unstyled stack of text in the middle of the
+     * page would be worse than none. That is what forced VZ_MBLibrary 4.0.0 to
+     * convert its own dialogs.
+     *
+     * @returns {void}
+     */
+    function _ensureStartupNoticeStyle() {
+        if (typeof GM_addStyle !== 'function') return;
+        if (document.getElementById('mb-sa-startup-notice-style')) return;
+        const el = GM_addStyle([
+            '.mb-sa-startup-notice {',
+            '    position: fixed; top: 12px; right: 12px; z-index: 2147483000;',
+            '    max-width: 460px; max-height: 70vh; overflow-y: auto;',
+            '    background: #fffaf0; border: 2px solid #d38b1f; border-radius: 6px;',
+            '    box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 12px 14px;',
+            '    font-family: sans-serif; font-size: 13px; color: #222;',
+            '}',
+            '.mb-sa-startup-notice h4 {',
+            '    margin: 0 0 6px 0; font-size: 14px; color: #8a5a00;',
+            '}',
+            '.mb-sa-startup-notice p { margin: 0 0 8px 0; line-height: 1.45; }',
+            '.mb-sa-startup-notice ul {',
+            '    margin: 0 0 8px 0; padding-left: 18px; line-height: 1.5;',
+            '}',
+            '.mb-sa-startup-notice code {',
+            '    background: #f0e6d2; padding: 0 3px; border-radius: 2px;',
+            '}',
+            '.mb-sa-startup-notice .mb-smn-actions {',
+            '    display: flex; gap: 8px; justify-content: flex-end;',
+            '}',
+            '.mb-sa-startup-notice button {',
+            '    cursor: pointer; padding: 4px 10px; border-radius: 4px;',
+            '    border: 1px solid #b08030; background: #fff; font-size: 12px;',
+            '}',
+            '.mb-sa-startup-notice button:hover { background: #f4e7cf; }',
+            '.mb-sa-startup-notice .mb-smn-note {',
+            '    font-size: 11.5px; color: #555; margin-top: 2px;',
+            '}',
+            // The second notice stacks under the first when both fire on the
+            // same load — a profile upgrading across several versions can
+            // legitimately get both, and one covering the other would make the
+            // hidden one undismissable.
+            '#mb-table-seed-notice { top: auto; bottom: 12px; }',
+        ].join('\n'));
+        if (el) el.id = 'mb-sa-startup-notice-style';
+    }
+
     function _showSettingsMigrationNotice() {
         if (typeof GM_getValue === 'undefined' || !document.body) return;
         const report = GM_getValue(_SETTINGS_MIGRATION_NOTICE_KEY, null);
         if (!report || !Array.isArray(report.adopted) || report.adopted.length === 0) return;
         if (document.getElementById('mb-settings-migration-notice')) return;
 
-        if (typeof GM_addStyle === 'function') {
-            GM_addStyle([
-                '#mb-settings-migration-notice {',
-                '    position: fixed; top: 12px; right: 12px; z-index: 2147483000;',
-                '    max-width: 460px; max-height: 70vh; overflow-y: auto;',
-                '    background: #fffaf0; border: 2px solid #d38b1f; border-radius: 6px;',
-                '    box-shadow: 0 4px 14px rgba(0,0,0,.28); padding: 12px 14px;',
-                '    font-family: sans-serif; font-size: 13px; color: #222;',
-                '}',
-                '#mb-settings-migration-notice h4 {',
-                '    margin: 0 0 6px 0; font-size: 14px; color: #8a5a00;',
-                '}',
-                '#mb-settings-migration-notice p { margin: 0 0 8px 0; line-height: 1.45; }',
-                '#mb-settings-migration-notice ul {',
-                '    margin: 0 0 8px 0; padding-left: 18px; line-height: 1.5;',
-                '}',
-                '#mb-settings-migration-notice code {',
-                '    background: #f0e6d2; padding: 0 3px; border-radius: 2px;',
-                '}',
-                '#mb-settings-migration-notice .mb-smn-actions {',
-                '    display: flex; gap: 8px; justify-content: flex-end;',
-                '}',
-                '#mb-settings-migration-notice button {',
-                '    cursor: pointer; padding: 4px 10px; border-radius: 4px;',
-                '    border: 1px solid #b08030; background: #fff; font-size: 12px;',
-                '}',
-                '#mb-settings-migration-notice button:hover { background: #f4e7cf; }',
-                '#mb-settings-migration-notice .mb-smn-note {',
-                '    font-size: 11.5px; color: #555; margin-top: 2px;',
-                '}',
-            ].join('\n'));
-        }
+        _ensureStartupNoticeStyle();
 
         const box = document.createElement('div');
         box.id = 'mb-settings-migration-notice';
+        box.className = 'mb-sa-startup-notice';
 
         const h = document.createElement('h4');
         h.textContent = '⚙️ Settings updated to current defaults';
@@ -3572,6 +3605,363 @@
         return restored;
     }
 
+    // ── The five type:'table' settings, and rows shipped in a later version ──
+    //
+    // org/config-handling.org F1's closing note, and the last thing left in
+    // that file. The five are lazy-seeded from code on FIRST USE and never
+    // reconsult the built-ins, so a row added in a later version reaches
+    // nobody who already has the table. The escape has been to empty the table
+    // in the editor, save, and reload — which throws away every row you
+    // entered by hand to get one you did not.
+    //
+    // **F1 called this unsolvable, and it was right about the reason:**
+    // /"Merging built-in rows into stored ones cannot tell 'the user deleted
+    // this row' from 'the user has never seen it', and unlike the scalar case
+    // there is no historical value to recognise — a row is not a default."/
+    //
+    // The way out is to stop trying to infer it and start RECORDING it. The
+    // ledger below holds, per table, every built-in row key this profile has
+    // ever been offered. A built-in key absent from the ledger has never been
+    // seen and is added; a key in the ledger but not in storage was deleted on
+    // purpose and stays deleted. Same shape, and the same reason, as
+    // `vz-mb-colvis-touched-*`, which distinguishes "the user chose this
+    // column's visibility" from "never asked" for exactly this purpose.
+    //
+    // **Doing this NOW is what makes it exact rather than a bet.** Measured
+    // with `scripts/dump-table-seed-history.py` over all 623 revisions of this
+    // file: *the built-in tables have never gained or lost a single row* since
+    // the day each was introduced. So every existing profile was seeded from
+    // precisely today's built-ins, and recording today's keys as "already
+    // offered" is not a guess — it is a fact about every install in existence.
+    // Ship one new row first and that certainty is gone permanently, because
+    // an absent key would then be genuinely ambiguous. This is the last moment
+    // the cheap version of this fix is available, which is the whole argument
+    // for building it while there is nothing to fix.
+
+    /** Per-table record of which built-in row keys have been offered. */
+    const _TABLE_SEED_LEDGER_KEY = 'sa_table_seed_ledger';
+    /** Pending report for {@link _showTableSeedNotice}. */
+    const _TABLE_SEED_NOTICE_KEY = 'sa_table_seed_notice';
+
+    /**
+     * The five `type: 'table'` settings, their built-in rows, and whether a
+     * newly-arrived row is worth telling the user about.
+     *
+     * **A function, not a constant, and that is load-bearing.** Two of the
+     * three built-in sources (`SA_UNICODE_CHARS_DEFAULT`, the `REL_*_DEFAULT`
+     * trio) are declared tens of thousands of lines further down this file.
+     * Module-level `const`s are in the temporal dead zone until evaluated, so
+     * an array literal here would throw `ReferenceError` at load. Deferring
+     * the reads into a call made late (see the `_seedNewTableRows()` call site
+     * at the foot of the IIFE) is what makes one registry possible at all.
+     *
+     * `announce` implements the one distinction that matters to a user: four
+     * of these tables are ADDITIVE and invisible until you go looking — a new
+     * character in the Unicode picker, an icon for a relationship you may
+     * never encounter — while a new row in `sa_default_hidden_columns` HIDES A
+     * COLUMN. A column vanishing on upgrade with nothing saying why reads as a
+     * bug, and a banner that fires for the other four as well is a banner
+     * people learn to dismiss unread.
+     *
+     * @returns {Array<{key: string, label: string, announce: boolean,
+     *                  rows: function(): Array<Array<string>>,
+     *                  describe: function(Array<string>): string}>}
+     */
+    function _TABLE_SEED_REGISTRY() {
+        return [
+            {
+                key: 'sa_default_hidden_columns',
+                label: 'Default Hidden Columns',
+                announce: true,
+                rows: () => SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT.map(e => [e.pageType, e.columns]),
+                describe: (row) => `${row[1]} hidden by default on ${row[0]}`,
+            },
+            {
+                key: 'sa_rel_url_icon_classes',
+                label: 'Relationships — URL icon classes',
+                announce: false,
+                rows: () => Object.entries(REL_URL_ICON_CLASSES_DEFAULT),
+                describe: (row) => `${row[0]} → ${row[1]}`,
+            },
+            {
+                key: 'sa_rel_other_db_classes',
+                label: 'Relationships — other-database icon classes',
+                announce: false,
+                rows: () => Object.entries(REL_OTHER_DB_CLASSES_DEFAULT),
+                describe: (row) => `${row[0]} → ${row[1]}`,
+            },
+            {
+                key: 'sa_rel_streaming_classes',
+                label: 'Relationships — streaming icon classes',
+                announce: false,
+                rows: () => Object.entries(REL_STREAMING_CLASSES_DEFAULT),
+                describe: (row) => `${row[0]} → ${row[1]}`,
+            },
+            {
+                key: 'sa_unicode_char_picker_mappings',
+                label: 'Unicode Character Picker',
+                announce: false,
+                rows: () => SA_UNICODE_CHARS_DEFAULT.map(e => [
+                    e.code, e.name, e.default ? 'true' : 'false', e.examples || '',
+                ]),
+                describe: (row) => `${row[0]} (${row[1]})`,
+            },
+        ];
+    }
+
+    /**
+     * Offers each table the built-in rows this profile has never been shown.
+     *
+     * Runs on every page load and is idempotent — the LEDGER is the guard, not
+     * a version number. That is a deliberate difference from
+     * {@link _migrateFrozenSettings}, whose `sa_settings_migration_level` makes
+     * it strictly one-shot: this pass has to keep working for every future
+     * version that adds a row, so "have I run" is the wrong question and
+     * "has this row been offered" is the right one.
+     *
+     * Per table, in order:
+     *
+     *   • **Nothing stored** (never used, or emptied in the editor) — record
+     *     the full built-in key set and write NOTHING. The lazy seeder owns
+     *     that case and always seeds the complete current set, so leaving it
+     *     alone keeps one writer. Self-correcting too: if a later version adds
+     *     a row before the seeder has ever run, the seeder still emits the
+     *     whole set including it.
+     *   • **Stored rows, no ledger entry** — a profile from before this
+     *     existed. Adopt today's built-in keys and add nothing. Exact rather
+     *     than cautious: the built-ins have never changed, so today's set IS
+     *     what this profile was seeded with.
+     *   • **Stored rows with a ledger** — append every built-in row whose key
+     *     is in neither the ledger nor the stored rows.
+     *
+     * The stored-rows check is not redundant with the ledger check: a user can
+     * have added a row by hand that later becomes a built-in, and appending a
+     * duplicate key would give the table two rows with the same key and let
+     * `_loadMap()`'s last-writer-wins loop silently override their value.
+     *
+     * `unreadable` counts registry entries whose `rows()` threw. It exists
+     * because the try/catch below makes the one mistake this design invites —
+     * calling the pass too early, where the built-in constants are still in
+     * the temporal dead zone — SILENT: every entry would be skipped, the
+     * ledger would stay empty, and the only trace would be a `Lib.warn` that
+     * is off by default. A count the tests can assert is what turns that back
+     * into something noticeable. Mutation-testing found this: a mutation that
+     * moved the call to the startup block passed, because the catch swallowed
+     * five ReferenceErrors in a row.
+     *
+     * @returns {{offered: number, unreadable: number,
+     *            byTable: Object<string, string[]>}}
+     *   How many rows were added, how many tables could not be read at all,
+     *   and the added rows' descriptions per table key.
+     */
+    function _seedNewTableRows() {
+        const result = { offered: 0, unreadable: 0, byTable: {} };
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') {
+            return result;
+        }
+
+        const stored = GM_getValue(_TABLE_SEED_LEDGER_KEY, null);
+        const ledger = (stored && typeof stored === 'object' && !Array.isArray(stored))
+            ? stored : {};
+        let ledgerChanged = false;
+        const announce = [];
+
+        for (const entry of _TABLE_SEED_REGISTRY()) {
+            let builtins;
+            try {
+                builtins = entry.rows();
+            } catch (err) {
+                // Almost always means this ran too early — see `unreadable`
+                // in the JSDoc, and the call site at the foot of the IIFE.
+                result.unreadable++;
+                Lib.warn('init', `_seedNewTableRows: could not read built-ins for ${entry.key}:`, err);
+                continue;
+            }
+            if (!Array.isArray(builtins) || builtins.length === 0) {
+                result.unreadable++;
+                continue;
+            }
+            const builtinKeys = builtins.map(r => String(r[0]));
+
+            const rows = GM_getValue(entry.key, undefined);
+            const have = Array.isArray(rows) ? rows : null;
+
+            if (!have || have.length === 0) {
+                // The lazy seeder owns this case and seeds the full set.
+                if (String(ledger[entry.key] || '') !== String(builtinKeys)) {
+                    ledger[entry.key] = builtinKeys;
+                    ledgerChanged = true;
+                }
+                continue;
+            }
+
+            if (!Array.isArray(ledger[entry.key])) {
+                ledger[entry.key] = builtinKeys;
+                ledgerChanged = true;
+                Lib.debug('init',
+                    `_seedNewTableRows: ${entry.key} adopted ${builtinKeys.length} built-in ` +
+                    'key(s) into the ledger, adding nothing — pre-ledger profile');
+                continue;
+            }
+
+            const seen = new Set(ledger[entry.key].map(String));
+            const present = new Set(have.filter(r => Array.isArray(r)).map(r => String(r[0])));
+            const fresh = builtins.filter(r => !seen.has(String(r[0])) && !present.has(String(r[0])));
+
+            // Everything the built-ins now hold counts as offered, including a
+            // key the user had already added by hand — offering it twice is
+            // what the `present` check above prevents, and forgetting to
+            // record it would make this pass reconsider it every load.
+            for (const k of builtinKeys) {
+                if (!seen.has(k)) { ledger[entry.key].push(k); ledgerChanged = true; }
+            }
+
+            if (fresh.length === 0) continue;
+
+            GM_setValue(entry.key, have.concat(fresh));
+            result.offered += fresh.length;
+            result.byTable[entry.key] = fresh.map(entry.describe);
+            Lib.info('init',
+                `_seedNewTableRows: ${entry.key} gained ${fresh.length} row(s) shipped ` +
+                `in a later version: ${result.byTable[entry.key].join(', ')}`);
+
+            if (entry.announce) {
+                announce.push({
+                    key: entry.key,
+                    label: entry.label,
+                    rows: fresh,
+                    described: result.byTable[entry.key],
+                });
+            }
+        }
+
+        if (ledgerChanged) GM_setValue(_TABLE_SEED_LEDGER_KEY, ledger);
+        if (announce.length > 0) {
+            GM_setValue(_TABLE_SEED_NOTICE_KEY, { tables: announce, at: Date.now() });
+        }
+        return result;
+    }
+
+    /**
+     * Removes the rows {@link _seedNewTableRows} last added, on the user's say-so.
+     *
+     * The LEDGER ENTRY IS KEPT, exactly as {@link _undoSettingsMigration} keeps
+     * the migration level: the user has said no, and a pass that forgot would
+     * re-offer the same rows on the very next load and undo their undo.
+     *
+     * Matching is by row KEY rather than by deep-equality of the whole row, so
+     * a row the user edited between the addition and the undo is still removed
+     * — they are saying they do not want that entry, not that they want the
+     * version of it they happened to see.
+     *
+     * @returns {number}  How many rows were removed.
+     */
+    function _undoSeededTableRows() {
+        if (typeof GM_getValue === 'undefined' || typeof GM_setValue === 'undefined') return 0;
+        const report = GM_getValue(_TABLE_SEED_NOTICE_KEY, null);
+        if (!report || !Array.isArray(report.tables)) return 0;
+
+        let removed = 0;
+        for (const table of report.tables) {
+            const rows = GM_getValue(table.key, undefined);
+            if (!Array.isArray(rows)) continue;
+            const drop = new Set((table.rows || []).map(r => String(r[0])));
+            const kept = rows.filter(r => !(Array.isArray(r) && drop.has(String(r[0]))));
+            removed += rows.length - kept.length;
+            GM_setValue(table.key, kept);
+        }
+        if (typeof GM_deleteValue !== 'undefined') {
+            GM_deleteValue(_TABLE_SEED_NOTICE_KEY);
+        }
+        Lib.info('init', `Seeded table rows undone — ${removed} row(s) removed.`);
+        return removed;
+    }
+
+    /**
+     * Tells the user a built-in row arrived that changes what the page does.
+     *
+     * Only `sa_default_hidden_columns` reaches here — see
+     * `_TABLE_SEED_REGISTRY()`'s `announce` flag. The other four tables are
+     * additive and invisible until you go looking, and a banner for those is a
+     * banner people stop reading.
+     *
+     * Driven by a GM key rather than a session flag, like the migration
+     * notice, so navigating away before reading it does not lose it.
+     *
+     * @returns {void}
+     */
+    function _showTableSeedNotice() {
+        if (typeof GM_getValue === 'undefined' || !document.body) return;
+        const report = GM_getValue(_TABLE_SEED_NOTICE_KEY, null);
+        if (!report || !Array.isArray(report.tables) || report.tables.length === 0) return;
+        if (document.getElementById('mb-table-seed-notice')) return;
+
+        _ensureStartupNoticeStyle();
+
+        const total = report.tables.reduce((n, t) => n + (t.described || []).length, 0);
+        if (total === 0) return;
+
+        const box = document.createElement('div');
+        box.id = 'mb-table-seed-notice';
+        box.className = 'mb-sa-startup-notice';
+
+        const h = document.createElement('h4');
+        h.textContent = '⚙️ A new default was applied';
+        box.appendChild(h);
+
+        const p = document.createElement('p');
+        p.textContent = 'This version ships ' + total + ' new default row' +
+            (total === 1 ? '' : 's') + ' that your profile had never been offered. ' +
+            'Because this one hides a column, it is worth saying so rather than ' +
+            'letting a column quietly disappear:';
+        box.appendChild(p);
+
+        const ul = document.createElement('ul');
+        for (const table of report.tables) {
+            for (const line of (table.described || [])) {
+                const li = document.createElement('li');
+                li.textContent = line;
+                ul.appendChild(li);
+            }
+        }
+        box.appendChild(ul);
+
+        const note = document.createElement('p');
+        note.className = 'mb-smn-note';
+        note.textContent = 'Rows you entered yourself are untouched, and a row you ' +
+            'deleted is never offered again.';
+        box.appendChild(note);
+
+        const actions = document.createElement('div');
+        actions.className = 'mb-smn-actions';
+
+        const undo = document.createElement('button');
+        undo.type = 'button';
+        undo.id = 'mb-tsn-undo';
+        undo.textContent = '↩︎ Undo and reload';
+        undo.title = 'Remove the rows again, and do not offer them a second time.';
+        undo.addEventListener('click', () => {
+            _undoSeededTableRows();
+            location.reload();
+        });
+
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.id = 'mb-tsn-dismiss';
+        ok.textContent = '✓ Keep';
+        ok.addEventListener('click', () => {
+            if (typeof GM_deleteValue !== 'undefined') {
+                GM_deleteValue(_TABLE_SEED_NOTICE_KEY);
+            }
+            box.remove();
+        });
+
+        actions.appendChild(undo);
+        actions.appendChild(ok);
+        box.appendChild(actions);
+        document.body.appendChild(box);
+    }
+
     _migrateFrozenSettings();
     _coerceNumericSettings();
     // Registered here rather than at each entry point, so the library's own two
@@ -3592,6 +3982,16 @@
         document.addEventListener('DOMContentLoaded', _showSettingsMigrationNotice, { once: true });
     } else {
         _showSettingsMigrationNotice();
+    }
+
+    // `_seedNewTableRows()` itself cannot run here — it reads built-in
+    // constants declared tens of thousands of lines further down, which are in
+    // the temporal dead zone until then. It is called at the FOOT of this
+    // IIFE; see that call site. Its notice is armed here beside the migration
+    // one so the two share a readyState guard and a reading order, and because
+    // by the time the pass runs the document is ready in every real case.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _showTableSeedNotice, { once: true });
     }
 
     //--------------------------------------------------------------------------------
@@ -65837,7 +66237,13 @@ a { color: #1565c0; }`;
      *     what this INSTALL has already repaired (F1).  Importing another
      *     profile's level would mark a frozen profile as migrated, and
      *     importing its backup would offer to "undo" a migration that never ran
-     *     here.  They are install state, not user state.
+     *     here.  They are install state, not user state.  **The seed ledger is
+     *     the near-miss to compare against**: it looks like the same kind of
+     *     bookkeeping and is carried, because its difference from the stored
+     *     rows is the only record anywhere that the user DELETED a built-in
+     *     row.  See its own registry entry.
+     *   • `sa_table_seed_notice` — the pending banner for the above.  Transient
+     *     and about this install's last upgrade, like `_notice` beside it.
      *   • IndexedDB (`vz-mb-saed-art-cache`) — not GM storage at all, and a
      *     cache besides.
      *
@@ -65899,6 +66305,27 @@ a { color: #1565c0; }`;
             group: 'libprefs',
             label: 'Library display preferences',
             keys: ['vz-lib-prefs'],
+        },
+        {
+            group: 'seedledger',
+            label: 'Lookup-table seed ledger',
+            // Which built-in rows this profile has been offered
+            // (`_seedNewTableRows()`). Carried DELIBERATELY, unlike the
+            // migration trio a few lines up in the "not here" list, and the
+            // distinction is worth stating because the two look alike.
+            //
+            // The migration level records what the SCRIPT did to this install.
+            // This records what the USER was shown — and therefore, by its
+            // difference from the stored rows, which built-in rows they chose
+            // to DELETE. That is user state, and it is the only place that
+            // intent is written down anywhere.
+            //
+            // Leave it behind and a config file stops meaning what it says: a
+            // profile that deleted a built-in row exports rows without it, the
+            // destination has no ledger entry saying it was ever offered, and
+            // the next load hands it straight back. The file would have
+            // recorded the deletion and the import would have undone it.
+            keys: [_TABLE_SEED_LEDGER_KEY],
         },
     ];
 
@@ -66740,13 +67167,23 @@ a { color: #1565c0; }`;
         'single from': 'data:image/gif;base64,R0lGODlhDwALAJEAAP2ZAZmZmf///wAAACH5BAAAAAAALAAAAAAPAAsAAAIflI+pq2ABY0DAiYmwqOyaCoaHxjHaZp0e9UhQB8dCAQA7',
     };
 
-    /**
-     * MB URL relation-type string → MusicBrainz stylesheet icon class suffix.
-     * Default values here are overwritten at startup by `_initRelMappings()`
-     * from the `sa_rel_url_icon_classes` setting. Read via
-     * `REL_URL_ICON_CLASSES[relType]` when resolving a URL relationship's icon.
-     */
-    let REL_URL_ICON_CLASSES = {
+    // ── The three Relationships icon tables' BUILT-IN rows ──────────────────
+    //
+    // Each of these was written out TWICE — once as the `let REL_*`
+    // initializer below, and once as the second argument of the matching
+    // `_loadMap()` call inside `_initRelMappings()`. Two copies of the same
+    // list, thousands of lines apart, with nothing keeping them equal: a row
+    // added to one and not the other would make the seeded table disagree
+    // with the fallback a `@require` failure falls back to, silently.
+    //
+    // They are now one constant each, read by both. `_TABLE_SEED_REGISTRY()`
+    // is a third reader — it needs the built-ins to answer "has this profile
+    // ever been offered this row", which is what org/config-handling.org F1's
+    // closing note is about — and a third copy would have been the point at
+    // which this stopped being survivable.
+
+    /** Built-in rows for `sa_rel_url_icon_classes`. */
+    const REL_URL_ICON_CLASSES_DEFAULT = {
         'allmusic':                           'allmusic',
         'amazon asin':                        'amazon',
         'creative commons licensed download': 'creativecommons',
@@ -66757,13 +67194,8 @@ a { color: #1565c0; }`;
         'vgmdb':                              'vgmdb',
         'wikidata':                           'wikidata',
     };
-    /**
-     * Partial domain string → MusicBrainz stylesheet icon class suffix, for
-     * "other database" relationship URLs. Default values here are overwritten
-     * at startup by `_initRelMappings()` from the `sa_rel_other_db_classes`
-     * setting. Read via `_relFindIconClass(url, REL_OTHER_DB_CLASSES)`.
-     */
-    let REL_OTHER_DB_CLASSES = {
+    /** Built-in rows for `sa_rel_other_db_classes`. */
+    const REL_OTHER_DB_CLASSES_DEFAULT = {
         'd-nb.info':               'dnb',
         'www.musik-sammler.de':    'musiksammler',
         'rateyourmusic.com':       'rateyourmusic',
@@ -66771,14 +67203,8 @@ a { color: #1565c0; }`;
         'nocs.acum.org.il':        'acum',
         'stereo-ve-mono.com':      'stereo-ve-mono',
     };
-    /**
-     * Partial URL string → MusicBrainz stylesheet icon class suffix, for
-     * streaming/download service relationship URLs. Default values here are
-     * overwritten at startup by `_initRelMappings()` from the
-     * `sa_rel_streaming_classes` setting. Read via
-     * `_relFindIconClass(url, REL_STREAMING_CLASSES)`.
-     */
-    let REL_STREAMING_CLASSES = {
+    /** Built-in rows for `sa_rel_streaming_classes`. */
+    const REL_STREAMING_CLASSES_DEFAULT = {
         'music.amazon.':          'amazonmusic',
         'music.apple.com':        'applemusic',
         'bandcamp.com':           'bandcamp',
@@ -66795,6 +67221,31 @@ a { color: #1565c0; }`;
         'mediafire.com':          'mediafire',
         'store.steampowered.com': 'steam',
     };
+
+    /**
+     * MB URL relation-type string → MusicBrainz stylesheet icon class suffix.
+     * Seeded from {@link REL_URL_ICON_CLASSES_DEFAULT} and overwritten at
+     * startup by `_initRelMappings()` from the `sa_rel_url_icon_classes`
+     * setting. Read via `REL_URL_ICON_CLASSES[relType]` when resolving a URL
+     * relationship's icon.
+     */
+    let REL_URL_ICON_CLASSES = { ...REL_URL_ICON_CLASSES_DEFAULT };
+    /**
+     * Partial domain string → MusicBrainz stylesheet icon class suffix, for
+     * "other database" relationship URLs. Seeded from
+     * {@link REL_OTHER_DB_CLASSES_DEFAULT} and overwritten at startup by
+     * `_initRelMappings()` from the `sa_rel_other_db_classes` setting. Read
+     * via `_relFindIconClass(url, REL_OTHER_DB_CLASSES)`.
+     */
+    let REL_OTHER_DB_CLASSES = { ...REL_OTHER_DB_CLASSES_DEFAULT };
+    /**
+     * Partial URL string → MusicBrainz stylesheet icon class suffix, for
+     * streaming/download service relationship URLs. Seeded from
+     * {@link REL_STREAMING_CLASSES_DEFAULT} and overwritten at startup by
+     * `_initRelMappings()` from the `sa_rel_streaming_classes` setting. Read
+     * via `_relFindIconClass(url, REL_STREAMING_CLASSES)`.
+     */
+    let REL_STREAMING_CLASSES = { ...REL_STREAMING_CLASSES_DEFAULT };
 
     /**
      * Extracts a MusicBrainz MBID from the first qualifying anchor in the given row.
@@ -67657,42 +68108,11 @@ a { color: #1565c0; }`;
             return obj;
         }
 
-        REL_URL_ICON_CLASSES = _loadMap('sa_rel_url_icon_classes', {
-            'allmusic':                           'allmusic',
-            'amazon asin':                        'amazon',
-            'creative commons licensed download': 'creativecommons',
-            'discogs':                            'discogs',
-            'imdb':                               'imdb',
-            'lyrics':                             'lyrics',
-            'secondhandsongs':                    'secondhandsongs',
-            'vgmdb':                              'vgmdb',
-            'wikidata':                           'wikidata',
-        });
-        REL_OTHER_DB_CLASSES = _loadMap('sa_rel_other_db_classes', {
-            'd-nb.info':               'dnb',
-            'www.musik-sammler.de':    'musiksammler',
-            'rateyourmusic.com':       'rateyourmusic',
-            'www.worldcat.org':        'worldcat',
-            'nocs.acum.org.il':        'acum',
-            'stereo-ve-mono.com':      'stereo-ve-mono',
-        });
-        REL_STREAMING_CLASSES = _loadMap('sa_rel_streaming_classes', {
-            'music.amazon.':          'amazonmusic',
-            'music.apple.com':        'applemusic',
-            'bandcamp.com':           'bandcamp',
-            'www.deezer.com':         'deezer',
-            'www.hdtracks.com':       'hdtracks',
-            'itunes.apple.com':       'itunes',
-            'qobuz.com':              'qobuz',
-            'soundcloud.com':         'soundcloud',
-            'open.spotify.com':       'spotify',
-            'tidal.com':              'tidal',
-            'beatport.com':           'beatport',
-            'youtube.com':            'youtube',
-            'archive.org':            'archive',
-            'mediafire.com':          'mediafire',
-            'store.steampowered.com': 'steam',
-        });
+        // The built-ins are the REL_*_DEFAULT constants, never a literal
+        // repeated here — see their own comment for why that mattered.
+        REL_URL_ICON_CLASSES  = _loadMap('sa_rel_url_icon_classes',  REL_URL_ICON_CLASSES_DEFAULT);
+        REL_OTHER_DB_CLASSES  = _loadMap('sa_rel_other_db_classes',  REL_OTHER_DB_CLASSES_DEFAULT);
+        REL_STREAMING_CLASSES = _loadMap('sa_rel_streaming_classes', REL_STREAMING_CLASSES_DEFAULT);
         Lib.debug('relationships', '_initRelMappings: REL_* tables refreshed');
     }
 
@@ -84224,6 +84644,30 @@ a { color: #1565c0; }`;
         }
     };
 
+    // ── Offer the five type:'table' settings any built-in row they have never
+    //    been shown (org/config-handling.org F1's closing note) ──────────────
+    //
+    // **Called HERE, at the foot of the IIFE, and that is not cosmetic.**
+    // `_TABLE_SEED_REGISTRY()` reads `SA_UNICODE_CHARS_DEFAULT` and the three
+    // `REL_*_DEFAULT` maps, all declared tens of thousands of lines above this
+    // point but far BELOW the startup block where `_migrateFrozenSettings()`
+    // runs. Module-level `const`s sit in the temporal dead zone until their
+    // declaration is evaluated, so calling this up there throws
+    // `ReferenceError` — and `node --check` cannot see it, because the TDZ is
+    // a runtime rule and not a syntax one.
+    //
+    // Late is also correct rather than merely safe: all three lazy seeders run
+    // later still — `_loadDefaultHiddenColumnsMap()` from the render tail,
+    // `_initRelMappings()` from the Relationships pipeline,
+    // `_loadUnicodeCharsMappings()` when the picker is opened — so this pass
+    // always gets to decide before any of them writes.
+    //
+    // The notice is shown directly when the document is already parsed, which
+    // it is at `@run-at document-idle`; the `loading` case was armed beside
+    // the migration notice in the startup block.
+    _seedNewTableRows();
+    if (document.readyState !== 'loading') _showTableSeedNotice();
+
     // ── Test-mode debug hook (__saTest) ─────────────────────────────────────
     // Introspection surface for the Playwright test harness (see
     // tests/support/loadPage.js's `testMode` option, which sets
@@ -84511,6 +84955,58 @@ a { color: #1565c0; }`;
              */
             workspaceKeys() {
                 return _configWorkspaceKeys();
+            },
+
+            /**
+             * Runs the built-in-row seeding pass and returns what it offered.
+             *
+             * Write-capable, like `runSettingsMigration()` beside it, and for
+             * the same reason: the pass's only production trigger is the foot
+             * of this IIFE on page load, which has already happened by the time
+             * a test can look. Calling it again is safe — the LEDGER is the
+             * guard, not a one-shot level, so a second call on an unchanged
+             * profile offers nothing.
+             *
+             * What makes this untestable any other way: the built-in tables
+             * have never changed in 623 revisions (see
+             * `scripts/dump-table-seed-history.py`), so there is no version of
+             * this script in which a row actually arrives. A test has to
+             * manufacture the situation by rewriting the ledger, and then ask
+             * this what happened.
+             *
+             * @returns {{offered: number, byTable: Object<string, string[]>}}
+             */
+            seedNewTableRows() {
+                return _seedNewTableRows();
+            },
+
+            /**
+             * Removes the rows the last seeding pass added — the ↩︎ Undo path.
+             *
+             * Exposed because that button lives in a banner that only appears
+             * for `sa_default_hidden_columns`, and it ends in
+             * `location.reload()`.
+             *
+             * @returns {number} How many rows were removed.
+             */
+            undoSeededTableRows() {
+                return _undoSeededTableRows();
+            },
+
+            /**
+             * The seed ledger as stored: `{tableKey: [rowKey, ...]}`.
+             *
+             * The ledger is the whole mechanism and has no DOM surface at all —
+             * a profile that was offered a row and declined it is
+             * byte-identical, in the table editor, to one that never saw it.
+             * That indistinguishability is the defect this feature exists to
+             * remove, so a test has to be able to read the record itself.
+             *
+             * @returns {Object<string, string[]>|null}
+             */
+            tableSeedLedger() {
+                return (typeof GM_getValue !== 'undefined')
+                    ? GM_getValue(_TABLE_SEED_LEDGER_KEY, null) : null;
             },
 
             /**

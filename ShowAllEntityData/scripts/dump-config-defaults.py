@@ -72,15 +72,21 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USERSCRIPT = os.path.join(ROOT, 'ShowAllEntityData.user.js')
 DEFAULT_OUT = os.path.join(ROOT, 'ShowAllEntityData_CONFIG_DEFAULTS.json')
 
-# The three lazy seeders, as {config key: (symbol named in the code, how to find it)}.
-# 'const' means a module-level `const NAME = <literal>;`; 'loadmap' means the
-# object literal passed as _loadMap()'s second argument inside _initRelMappings().
+# The five lazy seeders' built-ins, as {config key: (const name, opening bracket)}.
+#
+# All five are module-level `const NAME = <literal>;` — which they were not
+# until 9.99.1142. The three rel maps used to be written out TWICE, once as the
+# `let REL_*` initializer and once as the object literal passed to _loadMap()
+# inside _initRelMappings(), and this script had a whole second parsing branch
+# to chase the call site. Hoisting them to one constant each (for
+# `_TABLE_SEED_REGISTRY()`, which needs a third reader) deleted that branch and
+# the duplication it existed to cope with.
 TABLE_SEEDS = {
-    'sa_default_hidden_columns':       ('SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT', 'const'),
-    'sa_unicode_char_picker_mappings': ('SA_UNICODE_CHARS_DEFAULT', 'const'),
-    'sa_rel_url_icon_classes':         ("_initRelMappings()'s _loadMap literal", 'loadmap'),
-    'sa_rel_other_db_classes':         ("_initRelMappings()'s _loadMap literal", 'loadmap'),
-    'sa_rel_streaming_classes':        ("_initRelMappings()'s _loadMap literal", 'loadmap'),
+    'sa_default_hidden_columns':       ('SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT', '['),
+    'sa_unicode_char_picker_mappings': ('SA_UNICODE_CHARS_DEFAULT', '['),
+    'sa_rel_url_icon_classes':         ('REL_URL_ICON_CLASSES_DEFAULT', '{'),
+    'sa_rel_other_db_classes':         ('REL_OTHER_DB_CLASSES_DEFAULT', '{'),
+    'sa_rel_streaming_classes':        ('REL_STREAMING_CLASSES_DEFAULT', '{'),
 }
 
 
@@ -370,24 +376,23 @@ def _to_gm_rows(key, literal):
 
 
 def parse_table_seeds(src):
-    """Parse the three lazy seeders' built-in rows.
+    """Parse the five lazy seeders' built-in rows.
 
     Recorded because the 5 `type: 'table'` settings have no `default:`: their
     built-ins live in code, so "no default" in the snapshot would hide a change
     to them completely — the exact blindness this artifact exists to remove.
+
+    That blindness is now load-bearing in a second way. `_seedNewTableRows()`
+    offers a profile any built-in row it has never been shown, and the ledger
+    it keeps makes a row ADDED here reach existing users. So a change to one of
+    these literals is a user-visible change, and this snapshot is what makes it
+    show up in a diff.
     """
     seeds = {}
 
-    for key, (symbol, kind) in TABLE_SEEDS.items():
-        if kind == 'const':
-            start = _find_literal_after(src, f'const {symbol}', '[')
-            literal, _ = parse_value(src, start)
-        else:
-            # _loadMap('<key>', { ... }) inside _initRelMappings()
-            m = re.search(r"_loadMap\(\s*'" + re.escape(key) + r"'\s*,\s*", src)
-            if not m:
-                raise ParseError(f'no _loadMap call found for {key}')
-            literal, _ = parse_value(src, m.end())
+    for key, (symbol, opener) in TABLE_SEEDS.items():
+        start = _find_literal_after(src, f'const {symbol}', opener)
+        literal, _ = parse_value(src, start)
         seeds[key] = {'seed_source': symbol,
                       'seed_rows': _to_gm_rows(key, literal)}
 

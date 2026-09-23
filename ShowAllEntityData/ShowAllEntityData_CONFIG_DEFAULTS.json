@@ -791,7 +791,7 @@
       ]
     },
     "sa_rel_url_icon_classes": {
-      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_source": "REL_URL_ICON_CLASSES_DEFAULT",
       "seed_rows": [
         [
           "allmusic",
@@ -832,7 +832,7 @@
       ]
     },
     "sa_rel_other_db_classes": {
-      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_source": "REL_OTHER_DB_CLASSES_DEFAULT",
       "seed_rows": [
         [
           "d-nb.info",
@@ -861,7 +861,7 @@
       ]
     },
     "sa_rel_streaming_classes": {
-      "seed_source": "_initRelMappings()'s _loadMap literal",
+      "seed_source": "REL_STREAMING_CLASSES_DEFAULT",
       "seed_rows": [
         [
           "music.amazon.",

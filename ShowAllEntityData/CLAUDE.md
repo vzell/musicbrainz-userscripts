@@ -777,6 +777,34 @@ records the `functionRegistry` and the `beforeOpen` hook ONCE, at bootstrap,
 and every path falls back to it — **do not go back to passing either at a call
 site**, which fixes only the paths you remember.
 
+**The five `type: 'table'` settings now receive rows added in a later version,
+and `sa_table_seed_ledger` is why.** They are lazy-seeded on first use and never
+reconsult the built-ins, so F1's closing note called this unsolvable: stored
+rows alone cannot tell "the user deleted this row" from "never seen it". The
+answer is to record it rather than infer it — the ledger holds every built-in
+row key this profile has been OFFERED, so absent ⇒ add, present-but-missing ⇒
+stay deleted. Same pattern and same reason as `vz-mb-colvis-touched-*`.
+
+- **`_seedNewTableRows()` is called at the FOOT of the IIFE, never the startup
+  block.** `_TABLE_SEED_REGISTRY()` reads `SA_UNICODE_CHARS_DEFAULT` and the
+  three `REL_*_DEFAULT` maps, all declared far below it; module-level `const`s
+  are in the TDZ until evaluated, and `node --check` cannot see a TDZ error.
+  The try/catch around `rows()` makes it SILENT — hence the `unreadable`
+  counter in its result.
+- **A test that drives `__saTest.seedNewTableRows()` cannot see where the
+  production call is**, because the hook always runs late. `table-seed-ledger.spec.js`
+  reads the ledger the PAGE LOAD produced for exactly that reason.
+- **The ledger is exported in the config file; the migration trio is not.** Its
+  difference from the stored rows is the only record that the user deleted a
+  built-in row — drop it and an import resurrects their deletions.
+- **Adding a built-in row is now a user-visible change.** It reaches existing
+  profiles, so `ShowAllEntityData_CONFIG_DEFAULTS.json`'s `seed_rows` is what
+  puts it in a diff. Only `sa_default_hidden_columns` announces it (a new row
+  there hides a column); the other four are additive and stay silent.
+- **The `REL_*_DEFAULT` constants have three readers and must stay one copy
+  each.** They were written out twice before — the `let REL_*` initializer and
+  the `_loadMap()` argument — with nothing keeping the two equal.
+
 **The config file carries a second block, and `_CFG_WORKSPACE_GROUPS` is the
 only thing that declares its keys.** `schema_version` 2 added `workspace`
 beside `settings`: the pinned filter list, per-pageType *and per-sub-table*
