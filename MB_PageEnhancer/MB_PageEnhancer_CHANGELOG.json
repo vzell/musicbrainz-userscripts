@@ -1,5 +1,29 @@
 [
   {
+    "version": "1.0.12",
+    "date": "2026-09-23",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Add `// @grant GM_deleteValue` so the shared `VZ_MBLibrary.user.js` can store only the settings you have actually changed. From library 4.1.0 the settings dialog's SAVE deletes a value equal to its own schema default instead of writing it — and without this grant the library feature-detects its way back to its old behaviour here, so one SAVE (even with nothing changed) would go on freezing every setting into storage, and no improved default shipped later would ever reach you. See ShowAllEntityData's 9.99.1138 changelog entry, and its `org/config-handling.org` F1, for the full root-cause writeup."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.11",
+    "date": "2026-08-04",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Load `VZ_MBLibrary.user.js` from the published mirror over the network instead of a local `file:///` path, so the script works on a machine with no checkout of this repository. Recorded after the fact: this version shipped in commit 58bc077 with no changelog entry of its own, which left the header one version ahead of this file."
+        ]
+      }
+    ]
+  },
+  {
     "version": "1.0.10",
     "date": "2026-07-31",
     "sections": [

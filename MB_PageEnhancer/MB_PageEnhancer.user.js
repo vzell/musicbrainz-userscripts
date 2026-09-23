@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - MB Page Enhancer
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      1.0.11+2026-08-04
+// @version      1.0.12+2026-09-23
 // @description  Enhances MusicBrainz pages with additional features
 // @author       vzell
 // @tag          AI generated
@@ -18,6 +18,7 @@
 // @grant        GM_info
 // @grant        GM_setValue
 // @grant        GM_getValue
+// @grant        GM_deleteValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @grant        GM_xmlhttpRequest
