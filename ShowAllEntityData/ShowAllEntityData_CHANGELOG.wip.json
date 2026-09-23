@@ -1,0 +1,34 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-23",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The five editable lookup tables — Default Hidden Columns, the three Relationships icon tables and the Unicode Character Picker — now receive rows added in a later version. Until now they were filled in from the built-in list the first time each was used and never looked at it again, so a row shipped afterwards reached nobody who already had the table. The only escape was to delete every row in the table editor, save and reload so it refilled — throwing away everything you had entered by hand to gain one line you had not.",
+          "A row you DELETED is never handed back, which is what makes the rest safe. The script now records which built-in rows it has already offered you, because a row you removed on purpose and a row you have never seen look identical in the table itself. Rows you added or edited yourself are untouched, and if you had already added a row that a later version ships as a built-in, yours is kept exactly as it is.",
+          "That record travels in a saved configuration file, so importing one on another browser carries your deletions with it instead of quietly reversing them."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A new row announces itself only when it changes what you see. A new character in the Unicode picker or a new relationship icon simply appears. A new row in Default Hidden Columns hides a column, so that one shows a notice naming it, with ↩︎ Undo to remove it again — and undoing means it is not offered a second time."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The three Relationships icon tables' built-in rows were written out twice — thousands of lines apart, with nothing keeping the two copies equal. A row added to one and not the other would have made the table you get disagree with the fallback used when the shared library fails to load. They are one list each now, read by everything that needs them."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "❓ Help gained a NEW ROWS IN THE EDITABLE LOOKUP TABLES section explaining what arrives, what never comes back, and why the script has to keep a record rather than just compare your table against the built-in list."
+        ]
+      }
+    ]
+  }
+]

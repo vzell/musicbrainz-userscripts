@@ -2305,6 +2305,36 @@ So the first time you run this version, that is repaired once:
 The repair happens once per browser profile.  Anything you set after it runs is
 yours and is never revisited.
 
+NEW ROWS IN THE EDITABLE LOOKUP TABLES
+---------------------------------------
+The five editable tables — Default Hidden Columns, the three Relationships
+icon tables and the Unicode Character Picker — are filled in from the script's
+own built-in list the first time each is used, and after that they are yours.
+
+That used to mean a row added in a later version never reached you at all.
+The only way to get it was to delete every row in the table editor, save and
+reload so the table refilled — throwing away everything you had entered by
+hand to gain one line you had not.
+
+Now the script remembers which built-in rows it has already offered you:
+
+• A built-in row you have never been shown is added to your table.
+• A built-in row you DELETED is never handed back.  That is the part that
+  makes the rest safe, and it is why the script has to keep a record rather
+  than just compare your table against the built-in list — a row you removed
+  on purpose and a row you have never seen look identical in the table itself.
+• Rows you added or edited yourself are untouched.  If you had already added a
+  row that a later version ships as a built-in, yours is kept as it is.
+
+Nothing announces itself unless it changes what you see.  A new character in
+the Unicode picker or a new relationship icon simply appears.  A new row in
+Default Hidden Columns HIDES A COLUMN, so that one shows a notice naming it,
+with ↩︎ Undo to remove it again — and undoing means it is not offered a
+second time.
+
+This record travels in a saved configuration file, so importing one on another
+browser carries your deletions with it rather than quietly reversing them.
+
 CHANGELOG DIALOG (📜 ChangeLog in the Tampermonkey menu)
 ----------------------------------------------------------
 • The changelog is loaded from GitHub (with a 1-hour GM cache) at startup.
