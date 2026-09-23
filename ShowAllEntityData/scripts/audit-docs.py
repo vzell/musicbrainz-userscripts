@@ -175,6 +175,61 @@ def check_stale_branch_sections(root, problems):
                     f'rewrite the section to say what shipped')
 
 
+def check_stale_wip_citations(root, problems):
+    """Fail on a `WIP.N` placeholder left in an org file after its merge.
+
+    `merge-push-remove`'s fold rewrites `WIP.N` inside
+    `ShowAllEntityData_CHANGELOG.json` and nowhere else — which is a trap for
+    the org files, where a status table naturally wants to say "shipped as …"
+    while the work is still on a branch. Writing `WIP.1` there reads like a
+    placeholder something will come back for, and nothing does.
+
+    It happened immediately: `org/config-handling.org` recorded F1 as shipped
+    at `WIP.1`, the branch merged as 9.99.1138, and the row still said `WIP.1`
+    until the NEXT branch's author happened to read that line. Mechanical
+    here, like `audit-changelog.py`'s own unrewritten-`WIP.N` check.
+
+    **Scoped to org TABLE ROWS, and that scope is the whole design.** A first
+    version looked at every line and reported 18 hits across 7 files — of which
+    exactly 3 were status claims and 15 were prose describing the WIP flow
+    ("This branch carries a fresh WIP.1", "1304eb9 — … (WIP.2)"), which these
+    files legitimately contain and which is worth keeping. An 83%
+    false-positive rate is not a gate; it is how a script everyone currently
+    trusts starts getting ignored, and `org/config-handling.org` reached the
+    same conclusion about the `--docs` worklist from the other side.
+
+    A table row is where a version is CLAIMED. Prose about the mechanism is a
+    description, and a version repeated in prose should not be there anyway —
+    one place holds it, and the table is that place.
+
+    Verbatim spans (`backticks`, =org=, ~org~) are stripped first: they quote
+    the token rather than cite a release, the same carve-out and for the same
+    reason as in `audit-changelog.py`.
+
+    The check is skipped while a `*_CHANGELOG.wip.json` exists: on a branch,
+    `WIP.N` in a status table is correct and is how the row gets written
+    before its version is known.
+    """
+    if list(root.glob('*_CHANGELOG.wip.json')):
+        return
+    if not (root / 'org').is_dir():
+        return
+
+    for org in sorted((root / 'org').glob('*.org')):
+        text = org.read_text(encoding='utf-8')
+        for lineno, line in enumerate(text.splitlines(), 1):
+            if not line.lstrip().startswith('|'):
+                continue
+            bare = re.sub(r'`[^`]*`', '', line)
+            bare = re.sub(r'=[^=]*=', '', bare)
+            bare = re.sub(r'~[^~]*~', '', bare)
+            for m in re.finditer(r'\bWIP\.\d+\b', bare):
+                problems.append(
+                    f'{org.relative_to(root)}:{lineno} still claims {m.group(0)} in a '
+                    f'status table — the fold rewrites the changelog only, so a table '
+                    f'row has to be given its real version by hand at merge time')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -194,6 +249,7 @@ def main():
     check_half_flipped(text, problems)
     check_no_line_refs(text, problems)
     check_stale_branch_sections(root, problems)
+    check_stale_wip_citations(root, problems)
 
     if problems:
         print(f'{len(problems)} problem(s):')
@@ -205,7 +261,8 @@ def main():
     print(f'{PERF}: {len(list(step_bodies(text)))} steps, '
           f'{len(done)} DONE ({", ".join(map(str, done))}) — sentence matches the '
           'keywords, no DONE step contradicts itself, no "IN PROGRESS" section '
-          'names a branch that is gone, no ~:NNNNN~ line references.')
+          'names a branch that is gone, no ~:NNNNN~ line references, no org file '
+          'left citing a WIP.N placeholder.')
     return 0
 
 

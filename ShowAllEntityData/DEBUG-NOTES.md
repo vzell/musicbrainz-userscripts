@@ -14650,3 +14650,182 @@ a gate nobody waits for is a gate nobody runs) — it compares the history file'
 `current` block against the snapshot Stage 1 has just verified, which catches
 the only case that matters: a default that moved since the last refresh.
 `check-config-defaults-gate.py` is up to 11 arms, all correct.
+
+## 2026-09-23 — the settings dialog had six frictions and no tests (branch fix/settings-dialog-friction)
+
+org/config-handling.org F5, plus the MB_PageEnhancer grant F1 left behind.
+Seven frictions were recorded there by READING `showModal()`; six are fixed
+here and the seventh (what the exported file leaves out) is a file-format
+change with its own branch. **None of them produced an error message, and one
+produced no visible symptom at all**, which is why a dialog opened daily had
+gone years without any of this being filed.
+
+**The dialog had NO test coverage whatsoever** — 238 settings, ~1200 lines,
+and the only thing any spec had ever done with it was avoid it. That is now
+`tests/fixtures/settings-dialog.spec.js`, 22 tests, driving the REAL library
+against ShowAllEntityData's own schema.
+
+### The entry-point bug, and why a convenient test would have missed it
+
+`setupMenus()` registers two ways in — the Tampermonkey menu command and a
+link in MusicBrainz's own *Editing* menu — and both called
+`settingsInterface.showModal()` with no arguments, while this script's toolbar
+button called `Lib.showSettings({functionRegistry})` after arming a
+MutationObserver. So via those two routes the 💾/📂 buttons were never injected
+and the 🔧 *Edit Pinned Filter List* button rendered and did nothing.
+
+The fix is `settingsInterface.configure({functionRegistry, beforeOpen})`,
+registered once by `_registerSettingsIntegration()`, with `showModal()` falling
+back to it. **Registering the intent on the library rather than passing it per
+call site is what makes the six paths identical by construction** rather than
+by everyone remembering — a seventh entry point gets it free.
+
+`gmStubs.js` records every `GM_registerMenuCommand` in `window.__gmMenuCommands`
+WITH its callback, so the spec invokes the Tampermonkey item exactly as
+Tampermonkey would. That mattered more than usual here: a test that opened the
+dialog the convenient way would have passed throughout the bug's whole life.
+
+### Two owners of `row.style.display`
+
+`applySectionCollapse()` and `applySettingsSearch()` both assigned it, last
+writer winning. Symptoms: a search left all 38 section headers on screen with
+nothing under most of them; a match inside a collapsed section appeared under a
+header still drawn collapsed; clicking that header then revealed every row in
+it rather than the matches. Adding a third filter to that arrangement would
+have made it three.
+
+Replaced by ONE pass computing visibility from three inputs — the needle, the
+changed-only toggle, each section's stored state. **A filter opens the sections
+holding matches without touching their stored state**, so clearing it restores
+the user's own layout rather than leaving everything expanded; there is a
+mutation for each of those two directions, because the plausible wrong fix is
+to expand them for real.
+
+### `isSchemaDefault()` made bullet 4 nearly free
+
+"No changed-from-default indication anywhere" was a real gap across 238
+settings — and after 9.99.1138 the comparison already existed, for the dirty-set
+SAVE. The marks are RECOMPUTED on every widget event rather than tracked
+incrementally, deliberately: RESET, the colour pickers and the popup sub-editors
+all write widget values without a common choke point, and a counter maintained
+at each of those is wrong the first time one is missed. 238 `getElementById`
+calls is not worth optimising against that.
+
+**The per-section badge is the half that matters.** A per-row marker you can
+only see by opening all 38 sections is not an answer to "what have I changed".
+
+### Three traps the tests hit
+
+- **`data-section` holds the divider's KEY, not its label.** The schema keys
+  its dividers `divider_<topic>` and carries the label separately, so the first
+  version of the spec matched `'🐞 DEBUGGING'`, found nothing, and reported it
+  as the feature being broken. 11 of 22 tests failed for that one reason.
+- **A fixture profile is not a pristine profile.** `loadPage.js`'s
+  `FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` and
+  `sa_enable_relationships_column` OFF, and both DEFAULT to true — so "an
+  untouched profile" arrives with two settings already changed and every count
+  in the file would have been off by two while looking plausible. These tests
+  never fetch, so the spec puts both back at their defaults.
+- **A widget in a collapsed section cannot be clicked.** Obvious in hindsight;
+  it presented as a 90-second timeout on `element is not visible`. Expanding the
+  section first is also the flow a user takes.
+
+### The redundant-guard pair, found by mutation
+
+`↺` sits inside the section header, whose click handler toggles the section, so
+a reset press must not fold away the rows it just changed. TWO guards prevent
+it — `stopPropagation()` in the ↺ handler and a
+`closest('.vz-section-reset')` bail-out in the header handler — and they are
+**mutually redundant**: either alone suffices, so mutating either alone leaves
+the spec green. Recorded the way CLAUDE.md already prescribes for `iconSel` and
+the bake guard: one combined entry that fails, plus two `expect: "pass"`
+singles, and a comment at the code saying not to tidy either away on the
+evidence that its own mutation passes.
+
+### Coverage
+
+`tests/fixtures/settings-dialog.spec.js`, 22 tests in six groups. Mutation list
+`scripts/mutations/settings-dialog.json`, 22 entries, 19 failing as planted and
+three honest `expect: "pass"` — the two guards above, and the widget-only
+contract of the per-section reset, which has no guard to remove because it is
+true by construction (`resetSettingWidget()` assigns to inputs and nothing
+else). That last one is recorded anyway: the property is load-bearing, and a
+future "helpfully save it too" change is exactly what it exists to catch.
+
+`npm run test:full`: 490 passed, 5 m 41 s (`petri`, 12 workers, 09:12:34-09:18:15
+UTC).
+
+### MB_PageEnhancer
+
+`// @grant GM_deleteValue`, bumped to 1.0.12. Without it the library's
+dirty-set SAVE feature-detects its way back to pre-4.1.0 behaviour there, so
+that script would go on freezing whole profiles. While in its changelog: 1.0.11
+had shipped with no entry at all, leaving the header a version ahead of the
+file — backfilled from commit `58bc077`, which says exactly what it was.
+
+## 2026-09-23 — the dev repo was testing against the published library, and a published script has been broken since February
+
+Two findings from one change, both about the gap between this development
+repository and `vzell/mb-userscripts`, the announced one whose
+`raw.githubusercontent.com` URLs every user's Tampermonkey actually fetches.
+
+**The dev userscript `@require`d the PUBLISHED library.** Reasonable while the
+library barely changed — one copy, always the announced one. Two consecutive
+branches ended that: 4.1.0 made SAVE a dirty set and 4.2.0 rewrote the settings
+dialog, and the mirror serves 4.0.0. So a live browser check of either was
+worth nothing, and looked exactly like a real one: the page loads, the
+userscript IS the dev version, only the library silently is not.
+
+The consumer-side halves were genuinely tested, which is why this stayed
+hidden — F1's migration was confirmed in a real browser while its library half
+had never once executed. Dev now requires the working copy:
+`file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js`.
+
+**That makes publishing a copy plus a one-line rewrite, and the failure mode is
+silent.** A `file://` `@require` shipped to users does not error:
+`const Lib = (typeof VZ_MBLibrary !== 'undefined') ? … : { settings: {}, … }`
+lands on the stub, every setting resolves to its inline fallback, and nothing
+reports anything — org/config-handling.org F4's second live scenario, reached
+by accident instead of by a broken CDN.
+
+**So it was already true somewhere.** `scripts/check-publish-ready.py`'s first
+run found `CustomizableMultiSelector.user.js`, published at 2.0.0 since
+**2026-02-02**, requiring
+`file:///V:/home/vzell/git/mb-userscripts/lib/VZMBLibrary.user.js` — nearly
+eight months live, against a library path that exists on one machine. Anyone
+who installed it got the stub.
+
+**That script is not in this dev repo at all**, and that is the design note
+worth keeping: the `file://` sweep covers EVERY `.user.js` in the mirror rather
+than only the ones this repo can pair up. A pairwise check would have reported
+a clean run — the single real instance is precisely the file a dev-repo-driven
+check cannot see.
+
+### The checker's own first run was 1 finding and 2 false alarms
+
+Recorded because the ratio is the point, not the bugs.
+
+- It called `SpringsteenCoverArtUploader` "live without the library it needs".
+  That script does not `@require` VZ_MBLibrary at all; it had simply not
+  changed in three months while the dev library moved on. Version skew between
+  a script and today's dev library is the NORMAL state. Now a PENDING ordering
+  note, scoped to scripts that actually require the library.
+- It read every `SpringsteenCoverArtUploader_CHANGELOG.json` entry as
+  disagreeing with its script, because these projects do not agree on whether a
+  changelog `version` carries the `+YYYY-MM-DD` suffix — that one writes
+  `1.02.003+2026-06-21`, ShowAllEntityData writes a bare `9.99.1138`. Comparing
+  one convention against the other flags everything. Both sides are normalised
+  now.
+
+Two false alarms in the first three findings is how a pre-publish check becomes
+a thing people skip, and the real finding goes with it. Hence
+`scripts/check-publish-ready-gate.py`: 11 arms, including the one that asserts
+**behind is not broken** — the mirror lagging the dev repo is the normal state
+between releases and must never fail, or the script stops being run at all.
+`--strict` is the run straight after publishing, where behind means the copy
+stopped half way.
+
+The scratch mirror is built in a temp directory from the dev repo's own files,
+with the library `@require` rewritten the way a real publish does it — so the
+"clean" case exercises the actual publish contract rather than a guess at it,
+and nothing ever reads or writes the real publish repo.

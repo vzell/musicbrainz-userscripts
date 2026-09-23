@@ -1,0 +1,322 @@
+[
+  {
+    "name": "showModal ignores the registered functionRegistry",
+    "why": "org/config-handling.org F5's first bullet, half one. The GM menu item and the Editing link call showModal() with no arguments; without the fallback a type:'function' entry's 🔧 button renders and does nothing when pressed. No error, no missing element — the button is simply inert.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    functionRegistry = this.opts.functionRegistry || {};",
+        "replace": "                    functionRegistry = {};"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a type:function button actually calls",
+    "expect": "fail"
+  },
+  {
+    "name": "showModal never runs the beforeOpen hook",
+    "why": "The other half. ShowAllEntityData arms a one-shot MutationObserver there to inject its 💾/📂 buttons, so without the hook those two entry points open a dialog with no way to save or load a configuration — which is exactly what shipped for as long as both menus have existed.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (typeof this.opts.beforeOpen === 'function') {\n                    try {\n                        this.opts.beforeOpen();",
+        "replace": "                if (false) {\n                    try {\n                        this.opts.beforeOpen();"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the Tampermonkey menu item gets",
+    "expect": "fail"
+  },
+  {
+    "name": "the same, seen from the Editing menu",
+    "why": "Mutated separately from the entry above because the two menus are registered in different places — the GM command in setupMenus()'s grant-guarded branch, the link in its DOM-anchored one — and a fix that reached only one of them would leave the other silently broken.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                if (typeof this.opts.beforeOpen === 'function') {\n                    try {\n                        this.opts.beforeOpen();",
+        "replace": "                if (false) {\n                    try {\n                        this.opts.beforeOpen();"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the MusicBrainz Editing-menu link gets them too",
+    "expect": "fail"
+  },
+  {
+    "name": "the Default column prints String(cfg.default) again",
+    "why": "The five type:'table' settings have no `default:` at all, so this rendered the literal \"undefined\" in the column a user reads to decide whether a setting is worth changing.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    const defaultText = hasComparableDefault ? String(cfg.default ?? '') : '';",
+        "replace": "                    const defaultText = String(cfg.default);"
+      },
+      {
+        "find": "                    const defaultNote = isTable ? '(seeded from code)'\n                                      : isFunction ? '(an action, not a value)'\n                                      : '';",
+        "replace": "                    const defaultNote = '';"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a table setting does not render the literal",
+    "expect": "fail"
+  },
+  {
+    "name": "a function entry's internal method name goes back in the Default column",
+    "why": "`sa_fn_edit_pinned_filter_list`'s `default:` is '_openEditPinnedFilterListFromSettings' — a private identifier resolved through the functionRegistry, not a value. Printing it tells the user nothing and leaks an implementation detail into the UI.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    const hasComparableDefault = !isTable && !isFunction;",
+        "replace": "                    const hasComparableDefault = !isTable;"
+      },
+      {
+        "find": "                                      : isFunction ? '(an action, not a value)'",
+        "replace": "                                      : false ? '(an action, not a value)'"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a function setting does not expose its internal method name",
+    "expect": "fail"
+  },
+  {
+    "name": "popup_dialog goes back to the (pipe-sep.) placeholder",
+    "why": "It showed the FORMAT instead of the VALUE, for the one entry type whose default is hardest to reconstruct by hand — a pipe-joined tuple whose field names only the sub-editor knows.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    if (defaultNote) {\n                        col2.innerHTML = `<em>${escAttr(defaultNote)}</em>`;",
+        "replace": "                    if (defaultNote || isPopupDialog) {\n                        col2.innerHTML = `<em>(pipe-sep.)</em>`;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a popup_dialog setting shows its real default",
+    "expect": "fail"
+  },
+  {
+    "name": "nothing is ever marked as changed",
+    "why": "The whole of F5's fourth bullet: across 238 settings there was no way to see what you had altered without exporting the JSON and diffing it against a virgin export.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    return !settingsInterface.isSchemaDefault(row.dataset.vzKey, value);",
+        "replace": "                    return false;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a non-default setting is marked, counted, and badged",
+    "expect": "fail"
+  },
+  {
+    "name": "everything is marked as changed",
+    "why": "The overshoot, and the one a type mix-up would actually produce — the dialog hands back strings for every non-checkbox widget, so a comparison that forgot that would call all 238 changed. Only the counter-guard can see it; every 'the row is marked' assertion would still pass.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    return !settingsInterface.isSchemaDefault(row.dataset.vzKey, value);",
+        "replace": "                    return true;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "an untouched profile marks nothing",
+    "expect": "fail"
+  },
+  {
+    "name": "the changed-only filter shows changed rows but leaves empty sections standing",
+    "why": "The precise shape of the old search defect, reproduced in the new filter: rows filter correctly while all 38 section headers remain on screen with nothing under most of them. A test that only counted visible ROWS would pass.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        header.style.display = (!filtering || has) ? 'flex' : 'none';",
+        "replace": "                        header.style.display = 'flex';"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "Changed only\" shows exactly the changed rows",
+    "expect": "fail"
+  },
+  {
+    "name": "the marks are computed once and never refreshed",
+    "why": "A count that is right when the dialog opens and wrong from the first keystroke is worse than none, because it looks authoritative. The delegated listener is the only thing keeping it live — RESET, the colour pickers and the popup sub-editors all write widget values without a common choke point.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        settingsBodyEl.addEventListener(evt, () => {\n                            refreshChangedMarks();",
+        "replace": "                        settingsBodyEl.addEventListener(evt, () => {\n                            if (false) refreshChangedMarks();"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "the marks follow a live edit",
+    "expect": "fail"
+  },
+  {
+    "name": "section collapse state is never written",
+    "why": "F5's second bullet. Every section re-collapsed on every open, so finding the one setting you adjust regularly meant the same hunt through 38 headers every time.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                const persistSectionState = () => GM_setValue(sectionStateKey, sectionState);",
+        "replace": "                const persistSectionState = () => {};"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a section left open is still open next time",
+    "expect": "fail"
+  },
+  {
+    "name": "the remembered default flips, so a fresh profile opens everything",
+    "why": "The stored shape records only EXPANDED sections, so an absent entry must read as collapsed. Getting the polarity backwards would greet every new user, and every section added by a later version, with 238 settings unrolled at once.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                const isSectionCollapsed = (section) => sectionState[section] !== false;",
+        "replace": "                const isSectionCollapsed = (section) => sectionState[section] === true;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a fresh profile still starts with everything collapsed",
+    "expect": "fail"
+  },
+  {
+    "name": "a search no longer opens the section holding its match",
+    "why": "The original two-owners bug: the row was revealed by the search while its header still drew itself collapsed, because both mechanisms wrote row.style.display and the last writer won. A filter that finds a match and then hides it is worse than one that finds nothing.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        const collapsed = filtering ? false : isSectionCollapsed(section);",
+        "replace": "                        const collapsed = isSectionCollapsed(section);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a match inside a collapsed section is revealed",
+    "expect": "fail"
+  },
+  {
+    "name": "clearing the search leaves every section expanded",
+    "why": "The plausible wrong fix for the entry above — expand the sections for real instead of only for the duration of the filter. The user's own layout would be destroyed by typing one character into the search box and deleting it.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        const collapsed = filtering ? false : isSectionCollapsed(section);",
+        "replace": "                        const collapsed = false;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "clearing the search restores the collapse state",
+    "expect": "fail"
+  },
+  {
+    "name": "SAVE always reloads, even with nothing to apply",
+    "why": "F5's sixth bullet. The reload discards whatever the page had built — on a large listing, thousands of fetched rows — so paying it to apply nothing is a real cost, not a cosmetic one.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    this.save(newValues, dirty);",
+        "replace": "                    this.save(newValues, true);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "saving an unchanged dialog does not reload",
+    "expect": "fail"
+  },
+  {
+    "name": "SAVE never reloads",
+    "why": "The overshoot, and much the worse bug of the two: consumers read their settings once at startup, so without the reload a saved change is stored and silently does not take effect until the next navigation.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                    this.save(newValues, dirty);",
+        "replace": "                    this.save(newValues, false);"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "saving a real change does reload",
+    "expect": "fail"
+  },
+  {
+    "name": "per-section RESET resets every section",
+    "why": "It would look like it worked — the section you pressed it on really is back at its defaults — while quietly discarding every other choice in the dialog. That is the global RESET wearing a per-section button, i.e. the exact thing this was added to avoid.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                            .filter(r => r.dataset.section === section && r.dataset.vzChanged === 'true')",
+        "replace": "                            .filter(r => r.dataset.vzChanged === 'true')"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "resets only its own section",
+    "expect": "fail"
+  },
+  {
+    "name": "per-section RESET asks even when there is nothing to reset",
+    "why": "\"Reset 0 settings?\" is a prompt with no meaning, and answering it does nothing — which reads as a broken button rather than an empty set.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        if (keys.length === 0) {",
+        "replace": "                        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "a section with nothing to reset says so",
+    "expect": "fail"
+  },
+  {
+    "name": "BOTH ↺-click guards removed — the press folds the section away",
+    "why": "The defect itself. The ↺ button sits inside the section header, whose own click handler toggles the section, so a reset press would also collapse the rows it had just changed — the user sees the confirmation and then nothing. Two guards prevent it and they are MUTUALLY REDUNDANT, so this is the only mutation that can reach it; the two singles below record each one passing on its own.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        e.stopPropagation();          // do not toggle the section",
+        "replace": "                        void e;                      // guard removed"
+      },
+      {
+        "find": "                        if (e.target.closest('.vz-section-reset')) return;",
+        "replace": "                        if (false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "pressing ↺ does not also toggle the section",
+    "expect": "fail"
+  },
+  {
+    "name": "only the ↺ handler's stopPropagation is removed",
+    "why": "EXPECTED TO PASS, and recorded rather than left unmentioned. The header's own `closest('.vz-section-reset')` guard still bails out, so the section does not toggle and no test can see this. Same shape as the iconSel / bake-guard pair CLAUDE.md documents: a guard whose individual mutation passes is not thereby dead code.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        e.stopPropagation();          // do not toggle the section",
+        "replace": "                        void e;                      // guard removed"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "pressing ↺ does not also toggle the section",
+    "expect": "pass"
+  },
+  {
+    "name": "only the header's closest() guard is removed",
+    "why": "EXPECTED TO PASS, the other half of the pair. `stopPropagation()` in the ↺ handler stops the event reaching the header at all, so the section still does not toggle. Keep both: the redundancy is cheap and the failure it prevents is silent.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        if (e.target.closest('.vz-section-reset')) return;",
+        "replace": "                        if (false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "pressing ↺ does not also toggle the section",
+    "expect": "pass"
+  },
+  {
+    "name": "per-section RESET writes straight to GM storage",
+    "why": "EXPECTED TO PASS. The reset is widget-only by construction — `resetSettingWidget()` assigns to inputs and nothing else — so there is no guard to remove, and the test that pins the contract cannot be falsified by deleting code. It is recorded because the property is load-bearing (a mis-click must cost a CLOSE, not a profile) and because a future 'helpfully save it too' change is exactly what it exists to catch.",
+    "file": "../lib/VZ_MBLibrary.user.js",
+    "edits": [
+      {
+        "find": "                        keys.forEach(resetSettingWidget);\n                        refreshSettingsView();",
+        "replace": "                        keys.forEach(resetSettingWidget);\n                        refreshSettingsView();\n                        void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/settings-dialog.spec.js",
+    "grep": "it is widget-only",
+    "expect": "pass"
+  }
+]

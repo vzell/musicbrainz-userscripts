@@ -699,6 +699,7 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=, merge gate C |   450 | *5 m 40 s* | =date=, 2026-09-22 05:25:42-05:31:22   |
 | =npm run test:full=, branch check |   468 | *5 m 37 s* | =date=, 2026-09-22 06:30:48-06:36:25   |
 | =npm run test:full=, merge gate D |   468 | *5 m 40 s* | =date=, 2026-09-23 08:05:32-08:11:12   |
+| =npm run test:full=, branch check |   490 | *5 m 41 s* | =date=, 2026-09-23 09:12:34-09:18:15   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -737,6 +738,14 @@ a stronger repeatability statement than rows 3 and 4's 0.1% at 32 minutes — th
 tight pair shares a machine state the wide pair does not, and an overnight gap
 is closer to how these numbers actually get compared. Read ±1% as the threshold;
 0.1% was a same-session coincidence, not a precision.
+
+*Row 8 is the clearest statement of the point.* 490 tests in 341 s, against row
+3's 447 in 340 s — **43 more tests for one second**. At 12 workers the suite's
+wall clock is set by its longest single spec, =rel-auto-retry-failed= at ~324 s,
+and everything else distributes into the slack around it. So the useful reading
+is not "the suite costs X per test" but "the suite costs whatever its slowest
+spec costs, plus about 15 s". A new test is free until it is slower than 324 s;
+a new test that IS slower than that moves the whole figure by its own excess.
 
 *Row 6's run had one failure that did not reproduce*:
 =work-recordings-ms-length.spec.js= — "the response is cached for the page:

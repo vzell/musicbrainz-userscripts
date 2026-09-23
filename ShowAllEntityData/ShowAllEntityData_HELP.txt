@@ -2123,6 +2123,43 @@ labels and descriptions.  Major setting groups:
     — Shortcut key (default: Ctrl+U)
     — Configure the glyph mapping table (character → name → examples)
 
+FINDING YOUR WAY AROUND THE SETTINGS DIALOG
+--------------------------------------------
+There are 238 settings in 38 sections, so the dialog has a few ways to cut
+that down.
+
+• 🔍 Search filters as you type, across setting names, descriptions and
+  default values.  While a search is active only sections containing a match
+  are shown, and they are opened for you — clearing the search puts every
+  section back exactly as you left it.
+• ● Changed only shows just the settings that differ from their default, and
+  its label carries the count.  Each section header carries the same count as
+  a ● badge, so you can see which sections hold your changes without opening
+  them.  A changed setting's row is marked with an orange edge and a bold name.
+• Sections remember whether you left them open.  The first time you open the
+  dialog they are all collapsed; after that it looks the way you left it.
+  ⬆ Collapse all / ⬇ Uncollapse all still toggles everything at once.
+• The Default column shows the value a setting reverts to.  For the editable
+  lookup tables it reads "(seeded from code)" — those are filled in from the
+  script's built-in rows the first time they are used — and for the 🔧 button
+  entries it reads "(an action, not a value)".
+
+RESETTING
+----------
+• ↺ on a section header resets just that section, and only the settings in it
+  that actually differ — it tells you how many before doing anything.  If the
+  section is already all-default it says so instead of asking.
+• RESET in the dialog header resets everything, with its own confirmation.
+• Both are widget-only: nothing is written until you press SAVE, so a reset
+  you did not mean costs a CLOSE, not your configuration.
+
+SAVING
+-------
+• SAVE stores your changes and reloads the page so they take effect.  If you
+  changed nothing, it does not reload — there is nothing to apply, and a
+  reload would throw away any table you had already fetched.
+• Only settings you have changed are stored; see KEEPING UP WITH NEW DEFAULTS.
+
 SETTINGS DIALOG SAFETY GUARDS
 ------------------------------
 • If you close the dialog (via the CLOSE link, Escape, or clicking outside)
@@ -2173,12 +2210,16 @@ by hand on a new machine:
   sections, and the shared library's own preferences.
 
 WHERE THE BUTTONS APPEAR
-The two buttons are added by this script, so they are present only when the
-Settings dialog is opened from one of its own entry points: the ⚙️ button in
-the controls bar, Ctrl+, or the prefix key followed by ",".  Opening Settings
-from the Tampermonkey script menu ("⚙️ Userscript Settings Manager") or from
-the MusicBrainz "Editing" menu opens the shared library's own dialog instead —
-there the 💾/📂 buttons are absent and 🔧 Edit Pinned Filter List does nothing.
+Everywhere.  All six ways into the Settings dialog now open the same dialog:
+the ⚙️ button in the controls bar, Ctrl+, the prefix key followed by ",", the
+Tampermonkey script menu ("⚙️ Userscript Settings Manager"), and the link in
+MusicBrainz's own "Editing" menu.
+
+This was not always so.  Opened from the Tampermonkey menu or the Editing
+menu, the 💾/📂 buttons used to be absent and 🔧 Edit Pinned Filter List did
+nothing when pressed — with nothing on screen to say why.  If you have been
+using one of those two routes and wondered where the buttons were, that is the
+answer, and they are there now.
 
 KEEPING UP WITH NEW DEFAULTS
 ----------------------------

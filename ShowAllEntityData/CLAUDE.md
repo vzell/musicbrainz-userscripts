@@ -611,6 +611,35 @@ Note the warm uniq-dropdown figure: it was ~29 700 ms before caching landed. A
 change that reverts a win that large should be impossible to make by accident,
 which is the reason these baselines are committed.
 
+## Publishing: this repo is NOT the one users install from
+
+`vzell/mb-userscripts` is the announced repository, and its
+`raw.githubusercontent.com/.../master/` URLs are what every user's Tampermonkey
+fetches — including the in-script ❓ Help and 📜 ChangeLog dialogs, which read
+those files at runtime. Publishing is copying files there by hand.
+
+**The library `@require` differs between the two on purpose.** This repo points
+at the working copy (`file:///V:/…/lib/VZ_MBLibrary.user.js`) so a live browser
+check exercises the library in this tree; the published copy must carry the
+network URL. That changed on 2026-09-23 — VZ_MBLibrary 4.1.0 and 4.2.0 both
+rewrote parts of the settings dialog, and against the mirror's 4.0.0 none of
+that code runs, so a live test was testing the published library while looking
+like a real one.
+
+**Shipping a `file://` `@require` fails silently for every user**: `Lib` falls
+back to a stub whose `settings` is `{}`, every setting resolves to its inline
+fallback, and nothing errors. `CustomizableMultiSelector.user.js` has been
+published in exactly that state since 2026-02-02.
+
+So: `python3 scripts/check-publish-ready.py` before a republish, and
+`--strict` after one. It is read-only, it sweeps EVERY `.user.js` in the mirror
+for `file://` (the one real instance has no counterpart here, so a pairwise
+check misses it), and it treats "the mirror is behind" as pending rather than
+broken — that is the normal state between releases, and a check that failed on
+it would stop being run. Its arms are mutation-checked by
+`scripts/check-publish-ready-gate.py` against a scratch mirror in a temp
+directory, never the real one. Full checklist: `org/config-handling.org` F6.
+
 ## Git Workflow
 - Never commit feature work directly to `main`. Always create a feature branch first (`git checkout -b <topic>`), commit there, then merge via PR or fast-forward and push.
 - **NEVER merge an implementation branch into `main` without asking first —
@@ -735,6 +764,35 @@ script ships and every fixture starts with migrations already applied. Four
 call sites in `collapse-column-width-stable-on-sort.spec.js` seed
 `sa_auto_resize_columns: false`, which IS a retired default. Only
 `tests/fixtures/settings-migration.spec.js` opts back in.
+
+**The settings dialog belongs to VZ_MBLibrary, and every entry point must go
+through `Lib.configureSettings()`.** Six routes open it — the ⚙️ toolbar
+button, `Ctrl+,`, `Ctrl+M ,`, the Tampermonkey menu item, the MusicBrainz
+*Editing* menu link, and anything added later. The first three are this
+script's; the next two are registered by the library itself and used to call
+`showModal()` with no arguments, so opened either of those ways the 💾/📂
+buttons were never injected and the 🔧 *Edit Pinned Filter List* button did
+nothing (org/config-handling.org F5). `_registerSettingsIntegration()` now
+records the `functionRegistry` and the `beforeOpen` hook ONCE, at bootstrap,
+and every path falls back to it — **do not go back to passing either at a call
+site**, which fixes only the paths you remember.
+
+**Nothing but `applyVisibility()` may assign `display` to a settings row, a
+section header or a popup sub-grid.** Search and per-section collapse used to
+be two mechanisms both writing `row.style.display`, last writer winning; the
+"changed only" filter would have made it three. Visibility is computed in one
+pass from three inputs — the needle, the changed-only toggle, each section's
+stored collapse state. A filter opens the sections holding matches WITHOUT
+touching their stored state, so clearing it restores the user's own layout;
+mutations exist for both directions of getting that wrong.
+
+**A fixture profile is not a pristine profile.** `FIXTURE_SETTINGS_OVERRIDE`
+forces `sa_enable_caa_pics` and `sa_enable_relationships_column` OFF and both
+DEFAULT to true, so any test that counts "changed" settings is off by two
+unless it puts them back — `settings-dialog.spec.js`'s `PRISTINE` is what that
+looks like. Related: **`data-section` holds the divider's schema KEY**
+(`divider_thresholds`), not its label; matching on the label finds nothing and
+reads as the feature being broken.
 
 **The drift is mostly invisible, which is why it lasted.**
 `settingsInterface.init()` writes the schema default into `Lib.settings` for
