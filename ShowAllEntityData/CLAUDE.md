@@ -943,8 +943,9 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
     `merge-push-remove` runs it rather than `npm test`.
 
   **`@slow` is opt-in for iteration, mandatory at a merge.** Two specs carry
-  it — `rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s),
-  14 tests of 428 — and between them they are most of the suite's wall clock
+  it — `rel-auto-retry-failed` (~295 s on `petri`, ~324 s on `NB-3641`) and
+  `resume-from-failed-page` (~84 s) — and between them they are most of the
+  suite's wall clock
   and *all* of its coverage of org/503-handling.org items 5 and 7. Neither is
   slow because of slow code: both spend their time in rate gates and retry
   backoffs that the feature under test exists to respect, so shortening them
@@ -2528,9 +2529,18 @@ fixed `waitForTimeout()` bounds the request count by the WAIT (~1 request per
 1.1 s) rather than by the pass, so an unguarded pass looks identical to an
 aborted one; settle the request log instead. Mutation-testing caught the second.
 
-**It is the slowest fixture spec in the repo at ~324 s** (`NB-3641`,
-2026-09-20), four times the previous worst, and that is the rate gate rather
-than slow code — see `tests/README.org` and `tests/MEASUREMENTS.org`.
+**It is the slowest fixture spec in the repo — ~324 s on `NB-3641`
+(2026-09-20, `--workers=1`), ~295 s on `petri` (2026-09-23, nine runs across
+three versions, flat)** — four times the previous worst, and that is the rate
+gate rather than slow code.
+
+**It is also the whole suite's critical path, and costs the same inside a
+parallel run as alone.** `playwright.config.js` sets `fullyParallel: false`, so
+its 7 tests run serially in ONE worker: measured 296.9 s in-suite against
+294.5 s standalone, with the suite finishing 1.5 s after it. Anything that
+makes this file longer moves `test:full` by the same amount. Do not repeat the
+retracted claim that its tests "spread across workers" — see
+`tests/MEASUREMENTS.org`'s "where the `test:full` step actually is".
 
 ## Relationships retry: two buttons, two intentions
 

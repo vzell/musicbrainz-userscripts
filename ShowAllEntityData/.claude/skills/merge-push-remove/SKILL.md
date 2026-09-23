@@ -133,7 +133,8 @@ Report the pass count. Do not push a red tree.
 
 **`npm run test:full`, never plain `npm test`, and the difference is the whole
 point of the tag.** `npm test` excludes the `@slow` specs — today
-`rel-auto-retry-failed` (~324 s) and `resume-from-failed-page` (~84 s), which
+`rel-auto-retry-failed` (~295 s on `petri`, ~324 s on `NB-3641`) and
+`resume-from-failed-page` (~84 s), which
 between them are most of the suite's wall clock and *all* of its coverage of
 org/503-handling.org items 5 and 7. They are opt-in so that iterating on an
 unrelated change does not cost five minutes a run; they are not optional at a

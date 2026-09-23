@@ -758,6 +758,16 @@ is not "the suite costs X per test" but "the suite costs whatever its slowest
 spec costs, plus about 15 s". A new test is free until it is slower than 324 s;
 a new test that IS slower than that moves the whole figure by its own excess.
 
+#+begin_quote
+*"A new test is free" was FALSIFIED on 2026-09-23*, by decomposing the wall
+clock instead of correlating it with a test count. It held while it was
+written and stopped holding as the suite filled: 44 more tests cost *4.33 s*,
+about 0.1 s each. The mechanism, and why it is not linear, is in
+"2026-09-23 — where the =test:full= step actually is" below. The sentence
+above is kept because rows 5-8 really do show 43 tests for 1 second, and the
+interesting part is that both observations are correct.
+#+end_quote
+
 *Row 10 is the first row outside the ±1% band, and it is worth saying why it is
 not evidence of anything.* 345 s at 503 tests (=feat/config-export-workspace=)
 against row 9's 340 s at 490 — 1.5%, where the stated threshold is ±1%. The 13
@@ -866,6 +876,28 @@ sum to 149.7 s, with the longest SINGLE test at 56.4 s — which is the real
 floor a parallel run cannot go below. Every one of the top six is the
 Relationships 1100 ms rate gate, not slow code.
 
+#+begin_quote
+*RETRACTED 2026-09-23.* Every claim in the paragraph above about this spec is
+wrong, and it is left standing because it was propagated into
+=tests/README.org= and =CLAUDE.md= and the correction has to be findable from
+the thing it corrects.
+
+Its 7 tests *cannot* spread across workers: =playwright.config.js= has
+=fullyParallel: false= and has had since the harness was created, so tests
+inside a file run serially in ONE worker unless the file opts in with
+=test.describe.configure({mode: 'parallel'})=, and this one does not. Measured
+from the run's own JSON report on the same host: all 7 on *worker 5*, back to
+back, sum *296.84 s*, span *296.89 s*, longest single test *71.8 s*. The file
+is the last to finish and the suite ends 1.5 s after it — so it is the floor,
+and the "longest single test" is not a floor anything can approach.
+
+The 149.7 s is not explained by anything measurable now: the spec file has not
+changed since 2026-09-20, and standalone runs at 9.99.1136, 9.99.1139 and
+9.99.1142 all give ~294.5 s on this host. 56.4 s is close to one real test
+duration (56.6 s, the fourth), which suggests a max taken over a subset rather
+than over the file. See "2026-09-23 — where the =test:full= step actually is".
+#+end_quote
+
 ** Unsharded vs. worker count — =NB-3641=, 2026-09-18
 
 =NB-3641= (28 cores, 31 GB, uptime 2 d 7 h, one resident =claude= session),
@@ -924,6 +956,98 @@ default:
 
 The slowest is a pre-existing case, not one of the newer ones — which is why the
 budget is file-level rather than two ad-hoc =test.setTimeout()= calls.
+
+** 2026-09-23 — where the =test:full= step actually is
+
+=petri= (24 cores, 12 workers), all of it in ONE session, 20:04-21:30 UTC.
+Scripts: =scripts/time-spec-across-versions.py= (interleaved standalone timing),
+=scripts/time-suite-critical-path.py= (full-suite decomposition),
+=scripts/report-slow-spec-shape.py= (per-test shape from a JSON report). Older
+versions came from =git worktree= checkouts, so each arm carried its own
+library and its own tests, not just its own userscript.
+
+Raw output is committed under =tests/timings/=, named
+=<what>-<versions>-<host>-<date>.json= — every run, not just the medians, so a
+later reader can check the spread rather than trust a summary. Each file
+carries its own =machine= block and UTC timestamps.
+
+*The question, as this file recorded it:* the =test:full= wall clock stepped
+from 337-341 s to 344-347 s between 9.99.1139 and 9.99.1140, and the two
+candidates written down were "=rel-auto-retry-failed= got slower" or "host
+conditions".
+
+*Neither. The answer was a third thing, and the first candidate is dead.*
+
+*** The spec did not change, across three versions
+
+Standalone, interleaved A/B/A/B with the first run of each arm discarded:
+
+| Version   | Median   | n | Range         | Spread |
+|-----------+----------+---+---------------+--------|
+| 9.99.1142 | 294.54 s | 3 | 294.18-300.24 |  2.06% |
+| 9.99.1139 | 294.70 s | 3 | 293.94-294.73 |  0.27% |
+| 9.99.1136 | 294.65 s | 1 | —             |      — |
+
+9.99.1142 − 9.99.1139 = *−0.16 s (−0.05%)*. Nine runs of a byte-identical spec
+file, flat across the whole window. Interleaved rather than batched on purpose:
+a machine that drifts over 45 minutes turns a batched comparison into a fake
+version difference, which is precisely the 9.99.1045-vs-1048 trap above.
+
+*One run of 300.24 s among them*, against eight inside a 1 s band. The spec can
+wander ~2% on an unchanged tree, which is the same size as the effect being
+chased — so a single pair would have proved nothing either way.
+
+*** The wall clock decomposes, and both halves are the suite growing
+
+One =test:full= per tree, JSON reporter, same session:
+
+| Version   | Wall     | Results | Spec starts at | Its span | Spec ends at |
+|-----------+----------+---------+----------------+----------+--------------|
+| 9.99.1142 | 345.47 s |     534 |       +47.05 s | 296.89 s |    +343.94 s |
+| 9.99.1139 | 341.14 s |     490 |       +44.74 s | 294.40 s |    +339.15 s |
+| *delta*   | *+4.33*  |     +44 |        *+2.31* |  *+2.49* |       *+4.79* |
+
+The suite ends 1.5-2.0 s after that file does, in both arms — so
+=rel-auto-retry-failed= is the critical path and
+
+: wall = start_offset + span + teardown
+
+holds to within noise. The +4.33 s splits almost evenly:
+
+- *+2.31 s later start.* Playwright walks files in order and this one sorts
+  under "r"; with 12 workers and ~50 files, a worker only reaches it after
+  finishing an earlier file. More files ahead of it ⇒ it starts later.
+- *+2.49 s longer span.* The standalone number says the spec itself is
+  unchanged, so this is contention: 44 more tests keep the other 11 workers
+  busy for more of the window in which this one is running, and its rate-gate
+  timers and IPC land slightly late.
+
+Neither is anything being slower. *Both are the suite being 44 tests bigger* —
+a third explanation that neither recorded candidate named, and one that only
+shows up if you decompose the number instead of correlating it with a count.
+
+*** What this falsifies, and what it offers
+
+*"A new test is free until it is slower than 324 s" is false.* 44 tests cost
+4.33 s, ~0.1 s each. It is not linear and should not be turned into a rate: the
+start-offset term depends on file-level packing, and the contention term on how
+much work overlaps one long spec. The honest rule is *a new test is nearly free
+while the suite is small relative to its worker count, and stops being free as
+the workers fill* — which is where this suite now is.
+
+*There is ~45 s of headroom, and it is not a code change.* The run spends
+47 s before a worker picks up its critical-path file. If that file started
+first, =test:full= would be about =296.89 + teardown ≈ 300 s= instead of 345 s
+— a *13%* cut for a scheduling change. NOT DONE, and recorded rather than
+attempted: Playwright has no "longest first", the plausible levers (renaming
+the file to sort early, a separate project, =fullyParallel=) each carry their
+own risk, and =fullyParallel= in particular would reshape a spec whose
+behaviour =org/503-handling.org= item 7 depends on. Worth its own branch, with
+its own before/after in one session.
+
+*The ±2% band restated at 9.99.1141 was fitted to a real effect, not to noise.*
+That entry widened it and left the cause open. The cause is above: the band's
+two clusters are two suite sizes.
 
 * Cost model — the column-header count scan
 
