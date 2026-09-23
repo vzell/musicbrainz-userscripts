@@ -1,0 +1,23 @@
+* TODO pending edits highlight handling
+
+This is all on https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d:
+
+1.)
+
+Currently when filtering with the "<button id="mb-pending-edits-btn" or the sub-table variant '"<button type="button" class="mb-subtable-pending-edits-btn"'
+the entities with the pending edit background (orange by default)
+
+#+begin_example
+@debug/work-recordings-pending-edits-final.html - pending edits non-filtered - [Image #1]
+#+end_example
+
+get the same background highglightning as a normal column level filter would do and the pending edit highligtning is
+lost.
+
+#+begin_example
+@debug/work-recordings-pending-edits-filtered-final.html - pending edits filtered - [Image #2]
+#+end_example
+
+We could maybe put a bold yellow border in that case around the entities which have pending edits, like what we do when
+filtering relationship icons which get a bold red border when filter-matched.
+

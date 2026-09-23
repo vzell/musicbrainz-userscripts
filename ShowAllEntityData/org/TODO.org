@@ -574,7 +574,6 @@ show me a mock of the buttons if that's a workable solution
 
 tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
 
-
 ** DONE sa_art_idb_metadata_ttl_days
 
 Work on @org/503-handling.org
@@ -667,7 +666,6 @@ they are very long and probaly not worth it now that I've checked in a live brow
 - Is it possible to run them only on demand
 
 ** DONE pick up the segmented retry pill
-
 ** TODO pick up the heading pre-processing defect
 
 Two honest gaps, both recorded rather than buried:
@@ -740,9 +738,69 @@ Analyze the results, and adjust MEASUREMENTS.org accordingly and cleanup the wor
 Tackle Item 3 in @org/config-handling.org
 Item 2 has been done, but it looks like it's not flagged as done
 
-* TODO still left
+* DONE lib change
 
-All four Items DONE; F2, F3 and F4 fixed at 9.99.1130, 9.99.1136 and 9.99.1137. Remaining follow-ups: F1's dirty-set
-save and migration table (the real fix for defaults never reaching existing users), F5's second-class entry points, F6's
-mirror republish, and the library-side root cause of F2 — each of which needs a VZ_MBLibrary change rather than a
-userscript one
+Currently our userscript in "/home/vzell/git/musicbrainz-userscripts/ShowAllEntityData" load it's library over the
+network from the repo located in "/home/vzell/git/mb-userscripts" (that's the one from where I actually publish my userscripts which
+gets announced in the forum) via
+
+#+begin_example
+// @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
+#+end_example
+
+In order to live test the latest changes in the /home/vzell/git/musicbrainz-userscripts repo (my development repo, never
+announced officially) this needs to be changed first to
+
+#+begin_example
+// @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
+#+end_example
+
+Up to know the library was quite stable, that's why event the development version referenced the published/announced
+version
+
+* DONE tooltips
+
+The "@grant GM_listValues" is in, but before I live check:
+
+1.)
+
+Redesign the configuration panel (<div id="vz-mb-show-all-entity-data-config-container") header line
+
+#+begin_example
+<div id="vz-mb-show-all-entity-data-header-row"
+#+end_example
+
+to look more professional and also include the userscript/library version numbers
+
+2.)
+
+Add extensive tooltip support for all buttons/filter-fields/clickable anchors like
+
+#+begin_example
+<a id="vz-mb-show-all-entity-data-reset">RESET</a>
+#+end_example
+
+
+* TODO I widened the measurement band, and said why
+
+  The gate ran 347 s on a different tree — third consecutive run at 344–347 s against six earlier at 337–341. The row-10 note had already written down which run would decide and what to do if it agreed, so ±1% is now restated as ±2%. That ordering is the point: the threshold was fixed before the deciding run, not
+  fitted to it afterwards.
+
+  The cause is left open and recorded as open. The 32 tests this branch added are all sub-2 s and can't account for ~7 s under that file's own "the suite costs whatever its slowest spec costs" reading. It's either rel-auto-retry-failed itself or host conditions nothing recorded. Both are testable; neither has been
+  tested.
+
+  Outstanding
+
+  org/TODO.org is still the only dirty file — your notes, deliberately untouched across all three merges now.
+
+  CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since 2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
+
+* DONE still left
+  
+  F6 is now the whole of what's left in org/config-handling.org — the mirror is 395 versions and three library versions behind, and the library gap is no longer cosmetic: 4.1.0's dirty-set SAVE, 4.2.0's dialog rewrite and 4.3.0's header all sit unpublished. The one remaining sub-item is the five type: 'table' settings never seeing rows added in a later version.
+
+* TODO tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
+
+* remaining stuff
+
+* redesign of the action buttons
