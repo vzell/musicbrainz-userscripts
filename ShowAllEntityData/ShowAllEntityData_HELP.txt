@@ -2174,15 +2174,17 @@ SAVE / LOAD CONFIGURATION
 Two buttons in the bottom-left corner of the ⚙️ Settings dialog let you keep a
 copy of your whole configuration and move it between browsers or profiles.
 
-• 💾 Save configuration — writes every setting to a versioned JSON file.  The
-  familiar filename dialog appears first (draggable, editable filename, Alt+S
-  to confirm, Escape to cancel) with a FILE METADATA block showing the script
-  version, the file-format version and the number of keys.
+• 💾 Save configuration — writes every setting AND your workspace state to a
+  versioned JSON file.  The familiar filename dialog appears first (draggable,
+  editable filename, Alt+S to confirm, Escape to cancel) with a FILE METADATA
+  block showing the script version, the file-format version, the number of
+  settings and the number of workspace keys.
 • 📂 Load configuration — pick a previously saved file.  A summary reports how
-  many settings were applied, skipped and rejected, and the page then reloads
-  so the imported settings take effect (same as pressing SAVE).  A setting
-  whose value in the file matches the current default is applied without being
-  stored, and the summary says how many — see KEEPING UP WITH NEW DEFAULTS.
+  many settings were applied, skipped and rejected, then lists each group of
+  workspace state it restored, and the page reloads so everything takes effect
+  (same as pressing SAVE).  A setting whose value in the file matches the
+  current default is applied without being stored, and the summary says how
+  many — see KEEPING UP WITH NEW DEFAULTS.
 
 WHAT THE FILE CONTAINS
 • Every setting in the ⚙️ Settings dialog — the full set, not just the ones you
@@ -2191,23 +2193,48 @@ WHAT THE FILE CONTAINS
 • All five editable lookup tables, with your own rows: Default Hidden Columns,
   the three Relationships icon tables (relation type / other database /
   streaming service) and the Unicode Character Picker catalogue.
+• Your workspace state — everything below, which earlier versions of this file
+  did not carry:
+    - The pinned filter list.  This is the one that matters most: you edit it
+      from inside the Settings dialog via 🔧 Edit Pinned Filter List, so it
+      always looked like part of the configuration, and until now it was not
+      in the file.
+    - Which columns you have hidden per page type — the 👁️ Visible menu's own
+      memory, including each sub-table's separate state.  This is the laborious
+      one: it is built up one page type at a time, and moving to a second
+      browser used to mean redoing all of it.
+    - Filter history, the Statistics- and Load-dialog positions and sizes, the
+      Settings- and ChangeLog-dialog sizes, the Settings dialog's column widths
+      and which of its sections you leave open, the 📊 dropdown's collapsed
+      sections, and the shared library's display preferences.
 • A _meta header: script version, file-format version and export timestamp.
-  A file from a different format version still imports, with a note in the
-  summary; unknown keys are ignored, and any key missing from the file keeps
-  whatever value it has now.
+
+READING AN OLDER OR NEWER FILE
+Both directions work, and the summary says which happened.
+• A file saved by an earlier version has no workspace block, so your settings
+  are imported and your own column visibility, pinned filters and window
+  layouts are left exactly as they are here.
+• A file saved by a later version may carry things this one does not recognise;
+  those are left alone rather than refused.
+• Unknown keys are ignored either way, and any key missing from the file keeps
+  whatever value it has now — so a file never erases something it has no
+  opinion about.
 
 WHAT THE FILE DOES NOT CONTAIN
-These live outside the Settings dialog and are NOT carried over — recreate them
-by hand on a new machine:
-• Which columns you have hidden per page type (the 👁️ Visible menu's own
-  memory).  The Default Hidden Columns *table* is saved; the per-page-type
-  state you build up by clicking is not.
-• The pinned filter list.  Note this one: you edit it from inside the Settings
-  dialog via 🔧 Edit Pinned Filter List, so it looks like part of the
-  configuration, and it is not in the file.
-• Filter history, the Statistics- and Load-dialog positions and sizes, the
-  Settings dialog's own size and column widths, the 📊 dropdown's collapsed
-  sections, and the shared library's own preferences.
+• Table data.  Rows you fetched are saved separately with 💾 Save to Disk;
+  this file is configuration only.
+• Cached content — cover art, relationship lookups, the ❓ Help and 📜 ChangeLog
+  copies.  These refill themselves on demand.
+• The record of which one-time repairs this installation has already run (see
+  KEEPING UP WITH NEW DEFAULTS).  That describes this install, not you, so it
+  is deliberately left out: importing it would tell a browser that still needs
+  the repair that it has already had it.
+
+A NOTE ON WINDOW POSITIONS
+Panel positions and sizes are saved in screen pixels, so a file written on a
+large monitor carries coordinates a small one does not have.  Nothing is lost:
+every panel clamps what it loads to the window it is actually opening in, so a
+restored position can never strand a dialog off-screen.
 
 WHERE THE BUTTONS APPEAR
 Everywhere.  All six ways into the Settings dialog now open the same dialog:

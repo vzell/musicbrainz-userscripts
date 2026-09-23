@@ -29,6 +29,7 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
+// @grant        GM_listValues
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
 // @license      MIT
@@ -65739,7 +65740,7 @@ a { color: #1565c0; }`;
     // CONFIG FILE FORMAT (versioned JSON, one key per line for human diff):
     //   {
     //     "_meta": {
-    //       "schema_version": 1,
+    //       "schema_version": 2,
     //       "script_version": "9.99.272+2026-03-21",
     //       "exported_at":    "2026-03-21T14:32:00.000Z",
     //       "script_id":      "vz-mb-show-all-entity-data"
@@ -65747,6 +65748,11 @@ a { color: #1565c0; }`;
     //     "settings": {
     //       "sa_enable_debug_logging": false,
     //       "sa_global_filter_highlight_bg": "#FFD700",
+    //       ...one key per line...
+    //     },
+    //     "workspace": {
+    //       "persistent-sa-hist-list": ["^Bruce", "tour 1978"],
+    //       "vz-mb-colvis-artist-releases": "{\"Artist\":false}",
     //       ...one key per line...
     //     }
     //   }
@@ -65760,13 +65766,253 @@ a { color: #1565c0; }`;
     // three entry types — `divider` and `function` carry no user value at all,
     // and a `table` key that has never been seeded has no value yet.
     //
+    // `workspace` is schema_version 2 (2026-09-23, org/config-handling.org F5's
+    // last bullet).  It carries the GM state that is NOT a configSchema key and
+    // that the user nonetheless built by hand — above all the PINNED FILTER
+    // LIST, which is edited from inside the settings dialog, so a user has every
+    // reason to expect it in a file that dialog wrote.  See
+    // `_CFG_WORKSPACE_GROUPS` for the full roster and for what is deliberately
+    // left out.
+    //
+    // **Both blocks are OPTIONAL in both directions, and that is the whole of
+    // the version story.**  A v1 file loaded here has no `workspace` key, so
+    // nothing is restored and the settings import is unchanged.  A v2 file
+    // loaded by a pre-2026-09-23 script hits its own `payload.settings` read and
+    // ignores the rest — the mirror is still at 9.99.746, so that is not a
+    // hypothetical.  Neither direction errors, and the version guard says which
+    // happened rather than failing the import.
+    //
     // On import unknown keys are ignored; missing keys remain at their current
     // saved value.  The five `type: 'table'` settings are arrays and round-trip
-    // as arrays, in both directions — see _applyConfigSettings().
+    // as arrays, in both directions — see _applyConfigSettings().  Workspace
+    // values round-trip VERBATIM, whatever their shape — see
+    // _applyWorkspaceState().
     // ──────────────────────────────────────────────────────────────────────────
 
-    /** Current config-file format version (bump when structure changes). */
-    const _CFG_SCHEMA_VERSION = 1;
+    /**
+     * Current config-file format version (bump when structure changes).
+     *
+     * 1 → 2 on 2026-09-23: added the optional `workspace` block.  Nothing about
+     * the `settings` block changed, which is why the guard in
+     * {@link _loadSettingsConfig} treats a version difference as a note rather
+     * than a refusal.
+     */
+    const _CFG_SCHEMA_VERSION = 2;
+
+    /**
+     * The non-`configSchema` GM state the config file carries, in groups.
+     *
+     * Everything in `settings` is a `configSchema` key, and the schema is what
+     * tells the importer a key's type.  These have no schema and no declared
+     * type, so this registry is the ONLY thing that says a key is importable at
+     * all — the exporter resolves it to decide what to write, and the importer
+     * resolves it again to decide what it will accept.  One list, read twice, so
+     * the two halves cannot drift the way `_buildConfigJson()` and
+     * `_applyConfigSettings()` did before 9.99.1136 (they skipped different
+     * entry types for three months).
+     *
+     * **An allowlist, never a sweep.** `GM_listValues()` would also return the
+     * `mb_sa_subtable_snapshot_*` handoff payloads — whole compressed tables,
+     * megabytes each, deleted the moment the destination tab consumes them —
+     * and the library's remote-content caches.  Dumping storage wholesale would
+     * put both in the file.
+     *
+     * Each entry is `{group, label, keys?, prefix?, fallback?}`:
+     *   • `keys`     — fixed key names.
+     *   • `prefix`   — every stored key starting with it, found via
+     *     `GM_listValues()`.  Needed because these are per-pageType and, for
+     *     sub-tables, per-runtime-heading-id: `vz-mb-colvis-<pageType>` is
+     *     predictable, `vz-mb-colvis-<pageType>-sub-<safeId>` is not.
+     *   • `fallback` — a function returning the keys that CAN be derived when
+     *     `GM_listValues` is absent.  The grant is feature-detected for the
+     *     same reason `GM_deleteValue` is: this file is also the reference for
+     *     how a consumer drives the library, and a missing grant must degrade,
+     *     not throw.
+     *
+     * **What is deliberately NOT here**, each for its own reason:
+     *   • `mb_sa_subtable_snapshot_*` — transient, huge, and consumed once.
+     *   • the library's changelog/help remote caches — caches, not preferences;
+     *     they refill themselves and carry a timestamp that would import stale.
+     *   • `sa_settings_migration_level` / `_backup` / `_notice` — these describe
+     *     what this INSTALL has already repaired (F1).  Importing another
+     *     profile's level would mark a frozen profile as migrated, and
+     *     importing its backup would offer to "undo" a migration that never ran
+     *     here.  They are install state, not user state.
+     *   • IndexedDB (`vz-mb-saed-art-cache`) — not GM storage at all, and a
+     *     cache besides.
+     *
+     * @type {Array<{group: string, label: string, keys?: string[],
+     *               prefix?: string, fallback?: function(): string[]}>}
+     */
+    const _CFG_WORKSPACE_GROUPS = [
+        {
+            group: 'pinned',
+            label: 'Pinned filter list',
+            keys: ['persistent-sa-hist-list'],
+        },
+        {
+            group: 'history',
+            label: 'Filter history',
+            keys: ['lru-sa-hist-list'],
+        },
+        {
+            group: 'colvis',
+            label: 'Column visibility',
+            prefix: COLVIS_KEY_PREFIX,
+            // COLVIS_TOUCHED_KEY_PREFIX starts with COLVIS_KEY_PREFIX, so the
+            // prefix sweep already covers it. The fallback must name both.
+            fallback: () => {
+                const out = [];
+                for (const def of pageDefinitions) {
+                    if (!def || !def.type) continue;
+                    out.push(COLVIS_KEY_PREFIX + def.type,
+                             COLVIS_TOUCHED_KEY_PREFIX + def.type);
+                }
+                return out;
+            },
+        },
+        {
+            group: 'geometry',
+            label: 'Panel geometry',
+            keys: ['sa_stats_panel_geometry', 'sa_load_dialog_geometry'],
+        },
+        {
+            group: 'dropdown',
+            label: 'Unique-values dropdown sections',
+            keys: [MB_UNIQ_SECTION_COLLAPSE_KEY],
+        },
+        {
+            group: 'dialog',
+            label: 'Settings dialog layout',
+            // Written by VZ_MBLibrary, into THIS script's GM storage — a
+            // @require'd library shares the consumer's sandbox and its grants,
+            // so there is one namespace, not two. `<scriptId>-section-collapse`
+            // is 4.2.0's per-section collapse memory (F5's second bullet).
+            keys: [
+                `${SCRIPT_ID}-modal-size`,
+                `${SCRIPT_ID}-col-widths`,
+                `${SCRIPT_ID}-section-collapse`,
+                `${SCRIPT_ID}-changelog-size`,
+            ],
+        },
+        {
+            group: 'libprefs',
+            label: 'Library display preferences',
+            keys: ['vz-lib-prefs'],
+        },
+    ];
+
+    /**
+     * Resolves {@link _CFG_WORKSPACE_GROUPS} into concrete `{key, group}` pairs.
+     *
+     * The single source of truth for "is this key importable", called by both
+     * {@link _buildWorkspaceBlock} and {@link _applyWorkspaceState}. The
+     * importer resolving the SAME registry — rather than trusting whatever key
+     * names the file happens to carry — is what stops a hand-edited or
+     * malicious config file writing into arbitrary GM storage, including the
+     * `sa_settings_migration_level` guard that F1's repair depends on.
+     *
+     * **A `prefix` group asks storage, so its answer differs between the two
+     * calls, deliberately.** On export it enumerates what THIS profile has; on
+     * import it must also accept a key this profile has never seen, which is
+     * the entire point of importing column visibility from another machine. So
+     * the importer unions the resolved keys with a prefix test — see
+     * {@link _configWorkspaceGroupFor}.
+     *
+     * Duplicates are collapsed: the `colvis` fallback names both prefixes and
+     * `COLVIS_TOUCHED_KEY_PREFIX` starts with `COLVIS_KEY_PREFIX`, so a sweep
+     * and a fallback can legitimately produce the same key twice.
+     *
+     * @returns {Array<{key: string, group: string}>}
+     */
+    function _configWorkspaceKeys() {
+        const seen = new Set();
+        const out  = [];
+        const add  = (key, group) => {
+            if (typeof key !== 'string' || !key || seen.has(key)) return;
+            seen.add(key);
+            out.push({ key, group });
+        };
+
+        const stored = (typeof GM_listValues === 'function')
+            ? (() => { try { return GM_listValues(); } catch (_) { return null; } })()
+            : null;
+
+        for (const grp of _CFG_WORKSPACE_GROUPS) {
+            for (const key of (grp.keys || [])) add(key, grp.group);
+            if (!grp.prefix) continue;
+            if (Array.isArray(stored)) {
+                for (const key of stored) {
+                    if (typeof key === 'string' && key.startsWith(grp.prefix)) add(key, grp.group);
+                }
+            } else if (typeof grp.fallback === 'function') {
+                for (const key of grp.fallback()) add(key, grp.group);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * The group a key belongs to, or `null` when it is not importable.
+     *
+     * Exact names first, then prefixes — so an unseen `vz-mb-colvis-<pageType>`
+     * from another profile is accepted on import while
+     * `mb_sa_subtable_snapshot_x` is not.
+     *
+     * @param {string} key
+     * @returns {string|null}  The group id, or null.
+     */
+    function _configWorkspaceGroupFor(key) {
+        for (const grp of _CFG_WORKSPACE_GROUPS) {
+            if ((grp.keys || []).includes(key)) return grp.group;
+        }
+        for (const grp of _CFG_WORKSPACE_GROUPS) {
+            if (grp.prefix && key.startsWith(grp.prefix)) return grp.group;
+        }
+        return null;
+    }
+
+    /**
+     * Reads every importable workspace key out of GM storage.
+     *
+     * **Absent keys are OMITTED, never written as null.** The importer's rule is
+     * "a missing key keeps the destination's current value", so omitting is how
+     * the file says "I have no opinion about this" — which is what an untouched
+     * panel geometry or an unvisited pageType's column visibility means. Writing
+     * `null` would instead make every export actively erase the destination's
+     * state for everything the exporter happened not to have used. That is the
+     * `type: 'table'` omission rule (org/config-handling.org F3) applied to a
+     * second block, and for the same reason.
+     *
+     * **Values are taken VERBATIM, whatever their shape**, and this is the trap
+     * the whole group has. They are not typed by any schema, and they are not
+     * all objects: `vz-mb-colvis-*` is a `JSON.stringify()`ed STRING, because
+     * `_seedDefaultHiddenColumnsForPageType()` and `loadColVisState()` both
+     * `JSON.parse()` what they read. Helpfully parsing it here — or coercing it
+     * with `String()` on the way back in, which is exactly how F3 destroyed the
+     * lookup tables — hands the reader a shape it does not expect. An empty
+     * object or array IS exported, unlike a `type: 'table'` key: no seeder
+     * refills these, so "no pinned filters" and "no hidden columns" are honest
+     * states the format can carry.
+     *
+     * @returns {Object<string, *>}  key → stored value, for keys that exist.
+     */
+    function _buildWorkspaceBlock() {
+        const block = {};
+        if (typeof GM_getValue === 'undefined') return block;
+        for (const { key } of _configWorkspaceKeys()) {
+            let value;
+            try {
+                value = GM_getValue(key, undefined);
+            } catch (err) {
+                Lib.warn('settings', `Could not read workspace key "${key}" for export:`, err);
+                continue;
+            }
+            if (value === undefined || value === null) continue;
+            block[key] = value;
+        }
+        return block;
+    }
 
     /**
      * Reads one `type: 'table'` setting's rows STRAIGHT FROM GM STORAGE, never
@@ -65862,6 +66108,13 @@ a { color: #1565c0; }`;
      * line — allowing standard line-diff tools to show exactly which settings
      * changed between two exported files.
      *
+     * Since schema_version 2 the payload also carries a `workspace` block —
+     * every importable non-`configSchema` GM key this profile has, built by
+     * {@link _buildWorkspaceBlock}. It is always present, and empty (`{}`) on a
+     * profile that has touched none of it; that is a state worth being able to
+     * see in a diff, and an empty object is unambiguous where an absent key
+     * would be indistinguishable from a v1 file.
+     *
      * @returns {string}  Pretty-printed JSON string.
      */
     function _buildConfigJson() {
@@ -65905,7 +66158,8 @@ a { color: #1565c0; }`;
                 exported_at:    new Date().toISOString(),
                 script_id:      SCRIPT_ID
             },
-            settings: settingsBlock
+            settings:  settingsBlock,
+            workspace: _buildWorkspaceBlock()
         };
 
         // JSON.stringify with 2-space indent puts each key on its own line,
@@ -65947,7 +66201,8 @@ a { color: #1565c0; }`;
             // the dialog's FILE METADATA block using buildMetaBlockHTML's format.
             const parsed   = JSON.parse(json);
             const meta     = parsed._meta || {};
-            const settingsCount = Object.keys(parsed.settings || {}).length;
+            const settingsCount  = Object.keys(parsed.settings  || {}).length;
+            const workspaceCount = Object.keys(parsed.workspace || {}).length;
 
             // Build a custom meta HTML block that shows config-specific fields
             // instead of table-data fields (no entity type / rows / URL).
@@ -65968,12 +66223,15 @@ a { color: #1565c0; }`;
                 row('Schema version',  esc(String(meta.schema_version || _CFG_SCHEMA_VERSION))) +
                 row('Exported at',     esc(fmtDate(meta.exported_at))) +
                 row('Settings count',  `<strong>${settingsCount}</strong> keys`) +
+                row('Workspace state', `<strong>${workspaceCount}</strong> keys ` +
+                                       `<span style="opacity:.75">(column visibility, pinned filters, layouts)</span>`) +
                 `</table>`;
 
             showExportDialog({
                 format:        'Settings Configuration',
                 title:         'Save Settings Configuration',
-                description:   'Versioned JSON snapshot of all script settings — one key per line for easy diff.',
+                description:   'Versioned JSON snapshot of all script settings plus your workspace state ' +
+                               '(column visibility, pinned filters, layouts) — one key per line for easy diff.',
                 mimeType:      'application/json',
                 extension:     'json',
                 blobUrl,
@@ -66128,6 +66386,81 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Writes one imported `workspace` block into GM storage.
+     *
+     * The mirror of {@link _buildWorkspaceBlock}, and the second half of
+     * schema_version 2 (org/config-handling.org F5's last bullet).
+     *
+     * **Every value is written VERBATIM.** No coercion, no validation of shape,
+     * and above all no `String()`. That call is what destroyed the five
+     * `type: 'table'` settings for three months (F3), and this block is a
+     * strictly worse place to make the same mistake: those five at least had a
+     * `Lib.getTableRows()` guard that re-seeded from the built-ins, so the
+     * damage was recoverable by re-entering rows. Nothing re-seeds a pinned
+     * filter list. It is also the one block where the shapes genuinely differ
+     * per key — `vz-mb-colvis-*` holds a `JSON.stringify()`ed string,
+     * `persistent-sa-hist-list` an array, the geometries plain objects — so
+     * there is no single correct coercion even in principle.
+     *
+     * **The registry decides what is writable, not the file.** A key the file
+     * carries that {@link _configWorkspaceGroupFor} does not recognise is
+     * SKIPPED. Without that, a `workspace` block would be an arbitrary write
+     * into this script's GM storage: a hand-edited file could set
+     * `sa_settings_migration_level` and permanently disable F1's one-shot
+     * repair, or plant a `mb_sa_subtable_snapshot_*` payload. The file is
+     * user-supplied data, and the only reason the `settings` half is safe is
+     * that `configSchema` gates it the same way.
+     *
+     * **There is no prune here, and there cannot be.** `_applyConfigSettings()`
+     * deletes a value equal to its schema default so the key keeps following
+     * future defaults. These keys have no schema and no default — the closest
+     * thing is a literal baked into each reader (`{width: 940, height: 680}`) —
+     * so there is nothing to compare against and nothing that would benefit.
+     *
+     * **Geometry is imported even though it is machine-specific**, which is a
+     * decision rather than an oversight: both geometry readers clamp what they
+     * load to the current viewport (`_clampGeo()` in `showStatsPanel()` and in
+     * the load dialog), so a 4K desktop's coordinates cannot strand a panel off
+     * a laptop screen. Without those clamps this group would have to be
+     * excluded.
+     *
+     * @param {Object<string, *>} workspaceObj  The file's "workspace" block.
+     * @returns {{restored: number, skipped: number, skippedKeys: string[],
+     *            byGroup: Object<string, number>}}  Per-key tallies, plus a
+     *   count per group id for the summary dialog.
+     */
+    function _applyWorkspaceState(workspaceObj) {
+        let restored = 0, skipped = 0;
+        const skippedKeys = [];
+        const byGroup = {};
+
+        if (!workspaceObj || typeof workspaceObj !== 'object' || Array.isArray(workspaceObj)) {
+            return { restored, skipped, skippedKeys, byGroup };
+        }
+
+        for (const [key, value] of Object.entries(workspaceObj)) {
+            const group = _configWorkspaceGroupFor(key);
+            if (!group || value === undefined) {
+                skipped++;
+                skippedKeys.push(key);
+                continue;
+            }
+            try {
+                GM_setValue(key, value);
+            } catch (err) {
+                Lib.warn('settings', `Could not restore workspace key "${key}":`, err);
+                skipped++;
+                skippedKeys.push(key);
+                continue;
+            }
+            restored++;
+            byGroup[group] = (byGroup[group] || 0) + 1;
+        }
+
+        return { restored, skipped, skippedKeys, byGroup };
+    }
+
+    /**
      * Reads a user-selected .json configuration file, validates the payload,
      * applies matching settings keys via {@link _applyConfigSettings}, and
      * reloads the page (matching the behaviour of the native SAVE button).
@@ -66135,7 +66468,8 @@ a { color: #1565c0; }`;
      * Validation rules:
      *   1. JSON must parse without error.
      *   2. Payload must contain a "settings" object.
-     *   3. _meta.schema_version (when present) must equal _CFG_SCHEMA_VERSION.
+     *   3. _meta.schema_version (when present) is a NOTE, never a refusal — see
+     *      below.
      *   4. Unknown keys (not in configSchema) are silently skipped.
      *   5. `divider` and `function` keys are silently skipped — neither carries
      *      a user value.
@@ -66143,9 +66477,22 @@ a { color: #1565c0; }`;
      *      boolean for checkbox keys; numeric strings → number for number keys;
      *      a `table` key's row array is stored verbatim, and a non-array offered
      *      for one is rejected rather than stringified.
+     *   7. An optional "workspace" object, per {@link _applyWorkspaceState}: its
+     *      keys are gated on `_CFG_WORKSPACE_GROUPS` and its values written
+     *      verbatim. Absent in a schema_version 1 file, which is the normal
+     *      case for any file exported before 2026-09-23.
+     *
+     * **The version mismatch is deliberately not fatal, in either direction.**
+     * The two blocks are independently optional, so an older file simply
+     * restores less and a newer one carries a block this build does not know
+     * about and ignores it — the published mirror is still at 9.99.746, so a
+     * v2 file being read by a v1 script is a live case, not a hypothesis. The
+     * summary names which of the two happened, because "nothing about my window
+     * positions came across" is otherwise indistinguishable from a bug.
      *
      * A summary dialog reports how many keys were applied, skipped (not
-     * applicable), and ignored (type mismatch / parse error) before reloading.
+     * applicable), and ignored (type mismatch / parse error), plus the workspace
+     * groups restored, before reloading.
      *
      * @param {File} file  The .json file chosen by the user.
      */
@@ -66178,7 +66525,9 @@ a { color: #1565c0; }`;
             return;
         }
 
-        // Schema-version check (non-fatal: warn but proceed)
+        // Schema-version check — a NOTE, never a refusal. Both blocks are
+        // optional in both directions, so an older or newer file still imports
+        // everything this build understands.
         const metaVer = payload._meta && payload._meta.schema_version;
         if (metaVer !== undefined && metaVer !== _CFG_SCHEMA_VERSION) {
             Lib.warn('settings',
@@ -66189,13 +66538,19 @@ a { color: #1565c0; }`;
         const { applied, skipped, invalid, pruned, skippedKeys } =
             _applyConfigSettings(payload.settings);
 
+        const ws = _applyWorkspaceState(payload.workspace);
+
         Lib.info('settings',
             `Configuration imported from "${file.name}": ` +
             `${applied} applied (${pruned} left at their default), ` +
-            `${skipped} not applicable, ${invalid} invalid`);
+            `${skipped} not applicable, ${invalid} invalid, ` +
+            `${ws.restored} workspace key${ws.restored !== 1 ? 's' : ''} restored`);
 
         if (skipped > 0) {
             Lib.debug('settings', `Keys not applied: ${skippedKeys.join(', ')}`);
+        }
+        if (ws.skipped > 0) {
+            Lib.debug('settings', `Workspace keys not restored: ${ws.skippedKeys.join(', ')}`);
         }
 
         // Build summary for the user. "Skipped" is deliberately NOT worded as
@@ -66211,8 +66566,28 @@ a { color: #1565c0; }`;
         }
         if (skipped > 0) lines.push(`Skipped:  ${skipped} key${skipped !== 1 ? 's' : ''} (unknown or not importable)`);
         if (invalid > 0) lines.push(`Invalid:  ${invalid} value${invalid !== 1 ? 's' : ''} (type error)`);
+
+        // The workspace groups are named individually, not just counted. "14
+        // keys restored" does not tell the user whether their pinned filter
+        // list came across, and that is the one group they are most likely to
+        // have opened the file for.
+        if (ws.restored > 0) {
+            lines.push(`Workspace: ${ws.restored} key${ws.restored !== 1 ? 's' : ''} restored`);
+            for (const grp of _CFG_WORKSPACE_GROUPS) {
+                const n = ws.byGroup[grp.group];
+                if (n) lines.push(`          • ${grp.label} (${n})`);
+            }
+        }
+
         if (metaVer !== undefined && metaVer !== _CFG_SCHEMA_VERSION) {
             lines.push(`\nNote: file uses schema v${metaVer}; current is v${_CFG_SCHEMA_VERSION}.`);
+            if (metaVer < _CFG_SCHEMA_VERSION) {
+                lines.push('It predates the workspace block, so column visibility, the pinned');
+                lines.push('filter list and panel layouts were left as they are here.');
+            } else {
+                lines.push('It was written by a newer version; anything this one does not');
+                lines.push('recognise was left alone.');
+            }
         }
         lines.push('\nThe page will now reload to apply the imported settings.');
 
@@ -84093,6 +84468,49 @@ a { color: #1565c0; }`;
              */
             applyConfigSettings(settingsObj) {
                 return _applyConfigSettings(settingsObj);
+            },
+
+            /**
+             * Runs the 📂 Load configuration write loop over one `workspace`
+             * block, and returns its tallies.
+             *
+             * The schema_version 2 sibling of {@link applyConfigSettings}, and
+             * write-capable for the same reason: the block's only production
+             * entry point is the same file picker followed by the same
+             * `location.reload()`.
+             *
+             * What it pins that nothing else can: a workspace value is written
+             * VERBATIM, so a coercion slipped in here is invisible at import
+             * time — the summary counts the key as restored either way — and
+             * surfaces a page load later as column visibility that reverted, or
+             * a pinned filter list holding one comma-joined string where six
+             * entries used to be. That is org/config-handling.org F3's failure
+             * mode in a block with no `Lib.getTableRows()` guard behind it.
+             *
+             * @param {Object<string, *>} workspaceObj  A config file's
+             *   "workspace" block.
+             * @returns {{restored: number, skipped: number,
+             *            skippedKeys: string[], byGroup: Object<string, number>}}
+             */
+            applyWorkspaceState(workspaceObj) {
+                return _applyWorkspaceState(workspaceObj);
+            },
+
+            /**
+             * The importable workspace keys this profile currently resolves to,
+             * with the group each belongs to.
+             *
+             * Exposed because the resolution is invisible: `GM_listValues()` is
+             * feature-detected, so the same profile yields a storage sweep in
+             * one environment and a `pageDefinitions` walk in another, and a
+             * test that only round-trips a hand-built block would never
+             * exercise either. Reports what the EXPORTER would look for, which
+             * is deliberately narrower than what the importer accepts.
+             *
+             * @returns {Array<{key: string, group: string}>}
+             */
+            workspaceKeys() {
+                return _configWorkspaceKeys();
             },
 
             /**
