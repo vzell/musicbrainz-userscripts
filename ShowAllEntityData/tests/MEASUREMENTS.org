@@ -704,6 +704,8 @@ worker count (half the logical CPUs = *12*).
 | =npm run test:full=, branch check |   503 | *5 m 45 s* | =date=, 2026-09-23 12:04:41-12:10:26   |
 | =npm run test:full=, branch check |   522 | *5 m 44 s* | =date=, 2026-09-23 13:44:41-13:50:25   |
 | =npm run test:full=, merge gate F |   522 | *5 m 47 s* | =date=, 2026-09-23 14:42:51-14:48:38   |
+| =npm run test:full=, branch check |   534 | *5 m 45 s* | =date=, 2026-09-23 15:27:59-15:33:44   |
+| =npm run test:full=, merge gate G |   534 | *5 m 45 s* | =date=, 2026-09-23 17:43:56-17:49:41   |
 
 All green. The =npm test= figure is Playwright's own "2.7m", taken from two
 consecutive runs and *not* separately wall-clocked, so it excludes npm and
@@ -794,6 +796,16 @@ widened and the cause left open rather than guessed at. That is the same
 discipline the 9.99.1045-vs-1048 entry arrived at from the other direction,
 where the environment guess happened to be right and was still a guess until
 it was measured.
+
+*Rows 13 and 14 sit inside the restated band, which is the first evidence FOR
+it rather than for the restatement.* 345 s twice, at 534 tests, four hours
+apart on two trees — so the ±2% centre is now carrying five runs (345, 344,
+347, 345, 345) against the old band's six (337-341). The step is real and
+happened somewhere between 9.99.1139 and 9.99.1140; it is not drift, since
+nothing since has moved. Still unexplained, and still worth one standalone
+=rel-auto-retry-failed= timing against 9.99.1139 to settle it — recorded here
+so that measurement has a stated question to answer rather than being a fishing
+trip.
 
 *Row 6's run had one failure that did not reproduce*:
 =work-recordings-ms-length.spec.js= — "the response is cached for the page:

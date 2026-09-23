@@ -21,14 +21,26 @@ The five tables and where their built-ins live:
                                    objects, `pageType` is the key)
   sa_unicode_char_picker_mappings  SA_UNICODE_CHARS_DEFAULT (array of objects,
                                    `code` is the key)
-  sa_rel_url_icon_classes          an inline object literal, the 2nd argument of
-  sa_rel_other_db_classes          a `_loadMap('<key>', { ... })` call inside
-  sa_rel_streaming_classes         `_initRelMappings()`
+  sa_rel_url_icon_classes          REL_URL_ICON_CLASSES_DEFAULT   (object,
+  sa_rel_other_db_classes          REL_OTHER_DB_CLASSES_DEFAULT    the key is
+  sa_rel_streaming_classes         REL_STREAMING_CLASSES_DEFAULT   the key)
 
-The three rel maps have no named constant, which is why this parses the call
-site rather than a declaration. Keys only — a row's VALUE changing is a
-different question from a row appearing, and only the second one is what the
-ledger has to answer.
+**The three rel maps are read TWO ways, and both are needed.** Before 9.99.1142
+they had no named constant at all: the built-ins were an inline object literal
+passed as the second argument of a `_loadMap('<key>', { ... })` call inside
+`_initRelMappings()` — duplicated from the `let REL_*` initializer, which is
+what the hoist to one constant each fixed. A walk over HISTORY therefore meets
+both shapes, so this tries the constant first and falls back to the call site.
+
+Reading only the new shape is not a theoretical loss: it is what this script
+did for one commit, and the failure was SILENT. The three tables simply stopped
+appearing, the change loop iterates the tables it found rather than the ones it
+expected, and a table vanishing produced no output at all — so the headline
+"0 changes" stayed true by luck rather than by measurement. Hence
+`EXPECTED_TABLES` and the explicit complaint below.
+
+Keys only — a row's VALUE changing is a different question from a row
+appearing, and only the second one is what the ledger has to answer.
 
     python3 scripts/dump-table-seed-history.py
     python3 scripts/dump-table-seed-history.py --json scripts/table-seed-history.json
@@ -54,6 +66,20 @@ ARRAY_TABLES = {
     'sa_default_hidden_columns': ('SA_DEFAULT_HIDDEN_COLUMNS_DEFAULT', 'pageType'),
     'sa_unicode_char_picker_mappings': ('SA_UNICODE_CHARS_DEFAULT', 'code'),
 }
+
+# The three rel maps, as of 9.99.1142. Older revisions have no such constant and
+# are read from the _loadMap() call site instead — see the module docstring.
+OBJECT_TABLES = {
+    'sa_rel_url_icon_classes': 'REL_URL_ICON_CLASSES_DEFAULT',
+    'sa_rel_other_db_classes': 'REL_OTHER_DB_CLASSES_DEFAULT',
+    'sa_rel_streaming_classes': 'REL_STREAMING_CLASSES_DEFAULT',
+}
+
+# Every table this script must find in the CURRENT revision. A table that has
+# quietly stopped parsing is the failure mode worth shouting about: the change
+# loop compares the tables it found, so one that disappears is reported as
+# nothing at all.
+EXPECTED_TABLES = set(ARRAY_TABLES) | set(OBJECT_TABLES)
 
 
 def repo_root():
@@ -111,8 +137,21 @@ def keys_in_revision(src):
         block = balanced_block(src, src.index('[', m.start()), '[', ']')
         out[setting] = re.findall(FIELD.format(field), block)
 
+    # 9.99.1142 onwards: a named constant per rel map.
+    for setting, const in OBJECT_TABLES.items():
+        m = re.search(rf'const {const} = \{{', src)
+        if not m:
+            continue
+        block = balanced_block(src, src.index('{', m.start()))
+        out[setting] = OBJ_KEY.findall(block)
+
+    # Before that: the literal lived at the _loadMap() call site. Only consulted
+    # for a table the constant form did not already supply, so the two never
+    # fight on a revision that happens to carry both.
     for m in LOADMAP.finditer(src):
         setting = m.group(1)
+        if setting in out:
+            continue
         block = balanced_block(src, src.index('{', m.end() - 1))
         out[setting] = OBJ_KEY.findall(block)
 
@@ -160,13 +199,23 @@ def main():
 
     print(f'{len(revs)} revisions of {SCRIPT}\n')
     print('Built-in row counts, now:')
-    for setting in sorted(set(list(ARRAY_TABLES) + [
-            'sa_rel_url_icon_classes', 'sa_rel_other_db_classes',
-            'sa_rel_streaming_classes'])):
+    for setting in sorted(EXPECTED_TABLES):
         n = len(current.get(setting, []))
         intro = first_seen.get(setting, {})
         print(f'  {setting:<34} {n:>3} rows   (first seen {intro.get("date", "?")}'
               f' with {intro.get("rows", "?")})')
+
+    # A table this script can no longer find is the failure that hides itself:
+    # the change loop compares what it FOUND, so one that stops parsing is
+    # reported as no changes rather than as an error. Exactly what happened
+    # when the rel maps were hoisted to constants.
+    missing = sorted(EXPECTED_TABLES - set(current))
+    if missing:
+        print(f'\nERROR: {len(missing)} table(s) did not parse in the current '
+              f'revision: {", ".join(missing)}')
+        print('The "changes" figure below is not trustworthy — it can only '
+              'compare tables it found.')
+        return 2
 
     print(f'\n{len(changes)} change(s) to the built-in rows after their introduction:')
     if not changes:
