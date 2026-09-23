@@ -2,7 +2,9 @@
  * Probes whether the LENGTH ⚠️/❌ summary buttons survive Save to Disk →
  * Load from Disk on a release tracklist.
  *
- * Suspected, not yet shown, while landing PERFORMANCE.org Step 26:
+ * Suspected while landing PERFORMANCE.org Step 26, and CONFIRMED by this probe
+ * on 2026-09-23 (8 flagged cells before the save, 0 after the load, both
+ * buttons hidden — DEBUG-NOTES.md, the Step 26 entry). Still open. The reason:
  * `_buildDiskCellData()` stores a cell's `innerHTML` plus colSpan/rowSpan and
  * nothing else, while a length mismatch is marked by `data-mb-len-flag` ON the
  * `<td>` itself (`_applyLengthMismatchFlag()`, attributes only by design). A

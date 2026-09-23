@@ -12,7 +12,7 @@ is on ~main~. Several steps below were implemented and measured on a branch
 that was never merged; those stay TODO and say so in their own text, so that
 "what is true of the script people actually run" is readable straight off the
 keywords. As of this revision the DONE set is exactly Steps 3, 4, 8, 18, 19, 21,
-22, 25, 32, 34, 35 and 36.
+22, 25, 26, 32, 34, 35 and 36.
 
 *One canonical numbering.* Three copies of this file drifted into three
 incompatible schemes — ~main~, ~perf-steps-1-4~ and
@@ -451,10 +451,9 @@ the same code twice:
   tbody.
 - *26* removes ~8 300 source-row ~querySelector~ per pass. It is the item that
   matters most on a *narrow* filter, which is the case Steps 1/2 measured
-  worst on: ~M~ shrinks, these three tallies stay at 4174. /Implemented on
-  branch ~perf/step-26-source-row-tally-memo~ (2026-09-24): measured *8 348 -> 0*
-  queries per pass on ~artist-events~ and *6 429 -> 0* on
-  ~artist-releasegroups~; see the step./
+  worst on: ~M~ shrinks, these three tallies stay at 4174. /LANDED at
+  9.99.1144 (2026-09-24): measured *8 348 -> 0* queries per pass on
+  ~artist-events~ and *6 429 -> 0* on ~artist-releasegroups~; see the step./
 - *23* removes the remaining per-pass teardown-and-rebuild of interactive cell
   elements. On a DEFAULT-configured page that is *ERG alone*, and it is now
   MEASURED rather than estimated: on ~artist-releasegroups~ a single filter
@@ -2527,7 +2526,12 @@ the same time — one excluding BOTH flagged tracks, one excluding just one — 
 the button kept its count in both. It remains uncovered by automation, which is
 what the ~expect: "pass"~ entries say; this records that it is not unverified.
 
-*** TODO Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
+*** DONE Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
+
+*Landed on* ~main~ *in 9.99.1144* (2026-09-24, merge ~5425c76~, branch
+~perf/step-26-source-row-tally-memo~). The problem statement below is kept as
+written; "Implemented" underneath records what shipped and where it departs
+from the fix sketched here.
 
 ~runFilter~ calls ~updateFilterButtonsVisibility()~ unconditionally,
 and its tail runs three counters. Two of them —
@@ -2547,7 +2551,7 @@ wherever a flag is stamped asynchronously.
 Steps 1/2 measured worst on — every other per-pass cost scales with ~M~ and
 shrinks as the query narrows, while these three stay flat at the full row count.
 
-**** Implemented — branch ~perf/step-26-source-row-tally-memo~, 2026-09-24
+**** Implemented — 9.99.1144, 2026-09-24
 
 One memo, ~_sourceRowTally(rows)~, keyed by the source-row ARRAY itself
 (~allRows~, or one ~groupedRows[i].rows~) in a ~WeakMap~ and validated by that
