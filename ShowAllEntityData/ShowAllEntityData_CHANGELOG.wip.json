@@ -15,6 +15,13 @@
           "The columns sit between \"Recorded in area\" and \"Performer\", so a track reads left to right as the recording, then the work it records, then who played on it, then the full raw \"ARs\".",
           "New setting \"Add columns for the recorded WORK's own relationships\" (on by default) under RELEASE TRACKS. Independent of the other relationship-column settings, and of whether \"Recording of work\" itself is shown. \"ARs\" is left completely unchanged either way — every extracted link still appears there too."
         ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "❓ Help's release-tracklist section now describes the \"Work …\" columns, and its \"auto-discovered column\" example no longer uses \"Publisher\" — on a release that is the work's relationship, and it now has its own \"Work publisher\" column rather than an unprefixed one.",
+          "The \"Enable collapsible ARs column\" setting no longer calls everything in that column a recording-level relationship: it holds both the recording's own relationships and the recorded work's."
+        ]
       }
     ]
   }

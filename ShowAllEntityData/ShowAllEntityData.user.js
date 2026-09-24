@@ -2123,9 +2123,10 @@
             label: 'Enable collapsible "ARs" column',
             type: 'checkbox',
             default: false,
-            description: 'Height-clamp the "ARs" column (recording-level relationships — ' +
-                         'engineer, producer, recording-of-work, publisher, etc. — extracted ' +
-                         'from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
+            description: 'Height-clamp the "ARs" column (every relationship on the track — ' +
+                         'the recording\'s own engineer, producer, recording-of-work, etc., ' +
+                         'and the recorded work\'s own publisher, lyricist and the rest — ' +
+                         'extracted from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
                          'more/less" toggle, the same way the "Annotation" column collapses, ' +
                          'but independently configurable via the two settings below. Only cells ' +
                          'that actually overflow the clamp get a toggle.'
