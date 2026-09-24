@@ -4,6 +4,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPageWithRealNetwork } = require('../support/realNetworkGmXhr');
 const { collectPageErrors } = require('../support/liveAssertions');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 /**
  * Artwork survival across the four discography view modes.
@@ -239,7 +240,7 @@ test.describe('discography views: artwork survives sorting and filtering in ever
         console.log(`[view-art] initial painted icons: ${settled}`);
 
         for (const view of VIEWS) {
-            await page.locator(view.id).click();
+            await clickToolbarItem(page, view.id);
 
             // Re-expand: a view switch collapses the sub-sections again, and a
             // collapsed table loads no artwork — see ensureExpanded().

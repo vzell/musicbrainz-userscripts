@@ -37,13 +37,32 @@ test.describe('unique-values dropdown: stays within the viewport when neither si
         // the ~320px the "Name" column's 10-value panel naturally wants.
         // Neither direction can then hold the whole panel, which is exactly
         // the scenario the old all-or-nothing flip gate mishandled.
+        //
+        // **Change the HEIGHT only.** This used to narrow to 1024 in the same
+        // call, which re-wraps the h1 controls bar and moves this button 52-75px
+        // DOWN — so `crampedHeight`, computed a moment earlier from the 1280-wide
+        // layout, described a page that no longer existed. The button ended up
+        // BELOW the fold, `spaceBelow` went negative, and the panel was anchored
+        // above a trigger the viewport did not contain, which no clamp can keep
+        // on screen: it overran by 2px and the ±5 slack below absorbed it. That
+        // is passing for the wrong reason, and the action-button redesign — which
+        // shortens the h1 bar, so the button starts ~71px higher and the computed
+        // viewport is that much tighter — turned the 2px into 14. Numbers from
+        // `scripts/probe-uniq-drop-clamp-geometry.js`.
         const crampedHeight = Math.ceil(btnRectBefore.y + btnRectBefore.height) + 30;
-        await page.setViewportSize({ width: 1024, height: crampedHeight });
+        await page.setViewportSize({ width: 1280, height: crampedHeight });
 
         // Sanity-check the scenario actually exercises the bug: the space
         // above the button must also be less than a full-size panel, or
         // this test would pass trivially via the "flip upward" branch alone.
         expect(btnRectBefore.y).toBeLessThan(300);
+
+        // And the button must still be INSIDE the viewport after the height
+        // change, or "the panel stays on screen" is not a property the clamp
+        // can deliver — nothing anchored to an off-screen trigger can. This is
+        // the guard whose absence let the old measurement order slip through.
+        const btnRectAfter = await wrap.boundingBox();
+        expect(btnRectAfter.y + btnRectAfter.height).toBeLessThanOrEqual(crampedHeight);
 
         await wrap.locator('.mb-col-uniq-btn').click();
         const dropdown = page.locator('#mb-col-uniq-dropdown');

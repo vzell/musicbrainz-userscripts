@@ -130,20 +130,55 @@ requests in bursts when it is busy.  Two things happen about that.
 
 ACTION BUTTONS
 --------------
+The controls beside the page heading are grouped into two pull-down menus
+plus two pinned buttons:
+
+  🧮¹ Show all …  |  📦 Data ▾   🛠 View ▾   ⚙️  ❓
+
+📦 Data ▾ — what goes in and out of the page
 • 💾 Save to Disk    — save the current dataset as a compressed .json.gz file
                        (~60–80% smaller than plain JSON); the filename encodes
                        page type, context detail, row count, and timestamp
 • 📂 Load from Disk  — load a previously saved dataset via the three-phase
                        Load → Filter → Render dialog (see PRE-FILTER section)
-• ↔️ Resize          — fit all columns to their content (toggle to restore)
-• 📊 Statistics       — show a statistics panel (row/column counts, artwork, …)
-• 📏 Density         — choose Compact / Normal / Comfortable row spacing
-• 👁️ Visible         — show/hide individual table columns; Alt-S / Alt-D to
-                       select/deselect all; navigate with ↑/↓ / Tab / Shift-Tab
 • 💾 Export          — export visible data as CSV, JSON, or Emacs Org-Mode
-• 🎹                 — show keyboard shortcuts reference (or press ? / /)
+
+🛠 View ▾ — how the table is presented
+• 📏 Density         — choose Compact / Normal / Comfortable row spacing
+• 📊 Statistics      — show a statistics panel (row/column counts, artwork, …)
+• ▌█▌▐█ Barcode      — toggle barcode highlighting (only on pages with a
+                       Barcode column)
+• 🎹 Keyboard Shortcuts
+                     — show keyboard shortcuts reference (or press ? / /)
+
+Always visible, never in a menu
 • ⚙️                  — open the Settings Manager to configure all options
 • ❓                 — show this help dialog
+
+Each menu row shows its own keyboard shortcut on the right.  Open a menu with
+the mouse or with that shortcut — pressing Ctrl-D opens 🛠 View and then the
+Density pull-down for you.  Inside an open menu, ↑/↓ move between rows, Home
+and End jump to the first and last, Enter activates, and Escape closes it (as
+does a click anywhere outside).  Opening one menu closes the other.
+
+📀 Discography ▾  (artist release-group pages only)
+  The four discography views — 📋 Complete, 📀 Official, 📼 Non-Official and
+  🗂️ Complete (merged) — are rows of their own menu, and the menu's button
+  names the view you are currently in ("📀 Discography: Official").
+
+BESIDE THE TABLE, NOT IN THE BAR
+  ↔️ and 👁️ act on one table, so they sit next to that table's own heading,
+  just before the global filter box:
+
+    ▼ Events (4174)   ↔️  👁️   🔍[ Global Filter… ]  ☐Aa ☐.* ☐!
+
+• ↔️  — fit all columns to their content (click again to restore).  Tinted
+        green while resized, amber when only some sub-tables are
+• 👁️  — show/hide individual table columns; Alt-S / Alt-D to select/deselect
+        all; navigate with ↑/↓ / Tab / Shift-Tab
+
+  On a multi-table page each sub-table's own ▼ heading has carried the same
+  ↔️/👁️ pair all along; the page-level pair now reads identically.
 
 FILTERING
 ---------
@@ -782,14 +817,14 @@ way.
                    on "✕ Clear ALL filters" button reflects the currently
                    configured shortcut)
   Shift+Esc        Clear all COLUMN filters only (global — works from anywhere)
-  Ctrl+S           Save to Disk
-  Ctrl+L           Load from Disk dialog
-  Ctrl+E           Open Export menu
+  Ctrl+S           Save to Disk (opens 📦 Data first)
+  Ctrl+L           Load from Disk dialog (opens 📦 Data first)
+  Ctrl+E           Open Export menu (opens 📦 Data first)
   Ctrl+R           Toggle Resize Columns
-  Ctrl+D           Open Density menu
+  Ctrl+D           Open Density menu (opens 🛠 View first)
   Ctrl+V           Open Visible menu
-  Ctrl+I           Open Statistics panel
-  Ctrl+B           Toggle barcode row highlighting
+  Ctrl+I           Open Statistics panel (opens 🛠 View first)
+  Ctrl+B           Toggle barcode row highlighting (opens 🛠 View first)
   Ctrl+2           Toggle all h2 section headers (never suppressed)
   Ctrl+3           Toggle all h3 type headers (never suppressed)
   Ctrl+,           Open Settings dialog (never suppressed)
@@ -912,7 +947,9 @@ SAVE & LOAD (Offline Cache)
 COLUMN MANAGEMENT
 -----------------
 • 👁️ Visible menu — check/uncheck any column; Select All (Alt-S) /
-  Deselect All (Alt-D); button turns red when any column is hidden
+  Deselect All (Alt-D); button turns red when any column is hidden.  The
+  button lives in the table's own heading, beside ↔️ and just before the
+  global filter box — see ACTION BUTTONS above
 • Default Hidden Columns per Page Type (⚙️ Settings → 🎨 UI FEATURES) — a
   table setting letting you pre-hide specific columns the first time a given
   pageType's table renders, without touching 👁️ Visible manually each time.
@@ -1865,6 +1902,7 @@ Additional relocations (configurable):
 
 DENSITY CONTROL
 ---------------
+  In 🛠 View ▾, or press Ctrl-D (which opens that menu for you).
   Compact     — tighter padding, smaller font, more rows visible
   Normal      — default MusicBrainz-like spacing
   Comfortable — larger padding for easier reading
@@ -1872,6 +1910,7 @@ DENSITY CONTROL
 
 EXPORT
 ------
+  In 📦 Data ▾, or press Ctrl-E (which opens that menu for you).
   CSV            — comma-separated, compatible with Excel / Google Sheets
   JSON           — structured JSON array of visible rows
   Emacs Org-Mode — pipe-delimited Org table format

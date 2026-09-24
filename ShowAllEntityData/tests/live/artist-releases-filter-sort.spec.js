@@ -6,6 +6,7 @@ const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
 const { buildChabanPatchedFixture } = require('../support/chabanDayOfWeekFixture');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 const {
     waitForFilterSettled, waitForSortSettled, getPageRowCount,
     getColumnHighlightTexts, getGlobalHighlightTexts,
@@ -941,7 +942,7 @@ test.describe('§J pre-filtered disk-load repeat', () => {
         const pageErrors = collectPageErrors(page);
 
         await loadUserscriptPage(page, { url: BODEANS_URL, testMode: true });
-        await page.click('#mb-load-from-disk-btn');
+        await clickToolbarItem(page, '#mb-load-from-disk-btn');
 
         const fileInput = page.locator('input[type="file"][accept*="json"]');
         await fileInput.setInputFiles(FIXTURE_PATH);

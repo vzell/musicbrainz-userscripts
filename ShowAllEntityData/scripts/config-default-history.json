@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "3c618def38c8c1d9c1c116d458c361fa96e6d5e5",
-    "revisions_walked": 606
+    "head": "5b90c8e321821d366d358219a461d00ffe3b0a87",
+    "revisions_walked": 609
   },
   "changes": [
     {
@@ -293,6 +293,7 @@
     "sa_ui_action_btn_style": "0.8em|2px 8px|24px|6px",
     "sa_ui_stop_btn_style": "#f44336|white|1px solid #d32f2f",
     "sa_ui_settings_btn_style": "#607D8B|white|1px solid #546E7A",
+    "sa_ui_toolbar_menu_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC",
     "sa_ui_help_btn_style": "#78909C|white|1px solid #607D8B",
     "sa_ui_button_divider_style": "#999|0 4px",
     "sa_global_filter_border_idle": "#000000",

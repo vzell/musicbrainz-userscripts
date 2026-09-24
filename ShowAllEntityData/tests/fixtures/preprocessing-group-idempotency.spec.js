@@ -52,6 +52,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { collectPageErrors } = require('../support/liveAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // user-ratings: renameH2ToH3 + insertH2 + listToTable, and the one pageType in
 // that set with a committed fixture.
@@ -62,7 +63,7 @@ const SAVE_CONFIRM_BTN = '#sa-sd-save-confirm';
 
 /** Drives Load-from-Disk on the page as it stands — no navigation. */
 async function loadFromDiskHere(page, fixturePath) {
-    await page.click('#mb-load-from-disk-btn');
+    await clickToolbarItem(page, '#mb-load-from-disk-btn');
     await page.locator('input[type="file"][accept*="json"]').setInputFiles(fixturePath);
     const renderBtn = page.locator('#sa-render-no-filter-confirm');
     await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
@@ -79,7 +80,7 @@ async function renderAndSave(page, outDir, name) {
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-    await page.click('#mb-save-to-disk-btn');
+    await clickToolbarItem(page, '#mb-save-to-disk-btn');
     await page.locator(SAVE_CONFIRM_BTN).waitFor({ state: 'visible', timeout: 15000 });
     await page.click(SAVE_CONFIRM_BTN);
     const download = await downloadPromise;

@@ -8,6 +8,7 @@ const { loadFromDiskFixture } = require('../support/diskFixture');
 const { collectPageErrors } = require('../support/liveAssertions');
 const { waitForSortSettled, getPageRowCount, getSubTableRowCounts } = require('../support/filterSortAssertions');
 const { authStorageState } = require('../support/authState');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 /**
  * Enforces the Save-to-Disk contract that `_artMirrorIconToSourceRow()`
@@ -337,7 +338,7 @@ test.describe('Save to Disk strips live artwork', { tag: '@extended' }, () => {
         // saveTableDataToDisk() runs JSON.stringify + pako.gzip SYNCHRONOUSLY
         // inside this click's handler, blocking the renderer's main thread
         // before showSaveDialog() ever appears.
-        await page.click('#mb-save-to-disk-btn', { timeout: 600000 });
+        await clickToolbarItem(page, '#mb-save-to-disk-btn', { timeout: 600000 });
         await page.locator(SAVE_CONFIRM_BTN).waitFor({ state: 'visible', timeout: 600000 });
         const downloadPromise = page.waitForEvent('download');
         await page.click(SAVE_CONFIRM_BTN);

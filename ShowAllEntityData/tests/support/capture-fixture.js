@@ -67,6 +67,7 @@ const { loadUserscriptPageWithRealNetwork } = require('./realNetworkGmXhr');
 const { waitForRenderComplete } = require('./browser');
 const { seedGmValues } = require('./gmStubs');
 const { dismissCustomConfirmDialog } = require('./customDialog');
+const { clickToolbarItem } = require('./toolbarMenu');
 
 const OUTPUT_DIR = path.join(__dirname, '..', 'fixtures', 'saved-data');
 // Git-ignored (see ../../.gitignore) — for `local: true` FIXTURES entries:
@@ -337,7 +338,7 @@ async function captureOne(browser, {
         // wide/rich columns could hit this too.
         await page.click(LARGE_DATASET_SAVE_BTN, { timeout: SAVE_SERIALIZE_TIMEOUT });
     } else if (outcome === 'rendered') {
-        await page.click('#mb-save-to-disk-btn', { timeout: SAVE_SERIALIZE_TIMEOUT });
+        await clickToolbarItem(page, '#mb-save-to-disk-btn', { timeout: SAVE_SERIALIZE_TIMEOUT });
     } else {
         throw new Error(
             `${pageType}: neither render completion nor the large-dataset dialog appeared within ${renderTimeout}ms`

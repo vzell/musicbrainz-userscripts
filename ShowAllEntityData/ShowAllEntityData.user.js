@@ -1081,6 +1081,15 @@
             description: 'Settings button: bg|color|border'
         },
 
+        sa_ui_toolbar_menu_btn_style: {
+            label: 'Toolbar menu button colors',
+            type: 'popup_dialog',
+            fields: ['bg', 'color', 'border', 'bgHover'],
+            colorFields: ['bg', 'color', 'bgHover'],
+            default: '#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC',
+            description: 'The 📦 Data / 🛠 View / 📀 Discography pull-down buttons: bg|color|border|bgHover'
+        },
+
         sa_ui_help_btn_style: {
             label: 'Help ❓ button colors',
             type: 'popup_dialog',
@@ -24920,64 +24929,198 @@
         }
     }
 
+    // Descriptor per toolbar pull-down menu, keyed by its short name
+    // ('data'|'view'|'disc'). Declared HERE rather than beside
+    // `createToolbarMenu()` several thousand lines below, because
+    // `_orderToolbar()` reads it and a module-level `const` is in the temporal
+    // dead zone until its own declaration is evaluated — the same trap
+    // CLAUDE.md records for `_seedNewTableRows()`, and one `node --check`
+    // cannot see.
+    const _toolbarMenus = new Map();
+
     /**
-     * Ensure settings button is always the last button in controls container
-     * Also adds a divider before the Resize button after data is loaded
+     * The h1 controls bar's tail, in final visual order.
+     *
+     * Everything NOT named here keeps whatever position it was appended at —
+     * which is why the 🧮N fetch buttons, the Stop button and the hidden
+     * `<input type="file">` need no entry.
      */
-    function ensureSettingsButtonIsLast() {
-        const controlsContainer = document.getElementById('mb-show-all-controls-container');
+    const _TOOLBAR_TAIL_ORDER = [
+        'mb-fetch-progress-wrap',
+        'mb-button-divider-initial',
+        'mb-disc-menu-btn',
+        'mb-data-menu-btn',
+        'mb-view-menu-btn',
+        'mb-settings-btn',
+        'mb-app-help-btn',
+    ];
+
+    /**
+     * Row order inside each toolbar menu's panel, keyed by menu name.
+     *
+     * Adoption happens in whatever sequence the render tail calls the
+     * `add*Button()` helpers, which is not the order these read best in — 🎹 is
+     * adopted on the initial render and would otherwise head the 🛠 View list.
+     * Declaring the order here keeps it a property of the design rather than of
+     * an unrelated call sequence. An id absent from its panel is skipped, so a
+     * row gated off by its `sa_enable_*` setting costs nothing.
+     */
+    const _TOOLBAR_MENU_ROW_ORDER = {
+        data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-barcode-highlight-btn', 'mb-shortcuts-help-btn'],
+        disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
+    };
+
+    /**
+     * Asserts the h1 controls bar's tail order. Idempotent, and cheap enough to
+     * call from every site that adds a control (`appendChild` on an element
+     * already in place is a no-op move).
+     *
+     * This replaces `ensureSettingsButtonIsLast()`, which had grown one ad-hoc
+     * "move X before Y" rule per button plus three divider spans. Two of those
+     * dividers (`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`)
+     * separated groups that no longer exist now that the tool buttons live in
+     * 📦 Data ▾ / 🛠 View ▾, so they are gone; `mb-button-divider-initial` stays,
+     * because it still separates "fetch the data" from "do something with it"
+     * and because `_injectDiscographyViewButtons()` anchors on it.
+     */
+    function _orderToolbar(container) {
+        // `container` is passed explicitly by the initial-render block, which
+        // runs while the bar is still DETACHED (it is not appended to the h1
+        // until much later). A detached subtree is invisible to
+        // `document.getElementById`, so resolving by id there would silently
+        // make this a no-op — and every lookup below goes through
+        // `container.querySelector()` for the same reason.
+        const controlsContainer = container ||
+              document.getElementById('mb-show-all-controls-container');
         if (!controlsContainer) return;
 
-        const settingsBtn = document.getElementById('mb-settings-btn');
-        if (!settingsBtn) return;
+        // A menu with no rows must not render. Every row is gated by its own
+        // sa_enable_* setting, so a profile with the lot turned off would
+        // otherwise get a button that opens onto an empty panel. Reconciled
+        // here, in one place, rather than at each of the six adoption sites.
+        _toolbarMenus.forEach(menu => {
+            (_TOOLBAR_MENU_ROW_ORDER[menu.key] || []).forEach(id => {
+                const row = menu.panel.querySelector(`#${id}`);
+                if (row) menu.panel.appendChild(row);
+            });
 
-        // Move settings button to the end if it's not already
-        if (settingsBtn.nextSibling) {
-            controlsContainer.appendChild(settingsBtn);
-        }
-
-        // Ensure ❓ app-help button is always the very last button (right of ⚙️)
-        const appHelpBtn = document.getElementById('mb-app-help-btn');
-        if (appHelpBtn) {
-            controlsContainer.appendChild(appHelpBtn);
-        }
-
-        // Ensure 🎹 shortcuts button is immediately before ⚙️ settings button
-        const shortcutsBtn = document.getElementById('mb-shortcuts-help-btn');
-        if (shortcutsBtn && shortcutsBtn.nextSibling !== settingsBtn) {
-            controlsContainer.insertBefore(shortcutsBtn, settingsBtn);
-        }
-
-        // Keep the ' | ' divider pinned immediately before 🎹 (covers both the initial
-        // Load→🎹 gap and the post-load Export→🎹 gap without needing separate dividers).
-        if (shortcutsBtn) {
-            let beforeShortcutsDivider = controlsContainer.querySelector('.mb-button-divider-before-shortcuts');
-            if (!beforeShortcutsDivider) {
-                beforeShortcutsDivider = document.createElement('span');
-                beforeShortcutsDivider.textContent = ' | ';
-                beforeShortcutsDivider.className = 'mb-button-divider-before-shortcuts';
-                beforeShortcutsDivider.style.cssText = uiButtonDividerCSS();
+            const isEmpty = menu.isEmpty();
+            if (isEmpty && menu.btn.parentNode === controlsContainer) {
+                menu.close();
+                controlsContainer.removeChild(menu.btn);
+            } else if (!isEmpty && menu.btn.parentNode !== controlsContainer) {
+                controlsContainer.appendChild(menu.btn);
             }
-            // Re-insert (or insert for the first time) immediately before shortcutsBtn
-            if (shortcutsBtn.previousSibling !== beforeShortcutsDivider) {
-                controlsContainer.insertBefore(beforeShortcutsDivider, shortcutsBtn);
-            }
-        }
+        });
 
-        // Add divider between Load from Disk and Resize if not already present.
-        // Note: the initialDivider (between action buttons and Save/Load) is intentionally
-        // kept — it remains relevant both on the initial page and after load.
-        const loadBtn = document.getElementById('mb-load-from-disk-btn');
-        const resizeBtn = document.getElementById('mb-resize-btn');
+        _TOOLBAR_TAIL_ORDER.forEach(id => {
+            const el = controlsContainer.querySelector(`#${id}`);
+            if (el && el.parentNode === controlsContainer) controlsContainer.appendChild(el);
+        });
+    }
 
-        if (loadBtn && resizeBtn && !controlsContainer.querySelector('.mb-button-divider-after-load')) {
-            // Add divider after Load from Disk button
-            const divider = document.createElement('span');
-            divider.textContent = ' | ';
-            divider.className = 'mb-button-divider-after-load';
-            divider.style.cssText = uiButtonDividerCSS();
-            loadBtn.after(divider);
+    /**
+     * Back-compat alias for `_orderToolbar()`. Several `add*Button()` helpers
+     * still call this by its old name after inserting their control; what they
+     * mean by it — "put the bar back in order" — is exactly what `_orderToolbar()`
+     * does, so the name is kept rather than churning every call site.
+     */
+    function ensureSettingsButtonIsLast() {
+        _orderToolbar();
+    }
+
+    // ── The h2's ↔️/👁️ pair ───────────────────────────────────────────────────
+    //
+    // ↔️ Resize and 👁️ Visible act on ONE table, so they belong beside that
+    // table's heading rather than in the page-level h1 bar — which is exactly
+    // where the multi-table h3 rows have always put their own
+    // `.mb-subtable-resize-btn` / `.mb-subtable-vis-btn` pair. Moving the
+    // page-level pair into the h2, immediately before `#mb-filter-container`,
+    // makes the two rows read as the same control at two scopes.
+    //
+    // Three things about this are load-bearing:
+    //
+    //   • **One WRAPPER, not two loose buttons.** `updateH2Count()` rebuilds
+    //     `.mb-row-count-stat` on EVERY filter change and re-anchors a fixed
+    //     list of direct h2 children after the new span; anything it does not
+    //     know about is displaced to the front of the heading on the first
+    //     keystroke. CLAUDE.md records that trap for `mb-rel-retry-*`. A single
+    //     cached wrapper means the re-anchor is one `before()` call with no
+    //     query at all, in a function that runs once per keystroke.
+    //
+    //   • **It goes AFTER the artwork and Relationships control runs.** Those
+    //     are rendered as segmented pills selected by id prefix; an element
+    //     inserted between two of them splits one pill into two. Anchoring on
+    //     `#mb-filter-container` puts the pair past the end of every run.
+    //
+    //   • **A page with no h2-hosted filter bar keeps the buttons in the h1.**
+    //     `_mountH2TableControl()` reports whether it could mount, and both
+    //     callers fall back to their original `controlsContainer.appendChild()`
+    //     rather than dropping the control.
+
+    /** The `span.mb-h2-table-controls` wrapper, once built. */
+    let _h2TableControls = null;
+
+    /**
+     * CSS for a glyph-only control sitting beside a table heading.
+     *
+     * The declarations are `createSubTableResizeButton()`'s own, which is the
+     * idiom the h2 pair was asked to mirror. The two sub-table buttons keep
+     * their own copies deliberately — folding them in here would change
+     * `.mb-subtable-vis-btn`'s font-size from 0.85em to 0.8em, which is drift,
+     * not dedup.
+     *
+     * @returns {string} CSS declaration string for `element.style.cssText`.
+     */
+    function uiHeadingGlyphBtnCSS() {
+        return [
+            'font-size:0.85em; padding:1px 5px; border-radius:4px;',
+            'background:rgb(240,240,240); border:1px solid rgb(204,204,204);',
+            'cursor:pointer; vertical-align:middle; margin-left:6px;',
+            'display:inline-flex; align-items:center; box-sizing:border-box;',
+            'transition:background-color 0.2s, border-color 0.2s, transform 0.1s, box-shadow 0.1s;'
+        ].join(' ');
+    }
+
+    /**
+     * Puts `el` in the h2's table-control pair, creating the wrapper on first
+     * use and placing it immediately before `#mb-filter-container`.
+     *
+     * @param {HTMLElement} el - The control to mount.
+     * @returns {boolean} False when there is no h2-hosted filter bar to anchor
+     *   on, in which case the caller should keep its original placement.
+     */
+    function _mountH2TableControl(el) {
+        const filterContainerEl = document.getElementById('mb-filter-container');
+        if (!filterContainerEl || !filterContainerEl.parentNode) return false;
+
+        if (!_h2TableControls || !_h2TableControls.isConnected) {
+            _h2TableControls = document.createElement('span');
+            _h2TableControls.className = 'mb-h2-table-controls';
+            _h2TableControls.style.cssText =
+                'display:inline-flex; align-items:center; vertical-align:middle; font-size:1rem; line-height:1;';
         }
+        _h2TableControls.appendChild(el);
+        filterContainerEl.before(_h2TableControls);
+        return true;
+    }
+
+    /**
+     * Re-asserts the pair's position immediately before `#mb-filter-container`.
+     *
+     * Called from `updateH2Count()` after it replaces `.mb-row-count-stat` —
+     * see this section's header for why that matters. Deliberately does no
+     * DOM query of its own: the wrapper is cached and the anchor is already in
+     * that function's hand.
+     *
+     * @param {HTMLElement|null} filterContainerEl - The `#mb-filter-container` element.
+     */
+    function _reanchorH2TableControls(filterContainerEl) {
+        if (!_h2TableControls || !filterContainerEl || !filterContainerEl.parentNode) return;
+        if (_h2TableControls.parentNode !== filterContainerEl.parentNode) return;
+        if (filterContainerEl.previousElementSibling === _h2TableControls) return;
+        filterContainerEl.before(_h2TableControls);
     }
 
 
@@ -25419,9 +25562,14 @@
         // Create toggle button
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'mb-visible-btn';
-        toggleBtn.innerHTML = makeButtonHTML('Visible', 'V', '👁️');
+        // Glyph-only: it sits in the h2 beside the filter bar now, where the
+        // label was pure width. The word lives on in the tooltip, which is
+        // also where `Ctrl+V` is announced.
+        toggleBtn.innerHTML = '👁️';
+        toggleBtn.className = 'mb-h2-ctl-btn';
         toggleBtn.title = `Show/hide table columns (${buildShortcutHint('sa_shortcut_open_visible_columns', 'Ctrl+V', 'V')})`;
-        toggleBtn.style.cssText = uiActionBtnBaseCSS();
+        toggleBtn.setAttribute('aria-label', 'Show/hide table columns');
+        toggleBtn.style.cssText = uiHeadingGlyphBtnCSS();
         toggleBtn.type = 'button';
 
         // Create dropdown menu container
@@ -25761,10 +25909,14 @@
         };
         document.addEventListener('keydown', closeMenuOnEscape);
 
-        // Append to controls container
-        controlsContainer.appendChild(toggleBtn);
+        // Beside the heading of the table it acts on, next to ↔️ Resize — the
+        // same slot the per-sub-table 👁️ occupies in every h3. Falls back to
+        // the h1 bar on a page whose filter bar never reaches an h2.
+        if (!_mountH2TableControl(toggleBtn)) {
+            controlsContainer.appendChild(toggleBtn);
+            ensureSettingsButtonIsLast();
+        }
         Lib.debug('ui', 'Column visibility toggle added to controls');
-        ensureSettingsButtonIsLast();
 
         // Append menu to body
         document.body.appendChild(menu);
@@ -26444,7 +26596,7 @@
             filename,
             rowsExported,
             rowsTotal:   rowsExported + rowsSkipped,
-            triggerButton: document.getElementById('mb-export-btn'),
+            triggerButton: _toolbarAnchorFor(document.getElementById('mb-export-btn')),
         });
     }
 
@@ -26543,7 +26695,7 @@
             filename,
             rowsExported: totalExported,
             rowsTotal:    totalExported + totalSkipped,
-            triggerButton: document.getElementById('mb-export-btn'),
+            triggerButton: _toolbarAnchorFor(document.getElementById('mb-export-btn')),
         });
     }
 
@@ -26639,7 +26791,7 @@
             filename,
             rowsExported: totalExported,
             rowsTotal:    totalExported + totalSkipped,
-            triggerButton: document.getElementById('mb-export-btn'),
+            triggerButton: _toolbarAnchorFor(document.getElementById('mb-export-btn')),
         });
     }
 
@@ -26892,7 +27044,7 @@ ${sections.join('\n')}
             filename,
             rowsExported: totalRowsExported,
             rowsTotal:    totalRowsExported + totalRowsSkipped,
-            triggerButton: document.getElementById('mb-export-btn'),
+            triggerButton: _toolbarAnchorFor(document.getElementById('mb-export-btn')),
         });
     }
 
@@ -27477,7 +27629,11 @@ ${sections.join('\n')}
         };
         document.addEventListener('keydown', closeMenuOnEscape);
 
-        controlsContainer.appendChild(exportBtn);
+        // Adopted into 📦 Data ▾ rather than appended to the bar. exportBtn's own
+        // onclick still positions exportMenu from its own rect, which is valid
+        // because a row is only clickable while its panel is open.
+        _ensureDataMenu().adopt(exportBtn,
+            getShortcutDisplay('sa_shortcut_open_export', 'Ctrl+E'));
         Lib.debug('ui', 'Export button with dropdown menu added to controls');
         ensureSettingsButtonIsLast();
 
@@ -27660,6 +27816,363 @@ ${sections.join('\n')}
         const [color, margin] =
             parseCondensedStyle(Lib.settings.sa_ui_button_divider_style, defaults);
         return `color:${color}; margin:${margin};`;
+    }
+
+    /**
+     * Full CSS for a toolbar pull-down button (📦 Data ▾ / 🛠 View ▾ / 📀 Discography ▾).
+     * Config: sa_ui_toolbar_menu_btn_style — bg|color|border|bgHover
+     * Returns { css, normalBg, hoverBg }
+     */
+    function uiToolbarMenuBtnCSS() {
+        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5|#CFD8DC';
+        const [bg, color, border, bgHover] =
+            parseCondensedStyle(Lib.settings.sa_ui_toolbar_menu_btn_style, defaults);
+        return {
+            css: `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border}; gap:4px;`,
+            normalBg: bg,
+            hoverBg: bgHover
+        };
+    }
+
+    // ── Toolbar pull-down menus (📦 Data ▾ / 🛠 View ▾ / 📀 Discography ▾) ──────
+    //
+    // The h1 controls bar used to be one flat run of up to 13 labelled buttons.
+    // These menus GROUP that run; they do NOT reimplement it. Every control a
+    // menu holds is the SAME element that used to sit in the bar — same id, same
+    // `title`, same `onclick`, same colour settings, same `ctrlMFunctionMap`
+    // entry — merely moved into a panel and restyled as a full-width row by
+    // `adopt()`. That is what keeps the change small enough to be reviewable and
+    // is the rule to carry forward: a new toolbar control is still built the way
+    // every other one is, and then adopted.
+    //
+    // Four consequences, each load-bearing and each silent if undone:
+    //
+    //   • **A row in a CLOSED panel has a ZERO bounding rect.** Density's and
+    //     Export's own pull-downs, and `showLoadFilterDialog()`'s placement, all
+    //     position themselves from their trigger's `getBoundingClientRect()`.
+    //     So every programmatic entry point goes through `_toolbarInvoke()`
+    //     (which opens the owning menu first) and never a bare `.click()`, and
+    //     anything that wants an ANCHOR asks `_toolbarAnchorFor()` for the menu
+    //     button rather than using the adopted row.
+    //
+    //   • **The open panel is a column flex container, not a block.** Flex items
+    //     are blockified by the CSS display spec, so a row's own inline
+    //     `display:inline-flex` computes to `flex` and lays out full-width,
+    //     while `display:none` is still `none` and still hides the row. That is
+    //     what lets a row stay a flex container — which the `::after` hint's
+    //     `margin-left:auto` needs — without `adopt()` having to touch
+    //     `display` and fight each button's own feature gate. The three sites
+    //     that reveal Save to Disk DID have to change, from `'inline-block'` to
+    //     `'flex'`: `inline-block` blockifies to plain `block`, where
+    //     `margin-left:auto` on an inline `::after` computes to zero and the
+    //     shortcut hint stops right-aligning.
+    //
+    //   • **The keyboard hint is a CSS `::after` fed by `data-mb-menu-hint`,
+    //     never element text.** `updateBarcodeHighlightBtnState()` rewrites its
+    //     button's `innerHTML` wholesale; an appended `<kbd>` would not survive
+    //     that, an attribute does. It also keeps the hint out of `textContent`,
+    //     which is the same reason the column-header family draws its glyphs
+    //     from CSS.
+    //
+    //   • **A menu with no rows must not render.** Every row is gated by its own
+    //     `sa_enable_*` setting, so a user who has turned the lot off would
+    //     otherwise get an empty panel that opens onto nothing. `isEmpty()` is
+    //     what the creation sites check before attaching the button.
+
+    // `_toolbarMenus` — the registry these functions read and write — is
+    // declared far above, next to `_orderToolbar()`, for the TDZ reason given
+    // there. Do not re-declare it here.
+
+    /**
+     * Closes every open toolbar menu except `except`.
+     *
+     * @param {object|null} [except] - Descriptor to leave alone.
+     */
+    function _closeToolbarMenus(except) {
+        _toolbarMenus.forEach(m => { if (m !== except) m.close(); });
+    }
+
+    /**
+     * Creates one toolbar pull-down: a button destined for the h1 controls bar,
+     * plus a `position:fixed` panel appended to `<body>`.
+     *
+     * Idempotent per `key` — a second call returns the existing descriptor, so
+     * the render tail can call this on every pass the way every other
+     * `add*Button()` helper does.
+     *
+     * @param {object} opts
+     * @param {string} opts.key   - Short name used by `_toolbarInvoke()` ('data'|'view'|'disc').
+     * @param {string} opts.id    - Element id for the button; the panel gets `${id}-panel`.
+     * @param {string} opts.label - Visible button text, WITHOUT the ▾ caret.
+     * @param {string} opts.title - Tooltip.
+     * @returns {{key: string, btn: HTMLButtonElement, panel: HTMLDivElement,
+     *            adopt: Function, setLabel: Function, isEmpty: Function,
+     *            isOpen: Function, open: Function, close: Function}}
+     */
+    function createToolbarMenu({ key, id, label, title }) {
+        const existing = _toolbarMenus.get(key);
+        if (existing) return existing;
+
+        const btn = document.createElement('button');
+        btn.id        = id;
+        btn.type      = 'button';
+        btn.className = 'mb-toolbar-menu-btn';
+        btn.title     = title;
+        btn.setAttribute('aria-haspopup', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+        const _mStyle = uiToolbarMenuBtnCSS();
+        btn.style.cssText = _mStyle.css;
+        btn.onmouseover = () => { btn.style.backgroundColor = _mStyle.hoverBg; };
+        btn.onmouseout  = () => { btn.style.backgroundColor = _mStyle.normalBg; };
+
+        // The label is its own span so setLabel() can rewrite the text half
+        // without re-appending the caret — the Discography menu renames itself
+        // to the active view on every switch.
+        const labelSpan = document.createElement('span');
+        labelSpan.className   = 'mb-toolbar-menu-btn-label';
+        labelSpan.textContent = label;
+        const caret = document.createElement('span');
+        caret.className   = 'mb-toolbar-menu-caret';
+        caret.textContent = '▾';
+        btn.appendChild(labelSpan);
+        btn.appendChild(caret);
+
+        const panel = document.createElement('div');
+        panel.id        = `${id}-panel`;
+        panel.className = 'mb-toolbar-menu-panel';
+        panel.setAttribute('role', 'menu');
+        panel.style.display = 'none';
+        document.body.appendChild(panel);
+
+        let focusIdx = -1;
+
+        /**
+         * The rows a keyboard pass may land on: adopted buttons this menu owns
+         * that are not currently hidden by their own feature gate (Save to Disk
+         * is `display:none` until there is data to save).
+         *
+         * @returns {HTMLElement[]}
+         */
+        const visibleItems = () => Array.from(panel.children).filter(
+            el => el.classList.contains('mb-toolbar-menu-item') && el.style.display !== 'none'
+        );
+
+        /**
+         * Moves keyboard focus to the row at `idx`, wrapping at both ends.
+         * @param {number} idx
+         */
+        const moveFocusTo = (idx) => {
+            const items = visibleItems();
+            if (!items.length) return;
+            focusIdx = ((idx % items.length) + items.length) % items.length;
+            items.forEach((el, i) => el.classList.toggle('mb-toolbar-menu-item-focus', i === focusIdx));
+            items[focusIdx].focus();
+        };
+
+        /** @returns {boolean} Whether this menu's panel is currently shown. */
+        const isOpen = () => panel.style.display !== 'none';
+
+        /** Shows the panel below its button, closing any other open toolbar menu. */
+        const open = () => {
+            _closeToolbarMenus(descriptor);
+            // flex, not block — see the blockification note in this section's header.
+            panel.style.display = 'flex';
+            btn.setAttribute('aria-expanded', 'true');
+            const rect = btn.getBoundingClientRect();
+            panel.style.top  = `${rect.bottom + 5}px`;
+            panel.style.left = `${rect.left}px`;
+            // Keep the panel inside the viewport when the button sits far right.
+            const pRect = panel.getBoundingClientRect();
+            if (pRect.right > window.innerWidth - 8) {
+                panel.style.left = `${Math.max(8, window.innerWidth - pRect.width - 8)}px`;
+            }
+            focusIdx = -1;
+        };
+
+        /** Hides the panel and clears any keyboard focus tint. */
+        const close = () => {
+            if (!isOpen()) return;
+            panel.style.display = 'none';
+            btn.setAttribute('aria-expanded', 'false');
+            Array.from(panel.children).forEach(el => el.classList.remove('mb-toolbar-menu-item-focus'));
+            focusIdx = -1;
+        };
+
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            if (isOpen()) close(); else open();
+        };
+
+        // Activating a row closes the menu, the conventional behaviour.
+        //
+        // **Capture phase, not bubble.** `densityBtn.onclick` and
+        // `exportBtn.onclick` both begin with `e.stopPropagation()` — they have
+        // to, or their own document-level outside-click handler would close the
+        // pull-down they just opened — so a bubble-phase listener here never
+        // fires for exactly the two rows that most need it. Capture runs before
+        // the target's own handler and cannot be stopped by it.
+        //
+        // The close itself is still deferred by one task, so a row that
+        // positions something from its OWN bounding rect has measured it while
+        // the panel was still open.
+        panel.addEventListener('click', (e) => {
+            const item = e.target && e.target.closest ? e.target.closest('.mb-toolbar-menu-item') : null;
+            if (item && panel.contains(item)) setTimeout(close, 0);
+        }, true);
+
+        // Outside-click and Escape — the same pair addDensityControl() has used
+        // since it was written.
+        document.addEventListener('click', (e) => {
+            if (!isOpen()) return;
+            if (panel.contains(e.target) || btn.contains(e.target) || e.target === btn) return;
+            close();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (!isOpen()) return;
+            switch (e.key) {
+                case 'Escape':    e.preventDefault(); close(); btn.focus();        break;
+                case 'ArrowDown': e.preventDefault(); moveFocusTo(focusIdx + 1);   break;
+                case 'ArrowUp':   e.preventDefault(); moveFocusTo(focusIdx - 1);   break;
+                case 'Home':      e.preventDefault(); moveFocusTo(0);              break;
+                case 'End':       e.preventDefault(); moveFocusTo(visibleItems().length - 1); break;
+                default: break;
+            }
+        });
+
+        const descriptor = {
+            key, btn, panel, isOpen, open, close,
+
+            /**
+             * Moves an existing toolbar button into this panel and restyles it as
+             * a full-width row. Id, title, handlers, colours and feature gating
+             * are left exactly as the button's own creator set them.
+             *
+             * @param {HTMLElement|null} el     - The button to adopt; ignored when null.
+             * @param {string}           [hint] - Keyboard hint rendered via CSS `::after`.
+             * @returns {HTMLElement|null} `el`, for chaining.
+             */
+            adopt(el, hint) {
+                if (!el) return null;
+                el.classList.add('mb-toolbar-menu-item');
+                el.setAttribute('role', 'menuitem');
+                if (hint) el.dataset.mbMenuHint = hint;
+                el.dataset.mbMenuOwner = key;
+                panel.appendChild(el);
+                return el;
+            },
+
+            /**
+             * Rewrites the button's visible text, leaving the ▾ caret in place.
+             * @param {string} text
+             */
+            setLabel(text) { labelSpan.textContent = text; },
+
+            /** @returns {boolean} True when this menu owns no rows at all. */
+            isEmpty() {
+                return !panel.querySelector('.mb-toolbar-menu-item');
+            }
+        };
+
+        _toolbarMenus.set(key, descriptor);
+        return descriptor;
+    }
+
+    /**
+     * Resolves the element a dialog or pop-up should be positioned against for
+     * `el`. An adopted row is inside a panel that is closed most of the time and
+     * therefore has a zero rect; its owning menu button is always laid out.
+     *
+     * @param {HTMLElement|null} el
+     * @returns {HTMLElement|null}
+     */
+    function _toolbarAnchorFor(el) {
+        if (!el) return el;
+        const owner = el.dataset && el.dataset.mbMenuOwner;
+        const menu  = owner ? _toolbarMenus.get(owner) : null;
+        return menu ? menu.btn : el;
+    }
+
+    /**
+     * Clicks a toolbar control by id, opening its host menu first when the
+     * control has been adopted into one.
+     *
+     * This is the ONLY correct way to drive an adopted button programmatically:
+     * a row inside a closed panel is `display:none`'s equivalent for layout
+     * purposes — it has a zero bounding rect — so `Ctrl+M d` used to open a
+     * Density pull-down pinned to the top-left corner of the viewport.
+     *
+     * @param {string} btnId - Element id, e.g. 'mb-density-btn'.
+     * @returns {boolean} True when a button was found and clicked.
+     */
+    function _toolbarInvoke(btnId) {
+        const el = document.getElementById(btnId);
+        if (!el) return false;
+        const owner = el.dataset && el.dataset.mbMenuOwner;
+        const menu  = owner ? _toolbarMenus.get(owner) : null;
+        if (menu && !menu.isOpen()) menu.open();
+        el.click();
+        return true;
+    }
+
+    /**
+     * The 📦 Data menu — everything that moves the dataset in or out of the
+     * page: Save to Disk, Load from Disk, Export.
+     *
+     * Created on first use, which is the initial render (Load from Disk is
+     * offered before any fetch has happened); Export joins it from the render
+     * tail once there is something to export.
+     *
+     * @returns {object} The menu descriptor.
+     */
+    function _ensureDataMenu() {
+        return createToolbarMenu({
+            key:   'data',
+            id:    'mb-data-menu-btn',
+            label: '📦 Data',
+            title: 'Save, load and export this table’s data',
+        });
+    }
+
+    /**
+     * The 🛠 View menu — everything that changes how the table is presented
+     * without changing what it contains: Density, Statistics, Barcode
+     * highlighting, the keyboard-shortcuts reference.
+     *
+     * Note 👁️ Visible and ↔️ Resize are deliberately NOT here. They act on one
+     * table, so they sit beside that table’s heading next to the filter bar,
+     * mirroring the per-sub-table ↔️/👁️ pair the h3 rows have always had.
+     *
+     * @returns {object} The menu descriptor.
+     */
+    function _ensureViewMenu() {
+        return createToolbarMenu({
+            key:   'view',
+            id:    'mb-view-menu-btn',
+            label: '🛠 View',
+            title: 'Table density, statistics and other view controls',
+        });
+    }
+
+    /**
+     * The 📀 Discography menu — `artist-releasegroups`' four mutually-exclusive
+     * view filters, which used to occupy five slots in the h1 bar (a divider,
+     * a "Discography:" label and four buttons) on the widest page the script
+     * renders.
+     *
+     * Unlike the other two menus this one is a RADIO group, so its button shows
+     * the active choice: `_applyDiscButtonTints()` calls `setLabel()`. That is
+     * information the flat run never conveyed — it could only tint the active
+     * button, which told you nothing until you looked at all four.
+     *
+     * @returns {object} The menu descriptor.
+     */
+    function _ensureDiscMenu() {
+        return createToolbarMenu({
+            key:   'disc',
+            id:    'mb-disc-menu-btn',
+            label: '📀 Discography',
+            title: 'Choose which parts of the discography are shown',
+        });
     }
 
     /**
@@ -29420,12 +29933,18 @@ ${sections.join('\n')}
                 clearAllFilters();
             }
 
+            // The seven button-backed shortcuts below all go through
+            // `_toolbarInvoke()` rather than `btn.click()`. Five of those
+            // buttons are now rows inside 📦 Data ▾ / 🛠 View ▾, and a row in a
+            // closed panel has a zero bounding rect — which Export's and
+            // Density's own pull-downs, and the load dialog, position
+            // themselves from. `_toolbarInvoke()` opens the host menu first and
+            // degrades to a plain click for a control that was never adopted.
+
             // Open export menu
             if (isShortcutEvent(e, 'sa_shortcut_open_export', 'Ctrl+E')) {
                 e.preventDefault();
-                const exportBtn = document.getElementById('mb-export-btn');
-                if (exportBtn) {
-                    exportBtn.click();
+                if (_toolbarInvoke('mb-export-btn')) {
                     Lib.debug('shortcuts', 'Export menu triggered via ' + getShortcutDisplay('sa_shortcut_open_export', 'Ctrl+E'));
                 } else {
                     Lib.warn('shortcuts', 'Export button not found');
@@ -29435,9 +29954,7 @@ ${sections.join('\n')}
             // Save to disk (JSON)
             if (isShortcutEvent(e, 'sa_shortcut_save_to_disk', 'Ctrl+S')) {
                 e.preventDefault();
-                const saveBtn = document.getElementById('mb-save-to-disk-btn');
-                if (saveBtn) {
-                    saveBtn.click();
+                if (_toolbarInvoke('mb-save-to-disk-btn')) {
                     Lib.debug('shortcuts', 'Save to disk triggered via ' + getShortcutDisplay('sa_shortcut_save_to_disk', 'Ctrl+S'));
                 } else {
                     Lib.warn('shortcuts', 'Save button not found');
@@ -29447,9 +29964,7 @@ ${sections.join('\n')}
             // Load from disk
             if (isShortcutEvent(e, 'sa_shortcut_load_from_disk', 'Ctrl+L')) {
                 e.preventDefault();
-                const loadBtn = document.getElementById('mb-load-from-disk-btn');
-                if (loadBtn) {
-                    loadBtn.click();
+                if (_toolbarInvoke('mb-load-from-disk-btn')) {
                     Lib.debug('shortcuts', 'Load from disk triggered via ' + getShortcutDisplay('sa_shortcut_load_from_disk', 'Ctrl+L'));
                 } else {
                     Lib.warn('shortcuts', 'Load button not found');
@@ -29459,9 +29974,7 @@ ${sections.join('\n')}
             // Open Visible Columns menu
             if (isShortcutEvent(e, 'sa_shortcut_open_visible_columns', 'Ctrl+V')) {
                 e.preventDefault();
-                const visibleColumnsBtn = document.getElementById('mb-visible-btn');
-                if (visibleColumnsBtn) {
-                    visibleColumnsBtn.click();
+                if (_toolbarInvoke('mb-visible-btn')) {
                     Lib.debug('shortcuts', 'Visible menu opened via ' + getShortcutDisplay('sa_shortcut_open_visible_columns', 'Ctrl+V'));
                 } else {
                     Lib.warn('shortcuts', 'Visible button not found');
@@ -29471,9 +29984,7 @@ ${sections.join('\n')}
             // Toggle barcode highlighting (configurable, default Ctrl+B)
             if (isShortcutEvent(e, 'sa_toggle_barcode_highlighting', 'Ctrl+B')) {
                 e.preventDefault();
-                const barcodeBtn = document.getElementById('mb-barcode-highlight-btn');
-                if (barcodeBtn) {
-                    barcodeBtn.click();
+                if (_toolbarInvoke('mb-barcode-highlight-btn')) {
                     Lib.debug('shortcuts', 'Barcode highlighting toggled via ' + getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'));
                 } else {
                     Lib.warn('shortcuts', 'Barcode highlight button not found');
@@ -29483,9 +29994,7 @@ ${sections.join('\n')}
             // Open Density menu
             if (isShortcutEvent(e, 'sa_shortcut_open_density', 'Ctrl+D')) {
                 e.preventDefault();
-                const densityBtn = document.getElementById('mb-density-btn');
-                if (densityBtn) {
-                    densityBtn.click();
+                if (_toolbarInvoke('mb-density-btn')) {
                     Lib.debug('shortcuts', 'Density menu opened via ' + getShortcutDisplay('sa_shortcut_open_density', 'Ctrl+D'));
                 } else {
                     Lib.warn('shortcuts', 'Density button not found');
@@ -29548,9 +30057,7 @@ ${sections.join('\n')}
             // Open Statistics panel (configurable, default Ctrl+I)
             if (isShortcutEvent(e, 'sa_shortcut_open_statistics', 'Ctrl+I')) {
                 e.preventDefault();
-                const statsBtnEl = document.getElementById('mb-stats-btn');
-                if (statsBtnEl) {
-                    statsBtnEl.click();
+                if (_toolbarInvoke('mb-stats-btn')) {
                     Lib.debug('shortcuts', 'Statistics panel opened via ' + getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'));
                 } else {
                     Lib.warn('shortcuts', 'Stats button not found');
@@ -29809,19 +30316,17 @@ ${sections.join('\n')}
 
         const helpBtn = document.createElement('button');
         helpBtn.id = 'mb-shortcuts-help-btn';
-        helpBtn.textContent = '🎹';
+        // Labelled, like every other 🛠 View row. It was glyph-only while it sat
+        // in the h1 bar beside ⚙️ and ❓, where width was the scarce thing; in a
+        // menu an unlabelled row is just a mystery glyph.
+        helpBtn.innerHTML = makeButtonHTML('Keyboard Shortcuts', 'K', '🎹');
         helpBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
         helpBtn.style.cssText = uiActionBtnBaseCSS();
         helpBtn.type = 'button';
         helpBtn.onclick = showShortcutsHelp;
 
-        // Insert before the settings button so 🎹 stays to its left
-        const settingsBtn = document.getElementById('mb-settings-btn');
-        if (settingsBtn) {
-            controlsContainer.insertBefore(helpBtn, settingsBtn);
-        } else {
-            controlsContainer.appendChild(helpBtn);
-        }
+        _ensureViewMenu().adopt(helpBtn,
+            getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'));
         Lib.debug('ui', 'Keyboard shortcuts help button added to controls');
         ensureSettingsButtonIsLast();
     }
@@ -31600,7 +32105,8 @@ a { color: #1565c0; }`;
         statsBtn.type = 'button';
         statsBtn.onclick = showStatsPanel;
 
-        controlsContainer.appendChild(statsBtn);
+        _ensureViewMenu().adopt(statsBtn,
+            getShortcutDisplay('sa_shortcut_open_statistics', 'Ctrl+I'));
         Lib.debug('ui', 'Statistics button added to controls');
         ensureSettingsButtonIsLast();
     }
@@ -31733,13 +32239,10 @@ a { color: #1565c0; }`;
             updateBarcodeHighlightBtnState(btn);
         });
 
-        // Insert before mb-density-btn so the order is: Visible | BarCode | Density
-        const densityBtn = document.getElementById('mb-density-btn');
-        if (densityBtn) {
-            controlsContainer.insertBefore(btn, densityBtn);
-        } else {
-            controlsContainer.appendChild(btn);
-        }
+        // Row placement inside 🛠 View ▾ is declared by _TOOLBAR_MENU_ROW_ORDER,
+        // not by the sequence the render tail happens to call these helpers in,
+        // so this no longer needs to find mb-density-btn to sit next to.
+        _ensureViewMenu().adopt(btn);
 
         Lib.debug('ui', 'Barcode highlight toggle button added to controls');
         ensureSettingsButtonIsLast();
@@ -32045,8 +32548,8 @@ a { color: #1565c0; }`;
         };
         document.addEventListener('keydown', closeMenuOnEscape);
 
-        // Append to controls container
-        controlsContainer.appendChild(densityBtn);
+        _ensureViewMenu().adopt(densityBtn,
+            getShortcutDisplay('sa_shortcut_open_density', 'Ctrl+D'));
         Lib.debug('ui', 'Density control button added to controls');
         ensureSettingsButtonIsLast();
 
@@ -32482,8 +32985,13 @@ a { color: #1565c0; }`;
 
         if (!resizeBtn) return;
 
+        // The button is glyph-only since the toolbar redesign, so all three
+        // states are carried by the tint plus the `title`. The title wording is
+        // a TEST CONTRACT as well as a user-facing one: tests/support/browser.js's
+        // waitForRenderComplete({waitForAutoResize}) polls for a title starting
+        // with "Restore" to know the auto-resize-on-load pass has finished. Keep
+        // that first word, and keep the glyph out of the title.
         if (isResized) {
-            resizeBtn.innerHTML = makeButtonHTML('Restore', 'R', '↔️');
             resizeBtn.title = `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
             resizeBtn.style.background = '#e8f5e9';
             resizeBtn.style.borderColor = '#4CAF50';
@@ -32492,15 +33000,18 @@ a { color: #1565c0; }`;
             // still resized and tint the button amber to hint at the partial state.
             const anySubResized = Array.from(subTableResizedStates.values()).some(Boolean);
             if (anySubResized) {
-                resizeBtn.innerHTML = makeButtonHTML('Resize*', 'R', '↔️');
                 resizeBtn.title = `One or more sub-tables are auto-resized. Click to auto-resize all (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
                 resizeBtn.style.background = '#fff3e0';
                 resizeBtn.style.borderColor = '#FF9800';
             } else {
-                resizeBtn.innerHTML = makeButtonHTML('Resize', 'R', '↔️');
                 resizeBtn.title = `Auto-resize columns to optimal width (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
-                resizeBtn.style.background = '';
-                resizeBtn.style.borderColor = '';
+                // Restated, not cleared. The rest state used to be '' because
+                // uiActionBtnBaseCSS() set neither property and '' fell back to
+                // the UA button default; uiHeadingGlyphBtnCSS() DOES set both,
+                // and '' would remove them and leave a transparent, borderless
+                // button instead of the resting grey pill.
+                resizeBtn.style.background = 'rgb(240,240,240)';
+                resizeBtn.style.borderColor = 'rgb(204,204,204)';
             }
         }
     }
@@ -33988,15 +34499,24 @@ a { color: #1565c0; }`;
 
         const resizeBtn = document.createElement('button');
         resizeBtn.id = 'mb-resize-btn';
-        resizeBtn.innerHTML = makeButtonHTML('Resize', 'R', '↔️');
+        // Glyph-only — see updateResizeButtonState(), which owns every later
+        // state this button shows and keeps the wording in the `title`.
+        resizeBtn.innerHTML = '↔️';
+        resizeBtn.className = 'mb-h2-ctl-btn';
         resizeBtn.title = `Auto-resize columns to optimal width (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
-        resizeBtn.style.cssText = uiActionBtnBaseCSS();
+        resizeBtn.setAttribute('aria-label', 'Auto-resize columns');
+        resizeBtn.style.cssText = uiHeadingGlyphBtnCSS();
         resizeBtn.type = 'button';
         resizeBtn.onclick = toggleAutoResizeColumns;
 
-        controlsContainer.appendChild(resizeBtn);
+        // Beside the heading of the table it acts on — the same slot the
+        // per-sub-table ↔️ occupies in every h3. Falls back to the h1 bar on a
+        // page whose filter bar never reaches an h2.
+        if (!_mountH2TableControl(resizeBtn)) {
+            controlsContainer.appendChild(resizeBtn);
+            ensureSettingsButtonIsLast();
+        }
         Lib.debug('ui', 'Auto-resize button added to controls');
-        ensureSettingsButtonIsLast();
     }
 
     // --- Sidebar Collapsing & Full Width Stretching Logic ---
@@ -34721,7 +35241,8 @@ a { color: #1565c0; }`;
     saveToDiskBtn.style.display = 'none';
 
     if (Lib.settings.sa_enable_save_load) {
-        controlsContainer.appendChild(saveToDiskBtn);
+        _ensureDataMenu().adopt(saveToDiskBtn,
+            getShortcutDisplay('sa_shortcut_save_to_disk', 'Ctrl+S'));
     }
 
     // Add Load from Disk button with hidden file input
@@ -34753,10 +35274,16 @@ a { color: #1565c0; }`;
         loadTableDataFromDisk(file, filterQueryRaw, isCaseSensitive, isRegExp, isExclude);
     };
 
-    loadFromDiskBtn.onclick = () => showLoadFilterDialog(loadFromDiskBtn);
+    // The dialog positions itself from its trigger's bounding rect inside a
+    // setTimeout, so it must be handed the 📦 Data ▾ BUTTON, not this row — a
+    // row inside a closed panel has a zero rect and the dialog would land in
+    // the top-left corner. `_toolbarAnchorFor()` returns the button unchanged
+    // on a profile where Save/Load was never adopted into a menu.
+    loadFromDiskBtn.onclick = () => showLoadFilterDialog(_toolbarAnchorFor(loadFromDiskBtn));
 
     if (Lib.settings.sa_enable_save_load) {
-        controlsContainer.appendChild(loadFromDiskBtn);
+        _ensureDataMenu().adopt(loadFromDiskBtn,
+            getShortcutDisplay('sa_shortcut_load_from_disk', 'Ctrl+L'));
         controlsContainer.appendChild(fileInput);
     }
 
@@ -34770,25 +35297,30 @@ a { color: #1565c0; }`;
         openSettingsWithConfigButtons();
     };
 
-    // Add shortcuts button (always visible, left of settings button)
+    // Add shortcuts button — a 🛠 View ▾ row, adopted just below
     if (Lib.settings.sa_enable_keyboard_shortcuts !== false) {
         const shortcutsBtn = document.createElement('button');
         shortcutsBtn.id = 'mb-shortcuts-help-btn';
-        shortcutsBtn.textContent = '🎹';
+        // Labelled, like every other 🛠 View row — see addShortcutsHelpButton(),
+        // which builds the same button on the post-render path and must keep
+        // saying the same thing.
+        shortcutsBtn.innerHTML = makeButtonHTML('Keyboard Shortcuts', 'K', '🎹');
         shortcutsBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
         shortcutsBtn.style.cssText = uiActionBtnBaseCSS();
         shortcutsBtn.type = 'button';
         shortcutsBtn.onclick = showShortcutsHelp;
-        // Separator between the functional buttons (Load from Disk) and the utility group (🎹 ⚙️ ❓)
-        const beforeShortcutsDivider = document.createElement('span');
-        beforeShortcutsDivider.textContent = ' | ';
-        beforeShortcutsDivider.className = 'mb-button-divider-before-shortcuts';
-        beforeShortcutsDivider.style.cssText = uiButtonDividerCSS();
-        controlsContainer.appendChild(beforeShortcutsDivider);
-        controlsContainer.appendChild(shortcutsBtn);
+        // 🎹 is the one 🛠 View ▾ row that is meaningful before any data has
+        // been fetched, so it is what brings that menu into existence on the
+        // initial render; Density/Statistics/Barcode join it from the render
+        // tail. See _ensureViewMenu().
+        _ensureViewMenu().adopt(shortcutsBtn,
+            getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'));
     }
 
-    // Add settings button to controls container (always last on initial render)
+    // ⚙️ and ❓ stay pinned in the bar rather than folding into a menu: they are
+    // the two controls a user reaches for when something is wrong, and burying
+    // "how do I configure this" behind a menu is the opposite of what the
+    // redesign is for. _orderToolbar() keeps them last, in that order.
     settingsBtn.style.cssText = uiSettingsBtnCSS();
     controlsContainer.appendChild(settingsBtn);
 
@@ -34869,6 +35401,13 @@ a { color: #1565c0; }`;
     fetchProgressOuter.appendChild(fetchProgressLabel);
     fetchProgressWrap.appendChild(fetchProgressOuter);
     controlsContainer.appendChild(fetchProgressWrap);
+
+    // Every control the initial render contributes now exists. The 📦 Data ▾ /
+    // 🛠 View ▾ buttons were only adopted INTO above — this is what attaches
+    // each non-empty menu to the bar and puts the tail in its final order.
+    // The bar is still detached from the document at this point, so the
+    // container has to be passed explicitly; see _orderToolbar()'s JSDoc.
+    _orderToolbar(controlsContainer);
 
     // --- Pre-load Filter UI elements ---
     const preFilterContainer = document.createElement('span');
@@ -36455,7 +36994,8 @@ a { color: #1565c0; }`;
         [id^="mb-eaa-toggle-btn-"],
         [id^="mb-rel-retry-"],
         .mb-subtable-resize-btn,
-        .mb-subtable-vis-btn {
+        .mb-subtable-vis-btn,
+        .mb-h2-ctl-btn {
             box-sizing: border-box;
             height: 22px;
             vertical-align: middle;
@@ -36482,12 +37022,17 @@ a { color: #1565c0; }`;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* H3 sub-table resize / column-visibility buttons — :active only
-           (transition already provided in their inline cssText)             */
+        /* H3 sub-table resize / column-visibility buttons, and the H2 pair that
+           mirrors them (.mb-h2-ctl-btn) — :active only (transition already
+           provided in their inline cssText)                                 */
         .mb-subtable-resize-btn:active,
-        .mb-subtable-vis-btn:active {
+        .mb-subtable-vis-btn:active,
+        .mb-h2-ctl-btn:active {
             transform: translateY(1px);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .mb-h2-ctl-btn:hover {
+            border-color: rgb(150,150,150);
         }
         /* ── The ⇅ ▲ ▼ sort control, as ONE segmented pill ──────────────────
            Three sibling spans that are one control, so they are drawn as one
@@ -38004,6 +38549,7 @@ a { color: #1565c0; }`;
         .mb-show-single-table-btn:focus-visible,
         .mb-subtable-resize-btn:focus-visible,
         .mb-subtable-vis-btn:focus-visible,
+        .mb-h2-ctl-btn:focus-visible,
         .mb-caa-art-toggle-btn:focus-visible,
         .mb-global-art-toggle-btn:focus-visible,
         [id^="mb-caa-toggle-btn-retry-"]:focus-visible,
@@ -38018,10 +38564,67 @@ a { color: #1565c0; }`;
         .mb-col-filter-input:focus-visible,
         #mb-prefilter-input:focus-visible,
         #mb-filter-input:focus-visible,
+        .mb-toolbar-menu-item:focus-visible,
         .mb-uniq-qf-input:focus-visible {
             outline: 2px solid #1a73e8 !important;
             outline-offset: 2px !important;
             box-shadow: 0 0 0 4px rgba(26,115,232,0.28) !important;
+        }
+
+        /* ── Toolbar pull-down menus (📦 Data ▾ / 🛠 View ▾ / 📀 Discography ▾) ──
+           The panel is a COLUMN FLEX container on purpose, not a block: flex
+           items are blockified by the CSS display spec, so each adopted row's
+           own inline display:inline-flex computes to flex and lays out
+           full-width, while display:none still hides it. Layout only lives
+           here; colours, height and each button's own feature-gated display
+           value belong to whichever function built it. See
+           createToolbarMenu()'s header comment.                              */
+        .mb-toolbar-menu-caret {
+            font-size: 0.85em;
+            opacity: 0.75;
+            line-height: 1;
+        }
+
+        .mb-toolbar-menu-panel {
+            position: fixed;
+            flex-direction: column;
+            align-items: stretch;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            min-width: 220px;
+        }
+
+        /* Layout only — colours, height and the feature gate's own display
+           value belong to whichever function built the button.               */
+        .mb-toolbar-menu-panel > .mb-toolbar-menu-item {
+            width: 100% !important;
+            justify-content: flex-start !important;
+            text-align: left !important;
+            margin: 2px 0 !important;
+            padding: 6px 10px !important;
+            height: auto !important;
+            border-radius: 4px !important;
+        }
+
+        /* The keyboard hint is an attribute, never element text — an innerHTML
+           rewrite (updateBarcodeHighlightBtnState) would delete a child node. */
+        .mb-toolbar-menu-panel > .mb-toolbar-menu-item[data-mb-menu-hint]::after {
+            content: attr(data-mb-menu-hint);
+            margin-left: auto;
+            padding-left: 14px;
+            font-size: 0.88em;
+            opacity: 0.6;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .mb-toolbar-menu-panel > .mb-toolbar-menu-item:hover,
+        .mb-toolbar-menu-panel > .mb-toolbar-menu-item-focus {
+            filter: brightness(0.94);
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
         }
 
         /* ── Fallback: browsers that don't support :focus-visible still see
@@ -38033,6 +38636,7 @@ a { color: #1565c0; }`;
             .mb-show-single-table-btn:focus,
             .mb-subtable-resize-btn:focus,
             .mb-subtable-vis-btn:focus,
+            .mb-h2-ctl-btn:focus,
             .mb-caa-art-toggle-btn:focus,
             .mb-global-art-toggle-btn:focus,
             [id^="mb-caa-toggle-btn-retry-"]:focus,
@@ -38046,6 +38650,7 @@ a { color: #1565c0; }`;
             .mb-col-filter-input:focus,
             #mb-prefilter-input:focus,
             #mb-filter-input:focus,
+            .mb-toolbar-menu-item:focus,
             .mb-uniq-qf-input:focus {
                 outline: 2px solid #1a73e8 !important;
                 outline-offset: 2px !important;
@@ -41663,6 +42268,14 @@ a { color: #1565c0; }`;
                     Lib.debug('render', 'filterContainer is already attached to targetH2.');
                 }
             }
+
+            // The ↔️/👁️ pair anchors on the filter bar, not on the count stat,
+            // so it is NOT in the globalArtBtns re-anchor list above — putting
+            // it there would wedge it into the middle of the artwork control
+            // run and split that run's segmented pill in two. Re-assert its own
+            // anchor instead. One cached element, one sibling test, no query:
+            // this function runs once per filter keystroke.
+            _reanchorH2TableControls(filterContainer);
 
             Lib.debug('render', `Updated header/target ${targetH2Name} count: ${countText}`);
         } else {
@@ -52797,7 +53410,7 @@ a { color: #1565c0; }`;
 
         // Show the save button now that data is rendered
         if (Lib.settings.sa_enable_save_load) {
-            saveToDiskBtn.style.display = 'inline-block';
+            saveToDiskBtn.style.display = 'flex'; // a 📦 Data ▾ menu row, not a bar button
         }
 
         // Re-apply multi-sort column tints if a multi-sort is active for this table.
@@ -55537,7 +56150,7 @@ a { color: #1565c0; }`;
 
         // Show the save button now that data is rendered
         if (Lib.settings.sa_enable_save_load) {
-            saveToDiskBtn.style.display = 'inline-block';
+            saveToDiskBtn.style.display = 'flex'; // a 📦 Data ▾ menu row, not a bar button
         }
 
         // Purge every jesus2099 artifact that rode along in the scraped rows
@@ -55708,21 +56321,11 @@ a { color: #1565c0; }`;
          'mb-disc-btn-label']
             .forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
 
-        const _discDivider = document.createElement('span');
-        _discDivider.id = 'mb-disc-btn-divider';
-        _discDivider.textContent = ' | ';
-        _discDivider.style.cssText = uiButtonDividerCSS();
-
-        // Static "Discography:" label, placed after the divider so the four
-        // buttons themselves can drop the repeated word from their own text
-        // (Complete/Official/Non-Official/Complete (merged)). Font-size
-        // matched to the buttons' own (uiActionBtnBaseCSS()) rather than the
-        // button CSS wholesale — this is a plain label, not a button.
-        const _discLabel = document.createElement('span');
-        _discLabel.id = 'mb-disc-btn-label';
-        _discLabel.textContent = ' Discography: ';
-        const _btnFontSizeMatch = uiActionBtnBaseCSS().match(/font-size:([^;]+);/);
-        _discLabel.style.cssText = `font-size:${_btnFontSizeMatch ? _btnFontSizeMatch[1] : '0.8em'}; vertical-align:middle;`;
+        // The `mb-disc-btn-divider` separator and the standalone
+        // `mb-disc-btn-label` "Discography:" caption are gone: the menu button
+        // is both the separator and the caption now. They stay in the stale-
+        // element sweep above so a page rendered by an older version of this
+        // function is cleaned up rather than left with orphans.
 
         /**
          * Creates one discography view button.
@@ -55771,26 +56374,15 @@ a { color: #1565c0; }`;
             'Show all discography categories, merging rows from same-named official and non-official sub-tables into one'
         );
 
-        // Insert order: divider | "Discography:" label | complete | official | non-official | merged
-        // Place the group BEFORE the initial Save/Load divider.
-        const _refDivider = document.getElementById('mb-button-divider-initial');
-        if (_refDivider) {
-            controlsContainer.insertBefore(_mergedBtn,      _refDivider);
-            controlsContainer.insertBefore(_nonOfficialBtn, _mergedBtn);
-            controlsContainer.insertBefore(_officialBtn,    _nonOfficialBtn);
-            controlsContainer.insertBefore(_completeBtn,    _officialBtn);
-            controlsContainer.insertBefore(_discLabel,      _completeBtn);
-            controlsContainer.insertBefore(_discDivider,    _discLabel);
-        } else {
-            // Fallback: append after last allActionButton
-            const _lastBtn = allActionButtons[allActionButtons.length - 1];
-            const _anchor  = (_lastBtn && _lastBtn.nextSibling) ? _lastBtn.nextSibling : null;
-            [_discDivider, _discLabel, _completeBtn, _officialBtn, _nonOfficialBtn, _mergedBtn]
-                .forEach(el => {
-                    if (_anchor) controlsContainer.insertBefore(el, _anchor);
-                    else         controlsContainer.appendChild(el);
-                });
-        }
+        // Adopted into 📀 Discography ▾. The standalone "Discography:" label the
+        // run used to need is now the menu button's own text, and the button
+        // reports the ACTIVE view rather than merely naming the group.
+        // _orderToolbar() fixes both the row order inside the panel and the
+        // menu button's place in the bar.
+        const _discMenu = _ensureDiscMenu();
+        [_completeBtn, _officialBtn, _nonOfficialBtn, _mergedBtn]
+            .forEach(_btn => _discMenu.adopt(_btn));
+        _orderToolbar();
 
         // Apply the initial active tint AFTER insertion so getElementById can find
         // the buttons in the live DOM.  "Complete" starts active because the
@@ -55818,11 +56410,27 @@ a { color: #1565c0; }`;
             'mb-disc-nonofficial-btn': 'non-official',
             'mb-disc-merged-btn':      'merged',
         };
+        // Rewriting cssText wholesale is safe for a menu row: `adopt()` puts the
+        // row's layout in a CSS class with !important, precisely so a repaint
+        // like this one cannot flatten it back to an inline-flex bar button.
         Object.entries(_map).forEach(([id, sec]) => {
             const _el = document.getElementById(id);
             if (_el) _el.style.cssText = uiActionBtnBaseCSS() +
                 (sec === activeSection ? _activeCss : _inactiveCss);
         });
+
+        // The menu button names the active view — the whole reason a radio
+        // group can afford to be a menu at all.
+        const _discMenu = _toolbarMenus.get('disc');
+        if (_discMenu) {
+            const _label = {
+                'all':          '📀 Discography: Complete',
+                'official':     '📀 Discography: Official',
+                'non-official': '📀 Discography: Non-Official',
+                'merged':       '📀 Discography: Merged',
+            }[activeSection] || '📀 Discography';
+            _discMenu.setLabel(_label);
+        }
     }
 
     /**
@@ -72526,7 +73134,7 @@ a { color: #1565c0; }`;
             // Open the Save dialog — user can review metadata, optionally edit the
             // filename, then click "Save Data" to trigger the actual browser download.
             // The dialog takes ownership of `url` and revokes it on Save or Cancel.
-            showSaveDialog(url, filename, dataToSave, document.getElementById('mb-save-to-disk-btn'));
+            showSaveDialog(url, filename, dataToSave, _toolbarAnchorFor(document.getElementById('mb-save-to-disk-btn')));
 
 
         } catch (err) {
@@ -73680,7 +74288,7 @@ a { color: #1565c0; }`;
             if (!filterContainer.parentNode) filterContainer.style.display = 'inline-flex';
 
             if (Lib.settings.sa_enable_save_load) {
-                saveToDiskBtn.style.display = 'inline-block';
+                saveToDiskBtn.style.display = 'flex'; // a 📦 Data ▾ menu row, not a bar button
             }
 
             // --- Update UI Feedback for Pre-Filter ---
@@ -73873,38 +74481,37 @@ a { color: #1565c0; }`;
         }
     }
 
-    // Wrapper functions for prefix-mode menu shortcuts
+    // Wrapper functions for prefix-mode menu shortcuts.
+    //
+    // All three go through `_toolbarInvoke()` rather than a bare `.click()`,
+    // because Export and Density are now rows inside 📦 Data ▾ / 🛠 View ▾ and
+    // each positions its own pull-down from its own `getBoundingClientRect()`.
+    // A row in a CLOSED panel has a zero rect, so a bare click would open the
+    // sub-menu pinned to the top-left corner of the viewport. `_toolbarInvoke()`
+    // opens the host menu first, and is a plain click for a control that was
+    // never adopted (👁️ Visible, which lives in the h2).
     /**
-     * Opens the Export pull-down menu by programmatically clicking the Export button in the h1 bar.
+     * Opens the Export pull-down menu, opening its host 📦 Data ▾ menu first.
      * Used as the Ctrl+M + "e" prefix-mode shortcut target.
      */
     function openExportMenu() {
-        const exportBtn = document.getElementById('mb-export-btn');
-        if (exportBtn) {
-            exportBtn.click();
-        }
+        _toolbarInvoke('mb-export-btn');
     }
 
     /**
-     * Opens the Visible Columns pull-down menu by programmatically clicking the Visible Columns button.
-     * Used as the Ctrl+M + "v" prefix-mode shortcut target.
+     * Opens the Visible Columns pull-down menu by clicking the 👁️ button in the
+     * table's h2 heading. Used as the Ctrl+M + "v" prefix-mode shortcut target.
      */
     function openVisibleColumnsMenu() {
-        const visibleColumnsBtn = document.getElementById('mb-visible-btn');
-        if (visibleColumnsBtn) {
-            visibleColumnsBtn.click();
-        }
+        _toolbarInvoke('mb-visible-btn');
     }
 
     /**
-     * Opens the Density pull-down menu by programmatically clicking the Density button in the h1 bar.
+     * Opens the Density pull-down menu, opening its host 🛠 View ▾ menu first.
      * Used as the Ctrl+M + "d" prefix-mode shortcut target.
      */
     function openDensityMenu() {
-        const densityBtn = document.getElementById('mb-density-btn');
-        if (densityBtn) {
-            densityBtn.click();
-        }
+        _toolbarInvoke('mb-density-btn');
     }
 
     // ── Unicode Character Picker feature ─────────────────────────────────────
@@ -85084,10 +85691,14 @@ a { color: #1565c0; }`;
     // Populate prefix-mode function mapping after all functions are defined
     ctrlMFunctionMap = {
         's': { fn: saveTableDataToDisk, description: 'Save to Disk' },
-        'l': { fn: () => showLoadFilterDialog(document.getElementById('mb-load-from-disk-btn')), description: 'Load from Disk' },
+        // The dialog is anchored on the 📦 Data ▾ BUTTON, not on the Load row —
+        // a row inside a closed panel has a zero bounding rect. See
+        // `_toolbarAnchorFor()`.
+        'l': { fn: () => showLoadFilterDialog(_toolbarAnchorFor(document.getElementById('mb-load-from-disk-btn'))), description: 'Load from Disk' },
         'r': { fn: toggleAutoResizeColumns, description: 'Auto Resize Columns' },
         'v': { fn: openVisibleColumnsMenu, description: 'Open Visible Columns Menu' },
-        'b': { fn: () => document.getElementById('mb-barcode-highlight-btn')?.click(), description: 'Toggle Barcode Highlighting' },
+        // Adopted into 🛠 View ▾, so it must be invoked through its host menu.
+        'b': { fn: () => _toolbarInvoke('mb-barcode-highlight-btn'), description: 'Toggle Barcode Highlighting' },
         'd': { fn: openDensityMenu, description: 'Open Density Menu' },
         'i': { fn: showStatsPanel, description: 'Show Statistics Panel' },
         'e': { fn: openExportMenu, description: 'Open Export Menu' },

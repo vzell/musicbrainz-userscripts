@@ -1,6 +1,7 @@
 'use strict';
 
 const { loadUserscriptPage } = require('./loadPage');
+const { clickToolbarItem } = require('./toolbarMenu');
 
 /**
  * Loads a previously-captured Save-to-disk fixture instead of fetching
@@ -13,8 +14,10 @@ const { loadUserscriptPage } = require('./loadPage');
  *
  * Flow, traced directly from `showLoadFilterDialog()`'s button wiring:
  *   1. Click `#mb-load-from-disk-btn` — its `onclick` is exactly
- *      `() => showLoadFilterDialog(loadFromDiskBtn)`, which builds the
- *      dialog (and its file input) fresh; neither exists before this.
+ *      `() => showLoadFilterDialog(_toolbarAnchorFor(loadFromDiskBtn))`, which
+ *      builds the dialog (and its file input) fresh; neither exists before
+ *      this. The button is a row inside the 📦 Data ▾ menu, so the click goes
+ *      through `clickToolbarItem()` (`toolbarMenu.js`) to open that menu first.
  *   2. `page.setInputFiles()` on the dialog's hidden
  *      `input[type="file"][accept*="gz"]` — fires its own `'change'`
  *      handler directly, which reads/validates the file and reveals
@@ -101,7 +104,11 @@ async function loadFromDiskFixture(page, {
 } = {}) {
     await loadUserscriptPage(page, { url, testMode, fixtureFile: pageFixtureFile, settingsOverride });
 
-    await page.click('#mb-load-from-disk-btn');
+    // Since the action-button redesign this button is a row inside the
+    // 📦 Data ▾ pull-down, so it is not visible until that menu is opened —
+    // `clickToolbarItem()` does both, and stays a plain click for a build
+    // where the control was never adopted into a menu.
+    await clickToolbarItem(page, '#mb-load-from-disk-btn');
 
     // The dialog's own file input has no id and shares "accept*=gz" with
     // the vestigial, dead #mb-file-input toolbar input (see this module's

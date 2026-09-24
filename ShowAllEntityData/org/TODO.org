@@ -896,3 +896,10 @@ CustomizableMultiSelector.user.js remains broken in the published mirror with it
 * TODO filter checkboxes per column
 
 * TODO plan: Tackle the @org/action-button-redesign.org
+** DONE i
+
+Tackle the @org/action-button-redesign.org
+
+** Add the text "Keyboard Shortcuts" after the keyboard glyph in the "View" pull down menu
+
+Add the text "Keyboard Shortcuts" (the "K" should be underlined) after the keyboard glyph in the "View" pull down menu [Image #11]; everything else is working

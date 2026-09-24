@@ -1,0 +1,84 @@
+[
+  {
+    "name": "the pair is not re-anchored after the row-count stat is rebuilt",
+    "why": "THE defect this spec exists for. updateH2Count() replaces .mb-row-count-stat on every filter change and re-anchors a hard-coded list of direct h2 children after the new span; anything not in that list is displaced to the front of the heading on the first keystroke. CLAUDE.md records the same trap for mb-rel-retry-*. A first-render assertion cannot see it.",
+    "edits": [
+      {
+        "find": "            _reanchorH2TableControls(filterContainer);",
+        "replace": "            void filterContainer;"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "keeps its anchor after a filter rebuilds",
+    "expect": "fail"
+  },
+  {
+    "name": "the pair is anchored on the row-count stat, with the other h2 controls",
+    "why": "The plausible alternative design: mount the pair where every other h2 control goes, right after .mb-row-count-stat. That wedges it into the middle of the artwork control run, which is drawn as ONE segmented pill selected by id prefix, so the pill splits in two. Anchoring on #mb-filter-container instead puts the pair past the end of every run. (Adding .mb-h2-table-controls to updateH2Count()'s own globalArtBtns selector does NOT reproduce this: _reanchorH2TableControls() runs later in that same function and moves it back. The guard is the anchor, not an absence from that list.)",
+    "edits": [
+      {
+        "find": "        _h2TableControls.appendChild(el);\n        filterContainerEl.before(_h2TableControls);",
+        "replace": "        _h2TableControls.appendChild(el);\n        const _stat = filterContainerEl.parentNode.querySelector(':scope > .mb-row-count-stat');\n        if (_stat) _stat.after(_h2TableControls); else filterContainerEl.before(_h2TableControls);"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "the artwork control run stays one unbroken pill",
+    "expect": "fail"
+  },
+  {
+    "name": "the two buttons are mounted loose instead of in one wrapper",
+    "why": "One wrapper is what makes the re-anchor a single before() call with no DOM query, in a function that runs once per filter keystroke. Two loose children need two, and a future third control needs a third.",
+    "edits": [
+      {
+        "find": "        _h2TableControls.appendChild(el);\n        filterContainerEl.before(_h2TableControls);",
+        "replace": "        filterContainerEl.before(el);"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "both buttons live in one wrapper",
+    "expect": "fail"
+  },
+  {
+    "name": "the pair stays in the h1 controls bar",
+    "why": "The move itself: ↔️ and 👁️ act on ONE table, so they belong beside that table's heading, where the per-sub-table pair has always been.",
+    "edits": [
+      {
+        "find": "        if (!_mountH2TableControl(resizeBtn)) {",
+        "replace": "        if (true) {"
+      },
+      {
+        "find": "        if (!_mountH2TableControl(toggleBtn)) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "both buttons live in one wrapper",
+    "expect": "fail"
+  },
+  {
+    "name": "updateResizeButtonState() writes the state into the glyph instead of the title",
+    "why": "tests/support/browser.js's waitForRenderComplete({waitForAutoResize}) polls for a title starting with 'Restore' to know the auto-resize-on-load pass finished. Moving the wording into the button text would hang every render wait in the suite rather than failing loudly.",
+    "edits": [
+      {
+        "find": "            resizeBtn.title = `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;",
+        "replace": "            resizeBtn.innerHTML = '↔️ Restore';\n            resizeBtn.title = `Original column widths restored (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "the resize button is glyph-only",
+    "expect": "fail"
+  },
+  {
+    "name": "the rest state clears background/borderColor instead of restating them",
+    "why": "uiActionBtnBaseCSS() set neither property, so '' used to fall back to the UA button default. uiHeadingGlyphBtnCSS() DOES set both, and '' removes them — leaving a transparent, borderless button where the resting grey pill should be. Purely visual, so no spec can see it; recorded here rather than left unmentioned.",
+    "edits": [
+      {
+        "find": "                resizeBtn.style.background = 'rgb(240,240,240)';\n                resizeBtn.style.borderColor = 'rgb(204,204,204)';",
+        "replace": "                resizeBtn.style.background = '';\n                resizeBtn.style.borderColor = '';"
+      }
+    ],
+    "spec": "tests/fixtures/h2-table-controls-anchor.spec.js",
+    "grep": "the resize button is glyph-only",
+    "expect": "pass"
+  }
+]
