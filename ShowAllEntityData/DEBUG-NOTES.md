@@ -15524,6 +15524,95 @@ rather than only the `<style>` block. Detailed in
 `tests/snapshots/registry.org`'s "Expected drift"; not re-captured here (the
 baselines are reviewed as a git diff, not asserted by a spec).
 
+**Done 2026-09-24** on branch `snapshot-baselines-action-buttons` — see the
+entry below.
+
 Branch 2, `org/action-button-redesign.org` item 2 — ❓ opening the GitHub help
 page, and the hand-written `ShowAllEntityData_HELP.md` — is deliberately not in
 this branch.
+
+## 2026-09-24 — the 11 snapshot baselines re-captured (branch snapshot-baselines-action-buttons)
+
+Clearing the backlog item the entry above left open. `node
+tests/support/capture-snapshots.js` against live musicbrainz.org, 9.99.1147,
+host **`petri`**, 2026-09-24 **15:22:10–15:26:30 UTC** (plus one
+`--only=releasegroup-releases` re-run finishing 15:29:05, see below). 18 files
+moved: 11 `rendered.html`, 5 `raw.html`, and `artist-events`'
+`post-filter.html`/`post-sort.html`.
+
+**The interesting part is that the delta is identical on all 11.** Every
+baseline gained `#mb-data-menu-btn`, `#mb-view-menu-btn`, their two panels, the
+`span.mb-h2-table-controls` wrapper and its two `.mb-h2-ctl-btn` buttons, and
+lost `.mb-button-divider-after-load` / `.mb-button-divider-before-shortcuts`.
+The only per-page variation is the row count (6, or 7 where the page has a
+Barcode column) and `artist-releasegroups`' third menu. That uniformity is the
+evidence that the adopt-don't-rewrite design did what it claimed — nothing else
+in any rendered table moved.
+
+**A one-line document needs a token diff, not `git diff`.** These files are
+effectively one enormous line, so a line diff reports the whole document as
+changed and says nothing about what moved.
+`scripts/summarize-snapshot-diff.py <pageType>` counts class / `data-*` / `id`
+tokens outside `<style>`; that is what made "identical on all 11" checkable
+rather than asserted.
+
+### What the re-capture found that reading the code had not
+
+**`#mb-barcode-highlight-btn` is adopted with no keyboard hint.** It is the one
+menu row with no `data-mb-menu-hint` — 7 `.mb-toolbar-menu-item` against 6
+`data-mb-menu-hint`, on both barcode-carrying baselines
+(`releasegroup-releases`, `series-releases`). It is not a control with nothing
+to show: `sa_toggle_barcode_highlighting` (default Ctrl+B) exists, is in
+`ctrlMFunctionMap` as `'b'`, and is routed through `_toolbarInvoke()` like every
+other row. HELP says "Each menu row shows its own keyboard shortcut on the
+right", which is therefore not quite true. Not fixed here — a baselines branch
+must not carry a userscript change, or the committed baselines stop matching the
+code they were captured from. It rides with branch 2, which re-drifts those two
+files anyway.
+
+**The panels ARE in the baselines.** The registry hedged on this, because the
+panels live on `document.body` rather than inside `#page`. `captureRendered()`
+serializes `document.documentElement.cloneNode(true)`, so they are captured —
+closed, `display: none` — after the page's own markup. Now stated as fact.
+
+**Three earlier CSS-only drift entries were cleared by the same run.** Several
+baselines had not been re-captured since those rules landed, which is where most
+of the `<style>` growth comes from: `releasegroup-releases` and
+`series-releases` each grew ~20 KB, against ~2.7 KB for `release-tracks`, which
+was already current. A big `<style>` delta here means a stale baseline, not a
+big CSS change.
+
+### Upstream movement, separated from ours
+
+Every capture here is against the live site, so some of the diff is
+MusicBrainz's. Enumerated in the registry's own new section; the two worth
+repeating:
+
+- **The ⏳ prediction came true.** `artist-events`' one `span.mp` expired and
+  `#mb-pending-edits-btn` flipped `inline-block` → `none`, exactly as the
+  registry's first drift entry said it would. The button is created
+  unconditionally and merely hidden, so it did not disappear — which is what
+  distinguishes this from a regression.
+- **`releasegroup-releases`' front cover is not being served.** The sidebar
+  reads `<em class="cover-art-error">Image not available, please try again
+  later.</em>`. Captured twice to tell a flake from a state: byte-identical
+  both times, so it is committed as upstream state. The artwork link coming
+  BACK is the expected next diff.
+
+### Verification, and one thing it cannot cover
+
+Every file was confirmed captured LOGGED IN. That matters because
+`authState.js` only warns when the saved session has EXPIRED by the clock — it
+cannot see a session MusicBrainz rejected for any other reason, and a
+logged-out capture silently produces different header chrome across every
+baseline. The only evidence is in the captured HTML, so
+`scripts/check-snapshot-auth-state.py` was generalised from its single
+hardcoded pageType to take arguments (and a `--verdict` one-line mode) and run
+over all 22 files. All 22: `LOGGED IN`.
+
+`scripts/audit-jesus2099-leaks.py` still reports 9 native `treleases` and zero
+jesus2099 markers in `release-tracks/rendered.html`, unchanged.
+
+What none of this covers: nothing asserts these files. They are reviewed as a
+git diff, which is why the token summary and the upstream/ours split above are
+written down rather than left in a terminal.
