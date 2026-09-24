@@ -2081,6 +2081,7 @@ labels and descriptions.  Major setting groups:
 • 🖌️ ELEMENT UI STYLES
     — Action button base style (font size, padding, height, border radius)
     — Per-button color overrides (Save, Load, Stop, Settings, Help)
+    — Toolbar menu button colors (📦 Data / 🛠 View / 📀 Discography)
     — Button divider style
     — Global and sub-table filter input styles and initial widths
     — Pre-load filter input style
