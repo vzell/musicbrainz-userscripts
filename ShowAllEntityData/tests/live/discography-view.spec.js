@@ -4,6 +4,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { collectPageErrors, assertGroupedRenderCompleted } = require('../support/liveAssertions');
 const { waitForSortSettled, getSubTableRowCounts } = require('../support/filterSortAssertions');
+const { openToolbarMenu, clickToolbarItem } = require('../support/toolbarMenu');
 
 /**
  * Reproduces bugs found while manually verifying the discography-view
@@ -118,12 +119,23 @@ async function getHiddenViewTableLeakCount(page) {
 }
 
 test.describe('discography view (artist-releasegroups): sort persistence, master-toggle sync/leak', { tag: '@extended' }, () => {
-    test('button labels are shortened, with a shared "Discography:" label after the divider', async ({ page }) => {
+    test('the four views are rows of one 📀 Discography menu, which names the active view', async ({ page }) => {
         const pageErrors = collectPageErrors(page);
         await loadAndExpandAll(page, pageErrors);
 
-        const labelText = (await page.locator('#mb-disc-btn-label').textContent() || '').trim();
-        expect(labelText).toBe('Discography:');
+        // Before the toolbar redesign these four were loose buttons in the h1
+        // bar, preceded by a divider and a standalone "Discography:" caption —
+        // five slots on the widest page the script renders. The caption is now
+        // the menu button's own text, so this test asserts the replacement:
+        // one button, four rows, and a label that reports the active view.
+        const menuBtn = page.locator('#mb-disc-menu-btn');
+        await expect(menuBtn).toBeVisible({ timeout: 30000 });
+        await expect(menuBtn).toHaveText('📀 Discography: Complete▾');
+
+        const panel = page.locator('#mb-disc-menu-btn-panel');
+        await expect(panel).toBeHidden();
+        expect(await openToolbarMenu(page, 'disc')).toBe(true);
+        await expect(panel).toBeVisible();
 
         const getBtnText = async (id) => ((await page.locator(id).textContent()) || '').trim();
         expect(await getBtnText('#mb-disc-complete-btn')).toBe('📋 Complete');
@@ -131,20 +143,22 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         expect(await getBtnText('#mb-disc-nonofficial-btn')).toBe('📼 Non-Official');
         expect(await getBtnText('#mb-disc-merged-btn')).toBe('🗂️ Complete (merged)');
 
-        // Label sits between the divider and the first button in DOM order,
-        // and its font-size matches the buttons' own.
-        const order = await page.evaluate(() => {
-            const ids = ['mb-disc-btn-divider', 'mb-disc-btn-label', 'mb-disc-complete-btn'];
-            return ids
-                .map((id) => document.getElementById(id))
-                .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
-                .map((el) => el.id);
-        });
-        expect(order).toEqual(['mb-disc-btn-divider', 'mb-disc-btn-label', 'mb-disc-complete-btn']);
+        // All four are rows of that one panel, in the order
+        // _TOOLBAR_MENU_ROW_ORDER declares — which is a property of the design,
+        // not of the sequence _injectDiscographyViewButtons() adopts them in.
+        const order = await panel.evaluate((el) =>
+            Array.from(el.querySelectorAll('.mb-toolbar-menu-item')).map((b) => b.id));
+        expect(order).toEqual([
+            'mb-disc-complete-btn', 'mb-disc-official-btn',
+            'mb-disc-nonofficial-btn', 'mb-disc-merged-btn',
+        ]);
 
-        const labelFontSize = await page.locator('#mb-disc-btn-label').evaluate((el) => getComputedStyle(el).fontSize);
-        const btnFontSize = await page.locator('#mb-disc-complete-btn').evaluate((el) => getComputedStyle(el).fontSize);
-        expect(labelFontSize).toBe(btnFontSize);
+        // Picking a view closes the menu and renames the button. The old flat
+        // run could only TINT the active button, which told the user nothing
+        // until they looked at all four.
+        await page.locator('#mb-disc-official-btn').click();
+        await expect(panel).toBeHidden();
+        await expect(menuBtn).toHaveText('📀 Discography: Official▾');
 
         expect(pageErrors).toEqual([]);
     });
@@ -182,9 +196,7 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         expect(statusTextBefore.length).toBeGreaterThan(0);
 
         // ── Switch view ──────────────────────────────────────────────────
-        const officialBtn = page.locator('#mb-disc-official-btn');
-        await expect(officialBtn).toBeVisible({ timeout: 30000 });
-        await officialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-official-btn');
 
         // ── All five must persist unchanged ────────────────────────────
         await expect(th).toHaveClass(/mb-mscol-hdr-\d/);
@@ -207,16 +219,12 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         // auto-expands its "Album" category) before Non-Official (which this
         // pilot artist has none of) — this is what leaves the master toggle
         // in a stale "expanded" state.
-        const officialBtn = page.locator('#mb-disc-official-btn');
-        await expect(officialBtn).toBeVisible({ timeout: 30000 });
-        await officialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-official-btn');
         await masterToggle.click();
         await masterToggle.click();
         await expect(masterToggle).toHaveAttribute('data-state', 'expanded');
 
-        const nonOfficialBtn = page.locator('#mb-disc-nonofficial-btn');
-        await expect(nonOfficialBtn).toBeVisible({ timeout: 30000 });
-        await nonOfficialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-nonofficial-btn');
 
         // ── Bug (a): button state must match actual DOM visibility ──────
         const reportedState = await masterToggle.getAttribute('data-state');
@@ -258,9 +266,7 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         await stfInput.pressSequentially('a');
         await expect(page.locator('.mb-subtable-filter-highlight').first()).toBeVisible({ timeout: 15000 });
 
-        const officialBtn = page.locator('#mb-disc-official-btn');
-        await expect(officialBtn).toBeVisible({ timeout: 30000 });
-        await officialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-official-btn');
 
         // Genuinely view-specific state must still reset.
         await expect(stfInput).toHaveValue('');
@@ -292,37 +298,31 @@ test.describe('discography view (artist-releasegroups): sort persistence, master
         await waitForSortSettled(page, () => ascBtn.click(), { subTableHeading: albumLabel });
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
-        const completeBtn = page.locator('#mb-disc-complete-btn');
-        const officialBtn = page.locator('#mb-disc-official-btn');
-        const mergedBtn   = page.locator('#mb-disc-merged-btn');
-        await expect(officialBtn).toBeVisible({ timeout: 30000 });
-        await expect(mergedBtn).toBeVisible({ timeout: 30000 });
-
         // b) Official view
-        await officialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-official-btn');
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
         // c) back to Complete view
-        await completeBtn.click();
+        await clickToolbarItem(page, '#mb-disc-complete-btn');
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
         // d) Complete (merged) view — the merged-combining row insertion is a
         // separate code path from renderGroupedTable()'s own reuse-branch
         // tint-reapply, so this is where zebra striping was lost before the fix.
-        await mergedBtn.click();
+        await clickToolbarItem(page, '#mb-disc-merged-btn');
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
         // e) back to Complete view — the "restore from merged" pre-pass is a
         // third, separate insertion code path; before the fix this stayed
         // un-tinted even though (c) (the same view, reached differently) worked.
-        await completeBtn.click();
+        await clickToolbarItem(page, '#mb-disc-complete-btn');
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
         // f) Official view again — already worked before the fix (by this
         // point the "restore from merged" flag is already cleared, so the
         // standard, already-correct render path is what's visible) —
         // asserted here as a regression guard.
-        await officialBtn.click();
+        await clickToolbarItem(page, '#mb-disc-official-btn');
         await expect(bodyCell()).toHaveClass(/mb-mscol-\d/);
 
         expect(pageErrors).toEqual([]);

@@ -38,6 +38,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // Multi-table: artist-releasegroups, three <h3> sub-tables — Album (2 of 3
 // rows pending), Single (1 of 2), Live (0 of 2). Same fixture as
@@ -263,7 +264,7 @@ test.describe('source-row tallies are memoized per row set (PERFORMANCE.org Step
 
         // Save through the real Save-to-Disk path.
         const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-        await page.click('#mb-save-to-disk-btn');
+        await clickToolbarItem(page, '#mb-save-to-disk-btn');
         await page.locator(SAVE_CONFIRM_BTN).waitFor({ state: 'visible', timeout: 15000 });
         await page.click(SAVE_CONFIRM_BTN);
         const download = await downloadPromise;
@@ -274,7 +275,7 @@ test.describe('source-row tallies are memoized per row set (PERFORMANCE.org Step
         // above is still there — through the pre-filtered path, which hydrates
         // only the three Bowie rows. That is a new source-row set with a
         // different count; a memo that is never invalidated keeps saying (4).
-        await page.click('#mb-load-from-disk-btn');
+        await clickToolbarItem(page, '#mb-load-from-disk-btn');
         await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
         const loadFilter = page.locator('#sa-load-filter-input');
         await loadFilter.click();

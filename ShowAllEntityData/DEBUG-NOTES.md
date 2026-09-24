@@ -15426,3 +15426,104 @@ logged-out capture drifts every baseline's header chrome for unrelated reasons.
 Recorded in `tests/snapshots/registry.org`'s "Expected drift" with the command
 to run. No other baseline changes, not even in `<style>`: the feature adds no
 CSS and `_stampArColumnHeaderBg()` returns early off `release-tracks`.
+
+## 2026-09-24 — the action-button redesign: what the tests found that reading did not
+
+`org/action-button-redesign.org`, items 1/3/4/5/6. Branch
+`action-button-redesign`. Measured on `NB-3641`, 2026-09-24.
+
+### The starting measurement
+
+From the committed baselines, not from memory: `artist-events`' h1 rendered 13
+controls, nine of them carrying a text label, and `artist-releasegroups` added a
+five-element `Discography:` run on top. Meanwhile every h3 on a multi-table page
+had already solved the same problem — `▼ Album (312) ↔️ 👁️ 🔍[…]`, glyph-only,
+next to the table it acts on.
+
+### The design, in one line
+
+The menus ADOPT the existing buttons. A row is the same element that used to sit
+in the bar — same id, same `title`, same `onclick`, same colour setting, same
+`ctrlMFunctionMap` entry — moved into a panel by `adopt()`. That is what kept
+the diff small and the nine test call sites a mechanical migration rather than a
+rewrite.
+
+### Three defects the specs found, none of which reading the code produced
+
+1. **`stopPropagation()` ate the row-activation close.** `densityBtn.onclick`
+   and `exportBtn.onclick` both open with `e.stopPropagation()` — they have to,
+   or their own document-level outside-click handler closes the pull-down they
+   just opened. So the panel's bubble-phase close listener never fired for
+   exactly the two rows that most need it. Capture phase fixes it and cannot be
+   stopped by the target. Found on `toolbar-menus.spec.js`'s first run.
+
+2. **`sa_enable_direct_ctrl_char_shortcuts` ships OFF.** The first version of
+   the Ctrl+D test pressed `Control+d` and asserted the menu opened; it failed,
+   and the reason was not the code under test. Seeded on in that one test, which
+   is what makes it exercise the shortcut path instead of passing vacuously.
+
+3. **My own assertion was wrong, not the code.** The Ctrl+D test then asserted
+   the 🛠 View panel was still open afterwards. It is not, and should not be:
+   activating a row closes its menu. `#mb-density-btn` therefore has no bounding
+   box by the time the assertion runs either — the test now compares the density
+   pull-down's position against the 🛠 View BUTTON, which is still laid out. A
+   zero-rect anchor would put the pull-down at y=5, x=0; that is what the
+   assertion discriminates against.
+
+### `uniq-drop-viewport-clip.spec.js` was passing by 3px, for the wrong reason
+
+It failed on the branch by 14px, and the honest answer took a probe
+(`scripts/probe-uniq-drop-clamp-geometry.js`, kept):
+
+| arm | button y @1280 | crampedHeight | button bottom after resize | spaceBelow | panel overshoot |
+|-----|----------------|---------------|-----------------------------|------------|-----------------|
+| `main` | 274.5 | 324 | 345.3 | **-27.3** | 2.0 px |
+| branch | 203.2 | 252 | 297.3 | **-51.3** | 14.3 px |
+
+The spec measured the button at 1280 wide, computed a cramped viewport from it,
+then resized to **1024** — a width change that re-wraps the h1 bar and moves the
+button 52-75px DOWN. So `spaceBelow` was NEGATIVE on both arms: the trigger was
+below the fold, and a panel anchored above a button the viewport does not
+contain must overrun. `main` overran by 2px and the spec's ±5 slack swallowed
+it. The redesign shortens the h1 bar, so the button starts 71px higher, so the
+computed viewport is 72px tighter, so the same structural error surfaced as 14.
+
+Fixed by changing the HEIGHT only, and by asserting the button is still on
+screen after the resize — the guard whose absence let the original slip through.
+Verified to pass on both arms. **The clamp was never involved.**
+
+### Two guards that turned out not to be guards, recorded as `expect: "pass"`
+
+- **`_orderToolbar()`'s emptiness reconcile.** What actually keeps a fully
+  gated-off 🛠 View menu off the page is lazy creation: every `_ensure*Menu()`
+  call sits inside its own `sa_enable_*` gate. The reconcile is defence for a
+  call site that ensures a menu and then adopts nothing; no fixture can tell the
+  two apart.
+- **Adding `.mb-h2-table-controls` to `updateH2Count()`'s `globalArtBtns`
+  selector.** The plausible "simplification" is harmless, because
+  `_reanchorH2TableControls()` runs later in the same function and moves the
+  wrapper back. The guard against splitting the artwork pill is the ANCHOR
+  (`#mb-filter-container`), not absence from that list — so the mutation was
+  re-scoped to the alternative design that really does split it: anchoring on
+  `.mb-row-count-stat`.
+
+### Performance
+
+The one hot-path touch is `updateH2Count()`, which runs once per filter
+keystroke. `_reanchorH2TableControls()` adds one sibling comparison and at most
+one `before()` call against a CACHED element — no `querySelectorAll`, which is
+why the pair is one wrapper rather than two loose buttons. Nothing in
+`PERFORMANCE.org` is made false by this change; re-read and confirmed, not
+assumed.
+
+### Still owed
+
+All 11 `tests/snapshots/*/rendered.html` baselines drift — this is the largest
+expected drift the registry records, and the only one in it that changes MARKUP
+rather than only the `<style>` block. Detailed in
+`tests/snapshots/registry.org`'s "Expected drift"; not re-captured here (the
+baselines are reviewed as a git diff, not asserted by a spec).
+
+Branch 2, `org/action-button-redesign.org` item 2 — ❓ opening the GitHub help
+page, and the hand-written `ShowAllEntityData_HELP.md` — is deliberately not in
+this branch.

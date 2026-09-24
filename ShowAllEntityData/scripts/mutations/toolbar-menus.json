@@ -1,0 +1,119 @@
+[
+  {
+    "name": "the panel is a block, not a column flex container",
+    "why": "Flex items are blockified by the CSS display spec, which is what lets each adopted row keep its own inline display value (inline-flex -> flex, none stays none) and still lay out full-width. As a block, every row falls back to sitting inline beside its neighbour and the ::after hint's margin-left:auto stops right-aligning.",
+    "edits": [
+      {
+        "find": "            panel.style.display = 'flex';",
+        "replace": "            panel.style.display = 'block';"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "an open row has a real bounding rect",
+    "expect": "pass"
+  },
+  {
+    "name": "row order comes from the adoption sequence, not the declared order",
+    "why": "The render tail adopts in whatever order it calls the add*Button() helpers, and the keyboard-shortcuts row is adopted on the INITIAL render — so without _TOOLBAR_MENU_ROW_ORDER the View menu reads 'Keyboard shortcuts, Density, Statistics'.",
+    "edits": [
+      {
+        "find": "            (_TOOLBAR_MENU_ROW_ORDER[menu.key] || []).forEach(id => {",
+        "replace": "            ([]).forEach(id => {"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "each menu adopts the real buttons",
+    "expect": "fail"
+  },
+  {
+    "name": "the emptiness reconcile in _orderToolbar() is disabled",
+    "why": "Recorded as pass, honestly. What actually keeps a gated-off 🛠 View menu off the page is LAZY CREATION: every _ensure*Menu() call sits inside its own feature gate, so with Density, Statistics and Keyboard shortcuts all off the menu is never constructed and its button never exists. The reconcile is defence for a future call site that ensures a menu and then adopts nothing into it — cheap, and an easy mistake to make — but no fixture can distinguish it from the lazy creation in front of it.",
+    "edits": [
+      {
+        "find": "            const isEmpty = menu.isEmpty();",
+        "replace": "            const isEmpty = false;"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "a gated-off feature leaves no empty row",
+    "expect": "pass"
+  },
+  {
+    "name": "adoption does not stamp the owner, so _toolbarInvoke() cannot find the host menu",
+    "why": "data-mb-menu-owner is how both _toolbarInvoke() and _toolbarAnchorFor() resolve which menu holds a control — and how the test harness's clickToolbarItem() does, without a layout table of its own. Without it, Ctrl+D clicks a row inside a closed panel: the density pull-down opens against a ZERO rect, pinned to the top-left corner.",
+    "edits": [
+      {
+        "find": "                el.dataset.mbMenuOwner = key;",
+        "replace": "                void key;"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "Ctrl\\+D opens the View menu",
+    "expect": "fail"
+  },
+  {
+    "name": "_toolbarInvoke() does not open the host menu first",
+    "why": "The single reason that function exists. A row in a closed panel has a zero bounding rect, and Density and Export both position their own pull-down from it.",
+    "edits": [
+      {
+        "find": "        if (menu && !menu.isOpen()) menu.open();\n        el.click();",
+        "replace": "        void menu;\n        el.click();"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "Ctrl\\+D opens the View menu",
+    "expect": "fail"
+  },
+  {
+    "name": "the row-activation close listener is bubble-phase again",
+    "why": "densityBtn.onclick and exportBtn.onclick both begin with e.stopPropagation() — they must, or their own outside-click handler would close the pull-down they just opened — so a bubble listener never fires for exactly the two rows that need it. This is the defect the spec found on its first run.",
+    "edits": [
+      {
+        "find": "            if (item && panel.contains(item)) setTimeout(close, 0);\n        }, true);",
+        "replace": "            if (item && panel.contains(item)) setTimeout(close, 0);\n        }, false);"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "a panel opens on click and closes on Escape",
+    "expect": "fail"
+  },
+  {
+    "name": "opening a menu does not close its siblings",
+    "why": "Two panels open at once overlap, and the second one's outside-click handler cannot close the first (the click is inside its own panel).",
+    "edits": [
+      {
+        "find": "            _closeToolbarMenus(descriptor);\n            // flex, not block",
+        "replace": "            void descriptor;\n            // flex, not block"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "opening one menu closes the other",
+    "expect": "fail"
+  },
+  {
+    "name": "the shortcut hint is appended as text instead of an attribute",
+    "why": "updateBarcodeHighlightBtnState() rewrites its button's innerHTML wholesale, so an appended node would not survive it; and a hint inside textContent is the same hazard the column-header family avoids by drawing its glyphs from CSS.",
+    "edits": [
+      {
+        "find": "                if (hint) el.dataset.mbMenuHint = hint;",
+        "replace": "                if (hint) el.appendChild(document.createTextNode(' ' + hint));"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "a row carries its shortcut hint as an attribute",
+    "expect": "fail"
+  },
+  {
+    "name": "⚙️ and ❓ are no longer pinned last",
+    "why": "_orderToolbar() replaced ensureSettingsButtonIsLast()'s pile of ad-hoc 'move X before Y' rules with one append sequence. Dropping the tail pass leaves the two pinned utilities wherever the render tail's adoption order happened to put them.",
+    "edits": [
+      {
+        "find": "        _TOOLBAR_TAIL_ORDER.forEach(id => {",
+        "replace": "        ([]).forEach(id => {"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "each menu adopts the real buttons",
+    "expect": "fail"
+  }
+]

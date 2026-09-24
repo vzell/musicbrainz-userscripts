@@ -33,6 +33,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForFilterSettled, typeGlobalFilter } = require('../support/filterSortAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // The live album from AUDIT.md §3.6: 27 tracks, 2 ⚠️ rows, no ❌.
 const RELEASE_URL = 'https://musicbrainz.org/release/20a52f17-ce0b-48bf-911e-9f962a518185';
@@ -79,7 +80,7 @@ async function renderAndSave(page, outDir) {
     expect(before.text, 'and counts both flagged tracks').toContain(`(${WARNING_ROWS})`);
 
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-    await page.click('#mb-save-to-disk-btn');
+    await clickToolbarItem(page, '#mb-save-to-disk-btn');
     await page.locator(SAVE_CONFIRM_BTN).waitFor({ state: 'visible', timeout: 15000 });
     await page.click(SAVE_CONFIRM_BTN);
     const download = await downloadPromise;
@@ -96,7 +97,7 @@ async function renderAndSave(page, outDir) {
  * `diskFixture.js`'s tail without its `loadUserscriptPage()` head.
  */
 async function loadFromDiskHere(page, fixturePath) {
-    await page.click('#mb-load-from-disk-btn');
+    await clickToolbarItem(page, '#mb-load-from-disk-btn');
     const fileInput = page.locator('input[type="file"][accept*="json"]');
     await fileInput.setInputFiles(fixturePath);
     const renderBtn = page.locator('#sa-render-no-filter-confirm');

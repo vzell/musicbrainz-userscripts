@@ -3,6 +3,7 @@
 const { test, expect } = require('../support/test');
 const { loadUserscriptPageWithRealNetwork } = require('../support/realNetworkGmXhr');
 const { collectPageErrors } = require('../support/liveAssertions');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 /**
  * A typed CAA type/comment filter must keep matching a row that the MERGED
@@ -247,7 +248,7 @@ test.describe('merged discography view: CAA search-text sync', { tag: '@extended
             .toBeGreaterThan(0);
 
         // ── Switch to merged view, THEN let the artwork build ────────────────
-        await page.click(MERGED_VIEW_BTN);
+        await clickToolbarItem(page, MERGED_VIEW_BTN);
         await expandAll(page);
 
         const globalCaaBtn = page.locator('#mb-caa-toggle-btn-global');

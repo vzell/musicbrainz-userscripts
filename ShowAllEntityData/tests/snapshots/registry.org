@@ -147,6 +147,53 @@ be repeated, not committed.
 The ⏳ pending-edits entry at the top of this section is unaffected: it is about
 whether the =mp= marker is present at all, which this change does not touch.
 
+** Action-button redesign (branch action-button-redesign)
+
+A script change, not upstream movement — and unlike the three entries above it
+DOES change markup, in every single baseline. This is the largest expected drift
+recorded here; read it before treating a re-capture diff as a regression.
+
+Inside =#mb-show-all-controls-container=, on every =rendered.html=:
+
+  - =#mb-save-to-disk-btn=, =#mb-load-from-disk-btn=, =#mb-export-btn=,
+    =#mb-density-btn=, =#mb-stats-btn=, =#mb-shortcuts-help-btn= and (where the
+    page has a Barcode column) =#mb-barcode-highlight-btn= are GONE from the
+    bar. They are the same elements with the same ids, adopted into
+    =div#mb-data-menu-btn-panel= / =div#mb-view-menu-btn-panel=, which live on
+    =document.body= — so whether they appear in a baseline at all depends on
+    whether the harness serializes =<body>= beyond =#page=.
+  - Two new buttons appear: =#mb-data-menu-btn= and =#mb-view-menu-btn=,
+    each holding =span.mb-toolbar-menu-btn-label= + =span.mb-toolbar-menu-caret=.
+  - =span.mb-button-divider-after-load= and
+    =span.mb-button-divider-before-shortcuts= are gone.
+    =#mb-button-divider-initial= stays.
+  - =#mb-fetch-progress-wrap= moves: =_TOOLBAR_TAIL_ORDER= puts it before the
+    divider, i.e. just after the fetch buttons, rather than after Load from
+    Disk.
+  - artist-releasegroups only: =#mb-disc-btn-divider= and =#mb-disc-btn-label=
+    are gone, the four =#mb-disc-*-btn= move into
+    =div#mb-disc-menu-btn-panel=, and =#mb-disc-menu-btn= appears reading
+    "📀 Discography: Complete▾".
+
+In the page's own =<h2>=, on every baseline whose filter bar is h2-hosted:
+
+  - a new =span.mb-h2-table-controls= immediately before
+    =#mb-filter-container=, holding =#mb-resize-btn= and =#mb-visible-btn= —
+    both moved out of the controls bar, both now glyph-only (=↔️= / =👁️=,
+    with no =<span>= wrapper and no =<u>= accelerator) and carrying
+    =class="mb-h2-ctl-btn"= plus an =aria-label=.
+  - =#mb-resize-btn='s inline =background=/=border-color= are now always set
+    (the resting grey pill), where they used to be absent in the unresized
+    state.
+
+And in the one =GM_addStyle= block, so in every baseline including pageTypes
+with no menu at all: the =.mb-toolbar-menu-*= rules, =.mb-h2-ctl-btn= added to
+the sub-table button family's height/:active/:focus lists, and
+=.mb-toolbar-menu-item= added to both focus-ring selector lists.
+
+Nothing here is asserted by a spec — these baselines are reviewed as a git
+diff — so this is a re-capture backlog item rather than a merge blocker.
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not

@@ -37,6 +37,7 @@ const zlib = require('zlib');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 // "Born to Run", 8 tracks, one medium. At a 500 ms threshold and the default
 // ×3 "far over" factor, A2/A3/B2 are ⚠️ and B3 (3 s) is ❌ — four flagged
@@ -88,7 +89,7 @@ async function openRelease(context, pageErrors, settings) {
 /** Saves the page through the real Save-to-Disk path; returns the file. */
 async function saveToDisk(page, dir, name) {
     const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-    await page.click('#mb-save-to-disk-btn');
+    await clickToolbarItem(page, '#mb-save-to-disk-btn');
     await page.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
     await page.click('#sa-sd-save-confirm');
     const download = await downloadPromise;
@@ -99,7 +100,7 @@ async function saveToDisk(page, dir, name) {
 
 /** Load from Disk → "Render All Rows", on the page as it stands. */
 async function loadFromDisk(page, file) {
-    await page.click('#mb-load-from-disk-btn');
+    await clickToolbarItem(page, '#mb-load-from-disk-btn');
     await page.locator('input[type="file"][accept*="json"]').setInputFiles(file);
     const renderBtn = page.locator('#sa-render-no-filter-confirm');
     await renderBtn.waitFor({ state: 'attached', timeout: 15000 });

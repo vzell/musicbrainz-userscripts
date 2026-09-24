@@ -33,6 +33,7 @@ const { chromium } = require('@playwright/test');
 const { loadUserscriptPage } = require('../tests/support/loadPage');
 const { waitForRenderComplete } = require('../tests/support/browser');
 const { machineInfo, readScriptVersion } = require('../tests/support/runMetadata');
+const { clickToolbarItem } = require('../tests/support/toolbarMenu');
 
 const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
 const FIXTURE = path.join(__dirname, '..', 'tests', 'fixtures', 'release-tracks-ms-length.html');
@@ -71,7 +72,7 @@ function readState() {
         out.beforeSave = await page.evaluate(readState);
 
         const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-        await page.click('#mb-save-to-disk-btn');
+        await clickToolbarItem(page, '#mb-save-to-disk-btn');
         await page.locator('#sa-sd-save-confirm').waitFor({ state: 'visible', timeout: 15000 });
         await page.click('#sa-sd-save-confirm');
         const download = await downloadPromise;
@@ -80,7 +81,7 @@ function readState() {
 
         const reopened = await context.newPage();
         await loadUserscriptPage(reopened, { url: RELEASE_URL, fixtureFile: FIXTURE, testMode: true, settingsOverride: SETTINGS });
-        await reopened.click('#mb-load-from-disk-btn');
+        await clickToolbarItem(reopened, '#mb-load-from-disk-btn');
         await reopened.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
         const renderBtn = reopened.locator('#sa-render-no-filter-confirm');
         await renderBtn.waitFor({ state: 'attached', timeout: 15000 });

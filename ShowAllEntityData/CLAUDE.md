@@ -2983,11 +2983,131 @@ the dangerous case**, because the one tool you would reach for says the file is
 fine. If a CSS change makes unrelated rules stop working, grep the edited
 region for a backtick before debugging anything else.
 
+## The h1 toolbar is two pull-down menus plus two pinned buttons
+
+`org/action-button-redesign.org`. The bar used to be one flat run of up to 13
+controls, nine of them labelled. It is now:
+
+| Order | Element | Present |
+|-------|---------|---------|
+| 1 | `🧮N …` fetch buttons | always |
+| 2 | `#mb-stop-btn` | always (hidden outside a fetch) |
+| 3 | `#mb-fetch-progress-wrap` | always (hidden outside a fetch) |
+| 4 | `#mb-button-divider-initial` | always — the only surviving `\|` |
+| 5 | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render |
+| 6 | `#mb-data-menu-btn` `📦 Data ▾` | from the initial render |
+| 7 | `#mb-view-menu-btn` `🛠 View ▾` | from the initial render (🎹 seeds it) |
+| 8 | `#mb-settings-btn` `⚙️` | always, pinned |
+| 9 | `#mb-app-help-btn` `❓` | always, pinned |
+
+`_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
+not named there keeps whatever position it was appended at.
+`ensureSettingsButtonIsLast()` is a back-compat alias, still called from ~7
+sites, and no longer does anything else. Two of the three old divider spans
+(`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`) are
+gone — they separated groups that no longer exist.
+
+**The menus ADOPT the existing buttons; they do not replace them.** A menu row
+IS the button that used to sit in the bar — same id, same `title`, same
+`onclick`, same colour setting, same `ctrlMFunctionMap` entry — moved into a
+panel by `adopt()` and restyled as a full-width row. That is the rule to carry
+forward: build a new toolbar control the way every other one is built, then
+adopt it. Row order inside a panel comes from `_TOOLBAR_MENU_ROW_ORDER`, not
+from the sequence the render tail happens to adopt in — 🎹 is adopted on the
+INITIAL render and would otherwise head the 🛠 View list.
+
+Six things are load-bearing, and every one of them fails silently:
+
+- **A row in a CLOSED panel has a ZERO bounding rect.** Density's and Export's
+  own pull-downs, and `showLoadFilterDialog()`, all position themselves from a
+  rect. So **every programmatic activation goes through `_toolbarInvoke()`**,
+  which opens the host menu first and degrades to a plain click for a control
+  that was never adopted; and **anything wanting an ANCHOR asks
+  `_toolbarAnchorFor()`** for the menu BUTTON, never the row. A bare
+  `.click()` opens the sub-menu pinned to the top-left corner of the viewport.
+  The seven `isShortcutEvent()` arms, the `ctrlMFunctionMap` entries, the four
+  export-dialog `triggerButton:` sites and `showSaveDialog()`'s anchor all go
+  through one or the other.
+- **The row-activation close listener is CAPTURE phase.** `densityBtn.onclick`
+  and `exportBtn.onclick` both open with `e.stopPropagation()` — they must, or
+  their own document-level outside-click handler would close the pull-down they
+  just opened — so a bubble listener never fires for exactly the two rows that
+  need it. Found by `toolbar-menus.spec.js` on its first run.
+- **An open panel is `display:flex; flex-direction:column`, not `block`.** Flex
+  items are blockified by the CSS display spec, so each row's own inline
+  `display:inline-flex` computes to `flex` and lays out full-width while
+  `display:none` still hides it. The three sites revealing Save to Disk had to
+  move from `'inline-block'` to `'flex'`: `inline-block` blockifies to plain
+  `block`, where the `::after` hint's `margin-left:auto` computes to zero.
+- **The keyboard hint is CSS `::after` from `data-mb-menu-hint`, never text.**
+  `updateBarcodeHighlightBtnState()` rewrites its button's `innerHTML`
+  wholesale; an attribute survives that and a `<kbd>` child does not. Same rule,
+  same reason, as the column-header family's glyphs.
+- **Layout lives in the `.mb-toolbar-menu-item` class with `!important`.**
+  `_applyDiscButtonTints()` rewrites a row's whole `cssText` on every view
+  switch; without `!important` that flattens the row back to a bar button.
+- **An empty menu must not render**, and what delivers that is LAZY CREATION —
+  each `_ensure*Menu()` call sits inside its own `sa_enable_*` gate, so the menu
+  is never constructed. `_orderToolbar()`'s emptiness reconcile is a second line
+  for a future call site that ensures a menu and then adopts nothing; no fixture
+  can tell the two apart, and `scripts/mutations/toolbar-menus.json` records
+  that as an honest `"expect": "pass"`.
+
+**`tests/support/toolbarMenu.js` is where the layout knowledge lives on the test
+side** — `clickToolbarItem()` reads `data-mb-menu-owner` off the DOM rather than
+carrying a table of its own, so a control that moves between menus needs no
+change there. Nine call sites migrated to it. A spec that hard-codes "click
+`#mb-data-menu-btn`, then click the row" pins the current grouping as if it were
+the behaviour under test; don't.
+
+## ↔️ Resize and 👁️ Visible live in the h2, before `#mb-filter-container`
+
+They act on ONE table, so they sit beside that table's heading — the slot the
+per-sub-table `.mb-subtable-resize-btn`/`.mb-subtable-vis-btn` pair has always
+occupied in every h3. `_mountH2TableControl()` puts them there and returns false
+when there is no h2-hosted filter bar, in which case both callers keep their old
+`controlsContainer.appendChild()`. They keep their ids; only their content
+became glyph-only.
+
+- **One WRAPPER (`span.mb-h2-table-controls`), not two loose buttons.**
+  `updateH2Count()` REPLACES `.mb-row-count-stat` on every filter change and
+  re-anchors a fixed selector list of direct h2 children after the new span;
+  anything it does not know about is displaced to the front of the heading on
+  the first keystroke — this file records the same trap for `mb-rel-retry-*`. A
+  single cached wrapper makes `_reanchorH2TableControls()` one sibling test and
+  one `before()` call, **with no DOM query**, in a function that runs once per
+  keystroke.
+- **It is NOT in that selector list, and must not be added.** That list anchors
+  on the count stat, i.e. inside the artwork/Relationships control runs, which
+  are drawn as segmented pills selected by id prefix — an element between two of
+  them splits one pill in two. Anchoring on `#mb-filter-container` puts the pair
+  past the end of every run. (Adding the wrapper to the list anyway does not
+  reproduce the bug: `_reanchorH2TableControls()` runs later in the same
+  function and moves it back. The guard is the anchor, not the absence.)
+- **`#mb-resize-btn`'s `title` is a TEST CONTRACT.**
+  `tests/support/browser.js`'s `waitForRenderComplete({ waitForAutoResize })`
+  polls for a title starting with `Restore` to know the auto-resize-on-load pass
+  finished. `updateResizeButtonState()` is glyph-only now, so the title is the
+  only thing carrying the state; moving the wording into the glyph would hang
+  every render wait in the suite rather than failing loudly.
+- **The rest state RESTATES `background`/`borderColor`, it does not clear them.**
+  `uiActionBtnBaseCSS()` set neither, so `''` used to fall back to the UA button
+  default; `uiHeadingGlyphBtnCSS()` sets both, and `''` removes them, leaving a
+  transparent borderless button. Purely visual, so no spec sees it — recorded in
+  the mutation list as `"expect": "pass"` rather than left unmentioned.
+
+Covered by `tests/fixtures/h2-table-controls-anchor.spec.js` (mutation list
+`scripts/mutations/h2-table-controls-anchor.json`), which turns
+`sa_enable_caa_pics` back on — `FIXTURE_SETTINGS_OVERRIDE` forces it off, and
+without it the pill assertion measures an empty run and passes for the wrong
+reason.
+
 ## The h2/h3 control runs are segmented pills too — three of them, not one
 
 A second family, distinct from the `.mb-col-hdr-flex` one above: the buttons
 that sit beside a table's heading. `org/503-handling.org`, "Retry UI: one
-segmented control per table".
+segmented control per table". The h2's ↔️/👁️ pair (above) is deliberately NOT
+part of any of these runs — it anchors past the end of them all.
 
 **Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
 already prefix-consistent, so the CSS needs no class and no wrapper:

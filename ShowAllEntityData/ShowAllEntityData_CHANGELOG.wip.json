@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The controls bar beside the page heading is now three groups instead of one long run of buttons. On an artist's Events page it went from 13 controls — nine of them carrying a text label, wrapping onto two lines on a normal window — to five.",
+          "📦 Data ▾ holds 💾 Save to Disk, 📂 Load from Disk and 💾 Export. 🛠 View ▾ holds 📏 Density, 📊 Statistics, the barcode-highlight toggle and 🎹 Keyboard shortcuts. Each row shows its own keyboard shortcut on the right, and the menus are navigable with ↑/↓/Home/End, closed with Escape or a click outside.",
+          "⚙️ Settings and ❓ Help stay pinned in the bar, one click away as before: they are what you reach for when something is wrong, and burying them would be the opposite of the point.",
+          "↔️ Resize and 👁️ Visible moved out of the bar altogether, to the table's own heading beside the filter box — glyph-only, exactly where the per-sub-table ↔️/👁️ pair has always been on a multi-table page. They act on one table, so they now sit next to it. Tooltips and keyboard shortcuts are unchanged.",
+          "On an artist's release-group page the four discography views are now one 📀 Discography ▾ menu, and its button names the view you are in — \"📀 Discography: Official\". The flat run could only tint the active button, which told you nothing until you had looked at all four. That page has the widest heading the script renders; this removes five slots from it.",
+          "Every control kept its keyboard shortcut and its tooltip. Pressing Ctrl+D, Ctrl+E or Ctrl+S opens the owning menu for you rather than reporting that the button is missing."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New setting \"Toolbar menu button colors\" under 🖌️ ELEMENT UI STYLES, matching the existing per-button colour settings.",
+          "The three \" | \" separators the old bar used are gone; only the one between the fetch buttons and the tools remains, because it still separates two different things."
+        ]
+      }
+    ]
+  }
+]
