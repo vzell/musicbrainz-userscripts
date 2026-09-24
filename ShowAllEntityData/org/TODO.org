@@ -895,4 +895,54 @@ CustomizableMultiSelector.user.js remains broken in the published mirror with it
 
 * TODO filter checkboxes per column
 
-* TODO treat work ARs as first class citizens in releaseTypes 'release-tracks'
+* TODO treat "recording of <work>" ARs as first class citizens in releaseTypes 'release-tracks'
+
+Treat "recording of <work>" ARs as first class citizens on releaseTypes 'release-tracks', e.g. on
+https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897
+
+#+begin_example
+@debug/ARs.html - initial raw HTMLfrom the above URL
+@debug/work-ARs.html - just the relevant part of the first title "Thunder Road" from the initial raw HTML
+#+end_example
+
+Currently the "recording of <work>" ARs like e.g.
+
+#+begin_example
+publisher
+lyricist and composer - split into separate columns
+arranger
+publisher
+sub-publisher
+is based on - should be multi-row in final data cell
+etc.
+#+end_example
+
+are missing from the final rendered table
+
+1.)
+
+Render them after the "recording" related columns like e.g.
+
+#+begin_example
+Recording of work
+Recording at date - if present
+Recording at place - if present
+etc.
+#+end_example
+
+but before the columns
+
+#+begin_example
+Vocals
+Instruments
+etc.
+#+end_example
+
+2.)
+
+Make sure that these new columns get the multi-row cell treatment if neccessary.
+
+3.)
+
+the entity glyphs present before the entity name from these ARs from the initial page should be rendered in the
+resulting column headers as well
