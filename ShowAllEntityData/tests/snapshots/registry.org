@@ -569,8 +569,8 @@ in any case.
 ** release-tracks gains seven work-level AR columns (branch release-tracks-work-ars)
 
 OUR movement, and unlike most entries in this section it IS a real markup
-change — the only baseline affected is =release-tracks/rendered.html=, and it
-has not been re-captured yet.
+change — the only baseline affected is =release-tracks/rendered.html=,
+re-captured 2026-09-24 (23 columns → 30).
 
 =applyExtractTrackTitleData()= now extracts the relationships of the WORK each
 track is a "recording of:", which MusicBrainz nests inside that relationship's
@@ -598,10 +598,25 @@ CSS, and every other pageType goes through a =release-tracks=-only code path
 (=_stampArColumnHeaderBg()= returns early unless =activeDefinition.type= is
 =release-tracks=).
 
-**The re-capture is still owed, and needs a logged-in session.** It was not
-taken on the branch because =playwright/.auth/vzell.json= had expired, and a
-logged-out capture drifts the header chrome of every baseline for reasons that
-have nothing to do with this change. Run =npm run auth:login= first, then
-=node tests/support/capture-snapshots.js --only=release-tracks=. Nothing in
-=npm run test:full= reads this baseline, so the suite is green either way —
-which is exactly why this note exists rather than a failing test.
+*The same re-capture also folded in a backlog of =<style>=-only drift this
+baseline had been carrying, and none of it is this change's doing.* The file
+predated three entries already recorded above, so the diff shows them landing
+all at once:
+
+  - the segmented control-run pill rewritten onto =[id^="mb-caa-toggle-btn-"]=
+    / =[id^="mb-eaa-toggle-btn-"]= / =[id^="mb-rel-retry-"]= prefixes
+    (9.99.1129, the last entry of this section);
+  - =.mb-re-col-hdr-btn:focus-visible= joining the shared
+    =.mb-col-hdr-flex= family selectors (fix/release-events-transient);
+  - the =<style id="mb-rel-cell-glyph-style">= block
+    (9.99.1101-1108).
+
+*Checked rather than assumed*: outside those three, the ONLY differences are
+the seven new =<th>=s and their cells. =raw.html= is untouched, and no other
+pageType's baseline changed at all. Each work credited under "is based on:"
+appears TWICE in the file — once in its new column, once in the raw "ARs"
+column — which is the never-touch-=_bareArsDiv= contract holding.
+
+Nothing in =npm run test:full= reads this baseline, so the suite was green
+before the re-capture as well; that is why this entry exists rather than a
+failing test.
