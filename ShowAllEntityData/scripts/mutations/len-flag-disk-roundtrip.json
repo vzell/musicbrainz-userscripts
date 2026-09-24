@@ -1,0 +1,119 @@
+[
+  {
+    "name": "the writer drops the flag",
+    "why": "Removes lenFlag from the cell record — the shipped defect: html alone cannot carry an attribute on the <td>, so a reopened tracklist has no flags, tints or LENGTH buttons. Must fail on the round-trip test.",
+    "edits": [
+      {
+        "find": "            data.lenFlag = cell.dataset.mbLenFlag;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "reopened tracklist shows the same flags",
+    "expect": "fail"
+  },
+  {
+    "name": "the writer drops the tooltip",
+    "why": "Keeps the flag but not its explanation. The tint and buttons come back, and the tooltip saying what the gap is does not. The round-trip test compares each cell's kind AND title, so it must fail.",
+    "edits": [
+      {
+        "find": "            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "reopened tracklist shows the same flags",
+    "expect": "fail"
+  },
+  {
+    "name": "the writer takes any title, not only the script's own",
+    "why": "Drops the data-mb-col-tip ownership check. _applyLengthMismatchFlag() always sets the tooltip and the marker together, so on every flagged cell a fixture can produce the check is already true. It guards a cell whose title something else rewrote after flagging, which no fixture does. KNOWN UNCOVERED.",
+    "edits": [
+      {
+        "find": "            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;",
+        "replace": "            if (cell.title) data.lenTip = cell.title;"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "reopened tracklist|saved again",
+    "expect": "pass"
+  },
+  {
+    "name": "the reader accepts any flag value",
+    "why": "Drops the warn/severe allowlist, so whatever string a hand-edited file holds is written into data-mb-len-flag. Must fail on the tamper test, where 'bogus' then reaches the DOM.",
+    "edits": [
+      {
+        "find": "        if (!cellData || (cellData.lenFlag !== 'warn' && cellData.lenFlag !== 'severe')) return;",
+        "replace": "        if (!cellData || !cellData.lenFlag) return;"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "only a known flag",
+    "expect": "fail"
+  },
+  {
+    "name": "the reader accepts a non-string tooltip",
+    "why": "Drops the typeof check, so an object in lenTip is coerced into the title ('[object Object]') and marked as the script's own. Must fail on the tamper test's second cell.",
+    "edits": [
+      {
+        "find": "        if (typeof cellData.lenTip === 'string' && cellData.lenTip) {",
+        "replace": "        if (cellData.lenTip) {"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "only a known flag",
+    "expect": "fail"
+  },
+  {
+    "name": "the reader ignores the on/off setting",
+    "why": "Restores a saved flag even when flagging has been switched off since. Must fail on the switched-off test. That test passed on unfixed code too, since nothing was restored then — this mutation is what makes it load-bearing.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return;\n        td.dataset.mbLenFlag = cellData.lenFlag;",
+        "replace": "        td.dataset.mbLenFlag = cellData.lenFlag;"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "switched off before the load",
+    "expect": "fail"
+  },
+  {
+    "name": "the reader does not re-mark the tooltip as the script's own",
+    "why": "Restores the title without data-mb-col-tip. The first load looks right; a SECOND save then refuses the title (the writer's ownership check) and the second reopen loses it. Must fail on the save-again test, and only there.",
+    "edits": [
+      {
+        "find": "            td.title = cellData.lenTip;\n            td.dataset.mbColTip = '1';",
+        "replace": "            td.title = cellData.lenTip;"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "saved again keeps its flags",
+    "expect": "fail"
+  },
+  {
+    "name": "the multi-table hydrate loop never calls the reader",
+    "why": "A release tracklist is tableMode 'multi', so this is the loop a Load from Disk takes. Must fail on the round-trip test.",
+    "edits": [
+      {
+        "find": "                            _restoreLenMismatchFlag(td, cellData);\n                            tr.appendChild(td);",
+        "replace": "                            tr.appendChild(td);"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "reopened tracklist shows the same flags",
+    "expect": "fail"
+  },
+  {
+    "name": "the single-table hydrate loop never calls the reader",
+    "why": "The single-table loop serves single-table Load from Disk and the sub-table handoff tab. No pageType that has LENGTH flags reaches it: release-tracks is multi-table and is not in SA_SNAPSHOT_SUPPORTED_PAGETYPES. KNOWN UNREACHABLE today. Kept so that adding the handoff to release-tracks, or flags to a single-table page, finds a reader already in place.",
+    "edits": [
+      {
+        "find": "                        _msResetCarriedOverPrecision(td);\n                        // A LENGTH mismatch lives on the <td>, not in its\n                        // HTML — put it back from the cell record.\n                        _restoreLenMismatchFlag(td, cellData);\n                        if (_beforeFp !== null) {",
+        "replace": "                        _msResetCarriedOverPrecision(td);\n                        if (_beforeFp !== null) {"
+      }
+    ],
+    "spec": "tests/fixtures/len-flag-disk-roundtrip.spec.js",
+    "grep": "reopened tracklist|saved again|only a known flag",
+    "expect": "pass"
+  }
+]
