@@ -290,7 +290,7 @@ def run_stage2(baseline):
     return lines, drift, new, gone, unknown
 
 
-HELP = os.path.join(ROOT, 'ShowAllEntityData_HELP.txt')
+HELP = os.path.join(ROOT, 'ShowAllEntityData_HELP.md')
 _STOP = {'the', 'a', 'an', 'of', 'for', 'to', 'in', 'on', 'and', 'or',
          'enable', 'disable', 'show', 'hide', 'default', 'settings', 'setting'}
 
@@ -300,46 +300,68 @@ def _sig_words(text):
             if w and w not in _STOP}
 
 
-def run_docs_report(snapshot_labels):
-    """List HELP settings bullets that match no schema label.
+def run_docs_report(sections):
+    """List schema setting GROUPS that HELP's settings table does not mention.
 
-    **A REPORT, NOT A GATE, and the difference is measured, not assumed.**
-    org/config-handling.org's follow-up list expects a schema-vs-docs
-    cross-check to sit beside the schema-vs-fallback one. It half can: this
-    finds the known stale line — HELP documents a "Sort progress threshold"
-    setting whose `sa_sort_progress_threshold` was removed from configSchema —
-    but on 9.99.1136 it flags 41 of 119 bullets, and most of the other 40 are
-    correct prose that summarises several settings in one line ("Cache TTL,
-    max entries, store sizes"). A 34% false-positive rate is not a gate; wiring
-    it into the exit code would train everyone to ignore the whole script.
+    **A REPORT, NOT A GATE**, as before, and for the same reason
+    org/config-handling.org gives: a docs cross-check that fails on prose
+    trains everyone to ignore the whole script.
 
-    So it runs only under `--docs`, and a human reads the list. Making it a
-    gate needs HELP's settings section to name settings one per bullet, which
-    is a documentation change, not a script change.
+    **What it compares changed in 9.99.1148, and the new answer is better.**
+    It used to match HELP's one-setting-per-bullet lines against schema LABELS,
+    and on 9.99.1136 flagged 41 of 119 bullets — most of them correct prose
+    summarising several settings at once ("Cache TTL, max entries, store
+    sizes"). A 34% false-positive rate made the output something to skim.
+
+    `ShowAllEntityData_HELP.md` does not list settings one per bullet at all;
+    its settings section is a table of GROUPS, one row per `configSchema`
+    divider. That is a near one-to-one correspondence instead of a
+    one-to-many, so the question became "does every schema section appear in
+    HELP's table" — which is the case that actually matters: a new settings
+    GROUP shipping without HELP hearing about it.
+
+    It is still not a gate, because the mapping is not exactly one-to-one:
+    HELP legitimately folds a sub-divider into its parent row (the sidebar and
+    overflow-table dividers live under Generic and Experimental), so a
+    correctly-written table still reports a few. Read the list; do not count
+    it.
     """
+    if not os.path.isfile(HELP):
+        return [f'no help file at {os.path.basename(HELP)} — did it move again?']
     text = open(HELP, encoding='utf-8').read().split('\n')
+
+    # The settings table lives inside the "The setting groups" <details> of the
+    # Settings section. Take every pipe row between that summary and the next
+    # </details>, and read its first cell.
     try:
-        start = next(i for i, l in enumerate(text) if l.startswith('SETTINGS (⚙️'))
-        end = next(i for i, l in enumerate(text) if l.startswith('SETTINGS DIALOG SAFETY'))
+        start = next(i for i, l in enumerate(text) if l.startswith('<summary>The setting groups'))
+        end = next(i for i, l in enumerate(text[start:], start) if l.strip() == '</details>')
     except StopIteration:
-        return ["could not locate HELP's settings section — its headings moved"]
+        return ["could not locate HELP's settings-group table — its headings moved"]
 
-    label_words = [_sig_words(lbl) for lbl in snapshot_labels]
-    bullets = [l for l in text[start:end] if re.match(r'^    — ', l)]
-
-    unmatched = []
-    for b in bullets:
-        bw = _sig_words(re.sub(r'\(.*', '', b[6:]))
-        if not bw:
+    rows = []
+    for l in text[start:end]:
+        if not l.startswith('|') or re.match(r'^\s*\|[\s:|-]+\|\s*$', l):
             continue
-        if any(lw and (lw <= bw or bw <= lw) for lw in label_words):
-            continue
-        unmatched.append(b.strip())
+        rows.append(l.strip().strip('|').split('|')[0].strip())
+    if not rows:
+        return ["HELP's settings-group table is empty — its shape moved"]
 
-    out = [f"HELP settings bullets matching no schema label: {len(unmatched)} "
-           f"of {len(bullets)} — a WORKLIST, not a verdict. Most are prose "
-           f"covering several settings at once; read them, do not count them."]
-    out += [f'  {u}' for u in unmatched]
+    row_words = [_sig_words(r) for r in rows]
+    missing = []
+    for sec in sections:
+        sw = _sig_words(sec['label'])
+        if not sw:
+            continue
+        if any(rw and (rw <= sw or sw <= rw) for rw in row_words):
+            continue
+        missing.append(f"{sec['label']}  ({sec['key']})")
+
+    out = [f"schema setting groups absent from HELP's table: {len(missing)} "
+           f"of {len(sections)}, against {len(rows)} table rows — a WORKLIST, "
+           f"not a verdict. HELP folds some sub-dividers into a parent row on "
+           f"purpose; read them, do not count them."]
+    out += [f'  {m}' for m in missing]
     return out
 
 
@@ -604,13 +626,13 @@ def main():
         print('\n'.join(stage3_lines))
 
     if args.docs:
-        # Labels come from the snapshot, not a fresh regex over the source: a
-        # regex that matched only single-quoted labels missed roughly half of
-        # them, which made this report both noisier AND blind to the one stale
-        # line it was written to find.
-        labels = list(json.load(open(SNAPSHOT, encoding='utf-8'))['labels'].values())
+        # Sections come from the snapshot, not a fresh regex over the source —
+        # the same reason the labels did before it: a regex that matched only
+        # single-quoted values missed roughly half of them, which made this
+        # report both noisier AND blind to what it was written to find.
+        sections = json.load(open(SNAPSHOT, encoding='utf-8'))['sections']
         print()
-        print('\n'.join(run_docs_report(labels)))
+        print('\n'.join(run_docs_report(sections)))
 
     return 1 if failed else 0
 

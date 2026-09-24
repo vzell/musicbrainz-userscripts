@@ -181,11 +181,29 @@
     // The changelog is fetched and the GM menu item registered by VZ_MBLibrary
     // (via remoteConfig passed to the constructor below).
     // The help URL is only used lazily by showAppHelp() via Lib.fetchCachedText().
+    //
+    // Help is Markdown (`_HELP.md`) since 9.99.1148 — the ❓ button's PRIMARY
+    // route is now GitHub's own rendering of that file, and the in-script
+    // dialog (Shift-click) renders the same source itself. The two URLs below
+    // are the same document served two ways: HELP_GITHUB_URL is the human
+    // /blob/ page, REMOTE_HELP_URL the raw bytes the dialog fetches. Keep them
+    // pointing at the same filename or the dialog and the button show
+    // different documents.
     const REMOTE_BASE          = 'https://raw.githubusercontent.com/vzell/mb-userscripts/master/';
-    const REMOTE_HELP_URL      = REMOTE_BASE + SCRIPT_BASE_NAME + '_HELP.txt';
+    const REMOTE_HELP_URL      = REMOTE_BASE + SCRIPT_BASE_NAME + '_HELP.md';
     const REMOTE_CHANGELOG_URL = REMOTE_BASE + SCRIPT_BASE_NAME + '_CHANGELOG.json';
+    const HELP_GITHUB_URL      = 'https://github.com/vzell/mb-userscripts/blob/master/'
+                                 + SCRIPT_BASE_NAME + '_HELP.md';
     const REMOTE_CACHE_TTL_MS  = 60 * 60 * 1000; // 1 hour
-    const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text';
+    // `-remote-help-md`, not the older `-remote-help-text`: `fetchCachedText()`
+    // keys on the cache key ALONE and stores no URL beside the bytes, so an
+    // upgrading user's cached plain-text help would otherwise be fed to the
+    // Markdown renderer for up to a TTL — every `-----` underline read as a
+    // heading rule and every hand-laid-out block reflowed. Changing the key
+    // makes the format change a cache MISS. The old value is orphaned in GM
+    // storage; it is not a `sa_*` setting and the config exporter works from
+    // an allowlist, so nothing picks it up.
+    const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-md';
     const CACHE_KEY_CHANGELOG  = SCRIPT_BASE_NAME.toLowerCase() + '-remote-changelog';
 
     // Save-to-disk/Load-from-disk snapshot format version — distinct from the
@@ -3270,9 +3288,10 @@
      * complete.
      *
      * `sa_sort_progress_threshold` is the one worth noticing: it is the very
-     * setting `ShowAllEntityData_HELP.txt` still documented after it was
-     * removed (org/config-handling.org's stale-HELP follow-up). The doc and the
-     * storage went stale from the same deletion, six weeks apart in discovery.
+     * setting the old `ShowAllEntityData_HELP.txt` still documented after it
+     * was removed (org/config-handling.org's stale-HELP follow-up). The doc
+     * and the storage went stale from the same deletion, six weeks apart in
+     * discovery.
      *
      * @type {string[]}
      */
@@ -27868,11 +27887,17 @@ ${sections.join('\n')}
     //     shortcut hint stops right-aligning.
     //
     //   • **The keyboard hint is a CSS `::after` fed by `data-mb-menu-hint`,
-    //     never element text.** `updateBarcodeHighlightBtnState()` rewrites its
-    //     button's `innerHTML` wholesale; an appended `<kbd>` would not survive
-    //     that, an attribute does. It also keeps the hint out of `textContent`,
-    //     which is the same reason the column-header family draws its glyphs
-    //     from CSS.
+    //     never element text.** It keeps the hint out of the row's
+    //     `textContent`, so a read of the row is its label alone — the same
+    //     reason the column-header family draws its glyphs from CSS, and what
+    //     `toolbar-menus.spec.js` pins.
+    //     **Correction (9.99.1148):** this used to say the hint had to be an
+    //     attribute because `updateBarcodeHighlightBtnState()` rewrites its
+    //     button's `innerHTML` wholesale. It does not — it writes
+    //     `style.background`, `style.borderColor`, `style.color` and `title`,
+    //     and the button's content is set once at creation. The rule is right;
+    //     that reason for it was not, and a false reason is worse than none,
+    //     because it invites "no rewrite here, so a `<kbd>` is fine".
     //
     //   • **A menu with no rows must not render.** Every row is gated by its own
     //     `sa_enable_*` setting, so a user who has turned the lot off would
@@ -29383,7 +29408,7 @@ ${sections.join('\n')}
                     { keys: '? or /', desc: 'Show this shortcuts help' },
                     { keys: getShortcutDisplay('sa_shortcut_show_shortcuts_help', 'Ctrl+K'), desc: 'Show keyboard shortcuts help (use prefix mode then K when direct Ctrl+letter shortcuts are disabled)' },
                     { keys: `${getPrefixDisplay()}, then K`, desc: 'Show shortcuts help (prefix mode)' },
-                    { keys: `${getPrefixDisplay()}, then H`, desc: 'Show app help (prefix mode)' }
+                    { keys: `${getPrefixDisplay()}, then H`, desc: 'Show app help in this page (prefix mode) — ❓ opens it on GitHub instead, Shift-❓ opens it here' }
                 ]
             }
         ];
@@ -29443,10 +29468,456 @@ ${sections.join('\n')}
     }
 
     /**
+     * Injects the ❓ help dialog's Markdown stylesheet, once.
+     *
+     * **A stylesheet, not inline styles, and that is not a preference.**
+     * MusicBrainz serves `/account/*` with `style-src 'self' staticbrainz.org
+     * static.metabrainz.org` and no `unsafe-inline`, so a `style=` attribute is
+     * dropped there while working everywhere else — the exact shape of bug the
+     * 9.99.736-9.99.745 run existed to remove, and `/account/applications` is a
+     * supported pageType. `GM_addStyle()` writes into the userscript's own
+     * context and is exempt.
+     *
+     * @returns {void}
+     */
+    function _ensureMdHelpStyle() {
+        if (document.getElementById('mb-md-help-style')) return;
+        // No backtick may appear anywhere below, not even in a comment and not
+        // even as a balanced pair: this is inside a template literal, and a
+        // balanced pair silently closes and reopens it, disabling every rule
+        // after that point while node --check still passes. See CLAUDE.md.
+        const st = GM_addStyle(`
+            .mb-md-h1, .mb-md-h2, .mb-md-h3, .mb-md-h4 {
+                margin: 1.1em 0 0.45em; line-height: 1.25; font-weight: 700; color: #222;
+            }
+            .mb-md-h1 { font-size: 1.45em; border-bottom: 2px solid #ddd; padding-bottom: 0.2em; }
+            .mb-md-h2 { font-size: 1.25em; border-bottom: 1px solid #e6e6e6; padding-bottom: 0.15em; }
+            .mb-md-h3 { font-size: 1.10em; }
+            .mb-md-h4 { font-size: 1.00em; color: #444; }
+            .mb-md-p  { margin: 0.55em 0; }
+            .mb-md-ul, .mb-md-ol { margin: 0.45em 0; padding-left: 1.6em; }
+            .mb-md-ul .mb-md-ul, .mb-md-ol .mb-md-ol,
+            .mb-md-ul .mb-md-ol, .mb-md-ol .mb-md-ul { margin: 0.15em 0; }
+            .mb-md-li { margin: 0.18em 0; }
+            .mb-md-code {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                font-size: 0.9em; background: #f2f2f2; border: 1px solid #e2e2e2;
+                border-radius: 3px; padding: 0 3px;
+            }
+            .mb-md-pre {
+                margin: 0.6em 0; padding: 9px 12px; overflow-x: auto;
+                background: #f6f8fa; border: 1px solid #e2e2e2; border-radius: 5px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                font-size: 0.88em; line-height: 1.45; white-space: pre;
+            }
+            .mb-md-quote {
+                margin: 0.6em 0; padding: 2px 0 2px 12px;
+                border-left: 4px solid #d8d8d8; color: #555;
+            }
+            .mb-md-hr { margin: 1.1em 0; border: 0; border-top: 1px solid #e0e0e0; }
+            .mb-md-a { color: #0066cc; text-decoration: none; }
+            .mb-md-a:hover { text-decoration: underline; }
+            .mb-md-table { margin: 0.6em 0; border-collapse: collapse; font-size: 0.94em; }
+            .mb-md-table th, .mb-md-table td {
+                border: 1px solid #ddd; padding: 4px 9px; text-align: left; vertical-align: top;
+            }
+            .mb-md-table th { background: #f2f2f2; font-weight: 600; }
+            .mb-md-details { margin: 0.6em 0; }
+            .mb-md-summary { cursor: pointer; font-weight: 600; color: #333; }
+        `);
+        st.id = 'mb-md-help-style';
+    }
+
+    /**
+     * GitHub's heading-anchor slug for `text`, prefixed so it cannot collide
+     * with an id MusicBrainz's own page already uses.
+     *
+     * The prefix is why a `[…](#anchor)` link cannot simply be handed to the
+     * browser: the file's own fragments are written for GitHub, which stamps
+     * the bare slug. Both sides run through here, so a table of contents
+     * written for GitHub resolves in the dialog too.
+     *
+     * @param {string} text - a heading's text, or a fragment from a link
+     * @returns {string}
+     */
+    function _mdHeadingId(text) {
+        return 'mb-md-' + String(text).toLowerCase()
+            .replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-');
+    }
+
+    /**
+     * Renders one line of Markdown INLINE syntax into `parent` as DOM nodes.
+     *
+     * Handles, in one pass so the earliest match wins: backtick code spans,
+     * bold, italic, and links. Everything else is emitted as text.
+     *
+     * **`*italic*` only — `_italic_` is deliberately NOT supported.** Half the
+     * nouns in this script are snake_case settings keys, and an underscore rule
+     * turns `sa_enable_caa_pics` into "sa" + italic "enable_caa" + "pics". That
+     * is not a hypothetical: CommonMark itself refuses intra-word underscore
+     * emphasis for exactly this reason, so leaving the rule out makes this
+     * renderer agree with GitHub on the case that actually occurs, and disagree
+     * only on a spelling the help file does not use.
+     *
+     * **Nodes, never innerHTML.** The source is fetched over the network at
+     * runtime. It is our own file today, but "our own file" is a fact about
+     * the repository, not a guarantee about the bytes a fetch returns, and a
+     * help dialog is not the place to find out. Building nodes also means the
+     * quick-filter's TreeWalker sees exactly the text the reader sees.
+     *
+     * A link's href is admitted only when it is http(s) or a same-document
+     * anchor — so a `javascript:` URL in the source renders as inert text
+     * rather than as a link.
+     *
+     * **An in-document `#anchor` link scrolls the DIALOG, not the page.** The
+     * dialog is a fixed overlay with its own scroll area, so letting the
+     * browser follow the fragment would scroll MusicBrainz's page underneath
+     * while the table of contents appeared to do nothing. The handler resolves
+     * the heading this renderer stamped and scrolls to it instead; the `href`
+     * stays on the element so the link is focusable and reads as a link.
+     *
+     * @param {Element} parent
+     * @param {string} text - one logical line of Markdown
+     * @returns {void}
+     */
+    function _mdInline(parent, text) {
+        const RE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*\n]+\*)|(\[[^\]]*\]\([^)\s]+\))/;
+        let rest = String(text);
+        for (;;) {
+            const m = RE.exec(rest);
+            if (!m) break;
+            if (m.index > 0) parent.appendChild(document.createTextNode(rest.slice(0, m.index)));
+            const tok = m[0];
+            if (tok[0] === '`') {
+                const code = document.createElement('code');
+                code.className = 'mb-md-code';
+                code.textContent = tok.slice(1, -1);
+                parent.appendChild(code);
+            } else if (tok.startsWith('**')) {
+                const b = document.createElement('strong');
+                b.textContent = tok.slice(2, -2);
+                parent.appendChild(b);
+            } else if (tok[0] === '*') {
+                const i = document.createElement('em');
+                i.textContent = tok.slice(1, -1);
+                parent.appendChild(i);
+            } else {
+                const cut  = tok.indexOf('](');
+                const label = tok.slice(1, cut);
+                const href  = tok.slice(cut + 2, -1);
+                if (/^(https?:\/\/|#)/i.test(href)) {
+                    const a = document.createElement('a');
+                    a.className = 'mb-md-a';
+                    if (href[0] === '#') {
+                        const targetId = _mdHeadingId(href.slice(1));
+                        a.href = '#' + targetId;
+                        a.addEventListener('click', (ev) => {
+                            ev.preventDefault();
+                            const t = document.getElementById(targetId);
+                            if (t) t.scrollIntoView({ block: 'start' });
+                        });
+                    } else {
+                        a.href = href;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                    }
+                    _mdInline(a, label);
+                    parent.appendChild(a);
+                } else {
+                    parent.appendChild(document.createTextNode(label));
+                }
+            }
+            rest = rest.slice(m.index + tok.length);
+        }
+        if (rest) parent.appendChild(document.createTextNode(rest));
+    }
+
+    /**
+     * Renders a Markdown document into `container` as DOM nodes.
+     *
+     * Deliberately small. It covers exactly what `ShowAllEntityData_HELP.md`
+     * uses — ATX headings, fenced code, bullet and ordered lists (one nesting
+     * level), GFM pipe tables, blockquotes, rules, paragraphs, and the three
+     * HTML tags that file needs — and the coupling runs that way round: the
+     * help file is written to stay inside this renderer, not the renderer
+     * grown to chase the file. GitHub is where the full Markdown rendering
+     * lives, and the ❓ button goes there by default.
+     *
+     * **`<details>` is rendered OPEN.** Collapsed content is still in the DOM,
+     * so the dialog's quick filter would highlight matches the reader cannot
+     * see — a filter that reports hits into a closed box is worse than no
+     * filter. On GitHub the sections collapse as written; here the whole
+     * document is one searchable surface, which is what this route is for.
+     *
+     * @param {Element} container - emptied before rendering
+     * @param {string} md
+     * @returns {void}
+     */
+    function _mdRenderInto(container, md) {
+        _ensureMdHelpStyle();
+        container.textContent = '';
+
+        const lines = String(md).replace(/\r\n?/g, '\n').split('\n');
+        let i = 0;
+        // The element new blocks are appended to — the container, or an open
+        // <details> while one is being filled.
+        let sink = container;
+        let para = null;
+
+        /** Closes the paragraph being accumulated, if any. @returns {void} */
+        const flushPara = () => {
+            if (!para) return;
+            sink.appendChild(para);
+            para = null;
+        };
+
+        /** @param {string} line @returns {void} */
+        const addToPara = (line) => {
+            if (!para) {
+                para = document.createElement('p');
+                para.className = 'mb-md-p';
+            } else {
+                para.appendChild(document.createTextNode(' '));
+            }
+            _mdInline(para, line);
+        };
+
+        while (i < lines.length) {
+            const raw  = lines[i];
+            const line = raw.trim();
+
+            // ── Fenced code ────────────────────────────────────────────────
+            if (/^```/.test(line)) {
+                flushPara();
+                const body = [];
+                i++;
+                while (i < lines.length && !/^\s*```/.test(lines[i])) { body.push(lines[i]); i++; }
+                i++;                                    // consume the closing fence
+                const pre = document.createElement('pre');
+                pre.className = 'mb-md-pre';
+                pre.textContent = body.join('\n');
+                sink.appendChild(pre);
+                continue;
+            }
+
+            // ── The three HTML tags the help file uses ─────────────────────
+            if (/^<details\b[^>]*>$/i.test(line)) {
+                flushPara();
+                const d = document.createElement('details');
+                d.className = 'mb-md-details';
+                d.open = true;                          // see this function's JSDoc
+                sink.appendChild(d);
+                sink = d;
+                i++;
+                continue;
+            }
+            if (/^<\/details>$/i.test(line)) {
+                flushPara();
+                sink = sink.parentNode && sink.tagName === 'DETAILS' ? sink.parentNode : container;
+                i++;
+                continue;
+            }
+            const sum = line.match(/^<summary\b[^>]*>(.*)<\/summary>$/i);
+            if (sum) {
+                flushPara();
+                const s = document.createElement('summary');
+                s.className = 'mb-md-summary';
+                _mdInline(s, sum[1]);
+                sink.appendChild(s);
+                i++;
+                continue;
+            }
+
+            // ── Blank line ─────────────────────────────────────────────────
+            if (!line) { flushPara(); i++; continue; }
+
+            // ── Heading ────────────────────────────────────────────────────
+            const h = line.match(/^(#{1,6})\s+(.*)$/);
+            if (h) {
+                flushPara();
+                const level = Math.min(h[1].length, 4);
+                const el = document.createElement('h' + level);
+                el.className = 'mb-md-h' + level;
+                el.id = _mdHeadingId(h[2]);
+                _mdInline(el, h[2]);
+                sink.appendChild(el);
+                i++;
+                continue;
+            }
+
+            // ── Horizontal rule ────────────────────────────────────────────
+            if (/^(-{3,}|\*{3,}|_{3,})$/.test(line)) {
+                flushPara();
+                const hr = document.createElement('hr');
+                hr.className = 'mb-md-hr';
+                sink.appendChild(hr);
+                i++;
+                continue;
+            }
+
+            // ── Table ──────────────────────────────────────────────────────
+            // A pipe row followed by a |---|---| separator. Checked before
+            // lists, because a cell may legitimately start with a dash.
+            if (line[0] === '|' && i + 1 < lines.length
+                && /^\s*\|[\s:|-]+\|\s*$/.test(lines[i + 1])) {
+                flushPara();
+                /** @param {string} r @returns {string[]} */
+                const cells = (r) => r.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+                const table = document.createElement('table');
+                table.className = 'mb-md-table';
+                const thead = document.createElement('thead');
+                const htr   = document.createElement('tr');
+                cells(line).forEach((c) => {
+                    const th = document.createElement('th');
+                    _mdInline(th, c);
+                    htr.appendChild(th);
+                });
+                thead.appendChild(htr);
+                table.appendChild(thead);
+                const tbody = document.createElement('tbody');
+                i += 2;
+                while (i < lines.length && lines[i].trim()[0] === '|') {
+                    const tr = document.createElement('tr');
+                    cells(lines[i]).forEach((c) => {
+                        const td = document.createElement('td');
+                        _mdInline(td, c);
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                    i++;
+                }
+                table.appendChild(tbody);
+                sink.appendChild(table);
+                continue;
+            }
+
+            // ── List ───────────────────────────────────────────────────────
+            const bullet = raw.match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+            if (bullet) {
+                flushPara();
+                const ordered = /\d/.test(bullet[2]);
+                const list = document.createElement(ordered ? 'ol' : 'ul');
+                list.className = ordered ? 'mb-md-ol' : 'mb-md-ul';
+                let nested = null;
+                while (i < lines.length) {
+                    const m = lines[i].match(/^(\s*)([-*+]|\d+\.)\s+(.*)$/);
+                    if (!m) {
+                        // A LAZY CONTINUATION: an indented, non-bullet line
+                        // belongs to the item above it. Without this every
+                        // wrapped bullet ends its list and reopens a new
+                        // one-item list after a stray paragraph — which is
+                        // what the whole "Supported pages" section did, and
+                        // what no assertion in the spec could see, because
+                        // each fragment is individually well-formed. Found by
+                        // scripts/probe-help-md-render.js.
+                        //
+                        // The indent requirement is what keeps it safe: a
+                        // heading, fence, table or rule starts at column 0, so
+                        // none of them can be swallowed as continuation text.
+                        const cont = lines[i].match(/^\s{2,}(\S.*)$/);
+                        const target = nested ? nested.lastElementChild : list.lastElementChild;
+                        if (cont && target) {
+                            target.appendChild(document.createTextNode(' '));
+                            _mdInline(target, cont[1]);
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    const li = document.createElement('li');
+                    li.className = 'mb-md-li';
+                    _mdInline(li, m[3]);
+                    if (m[1].length >= 2) {
+                        // One nesting level, reopened whenever indentation
+                        // returns. Deeper nesting renders flat at this level,
+                        // which is why the help file does not use it.
+                        if (!nested) {
+                            nested = document.createElement(ordered ? 'ol' : 'ul');
+                            nested.className = ordered ? 'mb-md-ol' : 'mb-md-ul';
+                            (list.lastElementChild || list).appendChild(nested);
+                        }
+                        nested.appendChild(li);
+                    } else {
+                        nested = null;
+                        list.appendChild(li);
+                    }
+                    i++;
+                }
+                sink.appendChild(list);
+                continue;
+            }
+
+            // ── Blockquote ─────────────────────────────────────────────────
+            if (line[0] === '>') {
+                flushPara();
+                const q = document.createElement('div');
+                q.className = 'mb-md-quote';
+                const body = [];
+                while (i < lines.length && lines[i].trim()[0] === '>') {
+                    body.push(lines[i].trim().replace(/^>\s?/, ''));
+                    i++;
+                }
+                _mdInline(q, body.join(' '));
+                sink.appendChild(q);
+                continue;
+            }
+
+            // ── Paragraph ──────────────────────────────────────────────────
+            addToPara(line);
+            i++;
+        }
+        flushPara();
+    }
+
+    /**
+     * The ❓ button's click handler: GitHub by default, the in-script dialog on
+     * Shift-click.
+     *
+     * GitHub renders `ShowAllEntityData_HELP.md` with a table of contents,
+     * working anchors, collapsible `<details>` sections and syntax-highlighted
+     * blocks — everything the in-script dialog approximates at best. So the
+     * plain click goes there, and `showAppHelp()` becomes the deliberate
+     * "don't take me off this page" route rather than the only one.
+     *
+     * **`window.open()`, NOT `GM_openInTab()`.** The latter would need a new
+     * `@grant`, and adding a grant makes Tampermonkey re-prompt every existing
+     * user for permission on their next update — a real cost paid by everyone,
+     * for a tab that `window.open()` already opens. A click handler is a user
+     * gesture, so no popup blocker is involved.
+     *
+     * `noopener,noreferrer` because the opened page must not get a
+     * `window.opener` handle back into a MusicBrainz tab this script is
+     * operating on.
+     *
+     * @param {MouseEvent} [e] - the click; only `shiftKey` is read.
+     * @returns {void}
+     */
+    function openAppHelp(e) {
+        if (e && e.shiftKey) {
+            Lib.debug('ui', 'Application help: Shift-click — opening the in-script dialog');
+            showAppHelp();
+            return;
+        }
+        Lib.info('ui', `Application help: opening ${HELP_GITHUB_URL}`);
+        window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');
+    }
+
+    /**
      * Show application help dialog
      * Displays the full feature overview (fetched from GitHub) in a scrollable popup.
      * Shows a loading spinner while fetching; uses GM cache (TTL 1 h) to avoid redundant
      * network requests.  Falls back to a Retry button if both fetch and cache miss.
+     *
+     * Reached by Shift-clicking ❓, or by the prefix-mode `H` shortcut — which
+     * stays on this rather than on `openAppHelp()` deliberately. Prefix mode
+     * refuses Shift (`!e.shiftKey` in its own guard), so the keyboard has ONE
+     * route and it should be the one that cannot be reached any other way
+     * without a mouse; the dialog's own title bar carries a link to GitHub, so
+     * neither destination is keyboard-unreachable.
+     *
+     * The source it renders is Markdown since 9.99.1148 — see
+     * `_mdRenderInto()`, which exists because this used to drop the fetched
+     * bytes into a `<pre>`.
      */
     async function showAppHelp() {
         // Build the Force-refresh link first so it can be injected as a titleBarExtra
@@ -29454,6 +29925,23 @@ ${sections.join('\n')}
         refreshLink.textContent = '🔄 Force refresh';
         refreshLink.title = 'Bypass cache and download the latest help text from GitHub';
         refreshLink.style.cssText = `
+            font-size: 0.82em; font-weight: 600; color: #0066cc;
+            cursor: pointer; text-decoration: none;
+            user-select: none; white-space: nowrap;
+        `;
+
+        // The keyboard's only route into help is this dialog (prefix mode
+        // refuses Shift, so there is no Ctrl+M Shift+H), which would otherwise
+        // make GitHub's rendering mouse-only. This link is what keeps both
+        // destinations reachable from either input device.
+        const githubLink = document.createElement('a');
+        githubLink.id = 'mb-app-help-github-link';
+        githubLink.textContent = '📖 Open on GitHub';
+        githubLink.title = 'Open the full help page on GitHub, with its table of contents and collapsible sections';
+        githubLink.href = HELP_GITHUB_URL;
+        githubLink.target = '_blank';
+        githubLink.rel = 'noopener noreferrer';
+        githubLink.style.cssText = `
             font-size: 0.82em; font-weight: 600; color: #0066cc;
             cursor: pointer; text-decoration: none;
             user-select: none; white-space: nowrap;
@@ -29467,7 +29955,7 @@ ${sections.join('\n')}
             borderRadius:           '10px',
             zIndex:                 10002,
             centerV:                false,        // position below page header at top:60px
-            titleBarExtras:         [refreshLink],
+            titleBarExtras:         [githubLink, refreshLink],
             quickFilter:            true,
             quickFilterPlaceholder: '🔍 Filter help text…',
         });
@@ -29482,15 +29970,12 @@ ${sections.join('\n')}
             color:      '#333',
         });
 
-        const pre = document.createElement('pre');
-        pre.style.cssText = `
-            margin: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
-            font-size: 0.97em;
-            line-height: 1.65;
-        `;
+        // The rendered Markdown goes here. It used to be a <pre> holding the
+        // whole file verbatim, which was right while the source was a
+        // hand-laid-out .txt and became wrong the moment it was not: Markdown
+        // in a <pre> shows its own syntax.
+        const body = document.createElement('div');
+        body.id = 'mb-app-help-body';
 
         // Loading indicator shown while fetch is in progress
         const loadingEl = document.createElement('div');
@@ -29513,10 +29998,10 @@ ${sections.join('\n')}
 
             // Remove loading indicator and any existing content
             if (contentArea.contains(loadingEl)) contentArea.removeChild(loadingEl);
-            if (contentArea.contains(pre))       contentArea.removeChild(pre);
+            if (contentArea.contains(body))      contentArea.removeChild(body);
 
             if (data) {
-                pre.textContent = data;
+                _mdRenderInto(body, data);
                 if (fromCache && error) {
                     // Stale cache — add a subtle warning banner
                     const warn = document.createElement('div');
@@ -29524,7 +30009,7 @@ ${sections.join('\n')}
                     warn.textContent = `⚠️ ${error} — content may be outdated.`;
                     contentArea.appendChild(warn);
                 }
-                contentArea.appendChild(pre);
+                contentArea.appendChild(body);
                 const sourceLabel = fromCache ? '📦 cache' : '🌐 network (fresh)';
                 Lib.info('ui', `Application help displayed: ${data.length} bytes, source=${sourceLabel}${error ? ' (stale, ' + error + ')' : ''}`);
                 // Re-apply any active quick-filter so matches are highlighted in
@@ -32242,7 +32727,15 @@ a { color: #1565c0; }`;
         // Row placement inside 🛠 View ▾ is declared by _TOOLBAR_MENU_ROW_ORDER,
         // not by the sequence the render tail happens to call these helpers in,
         // so this no longer needs to find mb-density-btn to sit next to.
-        _ensureViewMenu().adopt(btn);
+        //
+        // The hint argument was missing until 9.99.1148, making this the one
+        // menu row with no `data-mb-menu-hint` while every sibling showed its
+        // accelerator — not a control with nothing to show: the shortcut is
+        // real and routed through `_toolbarInvoke()` like the others. Nothing
+        // failed; it was found by re-capturing the snapshot baselines, where
+        // the row count and the hint count disagreed.
+        _ensureViewMenu().adopt(btn,
+            getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'));
 
         Lib.debug('ui', 'Barcode highlight toggle button added to controls');
         ensureSettingsButtonIsLast();
@@ -35328,10 +35821,10 @@ a { color: #1565c0; }`;
     const appHelpBtn = document.createElement('button');
     appHelpBtn.id = 'mb-app-help-btn';
     appHelpBtn.textContent = '❓';
-    appHelpBtn.title = `Show application help and feature overview (${getPrefixDisplay()}, then H)`; // H has no direct Ctrl+H shortcut — prefix mode only
+    appHelpBtn.title = `Open the help page on GitHub — Shift-click to read it here instead (${getPrefixDisplay()}, then H)`; // H has no direct Ctrl+H shortcut — prefix mode only
     appHelpBtn.style.cssText = uiHelpBtnCSS();
     appHelpBtn.type = 'button';
-    appHelpBtn.onclick = showAppHelp;
+    appHelpBtn.onclick = openAppHelp;
     controlsContainer.appendChild(appHelpBtn);
 
     // --- Fetch progress bar (shown during data loading, hidden otherwise) ---
@@ -85704,6 +86197,12 @@ a { color: #1565c0; }`;
         'e': { fn: openExportMenu, description: 'Open Export Menu' },
         'k': { fn: showShortcutsHelp, description: 'Show Keyboard Shortcuts Help' },
         ',': { fn: () => openSettingsWithConfigButtons(), description: 'Open Settings' },
+        // Deliberately showAppHelp(), NOT openAppHelp(): the ❓ button's plain
+        // click opens GitHub and its Shift-click opens this dialog, but prefix
+        // mode refuses Shift (see its own `!e.shiftKey` guard), so the keyboard
+        // gets one route and it is the one a mouse-free user cannot otherwise
+        // reach. The dialog's own title bar carries "📖 Open on GitHub", so the
+        // other destination stays one keystroke away rather than unreachable.
         'h': { fn: showAppHelp, description: 'Show App Help' },
         'g': {
             fn: () => {

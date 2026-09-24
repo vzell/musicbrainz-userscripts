@@ -12,7 +12,8 @@ memory or from this file. Same for the changelog: the newest entry in
 `ShowAllEntityData_CHANGELOG.json` is the authority on what shipped.
 
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
-**Help:** `ShowAllEntityData_HELP.txt` (TEXT, lives alongside the script)
+**Help:** `ShowAllEntityData_HELP.md` (MARKDOWN, lives alongside the script — it
+is what the ❓ button opens on GitHub; see its own section below)
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
 **Other top-level docs:** `PERFORMANCE.org` (measurements + numbered Steps),
@@ -724,7 +725,7 @@ stay that way.
 **A default has two places it can be wrong, and changing one is how they
 drift.** The schema's `default:` is what the settings dialog shows and what
 RESET restores; an inline `Lib.settings.sa_X || literal` is what applies when
-that key reads falsy. All **165** fallback sites now agree with their own
+that key reads falsy. All **166** fallback sites now agree with their own
 schema default — 15 did not until 9.99.1137, because `bfb8ac3` changed seven
 defaults "to sensible values" and left the literals thousands of lines away
 untouched. **When you change a `default:`, grep for that key's inline
@@ -3040,9 +3041,18 @@ Six things are load-bearing, and every one of them fails silently:
   move from `'inline-block'` to `'flex'`: `inline-block` blockifies to plain
   `block`, where the `::after` hint's `margin-left:auto` computes to zero.
 - **The keyboard hint is CSS `::after` from `data-mb-menu-hint`, never text.**
+  It keeps the hint out of the row's `textContent`, so a read of the row is its
+  label alone — same rule, same reason, as the column-header family's glyphs,
+  and `toolbar-menus.spec.js` asserts exactly that.
+  **This entry used to give a different and false reason**: that
   `updateBarcodeHighlightBtnState()` rewrites its button's `innerHTML`
-  wholesale; an attribute survives that and a `<kbd>` child does not. Same rule,
-  same reason, as the column-header family's glyphs.
+  wholesale, so an attribute survives where a `<kbd>` child would not. That
+  function writes `style.background`/`borderColor`/`color` and `title` only;
+  the button's content is set once at creation. Corrected in 9.99.1148 rather
+  than quietly dropped, because a plausible-but-wrong reason is what licenses
+  the next person to conclude "no rewrite here, so a `<kbd>` is fine".
+  **And the barcode row is the one that had no hint at all** until 9.99.1148 —
+  `adopt()` was called without the argument. Every row now passes one.
 - **Layout lives in the `.mb-toolbar-menu-item` class with `!important`.**
   `_applyDiscButtonTints()` rewrites a row's whole `cssText` on every view
   switch; without `!important` that flattens the row back to a bar button.
@@ -3101,6 +3111,76 @@ Covered by `tests/fixtures/h2-table-controls-anchor.spec.js` (mutation list
 `sa_enable_caa_pics` back on — `FIXTURE_SETTINGS_OVERRIDE` forces it off, and
 without it the pill assertion measures an empty run and passes for the wrong
 reason.
+
+## ❓ opens GitHub; Shift-❓ renders the same file in the page
+
+`org/action-button-redesign.org` item 2. Help is
+**`ShowAllEntityData_HELP.md`**, hand-written, and the `.txt` is retired. Three
+things read it and they must stay in agreement:
+
+| | |
+|---|---|
+| `HELP_GITHUB_URL` | the `/blob/` page — where a plain ❓ click goes |
+| `REMOTE_HELP_URL` | the same file raw — what the dialog fetches |
+| the committed `_HELP.md` | what a publish copies to the mirror |
+
+`openAppHelp(e)` is the button's handler and branches on `e.shiftKey` alone;
+`showAppHelp()` is the dialog and is no longer wired to the button directly.
+**Prefix-mode `H` stays on `showAppHelp()`**, because prefix mode refuses Shift
+(`!e.shiftKey` in its own guard) — so the keyboard has one route and it is the
+one a mouse-free user cannot otherwise reach. The dialog's title bar carries
+`#mb-app-help-github-link` so the other destination is not lost.
+
+**`window.open()`, never `GM_openInTab()`.** The latter needs a new `@grant`,
+and a new grant re-prompts every existing Tampermonkey user on their next
+update — a real cost to everyone for a tab `window.open()` already opens from a
+click handler's user gesture.
+
+Six things about the renderer (`_mdRenderInto()` / `_mdInline()` /
+`_mdHeadingId()`), each of which fails quietly:
+
+- **It is styled by `GM_addStyle` classes, not inline styles.** MusicBrainz
+  serves `/account/*` with `style-src 'self'` and no `unsafe-inline`, so a
+  `style=` attribute is dropped THERE and works everywhere else. Same rule, and
+  the same reason, as the 9.99.736-9.99.745 CSP run. No fixture can see this —
+  a fixture is served by the harness and carries no CSP — so it is an
+  `"expect": "pass"` in the mutation list.
+- **`_italic_` is deliberately unsupported; only `*italic*`.** Half the nouns
+  here are snake_case settings keys, and an underscore rule renders
+  `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
+  intra-word underscore emphasis for the same reason, so leaving it out makes
+  this agree with GitHub on the case that occurs.
+- **Nodes, never `innerHTML`.** The bytes arrive over the network at runtime;
+  "it is our own file" is a fact about the repository, not about what a fetch
+  returns. A link href is admitted only when `http(s)` or `#`.
+- **`<details>` renders OPEN.** Collapsed content is still in the DOM, so the
+  dialog's quick filter would highlight matches the reader cannot see. GitHub is
+  where the sections collapse; this dialog exists to be searched.
+- **An `#anchor` link scrolls the DIALOG.** It is a fixed overlay with its own
+  scroll area, so following the fragment scrolls MusicBrainz's page underneath
+  while the table of contents appears to do nothing. Heading ids carry an
+  `mb-md-` prefix so they cannot collide with the page's own, and both the
+  heading and the link resolve through `_mdHeadingId()` — which is why a table
+  of contents written for GitHub's bare slug works here too.
+- **The coupling runs file → renderer, not the other way.** The renderer covers
+  exactly what `_HELP.md` uses; the file is written to stay inside it. The last
+  test in the spec renders the REAL committed file and is what keeps that true.
+- **A list item's continuation line must be INDENTED, and that is a guard.** An
+  indented non-bullet line appends to the item above it; without the rule every
+  wrapped bullet ends its list, and without the INDENT part a list swallows the
+  heading under it. The first half shipped broken for an afternoon and no
+  assertion saw it — see `scripts/probe-help-md-render.js`, and the
+  DEBUG-NOTES entry on why fifteen green tests could not.
+
+**`CACHE_KEY_HELP` was renamed to `…-remote-help-md`** because
+`Lib.fetchCachedText()` keys on the cache key alone and stores no URL beside the
+bytes — an upgrading user's cached plain text would otherwise be fed to the
+Markdown renderer for up to a TTL. Any future format change owes the same
+rename. No fixture starts with a stale cache, so this is a second
+`"expect": "pass"`.
+
+Covered by `tests/fixtures/app-help-github-and-markdown.spec.js`; mutation list
+`scripts/mutations/app-help-github-and-markdown.json`.
 
 ## The h2/h3 control runs are segmented pills too — three of them, not one
 

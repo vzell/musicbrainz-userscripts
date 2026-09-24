@@ -433,8 +433,12 @@ def build_snapshot(src):
         'sections': sections,
         # The user-facing name of each setting, as the settings dialog renders
         # it. Recorded because it is the only handle documentation has on a
-        # setting — ShowAllEntityData_HELP.txt names settings by label and never
+        # setting — ShowAllEntityData_HELP.md names settings by label and never
         # by key — so a docs-vs-schema check has nothing to match on without it.
+        # (Since 9.99.1148 the audit's --docs report matches on `sections`
+        # rather than these labels, because the Markdown help lists setting
+        # GROUPS rather than one bullet per setting. Both are kept: `labels` is
+        # still the only key→name mapping anything has.)
         'labels': {k: f.get('label', '') for k, f in sorted(settings)},
         'defaults': dict(sorted(defaults.items())),
         'tables': parse_table_seeds(src),

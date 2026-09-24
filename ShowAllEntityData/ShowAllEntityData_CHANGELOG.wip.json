@@ -1,0 +1,31 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-24",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "❓ now opens the help page on GitHub, where it is rendered with a table of contents, working anchors and collapsible sections. Shift-click ❓ to read it inside the page instead, as before.",
+          "The help text is rewritten as ShowAllEntityData_HELP.md — a hand-written guide organised around what you are trying to do, rather than the 2448-line plain-text file it replaces. It is roughly a third of the length: the reference detail is folded into collapsible sections, and material that had accumulated over three years of resyncs was re-triaged rather than carried across.",
+          "The in-page help dialog renders that Markdown properly — headings, tables, lists, code blocks and links — where it used to drop the file into a <pre>. Its quick-filter still searches the whole document, and its title bar gained a 📖 Open on GitHub link.",
+          "The keyboard route is unchanged: the prefix key then H still opens the in-page dialog. Prefix mode cannot carry Shift, so the keyboard keeps the route it can reach and the dialog's own link covers the other one."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The barcode-highlight row in 🛠 View ▾ was the only menu row not showing its keyboard shortcut. It has one — Ctrl+B, configurable — and now displays it like every other row."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "ShowAllEntityData_HELP.txt is retired. The mirror keeps serving it for now, so anyone still on an older version keeps working help until Tampermonkey updates them; scripts/check-publish-ready.py reports it as a leftover to remove later rather than as a problem.",
+          "scripts/check-publish-ready.py now also fails when a companion file the published script fetches is MISSING from the mirror, not only when it differs. That is the half-finished-rename case this change could have shipped: the script goes out, its renamed help file does not, and the ❓ dialog 404s for everyone already updated.",
+          "The settings section of the help file is now a table of setting GROUPS, one row per group in the Settings Manager, and `scripts/audit-config-defaults.py --docs` checks it against the schema's own section list. Its first run found four groups the new help file had folded away or renamed: the unique-values dropdown configuration, the threshold settings, expand-truncated-cells, and the CAA/EAA illustrated discography."
+        ]
+      }
+    ]
+  }
+]

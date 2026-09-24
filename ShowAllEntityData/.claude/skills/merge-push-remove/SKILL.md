@@ -116,8 +116,16 @@ The file is clean as of `scripts/repair-changelog-integrity.py`, so any
 failure is a live defect: this fold's, or a regression somewhere else.
 
 While reading the folded entries, check that anything user-visible in them is
-actually reflected in `ShowAllEntityData_HELP.txt` — the branch was supposed
+actually reflected in `ShowAllEntityData_HELP.md` — the branch was supposed
 to resync it, and this is the last chance to notice it didn't.
+
+**That file is what the ❓ button publishes, so a HELP edit is a publish item.**
+Since 9.99.1148 the button opens GitHub's rendering of it directly and the
+in-script dialog fetches the same path raw, both from the MIRROR — so a HELP
+change that is merged but not published is live-wrong for every user, not
+merely stale in this repo. `scripts/check-publish-ready.py` fails when the
+mirror's copy differs from this one at script parity; it is worth running after
+the fold rather than discovering it on the next release.
 
 ## 4. Verify on `main`
 

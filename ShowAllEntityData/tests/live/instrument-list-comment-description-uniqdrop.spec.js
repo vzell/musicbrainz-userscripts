@@ -107,8 +107,9 @@ test('unique-values dropdown gets "Instrument info - Comment"/"- Description" se
     expect(descriptionCheck.dashNotHighlighted).toBe(true);
     expect(descriptionCheck.hasNestedLinkHighlight).toBe(true);
 
-    // Uncheck "📝 has description" (the dropdown stays open — see HELP.txt's
-    // own "keeps the panel open" documentation), then check "💬 has comment"
+    // Uncheck "📝 has description" (the dropdown stays open — see
+    // ShowAllEntityData_HELP.md's own "keeps the panel open" documentation),
+    // then check "💬 has comment"
     // instead — must narrow the FAMILY TABLE ONLY to rows whose cell carries
     // a direct-child span.comment, with that comment's text highlighted.
     await page.evaluate(() => {

@@ -15527,3 +15527,227 @@ baselines are reviewed as a git diff, not asserted by a spec).
 Branch 2, `org/action-button-redesign.org` item 2 — ❓ opening the GitHub help
 page, and the hand-written `ShowAllEntityData_HELP.md` — is deliberately not in
 this branch.
+
+## 2026-09-24 — ❓ goes to GitHub, and the help text becomes Markdown (branch help-github-md)
+
+`org/action-button-redesign.org` item 2, the second half of the redesign.
+A plain ❓ click opens `ShowAllEntityData_HELP.md` on GitHub; **Shift-click**
+opens the in-script dialog, as before. The 2448-line `.txt` is retired and
+replaced by a hand-written `.md` about a third its length.
+
+### Why the dialog needed a renderer, and what that renderer is not
+
+`showAppHelp()` dropped the fetched bytes into a `<pre>`. That was right while
+the source was hand-laid-out plain text and became wrong the moment it was
+Markdown: a `<pre>` shows the syntax instead of the document. So
+`_mdRenderInto()` / `_mdInline()` / `_mdHeadingId()` were added.
+
+**It is deliberately small, and the coupling runs file → renderer.** It covers
+exactly what the help file uses — ATX headings, fenced code, lists one level
+deep, GFM pipe tables, blockquotes, rules, and `<details>`/`<summary>` — and
+the file is written to stay inside it rather than the renderer being grown to
+chase the file. GitHub is where full Markdown rendering lives, and the button
+goes there by default. The spec's last test renders the REAL committed file and
+is what keeps that statement true.
+
+Five decisions in it that are not obvious from the code:
+
+- **Classes and `GM_addStyle`, not inline styles.** MusicBrainz serves
+  `/account/*` with `style-src 'self'` and no `unsafe-inline`, so a `style=`
+  attribute is dropped THERE and works everywhere else — the 9.99.736-9.99.745
+  CSP shape of bug, reached from a new direction, and `/account/applications`
+  is a supported pageType. No fixture can see it (a fixture is served by the
+  harness and carries no CSP), so it is an honest `"expect": "pass"`.
+- **`_italic_` is NOT supported; only `*italic*`.** Half the nouns here are
+  snake_case settings keys, and an underscore-emphasis rule renders
+  `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
+  intra-word underscore emphasis for the same reason, so leaving the rule out
+  makes this renderer AGREE with GitHub on the case that occurs and disagree
+  only on a spelling the file does not use. There is a test for the absence of
+  a feature, because the plausible "improvement" is to add it back.
+- **Nodes, never `innerHTML`, and an href allowlist.** The bytes arrive over
+  the network at runtime. "It is our own file" is a fact about the repository,
+  not about what a fetch returns, and a help dialog is not where to find out.
+- **`<details>` renders OPEN.** Collapsed content is still in the DOM, so the
+  dialog's quick filter would highlight matches the reader cannot see — a
+  filter reporting hits into a closed box is worse than none, and searching the
+  whole text is the only reason to be in this dialog rather than on GitHub.
+- **An `#anchor` link scrolls the DIALOG.** It is a fixed overlay with its own
+  scroll area, so following the fragment scrolls MusicBrainz's page underneath
+  while the table of contents appears to do nothing. Heading ids carry an
+  `mb-md-` prefix against collisions with the page's own ids, and both sides
+  resolve through `_mdHeadingId()` — which is why a table of contents written
+  for GitHub's bare slug resolves here too.
+
+### The cache key had to change, and nothing would have said so
+
+`Lib.fetchCachedText()` keys on the cache key ALONE and stores no URL beside
+the bytes. An upgrading user with the plain-text help still cached would
+therefore have had it fed to the Markdown renderer for up to a TTL — every
+`-----` underline read as a heading rule, every hand-laid-out block reflowed.
+`CACHE_KEY_HELP` is now `…-remote-help-md`, so the format change is a cache
+MISS. Every fixture starts with empty GM storage, so no test here can hold a
+stale value from a previous format: recorded as a second honest
+`"expect": "pass"`.
+
+### A defect fifteen green assertions could not see
+
+**Every wrapped bullet ended its list.** A continuation line matches no rule, so
+the list loop broke, the continuation became a stray paragraph, and the next
+bullet opened a fresh one-item list. The "Supported pages" section — twelve
+bullets, most of them wrapped — rendered as **six one-item lists with five
+paragraphs between them**.
+
+Nothing in the spec could see it, and the reason generalises: **every fragment
+is individually well-formed.** There is a `<ul>`, its `<li>` has the right text,
+the paragraph has the right text, no syntax leaked through, the document's
+heading and table counts are unchanged. An assertion would have to count
+SIBLINGS to notice, and the test asking "does a list render" does not.
+
+It was found by `scripts/probe-help-md-render.js`, written to answer a
+different question — not "is the output correct" but "what shape is it" — which
+printed
+
+```
+ul  1 items
+p
+ul  1 items
+p
+ul  5 items
+```
+
+and made it obvious in one line. The fix is a lazy-continuation rule: an
+indented non-bullet line appends to the item above it. **The indent requirement
+is load-bearing** — a heading, fence, table row or rule starts at column 0, so
+none of them can be swallowed as continuation text — and it needed its own
+fixture case, because in the real help file every list is followed by a blank
+line, which ends the list either way.
+
+The transferable part: a renderer's tests naturally check *what* each construct
+became, and this class of bug is about *how many*. A structural dump is cheap
+and catches what the assertions were never shaped to ask.
+
+### What the mutation run found
+
+Two mutations passed when they should have failed, and both meant the fixture
+was short of a case rather than the expectation being wrong:
+
+- **"the table separator row is not required"** — a well-formed table cannot
+  see that guard, because the table branch consumes header-plus-separator
+  unconditionally either way. The discriminator is a line the rule should
+  REFUSE: a pipe-led line with no separator under it, which without the guard
+  becomes a table AND swallows the line beneath it.
+- **"a lazy continuation need not be indented"** — invisible in the real help
+  file, where every list is followed by a blank line. The discriminator is a
+  heading sitting directly under a list with no blank line between.
+
+15 mutations: 13 fail as declared, 2 honest passes.
+
+### One defect found by the snapshot baselines, not by any test
+
+`#mb-barcode-highlight-btn` was adopted into 🛠 View ▾ with no hint argument,
+making it the only menu row with no `data-mb-menu-hint` while every sibling
+showed its accelerator. It is not a control with nothing to show:
+`sa_toggle_barcode_highlighting` (Ctrl+B) exists and is routed through
+`_toolbarInvoke()` like the others. Nothing failed — it surfaced as a count
+mismatch (7 `.mb-toolbar-menu-item` against 6 `data-mb-menu-hint`) while
+reviewing the baselines re-captured earlier the same day, on branch
+`snapshot-baselines-action-buttons`. Fixed here, because this branch re-drifts
+those two baselines anyway.
+
+### The docs audit got a better question, and it found four gaps immediately
+
+`scripts/audit-config-defaults.py --docs` read the retired `.txt` by absolute
+path, so the rename would have left it opening a file that does not exist. The
+interesting part is what it should read INSTEAD.
+
+It used to match HELP's one-setting-per-bullet lines against schema LABELS, and
+its own docstring recorded the result honestly: 41 of 119 bullets flagged at
+9.99.1136, most of them correct prose summarising several settings at once. A
+34% false-positive rate is something people skim.
+
+The new help file does not list settings one per bullet at all — its settings
+section is a **table of groups, one row per `configSchema` divider**. So the
+question became "does every schema section appear in HELP's table", which is
+near one-to-one instead of one-to-many, and is the case that actually matters:
+a new settings GROUP shipping without HELP hearing about it.
+
+**It reported 6 of 38 on its first run against a help file written an hour
+earlier, and four of them were real** — `#₁ UNIQUE COLUMN VALUES DROP DOWN
+CONFIGURATION` and `Σ THRESHOLD SETTINGS` had been folded into neighbouring
+rows, `▶️ EXPAND TRUNCATED CELLS` was missing outright, and
+`🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY` had been renamed in the table so it no
+longer matched. It now reports 2 of 38, both deliberate folds of a sub-divider
+into its parent row. Still a report, not a gate, for the reason
+org/config-handling.org gives — but a report worth reading, which the old one
+had stopped being.
+
+### Publishing: the failure mode this change could have shipped
+
+`scripts/check-publish-ready.py` paired `{base}_HELP.txt` with the mirror and
+skipped the pair whenever EITHER side was missing. After the rename that
+`continue` hides the exact half-finished publish this change makes possible:
+script published, renamed help file not, and the ❓ dialog 404s for everyone
+already updated. It now FAILS on a companion the published script fetches but
+the mirror lacks, and separately NOTES a companion the mirror still carries
+that the dev repo no longer ships.
+
+**That note is deliberately not a failure.** `_HELP.txt` has to outlive the
+rename: every user still on an older version fetches it until Tampermonkey
+updates them, so deleting it from the mirror the day the `.md` lands breaks
+help for exactly the people who have not upgraded. `check-publish-ready-gate.py`
+gained an arm for the missing-companion case and is green on all 12.
+
+### The merge gate flaked twice, and the comparison does NOT fully settle it
+
+Recorded as data rather than as a verdict, because the evidence is strong in
+one direction and the confound is real.
+
+| Arm | Tests | Result |
+|-----|-------|--------|
+| branch, run 1 | 585 | green |
+| branch, run 2 | 587 | 1 failed — `rel-column-fetch-failure.spec.js:210` |
+| branch, run 3 | 587 | 1 failed — `uniq-drop-join-phrases.spec.js:200` |
+| `main`, one run | 571 | green |
+
+**What says it is not this change.** A DIFFERENT test failed in each red run,
+and each passed both standalone (2/2 and 10/10) and inside the other full run.
+A code defect is deterministic; this is not. Neither spec is reachable from
+anything here — the change is the help constants, two help functions, a new
+Markdown renderer nothing else calls, and one missing `adopt()` argument. And
+`rel-column-fetch-failure` › "multi-table: the failure marker …" is a named
+member of the load-flaky family this file has tracked since 2026-09-18, where
+it behaved identically: red in a full run, 2/2 standalone, green on the
+re-run. It still carries two bare `waitForTimeout(1500)` calls in a test whose
+own comment records a 1500 ms wait sampling the still-filtered page under a
+parallel run.
+
+**What the `main` arm does NOT prove.** It ran 571 tests against the branch's
+587, so a green `main` and a red branch differ in load as well as in code. The
+16 added tests are fast (~15 s total) and should not move the needle, but that
+is an argument, not a measurement. One green run is also not a rate.
+
+**And the host was not a neutral observer.** This session had been running
+Playwright suites, mutation lists and live captures back to back for hours.
+The 2026-09-18 measurements put this family at 1 red in 3 at 14 workers on an
+idle box; today's 2 red in 3 on the branch is worse than that, and I cannot
+separate "the branch" from "the afternoon" with the arms I have.
+
+**`uniq-drop-join-phrases` is the one to watch.** Unlike its neighbour it polls
+rather than sleeping — it was written that way deliberately, because
+`waitForFilterSettled()` works exactly once on this grouped pageType — and it
+has no prior flake history here. A second sighting makes it a family member; a
+third without one makes it something else.
+
+### Still owed
+
+The 11 snapshot baselines drift again, in two small ways: `#mb-app-help-btn`'s
+`title` changed, and the barcode row gained a `data-mb-menu-hint` (the latter
+only on `releasegroup-releases` and `series-releases`, the two baselines
+carrying a Barcode column). They were re-captured for the redesign the same
+day, so this is a small top-up rather than the backlog item that was.
+
+Publishing to `vzell/mb-userscripts` is owed too, and this is the first change
+where a merge alone leaves users worse off rather than merely behind: the ❓
+button points at a GitHub path that does not exist until the `.md` is pushed
+there.

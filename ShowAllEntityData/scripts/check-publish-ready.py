@@ -251,20 +251,43 @@ def check_script(name, dev_path, mirror, dev_lib_v, mir_lib_v,
                      f'({dev_v}) — the dev repo is not the source of truth here')
 
     base = name[:-len('.user.js')]
+    # `_HELP.md` since ShowAllEntityData 9.99.1148 — the ❓ button opens
+    # GitHub's rendering of that file, and the in-script dialog fetches the
+    # same path raw. A project still shipping a `.txt` is handled by the
+    # `dev_side` existence test below: no dev-side file, nothing to pair.
     for suffix, why in ((f'{base}_CHANGELOG.json',
                          'the 📜 ChangeLog dialog fetches this from the mirror'),
-                        (f'{base}_HELP.txt',
+                        (f'{base}_HELP.md',
                          'the ❓ Help dialog fetches this from the mirror')):
         dev_side = os.path.join(os.path.dirname(dev_path), suffix)
         mir_side = os.path.join(mirror, suffix)
-        if not os.path.isfile(dev_side) or not os.path.isfile(mir_side):
-            continue
+        if not os.path.isfile(dev_side):
+            continue          # this project does not ship that companion
         if behind:
             continue          # will be copied with the script
+        if not os.path.isfile(mir_side):
+            # At parity, so the PUBLISHED script is the current one and it
+            # fetches this path — an absent file is a 404 in the user's face,
+            # not a pending publish. This is the half-finished-rename case:
+            # the script went out, its renamed companion did not.
+            fails.append(f'{suffix}: missing from the mirror while {name} is at '
+                         f'parity ({dev_v}) — {why}, so it would 404')
+            continue
         if read(dev_side) != read(mir_side):
             fails.append(f'{suffix}: differs from the dev copy while {name} is at '
                          f'parity ({dev_v}) — {why}, so it would serve the wrong '
                          f'content to a current script')
+
+    # A companion the dev repo no longer ships, still sitting on the mirror.
+    # A NOTE, not a failure, and deliberately: `_HELP.txt` must outlive the
+    # rename, because every user still on an older version fetches it until
+    # Tampermonkey updates them. Removing it the day the `.md` lands breaks
+    # help for exactly the people who have not upgraded yet.
+    for stale in (f'{base}_HELP.txt',):
+        if (os.path.isfile(os.path.join(mirror, stale))
+                and not os.path.isfile(os.path.join(os.path.dirname(dev_path), stale))):
+            notes.append(f'{stale}: still on the mirror, no longer in the dev repo — '
+                         f'keep it until users have updated past the rename, then remove it')
 
     # A mirror whose changelog disagrees with its own userscript is internally
     # inconsistent: the in-script dialog would name a version nobody is running.

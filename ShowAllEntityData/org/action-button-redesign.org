@@ -1,16 +1,16 @@
-* TODO redesign of the action buttons
+* DONE redesign of the action buttons
 
 ** Decisions (2026-09-24) and what shipped
 
 Options were put up as ASCII mockups and the chosen shape was *two menus*:
 =📦 Data ▾= and =🛠 View ▾=, with =⚙️= and =❓= staying pinned. Items 1, 3, 4, 5
-and 6 landed on branch =action-button-redesign=; item 2 is deliberately a
-second branch.
+and 6 landed on branch =action-button-redesign=; item 2 followed on branch
+=help-github-md=.
 
 | item | decision                                                                                     | state                   |
 |------|----------------------------------------------------------------------------------------------|-------------------------|
 |   1. | =↔️= / =👁️= glyph-only, in the h2 immediately before =#mb-filter-container=                    | DONE                    |
-|   2. | =❓= opens the GitHub page; *Shift-click still opens the in-script dialog*; hand-written =.md= | branch 2, not started   |
+|   2. | =❓= opens the GitHub page; *Shift-click still opens the in-script dialog*; hand-written =.md= | DONE                    |
 |   3. | =🎹= joins =🛠 View ▾=; =⚙️= stays pinned beside =❓=                                           | DONE                    |
 |   4. | Density / Statistics / Barcode into =🛠 View ▾=; Export into =📦 Data ▾=                       | DONE                    |
 |   5. | Save / Load are rows of =📦 Data ▾=, so they cost one slot between them                        | DONE                    |
@@ -26,9 +26,33 @@ On item 2, the one deviation from the text below: the in-script dialog is kept
 behind Shift-click rather than removed. Its quick-filter search is genuinely
 useful and it is the only route that works with no network.
 
+*Item 2, as built.* =ShowAllEntityData_HELP.md= is hand-written rather than
+converted — the request says "probably needs a .md conversion", and a
+transcription of 2448 lines of hand-laid-out plain text would have carried
+across three years of accumulated resyncs along with their layout. It is about
+a third of the length, organised by what the reader is trying to do, with the
+reference detail in =<details>= sections. The =.txt= is retired; the mirror
+keeps serving it until users have updated past the rename.
+
+Two things the item did not ask for and got anyway, because the route to GitHub
+made them necessary rather than optional:
+
+  - the in-script dialog needed a Markdown renderer, since it used to drop the
+    file into a =<pre>= and Markdown in a =<pre>= shows its own syntax;
+  - =scripts/check-publish-ready.py= now fails on a companion file the
+    published script fetches but the mirror LACKS, not only on one that
+    differs. That is exactly the way this change could have shipped broken —
+    script published, renamed help file not.
+
+And one defect the *baselines* found rather than any test: the barcode row in
+=🛠 View ▾= was the only menu row with no =data-mb-menu-hint=, though its
+shortcut is real. Fixed here, since this branch re-drifts those baselines
+anyway.
+
 Mechanism, traps and test surface: see =CLAUDE.md='s "The h1 toolbar is two
-pull-down menus plus two pinned buttons" and "↔️ Resize and 👁️ Visible live in
-the h2" sections, and =DEBUG-NOTES.md='s 2026-09-24 entry.
+pull-down menus plus two pinned buttons", "↔️ Resize and 👁️ Visible live in the
+h2" and "❓ opens GitHub; Shift-❓ renders the same file in the page" sections,
+and =DEBUG-NOTES.md='s 2026-09-24 entries.
 
 ** Original request
 

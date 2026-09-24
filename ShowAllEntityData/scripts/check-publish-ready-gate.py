@@ -47,7 +47,7 @@ NETWORK_LIB_URL = ('https://raw.githubusercontent.com/vzell/mb-userscripts/'
 
 SAED = 'ShowAllEntityData.user.js'
 SAED_CHANGELOG = 'ShowAllEntityData_CHANGELOG.json'
-SAED_HELP = 'ShowAllEntityData_HELP.txt'
+SAED_HELP = 'ShowAllEntityData_HELP.md'
 
 
 def build_mirror(dest):
@@ -118,10 +118,16 @@ CASES = [
      'the in-script ChangeLog dialog would name a version nobody runs'),
 
     ('the published HELP is stale while the script is current',
-     lambda d: patch(os.path.join(d, SAED_HELP), 'SAVE / LOAD CONFIGURATION',
-                     'SAVE / LOAD CONFIGURATION (stale)'),
+     lambda d: patch(os.path.join(d, SAED_HELP), '## Getting started',
+                     '## Getting started (stale)'),
      [], 1,
      'the Help dialog fetches from the mirror, so it would serve the wrong text'),
+
+    ('the published HELP is missing while the script is current',
+     lambda d: os.remove(os.path.join(d, SAED_HELP)),
+     [], 1,
+     'the half-finished rename: the script went out, its renamed companion did '
+     'not, and the ❓ dialog 404s for everyone already updated'),
 
     ('the library is missing from the mirror',
      lambda d: os.remove(os.path.join(d, 'lib', 'VZ_MBLibrary.user.js')),
