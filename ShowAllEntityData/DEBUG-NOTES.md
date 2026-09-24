@@ -15312,3 +15312,117 @@ The mutation list is `scripts/mutations/len-flag-disk-roundtrip.json`: 9
 entries, 2 of them honest `expect: "pass"`. The first is the writer's ownership
 check on the tooltip, which every flag a fixture can produce already satisfies.
 The second is the single-table loop, which is unreachable.
+
+## 2026-09-24 — a track's WORK relationships reached no column (branch release-tracks-work-ars)
+
+`org/release-tracks-ARs.org`. On a release tracklist, the relationships of the
+work each track records — publisher, lyricist, composer, arranger,
+sub-publisher, "is based on" — appeared nowhere except the raw "ARs" column.
+
+### Root cause: one nesting level, two finders
+
+MusicBrainz renders the work's own relationship list INSIDE the `<dd>` of the
+track's `recording of:` `<dt>` (`debug/work-ARs.html`, and the same markup in
+the committed `tests/snapshots/release-tracks/raw.html`):
+
+```
+td.title > div.ars
+  dl.ars > dt "recording of:"
+           dd  > a[/work/…]
+                 dl.ars > dt "publisher:"              (artist)
+                          dt "lyricist and composer:"
+                 dl.ars > dt "publisher:"              (label)
+                 dl.ars > dt "is based on:" ×3
+```
+
+`_findAllArDts()` is `:scope > dl.ars > dt` on the bare `div.ars` — direct
+children only — so those `<dt>`s never reached `_classifyArDt()`, the fixed
+handlers or the dynamic-fallback scan. Confirmed against the committed
+baseline rather than inferred: `release-tracks/rendered.html` carries
+`Part of series`, `Horn arranger`, `Compilation of`, `Additional conductor`
+and `Strings arranger`, and no `Publisher`/`Lyricist`/`Composer`/`Arranger` at
+all.
+
+The fix is a SECOND finder, `_findWorkArDts()`, not a widening of the first.
+Widening it would merge two relationship levels into one set of columns — the
+recording's `arranger:` and the work's are different relationships between
+different entities.
+
+### What the page actually contains
+
+Surveyed across all 8 tracks of `debug/ARs.html` before designing anything;
+the numbers are what settled the three open decisions:
+
+| work phrase             | tracks | `<dd>` kinds     | `<dt>`s per track |
+|-------------------------|--------|------------------|-------------------|
+| `publisher:`            |      8 | artist AND label | 1 of each         |
+| `lyricist and composer:`|      7 | artist           | 1                 |
+| `arranger:`             |      7 | artist           | 1                 |
+| `is based on:`          |      1 | work             | **3**             |
+| `sub-publisher:`        |      1 | label            | 1                 |
+| `lyricist:`             |      1 | artist           | 1                 |
+| `composer:`             |      1 | artist           | 1                 |
+
+- `publisher:` spanning two kinds is why the columns split by entity kind — the
+  `_findPhonographicCopyrightDts` shape exactly.
+- `is based on:` as three sibling `<dt>`s is why no finder here may use
+  `.find()`, and why its multi-row cell needs no new machinery:
+  `_buildKindSplitListTd()` already iterates every `<dt>`, and `work` is
+  correctly absent from `PEER_SPLIT_KINDS`.
+- The last two rows are why `lyricist and composer:` is SPLIT on `,`/` and `.
+  Track 5 ("She's the One") states the roles separately while the other seven
+  combine them; unsplit, the release carries three part-filled columns instead
+  of a full `Work lyricist` and `Work composer`.
+
+Columns are named with a `Work ` prefix, decided with the user: it namespaces
+the keys AND the column names, so a same-named recording relationship can never
+be dropped by the header block's own dedup guard.
+
+### The suite caught one thing, and it was not the feature
+
+`uniq-drop-collapse-gate-glyph-column.spec.js` failed with
+`Work publisher label: header ▶5▤ vs 📊 15`. Measured rather than guessed, with
+a throwaway probe spec: that fixture's release has TWO mediums, and the column's
+badges are 15 and 5 — both correct, one per table.
+
+The flaw was in the spec. `window.__saTest.getUniqDropSections(colName)`
+resolves the FIRST matching `<th>` page-wide, so it always answered for table 0,
+while the badge it was compared against is per-table. Probing every collapsable
+column showed why it had never fired: the five pre-existing ones
+(`Engineer`, `Instruments`, `Recorded at place`, `Recording engineer`, `Vocals`)
+each own a toggle in ONE table only. `Work publisher label` is the first column
+to own one in both.
+
+Fixed by giving the spec a table-scoped reader, mirroring
+`getUniqDropSectionsForTable()` in
+`tests/live/releasegroup-releases-filter-sort.spec.js`, which exists for exactly
+this reason and says so. The shared hook was left alone. Re-running that spec's
+own mutation list afterwards confirmed all four of its original guarantees still
+fail-on-mutation, i.e. the scoping fix did not weaken it.
+
+### Coverage
+
+`tests/fixtures/release-tracks-work-ars.spec.js`, 8 tests, reusing the committed
+`release-tracks-ms-length.html` (the real Born to Run page — it already carries
+every shape this needs, so no second copy of the same release was committed).
+
+Mutation list `scripts/mutations/release-tracks-work-ars.json`: 12 entries, 9
+confirmed failing, 3 honest `expect: "pass"`:
+- the `:scope >` guard on the work `<dd>` — prophylactic against a third nesting
+  level MusicBrainz does not render today;
+- `_workArColumnNames` vs the glyph array — every work relationship in real data
+  credits an artist, a label or a work, so the two lists are identical and the
+  difference is invisible. Writing that entry is what corrected my own claim
+  that the tint would be lost;
+- `_workColumnThs` in the row loop's no-op early return — unreachable, because
+  this release also gains Recording-of/Vocals/CREDIT_ROLES columns, so the guard
+  never fires.
+
+### Still owed
+
+`tests/snapshots/release-tracks/rendered.html` gains the seven columns and has
+NOT been re-captured — `playwright/.auth/vzell.json` had expired, and a
+logged-out capture drifts every baseline's header chrome for unrelated reasons.
+Recorded in `tests/snapshots/registry.org`'s "Expected drift" with the command
+to run. No other baseline changes, not even in `<style>`: the feature adds no
+CSS and `_stampArColumnHeaderBg()` returns early off `release-tracks`.

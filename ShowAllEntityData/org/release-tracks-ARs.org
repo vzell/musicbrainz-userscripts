@@ -1,4 +1,36 @@
-* TODO treat "recording of <work>" ARs as first class citizens in releaseTypes 'release-tracks'
+* DONE treat "recording of <work>" ARs as first class citizens in releaseTypes 'release-tracks'
+CLOSED: [2026-09-24]
+
+Shipped on branch =release-tracks-work-ars=; see the changelog entry folded in
+at merge for the released version. All four items done:
+
+1. Columns land between "Recorded in area" and "Performer" — after the
+   recording's own "Recorded …" columns, before Vocals/Instruments.
+2. Multi-row via the existing =_buildKindSplitListTd()=: Thunder Road's three
+   sibling "is based on:" =<dt>=s are three =<li>= rows, and "publisher:"'s
+   comma/"and"-joined labels are one row each.
+3. Header glyphs via =_glyphClassForDynamicColumn()= — artistlink / labellink /
+   worklink, whichever the relationship actually credits.
+4. =sa_enable_release_tracks_work_ar_columns=, default true.
+
+Two things the org file did not specify, decided with the user and recorded in
+=CLAUDE.md='s "release-tracks has TWO AR levels" section:
+
+- Columns are named with a =Work = prefix ("Work publisher label"), so a
+  relationship the RECORDING also has never merges with the work's.
+- "lyricist and composer" splits generically: every work phrase splits on
+  =,=/=and=. On this release that is what makes "Work lyricist"/"Work composer"
+  full columns instead of three part-filled ones, because track 5 ("She's the
+  One") states the two roles separately while the other seven combine them.
+
+Root cause, for the record: =_findAllArDts()= is =:scope > dl.ars > dt= on the
+bare =div.ars=, and the work's ARs are nested inside the "recording of:" =<dd>=
+— so they were invisible to every finder and survived only in the raw "ARs"
+column. =_findWorkArDts()= is a SECOND finder rather than a widening of the
+first; see CLAUDE.md for why merging them would be wrong.
+
+** Original report
+
 
 Treat "recording of <work>" ARs as first class citizens on releaseTypes 'release-tracks', e.g. on
 https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897

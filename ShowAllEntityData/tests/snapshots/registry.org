@@ -565,3 +565,58 @@ enumerating each button, so their selector lists differ in every baseline's
 =<style>= block too. Still =<style>=-only — no baseline contains a
 =mb-caa-toggle-btn-summary= element, and a computed height is not serialized
 in any case.
+
+** release-tracks gains seven work-level AR columns (branch release-tracks-work-ars)
+
+OUR movement, and unlike most entries in this section it IS a real markup
+change — the only baseline affected is =release-tracks/rendered.html=,
+re-captured 2026-09-24 (23 columns → 30).
+
+=applyExtractTrackTitleData()= now extracts the relationships of the WORK each
+track is a "recording of:", which MusicBrainz nests inside that relationship's
+own =<dd>= and which therefore reached no column before (see CLAUDE.md's
+"release-tracks has TWO AR levels"). The baseline's release — Born to Run,
+=1d404e1d-fcb6-3a52-b478-e706e893c897= — carries seven of them, inserted
+between "Recorded at place" and "Vocals", in this order:
+
+| Column                | Glyph      | Notes                                       |
+|-----------------------+------------+---------------------------------------------|
+| Work publisher artist | artistlink | one =publisher:= phrase, split by kind      |
+| Work publisher label  | labellink  | 2+ =<li>= per row                           |
+| Work lyricist         | artistlink | from "lyricist and composer:", split        |
+| Work composer         | artistlink | likewise                                    |
+| Work arranger         | artistlink | absent on track 5 ("Born to Run")           |
+| Work is based on      | worklink   | 3 =<li>= on track 1 only ("Thunder Road")   |
+| Work sub-publisher    | labellink  | track 5 only                                |
+
+Each also carries =mb-extracted-column= and the shared extracted-column header
+tint, and each is registered as collapsable at runtime, so multi-row cells get
+the usual =▶N▤= toggle and the =.mb-col-collapse-count= badge.
+
+*No OTHER baseline changes at all* — not even in =<style>=. The feature adds no
+CSS, and every other pageType goes through a =release-tracks=-only code path
+(=_stampArColumnHeaderBg()= returns early unless =activeDefinition.type= is
+=release-tracks=).
+
+*The same re-capture also folded in a backlog of =<style>=-only drift this
+baseline had been carrying, and none of it is this change's doing.* The file
+predated three entries already recorded above, so the diff shows them landing
+all at once:
+
+  - the segmented control-run pill rewritten onto =[id^="mb-caa-toggle-btn-"]=
+    / =[id^="mb-eaa-toggle-btn-"]= / =[id^="mb-rel-retry-"]= prefixes
+    (9.99.1129, the last entry of this section);
+  - =.mb-re-col-hdr-btn:focus-visible= joining the shared
+    =.mb-col-hdr-flex= family selectors (fix/release-events-transient);
+  - the =<style id="mb-rel-cell-glyph-style">= block
+    (9.99.1101-1108).
+
+*Checked rather than assumed*: outside those three, the ONLY differences are
+the seven new =<th>=s and their cells. =raw.html= is untouched, and no other
+pageType's baseline changed at all. Each work credited under "is based on:"
+appears TWICE in the file — once in its new column, once in the raw "ARs"
+column — which is the never-touch-=_bareArsDiv= contract holding.
+
+Nothing in =npm run test:full= reads this baseline, so the suite was green
+before the re-capture as well; that is why this entry exists rather than a
+failing test.

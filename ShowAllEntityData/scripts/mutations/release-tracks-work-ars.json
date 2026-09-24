@@ -1,0 +1,158 @@
+[
+  {
+    "name": "work ARs are looked for at the recording level",
+    "why": "The bug itself. _findWorkArDts() descends into the 'recording of:' <dd>; pointed at the bare div.ars instead it re-finds the RECORDING's own <dt>s, which every existing handler already claims — so the work columns vanish and the page looks exactly as it did before the feature.",
+    "edits": [
+      {
+        "find": "        const _recOfDt = _findRecOfDt(titleTd);\n        const _dd = _recOfDt?.nextElementSibling;\n        if (!_dd || _dd.tagName !== 'DD') return [];\n        return Array.from(_dd.querySelectorAll(':scope > dl.ars > dt'));",
+        "replace": "        return _findAllArDts(titleTd);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "adds one column per work relationship",
+    "expect": "fail"
+  },
+  {
+    "name": "the work <dd> is searched at any depth",
+    "why": "`:scope > dl.ars > dt` keeps a future third nesting level (a work's work's relationships, e.g. the ARs of a work reached through 'is based on:') out of this level's columns. Dropping the scope would fold them in unlabelled. KNOWN GAP, honestly recorded: MusicBrainz renders only two levels today, so no committed fixture — and nothing on the live page — has a third one for the unscoped query to reach. The guard is prophylactic, and this mutation says so rather than pretending the spec covers it.",
+    "edits": [
+      {
+        "find": "        return Array.from(_dd.querySelectorAll(':scope > dl.ars > dt'));",
+        "replace": "        return Array.from(_dd.querySelectorAll('dl.ars > dt'));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "adds one column per work relationship",
+    "expect": "pass"
+  },
+  {
+    "name": "a multi-role phrase is not split",
+    "why": "Seven tracks say 'lyricist and composer:' in one <dt> and the eighth states the two roles separately. Unsplit, the release carries THREE columns — 'Work lyricist and composer' (7 rows), 'Work lyricist' (1) and 'Work composer' (1) — instead of two full ones. This is the org file's explicit request.",
+    "edits": [
+      {
+        "find": "        return _text\n            .split(/\\s*,\\s*|\\s+and\\s+/i)\n            .map(c => c.trim())\n            .filter(Boolean)\n            .map(c => `${WORK_AR_KEY_PREFIX}${c}`);",
+        "replace": "        return [`${WORK_AR_KEY_PREFIX}${_text}`];"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "lines up with tracks crediting them separately",
+    "expect": "fail"
+  },
+  {
+    "name": "the work namespace prefix is dropped",
+    "why": "Without it a work 'arranger:' and a recording 'arranger:' bucket to one key and mint one column name, where the header dedup guard silently drops the second — two relationship levels sharing a column, or one of them lost. The counter-guard test is what notices the unprefixed names appearing.",
+    "edits": [
+      {
+        "find": "    const WORK_AR_KEY_PREFIX = 'work ';",
+        "replace": "    const WORK_AR_KEY_PREFIX = '';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "work <dt>s do not leak into them",
+    "expect": "fail"
+  },
+  {
+    "name": "only the first <dt> of a role is rendered",
+    "why": "'is based on:' renders as three sibling <dt>s on Thunder Road. Taking one shows a single work and looks completely healthy — the exact bug already fixed twice, for _findPhonographicCopyrightDts and _findRecordedAtDt.",
+    "edits": [
+      {
+        "find": "                        const _kinds = _workRoleColumns.get(key)?.kinds || new Set();\n                        _workTdsByKey.set(key, _buildKindSplitListTd(dts, _filterPeerKinds(_kinds)));",
+        "replace": "                        const _kinds = _workRoleColumns.get(key)?.kinds || new Set();\n                        _workTdsByKey.set(key, _buildKindSplitListTd(dts.slice(0, 1), _filterPeerKinds(_kinds)));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "not just the first",
+    "expect": "fail"
+  },
+  {
+    "name": "the entity-kind split is skipped",
+    "why": "'publisher:' credits an artist on one <dl> and labels on a sibling <dl>. Merged, one column holds Bruce Springsteen and Intersong Music Ltd. together, and the reader cannot tell which kind of publisher is which.",
+    "edits": [
+      {
+        "find": "                    _splitColumnByEntityKind(displayName, _filterPeerKinds(kinds)).forEach((colName, kindKey) => {\n                        if (_headerCells.some(th => th.textContent.trim() === colName)) return;\n                        const _th = document.createElement('th');\n                        _th.textContent = colName;\n                        _arsHeaderRef.before(_th);\n                        _workColumnThs.push({ key, kindKey, th: _th });",
+        "replace": "                    _splitColumnByEntityKind(displayName, new Set()).forEach((colName, kindKey) => {\n                        if (_headerCells.some(th => th.textContent.trim() === colName)) return;\n                        const _th = document.createElement('th');\n                        _th.textContent = colName;\n                        _arsHeaderRef.before(_th);\n                        _workColumnThs.push({ key, kindKey, th: _th });"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "artist and label unmixed",
+    "expect": "fail"
+  },
+  {
+    "name": "the columns land after the people-credit block",
+    "why": "Placement was half of what the org asked for: the work columns read after the recording's own 'Recorded …' columns and before Performer/Vocals/Instruments. Moving the block past the CREDIT_ROLES insertions puts them at the far right, beside the dynamic-fallback columns.",
+    "edits": [
+      {
+        "find": "            const _workColumnThs = []; // [{ key, kindKey, th }]\n            if (_workRoleColumns.size > 0) {",
+        "replace": "            const _workColumnThs = []; // [{ key, kindKey, th }]\n            if (false && _workRoleColumns.size > 0) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "adds one column per work relationship",
+    "expect": "fail"
+  },
+  {
+    "name": "the header glyph is not registered",
+    "why": "Org item 3: the entity glyph shown before each name on the native page has to reach the column header too. The registration is runtime-only, because these column names are not known at authoring time and so cannot be static _initColHeaderGlyph() calls.",
+    "edits": [
+      {
+        "find": "                        const _glyphClass = _glyphClassForDynamicColumn(kindKey, kinds);\n                        if (_glyphClass) {\n                            if (!def.features._dynamicArColumnGlyphs) def.features._dynamicArColumnGlyphs = [];\n                            if (!def.features._dynamicArColumnGlyphs.some(g => g.columnName === colName)) {\n                                def.features._dynamicArColumnGlyphs.push({ columnName: colName, glyphClass: _glyphClass });\n                            }\n                        }\n                    });\n                });\n            }\n\n            // \"Performer\" — own dedicated column/gate (see",
+        "replace": "                    });\n                });\n            }\n\n            // \"Performer\" — own dedicated column/gate (see"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "entity glyph into the header",
+    "expect": "fail"
+  },
+  {
+    "name": "collapsableColumns registration is skipped",
+    "why": "initCollapsableColumns() matches by exact header string only, so a runtime-discovered column gets no per-cell ▶N▤ toggle unless it is pushed onto features.collapsableColumns here — and the three-row 'Work is based on' cell is exactly the kind that needs one.",
+    "edits": [
+      {
+        "find": "                        if (!def.features.collapsableColumns.includes(colName)) {\n                            def.features.collapsableColumns.push(colName);\n                        }\n                        // Recorded separately from the glyph array because",
+        "replace": "                        // Recorded separately from the glyph array because"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "collapsable and as extracted-AR columns",
+    "expect": "fail"
+  },
+  {
+    "name": "the extracted-column header tint is not applied",
+    "why": "_workArColumnNames exists because the glyph array records only a column that RESOLVED a glyph, and 'is this an extracted column' is a different question from 'does it have an entity icon'. KNOWN GAP, and it corrected my own reasoning while writing this: every work relationship on this release credits an artist, a label or a work, so all seven columns are in the glyph array too and the two lists are identical here — the mutation is invisible. Observing it needs a work <dd> carrying no entity marker at all, which is _buildKindSplitListTd()'s own `kinds.size === 0` branch, already flagged there as not seen in real data.",
+    "edits": [
+      {
+        "find": "            ...(activeDefinition?.features?._workArColumnNames || []),\n            ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),",
+        "replace": "            ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "collapsable and as extracted-AR columns",
+    "expect": "pass"
+  },
+  {
+    "name": "the setting is ignored",
+    "why": "Org item 4. Reading it as `=== true` rather than `!== false` would also break the default-on contract, but this inverts the gate outright so the off state still builds every column.",
+    "edits": [
+      {
+        "find": "        const _workArColumnsEnabled = Lib.settings.sa_enable_release_tracks_work_ar_columns !== false;",
+        "replace": "        const _workArColumnsEnabled = true;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "when the setting is off",
+    "expect": "fail"
+  },
+  {
+    "name": "the row loop's no-op early return ignores the work columns",
+    "why": "That guard returns before any <td> is appended when a table gained no new columns. Without _workColumnThs in it, a table whose ONLY new columns are work ones keeps its <th>s while every row is short — the column/​row mismatch this whole function is careful about. KNOWN GAP: this fixture's release also gains Recording-of/Vocals/CREDIT_ROLES columns, so the guard never fires and no committed fixture can reach it.",
+    "edits": [
+      {
+        "find": "                _workColumnThs.length === 0 &&\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-work-ars.spec.js",
+    "grep": "adds one column per work relationship",
+    "expect": "pass"
+  }
+]

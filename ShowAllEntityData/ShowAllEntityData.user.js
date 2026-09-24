@@ -2099,13 +2099,34 @@
                          'completely unchanged — every extracted link appears in both places.'
         },
 
+        sa_enable_release_tracks_work_ar_columns: {
+            label: 'Add columns for the recorded WORK\'s own relationships',
+            type: 'checkbox',
+            default: true,
+            description: 'A track\'s "recording of:" relationship carries the work\'s OWN ' +
+                         'relationships nested inside it — publisher, lyricist, composer, ' +
+                         'arranger, sub-publisher, "is based on", and so on. Those describe the ' +
+                         'song rather than this particular recording of it, so they are ' +
+                         'auto-discovered into their own columns, named with a "Work " prefix ' +
+                         '("Work lyricist", "Work publisher label") to keep them apart from a ' +
+                         'same-named relationship on the recording itself. A relationship naming ' +
+                         'several roles at once ("lyricist and composer:") becomes one column per ' +
+                         'role, so it lines up with tracks that credit them separately; one ' +
+                         'crediting more than one kind of entity across the release (an artist ' +
+                         'publisher and a label publisher) splits into one column per kind. The ' +
+                         'columns sit between "Recorded in area" and "Performer". Independent of ' +
+                         'the settings above, and of whether the "Recording of work" column ' +
+                         'itself is shown — "ARs" is left completely unchanged either way.'
+        },
+
         sa_enable_ars_collapse: {
             label: 'Enable collapsible "ARs" column',
             type: 'checkbox',
             default: false,
-            description: 'Height-clamp the "ARs" column (recording-level relationships — ' +
-                         'engineer, producer, recording-of-work, publisher, etc. — extracted ' +
-                         'from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
+            description: 'Height-clamp the "ARs" column (every relationship on the track — ' +
+                         'the recording\'s own engineer, producer, recording-of-work, etc., ' +
+                         'and the recorded work\'s own publisher, lyricist and the rest — ' +
+                         'extracted from the release tracklist\'s Title cell) behind a ▶/▼ "show ' +
                          'more/less" toggle, the same way the "Annotation" column collapses, ' +
                          'but independently configurable via the two settings below. Only cells ' +
                          'that actually overflow the clamp get a toggle.'
@@ -9100,8 +9121,11 @@
      *     duplicated) — per explicit instruction, since (unlike Video/
      *     Recording artist/Disambiguation/AcoustID/ISRC) this data isn't
      *     the *only* thing living in its source element: the nested
-     *     writer/lyricist/publisher `dl.ars` blocks have no column of
-     *     their own and must not be lost. Also gated by
+     *     writer/lyricist/publisher `dl.ars` blocks live in there too.
+     *     Those now have columns of their own as well (see the
+     *     work-level AR block below and `_findWorkArDts`' JSDoc); the
+     *     never-touch-`_bareArsDiv` contract is what lets both read the
+     *     same markup without either one consuming it. Also gated by
      *     `sa_enable_release_tracks_recording_of_columns` (default on) —
      *     the only piece of this whole function with its own on/off
      *     setting. All inserted directly before "ARs" (not chained off
@@ -9621,6 +9645,47 @@
             });
         }
 
+        // Work-level AR columns — the WORK's own relationships (publisher,
+        // lyricist, composer, arranger, sub-publisher, is-based-on, …),
+        // which MusicBrainz nests inside the "recording of:" <dd> and which
+        // therefore reach neither the fixed handlers nor the dynamic
+        // fallback above (see `_findWorkArDts`' JSDoc for the markup and for
+        // why `_findAllArDts()` must NOT be widened to cover them).
+        //
+        // A SEPARATE Map from `_dynamicRoleColumns`, deliberately: the two
+        // hold different relationship levels, and `_workRoleComponentKeys`'
+        // `work ` prefix keeps their keys — and their column names — from
+        // ever colliding. Same insertion-order-becomes-column-order property
+        // as the dynamic Map above.
+        const _workArColumnsEnabled = Lib.settings.sa_enable_release_tracks_work_ar_columns !== false;
+        const _workRoleColumns = new Map(); // key -> { displayName, kinds: Set<string> }
+        if (_workArColumnsEnabled) {
+            _tables.forEach(table => {
+                const _thRow = table.querySelector(':scope > thead > tr');
+                const _tb = table.querySelector(':scope > tbody');
+                if (!_thRow || !_tb) return;
+                const _tIdx = Array.from(_thRow.querySelectorAll('th')).findIndex(th => th.textContent.trim() === 'Title');
+                if (_tIdx === -1) return;
+                _tb.querySelectorAll(':scope > tr').forEach(tr => {
+                    const td = tr.children[_tIdx];
+                    if (!td) return;
+                    _findWorkArDts(td).forEach(dt => {
+                        const _dd = dt.nextElementSibling;
+                        const _kinds = (_dd && _dd.tagName === 'DD') ? _collectEntityKinds(_dd) : new Set();
+                        // One <dt> can yield several keys ("lyricist and
+                        // composer:"), and each gets the SAME <dd>'s kinds —
+                        // see `_workRoleComponentKeys`' JSDoc.
+                        _workRoleComponentKeys(dt).forEach(key => {
+                            if (!_workRoleColumns.has(key)) {
+                                _workRoleColumns.set(key, { displayName: _workRoleDisplayName(key), kinds: new Set() });
+                            }
+                            _kinds.forEach(k => _workRoleColumns.get(key).kinds.add(k));
+                        });
+                    });
+                });
+            });
+        }
+
         // The medium index is what `_buildReleaseRecordingLengthMap()`'s
         // `byPosition` fallback key is built from, and it must be the index
         // into THIS array — the same one `_msStampReleaseTrackLengths(_tables)`
@@ -9718,10 +9783,10 @@
             // FINAL left-to-right column order is simply the order these
             // blocks run in below: Recording of work, Recording date,
             // Recorded at event, Recorded at place, Recorded in area,
-            // Performer, Vocals, Instruments, Recording engineer, Engineer,
-            // Producer, Mixer, Miscellaneous support, Mixed at place,
-            // Phonographic copyright (℗) by artist, …by label, Produced for
-            // label, [dynamic-fallback columns], ARs.
+            // [work-level AR columns], Performer, Vocals, Instruments,
+            // Recording engineer, Engineer, Producer, Mixer, Miscellaneous
+            // support, Mixed at place, Phonographic copyright (℗) by artist,
+            // …by label, Produced for label, [dynamic-fallback columns], ARs.
             const _arsHeaderRef = _hasArs
                 ? _headerCells.find(th => th.textContent.trim() === 'ARs')
                 : _arsTh;
@@ -9826,10 +9891,63 @@
                 }
             }
 
+            // Work-level AR columns — placed right after the recording's own
+            // "Recorded …" columns and before the people-credit block
+            // (Performer/Vocals/Instruments/CREDIT_ROLES), so reading order
+            // is "this recording → the work it records → who played on it →
+            // full raw ARs". Loops `_workRoleColumns` in Map-insertion
+            // (first-encountered-in-page) order, exactly like the
+            // dynamic-fallback block further below, and each discovered role
+            // can itself split by entity kind — `publisher:` credits an
+            // artist on one <dl> and a label on a sibling <dl>, the same
+            // shape "Phonographic copyright (℗) by artist"/"…by label"
+            // already handles (see `_buildKindSplitListTd`). `work` is NOT
+            // in PEER_SPLIT_KINDS, so a work-targeting role like
+            // "is based on:" never fragments — its multi-row rendering comes
+            // from its several sibling <dt>s instead.
+            const _workColumnThs = []; // [{ key, kindKey, th }]
+            if (_workRoleColumns.size > 0) {
+                _workRoleColumns.forEach(({ displayName, kinds }, key) => {
+                    _splitColumnByEntityKind(displayName, _filterPeerKinds(kinds)).forEach((colName, kindKey) => {
+                        if (_headerCells.some(th => th.textContent.trim() === colName)) return;
+                        const _th = document.createElement('th');
+                        _th.textContent = colName;
+                        _arsHeaderRef.before(_th);
+                        _workColumnThs.push({ key, kindKey, th: _th });
+                        // Runtime collapsableColumns/header-glyph/header-bg
+                        // registration — identical reasoning to the
+                        // dynamic-fallback block below (a work column's name
+                        // isn't known at authoring time, and both
+                        // `initCollapsableColumns()` and
+                        // `_initColHeaderGlyph()` match by exact string);
+                        // `def` is the same object as `activeDefinition`.
+                        // Dedup-guarded, since this function can re-run.
+                        if (!def.features.collapsableColumns.includes(colName)) {
+                            def.features.collapsableColumns.push(colName);
+                        }
+                        // Recorded separately from the glyph array because
+                        // that one is gated on a glyph actually resolving —
+                        // a work <dd> with no entity marker at all would get
+                        // no "extracted column" header background otherwise.
+                        if (!def.features._workArColumnNames) def.features._workArColumnNames = [];
+                        if (!def.features._workArColumnNames.includes(colName)) {
+                            def.features._workArColumnNames.push(colName);
+                        }
+                        const _glyphClass = _glyphClassForDynamicColumn(kindKey, kinds);
+                        if (_glyphClass) {
+                            if (!def.features._dynamicArColumnGlyphs) def.features._dynamicArColumnGlyphs = [];
+                            if (!def.features._dynamicArColumnGlyphs.some(g => g.columnName === colName)) {
+                                def.features._dynamicArColumnGlyphs.push({ columnName: colName, glyphClass: _glyphClass });
+                            }
+                        }
+                    });
+                });
+            }
+
             // "Performer" — own dedicated column/gate (see
             // `_pageHasPerformer`'s JSDoc for why it's not folded into the
-            // CREDIT_ROLES loop below), positioned right after "Recorded in
-            // area", before "Vocals"/"Instruments".
+            // CREDIT_ROLES loop below), positioned right after the work-level
+            // AR columns, before "Vocals"/"Instruments".
             let _performerTh = null;
             if (_pageHasPerformer && !_headerCells.some(th => th.textContent.trim() === 'Performer')) {
                 _performerTh = document.createElement('th');
@@ -10022,6 +10140,7 @@
             if (!_disambigTh && !_recArtistTh && !_arsTh && !_streamingTh && !_acoustIdTh && !_isrcTh && !_videoTh &&
                 !_recLengthTh && !_recOfTh && !_recOfDateTh &&
                 !_recordedAtEventTh && !_recordedAtPlaceTh && !_recordedInAreaTh &&
+                _workColumnThs.length === 0 &&
                 !_performerTh && !_instrumentsTh && !_vocalsTh &&
                 _creditRoleThs.length === 0 && !_mixedAtPlaceTh &&
                 !_copyrightByArtistTh && !_copyrightByLabelTh && !_producedForTh &&
@@ -10295,9 +10414,42 @@
                     }
                 }
 
+                // Work-level AR columns — <td> append order mirrors the
+                // header creation order above (right after Recorded in area,
+                // before Performer). Group this row's work <dt>s by column
+                // key, build each key's kind-split <td>s once, then append in
+                // the exact order `_workColumnThs` was created in, so the
+                // column count and order match per row however many work
+                // relationships this particular track happens to carry.
+                //
+                // Every <dt> for a key is collected — never just the first:
+                // `is based on:` renders as three sibling <dt>s on one track
+                // (debug/work-ARs.html), and `_buildKindSplitListTd()` turns
+                // them into the three <li> rows the cell is supposed to show.
+                // A `.find()` here is the bug already fixed twice for
+                // `_findPhonographicCopyrightDts`/`_findRecordedAtDt`.
+                if (_workColumnThs.length > 0) {
+                    const _workDtsByKey = new Map(); // key -> HTMLElement[]
+                    _findWorkArDts(_titleTd).forEach(dt => {
+                        _workRoleComponentKeys(dt).forEach(key => {
+                            if (!_workDtsByKey.has(key)) _workDtsByKey.set(key, []);
+                            _workDtsByKey.get(key).push(dt);
+                        });
+                    });
+                    const _workTdsByKey = new Map(); // key -> Map<kindKey, td>
+                    _workDtsByKey.forEach((dts, key) => {
+                        const _kinds = _workRoleColumns.get(key)?.kinds || new Set();
+                        _workTdsByKey.set(key, _buildKindSplitListTd(dts, _filterPeerKinds(_kinds)));
+                    });
+                    _workColumnThs.forEach(({ key, kindKey }) => {
+                        const _tds = _workTdsByKey.get(key);
+                        row.appendChild((_tds && _tds.get(kindKey)) || document.createElement('td'));
+                    });
+                }
+
                 // "Performer" — <td> append order mirrors the header
-                // creation order above (right after Recorded in area,
-                // before Vocals/Instruments).
+                // creation order above (right after the work-level AR
+                // columns, before Vocals/Instruments).
                 if (_performerTh) {
                     const _matches = _findCreditDts(_titleTd, ['performer'], []);
                     const _entries = _matches
@@ -12699,6 +12851,113 @@
         const _key = _dynamicRolePhraseKey(dt);
         if (_key === null) return { kind: 'unclassifiable' };
         return { kind: 'dynamic', key: _key, displayName: _dynamicRoleDisplayName(dt) };
+    }
+
+    /**
+     * The `work ` namespace prefix every work-level AR column key and
+     * display name carries — see `_workRoleComponentKeys`' JSDoc for why the
+     * two relationship levels must never share a key.
+     * @type {string}
+     */
+    const WORK_AR_KEY_PREFIX = 'work ';
+
+    /**
+     * Every work-level AR `<dt>` on this track — the WORK's own
+     * relationships, which live one nesting level BELOW everything
+     * `_findAllArDts()` can see.
+     *
+     * MusicBrainz renders a recording's "recording of:" target with the
+     * work's own relationship list nested inside that `<dt>`'s `<dd>`
+     * (debug/work-ARs.html):
+     *
+     * ```
+     * div.ars > dl.ars > dt "recording of:"
+     *                    dd  > a[/work/…]
+     *                          dl.ars > dt "publisher:"   ← these
+     *                          dl.ars > dt "is based on:" ← these
+     * ```
+     *
+     * `_findAllArDts()` is deliberately `:scope > dl.ars > dt` on the bare
+     * `div.ars`, so none of these ever reach the recording-level discovery
+     * scan or `_classifyArDt()` — which is correct (they are the work's
+     * relationships, not the recording's) and is also why they rendered
+     * nowhere but the raw "ARs" column until this function existed. Keep
+     * that boundary: widening `_findAllArDts()` instead would silently
+     * merge two relationship levels into one set of columns.
+     *
+     * Scoped to the `<dd>`'s OWN direct-child `<dl class="ars">` elements
+     * for the same reason `_findAllArDts()` is scoped that way — a future
+     * third nesting level (a work's work's relationships) stays out rather
+     * than leaking in unlabelled.
+     *
+     * @param {HTMLTableCellElement} titleTd
+     * @returns {HTMLElement[]} In document order; empty when this track has
+     *   no "recording of:" relationship, or the work carries no ARs.
+     */
+    function _findWorkArDts(titleTd) {
+        const _recOfDt = _findRecOfDt(titleTd);
+        const _dd = _recOfDt?.nextElementSibling;
+        if (!_dd || _dd.tagName !== 'DD') return [];
+        return Array.from(_dd.querySelectorAll(':scope > dl.ars > dt'));
+    }
+
+    /**
+     * The work-level column key(s) for one work AR `<dt>` — its normalized
+     * phrase (identical normalization to `_dynamicRolePhraseKey`: trailing
+     * `":"` stripped, whitespace collapsed, lowercased), SPLIT into one key
+     * per comma/"and"-joined component, each prefixed `WORK_AR_KEY_PREFIX`.
+     *
+     * Two deliberate departures from `_dynamicRolePhraseKey`, each with its
+     * own reason:
+     *
+     * - **The `work ` prefix** puts these in their own namespace. A work
+     *   `"arranger:"` and a recording `"arranger:"` are different
+     *   relationships between different entities; without the prefix they
+     *   would bucket to the same key, and (worse) produce the same column
+     *   NAME, where the header-dedup guard silently drops the second one.
+     * - **The component split** is the opposite of `_dynamicRolePhraseKey`'s
+     *   "two different phrases NEVER merge" rule, and is what the whole
+     *   feature was asked for: on debug/ARs.html seven tracks carry
+     *   `"lyricist and composer:"` while the eighth carries separate
+     *   `"lyricist:"` and `"composer:"` `<dt>`s. Unsplit, that is three
+     *   half-filled columns; split, it is exactly "Work lyricist" and
+     *   "Work composer", both populated on all eight. The split pattern is
+     *   `_creditDtMatch`'s own, so the two agree on what a component is.
+     *
+     * A `<dt>` yielding two keys is pushed into BOTH columns and shares one
+     * `<dd>` between them — correct, since the credit genuinely applies to
+     * both roles.
+     *
+     * @param {HTMLElement} dt
+     * @returns {string[]} Empty when `dt`'s text doesn't end in `":"`.
+     */
+    function _workRoleComponentKeys(dt) {
+        const _raw = dt.textContent.trim();
+        if (!/:$/.test(_raw)) return [];
+        const _text = _raw.slice(0, -1).replace(/\s+/g, ' ').trim().toLowerCase();
+        if (!_text) return [];
+        return _text
+            .split(/\s*,\s*|\s+and\s+/i)
+            .map(c => c.trim())
+            .filter(Boolean)
+            .map(c => `${WORK_AR_KEY_PREFIX}${c}`);
+    }
+
+    /**
+     * The work-level column's display name for one `_workRoleComponentKeys`
+     * key — sentence-cased, first letter only, so `'work publisher'` →
+     * `'Work publisher'` and `'work is based on'` → `'Work is based on'`.
+     *
+     * No `DYNAMIC_ROLE_DISPLAY_NAME_OVERRIDES` equivalent: that table exists
+     * to disambiguate phrases that read oddly alone (`"Part of"` →
+     * `"Part of series"`), and the `Work ` prefix already supplies that
+     * context here.
+     *
+     * @param {string} key
+     * @returns {string}
+     */
+    function _workRoleDisplayName(key) {
+        return key.charAt(0).toUpperCase() + key.slice(1);
     }
 
     /**
@@ -55360,6 +55619,11 @@ a { color: #1565c0; }`;
             'Mixed at place',
             'Phonographic copyright (℗) by artist', 'Phonographic copyright (℗) by label',
             'Produced for label',
+            // Work-level AR columns carry their own name list rather than
+            // riding on `_dynamicArColumnGlyphs`, which only records a column
+            // that actually resolved a glyph — see the work-column
+            // registration block in applyExtractTrackTitleData().
+            ...(activeDefinition?.features?._workArColumnNames || []),
             ...(activeDefinition?.features?._dynamicArColumnGlyphs || []).map(g => g.columnName),
         ].forEach(_stampArColumnHeaderBg);
     }
