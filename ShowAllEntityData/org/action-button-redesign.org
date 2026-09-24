@@ -1,0 +1,64 @@
+* TODO redesign of the action buttons
+
+Show me a couple of options/visualization for a redesign of the action buttons in the h1 header line of multi- (e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0)
+and single-table (e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/events) pageTypes buttons
+
+1.)
+
+The following two buttons
+
+#+begin_example
+<button id="mb-resize-btn"
+<button id="mb-visible-btn"
+#+end_example
+
+should probably be rendered (as buttons with just a glypgh and the tooltip + keyboard handling intact) before the
+
+#+begin_example
+<span id="mb-filter-container"
+#+end_example
+
+like their siblings in the multi-table case in each h3 line before a sub-table
+
+#+begin_example
+<button id="mb-stf-Album-resize-btn"
+<button id="mb-stf-Album-vis-btn"
+#+end_example
+
+2.)
+
+The current "help button"/"help system"
+
+#+begin_example
+<button id="mb-stf-Album-vis-btn"
+#+end_example
+
+should also be completely redesigned. The end-user should be redirected directly to the GitHub help page, which probabyl
+needs a .md conversion from the current .txt based format
+
+3.)
+
+I'm not sure how to best present the current "Keyboard Shortcuts" and "Settings Manager button
+
+4.)
+
+The buttons
+
+#+begin_example
+Density
+Statistics
+Export
+Keyboard Shortcuts - maybe
+Settings Manager - maybe
++ maybe future generic functionality 
+#+end_example
+
+should probably go into kind of a menu
+
+5.)
+
+The "Save to Disk" and "Load from Disk" buttons also occupy too much space I think
+
+6.)
+
+Take also into account possible changes to the testing framework

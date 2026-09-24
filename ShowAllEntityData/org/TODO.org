@@ -387,7 +387,7 @@ does for its inline-art probe), and it's real userscript work: fixture spec, mut
 * TODO What's left from the parking lot in AUDIT.org
 
 - that icon-mirror half
-  
+
 * TODO _adoptJesus2099MsLength()
 
 #+begin_example
@@ -497,7 +497,7 @@ does for its inline-art probe), and it's real userscript work: fixture spec, mut
   actually asserts (the WS/2 request count, or the row set), not on a text transition, and that choice belongs to whoever owns the test's intent.
 
 The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
-  
+
 * DONE test I did
 
 - I filtered to something that excludes both flagged tracks and confirmed "(2)  WARNING ⚠️ "is still there with its number.
@@ -877,22 +877,22 @@ Add extensive tooltip support for all buttons/filter-fields/clickable anchors li
 <a id="vz-mb-show-all-entity-data-reset">RESET</a>
 #+end_example
 
+* DONE still left
+
+  F6 is now the whole of what's left in org/config-handling.org — the mirror is 395 versions and three library versions behind, and the library gap is no longer cosmetic: 4.1.0's dirty-set SAVE, 4.2.0's dialog rewrite and 4.3.0's header all sit unpublished. The one remaining sub-item is the five type: 'table' settings never seeing rows added in a later version.
+
+* DONE tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
+
 
 * TODO CustomizableMultiSelector
 
 CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since
 2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
 
-* DONE still left
-  
-  F6 is now the whole of what's left in org/config-handling.org — the mirror is 395 versions and three library versions behind, and the library gap is no longer cosmetic: 4.1.0's dirty-set SAVE, 4.2.0's dialog rewrite and 4.3.0's header all sit unpublished. The one remaining sub-item is the five type: 'table' settings never seeing rows added in a later version.
-
-* DONE tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
 
 * remaining stuff
 
-* TODO redesign of the action buttons
 
 * TODO filter checkboxes per column
 
-
+* TODO plan: Tackle the @org/action-button-redesign.org
