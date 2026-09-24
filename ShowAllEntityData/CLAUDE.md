@@ -1503,6 +1503,78 @@ added to that tail, mirroring the existing ones for "Recording of
 work"/CREDIT_ROLES/etc. — don't forget it, or the header silently renders
 with no icon (exactly the second half of the bug above).
 
+## `release-tracks` has TWO AR levels, and the finders must not be merged
+
+Everything above describes the RECORDING's own relationships. A track also
+carries the **work's** — and they live one nesting level below, inside the
+`<dd>` of the `recording of:` `<dt>` (`debug/work-ARs.html`):
+
+```
+td.title > div.ars
+  dl.ars > dt "recording of:"
+           dd  > a[/work/…]
+                 dl.ars > dt "publisher:"              (artist)
+                          dt "lyricist and composer:"
+                 dl.ars > dt "publisher:"              (label)
+                 dl.ars > dt "is based on:" ×3
+```
+
+**`_findAllArDts()` is `:scope > dl.ars > dt` and must stay that way.** That
+scoping is why the work `<dt>`s reach neither `_classifyArDt()` nor the
+dynamic-fallback scan — correct, since they are the work's relationships and
+not the recording's, and also why they rendered nowhere but the raw "ARs"
+column for the whole life of the feature. `_findWorkArDts()` is the second
+finder; widening the first one instead would merge two relationship levels
+into one set of columns.
+
+Everything downstream is the dynamic-fallback mechanism re-used verbatim —
+`_collectEntityKinds`, `_filterPeerKinds`, `_splitColumnByEntityKind`,
+`_buildKindSplitListTd`, `_glyphClassForDynamicColumn`. What differs is the
+keying, and each difference is load-bearing:
+
+- **A separate `_workRoleColumns` Map, and a `work ` key prefix**
+  (`WORK_AR_KEY_PREFIX`). A work `arranger:` and a recording `arranger:` are
+  different relationships between different entities. Sharing a Map buckets
+  them together; sharing a column NAME is worse, because the header block's
+  own `_headerCells.some(...)` dedup then silently drops the second one.
+- **`_workRoleComponentKeys()` SPLITS on `,`/` and `** — the exact opposite of
+  `_dynamicRolePhraseKey`'s "two different phrases NEVER merge" rule, and
+  deliberately so. On Born to Run seven tracks say `lyricist and composer:` in
+  one `<dt>` while the eighth states the roles separately; unsplit that is
+  three part-filled columns instead of a full `Work lyricist` and
+  `Work composer`. The split pattern is `_creditDtMatch`'s own, so the two
+  agree on what a component is. A `<dt>` yielding two keys feeds BOTH columns
+  from its one `<dd>`.
+- **`work` stays OUT of `PEER_SPLIT_KINDS`.** `is based on:`'s multi-row cell
+  comes from its three sibling `<dt>`s through `_buildKindSplitListTd`'s
+  `kinds.size === 0` branch, not from peer splitting. Adding `work` there
+  would be a different change with the chain-shape risk that JSDoc describes.
+- **Never `.find()` a work `<dt>`.** `is based on:` is three `<dt>`s on one
+  track — the same shape already fixed twice, for
+  `_findPhonographicCopyrightDts` and `_findRecordedAtDt`.
+
+**`def.features._workArColumnNames` is a second registry beside
+`_dynamicArColumnGlyphs`, on purpose.** The glyph array records only a column
+that RESOLVED a glyph, and "is this an extracted column" (the header tint) is a
+different question from "does it have an entity icon". Every work relationship
+in real data credits an artist, a label or a work, so the two lists are
+identical today and no fixture can tell them apart — recorded as an honest
+`expect: "pass"` in the mutation list rather than left looking covered.
+
+**Placement is part of the requirement, not a detail.** The columns sit between
+`Recorded in area` and `Performer`, so a track reads recording → the work it
+records → who played on it → raw ARs. Header creation order and row `<td>`
+append order are mirrored by hand, as everywhere else in this function, and
+`_workColumnThs.length === 0` had to join the row loop's no-op early return —
+otherwise a table whose ONLY new columns are work ones keeps its `<th>`s while
+every row comes up short.
+
+Gated by `sa_enable_release_tracks_work_ar_columns` (default **true**), read as
+`!== false`. Covered by `tests/fixtures/release-tracks-work-ars.spec.js`, which
+reuses the committed `release-tracks-ms-length.html` fixture (the real Born to
+Run page — it already carries every shape this needs); mutation list
+`scripts/mutations/release-tracks-work-ars.json`.
+
 ## Unique-values dropdown: `SYN_SECTION_META` section-splitting
 
 The per-column unique-values filter dropdown (`openUniqDrop()`) renders

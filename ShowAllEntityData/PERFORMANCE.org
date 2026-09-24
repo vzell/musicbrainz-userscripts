@@ -1301,6 +1301,21 @@ AR-column presence check) with one combined per-track characterization
 pass that answers all of them in a single walk. ~release-tracks~-specific;
 independent of Steps 1-9.
 
+*Two more page-wide walks belong in that combined pass, and neither is an
+~_anyTitleCellMatches()~ call* — so a grep for that helper will miss them.
+Both are ~_tables.forEach~ loops of their own, structurally identical to each
+other: the dynamic-fallback AR discovery scan (~_dynamicRoleColumns~) and, as
+of 9.99.1146 / branch ~release-tracks-work-ars~, the work-level AR discovery
+scan (~_workRoleColumns~, which walks ~_findWorkArDts()~ — see CLAUDE.md's
+"release-tracks has TWO AR levels"). Both build a Map whose INSERTION ORDER
+becomes left-to-right column order, so a combined pass has to preserve
+first-encountered-in-page order per scan, not merely collect the set.
+
+Cost context, measured in shape rather than wall clock: these are
+pre-processing passes, once per fetch, over a tracklist's rows — tens to a few
+hundred, never the thousands a listing page carries. Step 11 is worth doing for
+tidiness and for the largest tracklists; it is not on any keystroke path.
+
 *** TODO Step 12: Fix undeclared ~_caaImgQueue~/~_caaMetaQueue~ crash in Step 5 (urgent)
 
 /Harvested from/ ~perf-steps-1-4~ (branch tip 2026-08-31, script

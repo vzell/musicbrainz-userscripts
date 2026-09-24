@@ -565,3 +565,43 @@ enumerating each button, so their selector lists differ in every baseline's
 =<style>= block too. Still =<style>=-only — no baseline contains a
 =mb-caa-toggle-btn-summary= element, and a computed height is not serialized
 in any case.
+
+** release-tracks gains seven work-level AR columns (branch release-tracks-work-ars)
+
+OUR movement, and unlike most entries in this section it IS a real markup
+change — the only baseline affected is =release-tracks/rendered.html=, and it
+has not been re-captured yet.
+
+=applyExtractTrackTitleData()= now extracts the relationships of the WORK each
+track is a "recording of:", which MusicBrainz nests inside that relationship's
+own =<dd>= and which therefore reached no column before (see CLAUDE.md's
+"release-tracks has TWO AR levels"). The baseline's release — Born to Run,
+=1d404e1d-fcb6-3a52-b478-e706e893c897= — carries seven of them, inserted
+between "Recorded at place" and "Vocals", in this order:
+
+| Column                | Glyph      | Notes                                       |
+|-----------------------+------------+---------------------------------------------|
+| Work publisher artist | artistlink | one =publisher:= phrase, split by kind      |
+| Work publisher label  | labellink  | 2+ =<li>= per row                           |
+| Work lyricist         | artistlink | from "lyricist and composer:", split        |
+| Work composer         | artistlink | likewise                                    |
+| Work arranger         | artistlink | absent on track 5 ("Born to Run")           |
+| Work is based on      | worklink   | 3 =<li>= on track 1 only ("Thunder Road")   |
+| Work sub-publisher    | labellink  | track 5 only                                |
+
+Each also carries =mb-extracted-column= and the shared extracted-column header
+tint, and each is registered as collapsable at runtime, so multi-row cells get
+the usual =▶N▤= toggle and the =.mb-col-collapse-count= badge.
+
+*No OTHER baseline changes at all* — not even in =<style>=. The feature adds no
+CSS, and every other pageType goes through a =release-tracks=-only code path
+(=_stampArColumnHeaderBg()= returns early unless =activeDefinition.type= is
+=release-tracks=).
+
+**The re-capture is still owed, and needs a logged-in session.** It was not
+taken on the branch because =playwright/.auth/vzell.json= had expired, and a
+logged-out capture drifts the header chrome of every baseline for reasons that
+have nothing to do with this change. Run =npm run auth:login= first, then
+=node tests/support/capture-snapshots.js --only=release-tracks=. Nothing in
+=npm run test:full= reads this baseline, so the suite is green either way —
+which is exactly why this note exists rather than a failing test.

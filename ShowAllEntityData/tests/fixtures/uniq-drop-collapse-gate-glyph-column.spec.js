@@ -40,16 +40,24 @@ const RELEASE_URL = 'https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b
 const FIXTURE_FILE = path.join(__dirname, 'release-tracks-multirow-instruments.html');
 const COLLAPSED = '▶ collapsed multi-row cells';
 
-/** Every header carrying a ▶N▤ toggle, with its badge count and resolved name. */
+/**
+ * Every header carrying a ▶N▤ toggle, with its badge count, resolved name and
+ * the index of the table it belongs to.
+ *
+ * `tableIndex` is load-bearing: this release has TWO mediums, so one column
+ * name can own a header in each, with its own per-table badge. See
+ * `structureCount()` for why pairing them up matters.
+ */
 const collapsableHeaders = (page) => page.evaluate(() => {
     const strip = (t) => t.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
-    const headers = Array.from(document.querySelectorAll('table.tbl'))
-        .flatMap((t) => Array.from(t.querySelectorAll('thead tr:first-child th')));
-    return headers
-        .filter((th) => th.querySelector('.mb-col-collapse-hdr-btn'))
-        .map((th) => {
+    return Array.from(document.querySelectorAll('table.tbl'))
+        .flatMap((t, tableIndex) => Array.from(t.querySelectorAll('thead tr:first-child th'))
+            .map((th) => ({ th, tableIndex })))
+        .filter(({ th }) => th.querySelector('.mb-col-collapse-hdr-btn'))
+        .map(({ th, tableIndex }) => {
             const badge = th.querySelector('.mb-col-collapse-count');
             return {
+                tableIndex,
                 colName: th.dataset.colName || null,
                 badge: badge ? parseInt(badge.textContent.trim(), 10) : null,
                 strippedText: strip(th.textContent),
@@ -58,11 +66,51 @@ const collapsableHeaders = (page) => page.evaluate(() => {
         });
 });
 
-/** One Structure entry's advertised count for a column, or null. */
-async function structureCount(page, colName, label) {
-    const sections = await page.evaluate((c) => window.__saTest.getUniqDropSections(c), colName);
-    const section = (sections || []).find((s) => s.label === 'Structure');
-    const entry = section && section.items.find((i) => i.label === label);
+/**
+ * One Structure entry's advertised count for a column, scoped to ONE table.
+ *
+ * `window.__saTest.getUniqDropSections()` resolves the first matching `<th>`
+ * page-wide, so on this two-medium release it always answers for table 0. The
+ * badge it would be compared against is per-table, and the two legitimately
+ * differ — "Work publisher label" carries 15 multi-row cells on medium 1 and 5
+ * on medium 2 — so the unscoped hook pairs medium 2's badge with medium 1's
+ * dropdown and reports a mismatch where the code is correct.
+ *
+ * Mirrors `getUniqDropSectionsForTable()` in
+ * tests/live/releasegroup-releases-filter-sort.spec.js, which exists for
+ * exactly this reason. DO NOT "simplify" it back to the shared hook: until a
+ * column happened to own a toggle in both tables, every column here had a
+ * single header and the flaw was invisible.
+ */
+async function structureCount(page, tableIndex, colName, label) {
+    const wrap = page.locator('table.tbl').nth(tableIndex)
+        .locator(`thead th[data-col-name="${colName}"] .mb-col-uniq-wrap`);
+    await wrap.click();
+    // Reads the shared panel exactly as `__saTest.getUniqDropSections()` does —
+    // same label/count resolution, so only the <th> lookup differs.
+    const items = await page.evaluate(() => {
+        const dropEl = document.getElementById('mb-col-uniq-dropdown');
+        if (!dropEl || dropEl.style.display === 'none') return null;
+        const section = Array.from(dropEl.querySelectorAll('.mb-uniq-section'))
+            .find((s) => (s.querySelector('.mb-uniq-section-label')?.textContent ?? '') === 'Structure');
+        if (!section) return [];
+        return Array.from(section.querySelectorAll('.mb-col-uniq-item')).map((item) => {
+            const badgeText = item.querySelector('.mb-uniq-count-badge')?.textContent ?? '';
+            const countMatch = badgeText.match(/\((\d+)\)/);
+            return {
+                label: item.dataset.mbUniqSynLabel
+                    ?? item.querySelector('.mb-uniq-syn-label-text')?.textContent
+                    ?? item.textContent.trim(),
+                count: countMatch ? Number(countMatch[1]) : null,
+            };
+        });
+    });
+    // Close it the way a user would, so no open state leaks into the next read.
+    await page.evaluate(() => {
+        if (window.__saTest && typeof window.__saTest.closeUniqDrop === 'function') window.__saTest.closeUniqDrop();
+    });
+    if (items === null) return null;
+    const entry = items.find((i) => i.label === label);
     return entry ? entry.count : null;
 }
 
@@ -122,9 +170,11 @@ test.describe('📊 Structure entries on a glyph-bearing collapsable column', ()
         async ({ page }) => {
             const mismatches = [];
             for (const h of headers) {
-                const count = await structureCount(page, h.colName, COLLAPSED);
+                // Each header against ITS OWN table's dropdown — a column can
+                // own one per medium, with different counts in each.
+                const count = await structureCount(page, h.tableIndex, h.colName, COLLAPSED);
                 if (count !== h.badge) {
-                    mismatches.push(`${h.colName}: header ▶${h.badge}▤ vs 📊 ${count}`);
+                    mismatches.push(`${h.colName} (table ${h.tableIndex}): header ▶${h.badge}▤ vs 📊 ${count}`);
                 }
             }
             expect(mismatches, 'the header and the dropdown count the same cells').toEqual([]);
@@ -134,18 +184,18 @@ test.describe('📊 Structure entries on a glyph-bearing collapsable column', ()
         // The label appearing is not enough: it has to work. Uses the column
         // with the largest badge, so the assertion is not about a single row.
         const target = headers.slice().sort((a, b) => b.badge - a.badge)[0];
-        const count = await structureCount(page, target.colName, COLLAPSED);
+        const count = await structureCount(page, target.tableIndex, target.colName, COLLAPSED);
         expect(count, `${target.colName} offers the entry`).toBe(target.badge);
 
-        const matching = await page.evaluate((c) => {
-            const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+        const matching = await page.evaluate(({ c, ti }) => {
+            const table = document.querySelectorAll('table.tbl')[ti];
+            const th = Array.from(table.querySelectorAll('thead th'))
                 .find((t) => t.dataset.colName === c);
-            const table = th.closest('table');
             const colIdx = Array.from(th.parentNode.cells).indexOf(th);
             return Array.from(table.querySelectorAll('tbody tr'))
                 .filter((r) => r.cells[colIdx]
                     && r.cells[colIdx].querySelector('.mb-cell-collapse-toggle')).length;
-        }, target.colName);
+        }, { c: target.colName, ti: target.tableIndex });
 
         expect(count, `${target.colName}: the count matches the cells that actually have a toggle`)
             .toBe(matching);
