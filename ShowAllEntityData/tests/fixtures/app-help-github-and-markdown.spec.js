@@ -228,6 +228,22 @@ test.describe('the help dialog renders Markdown as DOM', () => {
         await expect(pre.locator('strong')).toHaveCount(0);
     });
 
+    test('the stylesheet is actually injected, not just the class names', async ({ page }) => {
+        // The renderer stamps classes and injects one GM_addStyle sheet for
+        // them. Those are two separate things, and a document with every class
+        // correct and no rules behind them still has correct STRUCTURE — which
+        // is all the other tests here look at. Assert a computed value so the
+        // sheet going missing is a failure rather than a flat-looking page.
+        await expect(page.locator('#mb-md-help-style')).toHaveCount(1);
+        const paint = await page.evaluate(() => {
+            const cs = getComputedStyle(document.querySelector('#mb-app-help-body pre.mb-md-pre'));
+            const th = getComputedStyle(document.querySelector('#mb-app-help-body table.mb-md-table'));
+            return { preBg: cs.backgroundColor, collapse: th.borderCollapse };
+        });
+        expect(paint.preBg, 'the code block is painted, not transparent').toBe('rgb(246, 248, 250)');
+        expect(paint.collapse, 'the table collapses its borders').toBe('collapse');
+    });
+
     test('a pipe table becomes a real table with a header row', async ({ page }) => {
         const table = page.locator('#mb-app-help-body table.mb-md-table');
         await expect(table).toHaveCount(1);

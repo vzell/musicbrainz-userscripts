@@ -1095,8 +1095,13 @@
             type: 'popup_dialog',
             fields: ['bg', 'color', 'border'],
             colorFields: ['bg', 'color'],
-            default: '#607D8B|white|1px solid #546E7A',
-            description: 'Settings button: bg|color|border'
+            // Same ground as sa_ui_toolbar_menu_btn_style since 9.99.1149: ⚙️
+            // and ❓ render as one segmented pill beside 📦 Data / 🛠 View, and
+            // a pill whose two halves are different colours is two buttons
+            // drawn to look like one. The old slate (#607D8B) is in
+            // _SETTINGS_MIGRATIONS, so anyone who chose their own keeps it.
+            default: '#ECEFF1|#263238|1px solid #B0BEC5',
+            description: 'Settings button, the left half of the ⚙️❓ pill: bg|color|border'
         },
 
         sa_ui_toolbar_menu_btn_style: {
@@ -1113,8 +1118,9 @@
             type: 'popup_dialog',
             fields: ['bg', 'color', 'border'],
             colorFields: ['bg', 'color'],
-            default: '#78909C|white|1px solid #607D8B',
-            description: 'Application-help button: bg|color|border'
+            // See sa_ui_settings_btn_style above — same ground, same reason.
+            default: '#ECEFF1|#263238|1px solid #B0BEC5',
+            description: 'Application-help button, the right half of the ⚙️❓ pill: bg|color|border'
         },
 
         // --- Button-group separator dividers ---
@@ -3274,7 +3280,9 @@
         { key: 'sa_enable_dropdown_flag_icons',    was: [false] },
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
+        { key: 'sa_ui_help_btn_style',             was: ['#78909C|white|1px solid #607D8B'] },
         { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
+        { key: 'sa_ui_settings_btn_style',         was: ['#607D8B|white|1px solid #546E7A'] },
         { key: 'sa_uniq_dropdown_visible_rows',    was: [8] },
     ];
 
@@ -27807,7 +27815,7 @@ ${sections.join('\n')}
      * Config: sa_ui_settings_btn_style — bg|color|border
      */
     function uiSettingsBtnCSS() {
-        const defaults = '#607D8B|white|1px solid #546E7A';
+        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5';
         const [bg, color, border] =
             parseCondensedStyle(Lib.settings.sa_ui_settings_btn_style, defaults);
         return `${uiActionBtnBaseCSS()} background-color:${bg}; color:${color}; border:${border};`;
@@ -27818,7 +27826,7 @@ ${sections.join('\n')}
      * Config: sa_ui_help_btn_style — bg|color|border
      */
     function uiHelpBtnCSS() {
-        const defaults = '#78909C|white|1px solid #607D8B';
+        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5';
         const [bg, color, border] =
             parseCondensedStyle(Lib.settings.sa_ui_help_btn_style, defaults);
         // user-select:none prevents some browsers from rendering a text-insertion
@@ -29470,13 +29478,21 @@ ${sections.join('\n')}
     /**
      * Injects the ❓ help dialog's Markdown stylesheet, once.
      *
-     * **A stylesheet, not inline styles, and that is not a preference.**
-     * MusicBrainz serves `/account/*` with `style-src 'self' staticbrainz.org
-     * static.metabrainz.org` and no `unsafe-inline`, so a `style=` attribute is
-     * dropped there while working everywhere else — the exact shape of bug the
-     * 9.99.736-9.99.745 run existed to remove, and `/account/applications` is a
-     * supported pageType. `GM_addStyle()` writes into the userscript's own
-     * context and is exempt.
+     * **A stylesheet rather than per-node inline styles.** Every other panel in
+     * this script is built this way after the 9.99.736-9.99.745 CSP run, and it
+     * is far less code than setting a dozen properties on each of a long
+     * document's nodes — one place to restyle instead of fifteen.
+     *
+     * **Be precise about the CSP part, because this JSDoc was not.** It used to
+     * say a `style=` attribute is "dropped" on `/account/*`. What that run
+     * actually found is narrower: `style="…"` written into an **`innerHTML`
+     * template** is blocked there, along with `<style>` elements — CSSOM writes
+     * (`el.style.foo = …`) are not, which is why the whole toolbar sets its
+     * styles that way and renders fine on `/account/applications`. This
+     * renderer builds nodes, so it was never in the blocked case, and the
+     * original reason for choosing a stylesheet did not hold. The choice does;
+     * the reason given for it did not, and a wrong reason is worse than none
+     * because it licenses the wrong generalisation next time.
      *
      * @returns {void}
      */
@@ -35523,7 +35539,13 @@ a { color: #1565c0; }`;
     // --- UI Elements ---
     const controlsContainer = document.createElement('div');
     controlsContainer.id = 'mb-show-all-controls-container';
-    controlsContainer.style.cssText = 'display:inline-flex; flex-wrap:wrap; align-items:center; gap:8px; margin-left:10px; vertical-align:middle; line-height:1;';
+    // --mb-toolbar-gap is declared rather than inlined into `gap` alone because
+    // the ⚙️❓ pill has to CANCEL it between its two halves — a flex `gap`
+    // cannot be suppressed for one pair, so the second segment pulls itself
+    // back by exactly one gap. Reading both from the same custom property is
+    // what stops the pill splitting open (or overlapping) if this number is
+    // ever changed.
+    controlsContainer.style.cssText = '--mb-toolbar-gap:8px; display:inline-flex; flex-wrap:wrap; align-items:center; gap:var(--mb-toolbar-gap); margin-left:10px; vertical-align:middle; line-height:1;';
 
     const allActionButtons = [];
 
@@ -35814,6 +35836,14 @@ a { color: #1565c0; }`;
     // the two controls a user reaches for when something is wrong, and burying
     // "how do I configure this" behind a menu is the opposite of what the
     // redesign is for. _orderToolbar() keeps them last, in that order.
+    //
+    // They are also drawn as ONE segmented pill — see the `.mb-toolbar-pinned-btn`
+    // rules in the main stylesheet. A CLASS, not a wrapper element: they must
+    // stay DIRECT children of #mb-show-all-controls-container, because
+    // _TOOLBAR_TAIL_ORDER re-appends them there and toolbar-menus.spec.js reads
+    // the container's own children to assert they are the last two. A wrapper
+    // would satisfy neither.
+    settingsBtn.classList.add('mb-toolbar-pinned-btn');
     settingsBtn.style.cssText = uiSettingsBtnCSS();
     controlsContainer.appendChild(settingsBtn);
 
@@ -35822,6 +35852,7 @@ a { color: #1565c0; }`;
     appHelpBtn.id = 'mb-app-help-btn';
     appHelpBtn.textContent = '❓';
     appHelpBtn.title = `Open the help page on GitHub — Shift-click to read it here instead (${getPrefixDisplay()}, then H)`; // H has no direct Ctrl+H shortcut — prefix mode only
+    appHelpBtn.classList.add('mb-toolbar-pinned-btn');   // right half of the ⚙️❓ pill
     appHelpBtn.style.cssText = uiHelpBtnCSS();
     appHelpBtn.type = 'button';
     appHelpBtn.onclick = openAppHelp;
@@ -37735,6 +37766,70 @@ a { color: #1565c0; }`;
             border-right-width: 1px !important;
             border-top-right-radius: 3px !important;
             border-bottom-right-radius: 3px !important;
+        }
+
+        /* The h1 toolbar's pinned pair, drawn as a FOURTH segmented run:
+           #mb-settings-btn + #mb-app-help-btn as one pill. Same idiom as the
+           three above and the same !important reason — both buttons set
+           border and border-radius inline, from uiSettingsBtnCSS() and
+           uiHelpBtnCSS(), and a normal-priority rule cannot outrank inline.
+
+           SELECTED BY CLASS, not by id prefix, because these two ids share
+           none. The run-relative pair below is deliberate and is the rule
+           CLAUDE.md records for the sort group: :first-of-type/:last-of-type
+           count elements of the same TAG, and these <button>s are neither the
+           first nor the last button among their siblings — the fetch buttons
+           and the menu buttons are buttons too.
+
+           IT CANCELS THE FLEX GAP. Unlike the h2 runs, which sit in inline
+           layout and space themselves with margins, this run lives in a
+           display:inline-flex container whose gap applies between every pair
+           of children. A flex gap cannot be suppressed for one pair, so the
+           second segment pulls back by exactly one --mb-toolbar-gap. Both
+           sides read that same custom property, so the pill cannot split open
+           if the gap is ever retuned.
+           (No backtick may appear in this comment — it sits inside a template
+           literal, and even a balanced pair closes and reopens it. This one
+           cost a debugging round on the commit that wrote it.)
+
+           BACKGROUNDS ARE NOT SET HERE, unlike the radii. They come from
+           sa_ui_settings_btn_style / sa_ui_help_btn_style, whose defaults now
+           match sa_ui_toolbar_menu_btn_style — so the pill reads as one
+           control by default while a user who has chosen their own colours
+           still gets them. Forcing one ground here would silently override
+           that choice. */
+        .mb-toolbar-pinned-btn {
+            border-radius: 0 !important;
+            border-left-width: 0 !important;
+            border-right-width: 0 !important;
+        }
+        .mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn {
+            /* The single hairline between the two halves. Only the LEFT border
+               is re-grown; leaving the previous segment's right border in place
+               too would draw every divider twice. */
+            border-left-width: 1px !important;
+        }
+        .mb-toolbar-pinned-btn:has(+ .mb-toolbar-pinned-btn) {
+            /* The gap close, and it sits on the LEFT half deliberately.
+               The bar is flex-wrap:wrap, so at some widths the two halves land
+               on different lines — measured at 1040-1080px and 550-590px by
+               scripts/probe-toolbar-pinned-pill.js, which is ordinary window
+               territory, not an edge case. With the pull on the RIGHT half it
+               started 8px outside the bar's own left edge on the new line.
+               Here the same pull merely shortens a line that has nothing after
+               it, so a split degrades to a square left edge instead of content
+               hanging out of its container. */
+            margin-right: calc(-1 * var(--mb-toolbar-gap, 8px)) !important;
+        }
+        .mb-toolbar-pinned-btn:not(.mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn) {
+            border-left-width: 1px !important;
+            border-top-left-radius: 6px !important;
+            border-bottom-left-radius: 6px !important;
+        }
+        .mb-toolbar-pinned-btn:not(:has(+ .mb-toolbar-pinned-btn)) {
+            border-right-width: 1px !important;
+            border-top-right-radius: 6px !important;
+            border-bottom-right-radius: 6px !important;
         }
 
         /* Multi-sort column group tinting — two alternating shades per priority, semi-transparent   */

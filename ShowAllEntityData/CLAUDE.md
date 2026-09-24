@@ -2998,11 +2998,45 @@ controls, nine of them labelled. It is now:
 | 5 | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render |
 | 6 | `#mb-data-menu-btn` `📦 Data ▾` | from the initial render |
 | 7 | `#mb-view-menu-btn` `🛠 View ▾` | from the initial render (🎹 seeds it) |
-| 8 | `#mb-settings-btn` `⚙️` | always, pinned |
-| 9 | `#mb-app-help-btn` `❓` | always, pinned |
+| 8 | `#mb-settings-btn` `⚙️` | always, pinned — left half of the ⚙️❓ pill |
+| 9 | `#mb-app-help-btn` `❓` | always, pinned — right half of the ⚙️❓ pill |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
 not named there keeps whatever position it was appended at.
+
+**8 and 9 are drawn as ONE segmented pill** — a fourth run alongside the three
+in "The h2/h3 control runs are segmented pills" below, and built the same way,
+so read that section's rules first. Three things are specific to this one:
+
+- **Selected by the class `.mb-toolbar-pinned-btn`, not an id prefix**, because
+  these two ids share none. The caps use the run-relative pair
+  (`:not(.c + .c)` / `:not(:has(+ .c))`) — `:first-of-type`/`:last-of-type` are
+  wrong here for exactly the reason they are wrong for the sort group: they
+  count elements of the same TAG, and these `<button>`s are neither the first
+  nor the last button among their siblings.
+- **A class, never a wrapper element.** They must stay DIRECT children of
+  `#mb-show-all-controls-container`: `_TOOLBAR_TAIL_ORDER` re-appends them
+  there, and `toolbar-menus.spec.js` reads the container's own children to
+  assert they are the last two.
+- **It cancels the flex gap, and the margin sits on the LEFT half.** The bar is
+  `display:inline-flex` with a gap between every pair of children, and a flex
+  gap cannot be suppressed for one pair — so one segment pulls back by exactly
+  one `--mb-toolbar-gap`, a custom property both sides read so the pill cannot
+  split open if that number is retuned. **Which side carries it is the
+  load-bearing part.** The bar is also `flex-wrap: wrap`, and at some widths the
+  two halves land on different lines — measured at 1040-1080px and 550-590px,
+  ordinary window territory. With the pull on the RIGHT half, ❓ then started
+  8px past the bar's own left edge: content outside its container. On the LEFT
+  half the same pull merely shortens a line that has nothing after it, so a
+  split degrades to a square left edge. The split itself is not preventable
+  without a wrapper, and a wrapper costs the direct-children contract above.
+
+**Their backgrounds are settings, not pill CSS.** `sa_ui_settings_btn_style`
+and `sa_ui_help_btn_style` kept their own keys and had their DEFAULTS changed
+to match `sa_ui_toolbar_menu_btn_style`, with `_SETTINGS_MIGRATIONS` entries
+naming the old slate values — so the pill reads as one control by default while
+a user who chose their own colours keeps them. Forcing one ground in the
+stylesheet would silently override that choice.
 `ensureSettingsButtonIsLast()` is a back-compat alias, still called from ~7
 sites, and no longer does anything else. Two of the three old divider spans
 (`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`) are
@@ -3139,12 +3173,17 @@ click handler's user gesture.
 Six things about the renderer (`_mdRenderInto()` / `_mdInline()` /
 `_mdHeadingId()`), each of which fails quietly:
 
-- **It is styled by `GM_addStyle` classes, not inline styles.** MusicBrainz
-  serves `/account/*` with `style-src 'self'` and no `unsafe-inline`, so a
-  `style=` attribute is dropped THERE and works everywhere else. Same rule, and
-  the same reason, as the 9.99.736-9.99.745 CSP run. No fixture can see this —
-  a fixture is served by the harness and carries no CSP — so it is an
-  `"expect": "pass"` in the mutation list.
+- **It is styled by `GM_addStyle` classes, not per-node inline styles** — like
+  every other panel since the 9.99.736-9.99.745 CSP run, and far less code than
+  setting a dozen properties on each node of a long document.
+  **The CSP half of that rule is narrower than this file used to say.** What
+  `/account/*`'s `style-src 'self'` blocks is `<style>` elements and `style="…"`
+  written into an **`innerHTML` template**; CSSOM writes (`el.style.foo = …`)
+  are not blocked, which is why the entire h1 toolbar sets its styles that way
+  and renders correctly there. A node-building renderer was never in the
+  blocked case. Corrected in 9.99.1149, along with the mutation that had
+  recorded itself an honest `"expect": "pass"` on the strength of it — the
+  stylesheet's absence IS observable, as a computed value, and is now asserted.
 - **`_italic_` is deliberately unsupported; only `*italic*`.** Half the nouns
   here are snake_case settings keys, and an underscore rule renders
   `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
@@ -3188,6 +3227,11 @@ A second family, distinct from the `.mb-col-hdr-flex` one above: the buttons
 that sit beside a table's heading. `org/503-handling.org`, "Retry UI: one
 segmented control per table". The h2's ↔️/👁️ pair (above) is deliberately NOT
 part of any of these runs — it anchors past the end of them all.
+
+**A FOURTH run now uses this idiom outside the h2/h3**: the h1 toolbar's
+`⚙️`/`❓` pinned pair, selected by class rather than id prefix. The rules below
+apply to it unchanged; what differs is written up under "The h1 toolbar is two
+pull-down menus plus two pinned buttons" rather than repeated here.
 
 **Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
 already prefix-consistent, so the CSS needs no class and no wrapper:

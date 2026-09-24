@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-09-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "⚙️ Settings and ❓ Help are now drawn as one control beside the 📦 Data and 🛠 View menus — a single rounded pill with a divider between the two halves, instead of two separately-coloured buttons. Both keep their own tooltip and their own action; the pill is a visual grouping, not a merge.",
+          "Their default colours now match the pull-down menu buttons. If you had already chosen your own colour for either button, you keep it — only the defaults moved, and the old values are recorded as a migration so an existing choice is never overwritten. Both are still configurable separately under 🖌️ ELEMENT UI STYLES."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-24",
     "sections": [

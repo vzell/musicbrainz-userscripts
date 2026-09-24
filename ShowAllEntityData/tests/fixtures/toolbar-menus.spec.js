@@ -89,6 +89,100 @@ test.describe('the h1 toolbar menus', () => {
             .toEqual(['mb-settings-btn', 'mb-app-help-btn']);
     });
 
+    test('⚙️ and ❓ are drawn as ONE pill: same ground as the menus, touching, one hairline', async ({ page }) => {
+        await loadAndRender(page);
+
+        const geom = await page.evaluate(() => {
+            const read = (id) => {
+                const el = document.getElementById(id);
+                const cs = getComputedStyle(el);
+                const r  = el.getBoundingClientRect();
+                return {
+                    bg: cs.backgroundColor,
+                    x: r.x, right: r.right,
+                    radius: [cs.borderTopLeftRadius, cs.borderTopRightRadius,
+                             cs.borderBottomRightRadius, cs.borderBottomLeftRadius],
+                    borderLeft: cs.borderLeftWidth,
+                    borderRight: cs.borderRightWidth,
+                    title: el.title,
+                    parent: el.parentElement.id,
+                };
+            };
+            return { data: read('mb-data-menu-btn'), gear: read('mb-settings-btn'), help: read('mb-app-help-btn') };
+        });
+
+        // The ground is the menus' ground. Asserted against #mb-data-menu-btn
+        // rather than against a literal, because the point is that they AGREE
+        // — a literal would still pass if the menu buttons were recoloured and
+        // the pinned pair were not.
+        expect(geom.gear.bg, '⚙️ shares the menu buttons\' background').toBe(geom.data.bg);
+        expect(geom.help.bg, '❓ shares the menu buttons\' background').toBe(geom.data.bg);
+
+        // They TOUCH. The bar is a flex container with a gap between every
+        // pair of children, so this only holds because the second segment
+        // pulls back by exactly one gap. A seam wider than a rounding error
+        // means the pill has split open.
+        expect(Math.abs(geom.help.x - geom.gear.right),
+            'no gap between the two halves').toBeLessThan(0.5);
+
+        // ONE hairline, not two: the left half gives up its right border and
+        // the right half keeps its left. Both keeping theirs draws a 2px seam
+        // against 1px outer edges — the defect the sort-group pill hit on its
+        // first run.
+        expect(geom.gear.borderRight, '⚙️ gives up its right border').toBe('0px');
+        expect(geom.help.borderLeft, '❓ keeps its left border as the divider').toBe('1px');
+
+        // Rounded at the run's two outer ends only.
+        expect(geom.gear.radius.map((v) => parseFloat(v)),
+            '⚙️ rounds left, squares right').toEqual([6, 0, 0, 6]);
+        expect(geom.help.radius.map((v) => parseFloat(v)),
+            '❓ squares left, rounds right').toEqual([0, 6, 6, 0]);
+
+        // Still direct children of the bar. A wrapper element would be the
+        // obvious way to build a pill and would break both _TOOLBAR_TAIL_ORDER
+        // and the ordering assertion above.
+        expect(geom.gear.parent).toBe('mb-show-all-controls-container');
+        expect(geom.help.parent).toBe('mb-show-all-controls-container');
+
+        // Each half kept its OWN action's tooltip — the pill is a visual
+        // grouping, not a merge.
+        expect(geom.gear.title.toLowerCase()).toContain('settings');
+        expect(geom.help.title.toLowerCase()).toContain('help');
+    });
+
+    test('when the bar wraps between the two halves, ❓ does not hang outside it', async ({ page }) => {
+        // The bar is flex-wrap:wrap and a flex gap cannot be suppressed for one
+        // pair, so the pill closes its gap with a negative margin — and at some
+        // widths the two halves land on different lines anyway. Measured at
+        // 1040-1080px, which is ordinary window territory.
+        //
+        // Which SIDE carries that margin is the whole point. On the right half
+        // it pulled ❓ 8px past the bar's own left edge on the new line, i.e.
+        // content outside its container. On the left half the same pull merely
+        // shortens a line with nothing after it.
+        await loadAndRender(page);
+
+        let split = null;
+        for (let w = 1200; w >= 500 && !split; w -= 10) {
+            await page.setViewportSize({ width: w, height: 900 });
+            const r = await page.evaluate(() => {
+                const g   = document.getElementById('mb-settings-btn').getBoundingClientRect();
+                const h   = document.getElementById('mb-app-help-btn').getBoundingClientRect();
+                const bar = document.getElementById('mb-show-all-controls-container').getBoundingClientRect();
+                return { sameLine: Math.abs(g.y - h.y) < 1, overhang: h.x - bar.x };
+            });
+            if (!r.sameLine) split = { w, ...r };
+        }
+
+        // Not reaching a split is a legitimate outcome — it depends on this
+        // fixture's heading width — so the test reports that rather than
+        // failing, and only asserts when it has the case in hand.
+        test.skip(!split, 'this fixture never wraps between the two halves');
+        expect(split.overhang,
+            `at ${split && split.w}px the pill split; ❓ must not start left of the bar`)
+            .toBeGreaterThanOrEqual(-0.5);
+    });
+
     test('a panel opens on click and closes on Escape, on an outside click, and on a row', async ({ page }) => {
         await loadAndRender(page);
 

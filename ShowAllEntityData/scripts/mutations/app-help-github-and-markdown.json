@@ -173,8 +173,8 @@
     "expect": "fail"
   },
   {
-    "name": "the Markdown stylesheet is injected with inline styles instead",
-    "why": "Recorded as pass, honestly. MusicBrainz serves /account/* with style-src 'self' and no unsafe-inline, so a style= attribute is silently dropped THERE and works everywhere else — the whole reason this renderer uses classes and GM_addStyle. Reproducing it needs a capture of /account/applications under its real CSP, which no fixture provides: a fixture is served from the test harness and carries no CSP at all.",
+    "name": "the Markdown stylesheet is never injected",
+    "why": "Classes and the sheet behind them are two separate things: with the sheet gone every class is still stamped and the document still has correct STRUCTURE, which is all the other tests here look at. Only a computed value catches it. (An earlier version of this entry claimed the sheet was needed because a style= attribute is dropped on /account/*, and recorded itself as an honest pass on that basis. That reason was wrong — see the note in _ensureMdHelpStyle() — and with it went the excuse for not asserting anything.)",
     "edits": [
       {
         "find": "        if (document.getElementById('mb-md-help-style')) return;",
@@ -182,8 +182,8 @@
       }
     ],
     "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
-    "grep": "headings, emphasis, code spans and links become elements",
-    "expect": "pass"
+    "grep": "the stylesheet is actually injected",
+    "expect": "fail"
   },
   {
     "name": "the help cache key is left on its old name",

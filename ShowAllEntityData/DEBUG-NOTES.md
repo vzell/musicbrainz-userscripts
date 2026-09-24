@@ -15552,12 +15552,12 @@ is what keeps that statement true.
 
 Five decisions in it that are not obvious from the code:
 
-- **Classes and `GM_addStyle`, not inline styles.** MusicBrainz serves
-  `/account/*` with `style-src 'self'` and no `unsafe-inline`, so a `style=`
-  attribute is dropped THERE and works everywhere else — the 9.99.736-9.99.745
-  CSP shape of bug, reached from a new direction, and `/account/applications`
-  is a supported pageType. No fixture can see it (a fixture is served by the
-  harness and carries no CSP), so it is an honest `"expect": "pass"`.
+- **Classes and `GM_addStyle`, not per-node inline styles** — as every other
+  panel has been since the 9.99.736-9.99.745 CSP run, and far less code than a
+  dozen properties on each node. *The reason first written here was wrong and
+  is corrected in the 9.99.1149 entry below:* `/account/*` blocks `<style>`
+  elements and `style="…"` inside an `innerHTML` template, not CSSOM writes, so
+  a node-building renderer was never in the blocked case.
 - **`_italic_` is NOT supported; only `*italic*`.** Half the nouns here are
   snake_case settings keys, and an underscore-emphasis rule renders
   `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
@@ -15751,3 +15751,119 @@ Publishing to `vzell/mb-userscripts` is owed too, and this is the first change
 where a merge alone leaves users worse off rather than merely behind: the ❓
 button points at a GitHub path that does not exist until the `.md` is pushed
 there.
+
+## 2026-09-25 — ⚙️ and ❓ become one segmented pill (branch help-github-md)
+
+Asked for directly, with a screenshot: give the two pinned buttons the menus'
+background and draw them as one rounded control with a divider, keeping their
+original actions and tooltips.
+
+**Built as a FOURTH instance of the segmented-run idiom**, not as something
+new — same side-borders-start-at-zero rule, same `!important` requirement
+(both buttons set `border` and `border-radius` inline, from `uiSettingsBtnCSS()`
+and `uiHelpBtnCSS()`, and a normal-priority rule cannot outrank inline). Three
+things are specific to it:
+
+- **A CLASS, not an id prefix**, because `mb-settings-btn` and
+  `mb-app-help-btn` share none — and a class, not a WRAPPER, because
+  `_TOOLBAR_TAIL_ORDER` re-appends both as direct children of
+  `#mb-show-all-controls-container` and `toolbar-menus.spec.js` reads that
+  container's own children to assert they are the last two. A wrapper is the
+  obvious way to build a pill and would have broken both.
+- **The caps are run-relative** (`:not(.c + .c)` / `:not(:has(+ .c))`).
+  `:first-of-type`/`:last-of-type` are wrong for the same reason CLAUDE.md
+  already records for the sort group: they count elements of the same TAG, and
+  these `<button>`s are neither the first nor the last button among their
+  siblings — the fetch buttons and both menu buttons are buttons too.
+- **It has to cancel a flex gap**, which none of the h2/h3 runs do. Those sit
+  in inline layout and space themselves with margins; this one lives in a
+  `display:inline-flex` bar with `gap: 8px` between every pair of children, and
+  a flex gap cannot be suppressed for one pair. One segment pulls back by
+  exactly one `--mb-toolbar-gap` — a custom property declared on the bar and
+  read by both sides, so the pill cannot split open if that number is retuned.
+  **Which segment carries that margin was a real defect**; see below.
+
+**The colours are SETTINGS, not pill CSS.** `sa_ui_settings_btn_style` and
+`sa_ui_help_btn_style` keep their own keys; only their DEFAULTS moved to match
+`sa_ui_toolbar_menu_btn_style`, with `_SETTINGS_MIGRATIONS` entries naming the
+old slate values. So the pill reads as one control by default and a user who
+had chosen their own colours keeps them. Forcing one ground in the stylesheet
+would have been less code and would have silently overwritten that choice.
+
+Measured by `scripts/probe-toolbar-pinned-pill.js` before any assertion was
+written: both halves `rgb(236, 239, 241)`, seam delta **0.0 px**, radii
+`6 0 0 6` and `0 6 6 0`, one hairline. A pill is a geometry claim, so the spec
+asserts geometry — and asserts the background against `#mb-data-menu-btn`
+rather than a literal, because the property is that they AGREE; a literal would
+still pass if the menu buttons were recoloured and the pinned pair were not.
+
+### A width sweep found what a single measurement could not
+
+The first version put the gap-cancelling margin on the RIGHT half — the obvious
+place, since that is the segment being pulled toward its partner. At 1400px it
+measured perfectly: seam 0.0 px, correct caps, one hairline.
+
+The bar is also `flex-wrap: wrap`. Sweeping the viewport from 1400px down in
+10px steps found **12 widths where the two halves land on different lines**,
+including **1040-1080px** — an ordinary browser window, not a contrived
+minimum. On those widths the negative margin pulled ❓ to `bar.x - 8`, i.e.
+eight pixels outside the container it belongs to, wearing a square left edge
+and no partner.
+
+Moving the margin to the LEFT half fixes the failure mode without preventing
+the split: the same pull now only shortens a line that has nothing after it,
+and ❓ starts the new line exactly at `bar.x`. Re-measured: overhang 0 at every
+splitting width, seam still 0.0 px when they share a line.
+
+**Preventing the split needs a wrapper, and the wrapper costs more than the
+split does.** The two must stay DIRECT children of the bar
+(`_TOOLBAR_TAIL_ORDER` re-appends them there; the spec reads the container's
+own children), so a wrapper means changing the ordering contract and its test
+to buy a square corner at a minority of widths. Recorded as a deliberate
+trade, not an oversight.
+
+The transferable part: a segmented control's geometry was verified at one
+viewport, and one viewport is where this kind of bug hides. The sweep is four
+lines in the probe.
+
+### The backtick trap, third recorded occurrence
+
+The CSS comment said "whose \`gap\` applies", inside the `GM_addStyle` template
+literal. `node --check` reported `missing ) after argument list` at the
+template's OPENING line, 340 lines above the real cause.
+
+**This one was the lucky variant.** CLAUDE.md warns that a BALANCED pair is the
+dangerous case because the file stays syntactically valid and only the CSS
+after it stops applying. Here the pair was balanced too, but what sat between
+the backticks (`gap`) left two adjacent template literals with no operator
+between them, so it failed loudly instead of silently. The rule is unchanged
+and the comment now carries its own warning: grep the edited region for a
+backtick before debugging anything else.
+
+### A correction carried over from the help branch
+
+While checking whether inline styles were safe for the pill, the 9.99.736-745
+changelog turned out to say something narrower than I had written into the help
+renderer's JSDoc, CLAUDE.md, DEBUG-NOTES and a mutation entry the day before.
+
+What `/account/*`'s `style-src 'self'` blocks is **`<style>` elements and
+`style="…"` written into an `innerHTML` template** — 9.99.737's own words are
+"built via `container.innerHTML` templates with ~75 inline `style="…"`
+attributes, which are blocked by page CSP the same as `<style>` elements".
+**CSSOM writes are not blocked**, which is why the entire h1 toolbar sets its
+styles with `el.style.cssText` and renders correctly on
+`/account/applications`.
+
+So the Markdown renderer, which builds nodes, was never in the blocked case.
+The CHOICE of a stylesheet stands — it is what every other panel does and far
+less code than a dozen properties per node — but the reason given for it did
+not, and it had been used to excuse a mutation as an honest `"expect": "pass"`
+("no fixture can see this"). With the reason gone so is the excuse: the
+stylesheet's absence is observable as a computed value, the spec now asserts
+it, and that mutation is `"expect": "fail"` like the rest. One honest pass
+remains, not two.
+
+That is the second wrong-reason correction in two days on this work — the other
+being `updateBarcodeHighlightBtnState()` supposedly rewriting `innerHTML`. Both
+were plausible, both were load-bearing in a rule that is itself correct, and
+both would have licensed a wrong generalisation later.

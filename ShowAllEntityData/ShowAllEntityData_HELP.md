@@ -108,15 +108,14 @@ The controls beside the page heading are two pull-down menus plus two pinned
 buttons:
 
 ```
-🧮¹ Show all …  |  📦 Data ▾   🛠 View ▾   ⚙️   ❓
+🧮¹ Show all …  |  📦 Data ▾   🛠 View ▾   [ ⚙️ | ❓ ]
 ```
 
 | Menu | Rows |
 |------|------|
 | **📦 Data ▾** | 💾 Save to Disk · 📂 Load from Disk · 💾 Export |
 | **🛠 View ▾** | 📏 Density · 📊 Statistics · ▌█▌▐█▐▌██▐▌█ Barcode · 🎹 Keyboard Shortcuts |
-| **⚙️** | Settings Manager — pinned, never in a menu |
-| **❓** | This help page — pinned; Shift-click reads it in the page |
+| **⚙️ ❓** | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
 
 Each row shows its own keyboard shortcut on the right. Open a menu with the
 mouse or with that shortcut — pressing `Ctrl+D` opens **🛠 View** and then the
@@ -578,7 +577,7 @@ you automatically.
 | ⚡ Performance | Debounce, sort chunk size, render and warning thresholds, history limit |
 | 🎨 UI features | Column visibility, density control, sticky headers, default hidden columns per page type |
 | 📌 Table stickiness | Sticky column and header configuration |
-| 🖌️ Element UI styles | Action button base style, per-button colours, toolbar menu button colours, dividers, filter input styles, header cell colours |
+| 🖌️ Element UI styles | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours |
 | 🔗 Relationships column | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching |
 | ↔️ Column resize | Enable resizing; auto-resize on load |
 | 📤 Export | What headers and cells carry in an export |
