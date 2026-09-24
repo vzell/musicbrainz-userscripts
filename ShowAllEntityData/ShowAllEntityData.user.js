@@ -32404,8 +32404,18 @@ a { color: #1565c0; }`;
      * `mb-picard-cell`) are excluded from serialization by the caller before
      * this is ever invoked on them.
      *
+     * A release tracklist's LENGTH mismatch marking adds `lenFlag` (and
+     * `lenTip`, its tooltip). It lives ON the `<td>` as `data-mb-len-flag` —
+     * attributes only, by design (see `_applyLengthMismatchFlag()`) — so
+     * `html` alone cannot carry it, and a reopened tracklist used to come back
+     * with every flag, tint and LENGTH button gone. The tooltip is taken only
+     * when `data-mb-col-tip` marks it as this script's own. Both fields are
+     * optional, so a file saved before them loads exactly as it always did;
+     * `_restoreLenMismatchFlag()` is the reader.
+     *
      * @param {HTMLTableCellElement} cell
-     * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean}}
+     * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
+     *            lenFlag?: string, lenTip?: string}}
      */
     function _buildDiskCellData(cell) {
         const data = {
@@ -32417,7 +32427,48 @@ a { color: #1565c0; }`;
             data.mbid = cell.dataset.mbid || null;
             data.relDone = cell.dataset.relDone === '1';
         }
+        if (cell.dataset.mbLenFlag) {
+            data.lenFlag = cell.dataset.mbLenFlag;
+            if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;
+        }
         return data;
+    }
+
+    /**
+     * Re-marks a hydrated duration `<td>` with the LENGTH mismatch flag its cell
+     * record carries (`lenFlag`/`lenTip`, written by `_buildDiskCellData()`).
+     * Called from both of `_hydrateAndRenderFromSnapshotData()`'s cell loops,
+     * after their cleanup passes.
+     *
+     * A saved file is user-supplied data, so only the two kinds
+     * `_lengthMismatchFlag()` produces — `warn`, `severe` — are ever written
+     * into the DOM, and the tooltip only when it is a string.
+     *
+     * Restores the flag as it was SAVED; it does not re-derive it under the
+     * current threshold. It cannot: the millisecond values the comparison ran
+     * on are not in the file either (`data-mb-ms` never survives a snapshot —
+     * see `_msResetCarriedOverPrecision()`). That is the same contract the
+     * live-date flags already have, which travel as stored HTML. The one
+     * setting honoured is the on/off switch: turning flagging off is a decision
+     * about what to show, and the file should not overrule it.
+     *
+     * Everything the flag drives needs no further hook: the tint and glyph are
+     * CSS on the attribute, the summary buttons and the structural filter read
+     * it off the source rows these cells become, and a later Save takes it again
+     * — which is why `data-mb-col-tip` is re-set with the tooltip.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _restoreLenMismatchFlag(td, cellData) {
+        if (!cellData || (cellData.lenFlag !== 'warn' && cellData.lenFlag !== 'severe')) return;
+        if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return;
+        td.dataset.mbLenFlag = cellData.lenFlag;
+        if (typeof cellData.lenTip === 'string' && cellData.lenTip) {
+            td.title = cellData.lenTip;
+            td.dataset.mbColTip = '1';
+        }
     }
 
     /**
@@ -72591,6 +72642,9 @@ a { color: #1565c0; }`;
                             // Reset a cell that was captured mid-toggle, so a
                             // hydrated table always starts in seconds.
                             _msResetCarriedOverPrecision(td);
+                            // A LENGTH mismatch lives on the <td>, not in its
+                            // HTML — put it back from the cell record.
+                            _restoreLenMismatchFlag(td, cellData);
                             tr.appendChild(td);
                         });
 
@@ -72741,6 +72795,9 @@ a { color: #1565c0; }`;
                         // sub-table opened in its own tab always starts in
                         // seconds — exactly like one reached by pagination.
                         _msResetCarriedOverPrecision(td);
+                        // A LENGTH mismatch lives on the <td>, not in its
+                        // HTML — put it back from the cell record.
+                        _restoreLenMismatchFlag(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',

@@ -386,10 +386,107 @@ does for its inline-art probe), and it's real userscript work: fixture spec, mut
 
 * TODO What's left from the parking lot in AUDIT.org
 
-- Step 26's memoization of updateFilterButtonsVisibility's tallies
 - that icon-mirror half
-- _adoptJesus2099MsLength()
   
+* TODO _adoptJesus2099MsLength()
+
+#+begin_example
+    /**
+     * Removes every jesus2099 artifact from one of THIS script's rendered
+     * tables (or from one captured source `<tr>`), so the consolidated table
+     * we render carries no third-party leftovers.
+     *
+     * Scope is deliberately limited to what is handed in — always a
+     * `table.tbl` we built, or a captured row destined for one. Everything
+     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
+     * the pending-edit toggles, its own toolbar) is left untouched: those are
+     * live features of the surrounding page, which must keep working exactly
+     * as before. The audit behind that boundary (scripts/scope-jesus2099-
+     * leaks.py against debug/work-rec.html and debug/therising.html) found
+     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
+     * outside our tables versus only `treleases` and the
+     * `jesus2099userjs81127*` tracklist family inside them.
+     *
+     * Three dispositions, in priority order:
+     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
+     *      already owned, with a load-bearing gate, elsewhere.
+     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
+     *   3. Anything else → marker class token(s) removed, element kept.
+     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
+     *      jesus2099 sets to its own script name — e.g.
+     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
+     *      except a `title` of our own, marked `data-mb-col-tip` (see
+     *      `_isOwnColumnTooltip()`). Both
+     *      are restricted to marker-carrying cells on purpose: native
+     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
+     *      (artist sort names, country abbreviations), and a `text-shadow`
+     *      with no jesus2099 marker belongs to some other third-party script
+     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
+     *      elements in debug/therising.html alone — verified via
+     *      scripts/check-text-shadow-owner.py), so neither may be stripped
+     *      blind.
+     *
+     * Idempotent: a second call finds nothing and is a no-op. Safe on a
+     * detached node, which is what the captured-source-row pass relies on.
+     *
+     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
+     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
+     */
+    /**
+     * Adopts a jesus2099-leaked millisecond-precision Length value into
+     * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
+     * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
+     * `_msStampReleaseTrackLengths()` use) instead of either destroying it
+     * (an earlier version of this fix just regex-stripped the ".mmm" suffix)
+     * or leaving it as unmarked, un-toggleable text (the ORIGINAL behaviour
+     * — see `tests/fixtures/jesus2099-artifact-purge.spec.js`'s now-
+     * superseded "the purge touches decoration, never the duration text"
+     * assertion).
+     *
+     * jesus2099's own `RECORDING_LENGTH_COLUMN` fetches this value from the
+     * EXACT SAME MusicBrainz Web Service data ShowAllEntityData's own
+     * `ws2`/`batch` ms-source paths would otherwise request — adopting it
+     * is not a guess, it is reusing data that already cost a real network
+     * request, and it means our own lazy fetch never re-requests this
+     * recording once adopted (see the `needFetch` change in
+     * `_msToggleLengthPrecision()`).
+     *
+     * Resets the cell's DISPLAYED text back to plain seconds
+     * (`data-mb-sec-text`, MusicBrainz's own rounding) rather than leaving
+     * the millisecond text visible — millisecond display is transient
+     * DISPLAY state (the same principle `_msResetCarriedOverPrecision()`
+     * applies to cross-tab-hydrated cells, for a different reason: there it
+     * DISCARDS the value entirely, because a hydrated cell carries no
+     * independently-fetched `ms` to safely re-derive `data-mb-sec-text`
+     * from; here jesus2099's own text IS that source, parsed once via
+     * `_parseDurationToMs()`). This matters most on a page mixing
+     * jesus2099-touched rows (a real navigation) with rows ShowAllEntityData
+     * pulled in via its own internal pagination fetch — which jesus2099
+     * never runs against, since Tampermonkey only injects on real page
+     * loads matching its own `@match` (confirmed via
+     * `debug/place-perf-single-tabbed-final.html`: some rows arrived
+     * decorated, others plain, in the SAME final table): every row starts
+     * from the SAME collapsed state instead of a confusing per-row mix.
+     *
+     * @param   {HTMLTableCellElement} td  A Length `<td>` whose current text
+     *   may be jesus2099's own `M:SS[.mmm]` format.
+     * @returns {boolean} Whether a value was adopted.
+     */
+    function _adoptJesus2099MsLength(td) {
+        if (td.dataset.mbMs) return false;              // idempotent
+        const text = td.textContent.trim();
+        if (!_MS_RENDERED_DURATION_RE.test(text)) return false;
+        const ms = _parseDurationToMs(text);
+        if (ms === null) return false;
+        td.dataset.mbMs = String(ms);
+        td.dataset.mbSecText = _msFormatSeconds(ms);
+        _msWriteDurationText(td, td.dataset.mbSecText);
+        return true;
+    }
+#+end_example
+
+
 * TODO The two recorded (unfixed) harness weaknesses:
 
   1. CDN dependency on every fixture load (DEBUG-NOTES, 2026-09-18). loadPage.js pulls iro and pako from cdn.jsdelivr.net / cdnjs on every fixture page load, so a network blip fails whichever spec happens to be loading at that moment — it hit tag-value-entity-column-leak, which
@@ -781,27 +878,21 @@ Add extensive tooltip support for all buttons/filter-fields/clickable anchors li
 #+end_example
 
 
-* TODO I widened the measurement band, and said why
+* TODO CustomizableMultiSelector
 
-  The gate ran 347 s on a different tree — third consecutive run at 344–347 s against six earlier at 337–341. The row-10 note had already written down which run would decide and what to do if it agreed, so ±1% is now restated as ±2%. That ordering is the point: the threshold was fixed before the deciding run, not
-  fitted to it afterwards.
-
-  The cause is left open and recorded as open. The 32 tests this branch added are all sub-2 s and can't account for ~7 s under that file's own "the suite costs whatever its slowest spec costs" reading. It's either rel-auto-retry-failed itself or host conditions nothing recorded. Both are testable; neither has been
-  tested.
-
-  Outstanding
-
-  org/TODO.org is still the only dirty file — your notes, deliberately untouched across all three merges now.
-
-  CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since 2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
+CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since
+2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
 
 * DONE still left
   
   F6 is now the whole of what's left in org/config-handling.org — the mirror is 395 versions and three library versions behind, and the library gap is no longer cosmetic: 4.1.0's dirty-set SAVE, 4.2.0's dialog rewrite and 4.3.0's header all sit unpublished. The one remaining sub-item is the five type: 'table' settings never seeing rows added in a later version.
 
-* TODO tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
+* DONE tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
 
 * remaining stuff
 
-* redesign of the action buttons
+* TODO redesign of the action buttons
 
+* TODO filter checkboxes per column
+
+* TODO treat work ARs as first class citizens in releaseTypes 'release-tracks'

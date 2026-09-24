@@ -1808,6 +1808,27 @@ same reason the headers do — a native Length `<td>` is `class="treleases"`,
 and `_isJesus2099Treleases()` reads "a treleases cell with a title" as
 jesus2099's. See the `treleases` section above.
 
+**What attributes do NOT survive is serialization.** Save to Disk and the
+sub-table handoff store a cell as its `innerHTML` (`_buildDiskCellData()`), so
+until this was fixed a reopened tracklist lost every flag, tint and LENGTH
+button — no error, the table just looked clean. The writer now records
+`lenFlag`/`lenTip` in the cell record, and `_restoreLenMismatchFlag()` puts them
+back from BOTH of `_hydrateAndRenderFromSnapshotData()`'s cell loops. Three
+things about it are deliberate:
+- **Restored as saved, never re-derived.** The millisecond values the
+  comparison needs do not survive a snapshot either (`data-mb-ms` — see the
+  millisecond section below), so there is nothing to recompute from. Only the
+  on/off switch is honoured on load.
+- **Allowlisted.** A saved file is user-supplied data: only `warn`/`severe`
+  reach `data-mb-len-flag`, and the tooltip only as a string.
+- **The reader re-sets `data-mb-col-tip`**, or a SECOND save would refuse the
+  tooltip (the writer takes a title only when that marker says it is ours).
+  Only the save-again test in `len-flag-disk-roundtrip.spec.js` sees this.
+
+Any other `<td>`-level state a feature needs after a reload has the same
+problem, and the rel cell's `mbid`/`relDone` is the older precedent for the
+same fix.
+
 **The `(N) LENGTH ⚠️`/`(N) LENGTH ❌` summary buttons filter STRUCTURALLY**,
 not by typing a glyph into the global filter the way the live-date
 WARNING/ERROR buttons do (they can, because `.mb-live-date-flag`'s glyph is

@@ -2,9 +2,13 @@
  * Probes whether the LENGTH ⚠️/❌ summary buttons survive Save to Disk →
  * Load from Disk on a release tracklist.
  *
- * Suspected while landing PERFORMANCE.org Step 26, and CONFIRMED by this probe
- * on 2026-09-23 (8 flagged cells before the save, 0 after the load, both
- * buttons hidden — DEBUG-NOTES.md, the Step 26 entry). Still open. The reason:
+ * Suspected while landing PERFORMANCE.org Step 26, CONFIRMED by this probe on
+ * 2026-09-23 (8 flagged cells before the save, 0 after the load, both buttons
+ * hidden — DEBUG-NOTES.md, the Step 26 entry), and FIXED on 2026-09-24 by
+ * `_restoreLenMismatchFlag()`. The regression test is now
+ * tests/fixtures/len-flag-disk-roundtrip.spec.js; this stays as the
+ * report-only reproduction, and against a fixed tree it should print 8 and 8.
+ * The original reason:
  * `_buildDiskCellData()` stores a cell's `innerHTML` plus colSpan/rowSpan and
  * nothing else, while a length mismatch is marked by `data-mb-len-flag` ON the
  * `<td>` itself (`_applyLengthMismatchFlag()`, attributes only by design). A

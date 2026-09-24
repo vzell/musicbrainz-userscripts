@@ -15230,6 +15230,9 @@ resume that adds marker-carrying rows reaches.
 
 ### Found on the way, NOT fixed here: LENGTH flags do not survive Save to Disk
 
+*Fixed the next day — see the 2026-09-24 entry on branch
+`fix/len-flag-disk-roundtrip` below.*
+
 `_buildDiskCellData()` stores a cell's `innerHTML` plus colSpan/rowSpan, and
 nothing else. A length mismatch is marked by `data-mb-len-flag` ON the `<td>`,
 and `_applyLengthMismatchFlag()` is attributes-only by design. So a reopened
@@ -15247,3 +15250,65 @@ it was not probed. The ⏳ pending-edits markers are not affected, because
 the attribute in the cell record (a format addition the loader must read back),
 or re-derive the flag on hydrate from the two duration cells' text. The second
 would lose sub-second precision, since `data-mb-ms` does not survive either.
+
+## 2026-09-24 — LENGTH flags lost on Save to Disk → Load (branch fix/len-flag-disk-roundtrip)
+
+This closes the finding recorded in the Step 26 entry above. The root cause was
+exactly the one suspected there. `_buildDiskCellData()` wrote a cell as
+`{html, colSpan, rowSpan}` (plus `mbid`/`relDone` for a rel cell), and a length
+mismatch is `data-mb-len-flag` ON the `<td>`. So the flag was never in the file.
+Both writers use the same builder: Save to Disk, and the sub-table handoff
+through `captureSubtableSnapshot()`.
+
+### The fix
+
+The writer adds optional `lenFlag`/`lenTip` fields. `_restoreLenMismatchFlag()`
+reads them back, called from both of `_hydrateAndRenderFromSnapshotData()`'s
+cell loops after their cleanup passes. Nothing else needed a hook, because
+everything the flag drives already reads the attribute:
+- the tint and the glyph (CSS);
+- the summary counts (`_sourceRowTally()`, over the rebuilt source rows);
+- the structural ⚠️/❌ filter (`testRowMatch()`).
+
+The design choices, and why:
+
+- **As saved, not re-derived.** Re-deriving under today's threshold looks
+  better on paper, but the millisecond values behind the comparison do not
+  survive a snapshot either (`data-mb-ms`, `_msResetCarriedOverPrecision()`).
+  Re-deriving would have meant reading seconds from cell text, which is exactly
+  the precision the feature exists to go past. Live-date flags already travel as
+  saved HTML, so this matches them. The on/off setting is still honoured.
+- **No format bump.** A file without the fields loads as it always did, which is
+  the precedent set by the `incomplete` block.
+- **Not reachable through the handoff today.** `release-tracks` is not in
+  `SA_SNAPSHOT_SUPPORTED_PAGETYPES`, and no other pageType has LENGTH flags. So
+  the single-table loop's call is recorded as an honest `expect: "pass"`: it is
+  unreachable, not unverified.
+
+### One prediction that was wrong, kept because it was plausible
+
+While writing the reader I inlined its allowlist rather than using a
+module-level `Set`, and first gave a TDZ reason: that a sub-table tab hydrates
+during start-up, before a `const` declared above it would be initialised.
+Checking the one tab-side call site (`_hydrateAndRenderFromSnapshotData()`,
+reached from the start-up block) showed it sits LATER in source order than the
+helper. So the `const` would have been initialised, and the reason was false.
+I removed it from the JSDoc before commit. The inline check stayed, because it
+is two values.
+
+### Coverage
+
+Covered by `tests/fixtures/len-flag-disk-roundtrip.spec.js`, 4 tests:
+- the round trip restores each cell's kind and tooltip, and the ⚠️ filter still
+  filters;
+- a restored tracklist saved again keeps its flags;
+- flagging switched off before the load wins;
+- a tampered file applies only a known kind, and only a string tooltip.
+
+Three of the four failed on the unfixed code. The switched-off test passed
+there, vacuously, and its mutation is what makes it load-bearing.
+
+The mutation list is `scripts/mutations/len-flag-disk-roundtrip.json`: 9
+entries, 2 of them honest `expect: "pass"`. The first is the writer's ownership
+check on the tooltip, which every flag a fixture can produce already satisfies.
+The second is the single-table loop, which is unreachable.

@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-24",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "A release tracklist saved with 💾 Save to Disk and reopened with 📂 Load from Disk no longer loses its track-vs-recording LENGTH flags. Every ⚠️/❌ tint, its tooltip and both (N) LENGTH buttons used to vanish on the reopened table, because the flag lives on the cell itself and only the cell's contents were saved. They now come back exactly as saved, and the buttons count and filter them as before."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "❓ Help's release-tracklist section now says what a reopened file shows: the flags as they were when saved, not recomputed under a threshold changed since (the millisecond lengths behind them are not in the file); switching flagging off still hides them; and a file saved by an older version has none until it is re-saved from the live page."
+        ]
+      }
+    ]
+  }
+]

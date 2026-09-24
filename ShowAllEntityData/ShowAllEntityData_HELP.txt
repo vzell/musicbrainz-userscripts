@@ -1664,6 +1664,15 @@ standard filterable/sortable multi-table view (one sub-table per medium).
   clicking it again (or "Clear ALL filters") releases it.  They filter
   structurally rather than by typing a glyph into the global filter, so they
   compose with a typed query — press ⚠️, then type to narrow further.
+
+  The flags are saved with the table.  A tracklist reopened with 📂 Load from
+  Disk shows them — tints, tooltips and both buttons — exactly as they were
+  when you saved it.  They are NOT recomputed on load, so a threshold you have
+  changed since does not apply to an older file (the millisecond lengths the
+  comparison needs are not in the file).  Switching flagging off does apply:
+  with it off, a loaded file shows no flags.  A file saved by an older version
+  of the script carries no flags at all; re-save it from the live page to get
+  them.
 • "Recording of"/"Recorded at"/"Recorded in"/"Mixed at" column family —
   "Recording of work" (with any Acappella/Cover/Demo/Instrumental/Karaoke/
   Live/Medley/Partial attribute rendered inline), "Recording date",
