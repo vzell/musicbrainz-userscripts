@@ -1,4 +1,4 @@
-* DONE redesign of the action buttons
+* redesign of the action buttons
 ** DONE Decisions (2026-09-24) and what shipped
 
 Options were put up as ASCII mockups and the chosen shape was *two menus*:
@@ -118,3 +118,65 @@ The "Save to Disk" and "Load from Disk" buttons also occupy too much space I thi
 6.)
 
 Take also into account possible changes to the testing framework
+
+
+* DONE The fetch progress bar should be positioned after the last button in h1
+
+Shipped in 9.99.1150: moved =mb-fetch-progress-wrap= to the end of
+=_TOOLBAR_TAIL_ORDER= (was first), so it now trails =❓= instead of sitting
+between the fetch buttons and =⏹ Stop=. See CLAUDE.md's "The h1 toolbar is two
+pull-down menus plus two pinned buttons" table (row 9).
+
+The fetch progress bar should be positioned AFTER the last button (Help) in the h1 header line
+
+#+begin_example
+@debug/fetch-progress-bar-new.html - old (wrong) behaviour, before this fix
+@debug/fetch-progress-bar-old.html - even older pre-redesign behaviour, matches what shipped
+#+end_example
+
+* TODO resize handle
+
+The following dialogs should get a resize handle on the lower right corner
+
+#+begin_example
+<div id="mb-shortcuts-help"
+<div id="mb-app-help-dialog"
+#+end_example
+
+which should also be remembered (together with the whole position)
+
+
+* TODO Remove "Show all " generically from all buttons 
+
+#+begin_example
+"Show  " - https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations | https://musicbrainz.org/user/vzell/ratings/event/ | https://musicbrainz.org/user/vzell/ratings | https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations
+"(xxxxx) " - https://musicbrainz.org/report/LowDataQualityReleases?filter=1
+"Show all " - everywhere else
+#+end_example
+* TODO more action button consolidation
+
+- On e.g. https://musicbrainz.org/user/vzell/subscriptions/artist the button text in the five button should remove
+"subscriptions" and instead render it as "Subscriptions" in bold in front of the buttons
+
+vzell | Subscriptions: [Artist] [Collection] [Label] [Series] [Editor] | 
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+Bruce Springsteen | RGs: [Artists] [Various Artists] |
+
+- https://musicbrainz.org/report/LowDataQualityReleases?filter=1
+
+Releases marked as having low data quality | [Unfiltered] [Subscribed Only]
+
+- https://musicbrainz.org/user/vzell/tag/back%20scan%20missing - remove "Tag for Entities"
+
+vzell’s tag “back scan missing” (see everyone’s) | [Upvoted] [Downvoted]
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+
+Bruce Springsteen | Releases: [Artist] [Various Artist]
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
+
+Bruce Springsteen | [Aliases] [Credits]
+
