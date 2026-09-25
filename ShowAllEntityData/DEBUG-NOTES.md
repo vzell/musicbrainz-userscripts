@@ -13908,6 +13908,42 @@ real regression gets shipped.
 Both spec names are worth knowing, but the pattern to expect is "some spec,
 about 1 run in 3", not "that spec".
 
+### 2026-09-25 — the same pattern across the help/pill work, four victims deep
+
+Six full-suite runs over one afternoon on `petri`, while the host was also
+running mutation lists, probes and a live snapshot capture back to back:
+
+| Arm                                  | Tests | Result                                       |
+|--------------------------------------|-------|----------------------------------------------|
+| `help-github-md`, run 1              |   585 | green                                        |
+| `help-github-md`, run 2              |   587 | 1 failed — `rel-column-fetch-failure:210`    |
+| `help-github-md`, run 3              |   587 | 1 failed — `uniq-drop-join-phrases:200`      |
+| `main`, comparison arm               |   571 | green                                        |
+| `help-github-md`, final              |   590 | green                                        |
+| merged `main`, gate                  |   590 | 1 failed — `length-column-filter-colon-gap:25` |
+
+**Four different victims now** — the two named above plus those two — and the
+merge-gate instance reproduced the 2026-09-20 shape exactly: the identical
+userscript had just run green on the branch, and `git diff` between the two
+trees is **one line**, the `@version` comment. The changelog JSON, the deleted
+WIP file and the regenerated `CONFIG_DEFAULTS.json` are the only other changes,
+and none of them is read by any spec — that artifact's own header says nothing
+in the userscript reads it.
+
+Two things this adds to the earlier note:
+
+- **`uniq-drop-join-phrases` is the interesting one.** Unlike the others it
+  POLLS rather than sleeping — deliberately, because `waitForFilterSettled()`
+  works exactly once on that grouped pageType — so "a fixed wait was too short"
+  does not explain it. A poll timing out under load is a different mechanism
+  from a sleep being too short, and it widens the family rather than fitting it.
+- **Host state is a real term and was not controlled for here.** The
+  2026-09-18 figures were taken on an idle box at 1 red in 3; this afternoon
+  ran 3 red in 6 while the same machine was doing other Playwright work
+  throughout. That is consistent with load sensitivity and is not evidence of
+  anything else, but it is also not a clean measurement, and saying so is
+  cheaper than someone later reading 3-in-6 as a regression.
+
 ## 2026-09-21 — every numeric setting is a string after the first SAVE, and four reads throw the value away
 
 Reported from a real browser, which is the only place it was ever visible: the
