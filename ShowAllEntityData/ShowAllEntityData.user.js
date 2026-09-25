@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1149+2026-09-25
+// @version      9.99.1150+2026-09-25
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -24973,13 +24973,13 @@
      * `<input type="file">` need no entry.
      */
     const _TOOLBAR_TAIL_ORDER = [
-        'mb-fetch-progress-wrap',
         'mb-button-divider-initial',
         'mb-disc-menu-btn',
         'mb-data-menu-btn',
         'mb-view-menu-btn',
         'mb-settings-btn',
         'mb-app-help-btn',
+        'mb-fetch-progress-wrap',
     ];
 
     /**

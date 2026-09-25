@@ -84,9 +84,11 @@ test.describe('the h1 toolbar menus', () => {
         await expect(bar.locator('#mb-settings-btn')).toHaveCount(1);
         await expect(bar.locator('#mb-app-help-btn')).toHaveCount(1);
 
-        // …and ⚙️ ❓ are the last two, in that order.
-        expect(await bar.evaluate((el) => Array.from(el.children).map((c) => c.id).filter(Boolean).slice(-2)))
-            .toEqual(['mb-settings-btn', 'mb-app-help-btn']);
+        // …and ⚙️ ❓ are the last two BUTTONS, in that order — the fetch
+        // progress bar (present but display:none outside a fetch) trails
+        // both of them, per _TOOLBAR_TAIL_ORDER.
+        expect(await bar.evaluate((el) => Array.from(el.children).map((c) => c.id).filter(Boolean).slice(-3)))
+            .toEqual(['mb-settings-btn', 'mb-app-help-btn', 'mb-fetch-progress-wrap']);
     });
 
     test('⚙️ and ❓ are drawn as ONE pill: same ground as the menus, touching, one hairline', async ({ page }) => {

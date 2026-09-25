@@ -2993,18 +2993,21 @@ controls, nine of them labelled. It is now:
 |-------|----------------------------------------|----------------------------------------------|
 | 1     | `🧮N …` fetch buttons                  | always                                       |
 | 2     | `#mb-stop-btn`                         | always (hidden outside a fetch)              |
-| 3     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch)              |
-| 4     | `#mb-button-divider-initial`           | always — the only surviving `\|`             |
-| 5     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render          |
-| 6     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                      |
-| 7     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)        |
-| 8     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill   |
-| 9     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill  |
+| 3     | `#mb-button-divider-initial`           | always — the only surviving `\|`             |
+| 4     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render          |
+| 5     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                      |
+| 6     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)        |
+| 7     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill   |
+| 8     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill  |
+| 9     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch) — trails everything, `org/action-button-redesign.org` |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
-not named there keeps whatever position it was appended at.
+not named there keeps whatever position it was appended at. The progress bar
+sits LAST rather than beside `#mb-stop-btn` deliberately — it used to sit
+between the fetch buttons and Stop, which read as if Stop belonged to the
+menus/pill that followed it rather than to the fetch buttons that preceded it.
 
-**8 and 9 are drawn as ONE segmented pill** — a fourth run alongside the three
+**7 and 8 are drawn as ONE segmented pill** — a fourth run alongside the three
 in "The h2/h3 control runs are segmented pills" below, and built the same way,
 so read that section's rules first. Three things are specific to this one:
 
@@ -3017,7 +3020,8 @@ so read that section's rules first. Three things are specific to this one:
 - **A class, never a wrapper element.** They must stay DIRECT children of
   `#mb-show-all-controls-container`: `_TOOLBAR_TAIL_ORDER` re-appends them
   there, and `toolbar-menus.spec.js` reads the container's own children to
-  assert they are the last two.
+  assert they are the last two BUTTONS — `#mb-fetch-progress-wrap` (present
+  but `display:none` outside a fetch) is the true last child, per row 9 above.
 - **It cancels the flex gap, and the margin sits on the LEFT half.** The bar is
   `display:inline-flex` with a gap between every pair of children, and a flex
   gap cannot be suppressed for one pair — so one segment pulls back by exactly

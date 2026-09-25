@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1150",
+    "date": "2026-09-25",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The fetch progress bar now appears after the ❓ Help button, at the very end of the h1 toolbar — it previously sat between the fetch buttons and the ⏹ Stop button, a leftover position from the toolbar redesign."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1149",
     "date": "2026-09-25",
     "sections": [
