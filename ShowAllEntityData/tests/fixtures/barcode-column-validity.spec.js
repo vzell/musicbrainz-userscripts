@@ -15,9 +15,10 @@ const { typeGlobalFilter, waitForFilterSettled } = require('../support/filterSor
 // new 📊 sections: "Barcode - Validity" (fixed valid/invalid flags, mutually
 // exclusive per row since a Barcode cell holds 0 or 1 value), "Barcode -
 // Format" (which GS1 format a STRICTLY CONFORMING entry matches), and
-// "Barcode - Same As" (rows whose canonical, leading-zero-stripped barcode
-// number is shared by another row, even in a different textual
-// representation — e.g. a UPC-A and its own zero-padded EAN-13 form).
+// "Barcode - Same As" — an OPEN VALUE FAMILY, one entry per canonical-
+// equivalence GROUP, labeled with the actual raw representations involved
+// (e.g. "0196587565725 / 196587565725" — a real MusicBrainz UPC-A/EAN-13
+// pair), not a flat "N rows share a barcode" count.
 //
 // The check-digit algorithm itself is verified against real, independently
 // sourced examples in _parseBarcodeCode()'s own JSDoc; this fixture reuses
@@ -26,6 +27,10 @@ const { typeGlobalFilter, waitForFilterSettled } = require('../support/filterSor
 // that happens to be internally self-consistent still fails this test.
 const RG_URL = 'https://musicbrainz.org/release-group/aaaaaaaa-0000-0000-0000-000000000003';
 const FIXTURE_FILE = path.join(__dirname, 'barcode-column-validity.html');
+
+// Same-As group labels, longest raw representation first (_barcodeSameAsGroupLabel()).
+const SAME_AS_GROUP_1 = '🔢 0036000241457 / 036000241457'; // Release A (UPC-A) / Release B (its own EAN-13)
+const SAME_AS_GROUP_2 = '🔢 04006381333931 / 4006381333931'; // Release D (EAN-13) / Release E (its own GTIN-14)
 
 async function loadAndRender(page) {
     await loadUserscriptPage(page, {
@@ -133,23 +138,31 @@ test('flags invalid barcodes without rewriting text, and reports Validity/Format
     const sameAsSection = sections.find((s) => s.label === 'Barcode - Same As');
     expect(sameAsSection).toBeTruthy();
     const sameAsByLabel = Object.fromEntries(sameAsSection.items.map((i) => [i.label, i.count]));
-    // Two independent Same-As groups (A/B and D/E) — 4 rows total.
-    expect(sameAsByLabel['🔢 same number as another row']).toBe(4);
+    // Two independent Same-As groups (A/B and D/E), each its own entry,
+    // labeled with the group's own raw representations — never a flat
+    // "N rows share a barcode" count, and never including row C or J
+    // (unique, no partner) or row F (invalid, but still digit-shaped —
+    // its canonical 36000241452 differs from A/B's by one digit, so it
+    // must NOT be folded into their group).
+    expect(Object.keys(sameAsByLabel).sort()).toEqual([SAME_AS_GROUP_1, SAME_AS_GROUP_2].sort());
+    expect(sameAsByLabel[SAME_AS_GROUP_1]).toBe(2);
+    expect(sameAsByLabel[SAME_AS_GROUP_2]).toBe(2);
 });
 
-test('"Barcode - Same As" filters to exactly the two cross-format pairs', async ({ page }) => {
+test('"Barcode - Same As" filters to exactly one group\'s own pair, not the other group\'s', async ({ page }) => {
     await loadAndRender(page);
     await openBarcodeDropdown(page);
 
-    const sameAsItem = page.locator('.mb-col-uniq-item', { hasText: '🔢 same number as another row' }).first();
-    await sameAsItem.click();
+    const group1Item = page.locator('.mb-col-uniq-item', { hasText: SAME_AS_GROUP_1 }).first();
+    await group1Item.click();
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     const visible = await page.evaluate(() =>
         Array.from(document.querySelectorAll('table.tbl tbody tr'))
             .filter((tr) => tr.style.display !== 'none')
             .map((tr) => tr.cells[0].querySelector('a').textContent.trim()));
-    expect(visible.sort()).toEqual(['Release A', 'Release B', 'Release D', 'Release E']);
+    // A/B only — NOT D/E (a different group) and not C/J (unique, no partner).
+    expect(visible.sort()).toEqual(['Release A', 'Release B']);
 });
 
 test('"Barcode - Format" (EAN-13) filters to exactly the strictly-conforming EAN-13 rows', async ({ page }) => {
@@ -200,18 +213,22 @@ test('sa_enable_barcode_validation: false suppresses markers and dropdown sectio
     expect((sections || []).find((s) => s.label === 'Barcode - Same As')).toBeUndefined();
 });
 
-// _getBarcodeCanonicalCounts() must be computed TABLE-WIDE (every row,
+// _getBarcodeCanonicalGroups() must be computed TABLE-WIDE (every row,
 // regardless of current display state), not from whichever rows a DIFFERENT
 // filter currently leaves visible — see that function's own JSDoc for the
 // precedent bug this mirrors (_getLengthColumnAverages(), "matched on
 // matchOnly:true, mismatched on the same filter's matchOnly:false highlight
 // pass moments later"). Narrow to Release A ALONE with an unrelated global
-// filter first (hiding its Same-As partner, Release B), then AND in the
-// "🔢 same number as another row" flag — if the canonical-counts map were
-// built from only-currently-visible rows, Release A's own canonical would
-// appear to occur just once (its partner is hidden) and the combined filter
-// would wrongly show zero rows instead of the one row that still genuinely
-// shares a barcode number with a row the OTHER filter happens to be hiding.
+// filter first (hiding its Same-As partner, Release B), then AND in Group
+// 1's own entry — if the canonical-groups map were built from only-
+// currently-visible rows, Release A's own canonical would appear to occur
+// just once (its partner is hidden), so the group wouldn't exist at all
+// (no >1-count canonical), the entry wouldn't even be OFFERED, and the
+// combined filter would wrongly show zero rows instead of the one row that
+// still genuinely shares a barcode number with a row the OTHER filter
+// happens to be hiding. The group's LABEL is pinned too — it must still
+// read the full "0036000241457 / 036000241457" pair from the table-wide
+// map, not just whatever raw text the one visible row itself carries.
 test('"Barcode - Same As" reads the whole table, not just what another filter currently shows', async ({ page }) => {
     await loadAndRender(page);
 
@@ -223,8 +240,9 @@ test('"Barcode - Same As" reads the whole table, not just what another filter cu
     expect(visible).toEqual(['Release A']);
 
     await openBarcodeDropdown(page);
-    const sameAsItem = page.locator('.mb-col-uniq-item', { hasText: '🔢 same number as another row' }).first();
-    await sameAsItem.click();
+    const group1Item = page.locator('.mb-col-uniq-item', { hasText: SAME_AS_GROUP_1 }).first();
+    await expect(group1Item).toHaveCount(1);
+    await group1Item.click();
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     visible = await page.evaluate(() =>

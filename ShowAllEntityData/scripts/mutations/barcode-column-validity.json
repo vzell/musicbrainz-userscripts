@@ -78,7 +78,7 @@
         "expect": "fail"
     },
     {
-        "name": "_getBarcodeCanonicalCounts() reads the live tbody instead of source rows",
+        "name": "_getBarcodeCanonicalGroups() reads the live tbody instead of source rows",
         "why": "A REAL bug this file's own regression test caught during development (see DEBUG-NOTES.md 2026-09-26): runFilter() REMOVES non-matching rows from a single-table page's live DOM rather than hiding them, so a signature/count built from table.tBodies[0].rows silently loses every row an UNRELATED filter currently excludes. Confirmed empirically with a temporary console.log: the cache signature shrank from 9 entries to 1 the moment a global-text filter narrowed the page. Fixed by switching to _tableSourceRows() (groupedRows/allRows), the established table -> source-rows binding runFilter() cannot remove from.",
         "edits": [
             {
@@ -88,6 +88,32 @@
         ],
         "spec": "tests/fixtures/barcode-column-validity.spec.js",
         "grep": "reads the whole table, not just what another filter currently shows",
+        "expect": "fail"
+    },
+    {
+        "name": "_getBarcodeCanonicalGroups() drops the group-size filter",
+        "why": "The whole point of \"Same As\" is GROUPS of 2+ rows sharing a canonical — every barcode, including a genuinely unique one (Release C/J in the fixture), has SOME canonical, so without this filter every row would get its own spurious 1-row \"group\", drowning the real pairs and misrepresenting unique barcodes as having a match.",
+        "edits": [
+            {
+                "find": "        const groups = new Map(Array.from(all.entries()).filter(([, g]) => g.count > 1));",
+                "replace": "        const groups = all;"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "makeValueSynItem() shows the bare canonical instead of the group's raw values",
+        "why": "This is the user's own explicit ask (2026-09-26): the \"Same As\" section must list the ACTUAL textual representations involved (e.g. \"0196587565725 / 196587565725\"), not an opaque canonical number a person can't match back to what's on the page.",
+        "edits": [
+            {
+                "find": "            const _displayValue = (kind === 'barcodesameas')\n                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)\n                : value;",
+                "replace": "            const _displayValue = value;"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
         "expect": "fail"
     }
 ]

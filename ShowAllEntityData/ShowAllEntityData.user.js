@@ -2290,9 +2290,10 @@
                          '"Barcode - Validity" flags rows whose barcode does/doesn\'t match a known GS1 ' +
                          'format (UPC-A/EAN-13/EAN-8/GTIN-14) with a correct check digit; "Barcode - Format" ' +
                          'lists strictly-conforming entries by which format they match; "Barcode - Same As" ' +
-                         'flags rows whose barcode number matches another row\'s, even in a different textual ' +
-                         'representation (e.g. UPC-A vs its zero-padded EAN-13 form). Invalid entries also get ' +
-                         'a ⚠️ glyph in the cell itself. Never rewrites the displayed barcode text.'
+                         'lists rows whose barcode number matches another row\'s, one entry per group, ' +
+                         'showing the actual textual representations involved (e.g. "0196587565725 / ' +
+                         '196587565725"). Invalid entries also get a ⚠️ glyph in the cell itself. Never ' +
+                         'rewrites the displayed barcode text.'
         },
 
         // ============================================================
@@ -23637,7 +23638,7 @@
      *   length with no defined GS1 check-digit format) or `'checkdigit'`
      *   (right length, wrong check digit). `canonical` is
      *   `barcodeRemoveLeadingZeros(digits)` whenever `digits` is all-numeric,
-     *   regardless of `valid` — see `_getBarcodeCanonicalCounts()`'s own
+     *   regardless of `valid` — see `_getBarcodeCanonicalGroups()`'s own
      *   JSDoc for why this stays independent of format/length validity.
      */
     function _parseBarcodeCode(rawCode) {
@@ -24930,8 +24931,8 @@
         if (mode === 'iswc-invalid') {
             return !!cell && _findCellIswcParts(cell).some(p => !p.valid);
         }
-        // One combined gate for all four barcode modes (org/barcode.org) —
-        // mirrors initBarcodeValidation()'s/_getBarcodeCanonicalCounts()'s
+        // One combined gate for all barcode modes (org/barcode.org) —
+        // mirrors initBarcodeValidation()'s/_getBarcodeCanonicalGroups()'s
         // own sa_enable_barcode_validation gate, so a saved/pinned filter
         // referencing one of these modes from before the setting was
         // toggled off can't still match anything.
@@ -24953,13 +24954,18 @@
             const part = _findCellBarcodeParts(cell)[0];
             return !!part && part.valid && part.format === want;
         }
-        if (mode === 'barcode-sameas') {
-            // Table-wide predicate — see _getBarcodeCanonicalCounts()'s own
-            // JSDoc for why this must read the ALL-rows-signature-cached
-            // map rather than anything scoped to currently-visible rows.
+        if (mode.startsWith('barcodesameas:')) {
+            // Compound mode, one entry per canonical-equivalence GROUP (org/
+            // barcode.org) — the value is the canonical itself, not a raw
+            // representation, since the whole point is that two different
+            // raw strings can belong to the same group. Table-wide
+            // predicate — see _getBarcodeCanonicalGroups()'s own JSDoc for
+            // why this must read the ALL-rows-signature-cached map rather
+            // than anything scoped to currently-visible rows.
+            const want = mode.slice(14);
             const part = _findCellBarcodeParts(cell)[0];
             if (!part || !part.canonical || !table) return false;
-            return _getBarcodeCanonicalCounts(table).get(part.canonical) > 1;
+            return part.canonical === want && _getBarcodeCanonicalGroups(table).has(want);
         }
         if (mode.startsWith('partofseriesname:')) {
             // Compound mode — matches one "Part of series" item's own
@@ -45251,12 +45257,15 @@ a { color: #1565c0; }`;
         // ISWC's possibly-multi-entry lists). "Format" is an open value
         // family like isrcCountry above, but ONLY ever lists entries that
         // passed validity — "conforms to spec" and "has a determinable
-        // format" are the same fact for a barcode. "Same As" is its own
-        // fixed flag, deliberately NOT named "duplicate" and deliberately
-        // independent of the release's own Format column — see
-        // `_getBarcodeCanonicalCounts()`'s own JSDoc for why conflating it
-        // with the existing `sa_enable_barcode_highlight` merge-checkbox
-        // feature's grouping would be wrong.
+        // format" are the same fact for a barcode. "Same As" is ALSO an
+        // open value family, one entry per canonical-equivalence GROUP
+        // (labeled with the actual raw representations involved, e.g.
+        // "0196587565725 / 196587565725" — see
+        // `_barcodeSameAsGroupLabel()`), deliberately NOT named "duplicate"
+        // and deliberately independent of the release's own Format column
+        // — see `_getBarcodeCanonicalGroups()`'s own JSDoc for why
+        // conflating it with the existing `sa_enable_barcode_highlight`
+        // merge-checkbox feature's grouping would be wrong.
         barcodeValidity: { label: 'Barcode - Validity', glyph: '⚠️' },
         barcodeFormat:   { label: 'Barcode - Format',   glyph: '🔖' },
         barcodeSameAs:   { label: 'Barcode - Same As',  glyph: '🔢' },
@@ -45438,7 +45447,6 @@ a { color: #1565c0; }`;
         'isrc-valid': 'isrcValidity', 'isrc-invalid': 'isrcValidity',
         'iswc-valid': 'iswcValidity', 'iswc-invalid': 'iswcValidity',
         'barcode-valid': 'barcodeValidity', 'barcode-invalid': 'barcodeValidity',
-        'barcode-sameas': 'barcodeSameAs',
         // Aggregate sibling of the 'editordeleted:' kind below — shares
         // its section (see SYN_SECTION_META.editorDeleted's own JSDoc).
         'editor-any-deleted': 'editorDeleted',
@@ -45502,7 +45510,7 @@ a { color: #1565c0; }`;
         catalogprefix: 'catalogPrefix',
         isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
         isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
-        barcodeformat: 'barcodeFormat',
+        barcodeformat: 'barcodeFormat', barcodesameas: 'barcodeSameAs',
         lengthbucket: 'lengthBucket',
         partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
@@ -46413,21 +46421,23 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Highlights a "Barcode" cell for the `barcode-sameas` binary flag —
+     * Highlights a "Barcode" cell for the `barcodesameas:` compound mode —
      * table-threaded like `_highlightLengthDeviationMatch()`/
-     * `_highlightLengthLiveMatch()`, since "shares a value with another row"
-     * needs `_getBarcodeCanonicalCounts(table)`, not just this cell.
+     * `_highlightLengthLiveMatch()`, since "belongs to this canonical group"
+     * needs `_getBarcodeCanonicalGroups(table)`, not just this cell.
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"barcodesameas:36000241457"`.
      * @param {?HTMLTableElement} table - See `_cellMatchesStructureMode()`'s
      *   own JSDoc for why this must be threaded explicitly rather than
      *   derived via `cell.closest('table')`.
      */
-    function _highlightBarcodeSameAsMatch(cell, table) {
+    function _highlightBarcodeSameAsMatch(cell, mode, table) {
         if (!cell || !table) return;
+        const want = mode.slice(14);
         const part = _findCellBarcodeParts(cell)[0];
-        if (!part || !part.canonical) return;
-        if (!(_getBarcodeCanonicalCounts(table).get(part.canonical) > 1)) return;
+        if (!part || part.canonical !== want) return;
+        if (!_getBarcodeCanonicalGroups(table).has(want)) return;
         cell.normalize();
         highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
     }
@@ -47914,8 +47924,8 @@ a { color: #1565c0; }`;
                                     _highlightBarcodeInvalidMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('barcodeformat:')) {
                                     _highlightBarcodeFormatMatch(row.cells[f.idx], mode);
-                                } else if (mode === 'barcode-sameas') {
-                                    _highlightBarcodeSameAsMatch(row.cells[f.idx], ctx.table);
+                                } else if (mode.startsWith('barcodesameas:')) {
+                                    _highlightBarcodeSameAsMatch(row.cells[f.idx], mode, ctx.table);
                                 } else if (mode.startsWith('partofseriesname:') || mode.startsWith('partofseriesdate:')) {
                                     _highlightPartOfSeriesTextMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('partofseriesnumber:')) {
@@ -59391,27 +59401,30 @@ a { color: #1565c0; }`;
         return data;
     }
 
-    // Per-table memo of _getBarcodeCanonicalCounts()'s own computed map —
+    // Per-table memo of _getBarcodeCanonicalGroups()'s own computed map —
     // same WeakMap-cache-on-an-all-rows-signature shape as
     // _lengthColumnAveragesCache above, for the identical reason: this is
     // read from BOTH openUniqDrop()'s "Barcode" column scan AND
-    // _cellMatchesStructureMode()'s per-row 'barcode-sameas' filter check
+    // _cellMatchesStructureMode()'s per-row 'barcodesameas:' filter check
     // DURING a testRowMatch() pass, which is itself what hides/shows rows —
     // see _getLengthColumnAverages()'s own JSDoc for the exact "matched on
     // matchOnly:true, mismatched on the same filter's matchOnly:false
     // highlight pass moments later" bug an ALL-rows signature avoids.
-    const _barcodeCanonicalCountsCache = new WeakMap();
+    const _barcodeCanonicalGroupsCache = new WeakMap();
 
     /**
-     * Computes (and caches, per table) how many rows on this TABLE carry each
-     * canonical (leading-zero-stripped, see `barcodeRemoveLeadingZeros()`)
-     * barcode value — the reference data behind the "Barcode - Same As"
-     * dropdown section and the `'barcode-sameas'` structure mode. A canonical
-     * value with count >= 2 means at least two rows share that barcode
+     * Computes (and caches, per table) every canonical (leading-zero-
+     * stripped, see `barcodeRemoveLeadingZeros()`) barcode value shared by
+     * MORE THAN ONE row on this TABLE — the reference data behind the
+     * "Barcode - Same As" dropdown section and the `barcodesameas:`
+     * structure mode. Two rows sharing a canonical share that barcode
      * NUMBER, whether or not their raw text is literally identical (e.g. a
      * UPC-A and its zero-padded EAN-13 form both reduce to the same
      * canonical value — see `_parseBarcodeCode()`'s own JSDoc for why that's
-     * provably correct, not just observed).
+     * provably correct, not just observed) — which is why each group also
+     * records every distinct RAW representation seen for it, so the
+     * dropdown can list "0196587565725 / 196587565725" as one browsable
+     * entry rather than a bare "N rows share a barcode" flag.
      *
      * Deliberately scans EVERY row regardless of current `display` state and
      * caches on a signature built the same way, for the identical reason
@@ -59433,15 +59446,16 @@ a { color: #1565c0; }`;
      * Only entries whose `digits` is all-numeric (see `_parseBarcodeCode()`)
      * ever contribute — non-digit garbage and empty/`[none]` cells are
      * simply absent from the map, never counted as a canonical `''`/`null`
-     * group of their own.
+     * group of their own. A canonical seen on only ONE row is likewise
+     * absent — this map holds SAME-AS groups only, not every barcode.
      *
      * Gated on `Lib.settings.sa_enable_barcode_validation` — when off,
-     * returns an empty `Map` WITHOUT scanning `tbody.rows` at all.
+     * returns an empty `Map` WITHOUT scanning any rows at all.
      *
      * @param {?HTMLTableElement} table
-     * @returns {Map<string, number>}
+     * @returns {Map<string, {count: number, raws: Set<string>}>}
      */
-    function _getBarcodeCanonicalCounts(table) {
+    function _getBarcodeCanonicalGroups(table) {
         if (!table || !Lib.settings.sa_enable_barcode_validation) return new Map();
         // SOURCE rows, never the live `<tbody>` — `runFilter()` REMOVES
         // non-matching rows on a single-table page rather than hiding them
@@ -59460,24 +59474,45 @@ a { color: #1565c0; }`;
 
         let sig = '';
         for (const row of rows) sig += row.dataset.mbRowIdx + ',';
-        const cached = _barcodeCanonicalCountsCache.get(table);
-        if (cached && cached.sig === sig) return cached.counts;
+        const cached = _barcodeCanonicalGroupsCache.get(table);
+        if (cached && cached.sig === sig) return cached.groups;
 
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
             th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
         const barcodeIdx = headers.findIndex(th => clean(th) === 'Barcode');
 
-        const counts = new Map();
+        const all = new Map();
         if (barcodeIdx !== -1) {
             rows.forEach(row => {
                 const part = _findCellBarcodeParts(row.cells[barcodeIdx])[0];
                 if (!part || !part.canonical) return;
-                counts.set(part.canonical, (counts.get(part.canonical) || 0) + 1);
+                let g = all.get(part.canonical);
+                if (!g) { g = { count: 0, raws: new Set() }; all.set(part.canonical, g); }
+                g.count++;
+                g.raws.add(part.raw);
             });
         }
-        _barcodeCanonicalCountsCache.set(table, { sig, counts });
-        return counts;
+        const groups = new Map(Array.from(all.entries()).filter(([, g]) => g.count > 1));
+        _barcodeCanonicalGroupsCache.set(table, { sig, groups });
+        return groups;
+    }
+
+    /**
+     * Builds the "0196587565725 / 196587565725" style label for one
+     * canonical group's `raws` set — longest representation first (the
+     * MOST-padded form, e.g. a GTIN-14 or EAN-13 zero-padding), shortest
+     * last, so the label reads as "the fuller form, then the bare one"
+     * rather than an arbitrary order; ties broken lexicographically for
+     * determinism.
+     *
+     * @param {Set<string>} raws
+     * @returns {string}
+     */
+    function _barcodeSameAsGroupLabel(raws) {
+        return Array.from(raws)
+            .sort((a, b) => (b.length - a.length) || a.localeCompare(b))
+            .join(' / ');
     }
 
     /**
@@ -59651,10 +59686,6 @@ a { color: #1565c0; }`;
         // — a Barcode cell holds 0 or 1 value, not a list (org/barcode.org).
         let barcodeValidCount = _uniqCacheHit ? _uniqCacheHit.barcodeValidCount : 0;
         let barcodeInvalidCount = _uniqCacheHit ? _uniqCacheHit.barcodeInvalidCount : 0;
-        // Rows whose canonical barcode value (barcodeRemoveLeadingZeros())
-        // is shared by >=1 OTHER row on this table — see
-        // _getBarcodeCanonicalCounts()'s own JSDoc.
-        let barcodeSameAsCount = _uniqCacheHit ? _uniqCacheHit.barcodeSameAsCount : 0;
         // "Date info - Precision" — a FIXED 3-flag family (mirrors
         // releaseQualityHighCount/-LowCount/-NormalCount below): how many
         // visible rows' own `dateParts`-fed column text is a complete
@@ -59864,6 +59895,11 @@ a { color: #1565c0; }`;
         // isBarcodeCol's own scan below): "conforms to spec" and "has a
         // determinable format" are the same fact for a barcode.
         const barcodeFormatValueCounts = _uniqCacheHit ? _uniqCacheHit.barcodeFormatValueCounts : new Map();
+        // "Barcode - Same As" — keyed by CANONICAL value (one entry per
+        // equivalence group, not per raw representation); the group's own
+        // "raw / raw" label is resolved once from _getBarcodeCanonicalGroups()
+        // when building _sortedBarcodeSameAsValues below.
+        const barcodeSameAsValueCounts = _uniqCacheHit ? _uniqCacheHit.barcodeSameAsValueCounts : new Map();
         // Distinct "Date info - Decade"/"- Month" values — see
         // `_dateAtomDecade()`/`_dateAtomMonth()`'s own JSDoc. Column-gated
         // (isDateExprCol below). "Date info - Precision" is a FIXED 3-flag
@@ -60358,8 +60394,17 @@ a { color: #1565c0; }`;
                         } else {
                             barcodeInvalidCount++;
                         }
-                        if (_barcodePart.canonical && _getBarcodeCanonicalCounts(table).get(_barcodePart.canonical) > 1) {
-                            barcodeSameAsCount++;
+                        // "Barcode - Same As" is an open value family, one
+                        // entry per canonical-equivalence GROUP (org/
+                        // barcode.org) — a row only contributes when its
+                        // canonical is a genuine group (>=2 rows table-wide,
+                        // per _getBarcodeCanonicalGroups()), tallied per
+                        // VISIBLE row like every other value family; the
+                        // group's own label (the raw representations
+                        // involved) is resolved once, after this loop, from
+                        // the same table-wide map.
+                        if (_barcodePart.canonical && _getBarcodeCanonicalGroups(table).has(_barcodePart.canonical)) {
+                            barcodeSameAsValueCounts.set(_barcodePart.canonical, (barcodeSameAsValueCounts.get(_barcodePart.canonical) || 0) + 1);
                         }
                     }
                 }
@@ -61666,7 +61711,7 @@ a { color: #1565c0; }`;
                 titleMismatchCount, nameVariationCount, multiMediumCount,
                 catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
                 isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
-                barcodeValidCount, barcodeInvalidCount, barcodeSameAsCount, barcodeFormatValueCounts,
+                barcodeValidCount, barcodeInvalidCount, barcodeFormatValueCounts, barcodeSameAsValueCounts,
                 dateCompleteCount, datePartialCount, dateRangeCount,
                 attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
                 instrumentValueCounts, altNameValueCounts,
@@ -61716,7 +61761,7 @@ a { color: #1565c0; }`;
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
-            barcodeValidCount, barcodeInvalidCount, barcodeSameAsCount,
+            barcodeValidCount, barcodeInvalidCount,
             dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -61758,6 +61803,7 @@ a { color: #1565c0; }`;
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
+            ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
@@ -62269,6 +62315,7 @@ a { color: #1565c0; }`;
                  : kind === 'isrcyear'        ? '» year: '
                  : kind === 'isrcdesignation' ? '» designation: '
                  : kind === 'barcodeformat'   ? '» format: '
+                 : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
@@ -62293,6 +62340,16 @@ a { color: #1565c0; }`;
                  : kind === 'dateweekday'        ? '» weekday: '
                  : kind === 'pendingedit'        ? '» pending edit: '
                  : '» ');
+            // 'barcodesameas' is keyed by the CANONICAL value (needed
+            // verbatim for _wireStructureCheckbox()'s own mode string,
+            // below, and for item.title just above), but DISPLAYED as the
+            // group's actual raw representations — "0196587565725 /
+            // 196587565725" — via _barcodeSameAsGroupLabel(). `table` is
+            // this closure's own param, same table _getBarcodeCanonicalGroups()
+            // is keyed on everywhere else in this function.
+            const _displayValue = (kind === 'barcodesameas')
+                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)
+                : value;
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
                 // _buildArtTypePillLabel's own JSDoc) instead of via the
@@ -62315,7 +62372,7 @@ a { color: #1565c0; }`;
                 item.appendChild(_labelSpan);
                 _buildArtTypePillLabel(_labelSpan, _synLabelPrefix, value);
             } else {
-                const _labelSpan = _appendSynLabelText(item, _synLabelPrefix + value);
+                const _labelSpan = _appendSynLabelText(item, _synLabelPrefix + _displayValue);
                 // Reuse MusicBrainz's OWN native `.cancelled` CSS class
                 // (the exact class `_findCellEventCancelled()` reads —
                 // see its JSDoc) as this entry's visual styling, mirroring
@@ -62574,6 +62631,9 @@ a { color: #1565c0; }`;
         // sorts above.
         const _BARCODE_FORMAT_SORT_ORDER = ['EAN-8', 'UPC-A', 'EAN-13', 'GTIN-14'];
         const _sortedBarcodeFormatValues = Array.from(barcodeFormatValueCounts.keys()).sort((a, b) => _BARCODE_FORMAT_SORT_ORDER.indexOf(a) - _BARCODE_FORMAT_SORT_ORDER.indexOf(b));
+        // Numeric ascending by canonical value (not lexicographic), same
+        // reasoning as ISRC Year/Tracks-per-medium above.
+        const _sortedBarcodeSameAsValues = Array.from(barcodeSameAsValueCounts.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         // Numeric sort by leading bucket number (not lexicographic, so "2 to
         // 3 minutes" sorts before "10 to 11 minutes"); "Unknown length" has
         // no leading number (NaN) and is always sorted last.
@@ -62632,7 +62692,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
             _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
             _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
-            _sortedBarcodeFormatValues.length > 0 ||
+            _sortedBarcodeFormatValues.length > 0 || _sortedBarcodeSameAsValues.length > 0 ||
             _sortedLengthBucketValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
@@ -62647,7 +62707,7 @@ a { color: #1565c0; }`;
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
-            barcodeValidCount > 0 || barcodeInvalidCount > 0 || barcodeSameAsCount > 0 ||
+            barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -62686,11 +62746,11 @@ a { color: #1565c0; }`;
             if (isrcInvalidCount > 0) makeSynItem('isrc-invalid', '⚠️ invalid ISRC format', isrcInvalidCount);
             if (iswcValidCount > 0)   makeSynItem('iswc-valid', '✅ valid ISWC format', iswcValidCount);
             if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
-            // "Barcode - Validity"/"- Same As" — see barcodeValidCount/
-            // barcodeSameAsCount's own comments above (org/barcode.org).
+            // "Barcode - Validity" — see barcodeValidCount's own comment
+            // above (org/barcode.org). "- Format"/"- Same As" are open
+            // value families, emitted below alongside the others.
             if (barcodeValidCount > 0)   makeSynItem('barcode-valid', '✅ valid barcode format', barcodeValidCount);
             if (barcodeInvalidCount > 0) makeSynItem('barcode-invalid', '⚠️ invalid barcode format', barcodeInvalidCount);
-            if (barcodeSameAsCount > 0)  makeSynItem('barcode-sameas', '🔢 same number as another row', barcodeSameAsCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor',       editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified',  changelogNoMessageCount);
@@ -62792,6 +62852,7 @@ a { color: #1565c0; }`;
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
+            _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -62812,7 +62873,7 @@ a { color: #1565c0; }`;
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
-            barcodeValidCount > 0 || barcodeInvalidCount > 0 || barcodeSameAsCount > 0 ||
+            barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -62838,7 +62899,6 @@ a { color: #1565c0; }`;
             if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
             if (barcodeValidCount > 0)   makeSynItem('barcode-valid', '✅ valid barcode format', barcodeValidCount);
             if (barcodeInvalidCount > 0) makeSynItem('barcode-invalid', '⚠️ invalid barcode format', barcodeInvalidCount);
-            if (barcodeSameAsCount > 0)  makeSynItem('barcode-sameas', '🔢 same number as another row', barcodeSameAsCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor', editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified', changelogNoMessageCount);
@@ -62912,6 +62972,7 @@ a { color: #1565c0; }`;
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
+            _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -63474,8 +63535,12 @@ a { color: #1565c0; }`;
         if (mode === 'iswc-invalid')          return '⚠️ invalid ISWC format';
         if (mode === 'barcode-valid')         return '✅ valid barcode format';
         if (mode === 'barcode-invalid')       return '⚠️ invalid barcode format';
-        if (mode === 'barcode-sameas')        return '🔢 same number as another row';
         if (mode.startsWith('barcodeformat:')) return `» format: ${mode.slice(14)}`;
+        // No `table` param reaches this function (unlike the dropdown's own
+        // makeValueSynItem() call, which resolves the full "raw / raw"
+        // label from _getBarcodeCanonicalGroups() — see openUniqDrop()),
+        // so the filter-chip text falls back to the bare canonical number.
+        if (mode.startsWith('barcodesameas:')) return `🔢 same as: ${mode.slice(14)}`;
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
@@ -63592,8 +63657,8 @@ a { color: #1565c0; }`;
         if (mode === 'iswc-invalid') return '⚠️ = at least one of this "ISWC" cell\'s entries does NOT match ISO 15707\'s format, or has a check digit that does not match the computed value.';
         if (mode === 'barcode-valid') return '✅ = this row\'s barcode matches a known GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) and its check digit is correct.';
         if (mode === 'barcode-invalid') return '⚠️ = this row\'s barcode does NOT match a known GS1 format (wrong length or non-digit characters) or has an incorrect check digit. Mutually exclusive with "valid barcode format" — a Barcode cell holds at most one value.';
-        if (mode === 'barcode-sameas') return '🔢 = this row\'s barcode number matches another row\'s, even in a different textual representation (e.g. a UPC-A and its zero-padded EAN-13 form) — regardless of the release\'s own Format column, unlike the 🎨 barcode-highlight merge-checkbox feature, which deliberately does NOT group same-number-different-Format rows as merge candidates.';
         if (mode.startsWith('barcodeformat:')) return 'This row\'s barcode strictly conforms to this GS1 format (implies a correct check digit).';
+        if (mode.startsWith('barcodesameas:')) return '🔢 = this row\'s barcode number matches this group\'s — even across a different textual representation (e.g. a UPC-A and its own zero-padded EAN-13 form) — regardless of the release\'s own Format column, unlike the 🎨 barcode-highlight merge-checkbox feature, which deliberately does NOT group same-number-different-Format rows as merge candidates.';
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
