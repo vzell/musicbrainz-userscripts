@@ -12,7 +12,8 @@ memory or from this file. Same for the changelog: the newest entry in
 `ShowAllEntityData_CHANGELOG.json` is the authority on what shipped.
 
 **Changelog:** `ShowAllEntityData_CHANGELOG.json` (JSON, lives alongside the script)
-**Help:** `ShowAllEntityData_HELP.txt` (TEXT, lives alongside the script)
+**Help:** `ShowAllEntityData_HELP.md` (MARKDOWN, lives alongside the script — it
+is what the ❓ button opens on GitHub; see its own section below)
 **Library dependency:** `VZ_MBLibrary.user.js` (external `@require`; provides `Lib.*`)
 **External dependencies:** `iro` (colour picker), `pako` (compression)
 **Other top-level docs:** `PERFORMANCE.org` (measurements + numbered Steps),
@@ -724,7 +725,7 @@ stay that way.
 **A default has two places it can be wrong, and changing one is how they
 drift.** The schema's `default:` is what the settings dialog shows and what
 RESET restores; an inline `Lib.settings.sa_X || literal` is what applies when
-that key reads falsy. All **165** fallback sites now agree with their own
+that key reads falsy. All **166** fallback sites now agree with their own
 schema default — 15 did not until 9.99.1137, because `bfb8ac3` changed seven
 defaults "to sensible values" and left the literals thousands of lines away
 untouched. **When you change a `default:`, grep for that key's inline
@@ -2997,11 +2998,45 @@ controls, nine of them labelled. It is now:
 | 5 | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render |
 | 6 | `#mb-data-menu-btn` `📦 Data ▾` | from the initial render |
 | 7 | `#mb-view-menu-btn` `🛠 View ▾` | from the initial render (🎹 seeds it) |
-| 8 | `#mb-settings-btn` `⚙️` | always, pinned |
-| 9 | `#mb-app-help-btn` `❓` | always, pinned |
+| 8 | `#mb-settings-btn` `⚙️` | always, pinned — left half of the ⚙️❓ pill |
+| 9 | `#mb-app-help-btn` `❓` | always, pinned — right half of the ⚙️❓ pill |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
 not named there keeps whatever position it was appended at.
+
+**8 and 9 are drawn as ONE segmented pill** — a fourth run alongside the three
+in "The h2/h3 control runs are segmented pills" below, and built the same way,
+so read that section's rules first. Three things are specific to this one:
+
+- **Selected by the class `.mb-toolbar-pinned-btn`, not an id prefix**, because
+  these two ids share none. The caps use the run-relative pair
+  (`:not(.c + .c)` / `:not(:has(+ .c))`) — `:first-of-type`/`:last-of-type` are
+  wrong here for exactly the reason they are wrong for the sort group: they
+  count elements of the same TAG, and these `<button>`s are neither the first
+  nor the last button among their siblings.
+- **A class, never a wrapper element.** They must stay DIRECT children of
+  `#mb-show-all-controls-container`: `_TOOLBAR_TAIL_ORDER` re-appends them
+  there, and `toolbar-menus.spec.js` reads the container's own children to
+  assert they are the last two.
+- **It cancels the flex gap, and the margin sits on the LEFT half.** The bar is
+  `display:inline-flex` with a gap between every pair of children, and a flex
+  gap cannot be suppressed for one pair — so one segment pulls back by exactly
+  one `--mb-toolbar-gap`, a custom property both sides read so the pill cannot
+  split open if that number is retuned. **Which side carries it is the
+  load-bearing part.** The bar is also `flex-wrap: wrap`, and at some widths the
+  two halves land on different lines — measured at 1040-1080px and 550-590px,
+  ordinary window territory. With the pull on the RIGHT half, ❓ then started
+  8px past the bar's own left edge: content outside its container. On the LEFT
+  half the same pull merely shortens a line that has nothing after it, so a
+  split degrades to a square left edge. The split itself is not preventable
+  without a wrapper, and a wrapper costs the direct-children contract above.
+
+**Their backgrounds are settings, not pill CSS.** `sa_ui_settings_btn_style`
+and `sa_ui_help_btn_style` kept their own keys and had their DEFAULTS changed
+to match `sa_ui_toolbar_menu_btn_style`, with `_SETTINGS_MIGRATIONS` entries
+naming the old slate values — so the pill reads as one control by default while
+a user who chose their own colours keeps them. Forcing one ground in the
+stylesheet would silently override that choice.
 `ensureSettingsButtonIsLast()` is a back-compat alias, still called from ~7
 sites, and no longer does anything else. Two of the three old divider spans
 (`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`) are
@@ -3040,9 +3075,18 @@ Six things are load-bearing, and every one of them fails silently:
   move from `'inline-block'` to `'flex'`: `inline-block` blockifies to plain
   `block`, where the `::after` hint's `margin-left:auto` computes to zero.
 - **The keyboard hint is CSS `::after` from `data-mb-menu-hint`, never text.**
+  It keeps the hint out of the row's `textContent`, so a read of the row is its
+  label alone — same rule, same reason, as the column-header family's glyphs,
+  and `toolbar-menus.spec.js` asserts exactly that.
+  **This entry used to give a different and false reason**: that
   `updateBarcodeHighlightBtnState()` rewrites its button's `innerHTML`
-  wholesale; an attribute survives that and a `<kbd>` child does not. Same rule,
-  same reason, as the column-header family's glyphs.
+  wholesale, so an attribute survives where a `<kbd>` child would not. That
+  function writes `style.background`/`borderColor`/`color` and `title` only;
+  the button's content is set once at creation. Corrected in 9.99.1148 rather
+  than quietly dropped, because a plausible-but-wrong reason is what licenses
+  the next person to conclude "no rewrite here, so a `<kbd>` is fine".
+  **And the barcode row is the one that had no hint at all** until 9.99.1148 —
+  `adopt()` was called without the argument. Every row now passes one.
 - **Layout lives in the `.mb-toolbar-menu-item` class with `!important`.**
   `_applyDiscButtonTints()` rewrites a row's whole `cssText` on every view
   switch; without `!important` that flattens the row back to a bar button.
@@ -3102,12 +3146,92 @@ Covered by `tests/fixtures/h2-table-controls-anchor.spec.js` (mutation list
 without it the pill assertion measures an empty run and passes for the wrong
 reason.
 
+## ❓ opens GitHub; Shift-❓ renders the same file in the page
+
+`org/action-button-redesign.org` item 2. Help is
+**`ShowAllEntityData_HELP.md`**, hand-written, and the `.txt` is retired. Three
+things read it and they must stay in agreement:
+
+| | |
+|---|---|
+| `HELP_GITHUB_URL` | the `/blob/` page — where a plain ❓ click goes |
+| `REMOTE_HELP_URL` | the same file raw — what the dialog fetches |
+| the committed `_HELP.md` | what a publish copies to the mirror |
+
+`openAppHelp(e)` is the button's handler and branches on `e.shiftKey` alone;
+`showAppHelp()` is the dialog and is no longer wired to the button directly.
+**Prefix-mode `H` stays on `showAppHelp()`**, because prefix mode refuses Shift
+(`!e.shiftKey` in its own guard) — so the keyboard has one route and it is the
+one a mouse-free user cannot otherwise reach. The dialog's title bar carries
+`#mb-app-help-github-link` so the other destination is not lost.
+
+**`window.open()`, never `GM_openInTab()`.** The latter needs a new `@grant`,
+and a new grant re-prompts every existing Tampermonkey user on their next
+update — a real cost to everyone for a tab `window.open()` already opens from a
+click handler's user gesture.
+
+Six things about the renderer (`_mdRenderInto()` / `_mdInline()` /
+`_mdHeadingId()`), each of which fails quietly:
+
+- **It is styled by `GM_addStyle` classes, not per-node inline styles** — like
+  every other panel since the 9.99.736-9.99.745 CSP run, and far less code than
+  setting a dozen properties on each node of a long document.
+  **The CSP half of that rule is narrower than this file used to say.** What
+  `/account/*`'s `style-src 'self'` blocks is `<style>` elements and `style="…"`
+  written into an **`innerHTML` template**; CSSOM writes (`el.style.foo = …`)
+  are not blocked, which is why the entire h1 toolbar sets its styles that way
+  and renders correctly there. A node-building renderer was never in the
+  blocked case. Corrected in 9.99.1149, along with the mutation that had
+  recorded itself an honest `"expect": "pass"` on the strength of it — the
+  stylesheet's absence IS observable, as a computed value, and is now asserted.
+- **`_italic_` is deliberately unsupported; only `*italic*`.** Half the nouns
+  here are snake_case settings keys, and an underscore rule renders
+  `sa_enable_caa_pics` as "sa" + *enable_caa* + "pics". CommonMark refuses
+  intra-word underscore emphasis for the same reason, so leaving it out makes
+  this agree with GitHub on the case that occurs.
+- **Nodes, never `innerHTML`.** The bytes arrive over the network at runtime;
+  "it is our own file" is a fact about the repository, not about what a fetch
+  returns. A link href is admitted only when `http(s)` or `#`.
+- **`<details>` renders OPEN.** Collapsed content is still in the DOM, so the
+  dialog's quick filter would highlight matches the reader cannot see. GitHub is
+  where the sections collapse; this dialog exists to be searched.
+- **An `#anchor` link scrolls the DIALOG.** It is a fixed overlay with its own
+  scroll area, so following the fragment scrolls MusicBrainz's page underneath
+  while the table of contents appears to do nothing. Heading ids carry an
+  `mb-md-` prefix so they cannot collide with the page's own, and both the
+  heading and the link resolve through `_mdHeadingId()` — which is why a table
+  of contents written for GitHub's bare slug works here too.
+- **The coupling runs file → renderer, not the other way.** The renderer covers
+  exactly what `_HELP.md` uses; the file is written to stay inside it. The last
+  test in the spec renders the REAL committed file and is what keeps that true.
+- **A list item's continuation line must be INDENTED, and that is a guard.** An
+  indented non-bullet line appends to the item above it; without the rule every
+  wrapped bullet ends its list, and without the INDENT part a list swallows the
+  heading under it. The first half shipped broken for an afternoon and no
+  assertion saw it — see `scripts/probe-help-md-render.js`, and the
+  DEBUG-NOTES entry on why fifteen green tests could not.
+
+**`CACHE_KEY_HELP` was renamed to `…-remote-help-md`** because
+`Lib.fetchCachedText()` keys on the cache key alone and stores no URL beside the
+bytes — an upgrading user's cached plain text would otherwise be fed to the
+Markdown renderer for up to a TTL. Any future format change owes the same
+rename. No fixture starts with a stale cache, so this is a second
+`"expect": "pass"`.
+
+Covered by `tests/fixtures/app-help-github-and-markdown.spec.js`; mutation list
+`scripts/mutations/app-help-github-and-markdown.json`.
+
 ## The h2/h3 control runs are segmented pills too — three of them, not one
 
 A second family, distinct from the `.mb-col-hdr-flex` one above: the buttons
 that sit beside a table's heading. `org/503-handling.org`, "Retry UI: one
 segmented control per table". The h2's ↔️/👁️ pair (above) is deliberately NOT
 part of any of these runs — it anchors past the end of them all.
+
+**A FOURTH run now uses this idiom outside the h2/h3**: the h1 toolbar's
+`⚙️`/`❓` pinned pair, selected by class rather than id prefix. The rules below
+apply to it unchanged; what differs is written up under "The h1 toolbar is two
+pull-down menus plus two pinned buttons" rather than repeated here.
 
 **Three runs, selected by ID PREFIX, and no DOM change at all.** The ids were
 already prefix-consistent, so the CSS needs no class and no wrapper:

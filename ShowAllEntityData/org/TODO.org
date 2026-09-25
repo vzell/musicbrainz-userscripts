@@ -903,3 +903,15 @@ Tackle the @org/action-button-redesign.org
 ** Add the text "Keyboard Shortcuts" after the keyboard glyph in the "View" pull down menu
 
 Add the text "Keyboard Shortcuts" (the "K" should be underlined) after the keyboard glyph in the "View" pull down menu [Image #11]; everything else is working
+
+** sync
+
+Change the background color of the two buttons
+
+#+begin_example
+<button id="mb-settings-btn"
+<button id="mb-app-help-btn"
+#+end_example
+
+to be the same as e.g. '<button id="mb-data-menu-btn"' and also synthezie them in one button with rounded corners and a
+divider line but with the original actions tooltips

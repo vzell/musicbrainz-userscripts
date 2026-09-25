@@ -1,0 +1,201 @@
+[
+  {
+    "name": "the ❓ button's modifier test is inverted",
+    "why": "Plain click and Shift-click both still 'work' with the test backwards — you simply always land on the other destination. Nothing throws, nothing looks broken, and the only symptom is that the button does the opposite of what its tooltip says.",
+    "edits": [
+      {
+        "find": "        if (e && e.shiftKey) {",
+        "replace": "        if (!(e && e.shiftKey)) {"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a plain click opens the GitHub help page",
+    "expect": "fail"
+  },
+  {
+    "name": "the new tab is opened without noopener",
+    "why": "window.open's third argument is what stops the opened page getting a window.opener handle back into a MusicBrainz tab this script is driving. Dropping it changes nothing the user can see.",
+    "edits": [
+      {
+        "find": "        window.open(HELP_GITHUB_URL, '_blank', 'noopener,noreferrer');",
+        "replace": "        window.open(HELP_GITHUB_URL, '_blank');"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a plain click opens the GitHub help page",
+    "expect": "fail"
+  },
+  {
+    "name": "the help fetch still points at the retired .txt",
+    "why": "The rename is two constants that have to move together. Leaving REMOTE_HELP_URL on the .txt makes the ❓ button open the new document on GitHub while the dialog serves the old one — two different help texts from one button, with no error anywhere.",
+    "edits": [
+      {
+        "find": "    const REMOTE_HELP_URL      = REMOTE_BASE + SCRIPT_BASE_NAME + '_HELP.md';",
+        "replace": "    const REMOTE_HELP_URL      = REMOTE_BASE + SCRIPT_BASE_NAME + '_HELP.txt';"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "the button fetches the .md",
+    "expect": "fail"
+  },
+  {
+    "name": "the dialog drops the source into a <pre> again, as it used to",
+    "why": "The old behaviour, which was right for a hand-laid-out .txt and became wrong the moment the source was Markdown: every heading, table and link renders as its own syntax.",
+    "edits": [
+      {
+        "find": "                _mdRenderInto(body, data);",
+        "replace": "                body.textContent = data;"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "headings, emphasis, code spans and links become elements",
+    "expect": "fail"
+  },
+  {
+    "name": "underscore emphasis is 'restored'",
+    "why": "The plausible improvement, and the reason there is a test for the ABSENCE of a feature. CommonMark refuses intra-word underscore emphasis precisely because of identifiers like sa_enable_caa_pics; adding the rule back renders that as 'sa' + italic 'enable_caa' + 'pics' throughout a document whose nouns are mostly settings keys.",
+    "edits": [
+      {
+        "find": "        const RE = /(`[^`]+`)|(\\*\\*[^*]+\\*\\*)|(\\*[^*\\n]+\\*)|(\\[[^\\]]*\\]\\([^)\\s]+\\))/;",
+        "replace": "        const RE = /(`[^`]+`)|(\\*\\*[^*]+\\*\\*)|(\\*[^*\\n]+\\*)|(_[^_\\n]+_)|(\\[[^\\]]*\\]\\([^)\\s]+\\))/;"
+      },
+      {
+        "find": "            } else if (tok[0] === '*') {",
+        "replace": "            } else if (tok[0] === '*' || tok[0] === '_') {"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a snake_case identifier is NOT italicised",
+    "expect": "fail"
+  },
+  {
+    "name": "any scheme is accepted as a link href",
+    "why": "The bytes are fetched over the network at runtime. 'It is our own file' is a fact about the repository, not about what a fetch returns, and a help dialog is not where you want to find out.",
+    "edits": [
+      {
+        "find": "                if (/^(https?:\\/\\/|#)/i.test(href)) {",
+        "replace": "                if (href) {"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a non-http link renders as inert text",
+    "expect": "fail"
+  },
+  {
+    "name": "inline syntax is applied inside a fenced code block",
+    "why": "A fence's whole point is that its contents are content. Rendering inline markup inside one silently eats asterisks and backticks out of the very examples the document is showing.",
+    "edits": [
+      {
+        "find": "                pre.textContent = body.join('\\n');",
+        "replace": "                _mdInline(pre, body.join('\\n'));"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "fenced code keeps its content verbatim",
+    "expect": "fail"
+  },
+  {
+    "name": "the table separator row is not required",
+    "why": "Without it, any line starting with a pipe begins a table — and a table's own separator row then becomes its first data row. The guard is what keeps the table rule from firing on prose.",
+    "edits": [
+      {
+        "find": "            if (line[0] === '|' && i + 1 < lines.length\n                && /^\\s*\\|[\\s:|-]+\\|\\s*$/.test(lines[i + 1])) {",
+        "replace": "            if (line[0] === '|' && i + 1 < lines.length) {"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a pipe-led line with no separator",
+    "expect": "fail"
+  },
+  {
+    "name": "a wrapped bullet ends its list (no lazy continuation)",
+    "why": "The defect this renderer actually shipped with for an afternoon. A continuation line ends the list, becomes a stray paragraph, and the next bullet opens a fresh one-item list — every fragment individually well-formed, which is why the first version of the spec could not see it and a structural probe could. The whole 'Supported pages' section rendered as six one-item lists.",
+    "edits": [
+      {
+        "find": "                        const cont = lines[i].match(/^\\s{2,}(\\S.*)$/);",
+        "replace": "                        const cont = null;"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a wrapped bullet stays ONE item",
+    "expect": "fail"
+  },
+  {
+    "name": "a lazy continuation need not be indented",
+    "why": "The indent requirement is what keeps the continuation rule from swallowing the next block: a heading, fence, table row or rule starts at column 0, so none of them can be read as continuation text. Dropping it lets a list eat the section that follows it.",
+    "edits": [
+      {
+        "find": "                        const cont = lines[i].match(/^\\s{2,}(\\S.*)$/);",
+        "replace": "                        const cont = lines[i].match(/^\\s*(\\S.*)$/);"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a heading directly under a list",
+    "expect": "fail"
+  },
+  {
+    "name": "<details> renders closed, as written",
+    "why": "The obvious reading of the source, and wrong for this surface: collapsed content is still in the DOM, so the dialog's quick filter highlights matches the reader cannot see. A filter that reports hits into a closed box is worse than no filter — and searching the whole text is the only reason to be in this dialog rather than on GitHub.",
+    "edits": [
+      {
+        "find": "                d.open = true;                          // see this function's JSDoc",
+        "replace": "                d.open = false;"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "renders OPEN, so the quick filter",
+    "expect": "fail"
+  },
+  {
+    "name": "an in-document anchor is handed to the browser",
+    "why": "The dialog is a fixed overlay with its own scroll area, so following the fragment scrolls MusicBrainz's page underneath while the table of contents appears to do nothing.",
+    "edits": [
+      {
+        "find": "                        a.addEventListener('click', (ev) => {\n                            ev.preventDefault();",
+        "replace": "                        a.addEventListener('click', (ev) => {\n                            if (ev.type === 'never') ev.preventDefault();"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "an in-document anchor link scrolls the dialog",
+    "expect": "fail"
+  },
+  {
+    "name": "heading ids lose their prefix, matching GitHub's bare slug",
+    "why": "Recorded as FAIL because the spec pins the prefixed href — but the interesting half is why the prefix exists at all, and no fixture can show that: it stops a heading id such as 'content' or 'header' colliding with one MusicBrainz's own page already uses. The collision needs a real page whose ids happen to match a heading in the help file, which no committed fixture has.",
+    "edits": [
+      {
+        "find": "        return 'mb-md-' + String(text).toLowerCase()",
+        "replace": "        return '' + String(text).toLowerCase()"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "an in-document anchor link scrolls the dialog",
+    "expect": "fail"
+  },
+  {
+    "name": "the Markdown stylesheet is never injected",
+    "why": "Classes and the sheet behind them are two separate things: with the sheet gone every class is still stamped and the document still has correct STRUCTURE, which is all the other tests here look at. Only a computed value catches it. (An earlier version of this entry claimed the sheet was needed because a style= attribute is dropped on /account/*, and recorded itself as an honest pass on that basis. That reason was wrong — see the note in _ensureMdHelpStyle() — and with it went the excuse for not asserting anything.)",
+    "edits": [
+      {
+        "find": "        if (document.getElementById('mb-md-help-style')) return;",
+        "replace": "        if (true) return;"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "the stylesheet is actually injected",
+    "expect": "fail"
+  },
+  {
+    "name": "the help cache key is left on its old name",
+    "why": "Recorded as pass, honestly. fetchCachedText() keys on the cache key alone and stores no URL beside the bytes, so an upgrading user with the plain-text help cached would have it fed to the Markdown renderer for up to a TTL. Every fixture starts with empty GM storage, so no test here can hold a stale value from a previous format.",
+    "edits": [
+      {
+        "find": "    const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-md';",
+        "replace": "    const CACHE_KEY_HELP       = SCRIPT_BASE_NAME.toLowerCase() + '-remote-help-text';"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "the button fetches the .md",
+    "expect": "pass"
+  }
+]

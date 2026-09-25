@@ -102,7 +102,10 @@ At merge time (on `main`):
    name in `scripts/audit-changelog.py`, which now fails on a NEW one, and on a
    newest entry whose date disagrees with the header's stamp.
 6. Delete `<project>_CHANGELOG.wip.json`.
-7. Re-read `<project>_HELP.txt` against what actually shipped, and reconcile it.
+7. Re-read the project's help file against what actually shipped, and reconcile
+   it. **The extension differs per project** — `ShowAllEntityData_HELP.md`
+   since 9.99.1148, `MB_PageEnhancer_HELP.txt` still — so go by what that
+   project's own `REMOTE_HELP_URL` names rather than by the suffix.
    Not "did I remember to update HELP" — read the sections the change touches
    and confirm they still describe the code. A change can make HELP wrong
    without adding anything to it, and a change can need no HELP edit at all;

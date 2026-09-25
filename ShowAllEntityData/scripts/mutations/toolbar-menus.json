@@ -115,5 +115,95 @@
     "spec": "tests/fixtures/toolbar-menus.spec.js",
     "grep": "each menu adopts the real buttons",
     "expect": "fail"
+  },
+  {
+    "name": "the pinned pair keeps its own colours instead of the menus'",
+    "why": "The change the user asked for, reverted. Both halves go back to their old slate/blue-grey grounds, so the pill reads as two differently-coloured buttons welded together rather than as one control.",
+    "edits": [
+      {
+        "find": "    function uiSettingsBtnCSS() {\n        const defaults = '#ECEFF1|#263238|1px solid #B0BEC5';",
+        "replace": "    function uiSettingsBtnCSS() {\n        const defaults = '#607D8B|white|1px solid #546E7A';"
+      },
+      {
+        "find": "            default: '#ECEFF1|#263238|1px solid #B0BEC5',\n            description: 'Settings button, the left half of the ⚙️❓ pill: bg|color|border'",
+        "replace": "            default: '#607D8B|white|1px solid #546E7A',\n            description: 'Settings button, the left half of the ⚙️❓ pill: bg|color|border'"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "drawn as ONE pill",
+    "expect": "fail"
+  },
+  {
+    "name": "the flex gap is not cancelled, so the pill splits open",
+    "why": "The bar is display:inline-flex with a gap between EVERY pair of children, and a flex gap cannot be suppressed for one pair. Without the negative margin the two halves sit 8px apart while still drawing their pill radii and their single hairline — which looks like two buttons that have each lost a corner.",
+    "edits": [
+      {
+        "find": "            margin-right: calc(-1 * var(--mb-toolbar-gap, 8px)) !important;",
+        "replace": "            margin-right: 0 !important;"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "drawn as ONE pill",
+    "expect": "fail"
+  },
+  {
+    "name": "both halves keep their side borders, doubling the divider",
+    "why": "The defect the sort-group pill hit on its own first run: the left half's right border pairs with the right half's left border, so the seam draws at 2px against 1px outer edges. Side borders start at 0 and are re-grown for exactly this reason.",
+    "edits": [
+      {
+        "find": "        .mb-toolbar-pinned-btn {\n            border-radius: 0 !important;\n            border-left-width: 0 !important;\n            border-right-width: 0 !important;\n        }",
+        "replace": "        .mb-toolbar-pinned-btn {\n            border-radius: 0 !important;\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "drawn as ONE pill",
+    "expect": "fail"
+  },
+  {
+    "name": "the run-relative cap selectors become :first-of-type/:last-of-type",
+    "why": "CLAUDE.md records this for the sort group and it is the same trap here: those pseudo-classes count elements of the same TAG, and these two <button>s are neither the first nor the last button among their siblings — the fetch buttons and the two menu buttons are buttons too. The caps land on the wrong elements entirely.",
+    "edits": [
+      {
+        "find": "        .mb-toolbar-pinned-btn:not(.mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn) {",
+        "replace": "        .mb-toolbar-pinned-btn:first-of-type {"
+      },
+      {
+        "find": "        .mb-toolbar-pinned-btn:not(:has(+ .mb-toolbar-pinned-btn)) {",
+        "replace": "        .mb-toolbar-pinned-btn:last-of-type {"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "drawn as ONE pill",
+    "expect": "fail"
+  },
+  {
+    "name": "the pill rules drop !important",
+    "why": "Both buttons set border and border-radius INLINE, from uiSettingsBtnCSS()/uiHelpBtnCSS(). A normal-priority stylesheet rule cannot outrank inline, so every pill declaration is silently discarded and the two render as separate rounded buttons.",
+    "edits": [
+      {
+        "find": "            border-top-left-radius: 6px !important;\n            border-bottom-left-radius: 6px !important;\n        }\n        .mb-toolbar-pinned-btn:not(:has(+ .mb-toolbar-pinned-btn)) {",
+        "replace": "            border-top-left-radius: 6px;\n            border-bottom-left-radius: 6px;\n        }\n        .mb-toolbar-pinned-btn:not(:has(+ .mb-toolbar-pinned-btn)) {"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "drawn as ONE pill",
+    "expect": "fail"
+  },
+  {
+    "name": "the gap-cancelling margin moves to the RIGHT half of the pill",
+    "why": "The obvious place to put it, and how this shipped for an hour. It looks identical while the two halves share a line. The bar is flex-wrap:wrap, though, and at 1040-1080px — an ordinary window width — they land on different lines; the negative margin then pulls ❓ 8px past the bar's own left edge, i.e. content outside its container. On the LEFT half the same pull only shortens a line that has nothing after it.",
+    "edits": [
+      {
+        "find": "        .mb-toolbar-pinned-btn:has(+ .mb-toolbar-pinned-btn) {",
+        "replace": "        .mb-toolbar-pinned-btn + .mb-toolbar-pinned-btn {"
+      },
+      {
+        "find": "            margin-right: calc(-1 * var(--mb-toolbar-gap, 8px)) !important;",
+        "replace": "            margin-left: calc(-1 * var(--mb-toolbar-gap, 8px)) !important;"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "does not hang outside it",
+    "expect": "fail"
   }
 ]
