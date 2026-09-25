@@ -135,6 +135,7 @@ The fetch progress bar should be positioned AFTER the last button (Help) in the 
 
 
 * TODO resize handling and fixing quicksearch
+** i
 
 1.)
 
@@ -158,8 +159,29 @@ Additionally the
 which used to work on the old text based format should work again on the markup (.md) format when shift-clicking the
 help button
 
+** bugs
 
-* TODO Barcode handling
+2 bugs
+
+1.)
+
+both dialogs auto-close when dragging and releasing the mouse
+
+2.)
+
+the keybord shortcuts dialog is ONYL resizable up and down, but not horizontally
+
+** bugs
+
+1.)
+
+the keybord shortcuts dialog is still NOT resizable horizontally
+
+2.)
+
+both dialogs seem to have a lower bound when resizing downward
+
+* DONE Barcode handling
 ** i
 
 The current barcode highlight toggle button code in the "View" drop down menue (h1 header line) on pageTypes which have
@@ -182,6 +204,7 @@ So there should be a toggle triangle icon + small glyph before the "Barcode" col
 ** ▼▌█
 
 Use only the following glyph "▼▌█" as the current one occupies too much space
+
 
 * TODO Remove "Show all " generically from all buttons 
 

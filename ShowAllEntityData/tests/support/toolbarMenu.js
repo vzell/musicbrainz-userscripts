@@ -5,8 +5,10 @@
  *
  * Since the action-button redesign the bar no longer holds one flat run of
  * labelled buttons. Save to Disk, Load from Disk and Export are rows inside
- * `📦 Data ▾`; Density, Statistics, Barcode highlighting and the keyboard
- * shortcuts reference are rows inside `🛠 View ▾`; `artist-releasegroups`'
+ * `📦 Data ▾`; Density, Statistics and the keyboard shortcuts reference are
+ * rows inside `🛠 View ▾` (Barcode highlighting moved out of this menu
+ * entirely, into the "Barcode" column header's own ▶/▼ toggle);
+ * `artist-releasegroups`'
  * four discography views are rows inside `📀 Discography ▾`. The rows keep
  * their ids — `#mb-save-to-disk-btn` still selects the same element it always
  * did — but a row inside a closed panel is not visible, so a bare
