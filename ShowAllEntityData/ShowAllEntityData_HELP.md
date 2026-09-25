@@ -114,7 +114,7 @@ buttons:
 | Menu          | Rows                                                                                                                                  |
 |---------------|---------------------------------------------------------------------------------------------------------------------------------------|
 | **📦 Data ▾** | 💾 Save to Disk · 📂 Load from Disk · 💾 Export                                                                                       |
-| **🛠 View ▾**  | 📏 Density · 📊 Statistics · ▌█▌▐█▐▌██▐▌█ Barcode · 🎹 Keyboard Shortcuts                                                             |
+| **🛠 View ▾**  | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                                                                                    |
 | **⚙️ ❓**      | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
 
 Each row shows its own keyboard shortcut on the right. Open a menu with the
@@ -427,6 +427,16 @@ the filter bar to isolate them.
 
 ---
 
+## Barcode highlighting
+
+On a listing with a **Barcode** column, matching barcodes are colour-coded and
+clicking one toggles the merge checkboxes for the whole group. The
+**▶▌█**/**▼▌█** toggle in the *Barcode* column header turns
+this off and on — same idiom as the ⏱ toggle above. `Ctrl+B` (configurable)
+toggles it directly, from anywhere on the page.
+
+---
+
 ## Save and load
 
 **💾 Save to Disk** writes the whole dataset as gzip-compressed JSON
@@ -508,7 +518,8 @@ work after the prefix key has taken focus away.
 | `Ctrl+,`                   | Settings                                                        |
 | `Escape`                   | Clear the focused filter, then remove focus; close open menus   |
 | `Ctrl+S` `Ctrl+L` `Ctrl+E` | Save · Load · Export — each opens 📦 Data first                 |
-| `Ctrl+D` `Ctrl+I` `Ctrl+B` | Density · Statistics · Barcode — each opens 🛠 View first        |
+| `Ctrl+D` `Ctrl+I`          | Density · Statistics — each opens 🛠 View first                  |
+| `Ctrl+B`                   | Toggle barcode highlighting directly (no menu)                  |
 | `Ctrl+R` `Ctrl+V`          | Resize columns · Visible columns                                |
 | `Ctrl+K` `Ctrl+G` `Ctrl+C` | Shortcuts reference · Focus global filter · Focus column filter |
 

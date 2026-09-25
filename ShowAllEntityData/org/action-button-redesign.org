@@ -160,6 +160,7 @@ help button
 
 
 * TODO Barcode handling
+** i
 
 The current barcode highlight toggle button code in the "View" drop down menue (h1 header line) on pageTypes which have
 a "Barcode" column like e.g. https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af
@@ -174,10 +175,13 @@ e.g. https://musicbrainz.org/release/91d40c05-d40b-4bcb-92a7-554320b315fc
 So there should be a toggle triangle icon + small glyph before the "Barcode" column name in the "Barcode" column header
 
 #+begin_example
-▼[small barcode glyph] Barcode - initially barcoded are highlighted
-▶[small barcode glyph] Barcode - barcoded highlightning switched off
+▼[small barcode glyph] Barcode - initially barcodes are highlighted
+▶[small barcode glyph] Barcode - barcod highlightning switched off
 #+end_example
 
+** ▼▌█
+
+Use only the following glyph "▼▌█" as the current one occupies too much space
 
 * TODO Remove "Show all " generically from all buttons 
 

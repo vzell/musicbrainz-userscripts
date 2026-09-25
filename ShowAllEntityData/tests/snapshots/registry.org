@@ -194,6 +194,29 @@ the sub-table button family's height/:active/:focus lists, and
 Nothing here is asserted by a spec — these baselines are reviewed as a git
 diff — so this is a re-capture backlog item rather than a merge blocker.
 
+** Barcode-highlight toggle moves out of the View menu (branch barcode-col-header-toggle, 2026-09-25)
+
+Supersedes the =#mb-barcode-highlight-btn=/View-panel bullet in the
+"Action-button redesign" entry above for any page with a Barcode column —
+that description is now only accurate for the older baselines it was
+written against.
+
+  - =#mb-barcode-highlight-btn= is GONE entirely — not adopted into
+    =div#mb-view-menu-btn-panel= any more, not present anywhere in
+    =#mb-show-all-controls-container=.
+  - On every table whose thead carries a "Barcode" =<th>=, that header now
+    contains a =span.mb-barcode-col-hdr-btn= as the first child of its
+    =.mb-col-hdr-flex=, reading =▼▌█= (highlighting on, the default) or
+    =▶▌█= (off).
+  - The =GM_addStyle= block gains =.mb-barcode-col-hdr-btn= in the
+    column-header toggle family's three shared selector lists (base/hover/
+    focus-visible) and its =[aria-pressed="true"]= engaged rule — present in
+    every baseline's =<style>= block regardless of whether that page has a
+    Barcode column, same as the Release-events control's CSS.
+
+Nothing here is asserted by a spec — these baselines are reviewed as a git
+diff — so this is a re-capture backlog item rather than a merge blocker.
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not

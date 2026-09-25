@@ -24994,7 +24994,7 @@
      */
     const _TOOLBAR_MENU_ROW_ORDER = {
         data: ['mb-save-to-disk-btn', 'mb-load-from-disk-btn', 'mb-export-btn'],
-        view: ['mb-density-btn', 'mb-stats-btn', 'mb-barcode-highlight-btn', 'mb-shortcuts-help-btn'],
+        view: ['mb-density-btn', 'mb-stats-btn', 'mb-shortcuts-help-btn'],
         disc: ['mb-disc-complete-btn', 'mb-disc-official-btn', 'mb-disc-nonofficial-btn', 'mb-disc-merged-btn'],
     };
 
@@ -28168,8 +28168,10 @@ ${sections.join('\n')}
 
     /**
      * The 🛠 View menu — everything that changes how the table is presented
-     * without changing what it contains: Density, Statistics, Barcode
-     * highlighting, the keyboard-shortcuts reference.
+     * without changing what it contains: Density, Statistics, the
+     * keyboard-shortcuts reference. (Barcode highlighting used to live here
+     * too; it moved into the "Barcode" column header itself, see
+     * `_initBarcodeColHeaderToggle()`.)
      *
      * Note 👁️ Visible and ↔️ Resize are deliberately NOT here. They act on one
      * table, so they sit beside that table’s heading next to the filter bar,
@@ -30485,10 +30487,10 @@ ${sections.join('\n')}
             // Toggle barcode highlighting (configurable, default Ctrl+B)
             if (isShortcutEvent(e, 'sa_toggle_barcode_highlighting', 'Ctrl+B')) {
                 e.preventDefault();
-                if (_toolbarInvoke('mb-barcode-highlight-btn')) {
+                if (_barcodeToggleHighlight()) {
                     Lib.debug('shortcuts', 'Barcode highlighting toggled via ' + getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'));
                 } else {
-                    Lib.warn('shortcuts', 'Barcode highlight button not found');
+                    Lib.warn('shortcuts', 'No Barcode column on this page');
                 }
             }
 
@@ -32635,126 +32637,131 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Updates the barcode highlight toggle button appearance to reflect the
-     * current `isBarcodeHighlightActive` state.
-     * Active  → default button style, tooltip "Toggle barcode highlightning off".
-     * Inactive → dark-grey background + white text, tooltip "Toggle barcode
-     *             highlightning on".
+     * Paints one `.mb-barcode-col-hdr-btn` to reflect `active`.
      *
-     * @param {HTMLButtonElement} btn - The `#mb-barcode-highlight-btn` element.
+     * The glyph is a short two-character barcode motif — plain text, not an
+     * emoji, so it needs no U+FE0E variation trick (unlike 🔗/⏱, a symbol
+     * like 🔖 has no defined text-presentation form to fall back on). Kept
+     * deliberately short (unlike the old toolbar button's longer decorative
+     * string) since it now sits inline with the column name and the sort
+     * icons rather than alone in the toolbar.
+     *
+     * @param {HTMLElement} btn - A `.mb-barcode-col-hdr-btn` element.
+     * @param {boolean} active - Whether highlighting is currently on.
+     * @returns {void}
      */
-    function updateBarcodeHighlightBtnState(btn) {
+    function _barcodeUpdateColHdrBtn(btn, active) {
         if (!btn) return;
-        if (isBarcodeHighlightActive) {
-            btn.style.background  = '';
-            btn.style.borderColor = '';
-            btn.style.color       = '';
-            btn.title = `Toggle barcode highlightning off (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
-        } else {
-            btn.style.background  = '#555555';
-            btn.style.borderColor = '#333333';
-            btn.style.color       = '#ffffff';
-            btn.title = `Toggle barcode highlightning on (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
-        }
+        btn.textContent = (active ? '▼' : '▶') + '▌█';
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        btn.title = active
+            ? `Toggle barcode highlightning off (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`
+            : `Toggle barcode highlightning on (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
     }
 
     /**
-     * Adds the barcode-highlight toggle button to the controls bar, positioned
-     * between the "👁️ Visible" and "📏 Density" buttons.
+     * Repaints every `.mb-barcode-col-hdr-btn` in the document from the
+     * current `isBarcodeHighlightActive` flag. The toggle is deliberately
+     * page-wide, not per-table (same design as the Length toggle), so a
+     * multi-table page keeps every Barcode header in sync after one click.
      *
-     * The button label "▌█▌▐█▐▌██▐▌█" is a purely visual barcode glyph.
-     * The button is the same height as #mb-visible-btn (height inherited from
-     * uiActionBtnBaseCSS) but narrower — only horizontal padding is reduced.
-     *
-     * Visibility guard: the button is only injected when a "Barcode" <th> header
-     * or at least one td.barcode-cell is present.  On page types that have no
-     * Barcode column the function returns silently.
-     *
-     * Clicking toggles `isBarcodeHighlightActive`:
-     *   • Off → removes all highlights immediately via `clearAllBarcodeHighlights()`;
-     *            button turns dark grey.
-     *   • On  → re-applies highlights via `initBarcodeHighlight()`; button reverts
-     *            to its default appearance.
-     *
-     * Idempotent: does nothing if the button already exists in the DOM.
-     * Guarded by `Lib.settings.sa_enable_barcode_highlight`.
+     * @returns {void}
      */
-    function addBarcodeHighlightToggleButton() {
+    function _barcodeRepaintColHdrBtns() {
+        document.querySelectorAll('.mb-barcode-col-hdr-btn').forEach(btn =>
+            _barcodeUpdateColHdrBtn(btn, isBarcodeHighlightActive));
+    }
+
+    /**
+     * Flips `isBarcodeHighlightActive` and applies the effect: re-applies
+     * highlighting via `initBarcodeHighlight()` when turning on, strips it
+     * via `clearAllBarcodeHighlights()` when turning off, then repaints every
+     * header toggle. The click/keydown handler in
+     * `_initBarcodeColHeaderToggle()` and the `Ctrl+B` shortcut both call
+     * this directly.
+     *
+     * Returns `false` without doing anything when no Barcode column exists on
+     * the page — the same "not found" outcome the toolbar button's
+     * `_toolbarInvoke()` used to report, preserved for the keyboard shortcut.
+     *
+     * @returns {boolean} Whether a Barcode header toggle was found and acted on.
+     */
+    function _barcodeToggleHighlight() {
+        if (!document.querySelector('.mb-barcode-col-hdr-btn')) return false;
+        isBarcodeHighlightActive = !isBarcodeHighlightActive;
+        if (isBarcodeHighlightActive) {
+            initBarcodeHighlight();
+            Lib.debug('barcode', 'Barcode highlighting toggled ON via column header');
+        } else {
+            clearAllBarcodeHighlights();
+            Lib.debug('barcode', 'Barcode highlighting toggled OFF via column header');
+        }
+        _barcodeRepaintColHdrBtns();
+        return true;
+    }
+
+    /**
+     * Injects the `▶▌█`/`▼▌█` barcode-highlight toggle
+     * into every rendered "Barcode" column header, as the first child of
+     * `.mb-col-hdr-flex` — the same slot and idiom
+     * `_initMsLengthColHeaderToggle()` uses for the Length column's `⏱`
+     * toggle.
+     *
+     * Must run POST-render, from the render tail: `makeTableSortableUnified()`
+     * rebuilds every `<th>` from a plain column-name string and wipes
+     * `th.innerHTML` first, so anything injected earlier is destroyed when the
+     * real flex layout is built. Idempotent via a presence check, so
+     * re-running on a later render pass is safe.
+     *
+     * No-ops when the feature is off, or when the table has no "Barcode"
+     * column — a pageType with nothing to toggle gets no button rather than a
+     * dead one.
+     *
+     * State (`isBarcodeHighlightActive`) is a module-level flag rather than a
+     * DOM attribute, because — unlike the Length toggle's `data-mb-ms-shown`
+     * — highlighting cannot be inferred from cell content alone: a Barcode
+     * column with no duplicate groups looks identical whether the feature is
+     * on or off (same ambiguity the Picard column's `data-mb-picard-expanded`
+     * exists to avoid). Every render tail already re-invokes
+     * `initBarcodeHighlight()`/`clearAllBarcodeHighlights()` per pass, so the
+     * flag alone is enough; only this control needs re-wiring per render.
+     *
+     * @param {HTMLTableElement} [scopeTable] - Limit to one table; all
+     *   `table.tbl` elements when omitted.
+     * @returns {void}
+     */
+    function _initBarcodeColHeaderToggle(scopeTable) {
         if (!Lib.settings.sa_enable_barcode_highlight) return;
 
-        const controlsContainer = document.getElementById('mb-show-all-controls-container');
-        if (!controlsContainer) {
-            Lib.warn('ui', 'Controls container not found, cannot add barcode highlight toggle button');
-            return;
-        }
+        const showing = isBarcodeHighlightActive;
+        const tables = scopeTable ? [scopeTable] : Array.from(document.querySelectorAll('table.tbl'));
+        tables.forEach(table => {
+            const th = Array.from(table.querySelectorAll('thead th'))
+                .find(h => (h.dataset.colName || '') === 'Barcode');
+            if (!th) return;
+            const hdrFlex = th.querySelector('.mb-col-hdr-flex');
+            if (!hdrFlex) return;
 
-        const existingBtn = document.getElementById('mb-barcode-highlight-btn');
-        if (existingBtn) {
-            Lib.debug('ui', 'Barcode highlight toggle button already exists, skipping');
-            return;
-        }
-
-        // Only inject the button on pages that actually have a "Barcode" column.
-        // Two signals are checked (in priority order):
-        //   1. A <th> with the exact text "Barcode" in any table.tbl — present
-        //      even when all barcode cells are empty values.
-        //   2. A td.barcode-cell written by barcodeProcessTable or chaban's script —
-        //      fallback for tables where the header text was not "Barcode".
-        // If neither is found the button is silently suppressed; no warn is emitted
-        // because the absence is fully expected on non-release page types.
-        const hasBarcodeColumn =
-            Array.from(document.querySelectorAll('table.tbl th')).some(
-                th => _cleanColHeaderText(th) === 'Barcode'
-            ) ||
-            document.querySelector('td.barcode-cell') !== null;
-
-        if (!hasBarcodeColumn) {
-            Lib.debug('ui', 'No Barcode column detected — barcode highlight button suppressed');
-            return;
-        }
-
-        const btn = document.createElement('button');
-        btn.id      = 'mb-barcode-highlight-btn';
-        btn.type    = 'button';
-        btn.innerHTML = '<span>▌█▌▐█▐▌██▐▌█</span>';
-        // Narrower than standard action buttons (reduced horizontal padding only) but
-        // deliberately the same height as #mb-visible-btn — achieved by keeping the
-        // height and vertical padding from uiActionBtnBaseCSS() unchanged and only
-        // shrinking the horizontal padding and font-size of the decorative glyph.
-        btn.style.cssText = uiActionBtnBaseCSS()
-            .replace(/font-size:[^;]+;/, 'font-size:0.65em;')
-            .replace(/padding:(\S+)\s+(\S+);/, (_, v) => `padding:${v} 4px;`);
-
-        // Set initial appearance (highlights start active)
-        updateBarcodeHighlightBtnState(btn);
-
-        btn.addEventListener('click', () => {
-            isBarcodeHighlightActive = !isBarcodeHighlightActive;
-            if (isBarcodeHighlightActive) {
-                initBarcodeHighlight();
-                Lib.debug('barcode', 'Barcode highlighting toggled ON via button');
-            } else {
-                clearAllBarcodeHighlights();
-                Lib.debug('barcode', 'Barcode highlighting toggled OFF via button');
+            let btn = hdrFlex.querySelector('.mb-barcode-col-hdr-btn');
+            if (!btn) {
+                btn = document.createElement('span');
+                btn.className = 'mb-barcode-col-hdr-btn';
+                btn.setAttribute('role', 'button');
+                btn.tabIndex = 0;
+                const activate = (ev) => {
+                    // stopPropagation: the <th> itself carries sort handlers.
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    _barcodeToggleHighlight();
+                };
+                btn.addEventListener('click', activate);
+                btn.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') activate(ev);
+                });
+                hdrFlex.insertBefore(btn, hdrFlex.firstChild);
             }
-            updateBarcodeHighlightBtnState(btn);
+            _barcodeUpdateColHdrBtn(btn, showing);
         });
-
-        // Row placement inside 🛠 View ▾ is declared by _TOOLBAR_MENU_ROW_ORDER,
-        // not by the sequence the render tail happens to call these helpers in,
-        // so this no longer needs to find mb-density-btn to sit next to.
-        //
-        // The hint argument was missing until 9.99.1148, making this the one
-        // menu row with no `data-mb-menu-hint` while every sibling showed its
-        // accelerator — not a control with nothing to show: the shortcut is
-        // real and routed through `_toolbarInvoke()` like the others. Nothing
-        // failed; it was found by re-capturing the snapshot baselines, where
-        // the row count and the hint count disagreed.
-        _ensureViewMenu().adopt(btn,
-            getShortcutDisplay('sa_toggle_barcode_highlighting', 'Ctrl+B'));
-
-        Lib.debug('ui', 'Barcode highlight toggle button added to controls');
-        ensureSettingsButtonIsLast();
     }
 
     /**
@@ -38473,6 +38480,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
         .mb-re-col-hdr-btn,
+        .mb-barcode-col-hdr-btn,
         .mb-col-collapse-hdr-btn,
         .mb-col-uniq-wrap {
             cursor: pointer;
@@ -38497,6 +38505,7 @@ a { color: #1565c0; }`;
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
         .mb-re-col-hdr-btn:hover,
+        .mb-barcode-col-hdr-btn:hover,
         .mb-col-collapse-hdr-btn:hover,
         .mb-col-uniq-wrap:hover {
             background: var(--mb-hdr-pill-bg-hover);
@@ -38506,7 +38515,8 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn:focus-visible,
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
-        .mb-re-col-hdr-btn:focus-visible {
+        .mb-re-col-hdr-btn:focus-visible,
+        .mb-barcode-col-hdr-btn:focus-visible {
             outline: 2px solid rgba(0, 100, 255, 0.55);
             outline-offset: 1px;
         }
@@ -38518,6 +38528,7 @@ a { color: #1565c0; }`;
         .mb-ms-col-hdr-btn[aria-pressed="true"],
         .mb-picard-col-hdr-btn[aria-pressed="true"],
         .mb-rel-col-hdr-btn[aria-pressed="true"],
+        .mb-barcode-col-hdr-btn[aria-pressed="true"],
         .mb-col-collapse-hdr-btn[aria-expanded="true"] {
             background: var(--mb-hdr-pill-engaged-bg);
             border-color: var(--mb-hdr-pill-engaged-border);
@@ -52350,9 +52361,6 @@ a { color: #1565c0; }`;
                 });
             }
 
-            // Add barcode highlight toggle button (between Visible and Density)
-            addBarcodeHighlightToggleButton();
-
             // Add density control
             if (Lib.settings.sa_enable_density_control) {
                 addDensityControl();
@@ -65236,6 +65244,10 @@ a { color: #1565c0; }`;
         // render path (single-table, grouped, and sub-table-in-its-own-tab
         // alike). Don't add a per-caller call site — extend the hook.
         _initLengthColHeaderTooltips(table);
+        // Same hook, same reason again: the ▶/▼ barcode-highlight toggle used
+        // to live in the h1 toolbar's View menu; it moved into the "Barcode"
+        // column header itself, so it needs the same post-rebuild hook.
+        _initBarcodeColHeaderToggle(table);
     }
 
     /**
@@ -74735,9 +74747,6 @@ a { color: #1565c0; }`;
                     addColumnVisibilityToggle(mainTable);
                 }
             }
-
-            // Add barcode highlight toggle button (between Visible and Density)
-            addBarcodeHighlightToggleButton();
 
             // Add density control
             if (Lib.settings.sa_enable_density_control) {
@@ -86285,8 +86294,9 @@ a { color: #1565c0; }`;
         'l': { fn: () => showLoadFilterDialog(_toolbarAnchorFor(document.getElementById('mb-load-from-disk-btn'))), description: 'Load from Disk' },
         'r': { fn: toggleAutoResizeColumns, description: 'Auto Resize Columns' },
         'v': { fn: openVisibleColumnsMenu, description: 'Open Visible Columns Menu' },
-        // Adopted into 🛠 View ▾, so it must be invoked through its host menu.
-        'b': { fn: () => _toolbarInvoke('mb-barcode-highlight-btn'), description: 'Toggle Barcode Highlighting' },
+        // Lives in the "Barcode" column header now, not a toolbar menu — a
+        // direct call, same as any other local/synchronous toggle.
+        'b': { fn: () => _barcodeToggleHighlight(), description: 'Toggle Barcode Highlighting' },
         'd': { fn: openDensityMenu, description: 'Open Density Menu' },
         'i': { fn: showStatsPanel, description: 'Show Statistics Panel' },
         'e': { fn: openExportMenu, description: 'Open Export Menu' },
