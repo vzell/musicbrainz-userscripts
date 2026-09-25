@@ -255,6 +255,12 @@ themselves:
 - **ISRC info** — one sub-section per constituent (country, registrant, year,
   designation) plus a validity flag, on any "ISRCs" column. **ISWC info** — a
   validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.
+- **Barcode info** — on any "Barcode" column: a validity flag (✅/⚠️), which
+  GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) a conforming entry matches, and a
+  "Same As" list, one entry per group of rows sharing a barcode number
+  across different textual representations (e.g. a UPC-A and its own
+  zero-padded EAN-13 form), labeled with the actual values involved. See
+  "Barcode validation" below.
 
 **Keyboard**: ↑/↓/Home/End navigate, Enter or Space toggles, Escape clears the
 quick filter and then closes. The panel closes on an outside click.
@@ -447,6 +453,10 @@ clicking one toggles the merge checkboxes for the whole group. The
 this off and on — same idiom as the ⏱ toggle above. `Ctrl+B` (configurable)
 toggles it directly, from anywhere on the page.
 
+Separately, every Barcode column is also checked against the GS1 spec
+(UPC-A/EAN-13/EAN-8/GTIN-14) — see "Barcode validation" under
+"Page-specific behaviour" below.
+
 ---
 
 ## Save and load
@@ -611,6 +621,7 @@ you automatically.
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                 |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                         |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                            |
+| 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                |
 | 🎨 Artist role colours                          | Main and guest performer label colours                                                                                                                                    |
 | 🖼️ CAA/EAA illustrated discography               | The whole artwork feature: icons, strips, inline thumbnails, sizes, concurrency                                                                                           |
 | 🗄️ Art archive IndexedDB                         | The image cache: TTL, entry count, store sizes                                                                                                                            |
@@ -719,6 +730,30 @@ only a code with the wrong shape, or a check digit that doesn't match ISO
 15707's own formula, gets the ⚠️ glyph.
 
 Both feed their own 📊 dropdown sections — see "ISRC info"/"ISWC info" above.
+
+</details>
+
+<details>
+<summary>Barcode validation</summary>
+
+Every native **Barcode** column is checked against the GS1 standard —
+UPC-A, EAN-13, EAN-8 and GTIN-14 — including the check digit. The
+displayed value is **never rewritten**, valid or invalid; an entry that
+doesn't match a known length, contains non-digit characters, or has an
+incorrect check digit gets a ⚠️ warning glyph and a tooltip explaining why.
+
+This is a separate feature from Barcode *highlighting* (see "Barcode
+highlighting" above) — validation checks the number itself against the
+spec; highlighting groups identical barcode+Format pairs for merge
+candidates.
+
+The 📊 dropdown's "Barcode info" section (see "The unique-values dropdown"
+above) also offers a **Same As** list: rows whose barcode NUMBER matches
+another row's, even written differently — for example a UPC-A and its own
+zero-padded EAN-13 form — are grouped into one checkable entry showing both
+values, e.g. `0196587565725 / 196587565725`. This is deliberately
+independent of the release's own Format column, so it can catch a match
+that the highlighting feature intentionally does not group.
 
 </details>
 
