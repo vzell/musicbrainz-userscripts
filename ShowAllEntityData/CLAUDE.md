@@ -2989,17 +2989,17 @@ region for a backtick before debugging anything else.
 `org/action-button-redesign.org`. The bar used to be one flat run of up to 13
 controls, nine of them labelled. It is now:
 
-| Order | Element | Present |
-|-------|---------|---------|
-| 1 | `🧮N …` fetch buttons | always |
-| 2 | `#mb-stop-btn` | always (hidden outside a fetch) |
-| 3 | `#mb-fetch-progress-wrap` | always (hidden outside a fetch) |
-| 4 | `#mb-button-divider-initial` | always — the only surviving `\|` |
-| 5 | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render |
-| 6 | `#mb-data-menu-btn` `📦 Data ▾` | from the initial render |
-| 7 | `#mb-view-menu-btn` `🛠 View ▾` | from the initial render (🎹 seeds it) |
-| 8 | `#mb-settings-btn` `⚙️` | always, pinned — left half of the ⚙️❓ pill |
-| 9 | `#mb-app-help-btn` `❓` | always, pinned — right half of the ⚙️❓ pill |
+| Order | Element                                | Present                                      |
+|-------|----------------------------------------|----------------------------------------------|
+| 1     | `🧮N …` fetch buttons                  | always                                       |
+| 2     | `#mb-stop-btn`                         | always (hidden outside a fetch)              |
+| 3     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch)              |
+| 4     | `#mb-button-divider-initial`           | always — the only surviving `\|`             |
+| 5     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render          |
+| 6     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                      |
+| 7     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)        |
+| 8     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill   |
+| 9     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill  |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
 not named there keeps whatever position it was appended at.

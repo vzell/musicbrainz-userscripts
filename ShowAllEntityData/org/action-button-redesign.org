@@ -1,20 +1,19 @@
 * DONE redesign of the action buttons
-
-** Decisions (2026-09-24) and what shipped
+** DONE Decisions (2026-09-24) and what shipped
 
 Options were put up as ASCII mockups and the chosen shape was *two menus*:
 =📦 Data ▾= and =🛠 View ▾=, with =⚙️= and =❓= staying pinned. Items 1, 3, 4, 5
 and 6 landed on branch =action-button-redesign=; item 2 followed on branch
 =help-github-md=.
 
-| item | decision                                                                                     | state                   |
-|------|----------------------------------------------------------------------------------------------|-------------------------|
-|   1. | =↔️= / =👁️= glyph-only, in the h2 immediately before =#mb-filter-container=                    | DONE                    |
-|   2. | =❓= opens the GitHub page; *Shift-click still opens the in-script dialog*; hand-written =.md= | DONE                    |
-|   3. | =🎹= joins =🛠 View ▾=; =⚙️= stays pinned beside =❓=                                           | DONE                    |
-|   4. | Density / Statistics / Barcode into =🛠 View ▾=; Export into =📦 Data ▾=                       | DONE                    |
-|   5. | Save / Load are rows of =📦 Data ▾=, so they cost one slot between them                        | DONE                    |
-|   6. | =tests/support/toolbarMenu.js=; 9 call sites migrated; 2 new specs + 2 mutation lists          | DONE                    |
+| item | decision                                                                                       | state |
+|------+------------------------------------------------------------------------------------------------+-------|
+|   1. | =↔️= / =👁️= glyph-only, in the h2 immediately before =#mb-filter-container=                    | DONE  |
+|   2. | =❓= opens the GitHub page; *Shift-click still opens the in-script dialog*; hand-written =.md= | DONE  |
+|   3. | =🎹= joins =🛠 View ▾=; =⚙️= stays pinned beside =❓=                                          | DONE  |
+|   4. | Density / Statistics / Barcode into =🛠 View ▾=; Export into =📦 Data ▾=                       | DONE  |
+|   5. | Save / Load are rows of =📦 Data ▾=, so they cost one slot between them                        | DONE  |
+|   6. | =tests/support/toolbarMenu.js=; 9 call sites migrated; 2 new specs + 2 mutation lists          | DONE  |
 
 Not in the original list, added because that page has the widest heading the
 script renders: =artist-releasegroups=' four discography views became
@@ -54,7 +53,7 @@ pull-down menus plus two pinned buttons", "↔️ Resize and 👁️ Visible liv
 h2" and "❓ opens GitHub; Shift-❓ renders the same file in the page" sections,
 and =DEBUG-NOTES.md='s 2026-09-24 entries.
 
-** Original request
+** DONE Original request
 
 
 Show me a couple of options/visualization for a redesign of the action buttons in the h1 header line of multi- (e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0)

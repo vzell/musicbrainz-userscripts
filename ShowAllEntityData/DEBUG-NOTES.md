@@ -15511,10 +15511,10 @@ rewrite.
 It failed on the branch by 14px, and the honest answer took a probe
 (`scripts/probe-uniq-drop-clamp-geometry.js`, kept):
 
-| arm | button y @1280 | crampedHeight | button bottom after resize | spaceBelow | panel overshoot |
-|-----|----------------|---------------|-----------------------------|------------|-----------------|
-| `main` | 274.5 | 324 | 345.3 | **-27.3** | 2.0 px |
-| branch | 203.2 | 252 | 297.3 | **-51.3** | 14.3 px |
+| arm    | button y @1280 | crampedHeight | button bottom after resize | spaceBelow | panel overshoot |
+|--------|----------------|---------------|----------------------------|------------|-----------------|
+| `main` | 274.5          | 324           | 345.3                      | **-27.3**  | 2.0 px          |
+| branch | 203.2          | 252           | 297.3                      | **-51.3**  | 14.3 px         |
 
 The spec measured the button at 1280 wide, computed a cramped viewport from it,
 then resized to **1024** — a width change that re-wraps the h1 bar and moves the
@@ -15739,12 +15739,12 @@ gained an arm for the missing-companion case and is green on all 12.
 Recorded as data rather than as a verdict, because the evidence is strong in
 one direction and the confound is real.
 
-| Arm | Tests | Result |
-|-----|-------|--------|
-| branch, run 1 | 585 | green |
-| branch, run 2 | 587 | 1 failed — `rel-column-fetch-failure.spec.js:210` |
-| branch, run 3 | 587 | 1 failed — `uniq-drop-join-phrases.spec.js:200` |
-| `main`, one run | 571 | green |
+| Arm             | Tests | Result                                            |
+|-----------------|-------|---------------------------------------------------|
+| branch, run 1   | 585   | green                                             |
+| branch, run 2   | 587   | 1 failed — `rel-column-fetch-failure.spec.js:210` |
+| branch, run 3   | 587   | 1 failed — `uniq-drop-join-phrases.spec.js:200`   |
+| `main`, one run | 571   | green                                             |
 
 **What says it is not this change.** A DIFFERENT test failed in each red run,
 and each passed both standalone (2/2 and 10/10) and inside the other full run.
