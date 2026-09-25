@@ -1,5 +1,28 @@
 [
   {
+    "version": "9.99.1154",
+    "date": "2026-09-25",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "\"ISRCs\" columns (native `ul.isrcs` listing pages such as artist-recordings, and this script's own release-tracks synthetic column) now always display the hyphenated `CC-XXX-YY-NNNNN` form, with the country/year segments lightly tinted, regardless of whether MusicBrainz's own native markup or the third-party jesus2099 script produced the cell — `initIsrcFormatting()`, page-agnostic, self-detecting via `a[href^=\"/isrc/\"]`.",
+          "A code that doesn't match the CC-XXX-YY-NNNNN shape now renders with a ⚠️ warning glyph and an explanatory tooltip instead of being silently reformatted or left unremarked — `data-mb-isrc-invalid`.",
+          "The same validity check now applies to native \"ISWC\" columns against ISO 15707's `T-NNNNNNNNN-C` format (including the computed check digit) — `initIswcValidation()`. MusicBrainz's native ISWC display is already correctly formatted, so this only ever adds the ⚠️ glyph to a malformed code, never rewrites a valid one.",
+          "The 📊 unique-values dropdown for an \"ISRCs\" column now offers five new sections: \"ISRC - Country\", \"- Registrant\", \"- Year\" (resolved to a 4-digit year), \"- Designation\", and \"- Validity\" (✅/⚠️ valid/invalid counts) — `_findCellIsrcParts()`.",
+          "The 📊 dropdown for an \"ISWC\" column now offers an \"ISWC - Validity\" section — `_findCellIswcParts()`."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Credited jesus2099's `mb_INLINE-STUFF.user.js` (`coolifyISRC()`) in the third-party attribution block — this script's ISRC hyphenation/tinting is modelled on, not copied from or dependent on, that function.",
+          "`sa_enable_release_tracks_isrc_column`'s description now notes that column-existence gating is independent of the (unconditional) ISRC reformatting/validity behavior."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1153",
     "date": "2026-09-25",
     "sections": [

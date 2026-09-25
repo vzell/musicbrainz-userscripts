@@ -252,6 +252,9 @@ themselves:
 - **🎚️ Credit details**, **🎭 Roles**, **📅 Release events**, **💿 Format
   info**, **🏷️ Catalog info**, **🔗 Relationship icons**, **⏳ Pending edits**,
   and a **Relationships — Load state** section on pages carrying that column.
+- **ISRC info** — one sub-section per constituent (country, registrant, year,
+  designation) plus a validity flag, on any "ISRCs" column. **ISWC info** — a
+  validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.
 
 **Keyboard**: ↑/↓/Home/End navigate, Enter or Space toggles, Escape clears the
 quick filter and then closes. The panel closes on an outside click.
@@ -698,6 +701,24 @@ recording's, because they are relationships of a different entity.
 Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date.
+
+</details>
+
+<details>
+<summary>ISRC/ISWC codes</summary>
+
+Wherever an **ISRCs** column appears (here, and on any native recordings
+listing), every code is shown as `CC-XXX-YY-NNNNN` with the country and year
+segments lightly tinted — regardless of whether MusicBrainz's own markup or a
+third-party script produced the cell. A code that doesn't match that shape is
+left as-is but gets a ⚠️ warning glyph and a tooltip explaining why.
+
+Native **ISWC** columns (e.g. an artist's Works tab) get the same treatment:
+MusicBrainz already displays these correctly, so a valid one is never touched —
+only a code with the wrong shape, or a check digit that doesn't match ISO
+15707's own formula, gets the ⚠️ glyph.
+
+Both feed their own 📊 dropdown sections — see "ISRC info"/"ISWC info" above.
 
 </details>
 
