@@ -103,3 +103,22 @@ Also mention the third-party userscript in the section
  *
  */
 #+end_example
+
+6.)
+
+render the ISRC cell values which do NOT follow the official standard "CC-XXX-YY-NNNNN" or have wrong parts with a
+warning icon glyph and also display the count of these in the new unique value drop down section
+
+7.)
+
+Do the same for the cell data in "ISWC" columns when present in specific pageTypes if they doesn't follow the following
+standard:
+
+An ISWC stands for International Standard Musical Work Code. It is a unique, permanent 11-character identifier (defined
+under ISO 15707) used globally to catalog individual musical compositions (the underlying lyrics, melody, and musical
+structure) rather than specific recordings.An ISWC strictly follows the format T-NNNNNNNNN-C (e.g., T-034524680-1):
+
+T: The work type prefix (currently, "T" for musical compositions is the only type assigned).
+NNNNNNNNN: A 9-digit unique sequential number assigned to the work.
+C: A single verification check digit computed using a specific numeric algorithm to protect against manual input or transmission errors.
+
