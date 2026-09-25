@@ -107,6 +107,25 @@
 // @licence      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
 // @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_FUNKEY-ILLUSTRATED-RECORDS.user.js
 // ============================================================================================================================================
+// @name         mb. INLINE STUFF
+// @description  musicbrainz.org: Release page: Inline recording names, comments, ISRC and AcoustID. Direct CAA add link if none. Highlight duplicates in releases and edits. Recording page: millisecond display, spot track length and title variations.
+// @version      2026.4.9
+// @author       jesus2099
+// @licence      CC-BY-NC-SA-4.0; https://creativecommons.org/licenses/by-nc-sa/4.0/
+// @licence      GPL-3.0-or-later; http://www.gnu.org/licenses/gpl-3.0.txt
+// @downloadURL  https://github.com/jesus2099/konami-command/raw/master/mb_INLINE-STUFF.user.js
+//
+//   uses just: the idea behind its coolifyISRC() function ==> Splits a compact ISRC into
+//              CC-XXX-YY-NNNNN with the country/year segments lightly tinted
+//
+//   This script's own ISRC display formatting (initIsrcFormatting(), org/ISRC.org) is
+//   MODELLED ON, not copied from, and not dependent on at runtime, jesus2099's coolifyISRC()
+//   in this script: the same 2+3+2+5 character split and the same country/year tinting idea,
+//   reimplemented so the reformatting happens whether or not this script is installed — this
+//   script fetches/renders the ISRC data itself (from the native href, never coolifyISRC()'s
+//   own DOM) and additionally flags a malformed code with a warning glyph, which
+//   coolifyISRC() does not do (it falls back to plain, unstyled text instead).
+// ============================================================================================================================================
 // @name         MusicBrainz: Expand/collapse release groups
 // @description  See what's inside a release group without having to follow its URL. Also adds convenient edit links for it.
 // @version      2022.1.6.1
@@ -1907,7 +1926,10 @@
             description: 'Adds a multi-row "ISRCs" column to the consolidated release tracklist, ' +
                          'extracted from each track\'s native ISRC code(s) (normally glommed ' +
                          'into the Title cell). Off by default since most releases don\'t need ' +
-                         'it visible.'
+                         'it visible. This setting only gates whether the column exists here — ' +
+                         'wherever an "ISRCs" column is shown (here or on any other pageType), ' +
+                         'its codes are always reformatted to CC-XXX-YY-NNNNN and flagged if ' +
+                         'malformed; that part is unconditional.'
         },
 
         sa_enable_release_tracks_length_mismatch_flag: {
@@ -17461,7 +17483,7 @@
                 ],
                 msTrackLengthBatch: true,   // no single lookup covers this — see _msLengthSource()
                 integerColumns: [ {sourceColumn: 'Length', align: ':'} ],
-                collapsableColumns: [ 'Release groups', 'CAA' ],
+                collapsableColumns: [ 'Release groups', 'CAA', 'ISRCs' ],
                 tooltipColumns: [ 'Release groups', 'Name', 'italic:Comment', 'Artist', '---', ['Length', '-', 'Video'], 'ISRCs' ],
                 addCAA: 'Release groups',
                 extractMainColumn: 'Name',
@@ -23409,6 +23431,160 @@
     }
 
     /**
+     * Parses a compact 12-character ISRC (International Standard Recording
+     * Code) into its four constituent parts — country code, registrant
+     * code, year of reference, and designation code — per the
+     * `CC-XXX-YY-NNNNN` layout (org/ISRC.org). Accepts the code with or
+     * without hyphens already present (only alphanumeric characters are
+     * considered), case-insensitively, and uppercases the result.
+     *
+     * There is no official ISRC checksum — a malformed code is anything that
+     * doesn't match this exact 2+3+2+5 character-class shape, which is what
+     * `initIsrcFormatting()`/`_findCellIsrcParts()` use to flag it invalid
+     * rather than reformat it (org/ISRC.org item 6).
+     *
+     * `yearFull` resolves the 2-digit year to a 4-digit one using the
+     * conventional window — `< 40` → `20xx`, else `19xx` — safe in practice
+     * since both the ISRC scheme and the recording industry it catalogs only
+     * go back to the 1970s.
+     *
+     * @param {string} rawCode
+     * @returns {?{country: string, registrant: string, year: string,
+     *   yearFull: number, designation: string}} `null` when `rawCode`
+     *   doesn't match the required shape.
+     */
+    function _parseIsrcCode(rawCode) {
+        if (!rawCode) return null;
+        const clean = rawCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const m = clean.match(/^([A-Z]{2})([A-Z0-9]{3})(\d{2})(\d{5})$/);
+        if (!m) return null;
+        const [, country, registrant, year, designation] = m;
+        const yearInt = parseInt(year, 10);
+        const yearFull = (yearInt < 40 ? 2000 : 1900) + yearInt;
+        return { country, registrant, year, yearFull, designation };
+    }
+
+    /**
+     * Formats a compact ISRC as the hyphenated `CC-XXX-YY-NNNNN` display
+     * form — see `_parseIsrcCode()`'s own JSDoc for the parsing rules.
+     * Returns `null` for a code that doesn't match the required shape, so
+     * callers can tell "reformat" apart from "flag as invalid"
+     * (org/ISRC.org items 3/6).
+     *
+     * @param {string} rawCode
+     * @returns {?string}
+     */
+    function _formatIsrc(rawCode) {
+        const p = _parseIsrcCode(rawCode);
+        return p ? `${p.country}-${p.registrant}-${p.year}-${p.designation}` : null;
+    }
+
+    /**
+     * Extracts every ISRC entry from a rendered "ISRCs" cell — the native
+     * `<ul class="isrcs"><li class="isrc"><a href="/isrc/CODE">…` shape, or
+     * this script's own release-tracks synthetic column built from
+     * jesus2099's already-hyphenated markup (`_buildMultiRowArsTd`) — by
+     * reading each `a[href^="/isrc/"]`'s `href`, never the cell's current
+     * visible text. This is what lets it work whether or not
+     * `initIsrcFormatting()` has already rewritten that text, and
+     * regardless of which of the two source shapes produced the cell.
+     *
+     * `countryEl`/`registrantEl`/`yearEl`/`designationEl` are the individual
+     * `<span>`s `initIsrcFormatting()` builds inside the `<code>` (fixed
+     * child order: country, "-registrant-", year, "-designation") — present
+     * only once that pass has run and only for a valid entry, so a
+     * highlighter can scope to the ONE segment a compound filter actually
+     * matched (mirrors `_highlightReleaseEventMatch()`'s own `dateSpanEl`/
+     * `dowEl` scoping) instead of the whole cell.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{raw: string, valid: boolean, country: ?string,
+     *   registrant: ?string, year: ?string, yearFull: ?number,
+     *   designation: ?string, el: Element, countryEl: ?Element,
+     *   registrantEl: ?Element, yearEl: ?Element, designationEl: ?Element}>}
+     */
+    function _findCellIsrcParts(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('a[href^="/isrc/"]').forEach(a => {
+            const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
+            if (!m) return;
+            const raw = decodeURIComponent(m[1]);
+            const parsed = _parseIsrcCode(raw);
+            if (!parsed) {
+                out.push({ raw, valid: false, country: null, registrant: null, year: null, yearFull: null,
+                           designation: null, el: a, countryEl: null, registrantEl: null, yearEl: null, designationEl: null });
+                return;
+            }
+            const code = a.querySelector('code');
+            const segs = (code && code.children.length === 4) ? code.children : null;
+            out.push({
+                raw, valid: true, ...parsed, el: a,
+                countryEl: segs ? segs[0] : null,
+                registrantEl: segs ? segs[1] : null,
+                yearEl: segs ? segs[2] : null,
+                designationEl: segs ? segs[3] : null,
+            });
+        });
+        return out;
+    }
+
+    /**
+     * Parses an ISWC (International Standard Musical Work Code) — `T`
+     * followed by a 9-digit work number and a single check digit,
+     * conventionally displayed as `T-NNN.NNN.NNN-C` — and validates its
+     * check digit per ISO 15707: `C = (10 − (S mod 10)) mod 10`, where
+     * `S = 1 + Σ_{i=1..9} (i × dᵢ)` over the 9 work-number digits (confirmed
+     * against the published worked example, `T-034524680-1` → S=179 → C=1).
+     *
+     * Accepts the code with any mix of dots/hyphens/spaces already present
+     * (MusicBrainz's own native display groups the 9 digits as
+     * `NNN.NNN.NNN`) — only the `T`, the 9 digits, and the check digit are
+     * read.
+     *
+     * @param {string} rawCode
+     * @returns {{workNumber: ?string, checkDigit: ?string, valid: boolean,
+     *   reason: ?string}} `reason` is `null` when valid, else `'shape'` (not
+     *   `T` + 9 digits + 1 digit at all) or `'checkdigit'` (right shape,
+     *   wrong check digit).
+     */
+    function _parseIswcCode(rawCode) {
+        if (!rawCode) return { workNumber: null, checkDigit: null, valid: false, reason: 'shape' };
+        const clean = rawCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const m = clean.match(/^T(\d{9})(\d)$/);
+        if (!m) return { workNumber: null, checkDigit: null, valid: false, reason: 'shape' };
+        const [, workNumber, checkDigit] = m;
+        let sum = 1;
+        for (let i = 0; i < 9; i++) sum += (i + 1) * Number(workNumber[i]);
+        const expected = String((10 - (sum % 10)) % 10);
+        const valid = checkDigit === expected;
+        return { workNumber, checkDigit, valid, reason: valid ? null : 'checkdigit' };
+    }
+
+    /**
+     * Extracts every ISWC entry from a rendered "ISWC" cell (native
+     * `<ul class="iswcs"><li class="iswc"><a href="/iswc/CODE">…` shape) by
+     * reading each `a[href^="/iswc/"]`'s `href` — see `_findCellIsrcParts()`'s
+     * own JSDoc for why the `href`, not the visible text, is the source of
+     * truth.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{raw: string, valid: boolean, reason: ?string, el: Element}>}
+     */
+    function _findCellIswcParts(cell) {
+        if (!cell) return [];
+        const out = [];
+        cell.querySelectorAll('a[href^="/iswc/"]').forEach(a => {
+            const m = a.getAttribute('href').match(/\/iswc\/([^/?#]+)/);
+            if (!m) return;
+            const raw = decodeURIComponent(m[1]);
+            const { valid, reason } = _parseIswcCode(raw);
+            out.push({ raw, valid, reason, el: a });
+        });
+        return out;
+    }
+
+    /**
      * Splits each item of a "Part of series" cell (`release-tracks`'
      * dynamic-fallback "part of:" AR column — see `PEER_SPLIT_KINDS`'s own
      * JSDoc for how this column's `<li>` items get built, one per credited
@@ -24609,6 +24785,47 @@
             // flags above: a cell's list can mix "[none]" items with real
             // prefixed/unprefixed catalog numbers.
             return !!cell && _findCellCatalogParts(cell).some(p => p.none);
+        }
+        if (mode.startsWith('isrccountry:')) {
+            // Compound mode — matches one "ISRCs" cell's own valid-entry
+            // country code, from _findCellIsrcParts()'s own extraction
+            // (org/ISRC.org item 4).
+            const want = mode.slice(12);
+            return !!cell && _findCellIsrcParts(cell).some(p => p.valid && p.country === want);
+        }
+        if (mode.startsWith('isrcregistrant:')) {
+            const want = mode.slice(15);
+            return !!cell && _findCellIsrcParts(cell).some(p => p.valid && p.registrant === want);
+        }
+        if (mode.startsWith('isrcyear:')) {
+            // Compound mode — matches the RESOLVED 4-digit year (see
+            // _parseIsrcCode()'s own JSDoc), not the raw 2-digit code.
+            const want = mode.slice(9);
+            return !!cell && _findCellIsrcParts(cell).some(p => p.valid && String(p.yearFull) === want);
+        }
+        if (mode.startsWith('isrcdesignation:')) {
+            const want = mode.slice(16);
+            return !!cell && _findCellIsrcParts(cell).some(p => p.valid && p.designation === want);
+        }
+        if (mode === 'isrc-valid') {
+            // Binary flag — true when at least one "ISRCs" cell entry
+            // matches the CC-XXX-YY-NNNNN shape (org/ISRC.org item 6).
+            return !!cell && _findCellIsrcParts(cell).some(p => p.valid);
+        }
+        if (mode === 'isrc-invalid') {
+            // Binary flag counterpart of 'isrc-valid' above — independent,
+            // not mutually exclusive: a cell's list can mix valid and
+            // invalid entries.
+            return !!cell && _findCellIsrcParts(cell).some(p => !p.valid);
+        }
+        if (mode === 'iswc-valid') {
+            // Binary flag — true when at least one "ISWC" cell entry
+            // matches ISO 15707's shape AND check digit (org/ISRC.org
+            // item 7).
+            return !!cell && _findCellIswcParts(cell).some(p => p.valid);
+        }
+        if (mode === 'iswc-invalid') {
+            return !!cell && _findCellIswcParts(cell).some(p => !p.valid);
         }
         if (mode.startsWith('partofseriesname:')) {
             // Compound mode — matches one "Part of series" item's own
@@ -38230,6 +38447,18 @@ a { color: #1565c0; }`;
         }
         td[data-mb-len-flag="warn"]::after   { content: '⚠️'; }
         td[data-mb-len-flag="severe"]::after { content: '❌'; }
+        /* ISRC/ISWC format-validity glyph (org/ISRC.org items 6/7). Driven
+           entirely off the anchor's own data-mb-isrc-invalid/
+           data-mb-iswc-invalid attribute — see initIsrcFormatting()/
+           initIswcValidation()'s own JSDoc for why the href, not the visible
+           text, decides validity. A plain inline ::after glyph is enough
+           here (unlike td[data-mb-len-flag] above) since these are list-item
+           anchors, not colon-aligned numeric cells needing absolute
+           positioning. */
+        a[data-mb-isrc-invalid]::after, a[data-mb-iswc-invalid]::after {
+            content: ' ⚠️';
+            font-size: 0.9em;
+        }
         .mb-toggle-icon { font-size: 0.8em; margin-right: 8px; color: #666; width: 12px; display: inline-block; cursor: pointer; }
         .mb-master-toggle {
             cursor: pointer;
@@ -44860,6 +45089,19 @@ a { color: #1565c0; }`;
         // shape states).
         catalogPrefix:   { label: 'Catalog info - Prefix',   glyph: '🧾' },
         catalogPresence: { label: 'Catalog info - Presence', glyph: '🔍' },
+        // "ISRC info" — the four CC-XXX-YY-NNNNN constituents (org/ISRC.org
+        // item 4), each its own open value family like `catalogPrefix`
+        // above, plus a fixed 2-flag "Validity" pair (item 6) grouped the
+        // same way `catalogPresence` groups catalog's own flags.
+        isrcCountry:     { label: 'ISRC - Country',     glyph: '🌎' },
+        isrcRegistrant:  { label: 'ISRC - Registrant',  glyph: '🏢' },
+        isrcYear:        { label: 'ISRC - Year',        glyph: '🕐' },
+        isrcDesignation: { label: 'ISRC - Designation', glyph: '#️⃣' },
+        isrcValidity:    { label: 'ISRC - Validity',    glyph: '⚠️' },
+        // "ISWC info" — validity only (org/ISRC.org item 7); MusicBrainz's
+        // native ISWC display is already correctly formatted, so there is
+        // no constituent breakdown to offer here.
+        iswcValidity:    { label: 'ISWC - Validity',    glyph: '⚠️' },
         // "Length info - Duration" — the "Length" column's own displayed
         // "M:SS[.mmm]" text (or MusicBrainz's own "?:??" unknown-duration
         // placeholder), bucketed into fixed-width "N to N+1 minutes" ranges
@@ -45035,6 +45277,8 @@ a { color: #1565c0; }`;
         'title-mismatch': 'flagsTitleMismatch', 'name-variation': 'flagsNameVariation',
         'multi-medium': 'tracksMultiMedium',
         'catalog-has-prefix': 'catalogPresence', 'catalog-no-prefix': 'catalogPresence', 'catalog-none': 'catalogPresence',
+        'isrc-valid': 'isrcValidity', 'isrc-invalid': 'isrcValidity',
+        'iswc-valid': 'iswcValidity', 'iswc-invalid': 'iswcValidity',
         // Aggregate sibling of the 'editordeleted:' kind below — shares
         // its section (see SYN_SECTION_META.editorDeleted's own JSDoc).
         'editor-any-deleted': 'editorDeleted',
@@ -45096,6 +45340,8 @@ a { color: #1565c0; }`;
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
         catalogprefix: 'catalogPrefix',
+        isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
+        isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
         lengthbucket: 'lengthBucket',
         partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
@@ -45893,6 +46139,79 @@ a { color: #1565c0; }`;
             if (!p.none || !p.el) return;
             p.el.normalize();
             highlightCrossTag(p.el, /\[none\]/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the exact matched constituent for an `isrccountry:`/
+     * `isrcregistrant:`/`isrcyear:`/`isrcdesignation:` compound
+     * structure-mode filter — re-derives from `_findCellIsrcParts()`
+     * directly, scoped to that ONE segment's own `countryEl`/`registrantEl`/
+     * `yearEl`/`designationEl` (mirrors `_highlightReleaseEventMatch()`'s
+     * "scope to the specific facet's own element" pattern, since a shared
+     * `<code>` holds all four segments and a whole-cell match would risk
+     * lighting up the wrong one). Falls back to `el` (the anchor) only when
+     * `initIsrcFormatting()` hasn't run yet (no segment spans to scope to) —
+     * word-boundaries keep that fallback from over-matching.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"isrcyear:2019"`.
+     */
+    function _highlightIsrcPartMatch(cell, mode) {
+        if (!cell) return;
+        const colon = mode.indexOf(':');
+        const partKey = mode.slice(0, colon);
+        const _want = mode.slice(colon + 1);
+        if (!_want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
+        const _elKey = { isrccountry: 'countryEl', isrcregistrant: 'registrantEl',
+                          isrcyear: 'yearEl', isrcdesignation: 'designationEl' }[partKey];
+        const _valueKey = { isrccountry: 'country', isrcregistrant: 'registrant',
+                             isrcyear: 'yearFull', isrcdesignation: 'designation' }[partKey];
+        _findCellIsrcParts(cell).forEach(p => {
+            if (!p.valid || String(p[_valueKey]) !== _want) return;
+            const target = p[_elKey] || p.el;
+            if (!target) return;
+            target.normalize();
+            highlightCrossTag(target, _regex, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights every invalid "ISRCs" cell entry for the `isrc-invalid`
+     * binary flag — re-derives from `_findCellIsrcParts()` directly,
+     * matching `_highlightCatalogNoneMatch()`'s own established shape. An
+     * invalid entry is left as its original text by `initIsrcFormatting()`
+     * (there is nothing to reformat), so the whole anchor is highlighted
+     * rather than one segment.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIsrcInvalidMatch(cell) {
+        if (!cell) return;
+        _findCellIsrcParts(cell).forEach(p => {
+            if (p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights every invalid "ISWC" cell entry for the `iswc-invalid`
+     * binary flag — same shape as `_highlightIsrcInvalidMatch()` above, for
+     * `_findCellIswcParts()`. MusicBrainz's native ISWC display is never
+     * rewritten (see `initIswcValidation()`'s own JSDoc), so this always
+     * highlights the anchor's original text.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIswcInvalidMatch(cell) {
+        if (!cell) return;
+        _findCellIswcParts(cell).forEach(p => {
+            if (p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
         });
     }
 
@@ -47367,6 +47686,13 @@ a { color: #1565c0; }`;
                                     _highlightCatalogPrefixMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'catalog-none') {
                                     _highlightCatalogNoneMatch(row.cells[f.idx]);
+                                } else if (mode.startsWith('isrccountry:') || mode.startsWith('isrcregistrant:') ||
+                                           mode.startsWith('isrcyear:') || mode.startsWith('isrcdesignation:')) {
+                                    _highlightIsrcPartMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'isrc-invalid') {
+                                    _highlightIsrcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'iswc-invalid') {
+                                    _highlightIswcInvalidMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('partofseriesname:') || mode.startsWith('partofseriesdate:')) {
                                     _highlightPartOfSeriesTextMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('partofseriesnumber:')) {
@@ -48166,6 +48492,12 @@ a { color: #1565c0; }`;
             // where runFilter fires BEFORE initRelationshipsColumn — appending here
             // would then land picard_td before rel_td and swap both columns' data.
             initPicardTaggerColumn(/* rewireOnly */ true);
+            // Reformat/reflag ISRC and ISWC cells on every re-render — a
+            // multi-table sort/filter re-clones from groupedRows, which
+            // always carries the native/jesus2099 href unchanged, so this
+            // simply redoes the same transform on the fresh clone.
+            initIsrcFormatting();
+            initIswcValidation();
             // renderGroupedTable() rebuilt every <thead> from a clone, so the
             // per-table ▶🔗 toggles are gone and have to be recreated —
             // unconditionally, because the gate below deliberately does NOT
@@ -48381,6 +48713,8 @@ a { color: #1565c0; }`;
                 // rows. That asymmetry with renderGroupedTable(), which always clones,
                 // is what made the multi-table variant of this bug possible.
                 initPicardTaggerColumn(/* rewireOnly */ true);
+                initIsrcFormatting();
+                initIswcValidation();
                 // Inline thumbnails first — _artInitQueue creates _caaQueue so they
                 // land ahead of small icons and the big strip in the fetch queue.
                 _artInitQueue();
@@ -52631,6 +52965,12 @@ a { color: #1565c0; }`;
             // rightmost column (injectedColumns like Relationships append to the row end;
             // Picard must come last so its td aligns with the Picard th).
             initPicardTaggerColumn();
+
+            // Reformat native/jesus2099 ISRC cells to CC-XXX-YY-NNNNN and flag
+            // any malformed ISRC/ISWC value — page-agnostic, self-detecting
+            // via href (org/ISRC.org).
+            initIsrcFormatting();
+            initIswcValidation();
 
             // Re-align the filter row after Picard injection.
             // initPicardTaggerColumn appends a <th class="mb-picard-th"> to the first
@@ -57895,6 +58235,11 @@ a { color: #1565c0; }`;
         // a missing one, so this call is load-bearing rather than tidy.
         // rewireOnly: the cell is already there, only its listener is gone.
         initPicardTaggerColumn(/* rewireOnly */ true);
+        // Same reasoning: these two re-clone from groupedRows without going
+        // through renderGroupedTable(), so ISRC/ISWC cells need reformatting/
+        // reflagging again here too.
+        initIsrcFormatting();
+        initIswcValidation();
 
         // Must run last, after the section-visibility loop above has already
         // shown/hidden every h3/table for the NEW section — see
@@ -58973,6 +59318,18 @@ a { color: #1565c0; }`;
         // independent of catalogHasPrefixCount/catalogNoPrefixCount above,
         // since a row's list can mix "[none]" items with real ones.
         let catalogNoneCount = _uniqCacheHit ? _uniqCacheHit.catalogNoneCount : 0;
+        // "ISRCs" column only (isIsrcCol): rows whose list has AT LEAST ONE
+        // entry that does/doesn't match the CC-XXX-YY-NNNNN shape —
+        // independently incremented (not mutually exclusive), same
+        // convention as catalogHasPrefixCount/catalogNoPrefixCount above —
+        // see _findCellIsrcParts()'s own JSDoc (org/ISRC.org item 6).
+        let isrcValidCount = _uniqCacheHit ? _uniqCacheHit.isrcValidCount : 0;
+        let isrcInvalidCount = _uniqCacheHit ? _uniqCacheHit.isrcInvalidCount : 0;
+        // "ISWC" column only (isIswcCol): same convention, for ISO 15707
+        // shape/check-digit validity — see _findCellIswcParts()'s own
+        // JSDoc (org/ISRC.org item 7).
+        let iswcValidCount = _uniqCacheHit ? _uniqCacheHit.iswcValidCount : 0;
+        let iswcInvalidCount = _uniqCacheHit ? _uniqCacheHit.iswcInvalidCount : 0;
         // "Date info - Precision" — a FIXED 3-flag family (mirrors
         // releaseQualityHighCount/-LowCount/-NormalCount below): how many
         // visible rows' own `dateParts`-fed column text is a complete
@@ -59171,6 +59528,13 @@ a { color: #1565c0; }`;
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
         const catalogPrefixValueCounts = _uniqCacheHit ? _uniqCacheHit.catalogPrefixValueCounts : new Map();
+        // Distinct "ISRCs" constituent values (country/registrant/year/
+        // designation) — see `_findCellIsrcParts()`'s own JSDoc. Column-gated
+        // (isIsrcCol below). org/ISRC.org item 4.
+        const isrcCountryValueCounts     = _uniqCacheHit ? _uniqCacheHit.isrcCountryValueCounts     : new Map();
+        const isrcRegistrantValueCounts  = _uniqCacheHit ? _uniqCacheHit.isrcRegistrantValueCounts  : new Map();
+        const isrcYearValueCounts        = _uniqCacheHit ? _uniqCacheHit.isrcYearValueCounts        : new Map();
+        const isrcDesignationValueCounts = _uniqCacheHit ? _uniqCacheHit.isrcDesignationValueCounts : new Map();
         // Distinct "Date info - Decade"/"- Month" values — see
         // `_dateAtomDecade()`/`_dateAtomMonth()`'s own JSDoc. Column-gated
         // (isDateExprCol below). "Date info - Precision" is a FIXED 3-flag
@@ -59352,6 +59716,15 @@ a { color: #1565c0; }`;
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
+        // Column-name gate for the native/synthetic "ISRCs" column's
+        // constituent breakdown + validity flag (org/ISRC.org items 4/6) —
+        // same convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
+        // above (name-only, no page-type check), so this applies
+        // automatically to every pageType with an "ISRCs" column.
+        const isIsrcCol = _colHeaderName === 'ISRCs';
+        // Column-name gate for the native "ISWC" column's validity flag
+        // (org/ISRC.org item 7) — same convention as isIsrcCol above.
+        const isIswcCol = _colHeaderName === 'ISWC';
         // Column-name gate for the native "Attributes" column's own
         // recording-attribute words (e.g. "live", "cover", "partial") — same
         // convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
@@ -59617,6 +59990,31 @@ a { color: #1565c0; }`;
                     // flag; see catalogNoneCount below instead.
                     if (_catalogParts.some(p => !p.prefix && !p.none)) catalogNoPrefixCount++;
                     if (_catalogParts.some(p => p.none)) catalogNoneCount++;
+                }
+                if (isIsrcCol) {
+                    const _isrcParts = _findCellIsrcParts(cell);
+                    const _rowCountryValues = new Set(), _rowRegistrantValues = new Set(),
+                          _rowYearValues = new Set(), _rowDesignationValues = new Set();
+                    _isrcParts.forEach(p => {
+                        if (!p.valid) return;
+                        _rowCountryValues.add(p.country);
+                        _rowRegistrantValues.add(p.registrant);
+                        // Resolved 4-digit year, not the raw 2-digit code —
+                        // see _parseIsrcCode()'s own JSDoc.
+                        _rowYearValues.add(String(p.yearFull));
+                        _rowDesignationValues.add(p.designation);
+                    });
+                    _rowCountryValues.forEach(t => isrcCountryValueCounts.set(t, (isrcCountryValueCounts.get(t) || 0) + 1));
+                    _rowRegistrantValues.forEach(t => isrcRegistrantValueCounts.set(t, (isrcRegistrantValueCounts.get(t) || 0) + 1));
+                    _rowYearValues.forEach(t => isrcYearValueCounts.set(t, (isrcYearValueCounts.get(t) || 0) + 1));
+                    _rowDesignationValues.forEach(t => isrcDesignationValueCounts.set(t, (isrcDesignationValueCounts.get(t) || 0) + 1));
+                    if (_isrcParts.some(p => p.valid))  isrcValidCount++;
+                    if (_isrcParts.some(p => !p.valid)) isrcInvalidCount++;
+                }
+                if (isIswcCol) {
+                    const _iswcParts = _findCellIswcParts(cell);
+                    if (_iswcParts.some(p => p.valid))  iswcValidCount++;
+                    if (_iswcParts.some(p => !p.valid)) iswcInvalidCount++;
                 }
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
@@ -60920,6 +61318,7 @@ a { color: #1565c0; }`;
                 emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
                 titleMismatchCount, nameVariationCount, multiMediumCount,
                 catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+                isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
                 dateCompleteCount, datePartialCount, dateRangeCount,
                 attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
                 instrumentValueCounts, altNameValueCounts,
@@ -60935,6 +61334,7 @@ a { color: #1565c0; }`;
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
                 tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
+                isrcCountryValueCounts, isrcRegistrantValueCounts, isrcYearValueCounts, isrcDesignationValueCounts,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
@@ -60967,6 +61367,7 @@ a { color: #1565c0; }`;
             multiRowCollapsedCount + multiRowExpandedCount,
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
+            isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
             dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -61006,6 +61407,8 @@ a { color: #1565c0; }`;
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
+            ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
+            ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
             ...lengthBucketValueCounts.values(),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
@@ -61512,6 +61915,10 @@ a { color: #1565c0; }`;
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
+                 : kind === 'isrccountry'     ? '» country: '
+                 : kind === 'isrcregistrant'  ? '» registrant: '
+                 : kind === 'isrcyear'        ? '» year: '
+                 : kind === 'isrcdesignation' ? '» designation: '
                  : kind === 'workattrid'    ? '» identifier: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
@@ -61807,6 +62214,11 @@ a { color: #1565c0; }`;
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedIsrcCountryValues     = Array.from(isrcCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedIsrcRegistrantValues  = Array.from(isrcRegistrantValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric ascending (not lexicographic), same reasoning as Decade/Year above.
+        const _sortedIsrcYearValues        = Array.from(isrcYearValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedIsrcDesignationValues = Array.from(isrcDesignationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort by leading bucket number (not lexicographic, so "2 to
         // 3 minutes" sorts before "10 to 11 minutes"); "Unknown length" has
         // no leading number (NaN) and is always sorted last.
@@ -61863,6 +62275,8 @@ a { color: #1565c0; }`;
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
+            _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
+            _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
             _sortedLengthBucketValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
@@ -61876,6 +62290,7 @@ a { color: #1565c0; }`;
 
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
+            isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -61907,6 +62322,13 @@ a { color: #1565c0; }`;
             if (catalogHasPrefixCount > 0)  makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix',                                          catalogHasPrefixCount);
             if (catalogNoPrefixCount > 0)   makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',                                            catalogNoPrefixCount);
             if (catalogNoneCount > 0)       makeSynItem('catalog-none', '🚫 no catalog number',                                                  catalogNoneCount);
+            // "ISRC - Validity"/"ISWC - Validity" — same independently-
+            // incremented binary-flag convention as catalog-has-prefix/
+            // catalog-no-prefix above (org/ISRC.org items 6/7).
+            if (isrcValidCount > 0)   makeSynItem('isrc-valid', '✅ valid ISRC format', isrcValidCount);
+            if (isrcInvalidCount > 0) makeSynItem('isrc-invalid', '⚠️ invalid ISRC format', isrcInvalidCount);
+            if (iswcValidCount > 0)   makeSynItem('iswc-valid', '✅ valid ISWC format', iswcValidCount);
+            if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor',       editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified',  changelogNoMessageCount);
@@ -62003,6 +62425,10 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedIsrcCountryValues.forEach(v => makeValueSynItem('isrccountry', v, isrcCountryValueCounts.get(v)));
+            _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
+            _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
+            _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -62022,6 +62448,7 @@ a { color: #1565c0; }`;
             _sortedDateWeekdayValues.forEach(v => makeValueSynItem('dateweekday', v, dateWeekdayValueCounts.get(v)));
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
+            isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -62041,6 +62468,10 @@ a { color: #1565c0; }`;
             if (catalogHasPrefixCount > 0) makeSynItem('catalog-has-prefix', '🏷️ has catalog prefix', catalogHasPrefixCount);
             if (catalogNoPrefixCount > 0)  makeSynItem('catalog-no-prefix', '🔢 no catalog prefix',   catalogNoPrefixCount);
             if (catalogNoneCount > 0)      makeSynItem('catalog-none', '🚫 no catalog number',        catalogNoneCount);
+            if (isrcValidCount > 0)   makeSynItem('isrc-valid', '✅ valid ISRC format', isrcValidCount);
+            if (isrcInvalidCount > 0) makeSynItem('isrc-invalid', '⚠️ invalid ISRC format', isrcInvalidCount);
+            if (iswcValidCount > 0)   makeSynItem('iswc-valid', '✅ valid ISWC format', iswcValidCount);
+            if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor', editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified', changelogNoMessageCount);
@@ -62109,6 +62540,10 @@ a { color: #1565c0; }`;
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
+            _sortedIsrcCountryValues.forEach(v => makeValueSynItem('isrccountry', v, isrcCountryValueCounts.get(v)));
+            _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
+            _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
+            _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -62665,6 +63100,10 @@ a { color: #1565c0; }`;
         if (mode === 'catalog-has-prefix')    return '🏷️ has catalog prefix';
         if (mode === 'catalog-no-prefix')     return '🔢 no catalog prefix';
         if (mode === 'catalog-none')          return '🚫 no catalog number';
+        if (mode === 'isrc-valid')            return '✅ valid ISRC format';
+        if (mode === 'isrc-invalid')          return '⚠️ invalid ISRC format';
+        if (mode === 'iswc-valid')            return '✅ valid ISWC format';
+        if (mode === 'iswc-invalid')          return '⚠️ invalid ISWC format';
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
@@ -62695,6 +63134,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
+        if (mode.startsWith('isrccountry:'))     return `» country: ${mode.slice(12)}`;
+        if (mode.startsWith('isrcregistrant:'))  return `» registrant: ${mode.slice(15)}`;
+        if (mode.startsWith('isrcyear:'))        return `» year: ${mode.slice(9)}`;
+        if (mode.startsWith('isrcdesignation:')) return `» designation: ${mode.slice(16)}`;
         if (mode.startsWith('lengthbucket:'))    return `» duration: ${mode.slice(13)}`;
         if (mode.startsWith('partofseriesname:'))   return `» series name: ${mode.slice(18)}`;
         if (mode.startsWith('partofseriesdate:'))   return `» date: ${mode.slice(17)}`;
@@ -62771,6 +63214,10 @@ a { color: #1565c0; }`;
         if (mode === 'catalog-has-prefix') return '🏷️ = at least one of this "Catalog#" cell\'s list items has a leading string prefix (e.g. "CBS").';
         if (mode === 'catalog-no-prefix') return '🔢 = at least one of this "Catalog#" cell\'s list items has NO prefix (a bare number). Not mutually exclusive with "has catalog prefix" — a cell\'s list can contain both.';
         if (mode === 'catalog-none') return '🚫 = at least one of this "Catalog#" cell\'s list items is MusicBrainz\'s own "[none]" placeholder (no catalog number set at all).';
+        if (mode === 'isrc-valid') return '✅ = at least one of this "ISRCs" cell\'s entries matches the official CC-XXX-YY-NNNNN format.';
+        if (mode === 'isrc-invalid') return '⚠️ = at least one of this "ISRCs" cell\'s entries does NOT match the official CC-XXX-YY-NNNNN format (wrong length or character class). Not mutually exclusive with "valid ISRC format" — a cell\'s list can contain both.';
+        if (mode === 'iswc-valid') return '✅ = at least one of this "ISWC" cell\'s entries matches ISO 15707\'s T-NNNNNNNNN-C format AND has a correct check digit.';
+        if (mode === 'iswc-invalid') return '⚠️ = at least one of this "ISWC" cell\'s entries does NOT match ISO 15707\'s format, or has a check digit that does not match the computed value.';
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
@@ -62797,6 +63244,10 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
+        if (mode.startsWith('isrccountry:')) return 'One "ISRCs" entry\'s own 2-letter country code (the first CC-XXX-YY-NNNNN segment).';
+        if (mode.startsWith('isrcregistrant:')) return 'One "ISRCs" entry\'s own 3-character registrant code (the XXX segment).';
+        if (mode.startsWith('isrcyear:')) return 'One "ISRCs" entry\'s own year of reference, resolved to a 4-digit year from the 2-digit YY segment.';
+        if (mode.startsWith('isrcdesignation:')) return 'One "ISRCs" entry\'s own 5-digit designation code (the NNNNN segment).';
         if (mode.startsWith('lengthbucket:')) return 'This "Length" cell\'s own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz\'s own "?:??" placeholder).';
         if (mode.startsWith('partofseriesname:')) return 'One "Part of series" item\'s own credited series name.';
         if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
@@ -75023,6 +75474,11 @@ a { color: #1565c0; }`;
             // must come after so column order matches the thead).
             initPicardTaggerColumn();
 
+            // Reformat/reflag ISRC and ISWC cells restored from disk the same
+            // way a fresh fetch does.
+            initIsrcFormatting();
+            initIswcValidation();
+
             // Re-align the filter row after Picard injection (stale-detection no-op
             // when counts already match; self-heals on mismatch — see addColumnFilterRow).
             const _diskLoadFilterTable = document.querySelector('table.tbl');
@@ -85626,6 +86082,97 @@ a { color: #1565c0; }`;
                 (Lib.settings.sa_picard_tagger_initially_collapsed === false) ? '1' : '0';
         }
         return table.dataset.mbPicardExpanded === '1';
+    }
+
+    /**
+     * Page-agnostic, purely data-driven pass — same "added per TABLE, from
+     * the data, no pageDefinition wiring" idiom as `initPicardTaggerColumn()`/
+     * `initRelationshipsColumn()` (org/ISRC.org items 1–3, 6). Rewrites every
+     * "ISRCs" cell's `<code>` — both MusicBrainz's native compact shape
+     * (`US3L30406433`) and jesus2099's already-hyphenated-and-tinted shape
+     * (moved verbatim into this script's own column by
+     * `_buildMultiRowArsTd()`) — into ONE consistent hyphenated display,
+     * `CC-XXX-YY-NNNNN`, with the country/year segments lightly tinted. This
+     * is built entirely from this script's own data (the anchor's `href`),
+     * so it renders identically whether or not jesus2099 is installed.
+     *
+     * A code that doesn't match the required shape (org/ISRC.org item 6) is
+     * left with its ORIGINAL text untouched, but the anchor gets a
+     * `data-mb-isrc-invalid="1"` marker (+ a `title` explaining why) so the
+     * `a[data-mb-isrc-invalid]::after` CSS rule can paint a ⚠️ — the same
+     * "attributes-only, CSS-driven glyph" convention as the track-length
+     * mismatch flag: invisible to `getCleanColumnText()`/filter text,
+     * survives `cloneNode(true)`, needs no `_CLEAN_STRIP_SEL` entry.
+     *
+     * Derives everything from the anchor's `href` (never the cell's current
+     * visible text), so it is safe to call unconditionally on every render
+     * pass with no master-row mirroring: a freshly cloned row (multi-table
+     * sort/filter) always carries the SAME `href` its master does, so
+     * re-running this simply reformats/reflags the clone identically —
+     * unlike Picard's injected `<button>`, there is no state here that a
+     * clone could lose. Called from every render-tail path that also calls
+     * `initPicardTaggerColumn()` — see that function's own call-site list.
+     */
+    function initIsrcFormatting() {
+        document.querySelectorAll('table.tbl a[href^="/isrc/"]').forEach(a => {
+            const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
+            if (!m) return;
+            const raw = decodeURIComponent(m[1]);
+            const code = a.querySelector('code');
+            if (!code) return;
+            const parsed = _parseIsrcCode(raw);
+            if (!parsed) {
+                a.setAttribute('data-mb-isrc-invalid', '1');
+                a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
+                return;
+            }
+            a.removeAttribute('data-mb-isrc-invalid');
+            a.removeAttribute('title');
+            code.textContent = '';
+            const _appendSeg = (text, tinted) => {
+                const span = document.createElement('span');
+                span.textContent = text;
+                if (tinted) {
+                    span.style.color = 'red';
+                    span.style.margin = '0 0.1em';
+                    span.style.textShadow = '1px 2px 2px yellow';
+                }
+                code.appendChild(span);
+            };
+            _appendSeg(parsed.country, true);
+            _appendSeg(`-${parsed.registrant}-`, false);
+            _appendSeg(parsed.year, true);
+            _appendSeg(`-${parsed.designation}`, false);
+        });
+    }
+
+    /**
+     * Page-agnostic validity pass for native "ISWC" columns (org/ISRC.org
+     * item 7) — same self-detecting idiom as `initIsrcFormatting()`, via
+     * `a[href^="/iswc/"]`. MusicBrainz's native ISWC display is already in
+     * the correct `T-NNN.NNN.NNN-C` form, so this never rewrites a valid
+     * cell — it only ever adds a `data-mb-iswc-invalid="1"` marker (+
+     * `title`) and the shared ⚠️ glyph when `_parseIswcCode()` reports the
+     * code invalid (wrong shape, or a check digit that doesn't match ISO
+     * 15707's computed value). Called from the same render-tail points as
+     * `initIsrcFormatting()`.
+     */
+    function initIswcValidation() {
+        document.querySelectorAll('table.tbl a[href^="/iswc/"]').forEach(a => {
+            const m = a.getAttribute('href').match(/\/iswc\/([^/?#]+)/);
+            if (!m) return;
+            const raw = decodeURIComponent(m[1]);
+            const { valid, reason } = _parseIswcCode(raw);
+            if (valid) {
+                a.removeAttribute('data-mb-iswc-invalid');
+                a.removeAttribute('title');
+                return;
+            }
+            a.setAttribute('data-mb-iswc-invalid', '1');
+            a.title = (reason === 'checkdigit')
+                ? `Check digit does not match the computed value for "${raw}"`
+                : `Does not match the ISWC format T-NNNNNNNNN-C: "${raw}"`;
+        });
     }
 
     /**

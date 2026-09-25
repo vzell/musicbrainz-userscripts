@@ -1,0 +1,67 @@
+[
+    {
+        "name": "initIsrcFormatting() never reformats a valid code",
+        "why": "The core of org/ISRC.org item 3 — without this, every native ISRCs column keeps showing MusicBrainz's compact, un-hyphenated code forever.",
+        "edits": [
+            {
+                "find": "            a.removeAttribute('data-mb-isrc-invalid');\n            a.removeAttribute('title');\n            code.textContent = '';",
+                "replace": "            a.removeAttribute('data-mb-isrc-invalid');\n            a.removeAttribute('title');\n            return;\n            code.textContent = '';"
+            }
+        ],
+        "spec": "tests/fixtures/isrc-column-format.spec.js",
+        "grep": "valid codes are rewritten",
+        "expect": "fail"
+    },
+    {
+        "name": "a malformed ISRC is treated as valid (no invalid marker)",
+        "why": "Org item 6 — without this, a code that doesn't match CC-XXX-YY-NNNNN gets neither the ⚠️ glyph nor a filterable invalid count, and a real data-entry error looks identical to a correct code.",
+        "edits": [
+            {
+                "find": "            const parsed = _parseIsrcCode(raw);\n            if (!parsed) {\n                a.setAttribute('data-mb-isrc-invalid', '1');",
+                "replace": "            const parsed = _parseIsrcCode(raw) || { country: 'XX', registrant: 'XXX', year: '00', designation: '00000' };\n            if (false) {\n                a.setAttribute('data-mb-isrc-invalid', '1');"
+            }
+        ],
+        "spec": "tests/fixtures/isrc-column-format.spec.js",
+        "grep": "valid codes are rewritten",
+        "expect": "fail"
+    },
+    {
+        "name": "ISRC year dropdown shows the raw 2-digit code, not the resolved 4-digit year",
+        "why": "The design decision confirmed for org/ISRC.org item 4 — a 2-digit code is ambiguous over a century and less useful for filtering/sorting than the resolved year.",
+        "edits": [
+            {
+                "find": "                        _rowYearValues.add(String(p.yearFull));",
+                "replace": "                        _rowYearValues.add(String(p.year));"
+            }
+        ],
+        "spec": "tests/fixtures/isrc-column-format.spec.js",
+        "grep": "dropdown offers Country/Registrant/Year/Designation/Validity sections",
+        "expect": "fail"
+    },
+    {
+        "name": "single-table runFilter() re-render skips the ISRC/ISWC reformat pass",
+        "why": "Removing this call site is invisible to the fixture's own sort test — a known, honest gap, not a defect. `renderFinalTable()` MOVES rows rather than cloning them for `tableMode: 'single'` (artist-recordings), so once a cell is formatted the SAME live node is what a later sort reorders; there is nothing to re-derive. The call still matters for `tableMode: 'multi'` pages, where `renderGroupedTable()` clones fresh rows from `groupedRows` on every render — this spec has no multi-table fixture to see that half.",
+        "edits": [
+            {
+                "find": "                initPicardTaggerColumn(/* rewireOnly */ true);\n                initIsrcFormatting();\n                initIswcValidation();",
+                "replace": "                initPicardTaggerColumn(/* rewireOnly */ true);"
+            }
+        ],
+        "spec": "tests/fixtures/isrc-column-format.spec.js",
+        "grep": "survives a column sort",
+        "expect": "pass"
+    },
+    {
+        "name": "isIsrcCol column-name gate is wrong (never matches)",
+        "why": "Without this gate the whole per-row scan block for the four constituent Maps and the validity counters never runs, so the 📊 dropdown offers no ISRC sections at all on any pageType — a silent, page-wide feature loss rather than a narrow bug.",
+        "edits": [
+            {
+                "find": "        const isIsrcCol = _colHeaderName === 'ISRCs';",
+                "replace": "        const isIsrcCol = false;"
+            }
+        ],
+        "spec": "tests/fixtures/isrc-column-format.spec.js",
+        "grep": "dropdown offers Country/Registrant/Year/Designation/Validity sections",
+        "expect": "fail"
+    }
+]

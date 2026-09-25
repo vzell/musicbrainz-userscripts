@@ -1,0 +1,41 @@
+[
+    {
+        "name": "ISWC check-digit formula drops the final mod-10 wrap",
+        "why": "org/ISRC.org item 7's whole point is a CORRECT check digit, verified against ISO 15707's own published formula and cross-checked against two independent real examples (org/ISRC.org's own T-034524680-1 and debug/artist-works-initial.html's T-070.127.339-3). Dropping the outer `% 10` changes the computed digit whenever `sum % 10` is 0, and more subtly can format an off-by-one digit as a two-character string, silently breaking the equality check against the single-digit code.",
+        "edits": [
+            {
+                "find": "        const expected = String((10 - (sum % 10)) % 10);",
+                "replace": "        const expected = String(10 - (sum % 10));"
+            }
+        ],
+        "spec": "tests/fixtures/iswc-column-validity.spec.js",
+        "grep": "a wrong check digit is flagged",
+        "expect": "pass"
+    },
+    {
+        "name": "initIswcValidation() never flags an invalid ISWC",
+        "why": "Without this, a wrong check digit — the exact data-entry error this feature exists to surface — renders identically to a correct one, and the 📊 dropdown's new Validity section never appears.",
+        "edits": [
+            {
+                "find": "            const { valid, reason } = _parseIswcCode(raw);\n            if (valid) {\n                a.removeAttribute('data-mb-iswc-invalid');\n                a.removeAttribute('title');\n                return;\n            }\n            a.setAttribute('data-mb-iswc-invalid', '1');",
+                "replace": "            const { valid, reason } = _parseIswcCode(raw);\n            if (true) {\n                a.removeAttribute('data-mb-iswc-invalid');\n                a.removeAttribute('title');\n                return;\n            }\n            a.setAttribute('data-mb-iswc-invalid', '1');"
+            }
+        ],
+        "spec": "tests/fixtures/iswc-column-validity.spec.js",
+        "grep": "a wrong check digit is flagged",
+        "expect": "fail"
+    },
+    {
+        "name": "isIswcCol column-name gate is wrong (never matches)",
+        "why": "Without this gate the ISWC Validity counters never run, so the 📊 dropdown offers no ISWC section at all — a silent, page-wide feature loss, same class of bug as its ISRC counterpart.",
+        "edits": [
+            {
+                "find": "        const isIswcCol = _colHeaderName === 'ISWC';",
+                "replace": "        const isIswcCol = false;"
+            }
+        ],
+        "spec": "tests/fixtures/iswc-column-validity.spec.js",
+        "grep": "a wrong check digit is flagged",
+        "expect": "fail"
+    }
+]
