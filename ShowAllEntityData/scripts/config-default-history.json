@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "524c005a0fea4da256c7537ab48ead4d9170bde6",
-    "revisions_walked": 622
+    "head": "78813c0cffed335022a3c13bcf1e24ce16febaee",
+    "revisions_walked": 623
   },
   "changes": [
     {
@@ -418,6 +418,7 @@
     "sa_credit_attr_color": "#2e7d32",
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
+    "sa_enable_barcode_validation": true,
     "sa_ui_artist_role_main_performer_color": "#57ff5a",
     "sa_ui_artist_role_guest_performer_color": "#e07000",
     "sa_enable_caa_pics": true,
