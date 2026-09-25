@@ -126,3 +126,49 @@ Proposer
 
 and on https://musicbrainz.org/election/473 the "Voter" column
 should get the same unique value drop down sections like the "editor" column in https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/annotations
+
+
+* TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
+
+* TODO ISRC parser
+
+
+* TODO "Barcode" column needs section handling
+
+Music releases typically carry a couple of different, overlapping identifier systems. Here's the breakdown:
+
+Barcode formats (product-level, printed as a scannable barcode)
+
+UPC-A (Universal Product Code)
+
+12 digits, standard in the US/Canada since the 1970s
+Structure: 1 system digit + 5-digit manufacturer code + 5-digit product code + 1 check digit
+Still used, but has largely been absorbed into EAN-13 for global compatibility
+
+EAN-13 (European Article Number)
+
+13 digits, the international standard (GS1) and what most releases use today, worldwide
+A UPC-A code can be represented in EAN-13 simply by prepending a "0" — this is exactly what's happening in your example
+Structure: GS1 prefix (country/registrant) + company prefix + item reference + check digit (last digit)
+
+GTIN (Global Trade Item Number)
+
+Not a separate physical format — it's the umbrella term GS1 uses for the whole family (UPC-A, EAN-13, EAN-8, GTIN-14, etc.). "GTIN" is what you'll see in metadata/distribution systems even when the printed barcode is EAN-13.
+Your example: 0196587565725
+
+This is a valid EAN-13 code:
+
+Leading 0 → this is a UPC-A code padded into EAN-13 form. Drop the leading zero and you get 196587565725, a standard 12-digit UPC-A.
+The last digit (5) is the check digit, calculated via a weighted mod-10 formula over the preceding 12 digits — I verified it and it checks out as internally consistent.
+The digits after the leading 0 encode a GS1-assigned company/manufacturer prefix followed by a product reference number specific to that release (exact split depends on the length GS1 allocated to that registrant — not decodable without their registration data).
+
+This kind of code identifies the release as a retail product (a specific album/single in a specific format — CD, vinyl, digital bundle, etc.). A different format or edition of the same album gets a different barcode.
+
+Related but distinct codes in music
+ISRC (International Standard Recording Code) — identifies an individual recording (a specific track), not the release. Format: CC-XXX-YY-NNNNN (country, registrant, year, designation). Embedded in metadata, not printed as a barcode.
+Catalog number — the label's own internal reference (e.g. XL123), separate from any GS1 barcode.
+ISWC (International Standard Musical Work Code) — identifies the underlying composition/song for publishing/royalty purposes, distinct from any particular recording.
+GRid (Global Release Identifier) — used for digital releases in some distribution pipelines, less common now than relying on UPC/EAN + ISRC.
+
+Quick summary: barcode (UPC-A/EAN-13/GTIN) = identifies the product you'd scan at a store or match in a distributor's system; ISRC = identifies the recording; ISWC = identifies the song itself.
+

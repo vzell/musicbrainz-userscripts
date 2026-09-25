@@ -895,7 +895,7 @@ CustomizableMultiSelector.user.js remains broken in the published mirror with it
 
 * TODO filter checkboxes per column
 
-* TODO plan: Tackle the @org/action-button-redesign.org
+* DONE plan: Tackle the @org/action-button-redesign.org
 ** DONE i
 
 Tackle the @org/action-button-redesign.org
@@ -915,3 +915,6 @@ Change the background color of the two buttons
 
 to be the same as e.g. '<button id="mb-data-menu-btn"' and also synthezie them in one button with rounded corners and a
 divider line but with the original actions tooltips
+
+
+* TODO CLAUDE.md is over the 150.0k-char limit (207.0k chars) · /memory to free up context

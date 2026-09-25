@@ -1,4 +1,4 @@
-* redesign of the action buttons
+* DONE redesign of the action buttons
 ** DONE Decisions (2026-09-24) and what shipped
 
 Options were put up as ASCII mockups and the chosen shape was *two menus*:
@@ -8,10 +8,10 @@ and 6 landed on branch =action-button-redesign=; item 2 followed on branch
 
 | item | decision                                                                                       | state |
 |------+------------------------------------------------------------------------------------------------+-------|
-|   1. | =↔️= / =👁️= glyph-only, in the h2 immediately before =#mb-filter-container=                    | DONE  |
+|   1. | =↔️= / =👁️= glyph-only, in the h2 immediately before =#mb-filter-container=                      | DONE  |
 |   2. | =❓= opens the GitHub page; *Shift-click still opens the in-script dialog*; hand-written =.md= | DONE  |
-|   3. | =🎹= joins =🛠 View ▾=; =⚙️= stays pinned beside =❓=                                          | DONE  |
-|   4. | Density / Statistics / Barcode into =🛠 View ▾=; Export into =📦 Data ▾=                       | DONE  |
+|   3. | =🎹= joins =🛠 View ▾=; =⚙️= stays pinned beside =❓=                                            | DONE  |
+|   4. | Density / Statistics / Barcode into =🛠 View ▾=; Export into =📦 Data ▾=                        | DONE  |
 |   5. | Save / Load are rows of =📦 Data ▾=, so they cost one slot between them                        | DONE  |
 |   6. | =tests/support/toolbarMenu.js=; 9 call sites migrated; 2 new specs + 2 mutation lists          | DONE  |
 
@@ -54,7 +54,6 @@ h2" and "❓ opens GitHub; Shift-❓ renders the same file in the page" sections
 and =DEBUG-NOTES.md='s 2026-09-24 entries.
 
 ** DONE Original request
-
 
 Show me a couple of options/visualization for a redesign of the action buttons in the h1 header line of multi- (e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0)
 and single-table (e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/events) pageTypes buttons
@@ -134,7 +133,10 @@ The fetch progress bar should be positioned AFTER the last button (Help) in the 
 @debug/fetch-progress-bar-old.html - even older pre-redesign behaviour, matches what shipped
 #+end_example
 
-* TODO resize handle
+
+* TODO resize handling and fixing quicksearch
+
+1.)
 
 The following dialogs should get a resize handle on the lower right corner
 
@@ -145,6 +147,37 @@ The following dialogs should get a resize handle on the lower right corner
 
 which should also be remembered (together with the whole position)
 
+2.)
+
+Additionally the 
+
+#+begin_example
+<input type="text" placeholder="🔍 Filter help text…"
+#+end_example
+
+which used to work on the old text based format should work again on the markup (.md) format when shift-clicking the
+help button
+
+
+* TODO Barcode handling
+
+The current barcode highlight toggle button code in the "View" drop down menue (h1 header line) on pageTypes which have
+a "Barcode" column like e.g. https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af
+
+#+begin_example
+<button id="mb-barcode-highlight-btn"
+#+end_example
+
+should be transfered to an equivalent implementation to what we do e.g. in the "Lenght" column of
+e.g. https://musicbrainz.org/release/91d40c05-d40b-4bcb-92a7-554320b315fc
+
+So there should be a toggle triangle icon + small glyph before the "Barcode" column name in the "Barcode" column header
+
+#+begin_example
+▼[small barcode glyph] Barcode - initially barcoded are highlighted
+▶[small barcode glyph] Barcode - barcoded highlightning switched off
+#+end_example
+
 
 * TODO Remove "Show all " generically from all buttons 
 
@@ -153,6 +186,7 @@ which should also be remembered (together with the whole position)
 "(xxxxx) " - https://musicbrainz.org/report/LowDataQualityReleases?filter=1
 "Show all " - everywhere else
 #+end_example
+
 * TODO more action button consolidation
 
 - On e.g. https://musicbrainz.org/user/vzell/subscriptions/artist the button text in the five button should remove
