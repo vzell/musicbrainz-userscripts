@@ -1,3 +1,34 @@
+## 2026-09-25 — iswc pageType
+
+- `debug/ISWC.html` (/iswc/T-070.127.339-3): NO `div#content` — `div#page`
+  directly wraps `<h1>ISWC "…"</h1>` then a single native
+  `<h2>Associated with N work(s)</h2>` immediately followed by an ALREADY
+  `tbl`-shaped `<table class="tbl mergeable-table">`, wrapped in
+  `<form action="/work/merge_queue?returnto=…" method="post">` — same
+  minimal shape as `debug/ISRC.html`. Columns: checkbox / Title / Authors /
+  Recording artists / Other artists / Type / Language. The leading checkbox
+  `<th>` carries no `checkbox-cell` class, same defect as `/isrc/` (fixed the
+  same way: a `pageType`-scoped stamp in `startFetchingProcess`, now widened
+  to cover both `'isrc'` and `'iswc'`).
+- Title is a plain `<a href="/work/<mbid>"><bdi>…</bdi></a>` (no `.comment`
+  span in this snapshot's one row). Authors uses the same
+  `artist-roles-container`/`"relations"` JSON shape as Place-Events'
+  "Artists" column; Recording artists/Other artists use the same
+  `work-artists-container`/`"artists"` JSON shape as `artist-works`' own
+  "Recording artists" column — including a native `(show N more)`
+  truncation (4 `<li>` shown, 118 total in this snapshot). Both are already
+  handled generically by `expandShowAllCells()`/`_findCellListItems()` —
+  no new extractor needed. Type is plain text (`"Song"`). Language is
+  `<ul><li data-iso-639-3="…">English</li></ul>` — one `<li>` per lyrics
+  language, so it needs the same `collapsableColumns` treatment as the
+  artist columns.
+- No `class="pagination"` anywhere; nothing after `</table>` but the native
+  "Add selected works for merging" button row. `non_paginated: true`, same
+  as `isrc`/`cd-stub`/`auto-editor-election`.
+- The `@include` header's third regex had `isrc\/.*` but no `iswc\/.*` —
+  added it, or the new pageType would compile cleanly and silently never
+  run (no error, no button, indistinguishable from "the page has no rows").
+
 ## 2026-07-01 — report pages
 
 - `reports_index.html` (/reports): has `div#content`. `<h1>Reports</h1>` then

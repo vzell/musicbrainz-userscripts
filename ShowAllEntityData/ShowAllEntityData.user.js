@@ -15,7 +15,7 @@
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
-// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
@@ -15563,6 +15563,47 @@
                 ],
                 msTrackLengthBatch: true,   // one batch: an ISRC lists few recordings
                 integerColumns: [ { sourceColumn: 'Length', align: ':' } ],
+                extractMainColumn: 'Title',
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single',
+            non_paginated: true
+        },
+        // Individual ISWC page (/iswc/<code>, e.g.
+        // /iswc/T-070.127.339-3) — same minimal shape as 'isrc' above: no
+        // div#content, native <h1>ISWC "…"</h1> and native <h2>Associated
+        // with N work(s)</h2> immediately followed by an ALREADY tbl-shaped
+        // <table class="tbl mergeable-table"> (checkbox / Title / Authors /
+        // Recording artists / Other artists / Type / Language) — no
+        // listToTable/insertH2 needed. Title is a plain work link — no
+        // native .comment span in this snapshot, but extractMainColumn:
+        // 'Title' still splits one off generically if a duplicate/merge
+        // candidate ever carries one, same convention as every other work
+        // listing. Authors (artist-roles-container, JSON key "relations")
+        // and Recording artists/Other artists (work-artists-container, JSON
+        // key "artists" — identical shape to 'artist-works'' own "Recording
+        // artists" column, including its native "(show N more)"
+        // truncation) are both handled generically by the existing
+        // expandShowAllCells()/_findCellListItems() pipeline — no new
+        // extractor needed. Language holds one <li> per lyrics language, so
+        // it needs the same collapsableColumns treatment as the artist
+        // columns. injectedColumns: ['Relationships'] with no relBrowse —
+        // an ISWC's associated works can belong to different, unrelated
+        // artists/labels, so there is no single parent entity to browse by;
+        // this falls back to the standard per-row on-demand fetch, same as
+        // 'user-ratings'/'tag-value'/'report-detail'/'search'. The leading
+        // checkbox <th> carries no "checkbox-cell" class either (same
+        // defect as 'isrc'), handled by widening that pageType-scoped
+        // branch in startFetchingProcess to include 'iswc'. No pagination —
+        // an ISWC's work list is fixed and already fully rendered. See
+        // debug/ISWC.html.
+        {
+            type: 'iswc',
+            match: (path) => path.match(/^\/iswc\/[^/]+\/?$/),
+            buttons: [ { label: 'Show all Works' } ],
+            features: {
+                injectedColumns: [ 'Relationships' ],
+                collapsableColumns: [ 'Authors', 'Recording artists', 'Other artists', 'Language' ],
                 extractMainColumn: 'Title',
                 stickyColumn: 'Title'
             },
@@ -50137,21 +50178,22 @@ a { color: #1565c0; }`;
             applyInsertPrependH2(activeDefinition);
         }
 
-        // ── isrc: stamp the checkbox-cell class ─────────────────────────────
-        // Native /isrc/<code> pages render a merge-checkbox column whose
-        // leading <th> carries no CSS class at all (unlike other MB
-        // merge-tables), so the existing sa_remove_checkbox_cell mechanism —
-        // both the early header scan (indicesToExclude) and cleanupHeaders()
-        // further below, both keyed off th.classList.contains('checkbox-cell')
-        // — would otherwise never recognise it and leave a blank, unlabeled
-        // checkbox column in the rendered table. Stamp the class once here,
-        // before either scan runs, so the checkbox column is handled exactly
-        // like every other merge-table's checkbox column. See debug/ISRC.html.
-        if (pageType === 'isrc') {
-            const _isrcCheckboxTh = document.querySelector('table.tbl thead th:first-child');
-            if (_isrcCheckboxTh && _isrcCheckboxTh.querySelector('input[type="checkbox"]')) {
-                _isrcCheckboxTh.classList.add('checkbox-cell');
-                Lib.debug('cleanup', 'isrc: stamped checkbox-cell class on native checkbox <th>.');
+        // ── isrc/iswc: stamp the checkbox-cell class ────────────────────────
+        // Native /isrc/<code> and /iswc/<code> pages both render a
+        // merge-checkbox column whose leading <th> carries no CSS class at
+        // all (unlike other MB merge-tables), so the existing
+        // sa_remove_checkbox_cell mechanism — both the early header scan
+        // (indicesToExclude) and cleanupHeaders() further below, both keyed
+        // off th.classList.contains('checkbox-cell') — would otherwise
+        // never recognise it and leave a blank, unlabeled checkbox column in
+        // the rendered table. Stamp the class once here, before either scan
+        // runs, so the checkbox column is handled exactly like every other
+        // merge-table's checkbox column. See debug/ISRC.html, debug/ISWC.html.
+        if (pageType === 'isrc' || pageType === 'iswc') {
+            const _mergeCheckboxTh = document.querySelector('table.tbl thead th:first-child');
+            if (_mergeCheckboxTh && _mergeCheckboxTh.querySelector('input[type="checkbox"]')) {
+                _mergeCheckboxTh.classList.add('checkbox-cell');
+                Lib.debug('cleanup', `${pageType}: stamped checkbox-cell class on native checkbox <th>.`);
             }
         }
 

@@ -668,7 +668,7 @@ an import brings your deletions back.
   subscribed edits, notes received
 - **Annotation history** (`/<entity>/<mbid>/annotations`) across ten entity types
 - **Auto-editor elections**, **genre**, **instrument** and **edit-type** lists,
-  **top CD stubs**, **ISRC** and **privileged account** pages
+  **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 
