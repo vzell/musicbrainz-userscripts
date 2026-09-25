@@ -1,0 +1,22 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-09-25",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "🎹 Keyboard Shortcuts and ❓ Application Help (Shift-click) now have a lower-right resize handle, and remember their own position and size across reopens — the same `createInfoDialog()` shell both dialogs share now supports an opt-in `geoKey` that persists and restores geometry, mirroring `showLoadFilterDialog()`'s own `_saveGeo`/`_clampGeo`/`ResizeObserver` idiom."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The ❓ dialog's **🔍 Filter help text…** input works again: it used to only recognize `[data-qf-item]` rows and `<pre>` blocks (the shape of the old plain-text help format), so it silently found nothing in the Markdown-rendered content (headings, paragraphs, lists, tables). It now highlights matches anywhere in the rendered body, without hiding any of it — same as it always did for a `<pre>` block.",
+          "Dragging the title bar (or the native resize handle) on either dialog no longer closes it: the browser's mouseup can synthesize a `click` whose target lands outside the dialog once it has moved, which the outside-click handler read as a real outside click. Fixed with the same inside-mousedown tracking guard `showStatsPanel()` already carried for this exact bug.",
+          "🎹 Keyboard Shortcuts couldn't grow past its own default size in either dimension, and ❓ Application Help couldn't grow taller: both dialogs' content naturally sits right at the `maxWidth`/`maxHeight` those same options were also being reused as the resize ceiling for, leaving zero headroom to drag outward — it visibly did nothing. A resizable dialog now gets its own generous grow ceiling (95vw/95vh), independent of the comfortable default size `opts.maxWidth`/`opts.maxHeight` still control on first open."
+        ]
+      }
+    ]
+  }
+]

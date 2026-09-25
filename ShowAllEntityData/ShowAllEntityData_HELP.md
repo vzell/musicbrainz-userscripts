@@ -126,6 +126,15 @@ the other.
 On artist release-group pages a third menu appears, **📀 Discography ▾**, whose
 own label names the view you are in — *📀 Discography: Official*.
 
+**🎹 Keyboard Shortcuts and ❓ Application Help (Shift-click) both have a
+resize handle in their lower-right corner**, and remember their own position
+and size — drag or resize either one and it reopens exactly where you left
+it, no reload needed. Each dialog's own quick-filter input (**🔍 Filter
+shortcuts…** / **🔍 Filter help text…**) highlights every match as you type;
+in the ❓ dialog this searches the whole rendered page — headings, paragraphs,
+lists and tables alike, not just code blocks — and never hides anything, so a
+long document stays readable while you search it.
+
 ### Beside the table, not in the bar
 
 Two controls act on one table, so they sit beside that table's heading, just

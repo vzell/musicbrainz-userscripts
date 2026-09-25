@@ -34,6 +34,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
+const { clickToolbarItem } = require('../support/toolbarMenu');
 
 const ARTIST_RECORDINGS_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
 const FIXTURE_FILE = path.join(__dirname, 'uniq-drop-viewport-clip.html');
@@ -362,5 +363,102 @@ test.describe('the committed help file stays inside what the renderer supports',
         for (const marker of ['\n# ', '\n## ', '\n- [', '<details>', '<summary>', '|---']) {
             expect(text, `"${marker.trim()}" was rendered, not printed`).not.toContain(marker);
         }
+    });
+});
+
+test.describe('🔍 Filter help text… actually searches the rendered Markdown', () => {
+    // The bug: _createInfoDialogQuickFilter()'s applyQF() only ever recognised
+    // two shapes — [data-qf-item] rows (hide/show, what showShortcutsHelp()
+    // uses) and <pre> (highlight-only, what the OLD single-<pre> plain-text
+    // help format used). _mdRenderInto() produces neither — headings,
+    // paragraphs, list items and table cells, none of them [data-qf-item],
+    // none of them <pre> — so the input updated and its ✕ button worked, but
+    // nothing was ever hidden or highlighted: it silently did nothing.
+    //
+    // The fix stamps #mb-app-help-body with data-qf-freetext, and applyQF()'s
+    // free-text branch now highlights (never hides) any [data-qf-freetext]
+    // container the same way it always highlighted a <pre>.
+    test('typing a query highlights every matching occurrence in the body', async ({ page }) => {
+        await loadWithHelp(page, SAMPLE_MD);
+        await openHelpDialog(page);
+
+        const input = page.locator('#mb-app-help-dialog input[placeholder="🔍 Filter help text…"]');
+        await input.fill('bold');
+
+        const marks = page.locator('#mb-app-help-body mark.mb-dialog-hl');
+        // "bold" appears once as prose ("with **bold**, ...") and once inside
+        // the fenced code block's own comment ("not** bold here") — both must
+        // be found: the fenced code block is a <pre>, the paragraph is not.
+        await expect(marks).toHaveCount(2);
+        for (const text of await marks.allTextContents()) {
+            expect(text.toLowerCase()).toBe('bold');
+        }
+    });
+
+    test('a match highlights inside a heading, a list item, and a table cell — not just prose', async ({ page }) => {
+        await loadWithHelp(page, SAMPLE_MD);
+        await openHelpDialog(page);
+
+        const input = page.locator('#mb-app-help-dialog input[placeholder="🔍 Filter help text…"]');
+
+        await input.fill('Deep section');
+        // Matches the H2 heading text AND the table-of-contents list item
+        // linking to it — two different element kinds, neither a <pre>.
+        await expect(page.locator('#mb-app-help-body h2.mb-md-h2 mark.mb-dialog-hl')).toHaveCount(1);
+        await expect(page.locator('#mb-app-help-body li.mb-md-li mark.mb-dialog-hl')).toHaveCount(1);
+
+        await input.fill('');
+        await input.fill('Col B');
+        await expect(page.locator('#mb-app-help-body table.mb-md-table mark.mb-dialog-hl')).toHaveCount(1);
+    });
+
+    test('non-matching content stays VISIBLE — free text is highlighted, never hidden', async ({ page }) => {
+        // Unlike a flat [data-qf-item] list (where hiding a non-matching row
+        // is the point), hiding individual paragraphs/headings out of prose
+        // would destroy its reading order. This is also what the OLD
+        // single-<pre> plain-text format did: highlight only, nothing hidden.
+        await loadWithHelp(page, SAMPLE_MD);
+        await openHelpDialog(page);
+
+        const input = page.locator('#mb-app-help-dialog input[placeholder="🔍 Filter help text…"]');
+        await input.fill('Deep section');
+
+        const hidden = await page.locator('#mb-app-help-body *').evaluateAll(
+            (els) => els.filter((el) => el.style.display === 'none').map((el) => el.tagName));
+        expect(hidden, 'nothing inside the Markdown body is ever hidden by this filter').toEqual([]);
+
+        // The heading from the OTHER, non-matching section is still there.
+        await expect(page.locator('#mb-app-help-body h1.mb-md-h1')).toBeVisible();
+    });
+
+    test('clearing the filter removes the highlights', async ({ page }) => {
+        await loadWithHelp(page, SAMPLE_MD);
+        await openHelpDialog(page);
+
+        const input = page.locator('#mb-app-help-dialog input[placeholder="🔍 Filter help text…"]');
+        await input.fill('bold');
+        await expect(page.locator('#mb-app-help-body mark.mb-dialog-hl')).not.toHaveCount(0);
+
+        await input.fill('');
+        await expect(page.locator('#mb-app-help-body mark.mb-dialog-hl')).toHaveCount(0);
+    });
+
+    test('showShortcutsHelp still hides non-matching rows — the fix did not touch that path', async ({ page }) => {
+        // Regression guard: the free-text branch grew a second selector
+        // ('pre, [data-qf-freetext]'), but showShortcutsHelp()'s own
+        // [data-qf-item]/[data-qf-section] hide/show branch is untouched code
+        // and must keep behaving exactly as before.
+        await loadWithHelp(page, SAMPLE_MD);
+        // Adopted into 🛠 View ▾ — a row in a closed panel has a zero
+        // bounding rect, so a bare click times out. See toolbarMenu.js.
+        await clickToolbarItem(page, '#mb-shortcuts-help-btn');
+        await page.waitForSelector('#mb-shortcuts-help [data-qf-item]');
+
+        const input = page.locator('#mb-shortcuts-help input[placeholder="🔍 Filter shortcuts…"]');
+        await input.fill('zzz-no-such-shortcut-zzz');
+
+        const visibleItems = await page.locator('#mb-shortcuts-help [data-qf-item]').evaluateAll(
+            (els) => els.filter((el) => el.style.display !== 'none').length);
+        expect(visibleItems, 'a query matching nothing hides every row').toBe(0);
     });
 });

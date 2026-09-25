@@ -28878,7 +28878,12 @@ ${sections.join('\n')}
      *   • A visible ✕ clear-button (shown only when the field is non-empty)
      *   • Highlight-in-place: all occurrences of the query string inside
      *     `scrollAreaEl` are wrapped in `<mark class="mb-dialog-hl">` elements;
-     *     items marked with `data-qf-item` that do not match are hidden
+     *     items marked with `data-qf-item` that do not match are hidden.
+     *     A `[data-qf-freetext]` container (e.g. `#mb-app-help-body`, the
+     *     Markdown-rendered help content) and any `<pre>` are highlighted the
+     *     same way but NEVER hidden — hiding individual paragraphs/headings
+     *     inside prose would destroy its reading order, unlike a flat list of
+     *     independent `data-qf-item` rows
      *   • Two-press Escape semantics: first Escape clears the field (and restores
      *     all hidden items), second Escape blurs the input
      *   • The filter is applied on every `input` event and auto-focused when
@@ -28996,7 +29001,7 @@ ${sections.join('\n')}
                 m.parentNode.replaceChild(tn, m);
             });
             // Normalize parents to merge adjacent text nodes left by mark removal.
-            dialogEl.querySelectorAll(`[data-qf-item], pre`).forEach(el => el.normalize());
+            dialogEl.querySelectorAll(`[data-qf-item], pre, [data-qf-freetext]`).forEach(el => el.normalize());
         };
 
         /**
@@ -29004,8 +29009,14 @@ ${sections.join('\n')}
          *   1. Clears existing highlights and re-normalises text nodes.
          *   2. Shows/hides `[data-qf-item]` elements based on whether their text
          *      contains the query (case-insensitive).
-         *   3. Highlights all matches inside visible items (and inside `<pre>`
-         *      elements for free-text help content).
+         *   3. Highlights all matches inside visible items, inside `<pre>`
+         *      elements, and inside any `[data-qf-freetext]` container —
+         *      HIGHLIGHT ONLY, never hidden, since a `[data-qf-freetext]`
+         *      container (e.g. the Markdown-rendered app-help body) is prose
+         *      whose reading order would be destroyed by hiding non-matching
+         *      paragraphs/headings/list items individually. This is also what
+         *      the free-text `<pre>` branch always did for the OLD single-`<pre>`
+         *      plain-text help format it was written for.
          */
         const applyQF = () => {
             const q = input.value.trim().toLowerCase();
@@ -29035,9 +29046,21 @@ ${sections.join('\n')}
                 section.style.display = hasVisible ? '' : 'none';
             });
 
-            // For free-text areas (<pre>): always highlight regardless of sections
+            // For free-text areas (<pre>, or a [data-qf-freetext] container like
+            // the Markdown-rendered app-help body): always highlight regardless
+            // of sections — never hidden, since hiding individual paragraphs/
+            // headings/list items inside prose would destroy its reading order.
             if (q) {
+                // A [data-qf-freetext] container is walked WHOLE — its own
+                // nested <pre> (a fenced code block inside Markdown) comes
+                // along for free via the same TreeWalker. Selecting both
+                // independently would highlight that <pre>'s text TWICE: once
+                // from the container pass, once from the <pre> pass, wrapping
+                // the second mark's own text node in a THIRD, nested <mark>.
+                const freetextEls = Array.from(scrollAreaEl.querySelectorAll('[data-qf-freetext]'));
+                freetextEls.forEach(el => { el.normalize(); _highlightNode(el, q); });
                 scrollAreaEl.querySelectorAll('pre').forEach(pre => {
+                    if (freetextEls.some(el => el.contains(pre))) return;
                     pre.normalize();
                     _highlightNode(pre, q);
                 });
@@ -29100,6 +29123,15 @@ ${sections.join('\n')}
      * @param {boolean}        [opts.centerV=true]    true → vertically centred (translate -50%,-50%);
      *                                                false → top:60px (below page header)
      * @param {HTMLElement[]}  [opts.titleBarExtras]  Elements inserted left of the ✕ button
+     * @param {string}         [opts.geoKey]          GM storage key for persisted
+     *   position+size. Opt-in: when set, the dialog gets a native lower-right
+     *   resize handle (`resize:both`) and both position and size are restored
+     *   on open and saved on drag-end/resize/close — mirroring
+     *   `showLoadFilterDialog()`'s `_saveGeo`/`_clampGeo`/`ResizeObserver`
+     *   idiom verbatim. Omit to keep a dialog fixed-size and non-resizable
+     *   (the previous behaviour, unchanged for any caller that doesn't pass it).
+     * @param {string}         [opts.minHeight='200px'] CSS min-height, used both
+     *   as the layout floor and as the resize/clamp floor when opts.geoKey is set.
      * @returns {{ dialog: HTMLElement, scrollArea: HTMLElement, close: Function,
      *             titleBarRight: HTMLElement } | null}
      *   Returns null when the dialog was toggled closed (existing instance removed).
@@ -29122,6 +29154,7 @@ ${sections.join('\n')}
             border: 1px solid #ccc;
             border-radius: ${r};
             padding: 0;
+            box-sizing: border-box;
             box-shadow: 0 8px 32px rgba(0,0,0,0.2);
             z-index: ${opts.zIndex || 10000};
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -29131,6 +29164,31 @@ ${sections.join('\n')}
             max-height: ${opts.maxHeight || '82vh'};
             display: flex;
             flex-direction: column;
+            ${opts.geoKey
+                // overflow MUST be something other than visible on the same element
+                // for the native resize:both handle to work at all — same rule
+                // documented on the Statistics panel's own resize:both block.
+                //
+                // opts.maxWidth/opts.maxHeight (above) express the dialog's
+                // comfortable DEFAULT size when first opened, not a resize
+                // ceiling — the two are different concerns, and confusing them
+                // is a defect that shipped once already: shortcuts-help's
+                // content naturally wants ~640px/~590px, i.e. right at its own
+                // 580px/82vh "default" caps, so a resizable dialog whose grow
+                // ceiling REUSED those same caps had zero headroom to grow in
+                // EITHER dimension — dragging outward did nothing, which reads
+                // exactly like "resize doesn't work" even though the mechanism
+                // is fine. (A stray earlier attempt to fix the width half by
+                // forcing a definite starting width made it worse: pinning the
+                // start to maxWidth removed the last bit of headroom outright.
+                // width:auto is not the problem — verified directly: a plain
+                // width:auto box with real max-width headroom above its
+                // content's natural width resizes horizontally with no
+                // trouble.) So a resizable dialog gets a separate, generous
+                // grow ceiling instead of reusing opts.maxWidth/opts.maxHeight.
+                ? `resize: both; overflow: auto; min-width: ${opts.minWidth || '320px'}; min-height: ${opts.minHeight || '200px'};
+                   max-width: 95vw; max-height: 95vh;`
+                : ''}
         `;
 
         // ── Title bar ──────────────────────────────────────────────────────────
@@ -29224,11 +29282,57 @@ ${sections.join('\n')}
 
         document.body.appendChild(dialog);
 
+        // ── Resize + geometry persistence (opt-in via opts.geoKey) ──────────────
+        // Same _saveGeo/_clampGeo/ResizeObserver idiom as showLoadFilterDialog()'s
+        // geometry block, reused verbatim rather than re-derived: a debounced
+        // ResizeObserver (skipping its own initial-layout callback) plus a
+        // save-on-drag-end and save-on-close. Position AND size are restored
+        // and saved together — unlike the library's settings dialog, which only
+        // ever persists size and always reopens centred.
+        let _resizeObserver = null;
+        const _saveGeo = () => {
+            if (!opts.geoKey) return;
+            const rect = dialog.getBoundingClientRect();
+            if (rect.width < 10 || rect.height < 10) return; // not yet laid out
+            GM_setValue(opts.geoKey, {
+                top:    Math.round(rect.top),
+                left:   Math.round(rect.left),
+                width:  Math.round(rect.width),
+                height: Math.round(rect.height),
+            });
+        };
+        if (opts.geoKey) {
+            // Clamp a stored geometry object to the current viewport so the
+            // dialog never reopens off-screen after a window/monitor change.
+            const _clampGeo = (g) => {
+                const vw = window.innerWidth, vh = window.innerHeight;
+                const minW = parseFloat(opts.minWidth)  || 320;
+                const minH = parseFloat(opts.minHeight) || 200;
+                const width  = Math.min(Math.max(g.width,  minW), vw - 20);
+                const height = Math.min(Math.max(g.height, minH), vh - 20);
+                const left = Math.min(Math.max(g.left, 0), vw - width);
+                const top  = Math.min(Math.max(g.top,  0), vh - 40);
+                return { top, left, width, height };
+            };
+            const storedGeo = GM_getValue(opts.geoKey, null);
+            if (storedGeo && storedGeo.width && storedGeo.height) {
+                const g = _clampGeo(storedGeo);
+                dialog.style.transform = 'none';
+                dialog.style.top    = g.top    + 'px';
+                dialog.style.left   = g.left   + 'px';
+                dialog.style.width  = g.width  + 'px';
+                dialog.style.height = g.height + 'px';
+            }
+        }
+
         // ── Close / listener cleanup ───────────────────────────────────────────
         const closeDialog = () => {
+            _saveGeo(); // persist position + size before removing the element (no-op without opts.geoKey)
+            if (_resizeObserver) _resizeObserver.disconnect();
             dialog.remove();
             document.removeEventListener('keydown',   onKeyDown);
             document.removeEventListener('click',     onClickOutside);
+            document.removeEventListener('mousedown', onDocMousedownForOutside);
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup',   onMouseUp);
         };
@@ -29249,8 +29353,28 @@ ${sections.join('\n')}
         };
         document.addEventListener('keydown', onKeyDown);
 
+        // Bug-fix ported from showStatsPanel(): dragging the title bar (or, for
+        // a geoKey dialog, the native resize handle) to a point outside the
+        // dialog's ORIGINAL bounds makes the browser's mouseup synthesize a
+        // `click` event whose target lands outside the dialog — closing it the
+        // instant a drag/resize ends. Track whether the most recent mousedown
+        // started inside the dialog; if so, the first outside `click` that
+        // follows is the tail of that drag/resize, not a real outside click,
+        // and is suppressed once. A genuine new mousedown outside resets the
+        // flag so a real outside click still closes normally.
+        let _lastMousedownInDialog = false;
+        dialog.addEventListener('mousedown', () => { _lastMousedownInDialog = true; });
+        const onDocMousedownForOutside = (e) => {
+            if (!dialog.contains(e.target)) _lastMousedownInDialog = false;
+        };
+        document.addEventListener('mousedown', onDocMousedownForOutside);
+
         // Delay 100 ms so the click that opened the dialog doesn't immediately close it
-        const onClickOutside = (e) => { if (!dialog.contains(e.target)) closeDialog(); };
+        const onClickOutside = (e) => {
+            if (dialog.contains(e.target)) return;
+            if (_lastMousedownInDialog) { _lastMousedownInDialog = false; return; }
+            closeDialog();
+        };
         setTimeout(() => document.addEventListener('click', onClickOutside), 100);
 
         // ── Dragging ───────────────────────────────────────────────────────────
@@ -29275,9 +29399,26 @@ ${sections.join('\n')}
             dialog.style.left = (e.clientX - dragOffsetX) + 'px';
             dialog.style.top  = (e.clientY - dragOffsetY) + 'px';
         };
-        const onMouseUp = () => { isDragging = false; };
+        const onMouseUp = () => {
+            if (isDragging) { isDragging = false; _saveGeo(); } // no-op without opts.geoKey
+        };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup',   onMouseUp);
+
+        // ── ResizeObserver — save geometry when the user drags the native
+        // lower-right resize handle (opts.geoKey only). Same debounce idiom as
+        // showLoadFilterDialog(): skip the observer's own initial-layout
+        // callback, then coalesce a burst of resize events into one write.
+        if (opts.geoKey && typeof ResizeObserver !== 'undefined') {
+            let _resizeDebounce = null;
+            let _roInitFired = false;
+            _resizeObserver = new ResizeObserver(() => {
+                if (!_roInitFired) { _roInitFired = true; return; }
+                clearTimeout(_resizeDebounce);
+                _resizeDebounce = setTimeout(_saveGeo, 300);
+            });
+            _resizeObserver.observe(dialog);
+        }
 
         return {
             dialog,
@@ -29303,6 +29444,7 @@ ${sections.join('\n')}
             zIndex:                 10000,
             quickFilter:            true,
             quickFilterPlaceholder: '🔍 Filter shortcuts…',
+            geoKey:                 'sa_shortcuts_help_geometry',
         });
         if (!result) return; // toggled closed
 
@@ -29976,6 +30118,7 @@ ${sections.join('\n')}
             titleBarExtras:         [githubLink, refreshLink],
             quickFilter:            true,
             quickFilterPlaceholder: '🔍 Filter help text…',
+            geoKey:                 'sa_app_help_geometry',
         });
         if (!result) return; // toggled closed
 
@@ -29992,8 +30135,16 @@ ${sections.join('\n')}
         // whole file verbatim, which was right while the source was a
         // hand-laid-out .txt and became wrong the moment it was not: Markdown
         // in a <pre> shows its own syntax.
+        //
+        // data-qf-freetext marks this as a whole-content highlight target for
+        // _createInfoDialogQuickFilter()'s applyQF() — the old single-<pre>
+        // format was covered by its free-text-<pre> branch for free; this
+        // structured Markdown output (headings/paragraphs/lists/tables, none
+        // of them a <pre>, none of them a [data-qf-item] row) needs its own
+        // marker or the filter finds nothing to search at all.
         const body = document.createElement('div');
         body.id = 'mb-app-help-body';
+        body.dataset.qfFreetext = '1';
 
         // Loading indicator shown while fetch is in progress
         const loadingEl = document.createElement('div');
@@ -67963,7 +68114,10 @@ a { color: #1565c0; }`;
         {
             group: 'geometry',
             label: 'Panel geometry',
-            keys: ['sa_stats_panel_geometry', 'sa_load_dialog_geometry'],
+            keys: [
+                'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
+                'sa_shortcuts_help_geometry', 'sa_app_help_geometry',
+            ],
         },
         {
             group: 'dropdown',
