@@ -1,3 +1,43 @@
+## 2026-09-26 — barcode format-validation feature (org/barcode.org)
+
+- `debug/barcode.html`: a real, rendered `releasegroup-releases` page (post-
+  script, `data-mb-rel-expanded`/`data-picard-th-injected` etc. already
+  present) supplied by the user to sanity-check `_parseBarcodeCode()` against
+  real data rather than only constructed examples. Extracted the 7 distinct
+  `data-barcode-identifier` digit strings (6x UPC-A, 1x EAN-13) and ran both
+  a standalone Python replica and the actual JS function against them: all 7
+  validate cleanly with correct GS1 check digits — no suspicious/invalid
+  entries in this particular sample, which is itself useful confirmation
+  that the algorithm doesn't false-positive on genuine MusicBrainz data.
+- Also confirmed, from this same file, that a rendered Release cell's own
+  `textContent` carries a leading `▶` from a native/script
+  `data-erg-btn="1"` "Toggle display of underlying entity page" span ahead
+  of the release `<a>` — cost the first few runs of
+  `tests/fixtures/barcode-column-validity.spec.js` (read `tr.cells[0]`
+  directly instead of `tr.cells[0].querySelector('a')`), and cost a second
+  round on the checkbox-column-is-dropped-from-`tr.cells`-at-render offset
+  (raw fixture HTML's `<th class="checkbox-cell">` has no live `<td>`
+  counterpart once rendered, shifting every column index left by one versus
+  the source HTML's `<thead>` order).
+- **`_getBarcodeCanonicalCounts()`'s first draft built its cache signature
+  and row scan from `table.tBodies[0].rows` — the exact mistake this file's
+  own "A summary COUNT owes the same 'read the source rows' rule" section
+  warns about, copied in anyway because `_getLengthColumnAverages()`'s own
+  JSDoc ("scans EVERY row... regardless of current `display` state") reads
+  as if `tbody.rows` were already display-state-proof.** It is not proof
+  against `runFilter()` REMOVING rows, only against a "skip rows the caller
+  marked hidden" convention that was never the actual risk here. Caught by
+  `tests/fixtures/barcode-column-validity.spec.js`'s own regression test
+  (added specifically to pin this): typing an UNRELATED global-text filter
+  that narrows a 9-row fixture to 1 row shrank `table.tBodies[0].rows` from
+  9 entries to 1 — measured directly via a temporary `console.log` of the
+  cache signature (`"0,1,2,...,8,"` before, `"0,"` after) — so the "Barcode
+  - Same As" 📊 section (and the `barcode-sameas` filter mode) silently lost
+  every OTHER row's canonical the moment any unrelated filter first ran.
+  Fixed by switching to `_tableSourceRows()` (`groupedRows`/`allRows`, the
+  JS-held row arrays `runFilter()` cannot remove from), matching the
+  established fix for this exact bug class.
+
 ## 2026-09-25 — iswc pageType
 
 - `debug/ISWC.html` (/iswc/T-070.127.339-3): NO `div#content` — `div#page`

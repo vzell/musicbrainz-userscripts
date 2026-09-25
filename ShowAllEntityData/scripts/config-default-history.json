@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "636a708f21e8bd14adcbee851e286e1b9c0e1572",
-    "revisions_walked": 612
+    "head": "524c005a0fea4da256c7537ab48ead4d9170bde6",
+    "revisions_walked": 622
   },
   "changes": [
     {
@@ -115,7 +115,7 @@
       "to": 30
     },
     {
-      "sha": "636a708f",
+      "sha": "f5665a62",
       "date": "2026-09-25",
       "version": "9.99.1147+2026-09-24",
       "key": "sa_ui_settings_btn_style",
@@ -124,7 +124,7 @@
       "to": "#ECEFF1|#263238|1px solid #B0BEC5"
     },
     {
-      "sha": "636a708f",
+      "sha": "f5665a62",
       "date": "2026-09-25",
       "version": "9.99.1147+2026-09-24",
       "key": "sa_ui_help_btn_style",

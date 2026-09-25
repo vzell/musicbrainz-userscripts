@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1149+2026-09-25",
-    "schema_entries": 279,
-    "sections": 38,
-    "settings": 241,
-    "settings_with_default": 236,
+    "script_version": "9.99.1154+2026-09-25",
+    "schema_entries": 281,
+    "sections": 39,
+    "settings": 242,
+    "settings_with_default": 237,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,9 +15,9 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 93,
+      "checkbox": 94,
       "color_picker": 62,
-      "divider": 38,
+      "divider": 39,
       "number": 38,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
@@ -126,6 +126,10 @@
     {
       "key": "divider_barcode_highlight",
       "label": "🔖 BARCODE HIGHLIGHT"
+    },
+    {
+      "key": "divider_barcode_validation",
+      "label": "🔖 BARCODE VALIDATION"
     },
     {
       "key": "divider_artist_role_colours",
@@ -240,6 +244,7 @@
     "sa_enable_art_diagnostic_logging": "Enable CAA/EAA artwork diagnostic logging",
     "sa_enable_art_fetch_debug_logging": "Enable CAA/EAA image fetch debug logging",
     "sa_enable_barcode_highlight": "Enable Barcode Highlight",
+    "sa_enable_barcode_validation": "Enable Barcode Format Validation",
     "sa_enable_caa_inline_jesus2099_observer": "Watch for late jesus2099 cover-art icon re-injection",
     "sa_enable_caa_pics": "Enable CAA/EAA Illustrated Discography",
     "sa_enable_column_resizing": "Enable Column Resizing",
@@ -482,6 +487,7 @@
     "sa_enable_art_diagnostic_logging": false,
     "sa_enable_art_fetch_debug_logging": false,
     "sa_enable_barcode_highlight": true,
+    "sa_enable_barcode_validation": true,
     "sa_enable_caa_inline_jesus2099_observer": true,
     "sa_enable_caa_pics": true,
     "sa_enable_column_resizing": true,
