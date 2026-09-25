@@ -130,11 +130,6 @@ should get the same unique value drop down sections like the "editor" column in 
 
 * TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
 
-* TODO ISRC parser
-
-The "ISRCs" column at e.g.
-needs
-
 
 * TODO "Barcode" column needs section handling
 
@@ -195,9 +190,17 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
 
 * ISWC handling missing
+** i
 
-ISWC handling missing
+Here's `debug/ISWC-initial.html` from https://musicbrainz.org/iswc/T-070.127.339-3 — add a pageType for it
+
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
-https://musicbrainz.org/iswc/T-070.127.339-3
+
+
+* W-000099918 (BUMA/STEMRA ID) - list "BUMA" and "STEMRA ID" additionally separately
+
+list "BUMA" and "STEMRA ID" additionally separately in the "Attributes" column in e.g. 
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+
 

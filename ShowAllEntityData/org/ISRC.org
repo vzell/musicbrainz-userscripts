@@ -1,0 +1,105 @@
+* TODO ISRC parser
+
+1.)
+
+Some pageTypes e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/recordings natively render an "ISRCs" column:
+
+#+begin_example
+@debug/BoDeans-Recordings-initial.html - initial raw HTML
+@debug/BoDeans-Recordings-final.html - final renderd page raw HTML
+#+end_example
+
+The displayed format is like e.g. "US3L30406433"
+
+2.)
+
+Others, e.g. https://musicbrainz.org/release/ed818003-d492-40aa-8b01-29094ab249e5 include ISRC information when the
+third-party userscript from jesus2099 (see @tests/fixtures/live-userscripts/mb_INLINE-STUFF.user.js) is active, see
+[Image #10] in the format "US-SM1-19-01015" where "US" and "19" get a red on yellow background tinting.
+
+#+begin_example
+@debug/Western-Stars-ISRCs-initial.html - initial raw HTML
+@debug/Western-Stars-ISRCs-final.html - final renderd page raw HTML
+#+end_example
+
+3.)
+
+On the final rendered page of pageTypes which have an "ISRCs" column I always want the latter format rendered,
+"US-SM1-19-01015"
+
+4.)
+
+Additionally the unique value drop-down menu of the "ISRCs" column should also display unique value counts and values
+for the different constituents of an ISRC in a new section (use the "uniq-dropdown-section" skill), see the following
+
+a.)
+
+#+begin_example
+ISRC stands for International Standard Recording Code. It is a unique, 12-character alphanumeric identifier used
+worldwide to precisely identify specific sound recordings and music video recordings. It acts like a digital fingerprint
+or a serial number for an audio track, ensuring that rights holders (artists, labels, producers) are accurately tracked
+and paid royalties.🧱 Structure of an ISRC An ISRC always follows a strict 12-character format (often displayed with
+hyphens, though the hyphens are not part of the actual code): CC-XXX-YY-NNNNN
+
+Section Characters Name Description Example (US-R9R-22-00001)
+
+CC 2 letters "Country Code" The country where the registrant is located. US (United States)
+XXX 3 alphanumeric "Registrant Code" Unique code assigned to the organization/label registering the track. R9R (DistroKid)
+YY 2 digits "Year of Reference" The year the ISRC was allocated to the recording (usually the year it was created). 22 (2022)
+NNNNN 5 digits "Designation Code" A unique, sequential number assigned by the registrant for that specific track. 00001 (1st track registered)
+#+end_example
+
+b.)
+
+A simple ISRC Parser (Python)Here is a lightweight Python script to validate and parse an ISRC into its individual
+components.
+
+#+begin_example
+import re
+
+def parse_isrc(isrc_string):
+    # Remove hyphens or spaces if present
+    clean_isrc = isrc_string.replace("-", "").replace(" ", "").upper()
+    
+    # Regex to match the standard 12-character ISRC format
+    # Country (2 letters), Registrant (3 alphanumeric), Year (2 digits), Designation (5 digits)
+    isrc_pattern = r"^([A-Z]{2})([A-Z0-9]{3})(\d{2})(\d{5})$"
+    
+    match = re.match(isrc_pattern, clean_isrc)
+    
+    if not match:
+        return {"valid": False, "error": "Invalid ISRC format. Must be 12 alphanumeric characters."}
+        
+    country, registrant, year, designation = match.groups()
+    
+    # Convert 2-digit year to a 4-digit format (assuming 1940-2039 window)
+    year_int = int(year)
+    full_year = 2000 + year_int if year_int < 40 else 1900 + year_int
+    
+    return {
+        "valid": True,
+        "clean_code": clean_isrc,
+        "components": {
+            "country_code": country,
+            "registrant_code": registrant,
+            "year_of_reference": full_year,
+            "designation_code": designation
+        }
+    }
+
+# --- Example Usage ---
+raw_code = "US-R9R-22-00001"
+result = parse_isrc(raw_code)
+print(result)
+#+end_example
+
+5.)
+
+Also mention the third-party userscript in the section
+
+#+begin_example
+/*
+ * This script uses functionality originally included in the following user scripts, thx to the original authors...
+ *
+ */
+#+end_example

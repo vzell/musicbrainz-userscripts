@@ -133,8 +133,7 @@ The fetch progress bar should be positioned AFTER the last button (Help) in the 
 @debug/fetch-progress-bar-old.html - even older pre-redesign behaviour, matches what shipped
 #+end_example
 
-
-* TODO resize handling and fixing quicksearch
+* DONE resize handling and fixing quicksearch
 ** i
 
 1.)
@@ -240,4 +239,5 @@ Bruce Springsteen | Releases: [Artist] [Various Artist]
 - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
 
 Bruce Springsteen | [Aliases] [Credits]
+
 
