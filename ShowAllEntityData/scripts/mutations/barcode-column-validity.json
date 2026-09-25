@@ -1,0 +1,119 @@
+[
+    {
+        "name": "Barcode check-digit formula drops the final mod-10 wrap",
+        "why": "org/barcode.org's whole point is a CORRECT GS1 check digit, verified against three real, independently-sourced examples (EAN-8 73513537, UPC-A 036000241457, EAN-13 4006381333931 — see _parseBarcodeCode()'s own JSDoc) plus an algebraic proof that zero-padding preserves it. Dropping the outer `% 10` changes the computed digit whenever `sum % 10` is 0.",
+        "edits": [
+            {
+                "find": "            sum += ((payload.length - i) % 2 === 1 ? 3 : 1) * Number(payload[i]);\n        }\n        const expected = String((10 - (sum % 10)) % 10);",
+                "replace": "            sum += ((payload.length - i) % 2 === 1 ? 3 : 1) * Number(payload[i]);\n        }\n        const expected = String(10 - (sum % 10));"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "initBarcodeValidation() never flags an invalid barcode",
+        "why": "Without this, a wrong check digit or a malformed barcode — the exact data-entry error this feature exists to surface — renders identically to a correct one, and the 📊 dropdown's new Validity section never appears.",
+        "edits": [
+            {
+                "find": "            const { valid, reason, format } = _parseBarcodeCode(raw);\n            if (valid) {\n                td.removeAttribute('data-mb-barcode-invalid');\n                td.removeAttribute('title');\n                return;\n            }",
+                "replace": "            const { valid, reason, format } = _parseBarcodeCode(raw);\n            if (true) {\n                td.removeAttribute('data-mb-barcode-invalid');\n                td.removeAttribute('title');\n                return;\n            }"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "isBarcodeCol column-name gate is wrong (never matches)",
+        "why": "Without this gate the Barcode Validity/Format/Same-As counters never run, so the 📊 dropdown offers no Barcode section at all — a silent, page-wide feature loss, same class of bug as its ISRC/ISWC counterparts.",
+        "edits": [
+            {
+                "find": "        const isBarcodeCol = _colHeaderName === 'Barcode';",
+                "replace": "        const isBarcodeCol = false;"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "openUniqDrop()'s Barcode scan ignores sa_enable_barcode_validation",
+        "why": "This is the ONE feature-off obligation that lives outside initBarcodeValidation()/_getBarcodeCanonicalCounts() (both already gate themselves) — the per-row dropdown scan has its own copy of the gate, and without it the three sections keep appearing (with correct counts) even after the setting is switched off, which is exactly what the fixture caught the first time this was written.",
+        "edits": [
+            {
+                "find": "                if (isBarcodeCol && Lib.settings.sa_enable_barcode_validation) {",
+                "replace": "                if (isBarcodeCol) {"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "sa_enable_barcode_validation: false suppresses",
+        "expect": "fail"
+    },
+    {
+        "name": "initBarcodeValidation() rewrites a valid cell's text",
+        "why": "org/barcode.org's explicit, user-given constraint: never auto-normalize the displayed barcode, only flag it with a warning icon — unlike initIsrcFormatting()'s reformatting of valid ISRCs. A future \"helpful\" reformat of the digits (even a correct one) must fail this spec, since the contract is about DISPLAY behavior, not correctness of the reformatting.",
+        "edits": [
+            {
+                "find": "            const { valid, reason, format } = _parseBarcodeCode(raw);\n            if (valid) {\n                td.removeAttribute('data-mb-barcode-invalid');\n                td.removeAttribute('title');\n                return;\n            }",
+                "replace": "            const { valid, reason, format } = _parseBarcodeCode(raw);\n            if (valid) {\n                td.removeAttribute('data-mb-barcode-invalid');\n                td.removeAttribute('title');\n                td.textContent = format;\n                return;\n            }"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "\"Barcode - Format\" counts invalid entries too",
+        "why": "The Format section is documented (org/barcode.org, SYN_SECTION_META's own comment) to list ONLY strictly-conforming entries — \"conforms to spec\" and \"has a determinable format\" are meant to be the same fact here. Counting a checkdigit-invalid entry's format inflates its count past what a real conforming barcode earned.",
+        "edits": [
+            {
+                "find": "                        if (_barcodePart.valid) {\n                            barcodeValidCount++;\n                            barcodeFormatValueCounts.set(_barcodePart.format, (barcodeFormatValueCounts.get(_barcodePart.format) || 0) + 1);\n                        } else {\n                            barcodeInvalidCount++;\n                        }",
+                "replace": "                        if (_barcodePart.valid) {\n                            barcodeValidCount++;\n                        } else {\n                            barcodeInvalidCount++;\n                        }\n                        barcodeFormatValueCounts.set(_barcodePart.format, (barcodeFormatValueCounts.get(_barcodePart.format) || 0) + 1);"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "_getBarcodeCanonicalGroups() reads the live tbody instead of source rows",
+        "why": "A REAL bug this file's own regression test caught during development (see DEBUG-NOTES.md 2026-09-26): runFilter() REMOVES non-matching rows from a single-table page's live DOM rather than hiding them, so a signature/count built from table.tBodies[0].rows silently loses every row an UNRELATED filter currently excludes. Confirmed empirically with a temporary console.log: the cache signature shrank from 9 entries to 1 the moment a global-text filter narrowed the page. Fixed by switching to _tableSourceRows() (groupedRows/allRows), the established table -> source-rows binding runFilter() cannot remove from.",
+        "edits": [
+            {
+                "find": "        const entry = _tableSourceRows().find(e => e.table === table);\n        const rows = entry ? entry.rows : [];\n        if (!rows.length) return new Map();\n\n        let sig = '';\n        for (const row of rows) sig += row.dataset.mbRowIdx + ',';",
+                "replace": "        const tbody = table.tBodies[0];\n        if (!tbody) return new Map();\n        const rows = Array.from(tbody.rows);\n\n        let sig = '';\n        for (const row of rows) sig += row.dataset.mbRowIdx + ',';"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "reads the whole table, not just what another filter currently shows",
+        "expect": "fail"
+    },
+    {
+        "name": "_getBarcodeCanonicalGroups() drops the group-size filter",
+        "why": "The whole point of \"Same As\" is GROUPS of 2+ rows sharing a canonical — every barcode, including a genuinely unique one (Release C/J in the fixture), has SOME canonical, so without this filter every row would get its own spurious 1-row \"group\", drowning the real pairs and misrepresenting unique barcodes as having a match.",
+        "edits": [
+            {
+                "find": "        const groups = new Map(Array.from(all.entries()).filter(([, g]) => g.count > 1));",
+                "replace": "        const groups = all;"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    },
+    {
+        "name": "makeValueSynItem() shows the bare canonical instead of the group's raw values",
+        "why": "This is the user's own explicit ask (2026-09-26): the \"Same As\" section must list the ACTUAL textual representations involved (e.g. \"0196587565725 / 196587565725\"), not an opaque canonical number a person can't match back to what's on the page.",
+        "edits": [
+            {
+                "find": "            const _displayValue = (kind === 'barcodesameas')\n                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)\n                : value;",
+                "replace": "            const _displayValue = value;"
+            }
+        ],
+        "spec": "tests/fixtures/barcode-column-validity.spec.js",
+        "grep": "flags invalid barcodes without rewriting text",
+        "expect": "fail"
+    }
+]

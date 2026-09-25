@@ -2269,6 +2269,34 @@
         },
 
         // ============================================================
+        // BARCODE VALIDATION SECTION (org/barcode.org)
+        // Distinct from BARCODE HIGHLIGHT above — that feature groups
+        // identical barcode+Format pairs for merge candidates; this one
+        // validates UPC-A/EAN-13/EAN-8/GTIN-14 format/check-digit and adds
+        // "Barcode - Validity"/"- Format"/"- Same As" sections to the 📊
+        // unique-values dropdown. Never rewrites the displayed barcode
+        // text — only flags it (data-mb-barcode-invalid + a ⚠️ glyph).
+        // ============================================================
+        divider_barcode_validation: {
+            type: 'divider',
+            label: '🔖 BARCODE VALIDATION'
+        },
+
+        sa_enable_barcode_validation: {
+            label: 'Enable Barcode Format Validation',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds three sections to the "Barcode" column\'s unique-values (📊) dropdown: ' +
+                         '"Barcode - Validity" flags rows whose barcode does/doesn\'t match a known GS1 ' +
+                         'format (UPC-A/EAN-13/EAN-8/GTIN-14) with a correct check digit; "Barcode - Format" ' +
+                         'lists strictly-conforming entries by which format they match; "Barcode - Same As" ' +
+                         'lists rows whose barcode number matches another row\'s, one entry per group, ' +
+                         'showing the actual textual representations involved (e.g. "0196587565725 / ' +
+                         '196587565725"). Invalid entries also get a ⚠️ glyph in the cell itself. Never ' +
+                         'rewrites the displayed barcode text.'
+        },
+
+        // ============================================================
         // ARTIST ROLE COLOURS (used in tooltip for place-events "Artists" column)
         divider_artist_role_colours: {
             type: 'divider',
@@ -23585,6 +23613,82 @@
     }
 
     /**
+     * Parses a product barcode (UPC-A/EAN-13/EAN-8/GTIN-14) and validates its
+     * GS1 mod-10 check digit: alternating x3/x1 weights starting at the digit
+     * immediately LEFT of the check digit, working right-to-left, summed and
+     * compared against `(10 - sum % 10) % 10`. Verified against real
+     * reference numbers for all four lengths (org/barcode.org) — EAN-8
+     * `73513537`, UPC-A `036000241457`, EAN-13 `4006381333931` — and the
+     * algorithm is provably length-invariant: prepending a zero shifts every
+     * other digit's weight-formula index by exactly one position in a
+     * payload that is also one longer, leaving its weight unchanged, and the
+     * new digit itself is 0 so it never affects the sum. That invariance is
+     * what makes `canonical` below a correct UPC-A<->EAN-13<->GTIN-14
+     * equivalence key, not just a display convenience.
+     *
+     * Deliberately does NOT accept dashes/dots/spaces the way
+     * `_parseIsrcCode`/`_parseIswcCode` do — a barcode is never legitimately
+     * punctuated in MusicBrainz's own display, so stray non-digit characters
+     * are a shape defect worth flagging, not noise to silently strip.
+     *
+     * @param {string} rawCode - Cell text content, e.g. `"4988009005058"` or `"[none]"`.
+     * @returns {{digits: ?string, length: ?number, format: ?string,
+     *   checkDigit: ?string, valid: boolean, reason: ?string, canonical: ?string}}
+     *   `reason` is `null` when valid, else `'shape'` (not all-digit, or a
+     *   length with no defined GS1 check-digit format) or `'checkdigit'`
+     *   (right length, wrong check digit). `canonical` is
+     *   `barcodeRemoveLeadingZeros(digits)` whenever `digits` is all-numeric,
+     *   regardless of `valid` — see `_getBarcodeCanonicalGroups()`'s own
+     *   JSDoc for why this stays independent of format/length validity.
+     */
+    function _parseBarcodeCode(rawCode) {
+        const empty = { digits: null, length: null, format: null, checkDigit: null, valid: false, reason: 'shape', canonical: null };
+        if (!rawCode) return empty;
+        const digits = rawCode.replace(/\s+/g, '');
+        if (!/^\d+$/.test(digits)) return empty;
+        const canonical = barcodeRemoveLeadingZeros(digits);
+        const FORMAT_BY_LENGTH = { 8: 'EAN-8', 12: 'UPC-A', 13: 'EAN-13', 14: 'GTIN-14' };
+        const format = FORMAT_BY_LENGTH[digits.length] || null;
+        if (!format) return { digits, length: digits.length, format: null, checkDigit: null, valid: false, reason: 'shape', canonical };
+        const payload = digits.slice(0, -1);
+        const checkDigit = digits.slice(-1);
+        let sum = 0;
+        for (let i = 0; i < payload.length; i++) {
+            sum += ((payload.length - i) % 2 === 1 ? 3 : 1) * Number(payload[i]);
+        }
+        const expected = String((10 - (sum % 10)) % 10);
+        const valid = checkDigit === expected;
+        return { digits, length: digits.length, format, checkDigit, valid, reason: valid ? null : 'checkdigit', canonical };
+    }
+
+    /**
+     * Extracts the Barcode cell's own value — plain text content, NOT an
+     * anchor (unlike `_findCellIsrcParts`/`_findCellIswcParts`; the native
+     * `<td class="barcode-cell">` carries no `<a>` — see
+     * `initBarcodeValidation()`'s own JSDoc). Returns an array of 0-or-1
+     * entries, matching the established `_findCellXParts` shape even though
+     * a Barcode cell only ever holds one value, so every downstream
+     * consumer (filtering, highlighting, the dropdown scan) stays
+     * structurally identical to the ISRC/ISWC idiom.
+     *
+     * MusicBrainz's own "no barcode" placeholder is the literal text
+     * `[none]` (confirmed in `barcodeProcessTable()`'s own early-return
+     * check) — that and an empty cell both yield `[]`, same as ISRC/ISWC's
+     * "no anchors found" case.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{raw: string, digits: ?string, length: ?number,
+     *   format: ?string, checkDigit: ?string, valid: boolean, reason: ?string,
+     *   canonical: ?string, el: HTMLTableCellElement}>}
+     */
+    function _findCellBarcodeParts(cell) {
+        if (!cell) return [];
+        const raw = cell.textContent.trim();
+        if (!raw || raw === '[none]') return [];
+        return [{ raw, ..._parseBarcodeCode(raw), el: cell }];
+    }
+
+    /**
      * Splits each item of a "Part of series" cell (`release-tracks`'
      * dynamic-fallback "part of:" AR column — see `PEER_SPLIT_KINDS`'s own
      * JSDoc for how this column's `<li>` items get built, one per credited
@@ -24826,6 +24930,42 @@
         }
         if (mode === 'iswc-invalid') {
             return !!cell && _findCellIswcParts(cell).some(p => !p.valid);
+        }
+        // One combined gate for all barcode modes (org/barcode.org) —
+        // mirrors initBarcodeValidation()'s/_getBarcodeCanonicalGroups()'s
+        // own sa_enable_barcode_validation gate, so a saved/pinned filter
+        // referencing one of these modes from before the setting was
+        // toggled off can't still match anything.
+        if (mode.startsWith('barcode') && !Lib.settings.sa_enable_barcode_validation) return false;
+        if (mode === 'barcode-valid') {
+            // A Barcode cell holds 0 or 1 value, so "valid"/"invalid" are
+            // mutually exclusive per row here — unlike ISRC/ISWC's "at
+            // least one of this cell's entries" wording, which doesn't
+            // apply (org/barcode.org).
+            const part = _findCellBarcodeParts(cell)[0];
+            return !!part && part.valid;
+        }
+        if (mode === 'barcode-invalid') {
+            const part = _findCellBarcodeParts(cell)[0];
+            return !!part && !part.valid;
+        }
+        if (mode.startsWith('barcodeformat:')) {
+            const want = mode.slice(14);
+            const part = _findCellBarcodeParts(cell)[0];
+            return !!part && part.valid && part.format === want;
+        }
+        if (mode.startsWith('barcodesameas:')) {
+            // Compound mode, one entry per canonical-equivalence GROUP (org/
+            // barcode.org) — the value is the canonical itself, not a raw
+            // representation, since the whole point is that two different
+            // raw strings can belong to the same group. Table-wide
+            // predicate — see _getBarcodeCanonicalGroups()'s own JSDoc for
+            // why this must read the ALL-rows-signature-cached map rather
+            // than anything scoped to currently-visible rows.
+            const want = mode.slice(14);
+            const part = _findCellBarcodeParts(cell)[0];
+            if (!part || !part.canonical || !table) return false;
+            return part.canonical === want && _getBarcodeCanonicalGroups(table).has(want);
         }
         if (mode.startsWith('partofseriesname:')) {
             // Compound mode — matches one "Part of series" item's own
@@ -38459,6 +38599,15 @@ a { color: #1565c0; }`;
             content: ' ⚠️';
             font-size: 0.9em;
         }
+        /* Barcode format-validity glyph (org/barcode.org) — same idiom as
+           the ISRC/ISWC rule above, driven off data-mb-barcode-invalid
+           (see initBarcodeValidation()'s own JSDoc), except on the native
+           td.barcode-cell itself rather than an anchor, since a Barcode
+           cell carries no <a>. */
+        td.barcode-cell[data-mb-barcode-invalid]::after {
+            content: ' ⚠️';
+            font-size: 0.9em;
+        }
         .mb-toggle-icon { font-size: 0.8em; margin-right: 8px; color: #666; width: 12px; display: inline-block; cursor: pointer; }
         .mb-master-toggle {
             cursor: pointer;
@@ -45102,6 +45251,24 @@ a { color: #1565c0; }`;
         // native ISWC display is already correctly formatted, so there is
         // no constituent breakdown to offer here.
         iswcValidity:    { label: 'ISWC - Validity',    glyph: '⚠️' },
+        // "Barcode info" — org/barcode.org. "Validity" is a fixed 2-flag
+        // pair like isrcValidity/iswcValidity above (mutually exclusive per
+        // row here, since a Barcode cell holds 0 or 1 value, unlike ISRC/
+        // ISWC's possibly-multi-entry lists). "Format" is an open value
+        // family like isrcCountry above, but ONLY ever lists entries that
+        // passed validity — "conforms to spec" and "has a determinable
+        // format" are the same fact for a barcode. "Same As" is ALSO an
+        // open value family, one entry per canonical-equivalence GROUP
+        // (labeled with the actual raw representations involved, e.g.
+        // "0196587565725 / 196587565725" — see
+        // `_barcodeSameAsGroupLabel()`), deliberately NOT named "duplicate"
+        // and deliberately independent of the release's own Format column
+        // — see `_getBarcodeCanonicalGroups()`'s own JSDoc for why
+        // conflating it with the existing `sa_enable_barcode_highlight`
+        // merge-checkbox feature's grouping would be wrong.
+        barcodeValidity: { label: 'Barcode - Validity', glyph: '⚠️' },
+        barcodeFormat:   { label: 'Barcode - Format',   glyph: '🔖' },
+        barcodeSameAs:   { label: 'Barcode - Same As',  glyph: '🔢' },
         // "Length info - Duration" — the "Length" column's own displayed
         // "M:SS[.mmm]" text (or MusicBrainz's own "?:??" unknown-duration
         // placeholder), bucketed into fixed-width "N to N+1 minutes" ranges
@@ -45279,6 +45446,7 @@ a { color: #1565c0; }`;
         'catalog-has-prefix': 'catalogPresence', 'catalog-no-prefix': 'catalogPresence', 'catalog-none': 'catalogPresence',
         'isrc-valid': 'isrcValidity', 'isrc-invalid': 'isrcValidity',
         'iswc-valid': 'iswcValidity', 'iswc-invalid': 'iswcValidity',
+        'barcode-valid': 'barcodeValidity', 'barcode-invalid': 'barcodeValidity',
         // Aggregate sibling of the 'editordeleted:' kind below — shares
         // its section (see SYN_SECTION_META.editorDeleted's own JSDoc).
         'editor-any-deleted': 'editorDeleted',
@@ -45342,6 +45510,7 @@ a { color: #1565c0; }`;
         catalogprefix: 'catalogPrefix',
         isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
         isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
+        barcodeformat: 'barcodeFormat', barcodesameas: 'barcodeSameAs',
         lengthbucket: 'lengthBucket',
         partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
@@ -46213,6 +46382,64 @@ a { color: #1565c0; }`;
             p.el.normalize();
             highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
         });
+    }
+
+    /**
+     * Highlights an invalid "Barcode" cell for the `barcode-invalid` binary
+     * flag — same shape as `_highlightIsrcInvalidMatch()`/
+     * `_highlightIswcInvalidMatch()` above, except `p.el` is the `<td>`
+     * itself (no wrapping anchor — see `_findCellBarcodeParts()`'s own
+     * JSDoc). `initBarcodeValidation()` never rewrites the cell's text (org/
+     * barcode.org's own "no auto-normalization" constraint), so this always
+     * highlights the original text.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightBarcodeInvalidMatch(cell) {
+        if (!cell) return;
+        const part = _findCellBarcodeParts(cell)[0];
+        if (!part || part.valid) return;
+        cell.normalize();
+        highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights a "Barcode" cell for the `barcodeformat:` compound mode —
+     * same whole-cell-highlight shape as `_highlightBarcodeInvalidMatch()`
+     * above, scoped to cells whose own resolved format matches.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"barcodeformat:EAN-13"`.
+     */
+    function _highlightBarcodeFormatMatch(cell, mode) {
+        if (!cell) return;
+        const want = mode.slice(14);
+        const part = _findCellBarcodeParts(cell)[0];
+        if (!part || !part.valid || part.format !== want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights a "Barcode" cell for the `barcodesameas:` compound mode —
+     * table-threaded like `_highlightLengthDeviationMatch()`/
+     * `_highlightLengthLiveMatch()`, since "belongs to this canonical group"
+     * needs `_getBarcodeCanonicalGroups(table)`, not just this cell.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - e.g. `"barcodesameas:36000241457"`.
+     * @param {?HTMLTableElement} table - See `_cellMatchesStructureMode()`'s
+     *   own JSDoc for why this must be threaded explicitly rather than
+     *   derived via `cell.closest('table')`.
+     */
+    function _highlightBarcodeSameAsMatch(cell, mode, table) {
+        if (!cell || !table) return;
+        const want = mode.slice(14);
+        const part = _findCellBarcodeParts(cell)[0];
+        if (!part || part.canonical !== want) return;
+        if (!_getBarcodeCanonicalGroups(table).has(want)) return;
+        cell.normalize();
+        highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -47693,6 +47920,12 @@ a { color: #1565c0; }`;
                                     _highlightIsrcInvalidMatch(row.cells[f.idx]);
                                 } else if (mode === 'iswc-invalid') {
                                     _highlightIswcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'barcode-invalid') {
+                                    _highlightBarcodeInvalidMatch(row.cells[f.idx]);
+                                } else if (mode.startsWith('barcodeformat:')) {
+                                    _highlightBarcodeFormatMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('barcodesameas:')) {
+                                    _highlightBarcodeSameAsMatch(row.cells[f.idx], mode, ctx.table);
                                 } else if (mode.startsWith('partofseriesname:') || mode.startsWith('partofseriesdate:')) {
                                     _highlightPartOfSeriesTextMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('partofseriesnumber:')) {
@@ -48498,6 +48731,7 @@ a { color: #1565c0; }`;
             // simply redoes the same transform on the fresh clone.
             initIsrcFormatting();
             initIswcValidation();
+            initBarcodeValidation();
             // renderGroupedTable() rebuilt every <thead> from a clone, so the
             // per-table ▶🔗 toggles are gone and have to be recreated —
             // unconditionally, because the gate below deliberately does NOT
@@ -48715,6 +48949,7 @@ a { color: #1565c0; }`;
                 initPicardTaggerColumn(/* rewireOnly */ true);
                 initIsrcFormatting();
                 initIswcValidation();
+                initBarcodeValidation();
                 // Inline thumbnails first — _artInitQueue creates _caaQueue so they
                 // land ahead of small icons and the big strip in the fetch queue.
                 _artInitQueue();
@@ -52971,6 +53206,7 @@ a { color: #1565c0; }`;
             // via href (org/ISRC.org).
             initIsrcFormatting();
             initIswcValidation();
+            initBarcodeValidation();
 
             // Re-align the filter row after Picard injection.
             // initPicardTaggerColumn appends a <th class="mb-picard-th"> to the first
@@ -58240,6 +58476,7 @@ a { color: #1565c0; }`;
         // reflagging again here too.
         initIsrcFormatting();
         initIswcValidation();
+        initBarcodeValidation();
 
         // Must run last, after the section-visibility loop above has already
         // shown/hidden every h3/table for the NEW section — see
@@ -59164,6 +59401,120 @@ a { color: #1565c0; }`;
         return data;
     }
 
+    // Per-table memo of _getBarcodeCanonicalGroups()'s own computed map —
+    // same WeakMap-cache-on-an-all-rows-signature shape as
+    // _lengthColumnAveragesCache above, for the identical reason: this is
+    // read from BOTH openUniqDrop()'s "Barcode" column scan AND
+    // _cellMatchesStructureMode()'s per-row 'barcodesameas:' filter check
+    // DURING a testRowMatch() pass, which is itself what hides/shows rows —
+    // see _getLengthColumnAverages()'s own JSDoc for the exact "matched on
+    // matchOnly:true, mismatched on the same filter's matchOnly:false
+    // highlight pass moments later" bug an ALL-rows signature avoids.
+    const _barcodeCanonicalGroupsCache = new WeakMap();
+
+    /**
+     * Computes (and caches, per table) every canonical (leading-zero-
+     * stripped, see `barcodeRemoveLeadingZeros()`) barcode value shared by
+     * MORE THAN ONE row on this TABLE — the reference data behind the
+     * "Barcode - Same As" dropdown section and the `barcodesameas:`
+     * structure mode. Two rows sharing a canonical share that barcode
+     * NUMBER, whether or not their raw text is literally identical (e.g. a
+     * UPC-A and its zero-padded EAN-13 form both reduce to the same
+     * canonical value — see `_parseBarcodeCode()`'s own JSDoc for why that's
+     * provably correct, not just observed) — which is why each group also
+     * records every distinct RAW representation seen for it, so the
+     * dropdown can list "0196587565725 / 196587565725" as one browsable
+     * entry rather than a bare "N rows share a barcode" flag.
+     *
+     * Deliberately scans EVERY row regardless of current `display` state and
+     * caches on a signature built the same way, for the identical reason
+     * `_getLengthColumnAverages()` does — see its JSDoc. Computing this from
+     * `openUniqDrop()`'s own visible-rows-only scan loop instead would make
+     * the dropdown's count and `_cellMatchesStructureMode()`'s filter
+     * predicate silently disagree the moment an unrelated column filter
+     * narrows the table.
+     *
+     * Deliberately independent of the release's own "Format" column, unlike
+     * the existing `sa_enable_barcode_highlight` merge-checkbox feature
+     * (`barcodeProcessTable()`'s identifier folds in Format so two releases
+     * sharing a barcode number in different physical formats are NOT grouped
+     * as a merge candidate). This is a barcode-NUMBER-equivalence question,
+     * not that one — see the "Barcode - Same As" section's own tooltip
+     * wording, which deliberately contrasts the two rather than letting them
+     * read as the same feature.
+     *
+     * Only entries whose `digits` is all-numeric (see `_parseBarcodeCode()`)
+     * ever contribute — non-digit garbage and empty/`[none]` cells are
+     * simply absent from the map, never counted as a canonical `''`/`null`
+     * group of their own. A canonical seen on only ONE row is likewise
+     * absent — this map holds SAME-AS groups only, not every barcode.
+     *
+     * Gated on `Lib.settings.sa_enable_barcode_validation` — when off,
+     * returns an empty `Map` WITHOUT scanning any rows at all.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {Map<string, {count: number, raws: Set<string>}>}
+     */
+    function _getBarcodeCanonicalGroups(table) {
+        if (!table || !Lib.settings.sa_enable_barcode_validation) return new Map();
+        // SOURCE rows, never the live `<tbody>` — `runFilter()` REMOVES
+        // non-matching rows on a single-table page rather than hiding them
+        // (confirmed empirically: `table.tBodies[0].rows` shrank from 9 to 1
+        // after an UNRELATED global-text filter reduced the page to one
+        // row), so a signature/count built from `tbody.rows` silently loses
+        // every row a different filter currently excludes — the identical
+        // bug this file's own "A summary COUNT owes the same 'read the
+        // source rows' rule" section documents for
+        // `_updateLengthMismatchButtons()`/`_updateLiveDateFlagButtons()`.
+        // `_tableSourceRows()` is the established table -> source-rows
+        // binding (`groupedRows[i]`/`allRows`) that survives it.
+        const entry = _tableSourceRows().find(e => e.table === table);
+        const rows = entry ? entry.rows : [];
+        if (!rows.length) return new Map();
+
+        let sig = '';
+        for (const row of rows) sig += row.dataset.mbRowIdx + ',';
+        const cached = _barcodeCanonicalGroupsCache.get(table);
+        if (cached && cached.sig === sig) return cached.groups;
+
+        const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
+        const clean = (th) => th.dataset.colName ||
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+        const barcodeIdx = headers.findIndex(th => clean(th) === 'Barcode');
+
+        const all = new Map();
+        if (barcodeIdx !== -1) {
+            rows.forEach(row => {
+                const part = _findCellBarcodeParts(row.cells[barcodeIdx])[0];
+                if (!part || !part.canonical) return;
+                let g = all.get(part.canonical);
+                if (!g) { g = { count: 0, raws: new Set() }; all.set(part.canonical, g); }
+                g.count++;
+                g.raws.add(part.raw);
+            });
+        }
+        const groups = new Map(Array.from(all.entries()).filter(([, g]) => g.count > 1));
+        _barcodeCanonicalGroupsCache.set(table, { sig, groups });
+        return groups;
+    }
+
+    /**
+     * Builds the "0196587565725 / 196587565725" style label for one
+     * canonical group's `raws` set — longest representation first (the
+     * MOST-padded form, e.g. a GTIN-14 or EAN-13 zero-padding), shortest
+     * last, so the label reads as "the fuller form, then the bare one"
+     * rather than an arbitrary order; ties broken lexicographically for
+     * determinism.
+     *
+     * @param {Set<string>} raws
+     * @returns {string}
+     */
+    function _barcodeSameAsGroupLabel(raws) {
+        return Array.from(raws)
+            .sort((a, b) => (b.length - a.length) || a.localeCompare(b))
+            .join(' / ');
+    }
+
     /**
      * Opens (or toggles closed) the unique-values dropdown for one column.
      *
@@ -59330,6 +59681,11 @@ a { color: #1565c0; }`;
         // JSDoc (org/ISRC.org item 7).
         let iswcValidCount = _uniqCacheHit ? _uniqCacheHit.iswcValidCount : 0;
         let iswcInvalidCount = _uniqCacheHit ? _uniqCacheHit.iswcInvalidCount : 0;
+        // "Barcode" column only (isBarcodeCol): unlike isrcValidCount/
+        // iswcValidCount above, valid/invalid are MUTUALLY EXCLUSIVE per row
+        // — a Barcode cell holds 0 or 1 value, not a list (org/barcode.org).
+        let barcodeValidCount = _uniqCacheHit ? _uniqCacheHit.barcodeValidCount : 0;
+        let barcodeInvalidCount = _uniqCacheHit ? _uniqCacheHit.barcodeInvalidCount : 0;
         // "Date info - Precision" — a FIXED 3-flag family (mirrors
         // releaseQualityHighCount/-LowCount/-NormalCount below): how many
         // visible rows' own `dateParts`-fed column text is a complete
@@ -59535,6 +59891,15 @@ a { color: #1565c0; }`;
         const isrcRegistrantValueCounts  = _uniqCacheHit ? _uniqCacheHit.isrcRegistrantValueCounts  : new Map();
         const isrcYearValueCounts        = _uniqCacheHit ? _uniqCacheHit.isrcYearValueCounts        : new Map();
         const isrcDesignationValueCounts = _uniqCacheHit ? _uniqCacheHit.isrcDesignationValueCounts : new Map();
+        // "Barcode - Format" — ONLY ever populated from valid entries (see
+        // isBarcodeCol's own scan below): "conforms to spec" and "has a
+        // determinable format" are the same fact for a barcode.
+        const barcodeFormatValueCounts = _uniqCacheHit ? _uniqCacheHit.barcodeFormatValueCounts : new Map();
+        // "Barcode - Same As" — keyed by CANONICAL value (one entry per
+        // equivalence group, not per raw representation); the group's own
+        // "raw / raw" label is resolved once from _getBarcodeCanonicalGroups()
+        // when building _sortedBarcodeSameAsValues below.
+        const barcodeSameAsValueCounts = _uniqCacheHit ? _uniqCacheHit.barcodeSameAsValueCounts : new Map();
         // Distinct "Date info - Decade"/"- Month" values — see
         // `_dateAtomDecade()`/`_dateAtomMonth()`'s own JSDoc. Column-gated
         // (isDateExprCol below). "Date info - Precision" is a FIXED 3-flag
@@ -59725,6 +60090,10 @@ a { color: #1565c0; }`;
         // Column-name gate for the native "ISWC" column's validity flag
         // (org/ISRC.org item 7) — same convention as isIsrcCol above.
         const isIswcCol = _colHeaderName === 'ISWC';
+        // Column-name gate for the native "Barcode" column's Validity/
+        // Format/Same-As sections (org/barcode.org) — same convention as
+        // isIsrcCol/isIswcCol above.
+        const isBarcodeCol = _colHeaderName === 'Barcode';
         // Column-name gate for the native "Attributes" column's own
         // recording-attribute words (e.g. "live", "cover", "partial") — same
         // convention as isFormatCol/isTracksCol/isCatalogCol/isEventCol
@@ -60015,6 +60384,29 @@ a { color: #1565c0; }`;
                     const _iswcParts = _findCellIswcParts(cell);
                     if (_iswcParts.some(p => p.valid))  iswcValidCount++;
                     if (_iswcParts.some(p => !p.valid)) iswcInvalidCount++;
+                }
+                if (isBarcodeCol && Lib.settings.sa_enable_barcode_validation) {
+                    const _barcodePart = _findCellBarcodeParts(cell)[0];
+                    if (_barcodePart) {
+                        if (_barcodePart.valid) {
+                            barcodeValidCount++;
+                            barcodeFormatValueCounts.set(_barcodePart.format, (barcodeFormatValueCounts.get(_barcodePart.format) || 0) + 1);
+                        } else {
+                            barcodeInvalidCount++;
+                        }
+                        // "Barcode - Same As" is an open value family, one
+                        // entry per canonical-equivalence GROUP (org/
+                        // barcode.org) — a row only contributes when its
+                        // canonical is a genuine group (>=2 rows table-wide,
+                        // per _getBarcodeCanonicalGroups()), tallied per
+                        // VISIBLE row like every other value family; the
+                        // group's own label (the raw representations
+                        // involved) is resolved once, after this loop, from
+                        // the same table-wide map.
+                        if (_barcodePart.canonical && _getBarcodeCanonicalGroups(table).has(_barcodePart.canonical)) {
+                            barcodeSameAsValueCounts.set(_barcodePart.canonical, (barcodeSameAsValueCounts.get(_barcodePart.canonical) || 0) + 1);
+                        }
+                    }
                 }
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
@@ -61319,6 +61711,7 @@ a { color: #1565c0; }`;
                 titleMismatchCount, nameVariationCount, multiMediumCount,
                 catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
                 isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
+                barcodeValidCount, barcodeInvalidCount, barcodeFormatValueCounts, barcodeSameAsValueCounts,
                 dateCompleteCount, datePartialCount, dateRangeCount,
                 attrValueCounts, taskValueCounts, dateValueCounts, eventDateValueCounts,
                 instrumentValueCounts, altNameValueCounts,
@@ -61368,6 +61761,7 @@ a { color: #1565c0; }`;
             titleMismatchCount, nameVariationCount,
             multiMediumCount, catalogHasPrefixCount, catalogNoPrefixCount, catalogNoneCount,
             isrcValidCount, isrcInvalidCount, iswcValidCount, iswcInvalidCount,
+            barcodeValidCount, barcodeInvalidCount,
             dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -61409,6 +61803,7 @@ a { color: #1565c0; }`;
             ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
+            ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
             ...lengthBucketValueCounts.values(),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
@@ -61919,6 +62314,8 @@ a { color: #1565c0; }`;
                  : kind === 'isrcregistrant'  ? '» registrant: '
                  : kind === 'isrcyear'        ? '» year: '
                  : kind === 'isrcdesignation' ? '» designation: '
+                 : kind === 'barcodeformat'   ? '» format: '
+                 : kind === 'barcodesameas'   ? '🔢 '
                  : kind === 'workattrid'    ? '» identifier: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
@@ -61943,6 +62340,16 @@ a { color: #1565c0; }`;
                  : kind === 'dateweekday'        ? '» weekday: '
                  : kind === 'pendingedit'        ? '» pending edit: '
                  : '» ');
+            // 'barcodesameas' is keyed by the CANONICAL value (needed
+            // verbatim for _wireStructureCheckbox()'s own mode string,
+            // below, and for item.title just above), but DISPLAYED as the
+            // group's actual raw representations — "0196587565725 /
+            // 196587565725" — via _barcodeSameAsGroupLabel(). `table` is
+            // this closure's own param, same table _getBarcodeCanonicalGroups()
+            // is keyed on everywhere else in this function.
+            const _displayValue = (kind === 'barcodesameas')
+                ? _barcodeSameAsGroupLabel((_getBarcodeCanonicalGroups(table).get(value) || { raws: new Set([value]) }).raws)
+                : value;
             if (kind === 'arttype') {
                 // Render the value as an actual pill (see
                 // _buildArtTypePillLabel's own JSDoc) instead of via the
@@ -61965,7 +62372,7 @@ a { color: #1565c0; }`;
                 item.appendChild(_labelSpan);
                 _buildArtTypePillLabel(_labelSpan, _synLabelPrefix, value);
             } else {
-                const _labelSpan = _appendSynLabelText(item, _synLabelPrefix + value);
+                const _labelSpan = _appendSynLabelText(item, _synLabelPrefix + _displayValue);
                 // Reuse MusicBrainz's OWN native `.cancelled` CSS class
                 // (the exact class `_findCellEventCancelled()` reads —
                 // see its JSDoc) as this entry's visual styling, mirroring
@@ -62219,6 +62626,14 @@ a { color: #1565c0; }`;
         // Numeric ascending (not lexicographic), same reasoning as Decade/Year above.
         const _sortedIsrcYearValues        = Array.from(isrcYearValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedIsrcDesignationValues = Array.from(isrcDesignationValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Fixed display order by increasing length (EAN-8/UPC-A/EAN-13/
+        // GTIN-14), not lexicographic — mirrors the Weekday/bucket-style
+        // sorts above.
+        const _BARCODE_FORMAT_SORT_ORDER = ['EAN-8', 'UPC-A', 'EAN-13', 'GTIN-14'];
+        const _sortedBarcodeFormatValues = Array.from(barcodeFormatValueCounts.keys()).sort((a, b) => _BARCODE_FORMAT_SORT_ORDER.indexOf(a) - _BARCODE_FORMAT_SORT_ORDER.indexOf(b));
+        // Numeric ascending by canonical value (not lexicographic), same
+        // reasoning as ISRC Year/Tracks-per-medium above.
+        const _sortedBarcodeSameAsValues = Array.from(barcodeSameAsValueCounts.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         // Numeric sort by leading bucket number (not lexicographic, so "2 to
         // 3 minutes" sorts before "10 to 11 minutes"); "Unknown length" has
         // no leading number (NaN) and is always sorted last.
@@ -62277,6 +62692,7 @@ a { color: #1565c0; }`;
             _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
             _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
             _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
+            _sortedBarcodeFormatValues.length > 0 || _sortedBarcodeSameAsValues.length > 0 ||
             _sortedLengthBucketValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
@@ -62291,6 +62707,7 @@ a { color: #1565c0; }`;
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
+            barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -62329,6 +62746,11 @@ a { color: #1565c0; }`;
             if (isrcInvalidCount > 0) makeSynItem('isrc-invalid', '⚠️ invalid ISRC format', isrcInvalidCount);
             if (iswcValidCount > 0)   makeSynItem('iswc-valid', '✅ valid ISWC format', iswcValidCount);
             if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
+            // "Barcode - Validity" — see barcodeValidCount's own comment
+            // above (org/barcode.org). "- Format"/"- Same As" are open
+            // value families, emitted below alongside the others.
+            if (barcodeValidCount > 0)   makeSynItem('barcode-valid', '✅ valid barcode format', barcodeValidCount);
+            if (barcodeInvalidCount > 0) makeSynItem('barcode-invalid', '⚠️ invalid barcode format', barcodeInvalidCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor',       editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified',  changelogNoMessageCount);
@@ -62429,6 +62851,8 @@ a { color: #1565c0; }`;
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
+            _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
+            _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -62449,6 +62873,7 @@ a { color: #1565c0; }`;
         } else if (emptyCellCount > 0 || titleMismatchCount > 0 || nameVariationCount > 0 ||
                    multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
+            barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
@@ -62472,6 +62897,8 @@ a { color: #1565c0; }`;
             if (isrcInvalidCount > 0) makeSynItem('isrc-invalid', '⚠️ invalid ISRC format', isrcInvalidCount);
             if (iswcValidCount > 0)   makeSynItem('iswc-valid', '✅ valid ISWC format', iswcValidCount);
             if (iswcInvalidCount > 0) makeSynItem('iswc-invalid', '⚠️ invalid ISWC format', iswcInvalidCount);
+            if (barcodeValidCount > 0)   makeSynItem('barcode-valid', '✅ valid barcode format', barcodeValidCount);
+            if (barcodeInvalidCount > 0) makeSynItem('barcode-invalid', '⚠️ invalid barcode format', barcodeInvalidCount);
             if (editorAnyDeletedCount > 0)    makeSynItem('editor-any-deleted', '🗑️ any deleted editor', editorAnyDeletedCount);
             if (changelogHasMessageCount > 0) makeSynItem('changelog-has-message', '📜 has changelog message', changelogHasMessageCount);
             if (changelogNoMessageCount > 0)  makeSynItem('changelog-no-message', '🚫 no changelog specified', changelogNoMessageCount);
@@ -62544,6 +62971,8 @@ a { color: #1565c0; }`;
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
             _sortedIsrcYearValues.forEach(v => makeValueSynItem('isrcyear', v, isrcYearValueCounts.get(v)));
             _sortedIsrcDesignationValues.forEach(v => makeValueSynItem('isrcdesignation', v, isrcDesignationValueCounts.get(v)));
+            _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
+            _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
@@ -63104,6 +63533,14 @@ a { color: #1565c0; }`;
         if (mode === 'isrc-invalid')          return '⚠️ invalid ISRC format';
         if (mode === 'iswc-valid')            return '✅ valid ISWC format';
         if (mode === 'iswc-invalid')          return '⚠️ invalid ISWC format';
+        if (mode === 'barcode-valid')         return '✅ valid barcode format';
+        if (mode === 'barcode-invalid')       return '⚠️ invalid barcode format';
+        if (mode.startsWith('barcodeformat:')) return `» format: ${mode.slice(14)}`;
+        // No `table` param reaches this function (unlike the dropdown's own
+        // makeValueSynItem() call, which resolves the full "raw / raw"
+        // label from _getBarcodeCanonicalGroups() — see openUniqDrop()),
+        // so the filter-chip text falls back to the bare canonical number.
+        if (mode.startsWith('barcodesameas:')) return `🔢 same as: ${mode.slice(14)}`;
         if (mode.startsWith('attr:'))  return `» attribute: ${mode.slice(5)}`;
         if (mode.startsWith('task:'))  return `» ${mode.slice(5)}`;
         if (mode.startsWith('date:'))  return `» ${mode.slice(5)}`;
@@ -63218,6 +63655,10 @@ a { color: #1565c0; }`;
         if (mode === 'isrc-invalid') return '⚠️ = at least one of this "ISRCs" cell\'s entries does NOT match the official CC-XXX-YY-NNNNN format (wrong length or character class). Not mutually exclusive with "valid ISRC format" — a cell\'s list can contain both.';
         if (mode === 'iswc-valid') return '✅ = at least one of this "ISWC" cell\'s entries matches ISO 15707\'s T-NNNNNNNNN-C format AND has a correct check digit.';
         if (mode === 'iswc-invalid') return '⚠️ = at least one of this "ISWC" cell\'s entries does NOT match ISO 15707\'s format, or has a check digit that does not match the computed value.';
+        if (mode === 'barcode-valid') return '✅ = this row\'s barcode matches a known GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) and its check digit is correct.';
+        if (mode === 'barcode-invalid') return '⚠️ = this row\'s barcode does NOT match a known GS1 format (wrong length or non-digit characters) or has an incorrect check digit. Mutually exclusive with "valid barcode format" — a Barcode cell holds at most one value.';
+        if (mode.startsWith('barcodeformat:')) return 'This row\'s barcode strictly conforms to this GS1 format (implies a correct check digit).';
+        if (mode.startsWith('barcodesameas:')) return '🔢 = this row\'s barcode number matches this group\'s — even across a different textual representation (e.g. a UPC-A and its own zero-padded EAN-13 form) — regardless of the release\'s own Format column, unlike the 🎨 barcode-highlight merge-checkbox feature, which deliberately does NOT group same-number-different-Format rows as merge candidates.';
         if (mode.startsWith('attr:')) return 'One of this cell\'s credited attribute words.';
         if (mode.startsWith('task:')) return 'This cell\'s credited task text.';
         if (mode.startsWith('date:')) return 'A date/date-range annotation attached to one of this cell\'s credits.';
@@ -75478,6 +75919,7 @@ a { color: #1565c0; }`;
             // way a fresh fetch does.
             initIsrcFormatting();
             initIswcValidation();
+            initBarcodeValidation();
 
             // Re-align the filter row after Picard injection (stale-detection no-op
             // when counts already match; self-heals on mismatch — see addColumnFilterRow).
@@ -86172,6 +86614,50 @@ a { color: #1565c0; }`;
             a.title = (reason === 'checkdigit')
                 ? `Check digit does not match the computed value for "${raw}"`
                 : `Does not match the ISWC format T-NNNNNNNNN-C: "${raw}"`;
+        });
+    }
+
+    /**
+     * Page-agnostic validity pass for native "Barcode" columns (org/
+     * barcode.org) — same self-detecting idiom as `initIsrcFormatting()`/
+     * `initIswcValidation()`, but via the native `class="barcode-cell"`
+     * (confirmed pre-script markup, `tests/snapshots/releasegroup-releases/raw.html`)
+     * rather than an anchor href — Barcode cells carry no `<a>`. Explicit
+     * user constraint (org/barcode.org): NEVER rewrites the cell's own
+     * text, for either valid or invalid entries — it only ever adds a
+     * `data-mb-barcode-invalid="1"` marker (+ `title`) and the shared ⚠️
+     * glyph when `_parseBarcodeCode()` reports the value invalid (wrong
+     * shape/length, non-digit characters, or a GS1 check digit that
+     * doesn't match). Called from the same render-tail points as
+     * `initIsrcFormatting()`/`initIswcValidation()`.
+     *
+     * Gated on `Lib.settings.sa_enable_barcode_validation` — when off,
+     * clears any markers a previous pass left (so toggling the setting off
+     * mid-session doesn't strand a ⚠️) without parsing anything.
+     */
+    function initBarcodeValidation() {
+        document.querySelectorAll('table.tbl td.barcode-cell').forEach(td => {
+            if (!Lib.settings.sa_enable_barcode_validation) {
+                td.removeAttribute('data-mb-barcode-invalid');
+                td.removeAttribute('title');
+                return;
+            }
+            const raw = td.textContent.trim();
+            if (!raw || raw === '[none]') {
+                td.removeAttribute('data-mb-barcode-invalid');
+                td.removeAttribute('title');
+                return;
+            }
+            const { valid, reason, format } = _parseBarcodeCode(raw);
+            if (valid) {
+                td.removeAttribute('data-mb-barcode-invalid');
+                td.removeAttribute('title');
+                return;
+            }
+            td.setAttribute('data-mb-barcode-invalid', '1');
+            td.title = (reason === 'checkdigit')
+                ? `Check digit does not match the computed value for "${raw}" (${format})`
+                : `Does not match a known barcode format (UPC-A/EAN-13/EAN-8/GTIN-14): "${raw}"`;
         });
     }
 

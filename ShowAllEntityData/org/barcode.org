@@ -1,4 +1,5 @@
 * TODO "Barcode" column needs section handling
+** i
 
 Now let's do the same for the "Barcode" column on all the pageTypes:
 
@@ -65,3 +66,15 @@ ISWC (International Standard Musical Work Code) — identifies the underlying co
 GRid (Global Release Identifier) — used for digital releases in some distribution pipelines, less common now than relying on UPC/EAN + ISRC.
 
 Quick summary: barcode (UPC-A/EAN-13/GTIN) = identifies the product you'd scan at a store or match in a distributor's system; ISRC = identifies the recording; ISWC = identifies the song itself.
+
+** q
+
+I also want e.g. these listed under a "Same" section
+
+#+begin_example
+0196587565725
+196587565725
+#+end_example
+
+same for other ones
+
