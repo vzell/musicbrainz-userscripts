@@ -216,6 +216,8 @@ def check_stale_wip_citations(root, problems):
         return
 
     for org in sorted((root / 'org').glob('*.org')):
+        if org.name.startswith('.'):
+            continue  # editor lock/autosave files (e.g. Emacs' .#*.org), never real docs
         text = org.read_text(encoding='utf-8')
         for lineno, line in enumerate(text.splitlines(), 1):
             if not line.lstrip().startswith('|'):
