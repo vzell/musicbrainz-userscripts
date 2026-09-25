@@ -307,10 +307,11 @@ test.describe('the h1 toolbar menus', () => {
     test('a row carries its shortcut hint as an attribute, not as text', async ({ page }) => {
         await loadAndRender(page);
 
-        // The hint is rendered by CSS `::after` from `data-mb-menu-hint`.
-        // `updateBarcodeHighlightBtnState()` rewrites its button's innerHTML
-        // wholesale, which would delete an appended <kbd>; and keeping the hint
-        // out of textContent is the same rule the column-header glyphs follow.
+        // The hint is rendered by CSS `::after` from `data-mb-menu-hint`, never
+        // as an appended <kbd> child — a rewrite of the button's own content
+        // (several of these buttons repaint their title/style on every state
+        // change) would otherwise delete it. Same rule the column-header
+        // glyphs follow (CSS ::before/::after, never element text).
         const save = page.locator('#mb-save-to-disk-btn');
         expect(await save.getAttribute('data-mb-menu-hint')).toBeTruthy();
         expect((await save.textContent()).trim(),
