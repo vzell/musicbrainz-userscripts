@@ -883,8 +883,7 @@ Add extensive tooltip support for all buttons/filter-fields/clickable anchors li
 
 * DONE tackle "standalone rel-auto-retry-failed timing against 9.99.1139"
 
-
-* TODO CustomizableMultiSelector
+* DONE CustomizableMultiSelector
 
 CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since
 2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
