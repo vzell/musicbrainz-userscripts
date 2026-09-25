@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1151",
+    "date": "2026-09-25",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Barcode highlighting's on/off toggle moved out of the h1 toolbar's 🛠 View ▾ menu into the \"Barcode\" column header itself, as a ▶/▼ toggle mirroring the Length column's ⏱ toggle. `Ctrl+B` (and prefix-mode `b`) still toggle it directly; `#mb-barcode-highlight-btn` no longer exists."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1150",
     "date": "2026-09-25",
     "sections": [
