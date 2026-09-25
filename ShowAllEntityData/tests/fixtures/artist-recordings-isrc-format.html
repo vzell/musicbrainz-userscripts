@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /artist/<mbid>/recordings table skeleton (row
+        shape copied from debug/Test Artist-Recordings-initial.html — the native
+        <ul class="isrcs"><li class="isrc"><a href="/isrc/CODE">…<code>CODE
+        </code> shape, always compact/un-hyphenated), with rows added to
+        cover org/ISRC.org items 1/3/4/6:
+
+        Row 1 — one valid ISRC (US3L30406433: country US, registrant 3L3,
+        year 04 -> 2004, designation 06433) — the reformat/tint case.
+        Row 2 — two valid ISRCs in one cell (US3L30406433, GBAAA9912345) —
+        the multi-row/collapsible-list case, and independent per-value
+        dropdown counting.
+        Row 3 — one malformed ISRC (INVALIDISRC1 — 5 non-digit characters
+        where CC-XXX-YY-NNNNN's designation must be all-digit) — the
+        warning-glyph/invalid-count case.
+    -->
+    <div id="page">
+        <div id="content">
+            <div class="wrap-anywhere artistheader">
+                <h1><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"><bdi>Test Artist</bdi></a></h1>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/recordings"><bdi>Recordings</bdi></a></li>
+                </ul>
+            </div>
+            <h2>Recordings</h2>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox"></th>
+                        <th>Name</th>
+                        <th class="artist">Artist</th>
+                        <th>ISRCs</th>
+                        <th class="rating c">Rating</th>
+                        <th>Length</th>
+                        <th>Release groups</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="1"></td>
+                        <td><a class="wrap-anywhere" href="/recording/11111111-1111-1111-1111-111111111111"><bdi>Single ISRC Recording</bdi></a></td>
+                        <td><bdi><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" title="Test Artist">Test Artist</a></bdi></td>
+                        <td><div class="isrc-list-container"><ul aria-label="ISRCs" class="isrcs"><li class="isrc"><a href="/isrc/US3L30406433"><bdi><code>US3L30406433</code></bdi></a></li></ul></div></td>
+                        <td class="c"></td>
+                        <td>3:38</td>
+                        <td></td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="2"></td>
+                        <td><a class="wrap-anywhere" href="/recording/22222222-2222-2222-2222-222222222222"><bdi>Two ISRC Recording</bdi></a></td>
+                        <td><bdi><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" title="Test Artist">Test Artist</a></bdi></td>
+                        <td><div class="isrc-list-container"><ul aria-label="ISRCs" class="isrcs"><li class="isrc"><a href="/isrc/US3L30406433"><bdi><code>US3L30406433</code></bdi></a></li><li class="isrc"><a href="/isrc/GBAAA9912345"><bdi><code>GBAAA9912345</code></bdi></a></li></ul></div></td>
+                        <td class="c"></td>
+                        <td>4:18</td>
+                        <td></td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="3"></td>
+                        <td><a class="wrap-anywhere" href="/recording/33333333-3333-3333-3333-333333333333"><bdi>Invalid ISRC Recording</bdi></a></td>
+                        <td><bdi><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" title="Test Artist">Test Artist</a></bdi></td>
+                        <td><div class="isrc-list-container"><ul aria-label="ISRCs" class="isrcs"><li class="isrc"><a href="/isrc/INVALIDISRC1"><bdi><code>INVALIDISRC1</code></bdi></a></li></ul></div></td>
+                        <td class="c"></td>
+                        <td>2:57</td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Mirrors the real native /artist/<mbid>/works table skeleton (row
+        shape copied from debug/artist-works-initial.html — the native
+        <ul class="iswcs"><li class="iswc"><a href="/iswc/CODE">…<code>CODE
+        </code> shape, already correctly dotted/hyphenated by MusicBrainz
+        itself), covering org/ISRC.org item 7:
+
+        Row 1 — the real ISWC from debug/artist-works-initial.html
+        (T-070.127.339-3), a valid check digit per ISO 15707's formula (see
+        initIswcValidation()'s own JSDoc for the computation).
+        Row 2 — the same work number with a WRONG check digit
+        (T-070.127.339-9) — the warning-glyph/invalid-count case.
+    -->
+    <div id="page">
+        <div id="content">
+            <div class="wrap-anywhere artistheader">
+                <h1><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"><bdi>Test Artist</bdi></a></h1>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/works"><bdi>Works</bdi></a></li>
+                </ul>
+            </div>
+            <h2>Works</h2>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox"></th>
+                        <th>Work</th>
+                        <th>Authors</th>
+                        <th>Recording artists</th>
+                        <th>Other artists</th>
+                        <th>ISWC</th>
+                        <th>Type</th>
+                        <th>Lyrics languages</th>
+                        <th>Attributes</th>
+                        <th class="rating c">Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="1"></td>
+                        <td><a class="wrap-anywhere" href="/work/93a80540-9011-3969-8e2f-2708c060ab5d"><bdi>Valid ISWC Work</bdi></a></td>
+                        <td><bdi><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td></td>
+                        <td></td>
+                        <td class="iswc"><div class="iswc-list-container"><ul aria-label="ISWCs" class="iswcs"><li class="iswc"><a href="/iswc/T-070.127.339-3"><bdi><code>T-070.127.339-3</code></bdi></a></li></ul></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td></td>
+                        <td class="c"></td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="2"></td>
+                        <td><a class="wrap-anywhere" href="/work/93a80540-9011-3969-8e2f-2708c060ab5e"><bdi>Invalid ISWC Work</bdi></a></td>
+                        <td><bdi><a href="/artist/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" title="Test, Artist">Test Artist</a></bdi></td>
+                        <td></td>
+                        <td></td>
+                        <td class="iswc"><div class="iswc-list-container"><ul aria-label="ISWCs" class="iswcs"><li class="iswc"><a href="/iswc/T-070.127.339-9"><bdi><code>T-070.127.339-9</code></bdi></a></li></ul></div></td>
+                        <td>Song</td>
+                        <td><ul><li data-iso-639-3="eng">English</li></ul></td>
+                        <td></td>
+                        <td class="c"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
