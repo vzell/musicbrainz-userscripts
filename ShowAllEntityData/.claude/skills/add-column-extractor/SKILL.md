@@ -79,7 +79,7 @@ same convention `CLAUDE.md` itself states.
 2. **Reuse an existing DOM-walking technique** rather than inventing a new
    traversal: `_routeAreaLink()` (~2913-2933) for per-anchor entity-link
    routing, `_findCellListItems()` for "does this cell have a qualifying
-   list" (never a fresh ad hoc `ul > li` query — see `CLAUDE.md`'s own
+   list" (never a fresh ad hoc `ul > li` query — see `docs/claude/filter-and-cache-invariants.md`'s
    warning on this). If the source cell is (or should become) a
    multi-row list, every produced synthetic column must stay
    `<ul><li>`-wrapped even for a single item — downstream merge/correction

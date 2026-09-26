@@ -148,7 +148,12 @@ def check_no_line_refs(text, problems):
 def check_stale_branch_sections(root, problems):
     """An "IN PROGRESS" section naming a branch that no longer exists."""
     git_root = git_dir_for(root)
-    for name in (GUIDE, PERF):
+    # docs/claude/*.md holds what was split out of CLAUDE.md (2026-09-27); it
+    # is scanned too, or moving a section there would silently take it out of
+    # this gate.
+    split_docs = sorted(p.relative_to(root).as_posix()
+                        for p in (root / 'docs' / 'claude').glob('*.md'))
+    for name in (GUIDE, PERF, *split_docs):
         path = root / name
         if not path.exists():
             continue
