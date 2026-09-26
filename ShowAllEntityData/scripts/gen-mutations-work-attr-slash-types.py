@@ -37,10 +37,19 @@ muts = [
         "name": "the part highlight has no lookbehind",
         "why": "Without the parenthesis anchor the regex marks 'BUMA' inside the badge VALUE 'BUMA-77' too, so the row shows two marks and one of them is not after a '('.",
         "edits": [{
-            "find": "`(?<=\\\\(${_esc(_before)})${_esc(_parts[_i])}(?=${_esc(_after)}\\\\))`",
+            "find": "`(?<=\\\\(${_before})${_esc(_parts[_i])}(?=${_after}\\\\))`",
             "replace": "`${_esc(_parts[_i])}`",
         }],
         "spec": SPEC, "grep": "highlights only inside the parenthesized type name", "expect": "fail",
+    },
+    {
+        "name": "highlightCrossTag() puts a virtual gap at a highlight-split boundary again (the reported STEMRA ID defect)",
+        "why": "Removes the shared root-cause fix. After one part is highlighted the badge reads '(BUMA /STEMRA ID)', so the second ticked entry marks nothing. The defect is generic to highlightCrossTag(); this spec is where it is pinned.",
+        "edits": [{
+            "find": "(prevIcWrap && prevIcWrap === curIcWrap) ||\n                    splitByHighlight;",
+            "replace": "(prevIcWrap && prevIcWrap === curIcWrap);",
+        }],
+        "spec": SPEC, "grep": "highlights BOTH in each row", "expect": "fail",
     },
 ]
 with open('scripts/mutations/uniq-drop-work-attr-slash-types.json', 'w', encoding='utf-8') as f:

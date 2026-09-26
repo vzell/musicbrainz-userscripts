@@ -270,7 +270,10 @@ themselves:
   lists the parts of a slash-joined type separately: a `BUMA/STEMRA ID` badge
   is offered as `BUMA/STEMRA ID`, `BUMA` and `STEMRA ID`.
 - **ISRC info** — one sub-section per constituent (country, registrant, year,
-  designation) plus a validity flag, on any "ISRCs" column. **ISWC info** — a
+  designation) plus a validity flag, on any "ISRCs" column. An entry whose code
+  sits only inside a **collapsed** list item carries a ▶ marker: it is still
+  offered (ticking it shows the row and tints the cell's ▶ toggle), the marker
+  just says why nothing on screen shows it until the cell is expanded. **ISWC info** — a
   validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.
 - **Barcode info** — on any "Barcode" column: a validity flag (✅/⚠️), which
   GS1 format (UPC-A/EAN-13/EAN-8/GTIN-14) a conforming entry matches, and a

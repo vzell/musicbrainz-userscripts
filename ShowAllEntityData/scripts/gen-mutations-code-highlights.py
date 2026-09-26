@@ -1,0 +1,79 @@
+"""Generate scripts/mutations/uniq-drop-code-highlights.json (see gen-mutations-tracks-total.py for why a script)."""
+import json
+
+SPEC = 'tests/fixtures/uniq-drop-code-highlights.spec.js'
+muts = [
+    {
+        "name": "the single-table clone is not formatted before it is matched",
+        "why": "Honest overlap, and the reverse of what this branch first assumed: on tableMode 'single' the live rows ARE the source rows (renderFinalTable() MOVES them), so by the time runFilter() clones one it has already been formatted by the render tail. The reported single-table defect (instrument-recordings) was the tail REBUILDING the <code> and wiping the mark, which the idempotence guard below fixes. This call only matters when runFilter() fires before the first tail pass (a load from disk) — no fixture reaches that with an ISRC cell.",
+        "edits": [{
+            "find": "_restoreArtExpandState(clone);\n                _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass",
+            "replace": "_restoreArtExpandState(clone);",
+        }],
+        "spec": SPEC, "grep": "ticking", "expect": "pass",
+    },
+    {
+        "name": "the multi-table clone is not formatted before it is matched",
+        "why": "Honest overlap, and this is the site that matters: on tableMode 'multi' the source rows (groupedRows) are never formatted — only the live clones are, after the highlight — so without this call a segment highlight cannot find its span there. Every ISRC fixture in the repo renders single-table, so no spec can see it go; the reasoning, not a test, is what justifies it.",
+        "edits": [{
+            "find": "_restoreArtExpandState(clone);\n                    _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass",
+            "replace": "_restoreArtExpandState(clone);",
+        }],
+        "spec": SPEC, "grep": "ticking", "expect": "pass",
+    },
+    {
+        "name": "an already-formatted <code> is rebuilt by the render tail",
+        "why": "Removes the idempotence guard: the tail's initIsrcFormatting() replaces the spans and wipes the mark the filter just placed.",
+        "edits": [{
+            "find": "        if (code.children.length === 4 &&\n            code.textContent === `${parsed.country}-${parsed.registrant}-${parsed.year}-${parsed.designation}`) return;\n",
+            "replace": "",
+        }],
+        "spec": SPEC, "grep": "ticking", "expect": "fail",
+    },
+    {
+        "name": "the year highlight looks for the 4-digit value in a 2-digit cell",
+        "why": "Restores the third defect: '» year: 2004' can never mark the displayed '04'.",
+        "edits": [{"find": "const _shown = partKey === 'isrcyear' ? p.year : _want;", "replace": "const _shown = _want;"}],
+        "spec": SPEC, "grep": "year: 2004", "expect": "fail",
+    },
+    {
+        "name": "no highlight dispatch for valid ISRC",
+        "why": "The reported omission, ISRC flavour.",
+        "edits": [{"find": "_highlightIsrcValidMatch(row.cells[f.idx]);", "replace": "void 0;"}],
+        "spec": SPEC, "grep": "valid ISRC format", "expect": "fail",
+    },
+    {
+        "name": "no highlight dispatch for valid ISWC",
+        "why": "The reported omission, exactly as seen: the rows narrow and nothing is marked.",
+        "edits": [{"find": "_highlightIswcValidMatch(row.cells[f.idx]);", "replace": "void 0;"}],
+        "spec": SPEC, "grep": "valid ISWC format", "expect": "fail",
+    },
+    {
+        "name": "no highlight dispatch for valid barcode",
+        "why": "The same omission, barcode flavour.",
+        "edits": [{"find": "_highlightBarcodeValidMatch(row.cells[f.idx]);", "replace": "void 0;"}],
+        "spec": SPEC, "grep": "valid barcode format", "expect": "fail",
+    },
+    {
+        "name": "no collapsed-only marker is ever drawn",
+        "why": "Restores the reported behaviour: entries that only exist in a collapsed item look identical to visible ones.",
+        "edits": [{"find": "if (collapsedOnlyKeys.has(`${kind}:${value}`)) {", "replace": "if (false) {"}],
+        "spec": SPEC, "grep": "only the segments of the collapsed second item", "expect": "fail",
+    },
+    {
+        "name": "a hidden item counts as visible",
+        "why": "Every entry then has a visible witness, so nothing is ever marked.",
+        "edits": [{"find": "if (!_hiddenItem) _visibleItemKeys.add(k);", "replace": "_visibleItemKeys.add(k);"}],
+        "spec": SPEC, "grep": "only the segments of the collapsed second item", "expect": "fail",
+    },
+    {
+        "name": "the collapsed-only set is not stored in the counts cache",
+        "why": "A cache HIT then has no set to read: the second open of the same column throws instead of drawing the marker.",
+        "edits": [{"find": "_setUniqDropDataCache(table, colIndex, _uniqSig, {\n                collapsedOnlyKeys,\n", "replace": "_setUniqDropDataCache(table, colIndex, _uniqSig, {\n"}],
+        "spec": SPEC, "grep": "CACHED reopen", "expect": "fail",
+    },
+]
+with open('scripts/mutations/uniq-drop-code-highlights.json', 'w', encoding='utf-8') as f:
+    json.dump(muts, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+print('wrote', len(muts), 'mutations')

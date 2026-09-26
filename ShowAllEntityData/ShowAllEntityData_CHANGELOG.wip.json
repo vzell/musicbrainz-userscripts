@@ -1,5 +1,54 @@
 [
   {
+    "version": "WIP.9",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "An ISRC segment entry in the 📊 dropdown (\"» country: QM\" and the registrant/year/designation entries) that exists only inside a COLLAPSED list item now carries a ▶ marker and a tooltip saying so. Such entries are still offered — ticking one still shows the row and tints the ▶ toggle — the marker just explains why nothing on screen shows the code yet. Expanding the cell drops the marker — `_isCollapsedHiddenItem()`, `collapsedOnlyKeys`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.8",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking an ISRC segment entry (\"» country: GB\", registrant, year, designation) filtered correctly but marked nothing. `initIsrcFormatting()` ran after the highlight and rebuilt every `<code>`, wiping the mark, and on a multi-table page the highlight ran on an unformatted clone with no segment spans to scope to. `_formatIsrcAnchor()` is now idempotent (an already-formatted `<code>` is left alone) and `_formatIsrcAnchorsIn()` formats a clone before it is matched.",
+          "\"» year: 2005\" could never mark anything: the entry value is the 4-digit year but the cell displays the 2-digit \"05\". The highlighter now marks the displayed segment."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.7",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking \"valid ISWC format\" (and, the same omission, \"valid ISRC format\" and \"valid barcode format\") narrowed the rows but highlighted nothing — only the invalid flags had a highlighter. Added `_highlightIswcValidMatch()`, `_highlightIsrcValidMatch()` and `_highlightBarcodeValidMatch()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.6",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking \"BUMA\" and then \"STEMRA ID\" (or any two entries that mark the same text) highlighted only the first. `highlightCrossTag()` inserted a virtual space wherever an earlier highlight had split one text node, so a regex spanning the split (\"(BUMA/STEMRA ID)\") read \"(BUMA /STEMRA ID)\" and never matched. It no longer adds a gap between two text nodes that were one node before a highlight wrapper split them. Generic to every column's multi-value highlight, not just identifier types."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-09-26",
     "sections": [

@@ -23749,6 +23749,22 @@
     }
 
     /**
+     * Whether `el` sits inside a list item that the column's collapse has
+     * hidden (`<li style="display:none">`) — i.e. it exists in the cell but
+     * is not on screen until the cell is expanded. Only the item's own inline
+     * `display` is read: that is exactly what `_applyCollapseState()` writes,
+     * and it needs no layout (unlike `offsetParent`), so it costs nothing per
+     * cell and is right on a detached clone too.
+     *
+     * @param {?Element} el
+     * @returns {boolean}
+     */
+    function _isCollapsedHiddenItem(el) {
+        const li = el && el.closest('li');
+        return !!li && li.style.display === 'none';
+    }
+
+    /**
      * Parses an ISWC (International Standard Musical Work Code) — `T`
      * followed by a 9-digit work number and a single check digit,
      * conventionally displayed as `T-NNN.NNN.NNN-C` — and validates its
@@ -44520,10 +44536,30 @@ a { color: #1565c0; }`;
                 const nextFirstChar = text[0];
                 const prevIcWrap = prevNode.parentElement && prevNode.parentElement.closest('.mb-ic-wrap');
                 const curIcWrap  = node.parentElement && node.parentElement.closest('.mb-ic-wrap');
+                // ALSO except when the two nodes are adjacent ONLY because an
+                // earlier highlight pass split one text node around a match
+                // (`"(" + <span>BUMA</span> + "/STEMRA ID)"`). getCleanColumnText()
+                // reads highlight spans through, so it still sees one
+                // contiguous string there; a virtual gap would put a space
+                // where the original text has none and make every later regex
+                // that spans the split ("(BUMA/STEMRA ID)") fail to match.
+                // Reported live: ticking "BUMA" then "STEMRA ID" highlighted
+                // only the first. Two nodes that are siblings once their
+                // highlight wrappers are climbed out of were one text node.
+                const _climbOutOfHighlight = (n) => {
+                    let top = n;
+                    while (top.parentElement && top.parentElement !== root &&
+                           top.parentElement.matches(_COLLAPSE_MATCH_SEL)) top = top.parentElement;
+                    return top;
+                };
+                const prevTop = _climbOutOfHighlight(prevNode);
+                const curTop  = _climbOutOfHighlight(node);
+                const splitByHighlight = (prevTop !== prevNode || curTop !== node) && prevTop.nextSibling === curTop;
                 const skipGap = nextFirstChar === ',' || nextFirstChar === ')' || nextFirstChar === ']' ||
                     prevLastChar === '(' || prevLastChar === '[' ||
                     /\s/.test(prevLastChar) || /\s/.test(nextFirstChar) ||
-                    (prevIcWrap && prevIcWrap === curIcWrap);
+                    (prevIcWrap && prevIcWrap === curIcWrap) ||
+                    splitByHighlight;
                 if (!skipGap) gap = ' ';
             }
             offset += gap.length;
@@ -46581,8 +46617,6 @@ a { color: #1565c0; }`;
         const partKey = mode.slice(0, colon);
         const _want = mode.slice(colon + 1);
         if (!_want) return;
-        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
         const _elKey = { isrccountry: 'countryEl', isrcregistrant: 'registrantEl',
                           isrcyear: 'yearEl', isrcdesignation: 'designationEl' }[partKey];
         const _valueKey = { isrccountry: 'country', isrcregistrant: 'registrant',
@@ -46591,9 +46625,66 @@ a { color: #1565c0; }`;
             if (!p.valid || String(p[_valueKey]) !== _want) return;
             const target = p[_elKey] || p.el;
             if (!target) return;
+            // The entry's VALUE is the 4-digit year ("2005"), but the cell
+            // DISPLAYS the 2-digit YY segment ("05") — so the text to mark is
+            // `p.year`, not the entry value. Every other segment displays
+            // exactly its own value.
+            const _shown = partKey === 'isrcyear' ? p.year : _want;
+            const _escaped = _shown.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             target.normalize();
-            highlightCrossTag(target, _regex, 'mb-column-filter-highlight');
+            highlightCrossTag(target, new RegExp(`\\b${_escaped}\\b`, 'g'), 'mb-column-filter-highlight');
         });
+    }
+
+    /**
+     * Highlights every VALID "ISRCs" cell entry for the `isrc-valid` binary
+     * flag — the counterpart of `_highlightIsrcInvalidMatch()`, which the
+     * invalid flag had and the valid one never did (so ticking "valid ISRC
+     * format" narrowed the rows and marked nothing). Marks the whole anchor,
+     * for the same reason: the flag is about the code as a whole, not a
+     * segment. The highlight survives because `_formatIsrcAnchor()` no longer
+     * rebuilds an already-formatted `<code>`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIsrcValidMatch(cell) {
+        if (!cell) return;
+        _findCellIsrcParts(cell).forEach(p => {
+            if (!p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights every VALID "ISWC" cell entry for the `iswc-valid` binary
+     * flag — the counterpart of `_highlightIswcInvalidMatch()` (see
+     * `_highlightIsrcValidMatch()` for why it was missing).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIswcValidMatch(cell) {
+        if (!cell) return;
+        _findCellIswcParts(cell).forEach(p => {
+            if (!p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights a VALID "Barcode" cell for the `barcode-valid` binary flag —
+     * the counterpart of `_highlightBarcodeInvalidMatch()`, same omission and
+     * same fix as `_highlightIsrcValidMatch()`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightBarcodeValidMatch(cell) {
+        if (!cell) return;
+        const part = _findCellBarcodeParts(cell)[0];
+        if (!part || !part.valid) return;
+        cell.normalize();
+        highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -47553,21 +47644,21 @@ a { color: #1565c0; }`;
         const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         _findCellWorkAttributeIdentifiers(cell).forEach(p => {
             if (!p.el || !_workAttrTypeLabels(p.typeName).includes(_want)) return;
+            const _parts = p.typeName.split('/').map(s => s.trim());
             let _regex;
             if (p.typeName === _want) {
-                _regex = new RegExp(`\\(${_esc(_want)}\\)`, 'g');
+                _regex = new RegExp(`\\(${_parts.map(_esc).join('/')}\\)`, 'g');
             } else {
                 // One slash-separated PART of a compound name (e.g. "BUMA"
                 // of "BUMA/STEMRA ID"): mark only that part, and only where
                 // it sits inside this badge's own parenthesized type name —
                 // the lookarounds pin it there, so the same word inside the
                 // badge's VALUE is never marked.
-                const _parts = p.typeName.split('/');
-                const _i = _parts.findIndex(s => s.trim() === _want);
+                const _i = _parts.indexOf(_want);
                 if (_i < 0) return;
-                const _before = _parts.slice(0, _i).map(s => `${s}/`).join('');
-                const _after  = _parts.slice(_i + 1).map(s => `/${s}`).join('');
-                _regex = new RegExp(`(?<=\\(${_esc(_before)})${_esc(_parts[_i])}(?=${_esc(_after)}\\))`, 'g');
+                const _before = _parts.slice(0, _i).map(s => `${_esc(s)}/`).join('');
+                const _after  = _parts.slice(_i + 1).map(s => `/${_esc(s)}`).join('');
+                _regex = new RegExp(`(?<=\\(${_before})${_esc(_parts[_i])}(?=${_after}\\))`, 'g');
             }
             p.el.normalize();
             highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
@@ -48275,10 +48366,16 @@ a { color: #1565c0; }`;
                                     _highlightIsrcPartMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'isrc-invalid') {
                                     _highlightIsrcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'isrc-valid') {
+                                    _highlightIsrcValidMatch(row.cells[f.idx]);
                                 } else if (mode === 'iswc-invalid') {
                                     _highlightIswcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'iswc-valid') {
+                                    _highlightIswcValidMatch(row.cells[f.idx]);
                                 } else if (mode === 'barcode-invalid') {
                                     _highlightBarcodeInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'barcode-valid') {
+                                    _highlightBarcodeValidMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('barcodeformat:')) {
                                     _highlightBarcodeFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('barcodesameas:')) {
@@ -48998,6 +49095,7 @@ a { color: #1565c0; }`;
                     // [data-caa-expand-btn] span; without this call any cells the user
                     // had expanded would snap back to collapsed on every filter keystroke.
                     _restoreArtExpandState(clone);
+                    _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass
                     testRowMatch(clone, matchCtx);
                     return clone;
                 });
@@ -49214,6 +49312,7 @@ a { color: #1565c0; }`;
                 // state, so expandedCells is the only way to replay the user's
                 // expand/collapse choices onto clones after every filter re-render.
                 _restoreArtExpandState(clone);
+                _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass
                 testRowMatch(clone, matchCtx);
                 return clone;
             });
@@ -60260,6 +60359,15 @@ a { color: #1565c0; }`;
         const isrcRegistrantValueCounts  = _uniqCacheHit ? _uniqCacheHit.isrcRegistrantValueCounts  : new Map();
         const isrcYearValueCounts        = _uniqCacheHit ? _uniqCacheHit.isrcYearValueCounts        : new Map();
         const isrcDesignationValueCounts = _uniqCacheHit ? _uniqCacheHit.isrcDesignationValueCounts : new Map();
+        // Entries (`"<kind>:<value>"`) whose EVERY matching item sits inside a
+        // collapsed (hidden) list item — rendered with a ▶ marker so a user is
+        // not left hunting the page for a code that is not on screen until
+        // the cell is expanded. Filled at the end of a cache-MISS pass from the
+        // two scratch sets below, which only that pass populates. ISRC segment
+        // kinds only for now (the reported column); any other list-fed family
+        // can adopt the same set by recording its keys in its own counting block.
+        const collapsedOnlyKeys = _uniqCacheHit ? _uniqCacheHit.collapsedOnlyKeys : new Set();
+        const _seenItemKeys = new Set(), _visibleItemKeys = new Set();
         // "Barcode - Format" — ONLY ever populated from valid entries (see
         // isBarcodeCol's own scan below): "conforms to spec" and "has a
         // determinable format" are the same fact for a barcode.
@@ -60760,6 +60868,12 @@ a { color: #1565c0; }`;
                           _rowYearValues = new Set(), _rowDesignationValues = new Set();
                     _isrcParts.forEach(p => {
                         if (!p.valid) return;
+                        const _hiddenItem = _isCollapsedHiddenItem(p.el);
+                        [`isrccountry:${p.country}`, `isrcregistrant:${p.registrant}`,
+                         `isrcyear:${p.yearFull}`, `isrcdesignation:${p.designation}`].forEach(k => {
+                            _seenItemKeys.add(k);
+                            if (!_hiddenItem) _visibleItemKeys.add(k);
+                        });
                         _rowCountryValues.add(p.country);
                         _rowRegistrantValues.add(p.registrant);
                         // Resolved 4-digit year, not the raw 2-digit code —
@@ -62111,7 +62225,9 @@ a { color: #1565c0; }`;
         // this column, with no visible-row-set change in between, can skip
         // straight past all 5 tbody.rows passes above (see _uniqCacheHit).
         if (!_uniqCacheHit) {
+            _seenItemKeys.forEach(k => { if (!_visibleItemKeys.has(k)) collapsedOnlyKeys.add(k); });
             _setUniqDropDataCache(table, colIndex, _uniqSig, {
+                collapsedOnlyKeys,
                 valueCounts, itemValueCounts, valueItemSequence,
                 emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
                 titleMismatchCount, nameVariationCount, multiMediumCount,
@@ -62835,6 +62951,21 @@ a { color: #1565c0; }`;
                 }
             }
 
+            if (collapsedOnlyKeys.has(`${kind}:${value}`)) {
+                // Only ever inside a collapsed list item. The row IS offered
+                // (ticking it still shows the row and tints the ▶ toggle, via
+                // _COLLAPSE_MATCH_SEL) — this just says why nothing on screen
+                // shows it yet. Inserted BEFORE the label span, like the ▤
+                // item marker in renderItems(), and outside it, so the label
+                // text (and dataset.mbUniqSynLabel) stay exactly the value.
+                const _hiddenMark = document.createElement('span');
+                _hiddenMark.className = 'mb-uniq-item-marker mb-uniq-collapsed-only-marker';
+                _hiddenMark.setAttribute('aria-hidden', 'true');
+                _hiddenMark.textContent = '▶';
+                item.insertBefore(_hiddenMark, item.querySelector('.mb-uniq-syn-label-text'));
+                item.dataset.mbUniqCollapsedOnly = '1';
+                item.title += '\n\n▶ Only in a collapsed list item — expand the cell (▶) to see it.';
+            }
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX +
                 (hrefOverride ? `namehref:${hrefOverride}::${value}` : `${kind}:${value}`));
             // 'arttype'/'artcomment' route dynamically to "CAA info -
@@ -87009,36 +87140,72 @@ a { color: #1565c0; }`;
      * `initPicardTaggerColumn()` — see that function's own call-site list.
      */
     function initIsrcFormatting() {
-        document.querySelectorAll('table.tbl a[href^="/isrc/"]').forEach(a => {
-            const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
-            if (!m) return;
-            const raw = decodeURIComponent(m[1]);
-            const code = a.querySelector('code');
-            if (!code) return;
-            const parsed = _parseIsrcCode(raw);
-            if (!parsed) {
-                a.setAttribute('data-mb-isrc-invalid', '1');
-                a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
-                return;
+        document.querySelectorAll('table.tbl a[href^="/isrc/"]').forEach(_formatIsrcAnchor);
+    }
+
+    /**
+     * Formats every ISRC anchor under `root` — `initIsrcFormatting()`'s per-
+     * anchor step, for a subtree that is NOT yet in `table.tbl` (a row
+     * `runFilter()` has just cloned from its unformatted source row).
+     *
+     * `runFilter()` matches, and HIGHLIGHTS, on that fresh clone. The
+     * highlighters for `isrccountry:`/`isrcregistrant:`/`isrcyear:`/
+     * `isrcdesignation:` scope a mark to one segment's own `<span>`, which
+     * only exist once this has run — and the render tail's
+     * `initIsrcFormatting()` comes AFTER the highlight, so on a clone the
+     * segments were missing (the highlighter fell back to the whole anchor,
+     * where `\bGB\b` cannot match inside "GBAMC8800004") and, had it found
+     * them, the rebuild would have wiped the mark anyway. Reported live: a
+     * "country: GB" filter narrowed the rows and marked nothing. Formatting
+     * the clone first fixes both, since the tail pass then has nothing to redo
+     * (see `_formatIsrcAnchor()`'s idempotence).
+     *
+     * @param {Element} root - A cloned row (or any subtree).
+     */
+    function _formatIsrcAnchorsIn(root) {
+        root.querySelectorAll('a[href^="/isrc/"]').forEach(_formatIsrcAnchor);
+    }
+
+    /**
+     * Formats ONE ISRC anchor — see `initIsrcFormatting()` for the whole
+     * contract. Idempotent: a `<code>` already holding the four segment spans
+     * with exactly the expected text is left untouched, so a later pass never
+     * rebuilds it. That matters because a rebuild replaces the spans, and with
+     * them any highlight a filter placed inside them.
+     *
+     * @param {HTMLAnchorElement} a - An `a[href^="/isrc/"]`.
+     */
+    function _formatIsrcAnchor(a) {
+        const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
+        if (!m) return;
+        const raw = decodeURIComponent(m[1]);
+        const code = a.querySelector('code');
+        if (!code) return;
+        const parsed = _parseIsrcCode(raw);
+        if (!parsed) {
+            a.setAttribute('data-mb-isrc-invalid', '1');
+            a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
+            return;
+        }
+        a.removeAttribute('data-mb-isrc-invalid');
+        a.removeAttribute('title');
+        if (code.children.length === 4 &&
+            code.textContent === `${parsed.country}-${parsed.registrant}-${parsed.year}-${parsed.designation}`) return;
+        code.textContent = '';
+        const _appendSeg = (text, tinted) => {
+            const span = document.createElement('span');
+            span.textContent = text;
+            if (tinted) {
+                span.style.color = 'red';
+                span.style.margin = '0 0.1em';
+                span.style.textShadow = '1px 2px 2px yellow';
             }
-            a.removeAttribute('data-mb-isrc-invalid');
-            a.removeAttribute('title');
-            code.textContent = '';
-            const _appendSeg = (text, tinted) => {
-                const span = document.createElement('span');
-                span.textContent = text;
-                if (tinted) {
-                    span.style.color = 'red';
-                    span.style.margin = '0 0.1em';
-                    span.style.textShadow = '1px 2px 2px yellow';
-                }
-                code.appendChild(span);
-            };
-            _appendSeg(parsed.country, true);
-            _appendSeg(`-${parsed.registrant}-`, false);
-            _appendSeg(parsed.year, true);
-            _appendSeg(`-${parsed.designation}`, false);
-        });
+            code.appendChild(span);
+        };
+        _appendSeg(parsed.country, true);
+        _appendSeg(`-${parsed.registrant}-`, false);
+        _appendSeg(parsed.year, true);
+        _appendSeg(`-${parsed.designation}`, false);
     }
 
     /**

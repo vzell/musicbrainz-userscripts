@@ -98,6 +98,50 @@ test.describe('unique-values dropdown: slash-joined work-attribute identifier ty
         ]);
     });
 
+    // Reported live (2026-09-26): ticking "BUMA" and then, with the dropdown
+    // still open, "STEMRA ID" filtered correctly but marked only "BUMA". The
+    // first highlight splits "(BUMA/STEMRA ID)" into "(" + <span>BUMA</span> +
+    // "/STEMRA ID)", and highlightCrossTag() joins those nodes with a virtual
+    // space, so the second regex — which named a literal "/" — never matched.
+    // Every order of every pair is checked, because the compound and each part
+    // meet the split differently.
+    for (const [first, second] of [
+        ['BUMA', 'STEMRA ID'],
+        ['STEMRA ID', 'BUMA'],
+        ['BUMA', 'BUMA/STEMRA ID'],
+        ['BUMA/STEMRA ID', 'BUMA'],
+        ['STEMRA ID', 'BUMA/STEMRA ID'],
+    ]) {
+        test(`ticking "${first}" and then "${second}" highlights BOTH in each row`, async ({ page }) => {
+            await loadAndRender(page);
+            for (const label of [first, second]) {
+                await page.evaluate(() => window.__saTest.getUniqDropSections('Attributes'));
+                await clickEntry(page, `» identifier: ${label}`);
+                await page.waitForFunction(() =>
+                    Array.from(document.querySelectorAll('table.tbl tbody tr')).filter((r) => r.style.display !== 'none').length < 4,
+                    null, { timeout: 15000 });
+            }
+            expect(await visibleWorks(page)).toEqual(['Dutch One', 'Dutch Two']);
+
+            // Everything highlighted inside each BUMA/STEMRA badge, concatenated.
+            const marked = await page.evaluate(() =>
+                Array.from(document.querySelectorAll('table.tbl tbody tr'))
+                    .filter((tr) => tr.style.display !== 'none')
+                    .map((tr) => Array.from(tr.querySelectorAll('li.work-attribute'))
+                        .filter((li) => /BUMA\s*\/\s*STEMRA ID\)/.test(li.textContent))
+                        .map((li) => Array.from(li.querySelectorAll('.mb-column-filter-highlight'))
+                            .map((s) => s.textContent).join('|'))));
+            for (const perRow of marked) {
+                expect(perRow).toHaveLength(1);
+                const text = perRow[0];
+                // Each ticked entry contributes its own mark.
+                for (const label of [first, second]) {
+                    for (const part of label.split('/')) expect(text).toContain(part);
+                }
+            }
+        });
+    }
+
     test('a dropdown reopen after ticking still offers the parts (extractor reads through its own highlight)', async ({ page }) => {
         await loadAndRender(page);
         await page.evaluate(() => window.__saTest.getUniqDropSections('Attributes'));

@@ -45,6 +45,47 @@ for the BUMA/STEMRA badge markup. Findings worth keeping:
   through the existing `_uniqCacheHit` bundle. That is an argument, not a measurement — see
   `tests/MEASUREMENTS.org` for how to take one if it matters.
 
+### Same day, after the first live check: four defects, three of them not in the new code
+
+Reported from real pages (screenshots + `debug/ISRCs-bug*.html`). Each was reproduced by a spec
+before it was fixed; every mutation is in `scripts/mutations/`.
+
+- **`highlightCrossTag()` put a phantom space wherever an EARLIER highlight had split a text
+  node.** Ticking "BUMA" wrapped it in a span, leaving "(" + `<span>BUMA</span>` + "/STEMRA ID)";
+  the function joins adjacent text nodes with a virtual space (to mirror `getCleanColumnText()`'s
+  `join(' ')`) except at a few punctuation boundaries, and `/` is not one — so the second regex
+  read "(BUMA /STEMRA ID)" and matched nothing. **`getCleanColumnText()` reads highlight spans
+  THROUGH, so the two strings had silently diverged the moment any highlight existed.** Fixed at
+  the root (no gap between two text nodes that are siblings once their highlight wrappers are
+  climbed out of), not per-highlighter. My first fix was a `\s*/\s*` in the one regex; it worked,
+  and it would have left every other multi-value highlight with the same latent bug. It was
+  reverted in favour of the shared rule. `uniq-drop-work-attr-slash-types.spec.js` pins it.
+- **"valid ISWC format" — and "valid ISRC format", "valid barcode format" — never highlighted.**
+  Only the invalid flags had a `_highlightXxxInvalidMatch()`. Plain omission; the valid entry
+  filtered fine, which is why nothing complained.
+- **ISRC segment entries ("» country: GB") never highlighted, for two separate reasons.**
+  (1) `initIsrcFormatting()` runs in the render tail AFTER `runFilter()` highlights, and it does
+  `code.textContent = ''` and rebuilds the four spans, wiping the mark — this is what hit the
+  single-table `instrument-recordings` page. (2) On `tableMode: 'multi'` the highlight runs on a
+  clone of an UNformatted source row (only live clones are ever formatted, and only afterwards), so
+  the segment spans the highlighter scopes to do not exist. Fix: `_formatIsrcAnchor()` skips an
+  already-formatted `<code>`, and `_formatIsrcAnchorsIn()` formats a clone before it is matched.
+  **A measured surprise: the "format the clone first" call on the single-table path is redundant**
+  (source rows there ARE the live rows, so they are already formatted) — the mutation for it is
+  `expect: "pass"`, and the idempotence guard is what actually fixes the reported page. The
+  multi-table call is justified by reasoning only: no fixture in the repo has an ISRC cell in a
+  multi-table render.
+- **"» year: 2005" could not mark "05".** The entry value is `yearFull`, the cell shows `YY`.
+- **"Entries which are NOT visible" (ISRCs 📊 after a pre-filter) was by design, not a bug:** the
+  offered `QM-KHM-17-00136` was the second item of a collapsed cell, and hidden items are
+  deliberately counted (ticking one shows the row and tints the ▶ toggle). Asked; the user chose
+  to KEEP them and mark them. `collapsedOnlyKeys` records an entry when no visible item matches it;
+  it is computed on a cache miss and stored in the counts bundle. ISRC segment kinds only — any
+  other list-fed family can adopt it by recording its own keys. **Trap: `getUniqDropSections()`
+  does NOT re-open an already-open panel**, so a second call reads the same DOM and never hits
+  the counts cache; a test of a cache HIT has to close the panel first (a mutation dropping the
+  key from the cached bundle passed until it did).
+
 ## 2026-09-26 — barcode format-validation feature (org/barcode.org)
 
 - `debug/barcode.html`: a real, rendered `releasegroup-releases` page (post-

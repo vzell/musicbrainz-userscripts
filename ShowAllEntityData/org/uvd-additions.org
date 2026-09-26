@@ -145,7 +145,6 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 <td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
 #+end_example
 
-
 * TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
 
 The "Tracks" column in e.g https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af needs a "Total Tracks" section
@@ -156,7 +155,6 @@ in the unique value drop-down, see the already computed "Total Tracks" columns a
 Add a new "<Entity> as" section in the "Relationship types" column for 
 e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - @debug/instruments-recordings.html
 besides each unique value for each Relationship type itself
-
 
 * TODO "Length" column needs a section where it says that millisends are present and not "000"
 
@@ -242,32 +240,63 @@ prediction. Fill in the "Observed" line after the live check.
 - Clicks: "Show all" → Tracks column 📊 → open "Tracks info - Total" → tick 15.
 - Prediction: 15 is offered once per row whose Tracks sum to 15, including "5 + 5 + 5" and a bare "15".
   The row count after ticking equals the badge. The "Total Tracks" column and this list agree.
-- Observed: (pending)
+- Observed: OK
 
 ** 2. Relationship types - Credited as
 - URL: https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings
 - Clicks: "Show all" → Relationship types 📊 → open "Relationship types - Credited as" → tick "instrument as: lead guitar".
 - Prediction: 15 entries (one per distinct credit, e.g. "acoustic, electric guitar" stays ONE entry
   despite the comma). Plain "instrument" stays only under the ordinary value list.
-- Observed: (pending)
+- Observed: OK
 
 ** 3. Length info - Milliseconds
 - URL: https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
 - Clicks: "Show all" → Length 📊 (section absent) → press ⏱ → Length 📊 again.
 - Prediction: before ⏱ there is no milliseconds section. After ⏱ it appears with a non-zero "ms ≠ .000"
   count and, on this page, some ".000" rows. Counts add up to the row total.
-- Observed: (pending)
+- Observed: OK
 
 ** 4. BUMA / STEMRA ID split
 - URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 - Clicks: "Show all" → Attributes 📊 → "Attributes - Identifier type".
 - Prediction: "BUMA/STEMRA ID", "BUMA" and "STEMRA ID" are all offered with the same count; each filters
   to the same rows; the highlight marks the matching part inside the parentheses.
-- Observed: (pending)
+- Observed: BUG
+
+[Image #3] - Ticking "BUMA" first (filtering OK, highlightning OK), then ticking additionally "STEMRA ID", when unique value drop-down menu still open (filtering seems OK, NO highlightning for "STEMRA ID")
 
 ** 5. Time info - Time of day
 - URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
 - Clicks: "Show all" → Time 📊 → "Time info - Time of day".
 - Prediction: Evening (18:00-23:59) dominates (19:30 alone is 42 rows on the 200-row debug sample);
   Morning, Lunch and Afternoon have single-digit counts; Night is absent. Empty cells remain under "empty cells".
-- Observed: (pending)
+- Observed: OK
+
+* BUGs:
+
+1.)
+
+All are OK, except 4.:
+
+[Image #3] - Ticking "BUMA" first (filtering OK, highlightning OK), then ticking additionally "STEMRA ID", when unique
+value drop-down menu still open (filtering seems OK, NO highlightning for "STEMRA ID")
+
+2.)
+
+Unrelated to this session:
+
+[Image #4] - When ticking "Valid ISWC format" in the "ISWC" column, the filtered cell entries are not highlighted
+
+3.)
+
+Unrelated to this session:
+
+[Image #4] - On e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings
+
+#+begin_example
+@debug/ISRCs-bug.html - raw HTML of the above URL, pre-filtered in the "Relationship types" column for "instrument as: lead guitar", unique value drop down menu in the "ISRCs" column shows entries which are NOT visible 
+@debug/ISRCs-bug-uvd-initial.html - raw HTML of the above URL, pre-filtered in the "Relationship types" column for "instrument as: lead guitar", unique value drop down menu in the "ISRCs" column shows entries which are NOT visible - just the unique value drop down menu
+@debug/ISRCs-bug-filtered.html - raw HTML of the above URL, additionally filtered in the "ISRCs" for "country: GB" - filtering OK, but NO highlighning of "GB"
+@debug/ISRCs-bug-uvd-filtered.html - raw HTML of the above URL, additionally filtered in the "ISRCs" for "country: GB" - filtering OK, but NO highlighning of "GB" - just the unique value drop down menu
+#+end_example
+
