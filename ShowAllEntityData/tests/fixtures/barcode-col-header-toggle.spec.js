@@ -86,12 +86,34 @@ test.describe('barcode-highlight toggle in the "Barcode" column header', () => {
         await loadAndRender(page);
         const toggle = page.locator('.mb-barcode-col-hdr-btn');
 
-        await toggle.focus();
-        await page.keyboard.press('Enter');
+        // THE RENDER TAIL TAKES FOCUS AFTER waitForRenderComplete() RETURNS,
+        // on a 50 ms timer, and this is the only test in the file with a gap
+        // for it to land in — the other five either use .click() (which
+        // re-resolves at click time) or document-level shortcuts that do not
+        // care what has focus. Measured with
+        // scripts/probe-barcode-hdr-toggle-focus.js: the toggle is NOT
+        // rebuilt (same node, zero replacements) — focus simply moves to an
+        // <input> between +50 ms and +250 ms, so a later Enter goes there and
+        // aria-pressed never changes. Standalone the steal lands BEFORE
+        // focus() and the test wins the race; under full-suite load it lands
+        // after, and the test failed two gate runs running.
+        //
+        // So settle on focus having stopped moving rather than sleeping past
+        // it, then take focus and press in ONE action (locator.press() focuses
+        // and presses) so there is no second gap to lose.
+        await page.waitForFunction(() => {
+            const a = document.activeElement;
+            const now = a ? `${a.tagName}.${a.className}` : '';
+            if (window.__mbFocusSettle === now) return true;
+            window.__mbFocusSettle = now;
+            return false;
+        }, null, { timeout: 5000, polling: 200 });
+
+        await toggle.press('Enter');
         await expect(toggle).toHaveAttribute('aria-pressed', 'false');
         expect(await barcodeCellBackgrounds(page)).toEqual(['', '', '', '', '']);
 
-        await page.keyboard.press('Enter');
+        await toggle.press('Enter');
         await expect(toggle).toHaveAttribute('aria-pressed', 'true');
         const restored = await barcodeCellBackgrounds(page);
         expect(restored[0]).not.toBe('');

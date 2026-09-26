@@ -2761,3 +2761,67 @@ any box — on =NB-3641= they ARE the floor and hide behind 14 workers, while
 here the other 111 files no longer drain around them. Nothing in this branch is
 implicated: the same 439 tests pass, and per-test times are in line with the
 2026-09-19 medians.
+
+* 2026-09-24 — a full snapshot baseline re-capture, end to end (petri)
+
+*Probing*: how long =node tests/support/capture-snapshots.js= with no =--only=
+takes against the live site — the cost of the whole re-capture cycle, not of
+any one page. Recorded because there was no number for it at all, and the
+registry's workflow ("re-capture, then review the diff") is planned around a
+guess otherwise. Also because the saved MusicBrainz session expires on a clock:
+knowing the run is minutes rather than hours is what decides whether
+=npm run auth:login= has to come first.
+
+| host        | =petri= (24 cores, node v24.16.0, Playwright 1.62.1) |
+| date (UTC)  | 2026-09-24, *15:22:10 - 15:26:30*                    |
+| script ver  | 9.99.1147                                            |
+| command     | =node tests/support/capture-snapshots.js=            |
+| pageTypes   | 11 (every entry in =tests/pagetypes.json=)           |
+| files       | 24 (11 raw + 11 rendered + 2 artist-events post-*)   |
+| wall clock  | *4 m 20 s*                                           |
+
+*There is no =machine= block to copy from, unlike every other row here.*
+=capture-snapshots.js= writes one only on its =--perf= path; a plain capture
+writes HTML and nothing else. These times are the captured files' own mtimes,
+which is the only record the run leaves.
+
+Per-pageType, from those mtimes (raw + rendered + any post-* for that entry):
+
+| pageType               | tableMode | page title                                | rendered rows | seconds |
+|------------------------+-----------+-------------------------------------------+---------------+---------|
+| artist-releasegroups   | multi     | Bruce Springsteen                         |          2143 |      36 |
+| release-tracks         | multi     | Born to Run                               |             8 |       6 |
+| artist-events          | single    | Bruce Springsteen                         |          4178 |     105 |
+| user-tags              | multi     | Editor "vzell"                            |           112 |       4 |
+| notes-received         | single    | Recent notes left on your edits           |          1744 |      57 |
+| user-open-edits        | single    | Open edits by vzell                       |             1 |       5 |
+| series-releases        | single    | Bruce Springsteen Studio Collection       |            12 |       3 |
+| series-recordings      | single    | Bruce Springsteen Live Events: Standalone |            41 |       4 |
+| recording-fingerprints | single    | Video "Born to Run" by Bruce Springsteen  |             3 |       3 |
+| release-discids        | multi     | Darkness on the Edge of Town              |             1 |       4 |
+| releasegroup-releases  | multi     | Tougher Than the Rest                     |             7 |       9 |
+
+Row counts are =data-mb-row-idx= occurrences in the captured =rendered.html=,
+i.e. what the page actually rendered on the day — not the figures in
+=tests/snapshots/registry.org=, which are that baseline's own capture-day
+counts and have drifted (artist-events reads 4178 here against the 4174 of the
+committed disk fixture; notes-received 1744 against 1688).
+
+=artist-events='s 105 s covers its two extra interaction snapshots as well
+(rendered at 68 s, then post-filter and post-sort from the committed disk
+fixture). =releasegroup-releases= was re-run alone afterwards, finishing
+15:29:05, to check whether its =cover-art-error= sidebar was a flake — it was
+not, see =DEBUG-NOTES.md=.
+
+*Read as*: paginated fetch dominates and everything else is noise. The three
+pages that fetch more than a handful of native pages — =artist-events= (42),
+=notes-received= (29), =artist-releasegroups= — are 3 of 11 pageTypes and about
+3 m 20 s of the 4 m 20 s. The other eight cost 4-9 s each. Nothing here
+approaches the =renderTimeout: 300000= those two entries carry, so that value
+is headroom for a bad day on MusicBrainz's side rather than a normal-case
+budget.
+
+*What it does not cover*: one host, one run, no repeat, and every number
+depends on how busy MusicBrainz was at 15:22 UTC on a Thursday. Treat it as an
+order of magnitude — "minutes, and the session cookie will outlive it" — not as
+a baseline to compare a later run against.

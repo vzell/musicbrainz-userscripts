@@ -14117,6 +14117,83 @@ Two things this adds to the earlier note:
   anything else, but it is also not a clean measurement, and saying so is
   cheaper than someone later reading 3-in-6 as a regression.
 
+### 2026-09-26 — a fifth victim, on a merge that contains no code at all
+
+`barcode-col-header-toggle.spec.js:85` failed on the gate for the
+`snapshot-baselines-action-buttons` merge (679 passed, 1 failed), and passes
+6/6 standalone.
+
+**This is the cleanest attribution the family has produced**, and worth keeping
+for that reason alone. The earlier instances argued from "the identical
+userscript had just run green", which needs a `git diff` to establish and
+always leaves a version-bump line to wave at. Here the merge carries **no
+runtime code whatsoever** — `ShowAllEntityData.user.js` is byte-identical to
+`main`, and nothing the merge touches is read by any fixture test: capture
+baselines, two `.org` docs, `DEBUG-NOTES.md`, and one standalone script.
+
+So the gate's verdict on this tree is a property of `main`, and of the host,
+and of nothing else. Whatever this family is, it is not caused by the change
+under test — because on this run there was no change under test.
+
+That also makes it the first instance usable as a control. A red gate on a
+code-free merge is a free sample of the background rate, and anyone chasing
+this should collect those rather than re-running branches.
+
+**Correction: this one was NOT the family.** It failed the same spec on two
+consecutive gate runs, and the family's whole signature is a different victim
+each time. Diagnosed rather than re-rolled — see the entry below. The "code-free
+merge as a control" point above still stands, and the four earlier victims are
+still the family; this fifth one simply turned out to be a real race that the
+family's reputation was about to absorb. That is the hazard of a known-flaky
+suite: it makes a genuine intermittent failure look like background noise.
+
+## 2026-09-26 — the render tail steals focus, and one spec was racing it
+
+`tests/fixtures/barcode-col-header-toggle.spec.js:85` failed two full-suite
+runs in a row with `aria-pressed` still `"true"` — Enter never reached the
+control — and passed 6/6 standalone.
+
+**The obvious fix would have hidden the mechanism.** "Add a settle to the spec"
+was available immediately, and it would have gone green. Before taking it,
+`scripts/probe-barcode-hdr-toggle-focus.js` measured which of two opposite
+explanations was true: the header subtree being REBUILT after the render signal
+(a product bug — a real user tabbing there would lose focus too), or a test
+race. It watches element identity, `activeElement` and blur counts across the
+window the test lives in:
+
+```
+immediately after focus   sameNode=true  focused=true   blurs=0  active=mb-barcode-col-hdr-btn
++50ms                     sameNode=true  focused=true   blurs=0  active=mb-barcode-col-hdr-btn
++250ms                    sameNode=true  focused=false  blurs=1  active=INPUT
+after Enter               pressed=true  ->  Enter did NOT toggle the control
+```
+
+**The node is never replaced** — `sameNode=true`, zero replacements, and the
+first hypothesis was simply wrong. What happens is that the render tail
+programmatically focuses an `<input>` between +50 ms and +250 ms, on a
+`setTimeout(..., 50)`, and takes focus off whatever had it.
+
+**Why only this test, and only in a suite.** It is the one test in the file
+with a GAP between focusing a node and acting on it; its five siblings use
+`.click()` (which re-resolves at click time) or document-level shortcuts that
+do not care what has focus. Standalone, the steal lands BEFORE `focus()` and
+the test wins the race. Under full-suite load it lands after.
+
+The fix settles on focus having stopped moving, then uses
+`locator.press('Enter')` so focusing and pressing are one action with no second
+gap. 18/18 across three repeats.
+
+**What is deliberately not fixed here**: the post-render focus steal itself.
+A human cannot realistically tab to a control inside 250 ms of a render
+completing, so it is benign in practice — but it is a real behaviour, it was
+invisible until a test happened to sit in that window, and it is worth knowing
+about before anything else starts taking focus early.
+
+The transferable part: a red spec in a suite with a known flaky family is the
+easiest thing in the world to wave through, and "it passes standalone" is true
+of both a flake and a real race. What separated them here was the repeat
+pattern — same victim twice — and then a measurement, not a plausible story.
+
 ## 2026-09-21 — every numeric setting is a string after the first SAVE, and four reads throw the value away
 
 Reported from a real browser, which is the only place it was ever visible: the
@@ -15733,9 +15810,131 @@ rather than only the `<style>` block. Detailed in
 `tests/snapshots/registry.org`'s "Expected drift"; not re-captured here (the
 baselines are reviewed as a git diff, not asserted by a spec).
 
+**Done 2026-09-24** on branch `snapshot-baselines-action-buttons` — see the
+entry below.
+
 Branch 2, `org/action-button-redesign.org` item 2 — ❓ opening the GitHub help
 page, and the hand-written `ShowAllEntityData_HELP.md` — is deliberately not in
 this branch.
+
+## 2026-09-24 — the 11 snapshot baselines re-captured (branch snapshot-baselines-action-buttons)
+
+Clearing the backlog item the entry above left open. `node
+tests/support/capture-snapshots.js` against live musicbrainz.org, 9.99.1147,
+host **`petri`**, 2026-09-24 **15:22:10–15:26:30 UTC** (plus one
+`--only=releasegroup-releases` re-run finishing 15:29:05, see below). 18 files
+moved: 11 `rendered.html`, 5 `raw.html`, and `artist-events`'
+`post-filter.html`/`post-sort.html`.
+
+**The interesting part is that the delta is identical on all 11.** Every
+baseline gained `#mb-data-menu-btn`, `#mb-view-menu-btn`, their two panels, the
+`span.mb-h2-table-controls` wrapper and its two `.mb-h2-ctl-btn` buttons, and
+lost `.mb-button-divider-after-load` / `.mb-button-divider-before-shortcuts`.
+The only per-page variation is the row count (6, or 7 where the page has a
+Barcode column) and `artist-releasegroups`' third menu. That uniformity is the
+evidence that the adopt-don't-rewrite design did what it claimed — nothing else
+in any rendered table moved.
+
+**A one-line document needs a token diff, not `git diff`.** These files are
+effectively one enormous line, so a line diff reports the whole document as
+changed and says nothing about what moved.
+`scripts/summarize-snapshot-diff.py <pageType>` counts class / `data-*` / `id`
+tokens outside `<style>`; that is what made "identical on all 11" checkable
+rather than asserted.
+
+### What the re-capture found that reading the code had not
+
+**`#mb-barcode-highlight-btn` is adopted with no keyboard hint.** It is the one
+menu row with no `data-mb-menu-hint` — 7 `.mb-toolbar-menu-item` against 6
+`data-mb-menu-hint`, on both barcode-carrying baselines
+(`releasegroup-releases`, `series-releases`). It is not a control with nothing
+to show: `sa_toggle_barcode_highlighting` (default Ctrl+B) exists, is in
+`ctrlMFunctionMap` as `'b'`, and is routed through `_toolbarInvoke()` like every
+other row. HELP says "Each menu row shows its own keyboard shortcut on the
+right", which is therefore not quite true. Not fixed here — a baselines branch
+must not carry a userscript change, or the committed baselines stop matching the
+code they were captured from. It rides with branch 2, which re-drifts those two
+files anyway.
+
+**The panels ARE in the baselines.** The registry hedged on this, because the
+panels live on `document.body` rather than inside `#page`. `captureRendered()`
+serializes `document.documentElement.cloneNode(true)`, so they are captured —
+closed, `display: none` — after the page's own markup. Now stated as fact.
+
+**Three earlier CSS-only drift entries were cleared by the same run.** Several
+baselines had not been re-captured since those rules landed, which is where most
+of the `<style>` growth comes from: `releasegroup-releases` and
+`series-releases` each grew ~20 KB, against ~2.7 KB for `release-tracks`, which
+was already current. A big `<style>` delta here means a stale baseline, not a
+big CSS change.
+
+### Upstream movement, separated from ours
+
+Every capture here is against the live site, so some of the diff is
+MusicBrainz's. Enumerated in the registry's own new section; the two worth
+repeating:
+
+- **The ⏳ prediction came true.** `artist-events`' one `span.mp` expired and
+  `#mb-pending-edits-btn` flipped `inline-block` → `none`, exactly as the
+  registry's first drift entry said it would. The button is created
+  unconditionally and merely hidden, so it did not disappear — which is what
+  distinguishes this from a regression.
+- **`releasegroup-releases`' front cover is not being served.** The sidebar
+  reads `<em class="cover-art-error">Image not available, please try again
+  later.</em>`. Captured twice to tell a flake from a state: byte-identical
+  both times, so it is committed as upstream state. The artwork link coming
+  BACK is the expected next diff.
+
+### Verification, and one thing it cannot cover
+
+Every file was confirmed captured LOGGED IN. That matters because
+`authState.js` only warns when the saved session has EXPIRED by the clock — it
+cannot see a session MusicBrainz rejected for any other reason, and a
+logged-out capture silently produces different header chrome across every
+baseline. The only evidence is in the captured HTML, so
+`scripts/check-snapshot-auth-state.py` was generalised from its single
+hardcoded pageType to take arguments (and a `--verdict` one-line mode) and run
+over all 22 files. All 22: `LOGGED IN`.
+
+`scripts/audit-jesus2099-leaks.py` still reports 9 native `treleases` and zero
+jesus2099 markers in `release-tracks/rendered.html`, unchanged.
+
+What none of this covers: nothing asserts these files. They are reviewed as a
+git diff, which is why the token summary and the upstream/ours split above are
+written down rather than left in a terminal.
+
+### Merged 2026-09-26, two days and eighteen releases late
+
+This branch sat unmerged while `main` went 9.99.1147 → 9.99.1165, so the
+baselines landed already trailing the tree. Recorded because "merged" will
+otherwise read as "current", and they are not the same thing here.
+
+**Merged rather than discarded, deliberately.** Four of the branch's five parts
+are version-independent and pure gain: the registry rewrite, the MEASUREMENTS
+timing entry, this note, and the generalised
+`scripts/check-snapshot-auth-state.py`. The fifth — the 22 capture files — is
+eighteen versions stale but replaces files that were *months* stale
+(9.99.936-1057), so it still moves in the right direction. Throwing the branch
+away to re-capture from scratch would have discarded the four for the sake of
+the one.
+
+**What the delay falsified, and what it did not.** The baselines themselves are
+just old; nothing in them is *wrong*, and `registry.org` now enumerates what is
+known to have changed since so the next diff stays attributable. Two paragraphs
+of PROSE did go stale, though, and prose is the part that misleads: the
+"one row is missing its keyboard hint" finding was fixed in 9.99.1148 and then
+made moot when `#mb-barcode-highlight-btn` left the toolbar for the Barcode
+column header. Both are now marked as describing the files rather than the
+code. The finding is kept, because how it surfaced — a count mismatch spotted
+while reviewing a re-capture diff, not a failing test — is the transferable
+part.
+
+**The re-capture is blocked on a login, not on a decision.**
+`playwright/.auth/vzell.json` expired 2026-09-25T10:04Z. `authState.js` passes
+an expired file through rather than failing, so a capture run now would
+silently produce logged-out baselines — worse than stale ones, and the exact
+trap the generalised auth-state script in this very branch exists to catch.
+`npm run auth:login` first.
 
 ## 2026-09-24 — ❓ goes to GitHub, and the help text becomes Markdown (branch help-github-md)
 
