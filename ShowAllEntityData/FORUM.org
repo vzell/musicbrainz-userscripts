@@ -2,30 +2,12 @@
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
-## Changes since last version (9.99.746 -> 9.99.1079)
+## Changes since last version (9.99.746 -> 9.99.1164)
 
 ### Your settings and this update --- read this first (60 seconds)
 
-[EDITOR NOTE --- two things still to do before posting.
-
-1. Shipping at 9.99.1129 or later was confirmed 2026-09-21, so the numbers in
-   this section (5 changed defaults, 45 new settings, 4 removed) are correct as
-   measured against 9.99.746. Update the `## Changes since last version`
-   heading above from 9.99.1079 to the real shipped version --- and note the
-   feature list below it still only covers up to 1079, so 1079 -> ship needs
-   writing up.
-
-2. The last two paragraphs of this section describe bugs that are being fixed.
-   DELETE each one once its fix ships:
-     * "One caveat on Load configuration" --- delete once Item 3
-       (`fix/config-import-tables`) has shipped.
-     * "one known quirk with 0 to disable" --- delete once Item 2
-       (`fix/settings-numeric-coercion`) has shipped, and consider replacing it
-       with a one-line Fixes entry instead.
-   See org/config-handling.org F2 and F3.]
-
 **Short version: you don't have to do anything.** Updating the script never
-touches your saved settings. The 45 settings this release adds all arrive
+touches your saved settings. The 49 settings this release adds all arrive
 switched to their defaults, and the 4 that were removed simply stop appearing.
 
 Two things are still worth a minute of your time.
@@ -33,10 +15,9 @@ Two things are still worth a minute of your time.
 **1. Take a backup --- it costs one click.** Open ⚙️ Settings and press
 **💾 Save configuration** (bottom left). That writes a small JSON file
 containing every setting. **📂 Load configuration** puts it all back later, on
-this browser or another one. Please read the "one caveat" note at the end of
-this section before you use Load.
+this browser or another one.
 
-**2. Five defaults changed --- and a changed default does *not* reach you
+**2. Seven defaults changed --- and a changed default does *not* reach you
 automatically.**
 
 This is the one thing that genuinely needs your attention, and it is easy to
@@ -47,21 +28,26 @@ setting's default *is*, you keep the old value, forever, because as far as the
 script can tell you chose it.
 
 So if you have ever pressed SAVE --- even once, even without changing
-anything --- these five are still on their old values:
+anything --- these seven are still on their old values:
 
-| Setting (as it appears in ⚙️ Settings)    | Section                        | Old | New    |
-|-------------------------------------------+--------------------------------+-----+--------|
-| Start with sidebar collapsed              | ⭲ COLLABSABLE SIDEBAR         | off | **on** |
-| Show Flag Icons In Unique-Values Dropdown | #₁ UNIQUE COLUMN VALUES ...    | off | **on** |
-| Auto-resize columns on load               | ↔️ COLUMN RESIZE FEATURE       | off | **on** |
-| Auto-expand native "Annotation" section   | 📖 ANNOTATION SECTION          | off | **on** |
-| Metadata (JSON) cache TTL (days)          | 🗄️ ART ARCHIVE INDEXEDDB CACHE | 7   | **30** |
+| Setting (as it appears in ⚙️ Settings)     | Section                       | Old          | New                          |
+|-------------------------------------------+-------------------------------+--------------+------------------------------|
+| Start with sidebar collapsed              | ⭲ COLLABSABLE SIDEBAR         | off          | **on**                       |
+| Show Flag Icons In Unique-Values Dropdown | #₁ UNIQUE COLUMN VALUES ...   | off          | **on**                       |
+| Auto-resize columns on load               | ↔️ COLUMN RESIZE FEATURE       | off          | **on**                       |
+| Auto-expand native "Annotation" section   | 📖 ANNOTATION SECTION         | off          | **on**                       |
+| Metadata (JSON) cache TTL (days)          | 🗄️ ART ARCHIVE INDEXEDDB CACHE | 7            | **30**                       |
+| Help ❓ button colors                     | 🖌️ ELEMENT UI STYLES           | darker slate | **matches the new ⚙️❓ pill** |
+| Settings ⚙️ button colors                  | 🖌️ ELEMENT UI STYLES           | darker slate | **matches the new ⚙️❓ pill** |
 
-That last one is the one I'd actually recommend changing. Cover-art metadata is
-now cached for 30 days instead of 7, which noticeably cuts how often big
-discography pages re-query the Cover Art Archive. It was only safe to raise once
-a separate bug was fixed (a temporary archive outage used to be remembered as
-"this release has no cover art"), which is why it waited until now.
+The cache TTL is the one I'd actually recommend changing by hand. Cover-art
+metadata is now cached for 30 days instead of 7, which noticeably cuts how
+often big discography pages re-query the Cover Art Archive. It was only safe
+to raise once a separate bug was fixed (a temporary archive outage used to be
+remembered as "this release has no cover art"), which is why it waited until
+now. The two button-colour rows are purely cosmetic, tied to the toolbar
+redesign further down --- there's nothing to "fix" there unless you'd rather
+keep the old colours.
 
 **How to check whether any of this applies to you:** open ⚙️ Settings and look
 at the greyed-out **Default** column on the right of each row. It always shows
@@ -74,20 +60,27 @@ setting to its default and your customisations go with it. Change the individual
 settings you care about instead. (If you do want a clean slate, press
 💾 Save configuration first so you can pick values back out of the file.)
 
-**One caveat on 📂 Load configuration.** If you have hand-edited any of the
-five 📋 table settings --- Default Hidden Columns, the three Relationships icon
-tables, or the Unicode Character Picker list --- importing a configuration file
-currently discards those rows and restores the built-in ones. Everything else
-imports correctly. Until that's fixed, either avoid Load if you've customised
-those tables, or take a screenshot of them first. Exporting is unaffected: your
-rows *are* written to the file correctly, it's only the reading side that drops
-them.
+### Enhancements: the settings dialog itself
 
-**And one known quirk with "0 to disable".** A few numeric settings document
-`0` as "switch this off" --- the Relationships auto-collapse threshold is the
-one people hit. Typing `0` there doesn't currently work; the setting falls back
-to its default of 200. A fix is coming. In the meantime, use the **▶🔗** button
-in the Relationships column header to expand a table by hand.
+* **Saving no longer freezes your whole profile on old defaults** --- this is
+  the reason the "changed defaults" table above matters at all. Pressing SAVE
+  used to write down *every* setting, not just the ones you'd actually
+  changed, silently pinning your profile against ever receiving a future
+  default change. SAVE now stores only what you've actually changed; a
+  one-time repair pass un-freezes any profile already affected by the old
+  behaviour (with an Undo, if you'd rather keep your frozen values).
+
+* **💾/📂 now also cover your workspace, not just settings** --- your pinned
+  filter list, per-page-type (and per-sub-table) hidden columns, filter
+  history, dialog sizes/positions, and which 📊 dropdown sections you keep
+  collapsed now travel with Save/Load configuration too, instead of being
+  silently left behind when you set up a new browser or profile.
+
+* **See what you've changed, at a glance** --- changed settings get a visual
+  highlight and a live count badge per section, a "● Changed only" button
+  filters the whole dialog down to just your customisations, and every
+  setting now has a tooltip naming its underlying storage key (handy if you
+  ever hand-edit a saved configuration file).
 
 ### New: consolidated Release tracklists
 
@@ -97,6 +90,8 @@ in the Relationships column header to expand a table by hand.
 * **No more manual "Load all tracks" clicks** --- MusicBrainz hides a medium's tracklist beyond the first 100 tracks behind its own "Load all tracks..." link; the script now clicks that automatically and waits for every remaining track to arrive (showing a progress bar as it goes) before building the table, so a medium with hundreds of tracks --- e.g. https://musicbrainz.org/release/d288983e-d83c-435a-999f-c48172ad8d0b --- always ends up complete instead of silently cut off at 100.
 
 * **Who recorded it, where, and when** --- the underlying work, recording date, and the event or place a track was recorded (or mixed) at now get their own columns, pulled out of the wall of relationship text MusicBrainz normally buries them in.
+
+* **The recorded work's own credits, too** --- alongside the recording's own credits, a track's underlying work now gets its own set of columns (publisher, composer, lyricist, arranger, and anything else MusicBrainz records against the work), each prefixed "Work" so it's never confused with the recording-level column of the same name. A credit naming several roles at once ("lyricist and composer") splits into each of its own columns automatically, and a work crediting more than one entity ("is based on") lists each on its own row.
 
 * **Engineers, producers, mixers and performers, each in their own column** --- recording engineer, producer, mixer, performer, and copyright/label credits are split out individually, with qualifiers like "additional" or "assistant" shown right next to the name. Those qualifier words now render in italic, coloured text so they stand out from the plain name/role text around them.
 
@@ -117,13 +112,29 @@ in the Relationships column header to expand a table by hand.
 
 ### New: millisecond-precision track lengths
 
-* **See track lengths down to the millisecond** --- MusicBrainz stores every track length far more precisely than it displays it. A new ⏱ toggle at the left of any "Length" column heading reveals that full precision ("4:50" becomes "4:50.160") and switches back just as easily. On a release page this costs nothing at all --- the numbers are already sitting in the page. On dozens of other pages that list recordings (an artist's or work's recordings, ISRC pages, search results, and more) it's fetched on demand instead, in one efficient request per page rather than one per row, and remembered afterwards so you never pay for it twice.
+* **See track lengths down to the millisecond** --- MusicBrainz stores every track length far more precisely than it displays it. A new ⏱ toggle at the left of any "Length" column heading reveals that full precision ("4:50" becomes "4:50.160") and switches back just as easily. On a release page this costs nothing at all --- the numbers are already sitting in the page. On dozens of other pages that list recordings (an artist's or work's recordings, ISRC pages, search results, and more) it's fetched on demand instead, batched into as few requests as the page allows, and remembered afterwards --- both for the rest of your session and, cached locally for up to 30 days, the next time you see that same recording on a *different* page --- so you rarely pay for it twice. If a batch partly fails, the rows that came back are shown right away and the toggle stays retryable for just what's missing.
 [SCREENSHOT: the ⏱ toggle and a Length column showing millisecond precision]
 
 * **A second "Recording length" column on release tracklists** --- sitting right next to the release's own "Length", this shows what MusicBrainz has on record for the underlying recording itself, whenever it disagrees with this particular release's own track length, which happens more often than you'd expect (six of eight tracks on *Born to Run*, for instance). Where the two always agree, no extra column is added at all.
 
 * **Flags a track/recording length mismatch automatically** --- when a track's length and its underlying recording's length differ by more than a threshold (configurable in settings), both cells get a ⚠️, or a ❌ past a larger threshold, together with a tooltip spelling out which one is longer and by how much --- handy for catching data-entry mistakes at a glance. New "(N) LENGTH ⚠️"/"(N) LENGTH ❌" buttons in the filter bar jump straight to the flagged tracks.
 [SCREENSHOT: a release tracklist with a flagged Length/Recording length pair]
+
+### New: catching bad ISRCs, ISWCs and barcodes
+
+* **ISRC and ISWC codes get checked, not just displayed** --- any ISRC (on a track, a recording, or the individual `/isrc/<code>` page) is now always shown in its proper hyphenated form (`US-S1Z-99-00001`) regardless of how the page itself renders it, and a code that doesn't fit the real ISRC shape gets a ⚠️ right on the cell. Barcodes get the equivalent check-digit validation (EAN-8/UPC-A/EAN-13/GTIN-14), and the same treatment now covers ISWCs, including a new individual `/iswc/<code>` page listing every work sharing that code.
+[SCREENSHOT: an ISRC cell with its ⚠️ validity warning]
+
+* **Filter by validity, format, or matching barcodes** --- the 📊 dropdown for any ISRC/ISWC/Barcode column now offers its own breakdown: valid vs. invalid, the code's country/registrant/year/designation segments (for ISRC), and --- for barcodes --- which releases share what MusicBrainz considers the "same" barcode once you allow for a redundant check digit or leading zero.
+
+### New: recovering from MusicBrainz hiccups instead of failing silently
+
+* **A page that fails partway through no longer just looks broken** --- if MusicBrainz's server has a bad moment (a 503, a timeout) three pages into a forty-page fetch, the script used to quietly stop and show you an incomplete table with no indication anything was wrong. It now retries the failed page automatically, and if it still can't get through, says so plainly ("⚠️ Loaded 3 of 40 pages --- INCOMPLETE") instead of pretending the listing is complete. A new "↻ Load remaining pages" button picks up exactly where it left off, rather than re-fetching everything from the start.
+
+* **Cover art and Relationships data recover from a bad request instead of remembering it as "nothing there"** --- a temporary failure fetching artwork or relationship data used to be cached the same way as a genuine "this release has no cover art" or "this entity has no relationships" --- so one bad moment on MusicBrainz's end could leave a column looking permanently empty. Transient failures are no longer cached at all, dedicated "retry only what failed" buttons (⚠⟳) let you recover just the failures instead of re-fetching an entire table, and a conservative automatic retry runs quietly in the background a little while after a page settles.
+[SCREENSHOT: the ⚠⟳ retry-failed button next to a Relationships column]
+
+* **A quick artwork summary, per table** --- a new 📊-style panel next to any artwork-carrying table's heading tallies what's there --- how many covers found, their types, how many are the archive's chosen "front"/"back", approval status --- without any extra requests to the Cover Art Archive, since it's built entirely from data the script already fetched.
 
 ### New: consolidated Annotation history pages
 
@@ -179,14 +190,14 @@ in the Relationships column header to expand a table by hand.
 
 * **Friendlier multi-value lists** --- a cell listing several people or tags now reads naturally, e.g. "Jon Landau, Chuck Plotkin and Bruce Springsteen", instead of a plain comma-separated run.
 
-* **Relationships column** now also available on an artist's Works listing.
-
 * **Sensible defaults for new installs** --- several settings now default to more useful values out of the box: flag icons in the filter dropdown, more visible dropdown rows, and auto-resizing columns on load are all now on by default. Anyone who already changed one of these keeps their own choice.
 
 * **Pick which columns start hidden, per page type** --- a new settings table lets you decide which columns should start hidden the very first time a given page type's table renders, instead of hiding them by hand every time via the column-visibility menu.
 
-* **Relationships column now loads on demand** --- on a big catalogue (a prolific artist's releases, say) the Relationships column used to quietly fetch data for every single row in the background the moment the page opened, which could take the better part of an hour on the largest pages. It now starts collapsed on any table over a configurable size (200 distinct entities by default), with a ▶🔗/▼🔗 button in the header that tells you up front how many lookups it will cost before you commit to them; small tables keep loading automatically as before, and once loaded the data stays cached so re-expanding it again is instant.
+* **Relationships column now loads on demand, and a lot faster when it does** (now also available on an artist's Works listing) --- on a big catalogue (a prolific artist's releases, say) the Relationships column used to quietly fetch data for every single row in the background the moment the page opened, which could take the better part of an hour on the largest pages. It now starts collapsed on any table over a configurable size (200 distinct entities by default), with a ▶🔗/▼🔗 button in the header that tells you up front how many lookups it will cost before you commit to them; small tables keep loading automatically as before, and once loaded the data stays cached so re-expanding it again is instant. On seven of the most common listing types it now fetches up to 100 rows in a single request instead of one request per row, so expanding a large table is dramatically faster than it used to be.
 [SCREENSHOT: the collapsed Relationships column with its cost estimate]
+
+* **Load, or reload, just one row** --- each Relationships cell now shows its own tiny load-state glyph (loading / no data / failed / not yet loaded), and clicking a single cell loads just that row --- even in an otherwise-collapsed column. Hovering a loaded cell offers ⟳ to refresh it by hand, and the header toggle shows live progress ("340/2301") while a table is loading. The 📊 dropdown also gains a "Load state" section so you can filter straight to rows that failed or haven't loaded yet.
 
 * **The Picard tagger column also starts collapsed**, for the same reason --- building all those "send to Picard" buttons costs time even when you're not tagging anything. A per-table ▶♪/▼♪ toggle (and a page-wide "Show all Picard" button) reveals them on demand.
 
@@ -198,11 +209,16 @@ in the Relationships column header to expand a table by hand.
 
 * **The unique-values dropdown reopens instantly** --- reopening the same column's 📊 panel with nothing having changed since used to redo several full passes over the table every time; it's now served from a cache instead and typically opens dozens of times faster.
 
-* **Column header buttons are easier to see and use** --- the small ▶🖼/▶⏱/▶♪/▶🔗 toggles and the 📊 filter-count badge now sit on their own light, legible pill regardless of the column's own background colour (a few of them were nearly invisible before), the multi-row and filter-count numbers are noticeably bigger, and the sort arrows are drawn as one connected control instead of three loose glyphs.
+* **Column header buttons are easier to see and use** --- the small ▶🖼/▶⏱/▶♪/▶🔗 toggles, the multi-row-collapse ▶N▤ toggle, the Release-events retry indicator, and the 📊 filter-count badge all now sit on their own light, legible pill regardless of the column's own background colour (a few of them were nearly invisible before), the multi-row and filter-count numbers are noticeably bigger, and the sort arrows are drawn as one connected control instead of three loose glyphs.
+
+* **A tidier toolbar** --- the row of up to 13 buttons above the table is now two pull-down menus, 📦 Data ▾ and 🛠 View ▾, plus a pinned ⚙️❓ pair for Settings and Help. Every keyboard shortcut still does exactly what it always did --- only the buttons themselves moved.
+[SCREENSHOT: the new 📦 Data ▾ / 🛠 View ▾ menus]
+
+* **❓ Help now opens as a proper page on GitHub** --- with a table of contents and working section links, instead of the old plain-text dialog. Shift-click ❓ (or press `H`) if you'd rather keep using the in-page version.
 
 ### Enhancements: report pages
 
-* **More report pages get clean name/comment/alias columns** --- around a dozen more `/report/...` pages (covering releases, recordings, labels, artists, places, series and works) now automatically split out a clean name, comment, and primary-alias column for their main entity, matching what other report pages already did.
+* **More report pages get clean name/comment/alias columns** --- the same clean name/comment/primary-alias splitting other report pages already had now works generically across the whole `/report/...` catalogue, recognising ten different entity-column types (release, release group, recording, label, artist, event, place, series, work, collaborator) wherever they show up --- covering well over a dozen additional reports, not just a fixed list of them.
 * **Grouped report rows keep their shared label** --- reports that group several rows under one shared identifier (e.g. "Amazon URLs linked to multiple releases") now correctly carry that identifier down onto every row in the group, instead of leaving it blank or turning it into a stray empty row.
 * **Reports Statistics companion script now feeds two new columns** --- when the third-party ["MusicBrainz: Reports Statistics"](https://github.com/chaban-mb/userscripts/raw/main/src/MusicBrainz%20Reports%20Statistics.user.js) (@chaban) script is installed, the Reports index page gets its own "Delta" and "When" columns pulled straight out of that script's own change indicators.
 
@@ -213,6 +229,8 @@ in the Relationships column header to expand a table by hand.
 
 ### Fixes
 
+* 📂 Load configuration no longer discards hand-edited rows in the five table-type settings (Default Hidden Columns, the three Relationships icon tables, the Unicode Character Picker) when importing a saved configuration file.
+* Numeric settings documented as "0 to disable" --- including the Relationships auto-collapse threshold --- now actually honour `0`, and no longer silently revert to their built-in default the moment you've pressed SAVE once.
 * Country/state columns correctly tell flagged US/Canada states apart from flagged cities, instead of occasionally mixing the two up.
 * The unique-values filter dropdown's flag icons and multi-word entries now space and align correctly.
 * Minor: the Series page's Artists listing works again after a regression.
