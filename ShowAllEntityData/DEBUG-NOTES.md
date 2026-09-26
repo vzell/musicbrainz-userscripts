@@ -86,6 +86,20 @@ before it was fixed; every mutation is in `scripts/mutations/`.
   the counts cache; a test of a cache HIT has to close the panel first (a mutation dropping the
   key from the cached bundle passed until it did).
 
+### The 2026-09-18 load-sensitive spec came back at merge, and was fixed
+
+`artist-recordings-ms-batch.spec.js` › "answers are cached…" failed in BOTH full-suite runs of
+this merge (`npm test` and `test:full`), with the exact signature recorded on 2026-09-18:
+`_runAndWaitForSettledText` — baseline and last-seen identical
+(`✓ Filtered 9 rows in 28ms [1 COLUMN FILTER ['⏱︎Length':"1:0"]]`). It passed 7/7, 6/6 and 12/12
+standalone and with the whole `a*` group. Not a regression: it is the same mechanism, made likelier
+by heavier concurrency. **Fixed now, as that entry said it should be**: the two waits observe the
+ROW SET (`waitForVisibleRowCount`: 9 rows with "1:0", 130 after clearing) instead of requiring the
+status line to print something different. `test:full` then passed 680/680. One honest gap: a
+whole-file repeat run failed once after the change and I could not reproduce it in ~100 further
+executions, so its cause is unexplained; if this spec fails again, capture the page snapshot
+before re-running (a re-run wipes `test-results/`).
+
 ## 2026-09-26 — barcode format-validation feature (org/barcode.org)
 
 - `debug/barcode.html`: a real, rendered `releasegroup-releases` page (post-

@@ -1,5 +1,114 @@
 [
   {
+    "version": "9.99.1164",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "An ISRC segment entry in the 📊 dropdown (\"» country: QM\" and the registrant/year/designation entries) that exists only inside a COLLAPSED list item now carries a ▶ marker and a tooltip saying so. Such entries are still offered — ticking one still shows the row and tints the ▶ toggle — the marker just explains why nothing on screen shows the code yet. Expanding the cell drops the marker — `_isCollapsedHiddenItem()`, `collapsedOnlyKeys`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1163",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking an ISRC segment entry (\"» country: GB\", registrant, year, designation) filtered correctly but marked nothing. `initIsrcFormatting()` ran after the highlight and rebuilt every `<code>`, wiping the mark, and on a multi-table page the highlight ran on an unformatted clone with no segment spans to scope to. `_formatIsrcAnchor()` is now idempotent (an already-formatted `<code>` is left alone) and `_formatIsrcAnchorsIn()` formats a clone before it is matched.",
+          "\"» year: 2005\" could never mark anything: the entry value is the 4-digit year but the cell displays the 2-digit \"05\". The highlighter now marks the displayed segment."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1162",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking \"valid ISWC format\" (and, the same omission, \"valid ISRC format\" and \"valid barcode format\") narrowed the rows but highlighted nothing — only the invalid flags had a highlighter. Added `_highlightIswcValidMatch()`, `_highlightIsrcValidMatch()` and `_highlightBarcodeValidMatch()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1161",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Ticking \"BUMA\" and then \"STEMRA ID\" (or any two entries that mark the same text) highlighted only the first. `highlightCrossTag()` inserted a virtual space wherever an earlier highlight had split one text node, so a regex spanning the split (\"(BUMA/STEMRA ID)\") read \"(BUMA /STEMRA ID)\" and never matched. It no longer adds a gap between two text nodes that were one node before a highlight wrapper split them. Generic to every column's multi-value highlight, not just identifier types."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1160",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 unique-values dropdown for a \"Time\" column (events listings) now offers a \"Time info - Time of day\" section with five fixed buckets — Morning (04:00-11:59), Lunch (12:00-12:59), Afternoon (13:00-17:59), Evening (18:00-23:59) and Night (00:00-03:59) — `_findCellTimeBucket()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1159",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "\"Attributes - Identifier type\" now also lists the parts of a slash-separated identifier type separately: a `BUMA/STEMRA ID` badge is offered as `BUMA/STEMRA ID`, `BUMA` and `STEMRA ID` — `_workAttrTypeLabels()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1158",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 dropdown for a \"Length\" column now offers a \"Length info - Milliseconds\" section: \"ms ≠ .000\", \"ms = .000\" and \"no ms data\". Shown only once at least one cell carries milliseconds (after ⏱) — `_findCellLengthMsState()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1157",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 dropdown for a \"Relationship types\" column now offers a \"Relationship types - Credited as\" section listing each `(as “credit”)` separately, prefixed with its relationship type (e.g. \"» instrument as: lead guitar\") — `_findCellRelTypeCredits()`."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1156",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 dropdown for a \"Tracks\" column now offers a \"Tracks info - Total\" section with the summed track count over all mediums (the same number as the synthetic \"Total Tracks\" column), e.g. \"5 + 5 + 5\" → 15."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1155",
     "date": "2026-09-26",
     "sections": [
