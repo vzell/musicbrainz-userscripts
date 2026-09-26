@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1164+2026-09-26
+// @version      9.99.1165+2026-09-26
 // @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
 // @author       vzell
 // @tag          AI generated
@@ -58,9 +58,12 @@
  *     // @require      https://raw.githubusercontent.com/vzell/mb-userscripts/master/lib/VZ_MBLibrary.user.js
  *
  * It used to point at the network URL here too, because the library barely
- * changed — but 4.1.0 and 4.2.0 both altered the settings dialog, and against
- * the published 4.0.0 none of that work runs at all. A live "browser check" of
- * a library change is worth nothing while this line names the mirror.
+ * changed — but starting with 4.1.0 it began picking up real, testable
+ * changes release over release (4.1.0/4.2.0 rewrote parts of the settings
+ * dialog; 4.3.0 added the settings header and tooltips; more will keep
+ * landing), and none of that runs against whatever older version the mirror
+ * still carries between publishes. A live "browser check" of a library
+ * change is worth nothing while this line names the mirror.
  *
  * SHIPPING A file:// @require TO USERS FAILS SILENTLY, which is why this note
  * is this loud: Lib falls back to a stub whose `settings` is `{}` (see

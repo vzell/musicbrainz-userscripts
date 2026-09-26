@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1165",
+    "date": "2026-09-26",
+    "sections": [
+      {
+        "label": "📝 Docs",
+        "items": [
+          "The header comment warning that the VZ_MBLibrary @require must be rewritten before publishing no longer hardcodes which library versions changed the settings dialog (it named only 4.1.0/4.2.0 and had already gone stale against 4.3.0). It now describes this as an ongoing pattern instead, so it stays accurate across future library bumps without needing another edit."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1164",
     "date": "2026-09-26",
     "sections": [
