@@ -3,7 +3,7 @@
 const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
-const { waitForFilterSettled, waitForSortSettled } = require('../support/filterSortAssertions');
+const { waitForSortSettled } = require('../support/filterSortAssertions');
 
 // The BATCHED millisecond source: pageTypes whose table is not one entity's
 // relationship list, so no single lookup covers it — an artist's recordings,
@@ -24,6 +24,8 @@ const ARTIST_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f9
 const FIXTURE_FILE = path.join(__dirname, 'artist-recordings-ms-batch.html');
 
 const ROWS = 130;
+// Rows a "1:0" Length filter leaves in this fixture (the status line reads "Filtered 9 rows").
+const FILTERED_ROWS = 9;
 const UNKNOWN_ROW = 7;
 const MISMATCH_ROW = 11;
 
@@ -113,6 +115,14 @@ async function lengthValues(page) {
     });
 }
 
+/** Waits until exactly `n` body rows are shown (a filter removes non-matching rows or hides them). */
+async function waitForVisibleRowCount(page, n) {
+    await page.waitForFunction((want) =>
+        Array.from(document.querySelectorAll('table.tbl tbody tr'))
+            .filter((r) => r.style.display !== 'none').length === want,
+        n, { timeout: 30000 });
+}
+
 const toggle = (page) => page.locator('.mb-ms-col-hdr-btn').first();
 
 /** Distinct batches actually requested, ignoring retry attempts. */
@@ -181,9 +191,18 @@ test.describe('artist-recordings: millisecond Length precision via batched looku
         const colIdx = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl thead th'))
             .findIndex((t) => (t.dataset.colName || '') === 'Length'));
         const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
+        // Wait for the ROW SET to settle, not for the status text to change.
+        // `waitForFilterSettled()` needs the triggered filter to print a line
+        // DIFFERENT from the previous one; a re-filter that ends on the same
+        // row count/query/"in Nms" figure prints an identical one and no timeout
+        // is long enough (DEBUG-NOTES.md 2026-09-18 and 2026-09-26: failed in
+        // full-suite runs, passed 7/7 standalone). What this test observes is
+        // that filtering never re-requests, so the rows are the honest signal.
         await colInput.click();
-        await waitForFilterSettled(page, () => colInput.pressSequentially('1:0'));
-        await waitForFilterSettled(page, () => colInput.fill(''));
+        await colInput.pressSequentially('1:0');
+        await waitForVisibleRowCount(page, FILTERED_ROWS);
+        await colInput.fill('');
+        await waitForVisibleRowCount(page, ROWS);
 
         await toggle(page).click();
         await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
