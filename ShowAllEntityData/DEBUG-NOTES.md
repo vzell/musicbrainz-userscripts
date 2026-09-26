@@ -1,3 +1,91 @@
+## 2026-09-26 — five new 📊 dropdown sections (org/uvd-additions.org, branch `uvd-tracks-total-time-length-ms`)
+
+Snapshots read: `debug/tracks-total.html`, `debug/instruments-recordings.html`,
+`debug/length-with-millis.html`, `debug/time.html`, plus `debug/artist-works-initial.html`
+for the BUMA/STEMRA badge markup. Findings worth keeping:
+
+- **Only ONE identifier type in `debug/*.html` contains a slash: `BUMA/STEMRA ID`** (80 hits
+  in `artist-works-initial.html`, as a `typeName` in the JSON blob and as `(BUMA/STEMRA ID)`
+  in the rendered `<li>`). `_workAttrTypeLabels()` splits on `/` generically rather than
+  special-casing it, and offers the parts *additionally*; the parts are the literal text
+  either side of the slash (`BUMA`, `STEMRA ID`), not a re-derived "BUMA ID".
+- **Milliseconds live on the cell, not only in its text.** `data-mb-ms` stays after ⏱ is
+  switched back off (the text reverts to rounded seconds), so `_findCellLengthMsState()`
+  reads the stamp first and the `.mmm` suffix only as a fallback. A text-only reader would
+  report every row as "no ms data" the moment ⏱ is off. The fallback branch (cells hydrated
+  from a snapshot lose `data-mb-*`) is NOT reachable from any fixture here — recorded as an
+  `expect: "pass"` in `scripts/mutations/uniq-drop-length-ms-state.json`, so it is untested,
+  not tested.
+- **The Length section is withheld until some cell has milliseconds.** Before ⏱ every row is
+  "none", which is a panel that says nothing. This was a decision (asked and confirmed), not
+  an oversight.
+- **Native "Relationship types" is ONE text node** (`instrument, instrument (as “x”)`); the
+  script's `renderMultiRowCell` pass splits it at parenthesis depth 0, which is why a credit
+  containing a comma (`“acoustic, electric guitar”`) stays a single item. The extractor reads
+  per `<li>`; reading the whole cell fuses the items (planted as a mutation).
+- **"<Entity> as" became one static section with a type prefix** (`» instrument as: lead
+  guitar`), not a runtime-created section per relationship type: `SYN_SECTION_META[key]` is
+  looked up in ~6 places that assume a static table, and `entity_*` (the nearest precedent)
+  is pre-declared, not runtime-created.
+- **Time buckets** are one table, `_TIME_OF_DAY_BUCKETS`, that the extractor, the sort order
+  and the spec all read. The hour/minute range check in `_findCellTimeBucket()` is redundant
+  with the buckets' own bounds (25:99 = 1599 min, past 1439) — an `expect: "pass"` mutation.
+- **Test traps hit while writing the specs, all recurring:** (1) the render drops the merge-
+  checkbox column, so `tr.cells[i]` is one to the left of the fixture's `<thead>`; (2) a
+  rendered Release cell's `textContent` starts with the `▶` expand glyph — read the `<bdi>`;
+  (3) **`scripts/mutation-check.py`'s `grep` is a REGEX.** A title containing `(as` made
+  Playwright throw `SyntaxError: Invalid regular expression`, and that scores as a failing
+  test — two mutations reported `OK (expected fail, got fail)` while proving nothing. Read the
+  failure text, not just the verdict.
+- Glyphs: `🎭` (Roles) and `🕰️` (Editor membership) were already taken, so the Credited-as
+  and Time-of-day sections use `📛` (the same concept as "Credit details - Credited as") and
+  `🌅`. Glyph reuse is otherwise common in `SYN_SECTION_META` (`🔢` appears four times).
+- **Nothing was timed.** Each new scan is one extra `getCleanColumnText()` per cell, only on
+  the column it is gated to (Tracks reuses the per-medium parse it already had), and results go
+  through the existing `_uniqCacheHit` bundle. That is an argument, not a measurement — see
+  `tests/MEASUREMENTS.org` for how to take one if it matters.
+
+### Same day, after the first live check: four defects, three of them not in the new code
+
+Reported from real pages (screenshots + `debug/ISRCs-bug*.html`). Each was reproduced by a spec
+before it was fixed; every mutation is in `scripts/mutations/`.
+
+- **`highlightCrossTag()` put a phantom space wherever an EARLIER highlight had split a text
+  node.** Ticking "BUMA" wrapped it in a span, leaving "(" + `<span>BUMA</span>` + "/STEMRA ID)";
+  the function joins adjacent text nodes with a virtual space (to mirror `getCleanColumnText()`'s
+  `join(' ')`) except at a few punctuation boundaries, and `/` is not one — so the second regex
+  read "(BUMA /STEMRA ID)" and matched nothing. **`getCleanColumnText()` reads highlight spans
+  THROUGH, so the two strings had silently diverged the moment any highlight existed.** Fixed at
+  the root (no gap between two text nodes that are siblings once their highlight wrappers are
+  climbed out of), not per-highlighter. My first fix was a `\s*/\s*` in the one regex; it worked,
+  and it would have left every other multi-value highlight with the same latent bug. It was
+  reverted in favour of the shared rule. `uniq-drop-work-attr-slash-types.spec.js` pins it.
+- **"valid ISWC format" — and "valid ISRC format", "valid barcode format" — never highlighted.**
+  Only the invalid flags had a `_highlightXxxInvalidMatch()`. Plain omission; the valid entry
+  filtered fine, which is why nothing complained.
+- **ISRC segment entries ("» country: GB") never highlighted, for two separate reasons.**
+  (1) `initIsrcFormatting()` runs in the render tail AFTER `runFilter()` highlights, and it does
+  `code.textContent = ''` and rebuilds the four spans, wiping the mark — this is what hit the
+  single-table `instrument-recordings` page. (2) On `tableMode: 'multi'` the highlight runs on a
+  clone of an UNformatted source row (only live clones are ever formatted, and only afterwards), so
+  the segment spans the highlighter scopes to do not exist. Fix: `_formatIsrcAnchor()` skips an
+  already-formatted `<code>`, and `_formatIsrcAnchorsIn()` formats a clone before it is matched.
+  **A measured surprise: the "format the clone first" call on the single-table path is redundant**
+  (source rows there ARE the live rows, so they are already formatted) — the mutation for it is
+  `expect: "pass"`, and the idempotence guard is what actually fixes the reported page. The
+  multi-table call is justified by reasoning only: no fixture in the repo has an ISRC cell in a
+  multi-table render.
+- **"» year: 2005" could not mark "05".** The entry value is `yearFull`, the cell shows `YY`.
+- **"Entries which are NOT visible" (ISRCs 📊 after a pre-filter) was by design, not a bug:** the
+  offered `QM-KHM-17-00136` was the second item of a collapsed cell, and hidden items are
+  deliberately counted (ticking one shows the row and tints the ▶ toggle). Asked; the user chose
+  to KEEP them and mark them. `collapsedOnlyKeys` records an entry when no visible item matches it;
+  it is computed on a cache miss and stored in the counts bundle. ISRC segment kinds only — any
+  other list-fed family can adopt it by recording its own keys. **Trap: `getUniqDropSections()`
+  does NOT re-open an already-open panel**, so a second call reads the same DOM and never hits
+  the counts cache; a test of a cache HIT has to close the panel first (a mutation dropping the
+  key from the cached bundle passed until it did).
+
 ## 2026-09-26 — barcode format-validation feature (org/barcode.org)
 
 - `debug/barcode.html`: a real, rendered `releasegroup-releases` page (post-

@@ -1649,6 +1649,7 @@ below, which mixed unrelated topics under one header.
 | v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled"                                                                                                                                     |
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                      |
 | next      | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+| WIP (`uvd-tracks-total-time-length-ms`; put the real version here at merge) | Additions, not splits: `tracksTotal` (kind `trackstotal`), `lengthMs` (three flag modes `length-ms-*`), `timeOfDay` (kind `timeofday`, buckets in `_TIME_OF_DAY_BUCKETS`), `relTypeCredit` (kind `reltypecredit`, ONE static section with the type as an entry prefix rather than a runtime-created section per type). Also `_workAttrTypeLabels()`: "Attributes - Identifier type" now offers the parts of a slash-joined type (`BUMA/STEMRA ID` → `BUMA`, `STEMRA ID`) beside the compound. |
 
 ## Flags in the dropdown: two third-party shapes, and what "hollow" means
 
@@ -3392,6 +3393,23 @@ override has been switched back on.
   changes near the cleanup pass affect where pairs land
 - `getCleanColumnText` strips elements matching `_CLEAN_STRIP_SEL` — new hidden
   sort-key spans must be added there or they leak into filter matching
+- **A `_highlightXxxMatch()` regex runs against `highlightCrossTag()`'s own
+  `fullText`, not against `getCleanColumnText()`'s — and the two only agree if
+  `highlightCrossTag()` is careful.** `getCleanColumnText()` reads highlight
+  spans through; `highlightCrossTag()` walks the live text nodes, and any
+  earlier highlight (a typed filter, another ticked entry) has already split
+  one node into several, which it joins with a virtual space. Since 2026-09-26
+  it adds NO gap between two nodes that were one node before a highlight
+  wrapper split them (`splitByHighlight`). Reported as "ticking BUMA then STEMRA
+  ID highlights only BUMA". **Do not fix a symptom of this with `\s*` inside one
+  highlighter's regex** — that hides it for one column and leaves the rest. A
+  test for a highlighter has to tick TWO entries that mark the same text, in
+  both orders; a single tick can never see it.
+- **Highlight AFTER the DOM you are highlighting is final.** `runFilter()`
+  highlights a fresh clone, and `initIsrcFormatting()` (like any render-tail
+  rebuild of a cell's inner markup) runs after it: a tail pass that replaces
+  spans wipes the marks placed inside them. Make the tail pass idempotent
+  (`_formatIsrcAnchor()`), or do the transform on the clone before matching.
 - `activeDefinition` is a module-level variable updated by `startFetchingProcess` —
   helper functions called during fetch see the merged definition, not `baseDefinition`
 - `sortLargeArray` is async — callers must `await` it before touching the sorted array

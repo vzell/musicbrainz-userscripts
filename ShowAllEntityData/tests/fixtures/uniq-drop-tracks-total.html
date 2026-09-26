@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Release group "Tracks Total Test" by Test Artist - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Row skeleton copied from releasegroup-releases-catalog-prefix.html;
+        only the Release title/href and the Tracks cell vary. Regression
+        fixture for _findCellTracksTotal() / "Tracks info - Total" — see
+        debug/tracks-total.html for the real page it was modeled on. The
+        four Tracks shapes are chosen so per-medium and total DISAGREE:
+
+          "15"        one medium          -> per-medium 15,   total 15
+          "5 + 5 + 5" three mediums       -> per-medium 5,    total 15
+          "9 + 6"     two mediums         -> per-medium 9, 6, total 15
+          "10"        one medium          -> per-medium 10,   total 10
+
+        so "trackspermedium:15" matches ONE row while "trackstotal:15"
+        matches THREE — the property a conflation of the two would break.
+    -->
+    <div id="page">
+        <div id="content">
+            <div class="wrap-anywhere rgheader">
+                <h1><a href="/release-group/aaaaaaaa-0000-0000-0000-000000000002"><bdi>Tracks Total Test</bdi></a></h1>
+            </div>
+            <div class="tabs">
+                <ul class="tabs">
+                    <li class="sel"><a href="/release-group/aaaaaaaa-0000-0000-0000-000000000002"><bdi>Overview</bdi></a></li>
+                </ul>
+            </div>
+            <h2>Album</h2>
+            <table class="tbl mergeable-table">
+                <thead>
+                    <tr>
+                        <th class="checkbox-cell"><input type="checkbox"></th>
+                        <th>Release</th>
+                        <th>Artist</th>
+                        <th>Format</th>
+                        <th>Tracks</th>
+                        <th>Country/Date</th>
+                        <th>Label</th>
+                        <th>Catalog#</th>
+                        <th>Barcode</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="1"></td>
+                        <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111101"><bdi>One Medium 15</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>15</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td class="barcode-cell"></td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="2"></td>
+                        <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111102"><bdi>Three Mediums</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f">Test Artist</a></bdi></td>
+                        <td>3×CD</td>
+                        <td>5 + 5 + 5</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td class="barcode-cell"></td>
+                    </tr>
+                    <tr class="odd">
+                        <td><input type="checkbox" name="add-to-merge" value="3"></td>
+                        <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111103"><bdi>Two Mediums</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f">Test Artist</a></bdi></td>
+                        <td>2×CD</td>
+                        <td>9 + 6</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td class="barcode-cell"></td>
+                    </tr>
+                    <tr class="even">
+                        <td><input type="checkbox" name="add-to-merge" value="4"></td>
+                        <td><a class="wrap-anywhere" href="/release/11111111-1111-1111-1111-111111111104"><bdi>One Medium 10</bdi></a></td>
+                        <td><bdi><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f">Test Artist</a></bdi></td>
+                        <td>CD</td>
+                        <td>10</td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td class="barcode-cell"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

@@ -23106,6 +23106,35 @@
     }
 
     /**
+     * Every dropdown label a work-attribute identifier TYPE name is offered
+     * under: the name itself, plus — when it is a slash-joined compound such
+     * as `"BUMA/STEMRA ID"` — each slash-separated part on its own
+     * (`"BUMA"`, `"STEMRA ID"`). The compound stays: the parts are offered
+     * ADDITIONALLY, so a user can filter on either the exact society badge or
+     * on one society across every compound that names it. Surrounding
+     * whitespace is trimmed and empty parts dropped; a name with no `/`
+     * yields just itself. The parts are the literal text either side of the
+     * slash, NOT a re-derived "BUMA ID".
+     *
+     * The one function counting (`openUniqDrop()`), matching
+     * (`_cellMatchesStructureMode()`'s `workattrid:`) and highlighting
+     * (`_highlightWorkAttributeIdMatch()`) all resolve labels through, so the
+     * three cannot disagree about what a type is called.
+     *
+     * @param {string} typeName - A `typeName` from `_findCellWorkAttributeIdentifiers()`.
+     * @returns {string[]} The compound first, then its parts, de-duplicated.
+     */
+    function _workAttrTypeLabels(typeName) {
+        const labels = [typeName];
+        if (typeName.includes('/')) {
+            typeName.split('/').map(s => s.trim()).filter(Boolean).forEach(part => {
+                if (!labels.includes(part)) labels.push(part);
+            });
+        }
+        return labels;
+    }
+
+    /**
      * Extracts country/date/weekday parts from a "Country/Date" cell, one
      * entry per `.release-event` — mirrors `splitCountryDate()`'s own DOM
      * walk (`ColumnDataExtractor`) exactly, including its handling of a
@@ -23269,6 +23298,38 @@
     }
 
     /**
+     * Sums a "Tracks" cell's per-medium track counts — e.g. `"5 + 5 + 5"` →
+     * `"15"`, a bare `"15"` → `"15"`. Built on `_findCellTracksPerMedium()`
+     * so the two can never disagree about what a per-medium count is, and
+     * it yields the same figure `sumTracks()` (`ColumnDataExtractor`)
+     * writes into the synthetic "Total Tracks" column.
+     *
+     * Deliberately only called for the "Tracks" column itself (gated by
+     * column name at the `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} The total as a decimal string, or `null` when the
+     *   cell holds no per-medium count at all.
+     */
+    function _findCellTracksTotal(cell) {
+        return _sumTracksPerMedium(_findCellTracksPerMedium(cell));
+    }
+
+    /**
+     * Sums an already-extracted per-medium list (`_findCellTracksPerMedium()`'s
+     * result). Split out so `openUniqDrop()`'s counting loop, which has that
+     * list in hand for its per-medium tally, does not parse every "Tracks"
+     * cell a second time to get the total.
+     *
+     * @param {string[]} perMedium - Decimal strings, e.g. `['5', '5', '5']`.
+     * @returns {?string} The total as a decimal string, or `null` for an empty list.
+     */
+    function _sumTracksPerMedium(perMedium) {
+        if (perMedium.length === 0) return null;
+        return String(perMedium.reduce((acc, n) => acc + parseInt(n, 10), 0));
+    }
+
+    /**
      * Buckets a "Length" cell's own displayed duration into a fixed-width
      * "N to N+1 minutes" range — e.g. `"5:05.146"` → `"5 to 6 minutes"`,
      * `"0:45"` → `"0 to 1 minutes"` — or `"Unknown length"` for
@@ -23308,6 +23369,136 @@
         if (!m) return null;
         const minutes = parseInt(m[1], 10);
         return `${minutes} to ${minutes + 1} minutes`;
+    }
+
+    /**
+     * Classifies a "Length" cell's millisecond precision: `'precise'` (a
+     * sub-second part other than `.000`), `'whole'` (milliseconds are known
+     * and are exactly `.000`, so MusicBrainz holds nothing finer than the
+     * second) or `'none'` (no millisecond data — the ⏱ toggle was never
+     * pressed, the page has none, or the cell is MusicBrainz's `?:??`).
+     *
+     * Reads the STAMP first: `data-mb-ms` holds the true millisecond value
+     * whether or not the cell is currently DISPLAYING it (⏱ off shows the
+     * rounded seconds, but the fact is still on the cell). Only when there is
+     * no stamp does it fall back to a `.mmm` suffix in the visible text —
+     * cells hydrated from a saved snapshot lose their `data-mb-*` (see
+     * `_msResetCarriedOverPrecision()`), and third-party scripts can render
+     * milliseconds of their own. The text is read through
+     * `getCleanColumnText()` so the `.mb-ic-*` split-alignment spans and a
+     * previous pass's highlight span are read as one plain "2:13.250".
+     *
+     * Deliberately only called for the "Length" column itself (gated by
+     * column name at the `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?('precise'|'whole'|'none')} `null` only for a missing cell.
+     */
+    function _findCellLengthMsState(cell) {
+        if (!cell) return null;
+        const stamped = parseInt(cell.dataset.mbMs, 10);
+        if (Number.isFinite(stamped)) return stamped % 1000 === 0 ? 'whole' : 'precise';
+        const m = getCleanColumnText(cell).match(/^\d+:\d{2}\.(\d{1,3})/);
+        if (!m) return 'none';
+        return parseInt(m[1].padEnd(3, '0'), 10) === 0 ? 'whole' : 'precise';
+    }
+
+    /**
+     * Extracts every `(as “credit”)` part of a "Relationship types" cell —
+     * `instrument (as “lead guitar”)` → `{type: 'instrument', credit: 'lead
+     * guitar'}`. One entry per list item (the column is a `renderMultiRowCell`
+     * `<ul><li>`, see `applyRenderMultiRowCells()`, which splits on commas at
+     * parenthesis depth 0 only — so a credit containing a comma, such as
+     * `“acoustic, electric guitar”`, is ONE item and yields ONE entry). A
+     * plain `instrument` item with no credit yields nothing; it is already
+     * offered as the column's ordinary unique value.
+     *
+     * Reads each item through `getCleanColumnText()` (never `textContent`),
+     * so a previous pass's highlight span is read through, and a collapsed
+     * (`display:none`) item is still seen. Accepts curly and straight quote
+     * marks: MusicBrainz renders curly ones, but the documented shape uses
+     * straight ones and nothing here should depend on which.
+     *
+     * Deliberately only called for the "Relationship types" column itself
+     * (gated by column name at the `openUniqDrop()` call site).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {Array<{type: string, credit: string, el: Element}>} `el` is
+     *   the list item the credit was read from (the cell itself when it holds
+     *   no list).
+     */
+    function _findCellRelTypeCredits(cell) {
+        if (!cell) return [];
+        const items = Array.from(cell.querySelectorAll('li'));
+        const nodes = items.length ? items : [cell];
+        const out = [];
+        nodes.forEach(el => {
+            const m = getCleanColumnText(el).trim().match(/^(.+?)\s+\(as\s+[\u201C"\u2018'](.+)[\u201D"\u2019']\)$/);
+            if (!m) return;
+            out.push({ type: m[1].trim(), credit: m[2].trim(), el });
+        });
+        return out;
+    }
+
+    /**
+     * The dropdown value (and compound-mode payload) for one relationship
+     * credit — `"instrument as: lead guitar"`. The ONE place that spells it,
+     * so the counter, the matcher and the highlighter cannot disagree.
+     *
+     * @param {{type: string, credit: string}} c - An entry of `_findCellRelTypeCredits()`.
+     * @returns {string}
+     */
+    function _relTypeCreditValue(c) {
+        return `${c.type} as: ${c.credit}`;
+    }
+
+    /**
+     * The fixed parts of the day a "Time" cell's start time is bucketed into
+     * — the one table `_findCellTimeBucket()`, the dropdown's sort order and
+     * the tests all share. `from`/`to` are minutes since midnight, inclusive
+     * on both ends; the five ranges tile the whole day with no gap and no
+     * overlap. The `label` doubles as the compound-mode value
+     * (`timeofday:<label>`), so it is what the dropdown entry displays.
+     *
+     * Listed in CLOCK order (Night, though it starts at 00:00, is last): the
+     * dropdown reads morning → night, and a show starting after midnight is
+     * the exceptional case rather than the start of the day.
+     */
+    const _TIME_OF_DAY_BUCKETS = [
+        { label: 'Morning (before lunch, 04:00-11:59)',                       from: 240,  to: 719  },
+        { label: 'Lunch (12:00-12:59)',                                       from: 720,  to: 779  },
+        { label: 'Afternoon (after lunch / festival start, 13:00-17:59)',     from: 780,  to: 1079 },
+        { label: 'Evening (typical concert time, 18:00-23:59)',               from: 1080, to: 1439 },
+        { label: 'Night (after midnight, 00:00-03:59)',                       from: 0,    to: 239  }
+    ];
+
+    /**
+     * Buckets a "Time" cell's own "HH:MM" start time into one of
+     * `_TIME_OF_DAY_BUCKETS` — e.g. `"19:30"` → the Evening label. Only the
+     * leading `H:MM`/`HH:MM` is read, so a range ("19:00 - 22:00") buckets by
+     * its START, which is when the event actually begins. Reads through
+     * `getCleanColumnText()` (never `textContent`), so a live filter-highlight
+     * span inside the cell is read through rather than missed on a second
+     * filter/reopen pass.
+     *
+     * Deliberately only called for the "Time" column itself (gated by column
+     * name at the `openUniqDrop()` call site), matching
+     * `_findCellLengthBucket()`'s own gating precedent.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?string} A `_TIME_OF_DAY_BUCKETS` label, or `null` for an
+     *   empty cell or text that is not a valid clock time (hour 0-23,
+     *   minute 0-59) — an empty cell stays under the "empty cells" entry.
+     */
+    function _findCellTimeBucket(cell) {
+        if (!cell) return null;
+        const m = getCleanColumnText(cell).match(/^\s*(\d{1,2}):(\d{2})\b/);
+        if (!m) return null;
+        const hour = parseInt(m[1], 10), minute = parseInt(m[2], 10);
+        if (hour > 23 || minute > 59) return null;
+        const minutes = hour * 60 + minute;
+        const bucket = _TIME_OF_DAY_BUCKETS.find(b => minutes >= b.from && minutes <= b.to);
+        return bucket ? bucket.label : null;
     }
 
     /**
@@ -23555,6 +23746,22 @@
             });
         });
         return out;
+    }
+
+    /**
+     * Whether `el` sits inside a list item that the column's collapse has
+     * hidden (`<li style="display:none">`) — i.e. it exists in the cell but
+     * is not on screen until the cell is expanded. Only the item's own inline
+     * `display` is read: that is exactly what `_applyCollapseState()` writes,
+     * and it needs no layout (unlike `offsetParent`), so it costs nothing per
+     * cell and is right on a detached clone too.
+     *
+     * @param {?Element} el
+     * @returns {boolean}
+     */
+    function _isCollapsedHiddenItem(el) {
+        const li = el && el.closest('li');
+        return !!li && li.style.display === 'none';
     }
 
     /**
@@ -24723,7 +24930,7 @@
             // DIFFERENT cell shape from 'recattr:' above despite the shared
             // column name — see _findCellWorkAttributeIdentifiers()'s JSDoc.
             const want = mode.slice(11);
-            return !!cell && _findCellWorkAttributeIdentifiers(cell).some(p => p.typeName === want);
+            return !!cell && _findCellWorkAttributeIdentifiers(cell).some(p => _workAttrTypeLabels(p.typeName).includes(want));
         }
         if (mode.startsWith('revcountry:')) {
             // Compound mode — matches one "Country/Date" release event's
@@ -24765,6 +24972,13 @@
             // own extraction.
             const want = mode.slice(16);
             return !!cell && _findCellTracksPerMedium(cell).includes(want);
+        }
+        if (mode.startsWith('trackstotal:')) {
+            // Compound mode — matches one "Tracks" cell's SUMMED track
+            // count (e.g. "15" for "5 + 5 + 5"), from
+            // _findCellTracksTotal()'s own extraction.
+            const want = mode.slice(12);
+            return !!cell && _findCellTracksTotal(cell) === want;
         }
         if (mode === 'multi-medium') {
             // Binary flag — true when the "Tracks" cell shows more than
@@ -24867,6 +25081,25 @@
             // _findCellLengthBucket()'s own extraction.
             const want = mode.slice(13);
             return !!cell && _findCellLengthBucket(cell) === want;
+        }
+        if (mode.startsWith('reltypecredit:')) {
+            // Compound mode — matches a "Relationship types" cell holding a
+            // list item credited as this value ("instrument as: lead
+            // guitar"), from _findCellRelTypeCredits()'s own extraction.
+            const want = mode.slice(14);
+            return !!cell && _findCellRelTypeCredits(cell).some(c => _relTypeCreditValue(c) === want);
+        }
+        if (mode === 'length-ms-precise' || mode === 'length-ms-whole' || mode === 'length-ms-none') {
+            // Fixed flags — a "Length" cell's millisecond precision, from
+            // _findCellLengthMsState()'s own classification.
+            return !!cell && _findCellLengthMsState(cell) === mode.slice(10);
+        }
+        if (mode.startsWith('timeofday:')) {
+            // Compound mode — matches a "Time" cell whose start time falls
+            // in one _TIME_OF_DAY_BUCKETS part of the day, from
+            // _findCellTimeBucket()'s own extraction.
+            const want = mode.slice(10);
+            return !!cell && _findCellTimeBucket(cell) === want;
         }
         if (mode === 'catalog-has-prefix') {
             // Binary flag — true when at least one "Catalog#" list item has
@@ -44303,10 +44536,30 @@ a { color: #1565c0; }`;
                 const nextFirstChar = text[0];
                 const prevIcWrap = prevNode.parentElement && prevNode.parentElement.closest('.mb-ic-wrap');
                 const curIcWrap  = node.parentElement && node.parentElement.closest('.mb-ic-wrap');
+                // ALSO except when the two nodes are adjacent ONLY because an
+                // earlier highlight pass split one text node around a match
+                // (`"(" + <span>BUMA</span> + "/STEMRA ID)"`). getCleanColumnText()
+                // reads highlight spans through, so it still sees one
+                // contiguous string there; a virtual gap would put a space
+                // where the original text has none and make every later regex
+                // that spans the split ("(BUMA/STEMRA ID)") fail to match.
+                // Reported live: ticking "BUMA" then "STEMRA ID" highlighted
+                // only the first. Two nodes that are siblings once their
+                // highlight wrappers are climbed out of were one text node.
+                const _climbOutOfHighlight = (n) => {
+                    let top = n;
+                    while (top.parentElement && top.parentElement !== root &&
+                           top.parentElement.matches(_COLLAPSE_MATCH_SEL)) top = top.parentElement;
+                    return top;
+                };
+                const prevTop = _climbOutOfHighlight(prevNode);
+                const curTop  = _climbOutOfHighlight(node);
+                const splitByHighlight = (prevTop !== prevNode || curTop !== node) && prevTop.nextSibling === curTop;
                 const skipGap = nextFirstChar === ',' || nextFirstChar === ')' || nextFirstChar === ']' ||
                     prevLastChar === '(' || prevLastChar === '[' ||
                     /\s/.test(prevLastChar) || /\s/.test(nextFirstChar) ||
-                    (prevIcWrap && prevIcWrap === curIcWrap);
+                    (prevIcWrap && prevIcWrap === curIcWrap) ||
+                    splitByHighlight;
                 if (!skipGap) gap = ' ';
             }
             offset += gap.length;
@@ -45228,6 +45481,11 @@ a { color: #1565c0; }`;
         // that used to share one flat header.
         tracksCount:       { label: 'Tracks info - Tracks',        glyph: '🎵' },
         tracksMultiMedium: { label: 'Tracks info - Multi-medium',  glyph: '💽' },
+        // "Tracks info - Total" — the SUM of the per-medium counts (the same
+        // number `sumTracks()` puts in the synthetic "Total Tracks" column),
+        // as its own open value family. Distinct from `tracksCount`, which
+        // lists each medium's own count: "5 + 5 + 5" is `5` there and `15` here.
+        tracksTotal:       { label: 'Tracks info - Total',         glyph: '🔢' },
         // "Catalog info" is split the same way: the actual catalog-prefix
         // VALUES (`catalogprefix`, a kind) vs. the three prefix-presence
         // structural FLAGS (`catalog-has-prefix`/`catalog-no-prefix`/
@@ -45292,6 +45550,29 @@ a { color: #1565c0; }`;
         // `_getLengthColumnAverages()`'s own JSDoc. Only rendered when the
         // table actually has a recognized live-flag column (`hasLiveCol`).
         lengthLiveStatus: { label: 'Length info - Live status', glyph: '🎙️' },
+        // "Time info - Time of day" — a "Time" cell's own "HH:MM" start time
+        // bucketed into a handful of fixed, human-meaningful parts of the
+        // day by `_findCellTimeBucket()` (see `_TIME_OF_DAY_BUCKETS`). An
+        // open-shaped value family like `lengthBucket`: only the buckets
+        // actually present on the page are offered, in clock order.
+        timeOfDay: { label: 'Time info - Time of day', glyph: '🌅' },
+        // "Length info - Milliseconds" — a FIXED 3-flag family (like
+        // `lengthLiveStatus` above): whether a "Length" cell carries real
+        // sub-second precision (`.mmm` other than `.000`), only whole
+        // seconds (`.000`, i.e. MusicBrainz stores nothing finer), or no
+        // millisecond data at all (⏱ not pressed / none on record). See
+        // `_findCellLengthMsState()`. Only offered once some cell carries
+        // milliseconds, so it never shows an "everything is 'none'" panel.
+        lengthMs: { label: 'Length info - Milliseconds', glyph: '⏲️' },
+        // "Relationship types - Credited as" — the `(as “credit”)` part of a
+        // "Relationship types" list item (an instrument/vocal/… relationship
+        // credited under a different name than the entity's own), listed as
+        // its own open value family beside the whole-value list. Entries read
+        // "» <type> as: <credit>" ("» instrument as: lead guitar"), so ONE
+        // section serves every relationship type on the page; the type
+        // prefix is what keeps "instrument as: guitars" and "vocal as:
+        // guitars" apart. See `_findCellRelTypeCredits()`.
+        relTypeCredit: { label: 'Relationship types - Credited as', glyph: '📛' },
         // "Part of series" (release-tracks' dynamic-fallback "part of:" AR
         // column — see PEER_SPLIT_KINDS' own JSDoc) split into one
         // sub-section per facet of a single credited series, mirroring
@@ -45459,6 +45740,7 @@ a { color: #1565c0; }`;
         'lengthdeviation-shorter25to50': 'lengthDeviation', 'lengthdeviation-longer25to50': 'lengthDeviation',
         'lengthdeviation-shorter50plus': 'lengthDeviation', 'lengthdeviation-longer50plus': 'lengthDeviation',
         'lengthlive-yes': 'lengthLiveStatus', 'lengthlive-no': 'lengthLiveStatus',
+        'length-ms-precise': 'lengthMs', 'length-ms-whole': 'lengthMs', 'length-ms-none': 'lengthMs',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
@@ -45507,11 +45789,14 @@ a { color: #1565c0; }`;
         revcountry: 'releaseEventsCountry', revdate: 'releaseEventsDate', revweekday: 'releaseEventsWeekday',
         countryname: 'countryNameInfo', countrycode: 'countryCodeInfo',
         trackspermedium: 'tracksCount',
+        trackstotal: 'tracksTotal',
         catalogprefix: 'catalogPrefix',
         isrccountry: 'isrcCountry', isrcregistrant: 'isrcRegistrant',
         isrcyear: 'isrcYear', isrcdesignation: 'isrcDesignation',
         barcodeformat: 'barcodeFormat', barcodesameas: 'barcodeSameAs',
         lengthbucket: 'lengthBucket',
+        timeofday: 'timeOfDay',
+        reltypecredit: 'relTypeCredit',
         partofseriesname: 'partOfSeriesName', partofseriesdate: 'partOfSeriesDate', partofseriesnumber: 'partOfSeriesNumber',
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
@@ -46332,8 +46617,6 @@ a { color: #1565c0; }`;
         const partKey = mode.slice(0, colon);
         const _want = mode.slice(colon + 1);
         if (!_want) return;
-        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
         const _elKey = { isrccountry: 'countryEl', isrcregistrant: 'registrantEl',
                           isrcyear: 'yearEl', isrcdesignation: 'designationEl' }[partKey];
         const _valueKey = { isrccountry: 'country', isrcregistrant: 'registrant',
@@ -46342,9 +46625,66 @@ a { color: #1565c0; }`;
             if (!p.valid || String(p[_valueKey]) !== _want) return;
             const target = p[_elKey] || p.el;
             if (!target) return;
+            // The entry's VALUE is the 4-digit year ("2005"), but the cell
+            // DISPLAYS the 2-digit YY segment ("05") — so the text to mark is
+            // `p.year`, not the entry value. Every other segment displays
+            // exactly its own value.
+            const _shown = partKey === 'isrcyear' ? p.year : _want;
+            const _escaped = _shown.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             target.normalize();
-            highlightCrossTag(target, _regex, 'mb-column-filter-highlight');
+            highlightCrossTag(target, new RegExp(`\\b${_escaped}\\b`, 'g'), 'mb-column-filter-highlight');
         });
+    }
+
+    /**
+     * Highlights every VALID "ISRCs" cell entry for the `isrc-valid` binary
+     * flag — the counterpart of `_highlightIsrcInvalidMatch()`, which the
+     * invalid flag had and the valid one never did (so ticking "valid ISRC
+     * format" narrowed the rows and marked nothing). Marks the whole anchor,
+     * for the same reason: the flag is about the code as a whole, not a
+     * segment. The highlight survives because `_formatIsrcAnchor()` no longer
+     * rebuilds an already-formatted `<code>`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIsrcValidMatch(cell) {
+        if (!cell) return;
+        _findCellIsrcParts(cell).forEach(p => {
+            if (!p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights every VALID "ISWC" cell entry for the `iswc-valid` binary
+     * flag — the counterpart of `_highlightIswcInvalidMatch()` (see
+     * `_highlightIsrcValidMatch()` for why it was missing).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightIswcValidMatch(cell) {
+        if (!cell) return;
+        _findCellIswcParts(cell).forEach(p => {
+            if (!p.valid || !p.el) return;
+            p.el.normalize();
+            highlightCrossTag(p.el, /[\s\S]+/g, 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights a VALID "Barcode" cell for the `barcode-valid` binary flag —
+     * the counterpart of `_highlightBarcodeInvalidMatch()`, same omission and
+     * same fix as `_highlightIsrcValidMatch()`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightBarcodeValidMatch(cell) {
+        if (!cell) return;
+        const part = _findCellBarcodeParts(cell)[0];
+        if (!part || !part.valid) return;
+        cell.normalize();
+        highlightCrossTag(cell, /[\s\S]+/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -46591,6 +46931,98 @@ a { color: #1565c0; }`;
         const _regex = new RegExp(`\\b${_escaped}\\b`, 'g');
         cell.normalize();
         highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for a `trackstotal:` compound
+     * structure-mode filter. A single-medium cell ("15") holds the total as
+     * literal text, so it is marked exactly like `_highlightTracksPerMediumMatch()`
+     * does. A multi-medium cell ("5 + 5 + 5") holds NO text equal to its
+     * total — the sum exists nowhere in the DOM — so the whole "N + N + …"
+     * run is marked instead, which is the only honest thing to point at.
+     * Verifies against `_findCellTracksTotal()` first, the same "verify
+     * before highlighting" pattern as every other `_highlightXxxMatch()`.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"trackstotal:15"`.
+     */
+    function _highlightTracksTotalMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(12);
+        if (!_want || _findCellTracksTotal(cell) !== _want) return;
+        const _regex = _findCellTracksPerMedium(cell).length > 1
+            ? /\d+(?:\s*\+\s*\d+)+/g
+            : new RegExp(`\\b${_want}\\b`, 'g');
+        cell.normalize();
+        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the credit text for a `reltypecredit:` compound
+     * structure-mode filter — re-derives from `_findCellRelTypeCredits()`
+     * ("verify before highlighting") and marks only the credit inside the
+     * quotes of the ONE list item that matched. The lookarounds pin the mark
+     * to the text between `(as “` and `”)`, so the same word appearing in the
+     * relationship TYPE ("guitar" in `guitar (as “guitar”)`) is not marked
+     * twice, and a same-credit item of a different type is left alone
+     * because the search is scoped to that item's own element.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"reltypecredit:instrument as: lead guitar"`.
+     */
+    function _highlightRelTypeCreditMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(14);
+        if (!_want) return;
+        const _esc = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        _findCellRelTypeCredits(cell).forEach(c => {
+            if (_relTypeCreditValue(c) !== _want) return;
+            c.el.normalize();
+            highlightCrossTag(c.el, new RegExp(`(?<=\\(as\\s+[\u201C"\u2018'])${_esc(c.credit)}(?=[\u201D"\u2019']\\))`, 'g'), 'mb-column-filter-highlight');
+        });
+    }
+
+    /**
+     * Highlights the millisecond part (`.250`, `.000`) for a `length-ms-precise`/
+     * `length-ms-whole` structure-mode filter — re-derives from
+     * `_findCellLengthMsState()` first ("verify before highlighting").
+     * `length-ms-none` marks nothing on purpose: the flag means the cell has
+     * NO millisecond text, so there is no substring to point at. Likewise a
+     * cell whose milliseconds are stamped but not currently DISPLAYED (⏱ off)
+     * matches the filter yet has no `.mmm` in its text, so the regex simply
+     * finds nothing. The regex requires a `.` after `M:SS`, so it cannot land
+     * on anything else in this column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `"length-ms-precise"`, `"length-ms-whole"` or `"length-ms-none"`.
+     */
+    function _highlightLengthMsMatch(cell, mode) {
+        if (!cell || mode === 'length-ms-none') return;
+        if (_findCellLengthMsState(cell) !== mode.slice(10)) return;
+        cell.normalize();
+        highlightCrossTag(cell, /(?<=\d:\d{2})\.\d{1,3}/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for a `timeofday:` compound
+     * structure-mode filter — re-derives from `_findCellTimeBucket()`
+     * directly ("verify before highlighting", like every other
+     * `_highlightXxxMatch()` here), then marks the cell's own leading
+     * "HH:MM" text. "Time" has no per-value wrapper element, same reasoning
+     * as `_highlightLengthBucketMatch()`; the regex needs digits either side
+     * of a literal `:`, so it cannot land anywhere else in this column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g.
+     *   `"timeofday:Evening (typical concert time, 18:00-23:59)"`.
+     */
+    function _highlightTimeOfDayMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(10);
+        if (!_want || _findCellTimeBucket(cell) !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /\d{1,2}:\d{2}/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -47209,10 +47641,25 @@ a { color: #1565c0; }`;
         if (!cell) return;
         const _want = mode.slice(11);
         if (!_want) return;
-        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const _regex = new RegExp(`\\(${_escaped}\\)`, 'g');
+        const _esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         _findCellWorkAttributeIdentifiers(cell).forEach(p => {
-            if (p.typeName !== _want || !p.el) return;
+            if (!p.el || !_workAttrTypeLabels(p.typeName).includes(_want)) return;
+            const _parts = p.typeName.split('/').map(s => s.trim());
+            let _regex;
+            if (p.typeName === _want) {
+                _regex = new RegExp(`\\(${_parts.map(_esc).join('/')}\\)`, 'g');
+            } else {
+                // One slash-separated PART of a compound name (e.g. "BUMA"
+                // of "BUMA/STEMRA ID"): mark only that part, and only where
+                // it sits inside this badge's own parenthesized type name —
+                // the lookarounds pin it there, so the same word inside the
+                // badge's VALUE is never marked.
+                const _i = _parts.indexOf(_want);
+                if (_i < 0) return;
+                const _before = _parts.slice(0, _i).map(s => `${_esc(s)}/`).join('');
+                const _after  = _parts.slice(_i + 1).map(s => `/${_esc(s)}`).join('');
+                _regex = new RegExp(`(?<=\\(${_before})${_esc(_parts[_i])}(?=${_after}\\))`, 'g');
+            }
             p.el.normalize();
             highlightCrossTag(p.el, _regex, 'mb-column-filter-highlight');
         });
@@ -47853,7 +48300,8 @@ a { color: #1565c0; }`;
                     // 'joinphrase:'/'namevariation:'/'revcountry:'/'countryname:'/
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
-                    // 'partofseriesnumber:'/'trackspermedium:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
+                    // 'partofseriesnumber:'/'trackspermedium:'/'trackstotal:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
+                    // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark)/
                     // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -47918,10 +48366,16 @@ a { color: #1565c0; }`;
                                     _highlightIsrcPartMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'isrc-invalid') {
                                     _highlightIsrcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'isrc-valid') {
+                                    _highlightIsrcValidMatch(row.cells[f.idx]);
                                 } else if (mode === 'iswc-invalid') {
                                     _highlightIswcInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'iswc-valid') {
+                                    _highlightIswcValidMatch(row.cells[f.idx]);
                                 } else if (mode === 'barcode-invalid') {
                                     _highlightBarcodeInvalidMatch(row.cells[f.idx]);
+                                } else if (mode === 'barcode-valid') {
+                                    _highlightBarcodeValidMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('barcodeformat:')) {
                                     _highlightBarcodeFormatMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('barcodesameas:')) {
@@ -47932,8 +48386,16 @@ a { color: #1565c0; }`;
                                     _highlightPartOfSeriesNumberMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackspermedium:')) {
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('trackstotal:')) {
+                                    _highlightTracksTotalMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthbucket:')) {
                                     _highlightLengthBucketMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('reltypecredit:')) {
+                                    _highlightRelTypeCreditMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'length-ms-precise' || mode === 'length-ms-whole' || mode === 'length-ms-none') {
+                                    _highlightLengthMsMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('timeofday:')) {
+                                    _highlightTimeOfDayMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthdeviation-')) {
                                     _highlightLengthDeviationMatch(row.cells[f.idx], mode, ctx.table);
                                 } else if (mode === 'lengthlive-yes' || mode === 'lengthlive-no') {
@@ -48633,6 +49095,7 @@ a { color: #1565c0; }`;
                     // [data-caa-expand-btn] span; without this call any cells the user
                     // had expanded would snap back to collapsed on every filter keystroke.
                     _restoreArtExpandState(clone);
+                    _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass
                     testRowMatch(clone, matchCtx);
                     return clone;
                 });
@@ -48849,6 +49312,7 @@ a { color: #1565c0; }`;
                 // state, so expandedCells is the only way to replay the user's
                 // expand/collapse choices onto clones after every filter re-render.
                 _restoreArtExpandState(clone);
+                _formatIsrcAnchorsIn(clone);   // segments must exist BEFORE the highlight pass
                 testRowMatch(clone, matchCtx);
                 return clone;
             });
@@ -59880,6 +60344,10 @@ a { color: #1565c0; }`;
         // — see `_findCellTracksPerMedium()`'s own JSDoc. Column-gated
         // (isTracksCol below).
         const tracksPerMediumValueCounts = _uniqCacheHit ? _uniqCacheHit.tracksPerMediumValueCounts : new Map();
+        // Distinct "Tracks" cell SUMMED track counts (e.g. "15" for
+        // "5 + 5 + 5") — see `_findCellTracksTotal()`'s own JSDoc.
+        // Column-gated (isTracksCol below).
+        const tracksTotalValueCounts = _uniqCacheHit ? _uniqCacheHit.tracksTotalValueCounts : new Map();
         // Distinct "Catalog#" list-item prefix values (e.g. "CBS", "S
         // CBS") — see `_findCellCatalogParts()`'s own JSDoc. Column-gated
         // (isCatalogCol below).
@@ -59891,6 +60359,15 @@ a { color: #1565c0; }`;
         const isrcRegistrantValueCounts  = _uniqCacheHit ? _uniqCacheHit.isrcRegistrantValueCounts  : new Map();
         const isrcYearValueCounts        = _uniqCacheHit ? _uniqCacheHit.isrcYearValueCounts        : new Map();
         const isrcDesignationValueCounts = _uniqCacheHit ? _uniqCacheHit.isrcDesignationValueCounts : new Map();
+        // Entries (`"<kind>:<value>"`) whose EVERY matching item sits inside a
+        // collapsed (hidden) list item — rendered with a ▶ marker so a user is
+        // not left hunting the page for a code that is not on screen until
+        // the cell is expanded. Filled at the end of a cache-MISS pass from the
+        // two scratch sets below, which only that pass populates. ISRC segment
+        // kinds only for now (the reported column); any other list-fed family
+        // can adopt the same set by recording its keys in its own counting block.
+        const collapsedOnlyKeys = _uniqCacheHit ? _uniqCacheHit.collapsedOnlyKeys : new Set();
+        const _seenItemKeys = new Set(), _visibleItemKeys = new Set();
         // "Barcode - Format" — ONLY ever populated from valid entries (see
         // isBarcodeCol's own scan below): "conforms to spec" and "has a
         // determinable format" are the same fact for a barcode.
@@ -59913,6 +60390,14 @@ a { color: #1565c0; }`;
         // minutes", "Unknown length") — see `_findCellLengthBucket()`'s
         // own JSDoc. Column-gated (isLengthCol below).
         const lengthBucketValueCounts = _uniqCacheHit ? _uniqCacheHit.lengthBucketValueCounts : new Map();
+        // Distinct "Time info - Time of day" bucket labels (see
+        // `_TIME_OF_DAY_BUCKETS`) — see `_findCellTimeBucket()`'s own JSDoc.
+        // Column-gated (isTimeCol below).
+        const timeOfDayValueCounts = _uniqCacheHit ? _uniqCacheHit.timeOfDayValueCounts : new Map();
+        // Distinct "Relationship types - Credited as" values ("instrument as:
+        // lead guitar") — see `_findCellRelTypeCredits()`'s own JSDoc.
+        // Column-gated (isRelTypesCol below).
+        const relTypeCreditValueCounts = _uniqCacheHit ? _uniqCacheHit.relTypeCreditValueCounts : new Map();
         // Distinct "Part of series" list-item series name/disambiguation-
         // comment/numeric-position values — see
         // `_findCellPartOfSeriesParts()`'s own JSDoc. Column-gated
@@ -59949,6 +60434,14 @@ a { color: #1565c0; }`;
         // Length deviates (signed percentage) from the page's average
         // Length — see `_findCellLengthDeviationBucket()`'s own JSDoc.
         // Column-gated (isLengthCol below).
+        // "Length info - Milliseconds" — rows whose Length carries real
+        // sub-second precision / exactly `.000` / no millisecond data at
+        // all. Mutually exclusive per row (a Length cell holds one value).
+        // See `_findCellLengthMsState()`'s own JSDoc. Column-gated
+        // (isLengthCol below).
+        let lengthMsPreciseCount = _uniqCacheHit ? _uniqCacheHit.lengthMsPreciseCount : 0;
+        let lengthMsWholeCount   = _uniqCacheHit ? _uniqCacheHit.lengthMsWholeCount   : 0;
+        let lengthMsNoneCount    = _uniqCacheHit ? _uniqCacheHit.lengthMsNoneCount    : 0;
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -60105,6 +60598,13 @@ a { color: #1565c0; }`;
         // page-type check), so this applies automatically to every
         // pageType with a "Length" column.
         const isLengthCol  = _colHeaderName === 'Length';
+        // Column-name gate for "Time info - Time of day" — same name-only
+        // convention as isLengthCol above, so it applies to every pageType
+        // with a "Time" column (the events listings).
+        const isTimeCol    = _colHeaderName === 'Time';
+        // Column-name gate for "Relationship types - Credited as" — same
+        // name-only convention as isLengthCol/isTimeCol above.
+        const isRelTypesCol = _colHeaderName === 'Relationship types';
         // Column-name gate for "Date info - Complete"/"- Partial"/"- Range"
         // — unlike isFormatCol/isTracksCol/isCatalogCol/isLengthCol above
         // (a single fixed column name), this checks whether the CURRENTLY
@@ -60303,7 +60803,7 @@ a { color: #1565c0; }`;
                 if (isAttributesCol) {
                     const _rowRecAttrValues = new Set(_findCellRecordingAttributeWords(cell));
                     _rowRecAttrValues.forEach(t => recAttrValueCounts.set(t, (recAttrValueCounts.get(t) || 0) + 1));
-                    const _rowWorkAttrIdValues = new Set(_findCellWorkAttributeIdentifiers(cell).map(p => p.typeName));
+                    const _rowWorkAttrIdValues = new Set(_findCellWorkAttributeIdentifiers(cell).flatMap(p => _workAttrTypeLabels(p.typeName)));
                     _rowWorkAttrIdValues.forEach(t => workAttrIdValueCounts.set(t, (workAttrIdValueCounts.get(t) || 0) + 1));
                 }
                 {
@@ -60341,6 +60841,8 @@ a { color: #1565c0; }`;
                     const _perMedium = _findCellTracksPerMedium(cell);
                     new Set(_perMedium).forEach(t => tracksPerMediumValueCounts.set(t, (tracksPerMediumValueCounts.get(t) || 0) + 1));
                     if (_perMedium.length > 1) multiMediumCount++;
+                    const _tracksTotal = _sumTracksPerMedium(_perMedium);
+                    if (_tracksTotal !== null) tracksTotalValueCounts.set(_tracksTotal, (tracksTotalValueCounts.get(_tracksTotal) || 0) + 1);
                 }
                 if (isCatalogCol) {
                     const _catalogParts = _findCellCatalogParts(cell);
@@ -60366,6 +60868,12 @@ a { color: #1565c0; }`;
                           _rowYearValues = new Set(), _rowDesignationValues = new Set();
                     _isrcParts.forEach(p => {
                         if (!p.valid) return;
+                        const _hiddenItem = _isCollapsedHiddenItem(p.el);
+                        [`isrccountry:${p.country}`, `isrcregistrant:${p.registrant}`,
+                         `isrcyear:${p.yearFull}`, `isrcdesignation:${p.designation}`].forEach(k => {
+                            _seenItemKeys.add(k);
+                            if (!_hiddenItem) _visibleItemKeys.add(k);
+                        });
                         _rowCountryValues.add(p.country);
                         _rowRegistrantValues.add(p.registrant);
                         // Resolved 4-digit year, not the raw 2-digit code —
@@ -60408,9 +60916,21 @@ a { color: #1565c0; }`;
                         }
                     }
                 }
+                if (isRelTypesCol) {
+                    new Set(_findCellRelTypeCredits(cell).map(_relTypeCreditValue))
+                        .forEach(v => relTypeCreditValueCounts.set(v, (relTypeCreditValueCounts.get(v) || 0) + 1));
+                }
+                if (isTimeCol) {
+                    const _timeBucket = _findCellTimeBucket(cell);
+                    if (_timeBucket) timeOfDayValueCounts.set(_timeBucket, (timeOfDayValueCounts.get(_timeBucket) || 0) + 1);
+                }
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
                     if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
+                    const _msState = _findCellLengthMsState(cell);
+                    if (_msState === 'precise')    lengthMsPreciseCount++;
+                    else if (_msState === 'whole') lengthMsWholeCount++;
+                    else if (_msState === 'none')  lengthMsNoneCount++;
                     const _devBucket = _findCellLengthDeviationBucket(cell, _lengthColRefAvg);
                     if (_devBucket === 'within10')            lengthDeviationWithin10Count++;
                     else if (_devBucket === 'shorter10to25')  lengthDeviationShorter10to25Count++;
@@ -61705,7 +62225,9 @@ a { color: #1565c0; }`;
         // this column, with no visible-row-set change in between, can skip
         // straight past all 5 tbody.rows passes above (see _uniqCacheHit).
         if (!_uniqCacheHit) {
+            _seenItemKeys.forEach(k => { if (!_visibleItemKeys.has(k)) collapsedOnlyKeys.add(k); });
             _setUniqDropDataCache(table, colIndex, _uniqSig, {
+                collapsedOnlyKeys,
                 valueCounts, itemValueCounts, valueItemSequence,
                 emptyCellCount, multiRowCollapsedCount, multiRowExpandedCount, singleRowCount,
                 titleMismatchCount, nameVariationCount, multiMediumCount,
@@ -61726,7 +62248,8 @@ a { color: #1565c0; }`;
                 titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
-                tracksPerMediumValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts,
+                tracksPerMediumValueCounts, tracksTotalValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts, timeOfDayValueCounts,
+                relTypeCreditValueCounts,
                 isrcCountryValueCounts, isrcRegistrantValueCounts, isrcYearValueCounts, isrcDesignationValueCounts,
                 dateDecadeValueCounts, dateMonthValueCounts, dateYearValueCounts, dateWeekdayValueCounts,
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
@@ -61734,6 +62257,7 @@ a { color: #1565c0; }`;
                 editorMembershipValueCounts, editorCommentValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
+                lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -61764,6 +62288,7 @@ a { color: #1565c0; }`;
             barcodeValidCount, barcodeInvalidCount,
             dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
+            lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
             lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -61800,11 +62325,11 @@ a { color: #1565c0; }`;
             ...titleAgeAddedValueCounts.values(), ...titleAgeModifiedValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
-            ...tracksPerMediumValueCounts.values(), ...catalogPrefixValueCounts.values(),
+            ...tracksPerMediumValueCounts.values(), ...tracksTotalValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
             ...isrcYearValueCounts.values(), ...isrcDesignationValueCounts.values(),
             ...barcodeFormatValueCounts.values(), ...barcodeSameAsValueCounts.values(),
-            ...lengthBucketValueCounts.values(),
+            ...lengthBucketValueCounts.values(), ...timeOfDayValueCounts.values(), ...relTypeCreditValueCounts.values(),
             ...dateDecadeValueCounts.values(), ...dateMonthValueCounts.values(),
             ...dateYearValueCounts.values(), ...dateWeekdayValueCounts.values(),
             ...partOfSeriesNameValueCounts.values(), ...partOfSeriesDateValueCounts.values(),
@@ -62183,7 +62708,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'catalogprefix'|'lengthbucket'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -62309,6 +62834,7 @@ a { color: #1565c0; }`;
                  : kind === 'countryname' ? '» country name: '
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
+                 : kind === 'trackstotal' ? '» total tracks: '
                  : kind === 'catalogprefix' ? '» prefix: '
                  : kind === 'isrccountry'     ? '» country: '
                  : kind === 'isrcregistrant'  ? '» registrant: '
@@ -62320,6 +62846,8 @@ a { color: #1565c0; }`;
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
                  : kind === 'lengthbucket'  ? '» duration: '
+                 : kind === 'timeofday'     ? '» time of day: '
+                 : kind === 'reltypecredit' ? '» '
                  : kind === 'partofseriesname'   ? '» series name: '
                  : kind === 'partofseriesdate'   ? '» date: '
                  : kind === 'partofseriesnumber' ? '» number: '
@@ -62423,6 +62951,21 @@ a { color: #1565c0; }`;
                 }
             }
 
+            if (collapsedOnlyKeys.has(`${kind}:${value}`)) {
+                // Only ever inside a collapsed list item. The row IS offered
+                // (ticking it still shows the row and tints the ▶ toggle, via
+                // _COLLAPSE_MATCH_SEL) — this just says why nothing on screen
+                // shows it yet. Inserted BEFORE the label span, like the ▤
+                // item marker in renderItems(), and outside it, so the label
+                // text (and dataset.mbUniqSynLabel) stay exactly the value.
+                const _hiddenMark = document.createElement('span');
+                _hiddenMark.className = 'mb-uniq-item-marker mb-uniq-collapsed-only-marker';
+                _hiddenMark.setAttribute('aria-hidden', 'true');
+                _hiddenMark.textContent = '▶';
+                item.insertBefore(_hiddenMark, item.querySelector('.mb-uniq-syn-label-text'));
+                item.dataset.mbUniqCollapsedOnly = '1';
+                item.title += '\n\n▶ Only in a collapsed list item — expand the cell (▶) to see it.';
+            }
             _wireStructureCheckbox(item, MB_UNIQ_STRUCTURE_MODE_PREFIX +
                 (hrefOverride ? `namehref:${hrefOverride}::${value}` : `${kind}:${value}`));
             // 'arttype'/'artcomment' route dynamically to "CAA info -
@@ -62620,6 +63163,7 @@ a { color: #1565c0; }`;
         const _sortedCountryNameValues = Array.from(countryNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        const _sortedTracksTotalValues = Array.from(tracksTotalValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedCatalogPrefixValues = Array.from(catalogPrefixValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedIsrcCountryValues     = Array.from(isrcCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedIsrcRegistrantValues  = Array.from(isrcRegistrantValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -62644,6 +63188,10 @@ a { color: #1565c0; }`;
             if (Number.isNaN(nb)) return -1;
             return na - nb;
         });
+        // Clock order (the _TIME_OF_DAY_BUCKETS table's own order), not
+        // alphabetical — "Afternoon" would otherwise sort before "Morning".
+        const _sortedRelTypeCreditValues = Array.from(relTypeCreditValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedTimeOfDayValues = _TIME_OF_DAY_BUCKETS.map(b => b.label).filter(l => timeOfDayValueCounts.has(l));
         const _sortedPartOfSeriesNameValues = Array.from(partOfSeriesNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedPartOfSeriesDateValues = Array.from(partOfSeriesDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         // Numeric sort (not lexicographic) so "2" sorts before "10".
@@ -62689,11 +63237,11 @@ a { color: #1565c0; }`;
             _sortedTitleAgeAddedValues.length > 0 || _sortedTitleAgeModifiedValues.length > 0 ||
             _sortedRevCountryValues.length > 0 || _sortedRevDateValues.length > 0 || _sortedRevWeekdayValues.length > 0 ||
             _sortedCountryNameValues.length > 0 || _sortedCountryCodeValues.length > 0 ||
-            _sortedTracksPerMediumValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
+            _sortedTracksPerMediumValues.length > 0 || _sortedTracksTotalValues.length > 0 || _sortedCatalogPrefixValues.length > 0 ||
             _sortedIsrcCountryValues.length > 0 || _sortedIsrcRegistrantValues.length > 0 ||
             _sortedIsrcYearValues.length > 0 || _sortedIsrcDesignationValues.length > 0 ||
             _sortedBarcodeFormatValues.length > 0 || _sortedBarcodeSameAsValues.length > 0 ||
-            _sortedLengthBucketValues.length > 0 ||
+            _sortedLengthBucketValues.length > 0 || _sortedTimeOfDayValues.length > 0 || _sortedRelTypeCreditValues.length > 0 ||
             _sortedPartOfSeriesNameValues.length > 0 || _sortedPartOfSeriesDateValues.length > 0 || _sortedPartOfSeriesNumberValues.length > 0 ||
             _sortedEditorDeletedValues.length > 0 || _sortedEditorRecordedNameValues.length > 0 ||
             _sortedEditorMembershipValues.length > 0 || _sortedEditorCommentValues.length > 0 ||
@@ -62710,6 +63258,7 @@ a { color: #1565c0; }`;
             barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+            lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -62768,6 +63317,14 @@ a { color: #1565c0; }`;
             if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
             if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
             if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
+            // "Length info - Milliseconds" — only offered once some cell carries
+            // milliseconds (else every row would be "none" and the section is
+            // noise before ⏱ is pressed). See _findCellLengthMsState().
+            if (lengthMsPreciseCount > 0 || lengthMsWholeCount > 0) {
+                if (lengthMsPreciseCount > 0) makeSynItem('length-ms-precise', '🔬 milliseconds ≠ .000', lengthMsPreciseCount);
+                if (lengthMsWholeCount > 0)   makeSynItem('length-ms-whole', '⭕ milliseconds = .000 (whole seconds)', lengthMsWholeCount);
+                if (lengthMsNoneCount > 0)    makeSynItem('length-ms-none', '∅ no millisecond data', lengthMsNoneCount);
+            }
             // "Length info - Live status" — surfaces the SAME live/studio
             // classification the buckets above already compute internally
             // (see _getLengthColumnAverages()'s own JSDoc) as its own
@@ -62846,6 +63403,7 @@ a { color: #1565c0; }`;
             _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
+            _sortedTracksTotalValues.forEach(v => makeValueSynItem('trackstotal', v, tracksTotalValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedIsrcCountryValues.forEach(v => makeValueSynItem('isrccountry', v, isrcCountryValueCounts.get(v)));
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
@@ -62854,6 +63412,8 @@ a { color: #1565c0; }`;
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
+            _sortedTimeOfDayValues.forEach(v => makeValueSynItem('timeofday', v, timeOfDayValueCounts.get(v)));
+            _sortedRelTypeCreditValues.forEach(v => makeValueSynItem('reltypecredit', v, relTypeCreditValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
             _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
@@ -62876,6 +63436,7 @@ a { color: #1565c0; }`;
             barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+                   lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -62912,6 +63473,14 @@ a { color: #1565c0; }`;
             if (lengthDeviationLonger25to50Count > 0)  makeSynItem('lengthdeviation-longer25to50', '⏫ 25–50% longer than average', lengthDeviationLonger25to50Count);
             if (lengthDeviationShorter50plusCount > 0) makeSynItem('lengthdeviation-shorter50plus', '⬇️ 50%+ shorter than average', lengthDeviationShorter50plusCount);
             if (lengthDeviationLonger50plusCount > 0)  makeSynItem('lengthdeviation-longer50plus', '⬆️ 50%+ longer than average', lengthDeviationLonger50plusCount);
+            // "Length info - Milliseconds" — only offered once some cell carries
+            // milliseconds (else every row would be "none" and the section is
+            // noise before ⏱ is pressed). See _findCellLengthMsState().
+            if (lengthMsPreciseCount > 0 || lengthMsWholeCount > 0) {
+                if (lengthMsPreciseCount > 0) makeSynItem('length-ms-precise', '🔬 milliseconds ≠ .000', lengthMsPreciseCount);
+                if (lengthMsWholeCount > 0)   makeSynItem('length-ms-whole', '⭕ milliseconds = .000 (whole seconds)', lengthMsWholeCount);
+                if (lengthMsNoneCount > 0)    makeSynItem('length-ms-none', '∅ no millisecond data', lengthMsNoneCount);
+            }
             if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
                 if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
                 if (_lengthColAvgs.studioKnownCount > 0) makeSynItem('lengthlive-no', '⚪ Not live', _lengthColAvgs.studioKnownCount);
@@ -62966,6 +63535,7 @@ a { color: #1565c0; }`;
             _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
             _sortedCountryCodeValues.forEach(v => makeValueSynItem('countrycode', v, countryCodeValueCounts.get(v), countryCodeFlagMap.get(v)));
             _sortedTracksPerMediumValues.forEach(v => makeValueSynItem('trackspermedium', v, tracksPerMediumValueCounts.get(v)));
+            _sortedTracksTotalValues.forEach(v => makeValueSynItem('trackstotal', v, tracksTotalValueCounts.get(v)));
             _sortedCatalogPrefixValues.forEach(v => makeValueSynItem('catalogprefix', v, catalogPrefixValueCounts.get(v)));
             _sortedIsrcCountryValues.forEach(v => makeValueSynItem('isrccountry', v, isrcCountryValueCounts.get(v)));
             _sortedIsrcRegistrantValues.forEach(v => makeValueSynItem('isrcregistrant', v, isrcRegistrantValueCounts.get(v)));
@@ -62974,6 +63544,8 @@ a { color: #1565c0; }`;
             _sortedBarcodeFormatValues.forEach(v => makeValueSynItem('barcodeformat', v, barcodeFormatValueCounts.get(v)));
             _sortedBarcodeSameAsValues.forEach(v => makeValueSynItem('barcodesameas', v, barcodeSameAsValueCounts.get(v)));
             _sortedLengthBucketValues.forEach(v => makeValueSynItem('lengthbucket', v, lengthBucketValueCounts.get(v)));
+            _sortedTimeOfDayValues.forEach(v => makeValueSynItem('timeofday', v, timeOfDayValueCounts.get(v)));
+            _sortedRelTypeCreditValues.forEach(v => makeValueSynItem('reltypecredit', v, relTypeCreditValueCounts.get(v)));
             _sortedPartOfSeriesNameValues.forEach(v => makeValueSynItem('partofseriesname', v, partOfSeriesNameValueCounts.get(v)));
             _sortedPartOfSeriesDateValues.forEach(v => makeValueSynItem('partofseriesdate', v, partOfSeriesDateValueCounts.get(v)));
             _sortedPartOfSeriesNumberValues.forEach(v => makeValueSynItem('partofseriesnumber', v, partOfSeriesNumberValueCounts.get(v)));
@@ -63570,12 +64142,15 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countryname:')) return `» country name: ${mode.slice(12)}`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
+        if (mode.startsWith('trackstotal:')) return `» total tracks: ${mode.slice(12)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
         if (mode.startsWith('isrccountry:'))     return `» country: ${mode.slice(12)}`;
         if (mode.startsWith('isrcregistrant:'))  return `» registrant: ${mode.slice(15)}`;
         if (mode.startsWith('isrcyear:'))        return `» year: ${mode.slice(9)}`;
         if (mode.startsWith('isrcdesignation:')) return `» designation: ${mode.slice(16)}`;
         if (mode.startsWith('lengthbucket:'))    return `» duration: ${mode.slice(13)}`;
+        if (mode.startsWith('timeofday:'))       return `» time of day: ${mode.slice(10)}`;
+        if (mode.startsWith('reltypecredit:'))   return `» ${mode.slice(14)}`;
         if (mode.startsWith('partofseriesname:'))   return `» series name: ${mode.slice(18)}`;
         if (mode.startsWith('partofseriesdate:'))   return `» date: ${mode.slice(17)}`;
         if (mode.startsWith('partofseriesnumber:')) return `» number: ${mode.slice(19)}`;
@@ -63600,6 +64175,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
         if (mode === 'acoustid-linked')   return '🔗 linked';
         if (mode === 'acoustid-unlinked') return '🚫 unlinked';
+        if (mode === 'length-ms-precise')             return '🔬 milliseconds ≠ .000';
+        if (mode === 'length-ms-whole')               return '⭕ milliseconds = .000 (whole seconds)';
+        if (mode === 'length-ms-none')                return '∅ no millisecond data';
         if (mode === 'lengthdeviation-within10')      return '🎯 within 10% of average';
         if (mode === 'lengthdeviation-shorter10to25') return '🔽 10–25% shorter than average';
         if (mode === 'lengthdeviation-longer10to25')  return '🔼 10–25% longer than average';
@@ -63684,11 +64262,14 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countryname:')) return 'One entry\'s own full country name, from the synthetic "Country" column.';
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
+        if (mode.startsWith('trackstotal:')) return 'One "Tracks" cell\'s summed track count over all its mediums (the synthetic "Total Tracks" value).';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
         if (mode.startsWith('isrccountry:')) return 'One "ISRCs" entry\'s own 2-letter country code (the first CC-XXX-YY-NNNNN segment).';
         if (mode.startsWith('isrcregistrant:')) return 'One "ISRCs" entry\'s own 3-character registrant code (the XXX segment).';
         if (mode.startsWith('isrcyear:')) return 'One "ISRCs" entry\'s own year of reference, resolved to a 4-digit year from the 2-digit YY segment.';
         if (mode.startsWith('isrcdesignation:')) return 'One "ISRCs" entry\'s own 5-digit designation code (the NNNNN segment).';
+        if (mode.startsWith('reltypecredit:')) return 'One "Relationship types" item\'s credited-as name — the (as “…”) part — with its relationship type in front.';
+        if (mode.startsWith('timeofday:')) return 'This "Time" cell\'s start time, bucketed into a part of the day (morning, lunch, afternoon, evening, night). An empty cell stays under "empty cells".';
         if (mode.startsWith('lengthbucket:')) return 'This "Length" cell\'s own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz\'s own "?:??" placeholder).';
         if (mode.startsWith('partofseriesname:')) return 'One "Part of series" item\'s own credited series name.';
         if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
@@ -63714,6 +64295,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
         if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
         if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
+        if (mode === 'length-ms-precise') return '🔬 = this row\'s Length carries real sub-second precision (milliseconds other than .000).';
+        if (mode === 'length-ms-whole') return '⭕ = this row\'s Length has milliseconds and they are exactly .000, i.e. MusicBrainz stores nothing finer than the whole second.';
+        if (mode === 'length-ms-none') return '∅ = this row\'s Length carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).';
         if (mode === 'lengthdeviation-within10') return '🎯 = this row\'s Length is within 10% of the page\'s average Length (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known Length on the page).';
         if (mode === 'lengthdeviation-shorter10to25') return '🔽 = 10–25% SHORTER than the page\'s average Length.';
         if (mode === 'lengthdeviation-longer10to25') return '🔼 = 10–25% LONGER than the page\'s average Length.';
@@ -86556,36 +87140,72 @@ a { color: #1565c0; }`;
      * `initPicardTaggerColumn()` — see that function's own call-site list.
      */
     function initIsrcFormatting() {
-        document.querySelectorAll('table.tbl a[href^="/isrc/"]').forEach(a => {
-            const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
-            if (!m) return;
-            const raw = decodeURIComponent(m[1]);
-            const code = a.querySelector('code');
-            if (!code) return;
-            const parsed = _parseIsrcCode(raw);
-            if (!parsed) {
-                a.setAttribute('data-mb-isrc-invalid', '1');
-                a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
-                return;
+        document.querySelectorAll('table.tbl a[href^="/isrc/"]').forEach(_formatIsrcAnchor);
+    }
+
+    /**
+     * Formats every ISRC anchor under `root` — `initIsrcFormatting()`'s per-
+     * anchor step, for a subtree that is NOT yet in `table.tbl` (a row
+     * `runFilter()` has just cloned from its unformatted source row).
+     *
+     * `runFilter()` matches, and HIGHLIGHTS, on that fresh clone. The
+     * highlighters for `isrccountry:`/`isrcregistrant:`/`isrcyear:`/
+     * `isrcdesignation:` scope a mark to one segment's own `<span>`, which
+     * only exist once this has run — and the render tail's
+     * `initIsrcFormatting()` comes AFTER the highlight, so on a clone the
+     * segments were missing (the highlighter fell back to the whole anchor,
+     * where `\bGB\b` cannot match inside "GBAMC8800004") and, had it found
+     * them, the rebuild would have wiped the mark anyway. Reported live: a
+     * "country: GB" filter narrowed the rows and marked nothing. Formatting
+     * the clone first fixes both, since the tail pass then has nothing to redo
+     * (see `_formatIsrcAnchor()`'s idempotence).
+     *
+     * @param {Element} root - A cloned row (or any subtree).
+     */
+    function _formatIsrcAnchorsIn(root) {
+        root.querySelectorAll('a[href^="/isrc/"]').forEach(_formatIsrcAnchor);
+    }
+
+    /**
+     * Formats ONE ISRC anchor — see `initIsrcFormatting()` for the whole
+     * contract. Idempotent: a `<code>` already holding the four segment spans
+     * with exactly the expected text is left untouched, so a later pass never
+     * rebuilds it. That matters because a rebuild replaces the spans, and with
+     * them any highlight a filter placed inside them.
+     *
+     * @param {HTMLAnchorElement} a - An `a[href^="/isrc/"]`.
+     */
+    function _formatIsrcAnchor(a) {
+        const m = a.getAttribute('href').match(/\/isrc\/([^/?#]+)/);
+        if (!m) return;
+        const raw = decodeURIComponent(m[1]);
+        const code = a.querySelector('code');
+        if (!code) return;
+        const parsed = _parseIsrcCode(raw);
+        if (!parsed) {
+            a.setAttribute('data-mb-isrc-invalid', '1');
+            a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
+            return;
+        }
+        a.removeAttribute('data-mb-isrc-invalid');
+        a.removeAttribute('title');
+        if (code.children.length === 4 &&
+            code.textContent === `${parsed.country}-${parsed.registrant}-${parsed.year}-${parsed.designation}`) return;
+        code.textContent = '';
+        const _appendSeg = (text, tinted) => {
+            const span = document.createElement('span');
+            span.textContent = text;
+            if (tinted) {
+                span.style.color = 'red';
+                span.style.margin = '0 0.1em';
+                span.style.textShadow = '1px 2px 2px yellow';
             }
-            a.removeAttribute('data-mb-isrc-invalid');
-            a.removeAttribute('title');
-            code.textContent = '';
-            const _appendSeg = (text, tinted) => {
-                const span = document.createElement('span');
-                span.textContent = text;
-                if (tinted) {
-                    span.style.color = 'red';
-                    span.style.margin = '0 0.1em';
-                    span.style.textShadow = '1px 2px 2px yellow';
-                }
-                code.appendChild(span);
-            };
-            _appendSeg(parsed.country, true);
-            _appendSeg(`-${parsed.registrant}-`, false);
-            _appendSeg(parsed.year, true);
-            _appendSeg(`-${parsed.designation}`, false);
-        });
+            code.appendChild(span);
+        };
+        _appendSeg(parsed.country, true);
+        _appendSeg(`-${parsed.registrant}-`, false);
+        _appendSeg(parsed.year, true);
+        _appendSeg(`-${parsed.designation}`, false);
     }
 
     /**

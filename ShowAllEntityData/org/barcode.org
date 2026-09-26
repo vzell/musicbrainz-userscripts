@@ -1,4 +1,4 @@
-* TODO "Barcode" column needs section handling
+* DONE "Barcode" column needs section handling
 ** i
 
 Now let's do the same for the "Barcode" column on all the pageTypes:
