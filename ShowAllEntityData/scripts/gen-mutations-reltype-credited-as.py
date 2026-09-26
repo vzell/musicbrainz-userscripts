@@ -1,0 +1,44 @@
+"""Generate scripts/mutations/uniq-drop-reltype-credited-as.json (see gen-mutations-tracks-total.py for why a script)."""
+import json
+
+SPEC = 'tests/fixtures/uniq-drop-reltype-credited-as.spec.js'
+LOOKAROUNDS = "`(?<=\\\\(as\\\\s+[" + "\\u201C" + '"' + "\\u2018" + "'])${_esc(c.credit)}(?=[" + "\\u201D" + '"' + "\\u2019" + "']\\\\))`"
+muts = [
+    {
+        "name": "the entry value drops the relationship type",
+        "why": "'instrument as: lead guitar' and 'vocal as: lead guitar' would merge into one 'lead guitar' entry of count 3.",
+        "edits": [{"find": "return `${c.type} as: ${c.credit}`;", "replace": "return c.credit;"}],
+        "spec": SPEC, "grep": "lists each", "expect": "fail",
+    },
+    {
+        "name": "the extractor reads the whole cell instead of each list item",
+        "why": "Loses the per-item boundary that keeps 'acoustic, electric guitar' one value and 'lead guitar' attributed to the right type.",
+        "edits": [{"find": "const nodes = items.length ? items : [cell];", "replace": "const nodes = [cell];"}],
+        "spec": SPEC, "grep": "lists each", "expect": "fail",
+    },
+    {
+        "name": "the matcher never matches a credit",
+        "why": "Silently dead entries: badges right, ticking filters nothing.",
+        "edits": [{
+            "find": "return !!cell && _findCellRelTypeCredits(cell).some(c => _relTypeCreditValue(c) === want);",
+            "replace": "return false;",
+        }],
+        "spec": SPEC, "grep": "ticking", "expect": "fail",
+    },
+    {
+        "name": "the highlight is not anchored inside the quotes",
+        "why": "Without the lookarounds 'guitar (as “guitar”)' is marked twice — once in the TYPE — so the 'never the type' assertion sees two marks.",
+        "edits": [{"find": LOOKAROUNDS, "replace": "`${_esc(c.credit)}`"}],
+        "spec": SPEC, "grep": "never the type", "expect": "fail",
+    },
+    {
+        "name": "no highlight dispatch for a credit",
+        "why": "Rows are right, nothing is marked.",
+        "edits": [{"find": "_highlightRelTypeCreditMatch(row.cells[f.idx], mode);", "replace": "void 0;"}],
+        "spec": SPEC, "grep": "marks just the credit", "expect": "fail",
+    },
+]
+with open('scripts/mutations/uniq-drop-reltype-credited-as.json', 'w', encoding='utf-8') as f:
+    json.dump(muts, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+print('wrote', len(muts), 'mutations')

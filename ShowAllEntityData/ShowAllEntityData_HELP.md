@@ -252,6 +252,23 @@ themselves:
 - **🎚️ Credit details**, **🎭 Roles**, **📅 Release events**, **💿 Format
   info**, **🏷️ Catalog info**, **🔗 Relationship icons**, **⏳ Pending edits**,
   and a **Relationships — Load state** section on pages carrying that column.
+- **🔢 Tracks info** — a "Tracks" column's per-medium counts, a multi-medium
+  flag, and the summed **Total** (the same number as the "Total Tracks" column:
+  "5 + 5 + 5" is `5` under *Tracks* and `15` under *Total*).
+- **⏱ Length info** — duration buckets, deviation from the page average, live
+  status and, once the ⏱ toggle has put milliseconds on the page, a
+  **Milliseconds** split: `≠ .000` (real sub-second precision), `= .000` (whole
+  seconds only) and *no millisecond data*. The split is not offered until some
+  cell has milliseconds, and it keeps working with ⏱ switched back off, because
+  the cells still carry them.
+- **🌅 Time info** — a "Time" column's start time as a part of the day: morning
+  (04:00-11:59), lunch (12:00-12:59), afternoon (13:00-17:59), evening
+  (18:00-23:59) or night (00:00-03:59). An empty cell stays under "empty cells".
+- **📛 Relationship types - Credited as** — the `(as “…”)` credit of a
+  "Relationship types" item, prefixed with its type (`» instrument as: lead
+  guitar`), beside the whole-value list. **Attributes - Identifier type** also
+  lists the parts of a slash-joined type separately: a `BUMA/STEMRA ID` badge
+  is offered as `BUMA/STEMRA ID`, `BUMA` and `STEMRA ID`.
 - **ISRC info** — one sub-section per constituent (country, registrant, year,
   designation) plus a validity flag, on any "ISRCs" column. **ISWC info** — a
   validity flag on any "ISWC" column. See "ISRC/ISWC codes" below.

@@ -1649,6 +1649,7 @@ below, which mixed unrelated topics under one header.
 | v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled"                                                                                                                                     |
 | v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                      |
 | next      | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+| WIP (`uvd-tracks-total-time-length-ms`; put the real version here at merge) | Additions, not splits: `tracksTotal` (kind `trackstotal`), `lengthMs` (three flag modes `length-ms-*`), `timeOfDay` (kind `timeofday`, buckets in `_TIME_OF_DAY_BUCKETS`), `relTypeCredit` (kind `reltypecredit`, ONE static section with the type as an entry prefix rather than a runtime-created section per type). Also `_workAttrTypeLabels()`: "Attributes - Identifier type" now offers the parts of a slash-joined type (`BUMA/STEMRA ID` → `BUMA`, `STEMRA ID`) beside the compound. |
 
 ## Flags in the dropdown: two third-party shapes, and what "hollow" means
 

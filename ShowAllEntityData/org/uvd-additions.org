@@ -127,15 +127,14 @@ Proposer
 and on https://musicbrainz.org/election/473 the "Voter" column
 should get the same unique value drop down sections like the "editor" column in https://musicbrainz.org/label/011d1192-6f65-45bd-85c4-0400dd45693e/annotations
 
+* DONE ISWC handling missing
+** i
 
-* TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
+Here's `debug/ISWC-initial.html` from https://musicbrainz.org/iswc/T-070.127.339-3 — add a pageType for it
 
 
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
-* TODO instrument (as “feedback guitar”)
-
-New "As" section in "Relationship types" column at
-e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings
 
 * TODO "Description" column in "search" pages could have multiple lines
 
@@ -146,24 +145,129 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 <td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
 #+end_example
 
+
+* TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
+
+The "Tracks" column in e.g https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af needs a "Total Tracks" section
+in the unique value drop-down, see the already computed "Total Tracks" columns and th rwa HTML at @debug/tracks-total.html
+
+* TODO instrument (as “feedback guitar”)
+
+Add a new "<Entity> as" section in the "Relationship types" column for 
+e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - @debug/instruments-recordings.html
+besides each unique value for each Relationship type itself
+
+
 * TODO "Length" column needs a section where it says that millisends are present and not "000"
 
 "Length" column needs a section where it says that millisends are present and not "000"
 e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
 
-* DONE ISWC handling missing
-** i
-
-Here's `debug/ISWC-initial.html` from https://musicbrainz.org/iswc/T-070.127.339-3 — add a pageType for it
-
-
-https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
-
-
 * TODO W-000099918 (BUMA/STEMRA ID) - list "BUMA" and "STEMRA ID" additionally separately
 
-list "BUMA" and "STEMRA ID" additionally separately in the "Attributes" column in e.g. 
+List "BUMA" and "STEMRA ID" additionally separately in the "Attributes" column in e.g. 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+when they show up as e.g "6432036 (BUMA/STEMRA ID)"
 
+* TODO "Time" columns need sensitive values, daylight event for the starting times
 
-* TODO "Time" columns need sensitive values , evetn evetn, daylight event for the starting times, etc.
+The "Time" column on specific pageTypes e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+need sensitive values in a new unique value drop down section, for when an event actually took/takes place.
+
+E.g.
+
+#+begin_example
+before lunch
+after lunch
+normal concert time - 18:00 - 23:59
+festival times starting in the afternoon
+etc.
+#+end_example
+
+See also @debug/time.html
+
+* act on
+
+1.)
+
+The "Tracks" column in e.g https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af needs a "Total Tracks" section
+in the unique value drop-down, see the already computed "Total Tracks" columns and th rwa HTML at @debug/tracks-total.html
+
+2.)
+
+Add a new "<Entity> as" section in the "Relationship types" column for 
+e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - @debug/instruments-recordings.html
+besides each unique value for each Relationship type itself
+
+3.)
+
+The "Length" column needs a section where it says that millisends are present and different from "000" or not
+e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings - @debug/length-with-millis.html
+
+4.9
+
+List "BUMA" and "STEMRA ID" additionally separately in the "Attributes" column in e.g. 
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+when they show up as e.g "6432036 (BUMA/STEMRA ID)"
+
+5.)
+
+The "Time" column on specific pageTypes e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+need sensitive values in a new unique value drop down section, for when an event actually took/takes place.
+
+E.g.
+
+#+begin_example
+before lunch
+after lunch
+normal concert time - 18:00 - 23:59
+festival times starting in the afternoon
+etc.
+#+end_example
+
+See also @debug/time.html
+
+* IN PROGRESS Plan for the five "act on" items (branch =uvd-tracks-total-time-length-ms=)
+
+Decisions taken with the user on 2026-09-26: item 2 is ONE static section with a
+type-prefixed entry (=» instrument as: lead guitar=); item 5 uses five fixed buckets;
+item 3 has three states (ms ≠ .000 / ms = .000 / no ms data) and the section is only
+shown when at least one Length cell carries ms data.
+
+Each step below is a live pre-test written BEFORE implementing: real URL, exact clicks,
+prediction. Fill in the "Observed" line after the live check.
+
+** 1. Tracks info - Total
+- URL: https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af
+- Clicks: "Show all" → Tracks column 📊 → open "Tracks info - Total" → tick 15.
+- Prediction: 15 is offered once per row whose Tracks sum to 15, including "5 + 5 + 5" and a bare "15".
+  The row count after ticking equals the badge. The "Total Tracks" column and this list agree.
+- Observed: (pending)
+
+** 2. Relationship types - Credited as
+- URL: https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings
+- Clicks: "Show all" → Relationship types 📊 → open "Relationship types - Credited as" → tick "instrument as: lead guitar".
+- Prediction: 15 entries (one per distinct credit, e.g. "acoustic, electric guitar" stays ONE entry
+  despite the comma). Plain "instrument" stays only under the ordinary value list.
+- Observed: (pending)
+
+** 3. Length info - Milliseconds
+- URL: https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
+- Clicks: "Show all" → Length 📊 (section absent) → press ⏱ → Length 📊 again.
+- Prediction: before ⏱ there is no milliseconds section. After ⏱ it appears with a non-zero "ms ≠ .000"
+  count and, on this page, some ".000" rows. Counts add up to the row total.
+- Observed: (pending)
+
+** 4. BUMA / STEMRA ID split
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
+- Clicks: "Show all" → Attributes 📊 → "Attributes - Identifier type".
+- Prediction: "BUMA/STEMRA ID", "BUMA" and "STEMRA ID" are all offered with the same count; each filters
+  to the same rows; the highlight marks the matching part inside the parentheses.
+- Observed: (pending)
+
+** 5. Time info - Time of day
+- URL: https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+- Clicks: "Show all" → Time 📊 → "Time info - Time of day".
+- Prediction: Evening (18:00-23:59) dominates (19:30 alone is 42 rows on the 200-row debug sample);
+  Morning, Lunch and Afternoon have single-digit counts; Night is absent. Empty cells remain under "empty cells".
+- Observed: (pending)

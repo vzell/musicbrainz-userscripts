@@ -1,3 +1,50 @@
+## 2026-09-26 — five new 📊 dropdown sections (org/uvd-additions.org, branch `uvd-tracks-total-time-length-ms`)
+
+Snapshots read: `debug/tracks-total.html`, `debug/instruments-recordings.html`,
+`debug/length-with-millis.html`, `debug/time.html`, plus `debug/artist-works-initial.html`
+for the BUMA/STEMRA badge markup. Findings worth keeping:
+
+- **Only ONE identifier type in `debug/*.html` contains a slash: `BUMA/STEMRA ID`** (80 hits
+  in `artist-works-initial.html`, as a `typeName` in the JSON blob and as `(BUMA/STEMRA ID)`
+  in the rendered `<li>`). `_workAttrTypeLabels()` splits on `/` generically rather than
+  special-casing it, and offers the parts *additionally*; the parts are the literal text
+  either side of the slash (`BUMA`, `STEMRA ID`), not a re-derived "BUMA ID".
+- **Milliseconds live on the cell, not only in its text.** `data-mb-ms` stays after ⏱ is
+  switched back off (the text reverts to rounded seconds), so `_findCellLengthMsState()`
+  reads the stamp first and the `.mmm` suffix only as a fallback. A text-only reader would
+  report every row as "no ms data" the moment ⏱ is off. The fallback branch (cells hydrated
+  from a snapshot lose `data-mb-*`) is NOT reachable from any fixture here — recorded as an
+  `expect: "pass"` in `scripts/mutations/uniq-drop-length-ms-state.json`, so it is untested,
+  not tested.
+- **The Length section is withheld until some cell has milliseconds.** Before ⏱ every row is
+  "none", which is a panel that says nothing. This was a decision (asked and confirmed), not
+  an oversight.
+- **Native "Relationship types" is ONE text node** (`instrument, instrument (as “x”)`); the
+  script's `renderMultiRowCell` pass splits it at parenthesis depth 0, which is why a credit
+  containing a comma (`“acoustic, electric guitar”`) stays a single item. The extractor reads
+  per `<li>`; reading the whole cell fuses the items (planted as a mutation).
+- **"<Entity> as" became one static section with a type prefix** (`» instrument as: lead
+  guitar`), not a runtime-created section per relationship type: `SYN_SECTION_META[key]` is
+  looked up in ~6 places that assume a static table, and `entity_*` (the nearest precedent)
+  is pre-declared, not runtime-created.
+- **Time buckets** are one table, `_TIME_OF_DAY_BUCKETS`, that the extractor, the sort order
+  and the spec all read. The hour/minute range check in `_findCellTimeBucket()` is redundant
+  with the buckets' own bounds (25:99 = 1599 min, past 1439) — an `expect: "pass"` mutation.
+- **Test traps hit while writing the specs, all recurring:** (1) the render drops the merge-
+  checkbox column, so `tr.cells[i]` is one to the left of the fixture's `<thead>`; (2) a
+  rendered Release cell's `textContent` starts with the `▶` expand glyph — read the `<bdi>`;
+  (3) **`scripts/mutation-check.py`'s `grep` is a REGEX.** A title containing `(as` made
+  Playwright throw `SyntaxError: Invalid regular expression`, and that scores as a failing
+  test — two mutations reported `OK (expected fail, got fail)` while proving nothing. Read the
+  failure text, not just the verdict.
+- Glyphs: `🎭` (Roles) and `🕰️` (Editor membership) were already taken, so the Credited-as
+  and Time-of-day sections use `📛` (the same concept as "Credit details - Credited as") and
+  `🌅`. Glyph reuse is otherwise common in `SYN_SECTION_META` (`🔢` appears four times).
+- **Nothing was timed.** Each new scan is one extra `getCleanColumnText()` per cell, only on
+  the column it is gated to (Tracks reuses the per-medium parse it already had), and results go
+  through the existing `_uniqCacheHit` bundle. That is an argument, not a measurement — see
+  `tests/MEASUREMENTS.org` for how to take one if it matters.
+
 ## 2026-09-26 — barcode format-validation feature (org/barcode.org)
 
 - `debug/barcode.html`: a real, rendered `releasegroup-releases` page (post-

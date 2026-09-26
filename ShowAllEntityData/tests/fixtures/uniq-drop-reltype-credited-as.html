@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Instrument "guitar" - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <!--
+        Native /instrument/<mbid>/recordings skeleton (see
+        debug/instruments-recordings.html for the rendered page). MusicBrainz
+        renders the "Relationship types" column as ONE text node of
+        comma-separated `type (as “credit”)` parts; the script's own
+        renderMultiRowCell pass splits it into a list, at parenthesis depth 0
+        only. Rows are chosen so each hazard is present once:
+
+          Rec A  instrument, instrument (as “lead guitar”),
+                 instrument (as “acoustic, electric guitar”)   a comma INSIDE a credit
+          Rec B  instrument (as “lead guitar”)                  same credit, same type
+          Rec C  instrument                                     no credit at all
+          Rec D  vocal (as “lead guitar”)                       same credit, OTHER type
+          Rec E  guitar (as “guitar”)                           credit word == type word
+    -->
+    <div id="content">
+        <div class="instrumentheader"><h1><a href="/instrument/63021302-86cd-4aee-80df-2270d54f4978"><bdi>guitar</bdi></a></h1></div>
+        <div class="tabs"><ul class="tabs"><li class="sel"><a href="/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings"><bdi>Recordings</bdi></a></li></ul></div>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Artist</th>
+                    <th>ISRCs</th>
+                    <th>Length</th>
+                    <th>Relationship types</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="title"><a href="/recording/00000000-0000-4000-8000-00000000000a"><bdi>Rec A</bdi></a></td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td>3:00</td>
+                    <td>instrument, instrument (as “lead guitar”), instrument (as “acoustic, electric guitar”)</td>
+                </tr>
+                <tr>
+                    <td class="title"><a href="/recording/00000000-0000-4000-8000-00000000000b"><bdi>Rec B</bdi></a></td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td>3:01</td>
+                    <td>instrument (as “lead guitar”)</td>
+                </tr>
+                <tr>
+                    <td class="title"><a href="/recording/00000000-0000-4000-8000-00000000000c"><bdi>Rec C</bdi></a></td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td>3:02</td>
+                    <td>instrument</td>
+                </tr>
+                <tr>
+                    <td class="title"><a href="/recording/00000000-0000-4000-8000-00000000000d"><bdi>Rec D</bdi></a></td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td>3:03</td>
+                    <td>vocal (as “lead guitar”)</td>
+                </tr>
+                <tr>
+                    <td class="title"><a href="/recording/00000000-0000-4000-8000-00000000000e"><bdi>Rec E</bdi></a></td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td>3:04</td>
+                    <td>guitar (as “guitar”)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
