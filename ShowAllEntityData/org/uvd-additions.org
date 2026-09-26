@@ -135,39 +135,29 @@ Here's `debug/ISWC-initial.html` from https://musicbrainz.org/iswc/T-070.127.339
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 
-
-* TODO "Description" column in "search" pages could have multiple lines
-
-"Description" column in "search" pages could have multiple lines
-e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&method=indexed
-
-#+begin_example
-<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
-#+end_example
-
-* TODO "Tracks" column needs "Sum over mediums" in a "Total"-section
+* DONE "Tracks" column needs "Sum over mediums" in a "Total"-section
 
 The "Tracks" column in e.g https://musicbrainz.org/release-group/d6c1b942-edc7-4bca-bd34-6c43760272af needs a "Total Tracks" section
 in the unique value drop-down, see the already computed "Total Tracks" columns and th rwa HTML at @debug/tracks-total.html
 
-* TODO instrument (as “feedback guitar”)
+* DONE instrument (as “feedback guitar”)
 
 Add a new "<Entity> as" section in the "Relationship types" column for 
 e.g. https://musicbrainz.org/instrument/63021302-86cd-4aee-80df-2270d54f4978/recordings - @debug/instruments-recordings.html
 besides each unique value for each Relationship type itself
 
-* TODO "Length" column needs a section where it says that millisends are present and not "000"
+* DONE "Length" column needs a section where it says that millisends are present and not "000"
 
 "Length" column needs a section where it says that millisends are present and not "000"
 e.g. https://musicbrainz.org/area/a36544c1-cb40-4f44-9e0e-7a5a69e403a8/recordings
 
-* TODO W-000099918 (BUMA/STEMRA ID) - list "BUMA" and "STEMRA ID" additionally separately
+* DONE W-000099918 (BUMA/STEMRA ID) - list "BUMA" and "STEMRA ID" additionally separately
 
 List "BUMA" and "STEMRA ID" additionally separately in the "Attributes" column in e.g. 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works
 when they show up as e.g "6432036 (BUMA/STEMRA ID)"
 
-* TODO "Time" columns need sensitive values, daylight event for the starting times
+* DONE "Time" columns need sensitive values, daylight event for the starting times
 
 The "Time" column on specific pageTypes e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
 need sensitive values in a new unique value drop down section, for when an event actually took/takes place.
@@ -184,7 +174,7 @@ etc.
 
 See also @debug/time.html
 
-* act on
+* DONE act on
 
 1.)
 
@@ -225,7 +215,7 @@ etc.
 
 See also @debug/time.html
 
-* IN PROGRESS Plan for the five "act on" items (branch =uvd-tracks-total-time-length-ms=)
+* DONE IN PROGRESS Plan for the five "act on" items (branch =uvd-tracks-total-time-length-ms=)
 
 Decisions taken with the user on 2026-09-26: item 2 is ONE static section with a
 type-prefixed entry (=» instrument as: lead guitar=); item 5 uses five fixed buckets;
@@ -272,7 +262,7 @@ prediction. Fill in the "Observed" line after the live check.
   Morning, Lunch and Afternoon have single-digit counts; Night is absent. Empty cells remain under "empty cells".
 - Observed: OK
 
-* BUGs:
+* DONE BUGs:
 
 1.)
 
@@ -298,5 +288,15 @@ Unrelated to this session:
 @debug/ISRCs-bug-uvd-initial.html - raw HTML of the above URL, pre-filtered in the "Relationship types" column for "instrument as: lead guitar", unique value drop down menu in the "ISRCs" column shows entries which are NOT visible - just the unique value drop down menu
 @debug/ISRCs-bug-filtered.html - raw HTML of the above URL, additionally filtered in the "ISRCs" for "country: GB" - filtering OK, but NO highlighning of "GB"
 @debug/ISRCs-bug-uvd-filtered.html - raw HTML of the above URL, additionally filtered in the "ISRCs" for "country: GB" - filtering OK, but NO highlighning of "GB" - just the unique value drop down menu
+#+end_example
+
+
+* TODO "Description" column in "search" pages could have multiple lines
+
+"Description" column in "search" pages could have multiple lines
+e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&method=indexed
+
+#+begin_example
+<td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
 #+end_example
 

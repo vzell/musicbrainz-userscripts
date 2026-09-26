@@ -118,7 +118,6 @@ The "Save to Disk" and "Load from Disk" buttons also occupy too much space I thi
 
 Take also into account possible changes to the testing framework
 
-
 * DONE The fetch progress bar should be positioned after the last button in h1
 
 Shipped in 9.99.1150: moved =mb-fetch-progress-wrap= to the end of
@@ -208,7 +207,7 @@ Use only the following glyph "▼▌█" as the current one occupies too much sp
 * TODO Remove "Show all " generically from all buttons 
 
 #+begin_example
-"Show  " - https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations | https://musicbrainz.org/user/vzell/ratings/event/ | https://musicbrainz.org/user/vzell/ratings | https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations
+"Show " - https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations | https://musicbrainz.org/user/vzell/ratings/event/ | https://musicbrainz.org/user/vzell/ratings | https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations
 "(xxxxx) " - https://musicbrainz.org/report/LowDataQualityReleases?filter=1
 "Show all " - everywhere else
 #+end_example
@@ -234,7 +233,7 @@ vzell’s tag “back scan missing” (see everyone’s) | [Upvoted] [Downvoted]
 
 - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
 
-Bruce Springsteen | Releases: [Artist] [Various Artist]
+Bruce Springsteen | Releases: [Artists] [Various Artists]
 
 - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
 

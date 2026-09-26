@@ -1,7 +1,7 @@
 #+TITLE: Configuration handling — end-user analysis, and defaults in git
 #+DATE: 2026-09-20
 
-* Status
+* DONE Status
 
 Read off the code at 9.99.1129. Each finding below names the branch it ships
 on; the table's Version column is the authority on what has landed. Branch

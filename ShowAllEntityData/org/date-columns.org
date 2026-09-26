@@ -1,4 +1,4 @@
-* /uniq-dropdown-section On original date based columns, add a new section which renders unique values for complete date expression, partial ones and date ranges where each date again could be a partial expression
+* DONE /uniq-dropdown-section On original date based columns, add a new section which renders unique values for complete date expression, partial ones and date ranges where each date again could be a partial expression
 ** I
 
 On original date based columns on each pageType, add a new section to the unique value dropdown menu which renders

@@ -83,8 +83,7 @@ Two loose ends I'd suggest before this branch merges:
 
 Also still untouched by design: multi-table pages. They get the icon-column fix, but per-sub-table scoping needs the render redesign — sorting one sub-table still re-renders them all, because those source rows carry no artwork to preserve.
 
-** TODO technically WHY do images which we knwo do NO exist are retried and refetched during sort in the big picture image stipe
-
+** TODO technically WHY do images which we know do NO exist are retried and refetched during sort in the big picture image stipe
 *** i
 
 Regarding
@@ -1368,3 +1367,4 @@ Two things I'd flag before you close this out:
 2. CAA_TYPE_FILTER = 'Front' shipped unverified, flagged in its own JSDoc. It's inside releasegroup-releases-filter-sort.spec.js's blast radius, which is exactly the spec that can't run — so it stays unverified until that spec's toast waits are replaced with a settle-poll.
 
    
+

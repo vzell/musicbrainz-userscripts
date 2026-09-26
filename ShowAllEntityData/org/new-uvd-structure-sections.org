@@ -1,4 +1,4 @@
-* TODO Create new sections in the unique value drop down
+* DONE Create new sections in the unique value drop down
 
 On the pageTypes e.g. 'work-recordings' and 'work-recordings-filtered'
 

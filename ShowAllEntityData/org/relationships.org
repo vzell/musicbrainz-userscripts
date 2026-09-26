@@ -433,7 +433,7 @@ implementation branch to main (basically what the skill "merge-push-remove" is f
 this with a hint to the skill to CLAUDE.md
 
 
-* TODO another bug when live testing
+* DONE another bug when live testing
 
 Another live testing bug on the multi-table pageType https://musicbrainz.org/release-group/3986daa8-285e-4f61-8537-fb9b78194607
 
@@ -487,3 +487,6 @@ rg-r-filtered-3658-uvd.html - [Image #8]
 6.)
 
 Can you somehow store the current bug info, so that I can /clear and later start with the bug fix
+
+
+* TODO an entry in the UVD for amazon links in general amazon.com/amaozon.de etc

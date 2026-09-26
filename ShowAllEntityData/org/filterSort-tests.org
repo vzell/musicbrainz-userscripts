@@ -1,4 +1,4 @@
-* create a comprehensive filter sort test on a single table pageType
+* DONE create a comprehensive filter sort test on a single table pageType
 ** DONE i
 
 The goal is to create a comprehensive filter and sort test on a single table pageType which exercises all possible
@@ -442,7 +442,6 @@ or what do you mean by this
 
 * TODO merge with the "perf-steps-1-4" branch
 
-
 * TODO Run our current filter/sort test against the "perf-steps-1-4" branch
 ** i
 
@@ -675,6 +674,7 @@ the bug actually is, that when the CAA column is completey uncollapsed and you s
 field, it automatically collapses everything, which it SHOULDN't when I explicitly had it open before.
 This is what I mean works in the single table case.
 
+
 * TODO findings for future implementations
 ** I found and fixed the missing piece, but it uncovered something bigger. Let me lay out both findings clearly:
 
@@ -695,8 +695,6 @@ This is what I mean works in the single table case.
 
 That second one is a real architectural gap, not a quick fix — it'd mean separating "re-apply highlights" from "re-fetch
 enrichment data," which needs its own careful design and testing, not something to improvise right now.
-
-
 
 * tests
 ** doc

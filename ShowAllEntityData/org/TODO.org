@@ -290,44 +290,6 @@ remove "Showing all recordings..." (see e.g. below) from the pageType 'artist-re
 
 Full raw HTML @debug/artist-recordings-standalone.html
 
-
-* TODO remove "Search YouTube"-button from the pageType 'release-tracks'
-
-remove "Search YouTube"-button from the pageType 'release-tracks'
-
-* TODO add acoustid support
-
-#+begin_example
-// ==UserScript==
-// @name        MusicBrainz: Compare AcoustIDs easier!
-// @namespace   https://musicbrainz.org/user/chaban
-// @version     1.1.5
-// @description Displays AcoustID fingerprints in more places at MusicBrainz.
-// @tag         ai-created
-// @author      otringal, chaban
-// @license     MIT
-// @match       *://*.musicbrainz.org/artist/*/recordings*
-// @match       *://*.musicbrainz.org/artist/*/*edits*
-// @match       *://*.musicbrainz.org/collection/*/*
-// @match       *://*.musicbrainz.org/edit/*
-// @match       *://*.musicbrainz.org/recording/*
-// @match       *://*.musicbrainz.org/release-group/*
-// @match       *://*.musicbrainz.org/release/*
-// @match       *://*.musicbrainz.org/search/*
-// @match       *://*.musicbrainz.org/user/*/edits*
-// @match       *://*.musicbrainz.org/user/*/votes*
-// @exclude     *musicbrainz.org/release/*/edit*
-// @exclude     *musicbrainz.org/release/*/edit-relationships*
-// @connect     api.acoustid.org
-// @icon        https://acoustid.org/static/acoustid-wave-12.png
-// @grant       none
-// @run-at      document-end
-// @downloadURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.user.js
-// @updateURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.meta.js
-// ==/UserScript==
-#+end_example
-
-
 * DONE AUDIT.md
 ** i
 
@@ -383,120 +345,6 @@ live browser for some time to maybe catch some more bugs.
 unchanged: Step 25's cost half — _countLiveDateFlags() running querySelectorAll('.mb-live-date-flag') over every cell of every row on every filter pass, ~87 700 failing subtree scans on
 artist-events, on every pageType including the majority with no live-date flags at all. The fix has a stated shape already (gate the walk behind one table-wide querySelector, as _updateAllColHeaderCounts
 does for its inline-art probe), and it's real userscript work: fixture spec, mutation list, and a measured A/B in one session.
-
-* TODO What's left from the parking lot in AUDIT.org
-
-- that icon-mirror half
-
-* TODO _adoptJesus2099MsLength()
-
-#+begin_example
-    /**
-     * Removes every jesus2099 artifact from one of THIS script's rendered
-     * tables (or from one captured source `<tr>`), so the consolidated table
-     * we render carries no third-party leftovers.
-     *
-     * Scope is deliberately limited to what is handed in — always a
-     * `table.tbl` we built, or a captured row destined for one. Everything
-     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
-     * the pending-edit toggles, its own toolbar) is left untouched: those are
-     * live features of the surrounding page, which must keep working exactly
-     * as before. The audit behind that boundary (scripts/scope-jesus2099-
-     * leaks.py against debug/work-rec.html and debug/therising.html) found
-     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
-     * outside our tables versus only `treleases` and the
-     * `jesus2099userjs81127*` tracklist family inside them.
-     *
-     * Three dispositions, in priority order:
-     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
-     *      already owned, with a load-bearing gate, elsewhere.
-     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
-     *   3. Anything else → marker class token(s) removed, element kept.
-     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
-     *      jesus2099 sets to its own script name — e.g.
-     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
-     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
-     *      except a `title` of our own, marked `data-mb-col-tip` (see
-     *      `_isOwnColumnTooltip()`). Both
-     *      are restricted to marker-carrying cells on purpose: native
-     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
-     *      (artist sort names, country abbreviations), and a `text-shadow`
-     *      with no jesus2099 marker belongs to some other third-party script
-     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
-     *      elements in debug/therising.html alone — verified via
-     *      scripts/check-text-shadow-owner.py), so neither may be stripped
-     *      blind.
-     *
-     * Idempotent: a second call finds nothing and is a no-op. Safe on a
-     * detached node, which is what the captured-source-row pass relies on.
-     *
-     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
-     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
-     */
-    /**
-     * Adopts a jesus2099-leaked millisecond-precision Length value into
-     * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
-     * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
-     * `_msStampReleaseTrackLengths()` use) instead of either destroying it
-     * (an earlier version of this fix just regex-stripped the ".mmm" suffix)
-     * or leaving it as unmarked, un-toggleable text (the ORIGINAL behaviour
-     * — see `tests/fixtures/jesus2099-artifact-purge.spec.js`'s now-
-     * superseded "the purge touches decoration, never the duration text"
-     * assertion).
-     *
-     * jesus2099's own `RECORDING_LENGTH_COLUMN` fetches this value from the
-     * EXACT SAME MusicBrainz Web Service data ShowAllEntityData's own
-     * `ws2`/`batch` ms-source paths would otherwise request — adopting it
-     * is not a guess, it is reusing data that already cost a real network
-     * request, and it means our own lazy fetch never re-requests this
-     * recording once adopted (see the `needFetch` change in
-     * `_msToggleLengthPrecision()`).
-     *
-     * Resets the cell's DISPLAYED text back to plain seconds
-     * (`data-mb-sec-text`, MusicBrainz's own rounding) rather than leaving
-     * the millisecond text visible — millisecond display is transient
-     * DISPLAY state (the same principle `_msResetCarriedOverPrecision()`
-     * applies to cross-tab-hydrated cells, for a different reason: there it
-     * DISCARDS the value entirely, because a hydrated cell carries no
-     * independently-fetched `ms` to safely re-derive `data-mb-sec-text`
-     * from; here jesus2099's own text IS that source, parsed once via
-     * `_parseDurationToMs()`). This matters most on a page mixing
-     * jesus2099-touched rows (a real navigation) with rows ShowAllEntityData
-     * pulled in via its own internal pagination fetch — which jesus2099
-     * never runs against, since Tampermonkey only injects on real page
-     * loads matching its own `@match` (confirmed via
-     * `debug/place-perf-single-tabbed-final.html`: some rows arrived
-     * decorated, others plain, in the SAME final table): every row starts
-     * from the SAME collapsed state instead of a confusing per-row mix.
-     *
-     * @param   {HTMLTableCellElement} td  A Length `<td>` whose current text
-     *   may be jesus2099's own `M:SS[.mmm]` format.
-     * @returns {boolean} Whether a value was adopted.
-     */
-    function _adoptJesus2099MsLength(td) {
-        if (td.dataset.mbMs) return false;              // idempotent
-        const text = td.textContent.trim();
-        if (!_MS_RENDERED_DURATION_RE.test(text)) return false;
-        const ms = _parseDurationToMs(text);
-        if (ms === null) return false;
-        td.dataset.mbMs = String(ms);
-        td.dataset.mbSecText = _msFormatSeconds(ms);
-        _msWriteDurationText(td, td.dataset.mbSecText);
-        return true;
-    }
-#+end_example
-
-
-* TODO The two recorded (unfixed) harness weaknesses:
-
-  1. CDN dependency on every fixture load (DEBUG-NOTES, 2026-09-18). loadPage.js pulls iro and pako from cdn.jsdelivr.net / cdnjs on every fixture page load, so a network blip fails whichever spec happens to be loading at that moment — it hit tag-value-entity-column-leak, which
-  then passed 8/8 standalone. Nothing to fix in the spec; the standing option is vendoring those two files, which loadPage.js's own comment already weighs and declines. The tell is the error naming a CDN URL rather than an assertion.
-
-  2. Waiting for a status text that never changes (DEBUG-NOTES, 2026-09-18). _runAndWaitForSettledText waits for #mb-filter-status-display to settle to a new value. Under load a re-filter can finish with a byte-identical line — same row count, same query, and "in 22ms" isn't
-  unique enough to force a difference — so the wait becomes unsatisfiable and no timeout is long enough. It hit artist-recordings-ms-batch › "answers are cached…", which then passed 7/7 three times. I deliberately didn't change it: the honest fix is to wait on what the test
-  actually asserts (the WS/2 request count, or the row set), not on a text transition, and that choice belongs to whoever owns the test's intent.
-
-The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
 
 * DONE test I did
 
@@ -727,7 +575,7 @@ worktree for the one case the project's rules demand it: a perf A/B, where
 
 Tracking lives in =org/503-handling.org='s Status section, on =main=.
 
-** TODO in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
+** DONE in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
 
 in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
 days change
@@ -745,12 +593,6 @@ days change
      `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
      go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
 
-** TODO Two things this batch surfaced that aren't tracked anywhere yet
-
-if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
-off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
-on unmodified code, different spec each time.
-
 ** DONE PERFORMANCE.org
 
 Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
@@ -763,6 +605,12 @@ they are very long and probaly not worth it now that I've checked in a live brow
 - Is it possible to run them only on demand
 
 ** DONE pick up the segmented retry pill
+** TODO Two things this batch surfaced that aren't tracked anywhere yet
+
+if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
+off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
+on unmodified code, different spec each time.
+
 ** TODO pick up the heading pre-processing defect
 
 Two honest gaps, both recorded rather than buried:
@@ -770,7 +618,6 @@ Two honest gaps, both recorded rather than buried:
   that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
   assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
 - Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
-
 
 * DONE analyze the save/load settings regarding end-user handling/versioning
 
@@ -888,12 +735,6 @@ Add extensive tooltip support for all buttons/filter-fields/clickable anchors li
 CustomizableMultiSelector.user.js remains broken in the published mirror with its file:// require, live since
 2026-02-02. check-publish-ready.py exits 1 on main because of it, which is correct.
 
-
-* remaining stuff
-
-
-* TODO filter checkboxes per column
-
 * DONE plan: Tackle the @org/action-button-redesign.org
 ** DONE i
 
@@ -915,5 +756,159 @@ Change the background color of the two buttons
 to be the same as e.g. '<button id="mb-data-menu-btn"' and also synthezie them in one button with rounded corners and a
 divider line but with the original actions tooltips
 
+
+* TODO What's left from the parking lot in AUDIT.org
+
+- that icon-mirror half
+
+* TODO _adoptJesus2099MsLength()
+
+#+begin_example
+    /**
+     * Removes every jesus2099 artifact from one of THIS script's rendered
+     * tables (or from one captured source `<tr>`), so the consolidated table
+     * we render carries no third-party leftovers.
+     *
+     * Scope is deliberately limited to what is handed in — always a
+     * `table.tbl` we built, or a captured row destined for one. Everything
+     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
+     * the pending-edit toggles, its own toolbar) is left untouched: those are
+     * live features of the surrounding page, which must keep working exactly
+     * as before. The audit behind that boundary (scripts/scope-jesus2099-
+     * leaks.py against debug/work-rec.html and debug/therising.html) found
+     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
+     * outside our tables versus only `treleases` and the
+     * `jesus2099userjs81127*` tracklist family inside them.
+     *
+     * Three dispositions, in priority order:
+     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
+     *      already owned, with a load-bearing gate, elsewhere.
+     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
+     *   3. Anything else → marker class token(s) removed, element kept.
+     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
+     *      jesus2099 sets to its own script name — e.g.
+     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
+     *      except a `title` of our own, marked `data-mb-col-tip` (see
+     *      `_isOwnColumnTooltip()`). Both
+     *      are restricted to marker-carrying cells on purpose: native
+     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
+     *      (artist sort names, country abbreviations), and a `text-shadow`
+     *      with no jesus2099 marker belongs to some other third-party script
+     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
+     *      elements in debug/therising.html alone — verified via
+     *      scripts/check-text-shadow-owner.py), so neither may be stripped
+     *      blind.
+     *
+     * Idempotent: a second call finds nothing and is a no-op. Safe on a
+     * detached node, which is what the captured-source-row pass relies on.
+     *
+     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
+     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
+     */
+    /**
+     * Adopts a jesus2099-leaked millisecond-precision Length value into
+     * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
+     * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
+     * `_msStampReleaseTrackLengths()` use) instead of either destroying it
+     * (an earlier version of this fix just regex-stripped the ".mmm" suffix)
+     * or leaving it as unmarked, un-toggleable text (the ORIGINAL behaviour
+     * — see `tests/fixtures/jesus2099-artifact-purge.spec.js`'s now-
+     * superseded "the purge touches decoration, never the duration text"
+     * assertion).
+     *
+     * jesus2099's own `RECORDING_LENGTH_COLUMN` fetches this value from the
+     * EXACT SAME MusicBrainz Web Service data ShowAllEntityData's own
+     * `ws2`/`batch` ms-source paths would otherwise request — adopting it
+     * is not a guess, it is reusing data that already cost a real network
+     * request, and it means our own lazy fetch never re-requests this
+     * recording once adopted (see the `needFetch` change in
+     * `_msToggleLengthPrecision()`).
+     *
+     * Resets the cell's DISPLAYED text back to plain seconds
+     * (`data-mb-sec-text`, MusicBrainz's own rounding) rather than leaving
+     * the millisecond text visible — millisecond display is transient
+     * DISPLAY state (the same principle `_msResetCarriedOverPrecision()`
+     * applies to cross-tab-hydrated cells, for a different reason: there it
+     * DISCARDS the value entirely, because a hydrated cell carries no
+     * independently-fetched `ms` to safely re-derive `data-mb-sec-text`
+     * from; here jesus2099's own text IS that source, parsed once via
+     * `_parseDurationToMs()`). This matters most on a page mixing
+     * jesus2099-touched rows (a real navigation) with rows ShowAllEntityData
+     * pulled in via its own internal pagination fetch — which jesus2099
+     * never runs against, since Tampermonkey only injects on real page
+     * loads matching its own `@match` (confirmed via
+     * `debug/place-perf-single-tabbed-final.html`: some rows arrived
+     * decorated, others plain, in the SAME final table): every row starts
+     * from the SAME collapsed state instead of a confusing per-row mix.
+     *
+     * @param   {HTMLTableCellElement} td  A Length `<td>` whose current text
+     *   may be jesus2099's own `M:SS[.mmm]` format.
+     * @returns {boolean} Whether a value was adopted.
+     */
+    function _adoptJesus2099MsLength(td) {
+        if (td.dataset.mbMs) return false;              // idempotent
+        const text = td.textContent.trim();
+        if (!_MS_RENDERED_DURATION_RE.test(text)) return false;
+        const ms = _parseDurationToMs(text);
+        if (ms === null) return false;
+        td.dataset.mbMs = String(ms);
+        td.dataset.mbSecText = _msFormatSeconds(ms);
+        _msWriteDurationText(td, td.dataset.mbSecText);
+        return true;
+    }
+#+end_example
+
+* TODO The two recorded (unfixed) harness weaknesses:
+
+  1. CDN dependency on every fixture load (DEBUG-NOTES, 2026-09-18). loadPage.js pulls iro and pako from cdn.jsdelivr.net / cdnjs on every fixture page load, so a network blip fails whichever spec happens to be loading at that moment — it hit tag-value-entity-column-leak, which
+  then passed 8/8 standalone. Nothing to fix in the spec; the standing option is vendoring those two files, which loadPage.js's own comment already weighs and declines. The tell is the error naming a CDN URL rather than an assertion.
+
+  2. Waiting for a status text that never changes (DEBUG-NOTES, 2026-09-18). _runAndWaitForSettledText waits for #mb-filter-status-display to settle to a new value. Under load a re-filter can finish with a byte-identical line — same row count, same query, and "in 22ms" isn't
+  unique enough to force a difference — so the wait becomes unsatisfiable and no timeout is long enough. It hit artist-recordings-ms-batch › "answers are cached…", which then passed 7/7 three times. I deliberately didn't change it: the honest fix is to wait on what the test
+  actually asserts (the WS/2 request count, or the row set), not on a text transition, and that choice belongs to whoever owns the test's intent.
+
+The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
+
+
+
+* TODO remove "Search YouTube"-button from the pageType 'release-tracks' - visible on NB-xxx
+
+remove "Search YouTube"-button from the pageType 'release-tracks'
+
+* TODO add acoustid support
+
+#+begin_example
+// ==UserScript==
+// @name        MusicBrainz: Compare AcoustIDs easier!
+// @namespace   https://musicbrainz.org/user/chaban
+// @version     1.1.5
+// @description Displays AcoustID fingerprints in more places at MusicBrainz.
+// @tag         ai-created
+// @author      otringal, chaban
+// @license     MIT
+// @match       *://*.musicbrainz.org/artist/*/recordings*
+// @match       *://*.musicbrainz.org/artist/*/*edits*
+// @match       *://*.musicbrainz.org/collection/*/*
+// @match       *://*.musicbrainz.org/edit/*
+// @match       *://*.musicbrainz.org/recording/*
+// @match       *://*.musicbrainz.org/release-group/*
+// @match       *://*.musicbrainz.org/release/*
+// @match       *://*.musicbrainz.org/search/*
+// @match       *://*.musicbrainz.org/user/*/edits*
+// @match       *://*.musicbrainz.org/user/*/votes*
+// @exclude     *musicbrainz.org/release/*/edit*
+// @exclude     *musicbrainz.org/release/*/edit-relationships*
+// @connect     api.acoustid.org
+// @icon        https://acoustid.org/static/acoustid-wave-12.png
+// @grant       none
+// @run-at      document-end
+// @downloadURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.user.js
+// @updateURL https://update.greasyfork.org/scripts/548262/MusicBrainz%3A%20Compare%20AcoustIDs%20easier%21.meta.js
+// ==/UserScript==
+#+end_example
+
+
+* TODO filter checkboxes per column
 
 * TODO CLAUDE.md is over the 150.0k-char limit (207.0k chars) · /memory to free up context

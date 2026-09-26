@@ -1,4 +1,4 @@
-* UVD
+* DONE UVD
 ** i
 
 Read @PERFORMANCE.org
@@ -175,7 +175,6 @@ Check my original instructions, they probably should have been much clearer to g
   - I'll also own part of the session-2 friction myself — I ran capture-snapshots.js --help on a script with no --help flag, which silently kicked off a full multi-pageType capture I had to kill. That's now called out as a known pitfall in the skill, not something your
     instructions could have prevented.
 
-
 * DONE filtering shows "ARs" columns
 ** i
 
@@ -198,8 +197,7 @@ as "non-visible" (see screenshot [Image #8])
 @debug/r-final-filtered.html - filtering the "Title" column with "to"
 #+end_example
 
-
-* TODO no highlighning - "Release events"
+* DONE no highlightning - "Release events"
 ** no highlighning
 
 "Release events" column filtered like "US 2" in the sub-table "Recording location for release"
@@ -475,7 +473,6 @@ EOF
 
 commit and push the untracked files ".claude/skills/merge-push-remove/"
 
-
 * DONE same area name bug makes other pageTypes even worse
 
 In commit "ea666ff" you fixed the following bugs:
@@ -553,8 +550,7 @@ that row up to where the fetching for relationships already happened on the page
 @debug/work-rec-double-relationships.html - renderded page which shows the relationships doubled icons, not all rows have been fetched yet when I saved the raw HTML
 
 
-
-* The video glyph 'class="video"' in the "Video" column of different pageTypes e.g https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 should be centered
+* DONE The video glyph 'class="video"' in the "Video" column of different pageTypes e.g https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201 should be centered
 ** DONE i
 
 The video glyph 'class="video"' in the "Video" column of different pageTypes e.g
@@ -570,8 +566,7 @@ and the complete final raw HTML of the above URL @debug/work-rec.html
 
 ** /uniq-dropdown-section - add the glyph to the udvm
 
-
-* /uniq-dropdown-section "Length" column - create a new section in the unique value drop down with unique songs which last between 0 to 1 minutes, between 1 to 2 minutes, between 2 to 3 minutes and so on
+* DONE /uniq-dropdown-section "Length" column - create a new section in the unique value drop down with unique songs which last between 0 to 1 minutes, between 1 to 2 minutes, between 2 to 3 minutes and so on
 ** DONE i
 
 "Length" column - create a new section in the unique value drop down with unique songs which last between 0 to 1 minutes, between 1 to 2 minutes, between 2 to 3 minutes and so on
@@ -656,24 +651,13 @@ From https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/recording
 location of recording" broken, misses one column "Credited as", https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/recordings?direction=1&link_type_id=698&page=1
 
 
-* TODO Support the following date expression: (live, 1992–1994: USA)
-
-Support the following date expressions:
-
-#+begin_example
-live, 1992–1994: USA - "–"
-unicode or not, also highligh different if not the right unicode symbol
-#+end_example
-
-
 * DONE Currently when length include thousends of a second, then it's not highlighted when choosen from the section lists
 * DONE Implement our own version of jesus2099 track length ms precision
 
 
 https://musicbrainz.org/work/8727a75a-8d33-3a2c-912a-f57952773201
 
-
-* TODO On the CD stubs page render the "Title" italic info on the final rendered page as a typical entity with a comment would do, as a comment.
+* DONE On the CD stubs page render the "Title" italic info on the final rendered page as a typical entity with a comment would do, as a comment.
 ** i
 
 Currently it get's extracted in the "Primary alias" column
@@ -682,7 +666,7 @@ https://musicbrainz.org/cdstub/browse
 
 ** /uvd - create section for "added" and "modified"
 
-* TODO currently when MusicBrainz entities have still open edits, they are wrapped with '<span class="mp">'
+* DONE currently when MusicBrainz entities have still open edits, they are wrapped with '<span class="mp">'
 ** DONE i
 
 currently when MusicBrainz entities have still open edits, they are wrapped with '<span class="mp">', e.g.
@@ -728,4 +712,14 @@ Neither existing multi fixture has several sub-tables. Would this be useful
 ** but when the 7 day review period for pending edits is over, do we have to re-capture again
 
 but when the 7 day review period for pending edits is over, do we have to re-capture again
+
+* TODO Support the following date expression: (live, 1992–1994: USA)
+
+Support the following date expressions:
+
+#+begin_example
+live, 1992–1994: USA - "–"
+unicode or not, also highligh different if not the right unicode symbol
+#+end_example
+
 

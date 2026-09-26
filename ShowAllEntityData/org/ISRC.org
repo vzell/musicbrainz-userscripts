@@ -1,4 +1,4 @@
-* TODO ISRC parser
+* DONE ISRC parser
 
 1.)
 

@@ -1,4 +1,4 @@
-* event-extraction-bug
+* TODO event-extraction-bug
 ** i
 
 For example on the pageType 'artist-recordings', e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings
@@ -36,7 +36,7 @@ Split the entry "live, 2001-03-17: Webster Hall, Manhattan, New York, NY, USA or
 
 See @debug/multiple-dates-multi-row-cell.html
 
-** flag the minus/hyphen in dates visually
+** TODO flag the minus/hyphen in dates visually
 
 (live, 2012-09: L'Olympia Bruno Coquatrix, Paris, France)
 (live, 2024‐05‐12: Nowlan Park, Kilkenny, Ireland; YouTube – Calum Harkness)

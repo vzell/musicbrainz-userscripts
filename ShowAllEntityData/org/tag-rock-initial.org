@@ -1,4 +1,4 @@
-﻿* Bug with tag rock page
+﻿* DONE Bug with tag rock page
 
 The pageType 'tag-value' for e.g. the URL https://musicbrainz.org/tag/rock has the following bug when sorting a
 sub-table which has an associated overflow table.

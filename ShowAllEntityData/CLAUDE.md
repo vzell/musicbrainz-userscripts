@@ -1641,14 +1641,14 @@ below, which mixed unrelated topics under one header.
 
 **Split history**, for context:
 
-| Version   | What split                                                                                                                                                                                                                        |
-|-----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| v9.99.872 | "Entity info" → one sub-section per entity type (`entity_*`) plus Comment/Alias                                                                                                                                                   |
-| v9.99.873 | New sections carved out: Format info, Release events (country/date/weekday), Country name/code details, Tracks info, Catalog info                                                                                                 |
-| v9.99.882 | New "Event info" section (event dates on native tag-value listings)                                                                                                                                                               |
-| v9.99.886 | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled"                                                                                                                                     |
-| v9.99.893 | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                      |
-| next      | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version) |
+| Version         | What split                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|-----------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| v9.99.872       | "Entity info" → one sub-section per entity type (`entity_*`) plus Comment/Alias                                                                                                                                                                                                                                                                                                                                                                                                               |
+| v9.99.873       | New sections carved out: Format info, Release events (country/date/weekday), Country name/code details, Tracks info, Catalog info                                                                                                                                                                                                                                                                                                                                                             |
+| v9.99.882       | New "Event info" section (event dates on native tag-value listings)                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| v9.99.886       | "Event info" renamed to "Event info - Event date"; new sibling "Event info - Event cancelled"                                                                                                                                                                                                                                                                                                                                                                                                 |
+| v9.99.893       | "Credit details" → `creditAttr`/`creditTask`/`creditDate`/`creditInstrument`/`creditAltName`                                                                                                                                                                                                                                                                                                                                                                                                  |
+| next            | Structure/Flags/Format info/Tracks info/Catalog info/CAA info/EAA info each split further; "Release events"/"Country details" labels normalized to the current naming convention (see `// @version` header for the exact version)                                                                                                                                                                                                                                                             |
 | v9.99.1156-1164 | Additions, not splits: `tracksTotal` (kind `trackstotal`), `lengthMs` (three flag modes `length-ms-*`), `timeOfDay` (kind `timeofday`, buckets in `_TIME_OF_DAY_BUCKETS`), `relTypeCredit` (kind `reltypecredit`, ONE static section with the type as an entry prefix rather than a runtime-created section per type). Also `_workAttrTypeLabels()`: "Attributes - Identifier type" now offers the parts of a slash-joined type (`BUMA/STEMRA ID` → `BUMA`, `STEMRA ID`) beside the compound. |
 
 ## Flags in the dropdown: two third-party shapes, and what "hollow" means
@@ -2990,16 +2990,16 @@ region for a backtick before debugging anything else.
 `org/action-button-redesign.org`. The bar used to be one flat run of up to 13
 controls, nine of them labelled. It is now:
 
-| Order | Element                                | Present                                      |
-|-------|----------------------------------------|----------------------------------------------|
-| 1     | `🧮N …` fetch buttons                  | always                                       |
-| 2     | `#mb-stop-btn`                         | always (hidden outside a fetch)              |
-| 3     | `#mb-button-divider-initial`           | always — the only surviving `\|`             |
-| 4     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render          |
-| 5     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                      |
-| 6     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)        |
-| 7     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill   |
-| 8     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill  |
+| Order | Element                                | Present                                                                               |
+|-------|----------------------------------------|---------------------------------------------------------------------------------------|
+| 1     | `🧮N …` fetch buttons                  | always                                                                                |
+| 2     | `#mb-stop-btn`                         | always (hidden outside a fetch)                                                       |
+| 3     | `#mb-button-divider-initial`           | always — the only surviving `\|`                                                      |
+| 4     | `#mb-disc-menu-btn` `📀 Discography ▾` | `artist-releasegroups`, post-render                                                   |
+| 5     | `#mb-data-menu-btn` `📦 Data ▾`        | from the initial render                                                               |
+| 6     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)                                                 |
+| 7     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill                                            |
+| 8     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill                                           |
 | 9     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch) — trails everything, `org/action-button-redesign.org` |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
@@ -3157,11 +3157,11 @@ reason.
 **`ShowAllEntityData_HELP.md`**, hand-written, and the `.txt` is retired. Three
 things read it and they must stay in agreement:
 
-| | |
-|---|---|
-| `HELP_GITHUB_URL` | the `/blob/` page — where a plain ❓ click goes |
-| `REMOTE_HELP_URL` | the same file raw — what the dialog fetches |
-| the committed `_HELP.md` | what a publish copies to the mirror |
+|                          |                                                 |
+|--------------------------|-------------------------------------------------|
+| `HELP_GITHUB_URL`        | the `/blob/` page — where a plain ❓ click goes |
+| `REMOTE_HELP_URL`        | the same file raw — what the dialog fetches     |
+| the committed `_HELP.md` | what a publish copies to the mirror             |
 
 `openAppHelp(e)` is the button's handler and branches on `e.shiftKey` alone;
 `showAppHelp()` is the dialog and is no longer wired to the button directly.

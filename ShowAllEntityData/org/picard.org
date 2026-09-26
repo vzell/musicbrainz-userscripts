@@ -1,4 +1,4 @@
-* picard
+* DONE picard
 
 Session notes for the Picard-column work. Part 1 shipped in *9.99.1056* and
 Part 2 in *9.99.1057*; both are done, and Part 2's full plan is kept below as
