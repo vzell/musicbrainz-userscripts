@@ -1,0 +1,146 @@
+We need to redesign the action button texts, specifically shorten it and/or put some kind of descriptive text in front of
+the buttons
+
+* analyze the current situation, present some enhancemnts, see below
+
+
+* DONE Remove "Show all " generically from all buttons
+
+#+begin_example
+"Show " - https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations | https://musicbrainz.org/user/vzell/ratings/event/ | https://musicbrainz.org/user/vzell/ratings | https://musicbrainz.org/label/c4f2cf49-b57c-4cc1-8061-f54400704ac4/annotations
+"(xxxxx) " - https://musicbrainz.org/report/LowDataQualityReleases?filter=1
+"Show all " - everywhere else
+#+end_example
+
+** DONE Decisions (2026-09-27) and what shipped
+
+Both "Show all " and plain "Show " are stripped, but only from what's
+*painted* on the button — the fix is a single new line in the one render
+loop every =pageDefinitions[].buttons[].label= funnels through
+(=buttonsToRender.forEach=, branch =${ShowAllEntityData.user.js}=), computing
+a display-only stripped label right before the existing =🧮N= mnemonic
+prefix. =conf.label= itself, and therefore =eb.dataset.label=, is left
+untouched, which is what keeps roughly 100 existing Playwright fixture specs
+(=button[data-label="Show all …"]=) passing unmodified — only the tooltip's
+=.includes('Show all')= check and the mnemonic-prefix logic read
+=conf.label= after this point, and neither needed to change.
+
+The "(xxxxx) " note above turned out to just be pointing at this TODO's own
+=LowDataQualityReleases= mention — clarified as: use the bracket text from
+the *next* TODO's mockup for that page (=[Unfiltered] [Subscribed Only]=).
+So the =report-detail=/=report-multiple-linked= pair got a small special-case
+rename at the source (=Show all (unfiltered)=/=Show all (subscribed only)=
+→ =Unfiltered=/=Subscribed Only=) rather than relying on the generic strip,
+which alone would have left the parens and lower-case intact.
+
+Also resynced: the three example button strings quoted in
+=ShowAllEntityData_HELP.md=, and the two fixture specs that hardcoded the old
+report =data-label= as a click selector.
+
+The "more action button consolidation" TODO below (bold group-label heading
+before the button row, e.g. =Subscriptions:=, and bespoke short labels for
+6 named pages) is deliberately NOT part of this — it also implies dropping
+the =🧮= mnemonic on those pages, which needs its own design pass.
+
+* DONE more action button consolidation
+
+- On e.g. https://musicbrainz.org/user/vzell/subscriptions/artist the button text in the five button should remove
+"subscriptions" and instead render it as "Subscriptions" in bold in front of the buttons
+
+vzell | Subscriptions: [Artist] [Collection] [Label] [Series] [Editor] | 
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+Bruce Springsteen | RGs: [Artists] [Various Artists] |
+
+- https://musicbrainz.org/report/LowDataQualityReleases?filter=1
+
+Releases marked as having low data quality | [Unfiltered] [Subscribed Only]
+
+- https://musicbrainz.org/user/vzell/tag/back%20scan%20missing - remove "Tag for Entities"
+
+vzell’s tag “back scan missing” (see everyone’s) | [Upvoted] [Downvoted]
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+
+Bruce Springsteen | Releases: [Artists] [Various Artists]
+
+- https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
+
+Bruce Springsteen | [Aliases] [Credits]
+
+** DONE Decisions (2026-09-27) and what shipped
+
+A per-button =shortLabel= field (display-only, same non-mutating contract as
+=WIP.1='s prefix strip — =conf.label=/=eb.dataset.label= untouched) covers all
+6 named pages AND every other button whose text just repeated the page's own
+subject (~45 more, e.g. =Tags for Artist= → =Tags=, =Relationships for Label
+(complete)= → =Relationships (complete)=), confirmed by the user after
+reviewing a full before/after list — see "check other button labels" below.
+=labelFromH2=/=labelFromPathEntity=/=labelFromType= (dynamic labels) got the
+same treatment at the mechanism level rather than per-literal.
+
+=buttonGroupLabel= (new pageDefinition field) renders the bold =<Label>:=
+prefix, used by =user-subscriptions= ("Subscriptions"), =artist-releasegroups=
+("RGs") and =artist-releases= ("Releases"); =report-detail=/
+=report-multiple-linked= and =user-tag-value(-entity)=/=artist-aliases= needed
+only the =shortLabel= drop, no new heading — their native =h1= text already
+supplies the context. The =🧮= mnemonic is kept on every button, including
+these three (user confirmed, see below) — the mockups omitting it were
+illustrative, not a spec to drop keyboard reachability.
+
+Also caught by the same principle, added on request: =labelFromType='s search
+page (native =h1= reads "Search results") drops "Search Results for " too,
+so =?type=recording= now shows just =🧮¹ Recordings= instead of =🧮¹ Search
+Results for Recordings=.
+
+* DONE Show me a list beforehand and check other button lables for potential shortening
+
+Asked before implementing (see AskUserQuestion in-session): keep the =🧮=
+mnemonic everywhere (chosen over dropping it to match the mockups literally),
+and apply the "for <SameEntity>" shortening broadly rather than only to the 6
+named pages (chosen over leaving the other ~45 buttons alone). Both landed as
+described above.
+
+* DONE enhancement
+
+Add a "|" after the entity page title and the description e.g on
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases
+
+render
+
+#+begin_example
+Bruce Springsteen Releases: <action buttons>
+#+end_example
+
+as
+
+#+begin_example
+Bruce Springsteen | Releases: <action buttons>
+#+end_example
+
+and the description should be in a smaller bold font
+
+** DONE Decisions (2026-09-27) and what shipped
+
+The =buttonGroupLabel= heading (see above) now renders as a =" | "= divider —
+reusing =uiButtonDividerCSS()=, the same style already used before the 📦
+Data ▾ menu — followed by a =<strong>= at =font-size:0.65em= rather than the
+native =h1='s full size, so it reads as a caption under/after the entity name,
+not a second title. Applies to all three =buttonGroupLabel= pages generically
+(one shared code path), confirmed live by the user on both the Releases and
+RGs pages.
+
+* DONE rich tooltips for the buttons
+
+Not originally in this file — added on request once buttons started losing
+their descriptive context to =shortLabel=. Every action button now gets a
+styled HTML hover tooltip (=data-mbtt=, shown via the existing
+=#mb-stat-tooltip= popup the row-count stat already used — its delegation was
+generalised from =.mb-row-count-stat= to any =[data-mbtt]= element) showing
+the full un-shortened label, the fetch description, and the Ctrl-M shortcut.
+The native =title= is kept as an accessible fallback and is what the popup
+temporarily blanks while hovering. This also fixed a pre-existing gap where
+several buttons (subscriptions, tag upvote/downvote, aliases, …) had no
+tooltip — and therefore no shortcut hint either — at all.
+

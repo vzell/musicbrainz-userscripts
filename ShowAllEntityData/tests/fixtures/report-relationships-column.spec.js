@@ -27,7 +27,7 @@ const WS2_BODY = JSON.stringify({
 
 /**
  * Loads a report fixture, routes WS2 + the report's own re-fetch, clicks
- * "Show all (unfiltered)", and waits for render.
+ * "Unfiltered", and waits for render.
  *
  * @param {import('@playwright/test').Page} page
  * @param {{url: string, fixtureFile: string, ws2Urls: string[]}} opts
@@ -45,7 +45,7 @@ async function loadReportPage(page, { url, fixtureFile, ws2Urls }) {
     });
     await page.route(`${url}?**`, (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));
 
-    await page.click('button[data-label="Show all (unfiltered)"]');
+    await page.click('button[data-label="Unfiltered"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
 }
 
