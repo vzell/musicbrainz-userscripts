@@ -149,7 +149,7 @@ For each column identified in step 1.6:
 - **A list-shaped or prose-shaped cell that should collapse** → add the
   column's header name to `features.collapsableColumns`; no other wiring
   needed; `_findCellListItems()`/`_classifyCollapseCell()` handle
-  classification automatically (see `CLAUDE.md`'s `collapsableColumns`
+  classification automatically (see `docs/claude/filter-and-cache-invariants.md`'s `collapsableColumns`
   section if the cell shape is ambiguous between list and prose).
 
 Don't invent a bespoke pipeline (à la `release-tracks`) unless the page
@@ -166,7 +166,7 @@ Before considering the entry done, trace it through
 (`applyRenameH2ToH3`/`applyInsertH2`/`applyListToTable`, in that order) →
 fetch loop → `renderFinalTable` or `renderGroupedTable`. If `tableMode` is
 `'multi'` and `div#content` was absent (step 1.1), re-read the
-"user-tags container re-root" section of `CLAUDE.md` and confirm
+"user-tags container re-root" section of `docs/claude/fetch-and-render-pipeline.md` and confirm
 `targetHeader` ends up inside whatever `container` resolves to after
 cleanup — don't just assume it works because the code compiles.
 

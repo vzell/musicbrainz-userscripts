@@ -92,7 +92,7 @@ order) — `PEER_SPLIT_KINDS` is a strict subset of it.
 No page-definition (`pageDefinitions`) change needed for a DYNAMIC-fallback
 column — `def.features.collapsableColumns` is populated at runtime the
 moment the column is discovered (see the "Runtime `collapsableColumns`/
-header-glyph registration" section of this project's CLAUDE.md). A FIXED
+header-glyph registration" section of this project's `docs/claude/release-tracks-and-length.md`). A FIXED
 column (like "Phonographic copyright…") that newly becomes multi-row from
 this change may already be a static `collapsableColumns` entry in
 `pageDefinitions` — check, but it usually already is (fixed columns are
