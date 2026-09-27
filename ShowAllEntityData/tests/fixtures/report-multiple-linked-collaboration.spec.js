@@ -21,7 +21,7 @@ const FIXTURE_FILE = path.join(__dirname, 'collaboration-relationships.html');
 test('CollaborationRelationships: "Collaboration" column is filled from the colspan group-header row, not left empty', async ({ page }) => {
     await loadUserscriptPage(page, { url: REPORT_URL, fixtureFile: FIXTURE_FILE, testMode: true });
 
-    // "Show all (unfiltered)" carries a non-empty overrideParams (filter=0),
+    // "Unfiltered" carries a non-empty overrideParams (filter=0),
     // so startFetchingProcess always re-fetches page 1 over the network
     // rather than reusing the live document — this is exactly the path
     // that runs the group-header-carry-forward logic
@@ -30,7 +30,7 @@ test('CollaborationRelationships: "Collaboration" column is filled from the cols
     // fill each empty first <td> from the preceding colspan="2" group row.
     await page.route(`${REPORT_URL}?**`, (route) => route.fulfill({ path: FIXTURE_FILE, contentType: 'text/html' }));
 
-    await page.click('button[data-label="Show all (unfiltered)"]');
+    await page.click('button[data-label="Unfiltered"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });
 
     const rows = page.locator('table.tbl tbody tr');
