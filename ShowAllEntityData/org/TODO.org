@@ -756,6 +756,22 @@ Change the background color of the two buttons
 to be the same as e.g. '<button id="mb-data-menu-btn"' and also synthezie them in one button with rounded corners and a
 divider line but with the original actions tooltips
 
+* DONE CLAUDE.md is over the 150.0k-char limit (207.0k chars) · /memory to free up context
+
+I get the following currently:
+
+#+begin_example
+⚠ CLAUDE.md is over the 150.0k-char limit (229.5k chars) · /memory to free up context
+#+end_example
+
+1.)
+
+Analyze the usage/"usefulness for you" of our current ".md" and ".org" files
+
+2.)
+
+definitely shorten the CLAUDE.md file for the basic stuff and redirect for everything else
+
 
 * TODO What's left from the parking lot in AUDIT.org
 
@@ -910,5 +926,3 @@ remove "Search YouTube"-button from the pageType 'release-tracks'
 
 
 * TODO filter checkboxes per column
-
-* TODO CLAUDE.md is over the 150.0k-char limit (207.0k chars) · /memory to free up context
