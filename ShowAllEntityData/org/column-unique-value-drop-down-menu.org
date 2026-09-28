@@ -15,3 +15,201 @@ special sections at all.
 3.)
 
 Also weigh the potential performance implications.
+
+* Analysis results (2026-09-28)
+
+** 1. Summary of current implementation
+
+- Three-table contract just above =openUniqDrop()= (=ShowAllEntityData.user.js= ~45474-45946):
+  =SYN_SECTION_META= (display metadata: glyph/markerClass + label, ~50 keys today, grouped by
+  topic - Structure, Flags, Credit details, Entity info per entity type, CAA/EAA info, Format
+  info, ISRC/ISWC/Barcode, Length info, Part of series, Editor info, Locale info, Instrument
+  info, Date info, Pending edits, etc.), =MB_UNIQ_MODE_TO_SECTION= (fixed structural/flag
+  "mode" strings -> section key), =MB_UNIQ_KIND_TO_SECTION= (per-value "kind" strings -> section
+  key; two kinds - =name=, =arttype=/=artcomment= - resolve dynamically instead since their
+  target depends on runtime data).
+- =openUniqDrop(btn, table, colIndex)= (~60193-64270) is column-name/DOM-shape driven, not
+  pageType-driven: a long list of =isXxxCol= booleans keyed on the column header text (Format,
+  Tracks, Catalog#, ISRCs, ISWC, Barcode, Attributes, Length/Recording length, Time,
+  Relationship types, any =dateParts=-fed column, Part of series, Editor-family columns,
+  Version history, Release/Title, AcoustID, Locale, instrument-list columns) plus DOM-shape
+  gates (=.mb-rel-cell=, collapsable/multi-row cells, artist-credit markup). This means one
+  gate typically lights up the same section across every pageType that reuses that column name
+  - sections are not hand-wired per pageType.
+- Rendering: =getOrCreateSynSection(key)= lazily builds =.mb-uniq-section= /
+  =.mb-uniq-section-hdr= / =.mb-uniq-section-items= in first-requested order (not declaration
+  order) and caches per open in =_synSections=; =makeSynItem=/=makeValueSynItem()= build each
+  =.mb-col-uniq-item= row, with a real flag icon always going in the *trailing* slot after the
+  label - never the generic leading marker slot.
+- Columns confirmed to have *no dedicated section today* (plain unique-value list only):
+  "Video" (Yes/No-shaped), "Delta"/"When" (reports-index change indicator), "Annotation chars"
+  (bare length number), and the individually-exposed =editorActivity= facets ("Active for",
+  "Active since", "Active start/end date" - distinct from the unrelated Editor-info family that
+  gates on raw =/user/= link columns like "Editor"/"Candidate").
+- Naming convention: every label is "Topic - Capitalized subtopic". Split precedent exists
+  (v9.99.894 split six flat sections into Topic/Subtopic pairs; 2026-08-11 WIP.77 split an
+  overloaded 597-row "Cell structure" list into sub-sections after it became unusable as one
+  flat scroll). The documented split heuristic: a section fed by 2+ semantically distinct
+  kind/mode strings is a /candidate/, but not every multi-kind bucket should split -
+  =structure= (5 mutually-exclusive cell-shape states) and =catalogPresence= (3 prefix flags)
+  stay merged on purpose because their facets answer one question, not several.
+
+*** Column-name / DOM-shape gate -> section (current state)
+
+| Column name (any pageType)                                          | Section(s) shown                                                                             |
+|---------------------------------------------------------------------+----------------------------------------------------------------------------------------------|
+| Format                                                              | Format info (Size / Count / Combo / Type)                                                    |
+| Tracks / Total Tracks                                               | Tracks info (Tracks / Multi-medium / Total)                                                  |
+| Catalog#                                                            | Catalog info (Prefix / Presence)                                                             |
+| Event                                                               | Entity info - Event cancelled / Event info - Cancelled                                       |
+| ISRCs                                                               | ISRC (Country / Registrant / Year / Designation / Validity)                                  |
+| ISWC                                                                | ISWC Validity                                                                                |
+| Barcode                                                             | Barcode (Validity / Format / Same As)                                                        |
+| Attributes                                                          | Attributes (recordingAttributes, or workAttrIdType)                                          |
+| Length / Recording length                                           | Length info (Duration / Deviation / Live status / Millis)                                    |
+| Time                                                                | Time info - Time of day                                                                      |
+| Relationship types                                                  | Relationship types - Credited as                                                             |
+| any =dateParts=-fed column                                          | Date info (Precision / Decade / Month / Year / Weekday)                                      |
+| Part of series (release-tracks AR)                                  | Part of series (Name / Date / Number)                                                        |
+| Editor / Candidate / Proposer / seconder / Voter                    | Editor info (Deleted / Recorded name / Membership / Comment)                                 |
+| Version history (annotations)                                       | Version history - Changelog                                                                  |
+| Release / Title                                                     | Release info - Data quality                                                                  |
+| AcoustID (recording-fingerprints)                                   | AcoustID info - Link status                                                                  |
+| Locale (alias table)                                                | Locale info (Language / Primary)                                                             |
+| instrument-list columns                                             | Instrument info (Comment / Description)                                                      |
+| CAA / EAA                                                           | CAA/EAA info (Type / Comment)                                                                |
+| Title (top-cd-stub)                                                 | Title info (Added / Modified)                                                                |
+| any column with =.mb-rel-cell= cells                                | Relationship icons; Relationships - Load state                                               |
+| collapsable AR / multi-row columns                                  | Structure (+ Structure - Inline artwork on addCAA/addEAA)                                    |
+| artist-credit markup columns                                        | Entity info (per entity type + Comment/Alias/Tag count), Role, Join phrases, Name variations |
+| any column (title-mismatch / name-variation / pending-edit markers) | Flags - Title mismatch / Name variation; Pending edits                                       |
+
+*** Columns with no dedicated section today
+
+| Column                                                          | pageType(s)                  | Data shape                   |
+|-----------------------------------------------------------------+------------------------------+------------------------------|
+| Video                                                           | many                         | Yes/No-shaped text           |
+| Delta / When                                                    | reports-index                | trend indicator text + color |
+| Annotation chars                                                | annotations                  | bare number (text length)    |
+| Active for / Active since / Active start date / Active end date | annotations (editorActivity) | duration / year / ISO dates  |
+
+** 2. Suggested additions
+
+Ranked by how directly they follow existing precedent and how many pageTypes they'd reach.
+
+1. *New section: "Event info - Type" family for =eventParts=* (recording-listing pages -
+   =artist-recordings=, =work-recordings(-filtered)=, =area-recordings(-filtered)=,
+   =release-tracks=, =search=, =tag-value(-entity)=, =collections-releases=,
+   =series-releases=, =user-ratings(-type)=, =isrc=, ~23 pageTypes total). =eventParts=
+   (synthetic extractor, =ShowAllEntityData.user.js:5962=) already splits one Comment string
+   into 9 sub-columns (Event-Type/Date/Detail/Venue/Venue-Detail/City/State/Country/
+   Additional-Info) but *none* of them feed a dropdown section today. Event-Type is a fixed
+   6-word vocabulary (live/soundcheck/studio/interview/audition/live rehearsal) - ideal
+   =MB_UNIQ_KIND_TO_SECTION= material, same shape as existing fixed-vocabulary sections.
+   Event-Country/State/City are open categoricals (same shape as the existing "Release events -
+   Country" section). Highest-reach candidate of the batch.
+2. *Split candidate: "Editor info" gains its =editorActivity= facets* (=annotations=
+   pageType). The existing Editor info section (Deleted/Recorded name/Membership/Comment)
+   already covers the raw =/user/= link columns; =editorActivity=
+   (=ShowAllEntityData.user.js:5478=) produces genuinely new facets from the same source cell -
+   a duration ("Active for"), a bare year, and two ISO dates (start/end) - that currently have
+   no section. A "Membership" subtopic already exists at a coarse grain; this would give it
+   dedicated Year/Date-range entries, mirroring the existing Date info (Decade/Month/Year)
+   pattern rather than inventing a new shape.
+3. *New section: reports-index "Trend" from =reportChangeIndicator=*
+   (=ShowAllEntityData.user.js:5769=, =reports-index= pageType only). The "Delta" cell already
+   encodes a 3-state trend (up/down/flat arrow with matching color) distinct from the free-text
+   count/percent next to it - a clean boolean/tri-state flag section, same shape as the existing
+   =eventCancelled= flag. Single-pageType reach, but cheapest to build (fixed 3-value
+   vocabulary, no new DOM-walk technique needed).
+4. *New section: "Locale info - Primary" as its own flag* (=entity-aliases=,
+   =artist-aliases=). =localeParts= (=ShowAllEntityData.user.js:5373=) already splits into
+   language + a primary-locale boolean; the language half has a section
+   (=localeLanguage=) but the boolean doesn't. Completes an existing pair rather than opening a
+   new topic - lowest-risk pick.
+5. *New section: "Instrument info" gains a structure facet for =Name_Comment_Description=*
+   (=instrument-list= only). Description can carry nested links to sibling instruments (family
+   cross-references) or be plain text; a "has cross-reference" boolean would sit next to the
+   existing Instrument info - Comment/Description sections. Single-pageType, narrow but cheap.
+6. *Considered and NOT recommended as a section*: "Annotation chars" bucketing (a raw number -
+   would need a new bucketing scheme with no existing precedent to reuse, for one pageType) and
+   "Video" Yes/No (a two-value column where a dropdown section adds little over the plain value
+   list already shown). Both are technically buildable but low payoff for the DOM-walk/cache
+   surface they'd add - listed here so they aren't silently re-proposed later.
+
+Each of 1-5 follows the skill's 8-touchpoint pattern (=SYN_SECTION_META= ->
+=MB_UNIQ_KIND_TO_SECTION= -> extractor =_findCellXxx()= -> structure-mode matcher ->
+=_highlightXxxMatch()= -> =getOrCreateSynSection()= render -> quickfilter dataset wiring ->
+changelog/version bump) and should each be its own session/branch if picked up later - not
+bundled - per the "one logical change per session" rule and the skill's own failure-mode list
+(a step silently skipped produces a dead or search-invisible entry, not an error).
+
+*** Suggestions at a glance
+
+| Rank | Section                                                   | PageType reach                 | Extractor (file:line)                | Value shape                        | Risk / effort                |
+|------+-----------------------------------------------------------+--------------------------------+--------------------------------------+------------------------------------+------------------------------|
+|    1 | Event info - Type/Date/Country/State/City                 | ~23 pageTypes                  | =eventParts= (js:5962)               | fixed 6-word vocab + open geo cats | Low risk, highest reach      |
+|    2 | Editor info + =editorActivity= facets                     | annotations                    | =editorActivity= (js:5478)           | duration, year, 2 ISO dates        | Medium - new subtopic shape  |
+|    3 | Reports-index Trend                                       | reports-index                  | =reportChangeIndicator= (js:5769)    | fixed 3-state (up/down/flat)       | Low, cheapest to build       |
+|    4 | Locale info - Primary flag                                | entity-aliases, artist-aliases | =localeParts= (js:5373)              | boolean                            | Lowest risk, completes pair  |
+|    5 | Instrument info - has cross-reference                     | instrument-list                | =Name_Comment_Description= (js:5704) | boolean                            | Low, narrow reach            |
+|    - | NOT recommended: Annotation chars bucketing, Video Yes/No | 1 pageType each                | n/a                                  | n/a                                | Low payoff vs. surface added |
+
+** 3. Performance implications
+
+- *The dropdown already has a documented, working cache*: =_uniqDropDataCache= (a
+  =WeakMap<table, Map<colIndex, {sig, ...}>>=) memoizes all 5 row-scan passes per
+  =(table, colIndex)=, keyed on =_visibleRowSetSignature(table)=. This shipped as PERFORMANCE.org
+  Step 4 and measured *37-54x faster warm opens* (~30s -> ~0.6-0.8s on a 4174-row page). Any
+  new section that reads existing per-row cell text through this same scan pass is effectively
+  free on a warm open and adds negligible cost on a cold one - the 2026-09-26 addition of five
+  sections (tracks-total, instruments-recordings, length-with-millis, time-of-day, credited-as)
+  was shipped on exactly this argument, un-benchmarked, because it only added extra
+  =getCleanColumnText()= calls gated to already-visited cells inside the existing cache bundle.
+- *Correctness cost matters more than raw speed here*: every new section MUST route through
+  the existing invalidation points or it silently reads stale/empty data on a warm reopen -
+  =_invalidateUniqDropDataCache(table, colIndex)= / =...ForTable(table)= for any async-populated
+  or post-render-mutated column (this bit real sections before: 10 symbols were originally left
+  ungated per PERFORMANCE.org's "port-specific fix" note, each producing a section that silently
+  read 0/empty on warm reopen). Suggestions 1-5 above all read data that's already present at
+  initial row-scan time (comment text, editor-link cell, delta cell, locale cell, instrument
+  cell) - none of them are async/post-render-mutated, so none needs new invalidation wiring
+  beyond what the column's existing extractor already triggers.
+- *Real, measured cost driver is filterable text volume, not section count*: PERFORMANCE.org's
+  relationship-column measurement shows collapsing (removing) searchable cell content changes
+  warm uniq-drop time by ~30-37%. Conversely, adding searchable content (what a new section's
+  extractor does) is charged against that same budget - proportional to how many /additional/
+  distinct cell reads it performs, not to how many dropdown sections exist. Since suggestions 1-5
+  reuse cell text that's already scanned for other sections on the same columns (or, for
+  =eventParts=, a column whose synthetic sub-columns already exist and are already scanned when
+  those columns render), the marginal cost of the /dropdown/ work is additional string
+  comparisons on already-fetched text, not new DOM traversal - cheap by the same argument
+  PERFORMANCE.org already accepted once.
+- *Known trap to avoid regressing*: =_visibleRowSetSignature()='s order-dependence (fixed as
+  Step 6, flagged as "the highest-impact regression found" in a 2026-08-25 review) means a pure
+  re-sort still forces a full uniq-drop recompute even with zero new sections. None of the
+  suggestions here touch signature computation, so none of them reintroduces or worsens that
+  class of bug - noted only so it isn't mistaken for something these suggestions would fix.
+- *Net assessment*: all five suggestions are low-risk from a performance standpoint under the
+  existing cache design - the real cost is implementation/testing effort per the skill's 8
+  touchpoints and getting invalidation right for whichever ones (if any) are picked up, not
+  runtime cost. No section here should be gated behind an =sa_enable_...= flag on performance
+  grounds (per the skill's pre-flight question, that gate is for non-trivial per-cell
+  /render-time/ DOM work, which none of these add - they're query-time-only reads of text
+  that's already on the page).
+
+*** Measured =openUniqDrop()= cache impact (PERFORMANCE.org Step 4)
+
+| Measurement                                               | Cold open               | Warm open                 | Speedup | Source                            |
+|-----------------------------------------------------------+-------------------------+---------------------------+---------+-----------------------------------|
+| artist-events, 4174 rows x 21 cols (2026-08-31)           | ~30-33 s                | 581 ms                    | 54x     | PERFORMANCE.org Step 4            |
+| Steps 3-4 cross-check                                     | 29700 ms                | 739 ms                    | 40x     | PERFORMANCE.org                   |
+| 9.99.1111 re-run                                          | 29700 ms                | 739-791 ms                | ~37x    | PERFORMANCE.org                   |
+| Relationship-column collapse (removes searchable content) | n/a                     | -30% to -37% of warm time | n/a     | PERFORMANCE.org (~line 3170-3220) |
+| =_updateAllColHeaderCounts()= (separate, sibling cost)    | 30-120 s sync, 8k+ rows | cached by Step 3          | n/a     | PERFORMANCE.org                   |
+
+Reading the table: each of the five suggested sections reads cell text already visited by the
+existing scan, so they ride the 37-54x warm-open win for free; the only line item that scales
+with a new section is the "Relationship-column collapse" row's lesson - more searchable text
+per cell costs warm-open time roughly in proportion to how much of it there is, not to how many
+=SYN_SECTION_META= keys exist.
