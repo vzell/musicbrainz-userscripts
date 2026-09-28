@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Label - Annotation History - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <h1>Test Label</h1>
+        <!--
+            Regression fixture for "Editor info - Active for"/"- Active
+            since" unique-values dropdown sections (editorActivity()'s own
+            synthetic "Active for"/"Active since" columns), plus the
+            "Active start date"/"Active end date" columns' new membership
+            in _dateExprColumnNames() (giving them the full "Date info"
+            family for free). Neither existed before this change — see
+            org/column-unique-value-drop-down-menu.org's "Analysis results"
+            suggestion #2.
+
+            Rows 1/2: real revived/renamed-editor tooltip markup, copied
+            verbatim from debug/label-annotations.html ("artysmokes") — same
+            "active 10 years (2005-07-28 〜 2015-09-21)" tooltip + "(active
+            10 years until 2015)" .comment span on both rows, so "Active
+            for"/"Active since"/"Active start date"/"Active end date" each
+            count 2.
+            Row 3: a second real example, copied from
+            debug/label-annotations-final.html ("brianfreud") — a DIFFERENT
+            duration/year/date-range, to verify the sections offer more than
+            one entry.
+            Row 4: a plain editor with no tooltip at all (real shape from the
+            same debug capture) — must contribute NOTHING to any of these
+            sections (no stray empty-string entry).
+        -->
+        <h2>Annotation history</h2>
+        <form>
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Old</th>
+                        <th>New</th>
+                        <th>Editor</th>
+                        <th>Date</th>
+                        <th>Version history</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><input type="radio" name="old" value="1"></td>
+                        <td><input type="radio" name="new" value="1" checked></td>
+                        <td><a href="/user/Deleted%20Editor%20%23135888" title="Deleted Editor #135888
+artysmokes
+active 10 years (2005-07-28&nbsp;〜&nbsp;2015-09-21)" class="tooltip j2revivededitor"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">artysmokes</a>&nbsp;<span class="comment">(active 10 years until 2015)</span></td>
+                        <td>2007-07-26 22:35 GMT+2</td>
+                        <td>Added annotation</td>
+                    </tr>
+                    <tr>
+                        <td><input type="radio" name="old" value="2"></td>
+                        <td><input type="radio" name="new" value="2"></td>
+                        <td><a href="/user/Deleted%20Editor%20%23135888" title="Deleted Editor #135888
+artysmokes
+active 10 years (2005-07-28&nbsp;〜&nbsp;2015-09-21)" class="tooltip j2revivededitor"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">artysmokes</a>&nbsp;<span class="comment">(active 10 years until 2015)</span></td>
+                        <td>2008-01-14 10:00 GMT+1</td>
+                        <td>Fixed typo</td>
+                    </tr>
+                    <tr>
+                        <td><input type="radio" name="old" value="3" checked></td>
+                        <td><input type="radio" name="new" value="3"></td>
+                        <td><a href="/user/Deleted%20Editor%20%2395678" title="Deleted Editor #95678
+brianfreud
+active 8 years (2005-02-18&nbsp;〜&nbsp;2012-09-24)" class="tooltip j2revivededitor"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15">brianfreud</a>&nbsp;<span class="comment">(active 8 years until 2012)</span></td>
+                        <td>2008-09-09 16:14 GMT+2</td>
+                        <td>Copy-edit</td>
+                    </tr>
+                    <tr>
+                        <td><input type="radio" name="old" value="4"></td>
+                        <td><input type="radio" name="new" value="4"></td>
+                        <td><a href="/user/jesus2099"><bdi>jesus2099</bdi></a></td>
+                        <td>2009-03-01 12:00 GMT+1</td>
+                        <td>Reordered sections</td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

@@ -6180,6 +6180,11 @@
      *   `<th>`-creation site, with no `syntheticColumns` entry of its own,
      *   since it needs `_findCellDateExpressionParts()`'s `.mb-credit-date`
      *   fallback instead) — it needs no cell-shape fallback here.
+     * - An `editorActivity`-fed entry's "Active start date"/"Active end
+     *   date" OUTPUT columns (`syntheticColumns[3]`/`[4]` — see
+     *   `ColumnDataExtractor.editorActivity`'s own JSDoc for the fixed
+     *   five-column order). Both are already clean "YYYY-MM-DD" text, same
+     *   shape as `eventParts`' "Event-Date" above.
      *
      * Exists so `renderGroupedTable()`'s per-group extractor rebuild (user-
      * ratings / tag-value / user-tag-value / instrument-list) can snapshot
@@ -6201,6 +6206,15 @@
             if (e.extractor === 'dateParts') names.add(e.sourceColumn);
             else if (e.extractor === 'dateTimeParts' && e.syntheticColumns && e.syntheticColumns[0]) names.add(e.syntheticColumns[0]);
             else if (e.extractor === 'eventParts' && e.syntheticColumns && e.syntheticColumns[1]) names.add(e.syntheticColumns[1]);
+            else if (e.extractor === 'editorActivity' && e.syntheticColumns) {
+                // editorActivity()'s own JSDoc: syntheticColumns[3]/[4] are
+                // "Active start date"/"Active end date", already clean
+                // "YYYY-MM-DD" text (from the membership tooltip's own ISO
+                // dates) — same shape _findCellDateExpressionParts() already
+                // reads for every other name registered here.
+                if (e.syntheticColumns[3]) names.add(e.syntheticColumns[3]);
+                if (e.syntheticColumns[4]) names.add(e.syntheticColumns[4]);
+            }
         });
         _collect(columnExtractors);
         _collect(syntheticColumnExtractors);
@@ -25307,6 +25321,21 @@
             const want = mode.slice(14);
             const info = _findCellEditorInfo(cell);
             return !!info && info.comment === want;
+        }
+        if (mode.startsWith('editoractivefor:')) {
+            // Compound mode — matches an "Active for" cell's own exact text
+            // (editorActivity()'s decomposition of the SAME membership
+            // tooltip editormembership: above matches as one raw string).
+            // The synthetic column holds nothing but this value, same
+            // whole-cell-equality shape as eventtype:/eventcountry:.
+            const want = mode.slice(16);
+            return !!cell && getCleanColumnText(cell) === want;
+        }
+        if (mode.startsWith('editoractivesince:')) {
+            // Compound mode — matches an "Active since" cell's own exact
+            // bare-year text. Same shape as editoractivefor: above.
+            const want = mode.slice(18);
+            return !!cell && getCleanColumnText(cell) === want;
         }
         if (mode === 'changelog-has-message') {
             // Binary flag — true when this "Version history" cell's
@@ -45770,6 +45799,17 @@ a { color: #1565c0; }`;
         // 💬 intentionally reused from caaInfoComment/eaaInfoComment —
         // same facet (free-text comment), same reuse rationale.
         editorComment:      { label: 'Editor info - Comment',       glyph: '💬' },
+        // "Active for"/"Active since" — editorActivity()'s own decomposition
+        // of the SAME membership tooltip editorMembership above shows as one
+        // raw string ("active 10 years (2005-07-28 〜 2015-09-21)"): the
+        // duration phrase and the bare trailing year, each independently
+        // filterable. The tooltip's two ISO dates (Active start/end date) get
+        // no section of their own here — they're registered in
+        // `_dateExprColumnNames()` instead, so they inherit the full "Date
+        // info" family (Precision/Decade/Month/Year/Weekday) for free rather
+        // than duplicating it.
+        editorActiveFor:   { label: 'Editor info - Active for',   glyph: '⏰' },
+        editorActiveSince: { label: 'Editor info - Active since', glyph: '🔔' },
         // "Version history" column only (annotations pageType): whether
         // the changelog parenthetical is real free text or MusicBrainz's
         // own literal "no changelog specified" placeholder — see
@@ -45967,6 +46007,7 @@ a { color: #1565c0; }`;
         eventtype: 'eventPartsType', eventcountry: 'eventPartsCountry',
         editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
         editormembership: 'editorMembership', editorcomment: 'editorComment',
+        editoractivefor: 'editorActiveFor', editoractivesince: 'editorActiveSince',
         localelanguage: 'localeLanguage',
         datedecade: 'dateExprDecade', datemonth: 'dateExprMonth',
         dateyear: 'dateExprYear', dateweekday: 'dateExprWeekday',
@@ -47054,6 +47095,42 @@ a { color: #1565c0; }`;
         commentSpan.normalize();
         const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         highlightCrossTag(commentSpan, new RegExp(_escaped, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for an `editoractivefor:` compound
+     * structure-mode filter. The whole "Active for" cell IS the value
+     * (`editorActivity()` writes nothing else into it), so this marks the
+     * entire cell text — re-verifies via `getCleanColumnText()` first
+     * ("verify before highlighting", like every other `_highlightXxxMatch()`).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"editoractivefor:10 years"`.
+     */
+    function _highlightEditorActiveForMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(16);
+        if (!_want || getCleanColumnText(cell) !== _want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(_escaped, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for an `editoractivesince:` compound
+     * structure-mode filter — same whole-cell-equality shape as
+     * `_highlightEditorActiveForMatch()` above, for the "Active since"
+     * (bare year) column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"editoractivesince:2015"`.
+     */
+    function _highlightEditorActiveSinceMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(18);
+        if (!_want || getCleanColumnText(cell) !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(`\\b${_want}\\b`, 'g'), 'mb-column-filter-highlight');
     }
 
     /**
@@ -48663,6 +48740,10 @@ a { color: #1565c0; }`;
                                     _highlightEditorDeletedMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('editorcomment:')) {
                                     _highlightEditorCommentMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('editoractivefor:')) {
+                                    _highlightEditorActiveForMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('editoractivesince:')) {
+                                    _highlightEditorActiveSinceMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'changelog-no-message') {
                                     _highlightChangelogNoneMatch(row.cells[f.idx]);
                                 }
@@ -60668,6 +60749,12 @@ a { color: #1565c0; }`;
         const editorRecordedNameValueCounts = _uniqCacheHit ? _uniqCacheHit.editorRecordedNameValueCounts : new Map();
         const editorMembershipValueCounts   = _uniqCacheHit ? _uniqCacheHit.editorMembershipValueCounts   : new Map();
         const editorCommentValueCounts      = _uniqCacheHit ? _uniqCacheHit.editorCommentValueCounts      : new Map();
+        // Distinct "Active for"/"Active since" cell values — see
+        // isEditorActiveForCol/isEditorActiveSinceCol above and
+        // editorActiveFor/editorActiveSince's own SYN_SECTION_META comment.
+        // No-op Maps for any other column.
+        const editorActiveForValueCounts   = _uniqCacheHit ? _uniqCacheHit.editorActiveForValueCounts   : new Map();
+        const editorActiveSinceValueCounts = _uniqCacheHit ? _uniqCacheHit.editorActiveSinceValueCounts : new Map();
         // "Version history" column only (annotations pageType): whether
         // the changelog parenthetical is real free text or MusicBrainz's
         // own "no changelog specified" placeholder — see
@@ -60893,6 +60980,13 @@ a { color: #1565c0; }`;
         // all-null facet fields) to any other matching column name, e.g.
         // Collections' synthetic 'Editor' column (Collection_Editor).
         const isEditorCol         = EDITOR_INFO_COLUMN_NAMES.has(_colHeaderName);
+        // Column-name gates for editorActivity()'s own synthetic "Active
+        // for"/"Active since" columns — plain text, name-only, same
+        // convention as isEditorCol above but a DIFFERENT cell shape (no
+        // `a[href^="/user/"]`, just the decomposed tooltip text), so these
+        // are deliberately not folded into EDITOR_INFO_COLUMN_NAMES.
+        const isEditorActiveForCol   = _colHeaderName === 'Active for';
+        const isEditorActiveSinceCol = _colHeaderName === 'Active since';
         const isVersionHistoryCol = _colHeaderName === 'Version history';
         // Column-name gate for the "Release" column's own native
         // data-quality marker (see _findCellReleaseDataQuality()'s own
@@ -61227,6 +61321,14 @@ a { color: #1565c0; }`;
                         if (_editorInfo.membership)   editorMembershipValueCounts.set(_editorInfo.membership, (editorMembershipValueCounts.get(_editorInfo.membership) || 0) + 1);
                         if (_editorInfo.comment)      editorCommentValueCounts.set(_editorInfo.comment, (editorCommentValueCounts.get(_editorInfo.comment) || 0) + 1);
                     }
+                }
+                if (isEditorActiveForCol) {
+                    const _activeFor = getCleanColumnText(cell);
+                    if (_activeFor) editorActiveForValueCounts.set(_activeFor, (editorActiveForValueCounts.get(_activeFor) || 0) + 1);
+                }
+                if (isEditorActiveSinceCol) {
+                    const _activeSince = getCleanColumnText(cell);
+                    if (_activeSince) editorActiveSinceValueCounts.set(_activeSince, (editorActiveSinceValueCounts.get(_activeSince) || 0) + 1);
                 }
                 if (isVersionHistoryCol) {
                     const _hasChangelog = _findCellChangelogPresence(cell);
@@ -62529,6 +62631,7 @@ a { color: #1565c0; }`;
                 partOfSeriesNameValueCounts, partOfSeriesDateValueCounts, partOfSeriesNumberValueCounts,
                 editorDeletedValueCounts, editorAnyDeletedCount, editorRecordedNameValueCounts,
                 editorMembershipValueCounts, editorCommentValueCounts,
+                editorActiveForValueCounts, editorActiveSinceValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
@@ -62987,7 +63090,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -63142,6 +63245,8 @@ a { color: #1565c0; }`;
                  : kind === 'editorrecordedname' ? '» recorded name: '
                  : kind === 'editormembership'   ? '» membership: '
                  : kind === 'editorcomment'      ? '» comment: '
+                 : kind === 'editoractivefor'    ? '» active for: '
+                 : kind === 'editoractivesince'  ? '» active since: '
                  : kind === 'localelanguage'     ? '» language: '
                  : kind === 'datedecade'         ? '» decade: '
                  : kind === 'datemonth'          ? '» month: '
@@ -63483,6 +63588,10 @@ a { color: #1565c0; }`;
         const _sortedEditorRecordedNameValues = Array.from(editorRecordedNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedEditorMembershipValues   = Array.from(editorMembershipValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedEditorCommentValues      = Array.from(editorCommentValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEditorActiveForValues    = Array.from(editorActiveForValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        // Numeric ascending (bare 4-digit years), same reasoning as
+        // Decade/Year/ISRC-Year above.
+        const _sortedEditorActiveSinceValues  = Array.from(editorActiveSinceValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         const _sortedRoleValues    = Array.from(eventRoleValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRoleTokenValues = Array.from(roleTokenValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedArtTypeValues    = Array.from(artTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
@@ -63706,6 +63815,8 @@ a { color: #1565c0; }`;
             _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
             _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
             _sortedEditorCommentValues.forEach(v => makeValueSynItem('editorcomment', v, editorCommentValueCounts.get(v)));
+            _sortedEditorActiveForValues.forEach(v => makeValueSynItem('editoractivefor', v, editorActiveForValueCounts.get(v)));
+            _sortedEditorActiveSinceValues.forEach(v => makeValueSynItem('editoractivesince', v, editorActiveSinceValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
@@ -63840,6 +63951,8 @@ a { color: #1565c0; }`;
             _sortedEditorRecordedNameValues.forEach(v => makeValueSynItem('editorrecordedname', v, editorRecordedNameValueCounts.get(v)));
             _sortedEditorMembershipValues.forEach(v => makeValueSynItem('editormembership', v, editorMembershipValueCounts.get(v)));
             _sortedEditorCommentValues.forEach(v => makeValueSynItem('editorcomment', v, editorCommentValueCounts.get(v)));
+            _sortedEditorActiveForValues.forEach(v => makeValueSynItem('editoractivefor', v, editorActiveForValueCounts.get(v)));
+            _sortedEditorActiveSinceValues.forEach(v => makeValueSynItem('editoractivesince', v, editorActiveSinceValueCounts.get(v)));
             _sortedRoleValues.forEach(v => makeValueSynItem('role', v, eventRoleValueCounts.get(v)));
             _sortedRoleTokenValues.forEach(v => makeValueSynItem('roletoken', v, roleTokenValueCounts.get(v)));
             _sortedArtTypeValues.forEach(v => makeValueSynItem('arttype', v, artTypeValueCounts.get(v)));
@@ -64459,6 +64572,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('editorrecordedname:')) return `» recorded name: ${mode.slice(19)}`;
         if (mode.startsWith('editormembership:'))   return `» membership: ${mode.slice(17)}`;
         if (mode.startsWith('editorcomment:'))      return `» comment: ${mode.slice(14)}`;
+        if (mode.startsWith('editoractivefor:'))    return `» active for: ${mode.slice(16)}`;
+        if (mode.startsWith('editoractivesince:'))  return `» active since: ${mode.slice(18)}`;
         if (mode === 'release-quality-high')   return '🟢 high data quality';
         if (mode === 'release-quality-low')    return '🟠 low data quality';
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
@@ -64588,6 +64703,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('editorrecordedname:')) return 'The editor name recorded at the time of this historical action, from the "Editor" link\'s own tooltip — only offered when it differs from the row\'s current editor name.';
         if (mode.startsWith('editormembership:')) return 'The editor\'s own membership/activity-span text, from the "Editor" link\'s own tooltip (e.g. "active 10 years (2005-07-28 〜 2015-09-21)").';
         if (mode.startsWith('editorcomment:')) return 'The visible `.comment` text next to this "Editor" cell\'s link — a differently-worded restatement of the tooltip\'s own membership fact.';
+        if (mode.startsWith('editoractivefor:')) return 'One "Active for" cell\'s own duration phrase, decomposed from the "Editor" column\'s membership tooltip by editorActivity().';
+        if (mode.startsWith('editoractivesince:')) return 'One "Active since" cell\'s own bare year, decomposed from the "Editor" column\'s membership tooltip by editorActivity().';
         if (mode === 'release-quality-high') return '🟢 = MusicBrainz\'s own "High quality" data-quality marker: all available data has been added, if possible including cover art with liner info that proves it.';
         if (mode === 'release-quality-low') return '🟠 = MusicBrainz\'s own "Low quality" data-quality marker: the release needs serious fixes, or its existence is hard to prove (but it\'s not clearly fake).';
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
