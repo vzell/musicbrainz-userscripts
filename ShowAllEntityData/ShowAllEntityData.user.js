@@ -17637,7 +17637,15 @@
                     // as of that script's v1.03.002) are deliberately NOT stripped here
                     // anymore — they're expected to keep rendering inside h2.tracklist,
                     // right after the "Tracklist" text.
-                    'span#medium-toolbox' // native toggle-credits/expand/collapse controls — inert post-render
+                    'span#medium-toolbox', // native toggle-credits/expand/collapse controls — inert post-render
+                    // The "MBz YouTube Music Lookup" userscript
+                    // (github.com/afrocatmusic/userscripts) appends a bare,
+                    // unlabeled `<button>` (no id/class) at document-idle —
+                    // matched by its own fixed title-attribute suffix, which
+                    // is the only stable thing about it (the release title
+                    // fills the middle of the title, so nothing before the
+                    // suffix is safe to anchor on). See debug/youtube.html.
+                    'button[title$="on YouTube Music"]'
                 ],
                 columnErasers: [
                     // Strips jesus2099 "SUPER MIND CONTROL" hover toolzone/editbutt/

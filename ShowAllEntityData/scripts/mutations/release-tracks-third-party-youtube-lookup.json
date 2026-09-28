@@ -1,0 +1,15 @@
+[
+  {
+    "name": "the YouTube Music Lookup removeSelectors entry is dropped",
+    "why": "Without this entry, the third-party \"MBz YouTube Music Lookup\" userscript's bare, unlabeled button (no id/class) survives every render untouched — nothing else in release-tracks' cleanup pass would ever catch it.",
+    "edits": [
+      {
+        "find": "                    'button[title$=\"on YouTube Music\"]'",
+        "replace": "                    'button[title$=\"NEVER-MATCHES-ANYTHING\"]'"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-third-party-youtube-lookup.spec.js",
+    "grep": "the userscript's bare button is stripped from the final rendered page",
+    "expect": "fail"
+  }
+]
