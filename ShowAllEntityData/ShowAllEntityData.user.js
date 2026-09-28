@@ -25002,6 +25002,22 @@
             const want = mode.slice(16);
             return !!cell && _findCellTracksPerMedium(cell).includes(want);
         }
+        if (mode.startsWith('eventtype:')) {
+            // Compound mode — matches an "Event-Type" cell's own exact text
+            // (eventParts()'s fixed EVENT_TYPE_KEYWORDS). The synthetic
+            // column holds nothing but this one value, so a plain equality
+            // check against getCleanColumnText() (which already reads
+            // through this cell's own highlight-wrapper spans) is enough.
+            const want = mode.slice(10);
+            return !!cell && getCleanColumnText(cell) === want;
+        }
+        if (mode.startsWith('eventcountry:')) {
+            // Compound mode — matches an "Event-Country" cell's own exact
+            // text, from eventParts()'s own location-parsing rules. Same
+            // whole-cell-equality shape as eventtype: above.
+            const want = mode.slice(13);
+            return !!cell && getCleanColumnText(cell) === want;
+        }
         if (mode.startsWith('trackstotal:')) {
             // Compound mode — matches one "Tracks" cell's SUMMED track
             // count (e.g. "15" for "5 + 5 + 5"), from
@@ -45723,6 +45739,18 @@ a { color: #1565c0; }`;
         partOfSeriesNumber: { label: 'Part of series - Number', glyph: '🔢' },
         eventInfo:     { label: 'Event info - Date',       glyph: '📅' },
         eventCancelled: { label: 'Event info - Cancelled', glyph: '🚫' },
+        // "Event info - Type"/"- Country" — the recording-listing pageTypes'
+        // OWN `eventParts()` synthetic columns ("Event-Type"/"Event-Country",
+        // split from a recording's Comment cell), unrelated to the native
+        // "Event" column above (different pageType family, different source
+        // cell) but grouped under the same "Event info" topic since both
+        // describe facts about a performance/recording event. Event-Type is
+        // a fixed 6-word vocabulary (`eventParts()`'s own EVENT_TYPE_KEYWORDS);
+        // Event-Country is an open value family, same shape as
+        // releaseEventsCountry but with no flag (the extractor only ever
+        // writes plain text, no `.flag`-class markup).
+        eventPartsType:    { label: 'Event info - Type',    glyph: '🎤' },
+        eventPartsCountry: { label: 'Event info - Country', glyph: '🗺️' },
         // "Editor info" — the annotations pageType's own family, one
         // sub-section per Editor-column facet (deleted-editor identity,
         // tooltip-recorded historical name, tooltip membership span, and
@@ -45936,6 +45964,7 @@ a { color: #1565c0; }`;
         eventdate: 'eventInfo',
         entitycancelled: 'entityEventCancelled',
         eventcancelled: 'eventCancelled',
+        eventtype: 'eventPartsType', eventcountry: 'eventPartsCountry',
         editordeleted: 'editorDeleted', editorrecordedname: 'editorRecordedName',
         editormembership: 'editorMembership', editorcomment: 'editorComment',
         localelanguage: 'localeLanguage',
@@ -47090,6 +47119,42 @@ a { color: #1565c0; }`;
             : new RegExp(`\\b${_want}\\b`, 'g');
         cell.normalize();
         highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for an `eventtype:` compound
+     * structure-mode filter. The whole "Event-Type" cell IS the value
+     * (`eventParts()` writes nothing else into it), so this marks the
+     * entire cell text — re-verifies via `getCleanColumnText()` first
+     * ("verify before highlighting", like every other `_highlightXxxMatch()`).
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"eventtype:live"`.
+     */
+    function _highlightEventTypeMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(10);
+        if (!_want || getCleanColumnText(cell) !== _want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(`\\b${_escaped}\\b`, 'g'), 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights the matched value for an `eventcountry:` compound
+     * structure-mode filter — same whole-cell-equality shape as
+     * `_highlightEventTypeMatch()` above, for the "Event-Country" column.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - The compound mode string, e.g. `"eventcountry:USA"`.
+     */
+    function _highlightEventCountryMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode.slice(13);
+        if (!_want || getCleanColumnText(cell) !== _want) return;
+        const _escaped = _want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        cell.normalize();
+        highlightCrossTag(cell, new RegExp(`\\b${_escaped}\\b`, 'g'), 'mb-column-filter-highlight');
     }
 
     /**
@@ -48531,6 +48596,10 @@ a { color: #1565c0; }`;
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackstotal:')) {
                                     _highlightTracksTotalMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('eventtype:')) {
+                                    _highlightEventTypeMatch(row.cells[f.idx], mode);
+                                } else if (mode.startsWith('eventcountry:')) {
+                                    _highlightEventCountryMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthbucket:')) {
                                     _highlightLengthBucketMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('reltypecredit:')) {
@@ -60502,6 +60571,13 @@ a { color: #1565c0; }`;
         const revCountryFlagMap     = _uniqCacheHit ? _uniqCacheHit.revCountryFlagMap     : new Map();
         const revDateValueCounts    = _uniqCacheHit ? _uniqCacheHit.revDateValueCounts    : new Map();
         const revWeekdayValueCounts = _uniqCacheHit ? _uniqCacheHit.revWeekdayValueCounts : new Map();
+        // Distinct "Event-Type"/"Event-Country" cell values — see
+        // `isEventTypeCol`/`isEventCountryCol` below and `eventPartsType`/
+        // `eventPartsCountry`'s own SYN_SECTION_META comment. No-op Maps for
+        // any other column, since `eventParts()`'s synthetic columns are
+        // plain text with no CSS-class markup to key a flag off.
+        const eventTypeValueCounts    = _uniqCacheHit ? _uniqCacheHit.eventTypeValueCounts    : new Map();
+        const eventCountryValueCounts = _uniqCacheHit ? _uniqCacheHit.eventCountryValueCounts : new Map();
         // Distinct "Country" (the synthetic column splitCountryDate()
         // itself produces from "Country/Date") name/code values — see
         // `_findCellCountryNameParts()`'s own JSDoc. countryCodeFlagMap
@@ -60840,6 +60916,14 @@ a { color: #1565c0; }`;
         // JSDoc) — name-only, no page-type check, same convention as
         // isReleaseCol/isAcoustIdCol above.
         const isLocaleCol = _colHeaderName === 'Locale';
+        // Column-name gates for `eventParts()`'s own synthetic "Event-Type"/
+        // "Event-Country" columns (recording-listing pageTypes) — name-only,
+        // no page-type check, same convention as isReleaseCol/isAcoustIdCol/
+        // isLocaleCol above. See eventPartsType/eventPartsCountry's own
+        // SYN_SECTION_META comment for why these are distinct from the
+        // native "Event" column's isEventCol just below.
+        const isEventTypeCol = _colHeaderName === 'Event-Type';
+        const isEventCountryCol = _colHeaderName === 'Event-Country';
         // Column-name gate for `instrument-list`'s own per-family first
         // column (see `INSTRUMENT_LIST_COLUMN_NAMES`'s own JSDoc and
         // `_findCellInstrumentFacets()`'s) — a Set-membership check, not a
@@ -61174,6 +61258,14 @@ a { color: #1565c0; }`;
                         if (_localeInfo.primary) localePrimaryCount++;
                         else                     localeNotPrimaryCount++;
                     }
+                }
+                if (isEventTypeCol) {
+                    const _eventType = getCleanColumnText(cell);
+                    if (_eventType) eventTypeValueCounts.set(_eventType, (eventTypeValueCounts.get(_eventType) || 0) + 1);
+                }
+                if (isEventCountryCol) {
+                    const _eventCountry = getCleanColumnText(cell);
+                    if (_eventCountry) eventCountryValueCounts.set(_eventCountry, (eventCountryValueCounts.get(_eventCountry) || 0) + 1);
                 }
                 if (isInstrumentListCol) {
                     const _instrumentFacets = _findCellInstrumentFacets(cell);
@@ -62428,6 +62520,7 @@ a { color: #1565c0; }`;
                 recAttrValueCounts, workAttrIdValueCounts,
                 titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
+                eventTypeValueCounts, eventCountryValueCounts,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
                 tracksPerMediumValueCounts, tracksTotalValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts, timeOfDayValueCounts,
                 relTypeCreditValueCounts,
@@ -62505,6 +62598,7 @@ a { color: #1565c0; }`;
             ...recAttrValueCounts.values(), ...workAttrIdValueCounts.values(),
             ...titleAgeAddedValueCounts.values(), ...titleAgeModifiedValueCounts.values(),
             ...revCountryValueCounts.values(), ...revDateValueCounts.values(), ...revWeekdayValueCounts.values(),
+            ...eventTypeValueCounts.values(), ...eventCountryValueCounts.values(),
             ...countryNameValueCounts.values(), ...countryCodeValueCounts.values(),
             ...tracksPerMediumValueCounts.values(), ...tracksTotalValueCounts.values(), ...catalogPrefixValueCounts.values(),
             ...isrcCountryValueCounts.values(), ...isrcRegistrantValueCounts.values(),
@@ -62893,7 +62987,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -63016,6 +63110,8 @@ a { color: #1565c0; }`;
                  : kind === 'revcountry' ? '» country: '
                  : kind === 'revdate'    ? '» date: '
                  : kind === 'revweekday' ? '» weekday: '
+                 : kind === 'eventtype'    ? '» type: '
+                 : kind === 'eventcountry' ? '» country: '
                  : kind === 'countryname' ? '» country name: '
                  : kind === 'countrycode' ? '» country code: '
                  : kind === 'trackspermedium' ? '» tracks: '
@@ -63345,6 +63441,8 @@ a { color: #1565c0; }`;
         const _sortedRevCountryValues = Array.from(revCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevDateValues    = Array.from(revDateValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedRevWeekdayValues = Array.from(revWeekdayValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEventTypeValues    = Array.from(eventTypeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
+        const _sortedEventCountryValues = Array.from(eventCountryValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedCountryNameValues = Array.from(countryNameValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedCountryCodeValues = Array.from(countryCodeValueCounts.keys()).sort((a, b) => a.localeCompare(b));
         const _sortedTracksPerMediumValues = Array.from(tracksPerMediumValueCounts.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -63583,6 +63681,8 @@ a { color: #1565c0; }`;
             _sortedTitleAgeAddedValues.forEach(v => makeValueSynItem('titleageadded', v, titleAgeAddedValueCounts.get(v)));
             _sortedTitleAgeModifiedValues.forEach(v => makeValueSynItem('titleagemodified', v, titleAgeModifiedValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
+            _sortedEventTypeValues.forEach(v => makeValueSynItem('eventtype', v, eventTypeValueCounts.get(v)));
+            _sortedEventCountryValues.forEach(v => makeValueSynItem('eventcountry', v, eventCountryValueCounts.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
             _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
@@ -63715,6 +63815,8 @@ a { color: #1565c0; }`;
             _sortedTitleAgeAddedValues.forEach(v => makeValueSynItem('titleageadded', v, titleAgeAddedValueCounts.get(v)));
             _sortedTitleAgeModifiedValues.forEach(v => makeValueSynItem('titleagemodified', v, titleAgeModifiedValueCounts.get(v)));
             _sortedRevCountryValues.forEach(v => makeValueSynItem('revcountry', v, revCountryValueCounts.get(v), revCountryFlagMap.get(v)));
+            _sortedEventTypeValues.forEach(v => makeValueSynItem('eventtype', v, eventTypeValueCounts.get(v)));
+            _sortedEventCountryValues.forEach(v => makeValueSynItem('eventcountry', v, eventCountryValueCounts.get(v)));
             _sortedRevDateValues.forEach(v => makeValueSynItem('revdate', v, revDateValueCounts.get(v)));
             _sortedRevWeekdayValues.forEach(v => makeValueSynItem('revweekday', v, revWeekdayValueCounts.get(v)));
             _sortedCountryNameValues.forEach(v => makeValueSynItem('countryname', v, countryNameValueCounts.get(v), countryNameFlagMap.get(v)));
@@ -64328,6 +64430,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('trackstotal:')) return `» total tracks: ${mode.slice(12)}`;
+        if (mode.startsWith('eventtype:'))    return `» type: ${mode.slice(10)}`;
+        if (mode.startsWith('eventcountry:')) return `» country: ${mode.slice(13)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
         if (mode.startsWith('isrccountry:'))     return `» country: ${mode.slice(12)}`;
         if (mode.startsWith('isrcregistrant:'))  return `» registrant: ${mode.slice(15)}`;
@@ -64455,6 +64559,8 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('trackstotal:')) return 'One "Tracks" cell\'s summed track count over all its mediums (the synthetic "Total Tracks" value).';
+        if (mode.startsWith('eventtype:')) return 'One "Event-Type" cell\'s own value, from eventParts()\'s fixed vocabulary (live/soundcheck/studio/interview/audition/live rehearsal).';
+        if (mode.startsWith('eventcountry:')) return 'One "Event-Country" cell\'s own value, from eventParts()\'s location-parsing rules.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
         if (mode.startsWith('isrccountry:')) return 'One "ISRCs" entry\'s own 2-letter country code (the first CC-XXX-YY-NNNNN segment).';
         if (mode.startsWith('isrcregistrant:')) return 'One "ISRCs" entry\'s own 3-character registrant code (the XXX segment).';

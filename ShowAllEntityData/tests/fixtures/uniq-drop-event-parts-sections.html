@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Test Artist - Recordings - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <div class="artistheader">
+            <h1><bdi>Test Artist</bdi></h1>
+        </div>
+        <div class="tabs">
+            <ul><li class="sel"><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings">Recordings</a></li></ul>
+        </div>
+        <h2>Recordings</h2>
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Length</th>
+                    <th>Artist</th>
+                    <th>Release groups</th>
+                    <th>Rating</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!--
+                    Four rows regression-fixturing the "Event info - Type"/
+                    "Event info - Country" unique-values dropdown sections
+                    (eventParts()'s own synthetic "Event-Type"/"Event-Country"
+                    columns, auto-split out of extractMainColumn's "Comment"
+                    column). Comment text shapes are real-world, taken from
+                    debug/BoDeans-Recordings-initial.html (a live musicbrainz.org
+                    capture): "live, 1987-12-19: Chicago, IL, USA" is the exact
+                    text that page renders for a real recording.
+
+                    Row A/B: both "live" + USA (state/city vary) — Event-Type
+                    "live" and Event-Country "USA" should each count 2.
+                    Row C: "studio" + non-USA/Canada/UK country (England) —
+                    exercises the extractor's Right-to-Left fallback branch
+                    (Venue/City/Country from the END of the list, unlike the
+                    USA branch's own layout).
+                    Row D: a comment that does NOT start with a recognized
+                    EVENT_TYPE_KEYWORDS word — must produce NO Event-Type/
+                    Event-Country value at all (routed entirely to Event-
+                    Additional-Info instead), so it must not appear in either
+                    section nor inflate any count.
+                -->
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555501"><bdi>Don't Be Lonely</bdi></a> <span class="comment">(<bdi>live, 1987-12-19: Chicago, IL, USA</bdi>)</span></td>
+                    <td>3:50</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555502"><bdi>Fadeaway</bdi></a> <span class="comment">(<bdi>live, 1990-05-03: Los Angeles, CA, USA</bdi>)</span></td>
+                    <td>4:12</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555503"><bdi>Naked</bdi></a> <span class="comment">(<bdi>studio, 1985: Abbey Road Studios, London, England</bdi>)</span></td>
+                    <td>3:20</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td class="title wrap-anywhere"><a href="/recording/11111111-2222-4333-8444-555555555504"><bdi>Closer to Free</bdi></a> <span class="comment">(<bdi>remastered version</bdi>)</span></td>
+                    <td>3:45</td>
+                    <td><a href="/artist/89729b97-90a3-4f84-9e88-e16f96cab350"><bdi>Test Artist</bdi></a></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>
