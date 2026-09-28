@@ -1,0 +1,249 @@
+[
+  {
+    "name": "F3: a sub-table box change only re-applies the sub-table text",
+    "why": "Restores the old listener, applySubFilter(), which filters by the sub-table TEXT alone. The box also governs that sub-table's column filters, so a typed '^Tun' stays literal (0 rows) after ticking Rx until the next keystroke. Must fail on the Rx test (expects 1 row with no keystroke after the tick).",
+    "edits": [
+      {
+        "find": "            cb.addEventListener('change', () => applySubTableModes());",
+        "replace": "            cb.addEventListener('change', applySubFilter);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F3: ticking a sub-table Rx",
+    "expect": "fail"
+  },
+  {
+    "name": "F3: applySubTableModes() never re-runs runFilter()",
+    "why": "Keeps the new listener but drops its runFilter() branch, so the helper degrades to the text-only path. Must fail on the Ex test: 'tunnel' stays at 1 row instead of the inverted 5.",
+    "edits": [
+      {
+        "find": "            if (hasColFilter && typeof runFilter === 'function') runFilter();\n            else textOnly();",
+        "replace": "            textOnly();"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F3: ticking a sub-table Ex",
+    "expect": "fail"
+  },
+  {
+    "name": "F3: the text-only branch does nothing",
+    "why": "Removes the cheap branch's call. With no column filter typed, ticking the sub-table Ex must still invert the sub-table TEXT filter (applySubFilter()). This is what makes the 'guard: F3' test a guard: it fails when the branch the fix kept is lost.",
+    "edits": [
+      {
+        "find": "            else textOnly();",
+        "replace": "            else { /* planted: no-op */ }"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "guard: F3",
+    "expect": "fail"
+  },
+  {
+    "name": "F4: the h3 status labels the global query with the sub-table's boxes",
+    "why": "The original applySubFilter() defect in its shared form: the GLOBAL part is labelled with the sub-table's flags instead of the global ones. With the sub-table Cc on and the global Cc off the span reads GLOBAL:(case) \"e\". Must fail.",
+    "edits": [
+      {
+        "find": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_globalFilterFlags())}\"${globalRaw}\"`);",
+        "replace": "        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_resolveColFilterFlags(table))}\"${globalRaw}\"`);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F4: the sub-table status labels the global query",
+    "expect": "fail"
+  },
+  {
+    "name": "F4: the global Ex is never reported",
+    "why": "_globalFilterFlags() always reports Ex off — what applySubFilter() used to print (it never looked at the global Ex). Must fail on the global-Ex test (GLOBAL:(ex) \"zzqq\" expected).",
+    "edits": [
+      {
+        "find": "            isExclude:       !!(excludeCheckbox && excludeCheckbox.checked)",
+        "replace": "            isExclude:       false"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F4: the sub-table status shows the global Ex",
+    "expect": "fail"
+  },
+  {
+    "name": "F4: the h3 status counts rows the sub-table filter hid",
+    "why": "Counts every tbody row instead of the shown ones — the shape of runFilter()'s old count, which took the group's rows before the sub-table filter hid any. 'tunnel' leaves 1 of 6 rows shown; the span must say 1. Must fail.",
+    "edits": [
+      {
+        "find": "        const shown = Array.from(table.querySelectorAll('tbody tr'))\n            .filter(r => r.style.display !== 'none').length;",
+        "replace": "        const shown = table.querySelectorAll('tbody tr').length;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "keeps the row count the sub-table filter left",
+    "expect": "fail"
+  },
+  {
+    "name": "F5: the image-row snapshot compiles the global query with the sub-table flags",
+    "why": "Restores _artHighlightArtCell()'s ctxSnap to the sub-table's Cc/Rx. It runs LAST after every art-cell rebuild and unwraps earlier marks first, so a global regexp with the sub-table Rx off is compiled literally and the 'Back' badge loses its highlight. Must fail on both F5 tests.",
+    "edits": [
+      {
+        "find": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp };",
+        "replace": "        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive: colIsCase, isRegExp: colIsRegExp };"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F5:",
+    "expect": "fail"
+  },
+  {
+    "name": "F5: runFilter() overwrites the highlight context with the sub-table flags again",
+    "why": "Restores the overwrite of _activeFilterHighlightCtx.isRegExp/isCaseSensitive in runFilter()'s multi-table loop. That context feeds the BUILD-time highlight in _artBuildMultiRowArtCell(); _artHighlightArtCell() then unwraps those marks and re-applies them from its own (correct) snapshot, so nothing on screen changes. KNOWN OVERLAP, recorded rather than hidden: the spec cannot see this half while the other half is in place.",
+    "edits": [
+      {
+        "find": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                }",
+        "replace": "                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;\n                    _activeFilterHighlightCtx.isRegExp = _colFlags.isRegExp;\n                    _activeFilterHighlightCtx.isCaseSensitive = _colFlags.isCaseSensitive;\n                }"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F5:",
+    "expect": "pass"
+  },
+  {
+    "name": "F6: the cached row text joins cells with a space again",
+    "why": "_cachedFullText() goes back to the whole-row walk, so 'Rest Bruce' matches across the Release and Artist cells. Must fail on both cross-cell tests (multi and single).",
+    "edits": [
+      {
+        "find": "        if (c.full === null) c.full = getCleanVisibleText(row, _CELL_TEXT_SEP);",
+        "replace": "        if (c.full === null) c.full = getCleanVisibleText(row);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F6: a plain global query does not match across two cells",
+    "expect": "fail"
+  },
+  {
+    "name": "F6: getCleanVisibleText() ignores the separator it is given",
+    "why": "The per-cell texts are joined with a space instead of cellSeparator — the separator is requested but never lands. Must fail on the cross-cell tests.",
+    "edits": [
+      {
+        "find": "            return Array.from(root.cells, walkText).join(cellSeparator);",
+        "replace": "            return Array.from(root.cells, walkText).join(' ');"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F6: a plain global query does not match across two cells",
+    "expect": "fail"
+  },
+  {
+    "name": "F6: the separator also splits text nodes inside one cell",
+    "why": "The over-eager version of the fix: text nodes are joined with U+001F too, not only cells. A name and its disambiguation comment ('CBS/Sony (imprint') are two nodes of ONE cell and must stay matchable. This is what the 'guard: F6' test exists for. Must fail.",
+    "edits": [
+      {
+        "find": "            return normalizeExtractedText(textParts.join(' '));\n        };",
+        "replace": "            return normalizeExtractedText(textParts.join('\\u001F'));\n        };"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "guard: F6",
+    "expect": "fail"
+  },
+  {
+    "name": "F7: column filters are listed without their modifiers",
+    "why": "_describeColFilters() prints no modifiers, as both status writers did before. A closed 🔍 panel's Rx still governs '^Tun'; the h3 span must say 'Release':(rx) \"^Tun\". Must fail.",
+    "edits": [
+      {
+        "find": "                const mods = _filterModsLabel(inp.dataset.mbUniqValues ? { ...flags, isRegExp: false } : flags);",
+        "replace": "                const mods = '';"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: the sub-table status shows the modifiers",
+    "expect": "fail"
+  },
+  {
+    "name": "F7: the single-table status hides that the global Ex inverts a column",
+    "why": "Same defect, seen on a single-table page: the global Ex inverts the Release filter (52 rows) and the status line must say (ex). Must fail.",
+    "edits": [
+      {
+        "find": "                const mods = _filterModsLabel(inp.dataset.mbUniqValues ? { ...flags, isRegExp: false } : flags);",
+        "replace": "                const mods = '';"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: the status line says when the global Ex inverts",
+    "expect": "fail"
+  },
+  {
+    "name": "F7: the multi-table global status lower-cases the query",
+    "why": "Prints globalQuery (the lower-cased matching form) instead of what was typed. 'Tougher' must read GLOBAL:\"Tougher\". Must fail.",
+    "edits": [
+      {
+        "find": "                const globalFilterInfo = globalQuery ? ` [GLOBAL:\"${globalQueryRaw}\"]` : '';",
+        "replace": "                const globalFilterInfo = globalQuery ? ` [GLOBAL:\"${globalQuery}\"]` : '';"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: both status lines show the global query as typed",
+    "expect": "fail"
+  },
+  {
+    "name": "F7: the single-table status lower-cases the query",
+    "why": "Same, in the single-table branch. 'BoDeans' must read GLOBAL:\"BoDeans\". Must fail.",
+    "edits": [
+      {
+        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQueryRaw}\"`);",
+        "replace": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQuery}\"`);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: the status line shows the global query as typed",
+    "expect": "fail"
+  },
+  {
+    "name": "F7: the single-table status drops the global modifiers",
+    "why": "The single-table GLOBAL part loses its modifiers. With Cc ticked the line must read GLOBAL:(case) \"BoDeans\". Must fail.",
+    "edits": [
+      {
+        "find": "                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}\"${globalQueryRaw}\"`);",
+        "replace": "                filterParts.push(`GLOBAL:\"${globalQueryRaw}\"`);"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: the status line shows the global query as typed",
+    "expect": "fail"
+  },
+  {
+    "name": "status: column names come from a glyph-stripped textContent again",
+    "why": "Restores the fixed glyph list every status writer used before _describeColFilters() switched to _cleanColHeaderText(). The Barcode header's ▌█ toggle is not on that list, so the status reads '▌█Barcode':\"[none]\". Must fail.",
+    "edits": [
+      {
+        "find": "                const colName = headers[colIdx] ? _cleanColHeaderText(headers[colIdx]) : `Col ${colIdx}`;",
+        "replace": "                const colName = headers[colIdx] ? headers[colIdx].textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim() : `Col ${colIdx}`;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "without its header controls",
+    "expect": "fail"
+  },
+  {
+    "name": "rule: a table without a 🔍 panel stops borrowing the global boxes",
+    "why": "_resolveColFilterFlags()'s fallback returns all-off. That would change the single-table rule itself (the global Ex governs every column filter), which F3–F7 deliberately leave alone: the Release filter must still invert to 52 rows. Must fail.",
+    "edits": [
+      {
+        "find": "        if (!panel) return _globalFilterFlags();",
+        "replace": "        if (!panel) return { isCaseSensitive: false, isRegExp: false, isExclude: false };"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F7: the status line says when the global Ex inverts",
+    "expect": "fail"
+  },
+  {
+    "name": "rule: a sub-table's column filters borrow the global boxes",
+    "why": "_resolveColFilterFlags() ignores the 🔍 panel and returns the global boxes — the other half of the unchanged rule. Ticking the sub-table Rx then has no effect on '^Tun'. Must fail.",
+    "edits": [
+      {
+        "find": "        return { isCaseSensitive: box('case'), isRegExp: box('rx'), isExclude: box('ex') };",
+        "replace": "        return _globalFilterFlags();"
+      }
+    ],
+    "spec": "tests/fixtures/filter-flag-scoping.spec.js",
+    "grep": "F3: ticking a sub-table Rx",
+    "expect": "fail"
+  }
+]

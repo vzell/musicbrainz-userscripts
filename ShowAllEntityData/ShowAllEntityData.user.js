@@ -40849,6 +40849,15 @@ a { color: #1565c0; }`;
     // Populated lazily by _cachedFullText / _cachedColText on matchOnly=true passes.
     // Entries are GC'd automatically when allRows / groupedRows are replaced.
     const _rowTextCache = new WeakMap();
+    // Joins one row's cells in the text a PLAIN global query is matched against
+    // (`_cachedFullText()`, `testRowMatch()`). U+001F cannot be typed into a
+    // filter field, so `includes()` can never match across a cell boundary —
+    // a regexp global query was already tested one cell at a time, and the two
+    // modes used to disagree: "Rest Bruce" (end of one cell, start of the
+    // next) matched as plain text and not as a regexp. A space would not do:
+    // `getCleanVisibleText()` already joins the text nodes INSIDE one cell
+    // with spaces, and those joins must keep matching.
+    const _CELL_TEXT_SEP = '\u001F';
     // Global row-index counter — incremented for EVERY row pushed to allRows or
     // groupedRows (both live-fetch and disk-load), regardless of tableMode.
     // Stored as data-mb-row-idx on the TR element so cloneNode(true) propagates
@@ -44030,10 +44039,19 @@ a { color: #1565c0; }`;
      * matches a "5:05" cell either, for the exact same join(' ')-inserts-a-
      * synthetic-space reason.
      *
+     * `cellSeparator` exists for the plain global filter only: given a `<tr>`,
+     * each of its cells is extracted and normalised on its own and the
+     * results are joined with it (see `_CELL_TEXT_SEP`), so a query can no
+     * longer match the end of one cell plus the start of the next. The strip/
+     * clone pass above still runs ONCE per row, exactly as without it, so the
+     * cost is one `normalizeExtractedText()` per cell instead of per row.
+     *
      * @param {Element} element - DOM element to extract text from.
+     * @param {string} [cellSeparator] - When set and `element` is a `<tr>`,
+     *   joins the per-cell texts with this instead of walking the row as one.
      * @returns {string} Normalised visible text content.
      */
-    function getCleanVisibleText(element) {
+    function getCleanVisibleText(element, cellSeparator) {
         const _STRIP_SEL = _CLEAN_STRIP_SEL + ',.mb-rel-filter-key';
         let root = element;
         if (element.querySelector(_STRIP_SEL) || element.querySelector(_COLLAPSE_MATCH_SEL) ||
@@ -44047,36 +44065,48 @@ a { color: #1565c0; }`;
             root.normalize();
         }
 
-        let textParts = [];
-        const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
-            acceptNode: (node) => {
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    const tag = node.tagName.toLowerCase();
-                    if (tag === 'script' || tag === 'style' || tag === 'head') return NodeFilter.FILTER_REJECT;
-                    // Secondary guard (belt-and-braces — should already have
-                    // been stripped by the clone pass above).
-                    if (node.classList && (
-                        node.classList.contains('mb-caa-art-li-image') ||
-                        node.classList.contains('mb-rel-filter-key') ||
-                        node.classList.contains('mb-inline-art-sort-key') ||
-                        node.classList.contains('mb-caa-sort-key') ||
-                        node.classList.contains('mb-eaa-sort-key')
-                    )) return NodeFilter.FILTER_REJECT;
+        /**
+         * Walks `scope`'s visible text nodes and returns them normalised.
+         * @param {Node} scope
+         * @returns {string}
+         */
+        const walkText = (scope) => {
+            const textParts = [];
+            const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+                acceptNode: (node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        const tag = node.tagName.toLowerCase();
+                        if (tag === 'script' || tag === 'style' || tag === 'head') return NodeFilter.FILTER_REJECT;
+                        // Secondary guard (belt-and-braces — should already have
+                        // been stripped by the clone pass above).
+                        if (node.classList && (
+                            node.classList.contains('mb-caa-art-li-image') ||
+                            node.classList.contains('mb-rel-filter-key') ||
+                            node.classList.contains('mb-inline-art-sort-key') ||
+                            node.classList.contains('mb-caa-sort-key') ||
+                            node.classList.contains('mb-eaa-sort-key')
+                        )) return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
                 }
-                return NodeFilter.FILTER_ACCEPT;
-            }
-        });
+            });
 
-        let node;
-        while (node = walker.nextNode()) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const trimmed = node.nodeValue.trim();
-                if (trimmed && !isDecorativeIcon(trimmed)) {
-                    textParts.push(node.nodeValue);
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const trimmed = node.nodeValue.trim();
+                    if (trimmed && !isDecorativeIcon(trimmed)) {
+                        textParts.push(node.nodeValue);
+                    }
                 }
             }
+            return normalizeExtractedText(textParts.join(' '));
+        };
+
+        if (cellSeparator !== undefined && root.cells) {
+            return Array.from(root.cells, walkText).join(cellSeparator);
         }
-        return normalizeExtractedText(textParts.join(' '));
+        return walkText(root);
     }
 
     /**
@@ -46261,6 +46291,142 @@ a { color: #1565c0; }`;
     };
 
     /**
+     * The global filter bar's Cc / Rx / Ex state, read from the live boxes.
+     *
+     * @returns {{ isCaseSensitive: boolean, isRegExp: boolean, isExclude: boolean }}
+     */
+    function _globalFilterFlags() {
+        return {
+            isCaseSensitive: !!(caseCheckbox && caseCheckbox.checked),
+            isRegExp:        !!(regexpCheckbox && regexpCheckbox.checked),
+            isExclude:       !!(excludeCheckbox && excludeCheckbox.checked)
+        };
+    }
+
+    /**
+     * The Cc / Rx / Ex flags that govern `table`'s COLUMN filters — i.e. which
+     * box set owns them. The single answer to that question: `runFilter()`,
+     * `_artHighlightArtCell()` and every filter-status line ask here.
+     *
+     * - A multi-table sub-table has its own boxes in the h3's 🔍 panel
+     *   (`createSubTableFilterContainer()`). They govern the sub-table text AND
+     *   every column filter of that sub-table — also while the panel is closed.
+     * - A table without that panel (every single-table page) is governed by the
+     *   global boxes.
+     *
+     * Three copies of this rule used to disagree about a table without a panel:
+     * `runFilter()` fell back to Rx = false and Ex = false but to the GLOBAL Cc,
+     * while `_artHighlightArtCell()` fell back to the global Rx and Cc. Only
+     * the global fallback is right for a single-table page, which is the one
+     * place the fallback is actually reached.
+     *
+     * @param {HTMLTableElement|null} table
+     * @returns {{ isCaseSensitive: boolean, isRegExp: boolean, isExclude: boolean }}
+     */
+    function _resolveColFilterFlags(table) {
+        const h3 = table ? findH3ForTable(table) : null;
+        const panel = h3 ? h3.querySelector('.mb-subtable-filter-container') : null;
+        if (!panel) return _globalFilterFlags();
+        const box = (kind) => {
+            const cb = panel.querySelector(`input[id$="-${kind}-checkbox"]`);
+            return !!(cb && cb.checked);
+        };
+        return { isCaseSensitive: box('case'), isRegExp: box('rx'), isExclude: box('ex') };
+    }
+
+    /**
+     * The "(case,rx,ex) " prefix every filter-status line prints in front of a
+     * quoted filter string — `GLOBAL:(rx) "^The"`, `'Title':(ex) "live"` — or
+     * '' when no mode is on, which keeps the plain case byte-identical to the
+     * status text before modifiers were shown for column filters.
+     *
+     * @param {{ isCaseSensitive?: boolean, isRegExp?: boolean, isExclude?: boolean }} flags
+     * @returns {string}
+     */
+    function _filterModsLabel(flags) {
+        const mods = [];
+        if (flags.isCaseSensitive) mods.push('case');
+        if (flags.isRegExp)        mods.push('rx');
+        if (flags.isExclude)       mods.push('ex');
+        return mods.length ? `(${mods.join(',')}) ` : '';
+    }
+
+    /**
+     * One `'Column':(mods) "value"` entry per non-empty column filter of
+     * `table`, in column order, for the filter-status lines.
+     *
+     * The modifiers are the ones that actually govern that column
+     * (`_resolveColFilterFlags()`). Printing them is the point: on a
+     * single-table page the global Ex silently inverts every column filter,
+     * and on a multi-table page a CLOSED 🔍 panel's boxes still apply — the
+     * status line was the only place left that could say so, and it did not.
+     * A 📊 selection is matched by membership, never as a regexp, so it never
+     * shows `rx`.
+     *
+     * The column's name comes from `_cleanColHeaderText()`, not from the
+     * header's `textContent` with a list of glyphs stripped: every header
+     * control not on that list leaked into the status text — the Barcode
+     * column's ▌█ toggle made it `'▌█Barcode'` — and the list also stripped
+     * digits out of real column names.
+     *
+     * @param {HTMLTableElement|null} table
+     * @returns {string[]}
+     */
+    function _describeColFilters(table) {
+        if (!table) return [];
+        const flags = _resolveColFilterFlags(table);
+        const headers = table.querySelectorAll('thead tr:first-child th');
+        return Array.from(table.querySelectorAll('.mb-col-filter-input'))
+            .filter(inp => stripColFilterPrefix(inp.value))
+            .map(inp => {
+                const colIdx  = parseInt(inp.dataset.colIdx, 10);
+                const colName = headers[colIdx] ? _cleanColHeaderText(headers[colIdx]) : `Col ${colIdx}`;
+                const mods = _filterModsLabel(inp.dataset.mbUniqValues ? { ...flags, isRegExp: false } : flags);
+                return `'${colName}':${mods}"${stripColFilterPrefix(inp.value)}"`;
+            });
+    }
+
+    /**
+     * A sub-table h3's `.mb-filter-status` text: every active filter layer
+     * (global, sub-table, column) with its modifiers, and the number of rows
+     * the table is SHOWING. Returns '' when no layer is active.
+     *
+     * Both writers of that span go through here — `runFilter()` after its
+     * render, and `applySubFilter()` for a sub-table-only change — because
+     * they used to disagree. `applySubFilter()` read the sub-table's own Cc
+     * (a local `caseCheckbox` shadows the global one inside
+     * `createSubTableFilterContainer()`) for the GLOBAL part and never printed
+     * the global `ex`; `runFilter()` counted the rows BEFORE the sub-table
+     * filter hid any, and 0 for a sub-table a scoped (sort-driven) pass left
+     * alone. The last writer won, so the text depended on which ran last.
+     *
+     * The row count is read from the table itself because by the time either
+     * caller runs, the table already shows the final rows: `runFilter()` calls
+     * this after `renderGroupedTable()`, whose sub-table re-apply pass has
+     * hidden what the sub-table filter hides.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {string}
+     */
+    function _buildSubTableFilterStatus(table) {
+        const parts = [];
+        const gfInput = document.getElementById('mb-global-filter-input');
+        const globalRaw = gfInput ? stripFilterPrefix(gfInput.value) : '';
+        if (globalRaw) parts.push(`GLOBAL:${_filterModsLabel(_globalFilterFlags())}"${globalRaw}"`);
+        const stfInput = _getStfInput(findH3ForTable(table));
+        const stfRaw = stfInput ? stfInput.value : '';
+        if (stfRaw) parts.push(`SUB-TABLE:${_filterModsLabel(_resolveColFilterFlags(table))}"${stfRaw}"`);
+        const cols = _describeColFilters(table);
+        if (cols.length > 0) {
+            parts.push(`${cols.length} COLUMN FILTER${cols.length > 1 ? 'S' : ''} [${cols.join(', ')}]`);
+        }
+        if (parts.length === 0) return '';
+        const shown = Array.from(table.querySelectorAll('tbody tr'))
+            .filter(r => r.style.display !== 'none').length;
+        return `✓ Filtered ${shown} ${shown === 1 ? 'row' : 'rows'} [${parts.join(', ')}]`;
+    }
+
+    /**
      * Reads every `.mb-col-filter-input` in `table`'s header row and builds the
      * per-column filter descriptor list consumed by `testRowMatch()`. Also
      * applies the live active/error border styling to each input as a side
@@ -48373,10 +48539,15 @@ a { color: #1565c0; }`;
         return c;
     }
 
-    /** Cached getCleanVisibleText for a source row. */
+    /**
+     * Cached cell-separated visible text for a source row — what a PLAIN
+     * global query is matched against. See `_CELL_TEXT_SEP`.
+     * @param {HTMLTableRowElement} row
+     * @returns {string}
+     */
     function _cachedFullText(row) {
         const c = _getOrCreateRowCache(row);
-        if (c.full === null) c.full = getCleanVisibleText(row);
+        if (c.full === null) c.full = getCleanVisibleText(row, _CELL_TEXT_SEP);
         return c.full;
     }
 
@@ -48467,7 +48638,9 @@ a { color: #1565c0; }`;
                     globalRegex.test(matchOnly ? _cachedColText(row, i) : getCleanColumnText(cell))
                 );
             } else {
-                const text = matchOnly ? _cachedFullText(row) : getCleanVisibleText(row);
+                // Cell-separated, so a plain query matches inside one cell only —
+                // the same unit the regexp branch above tests. See _CELL_TEXT_SEP.
+                const text = matchOnly ? _cachedFullText(row) : getCleanVisibleText(row, _CELL_TEXT_SEP);
                 matchFound = isCaseSensitive
                     ? text.includes(globalQuery)
                     : text.toLowerCase().includes(globalQuery);
@@ -49342,25 +49515,16 @@ a { color: #1565c0; }`;
 
             groupedRows.forEach((group, groupIdx) => {
                 totalAbsolute += group.rows.length;
-                // In multi-table mode the global "[x] Rx" checkbox must ONLY affect the
-                // global filter string.  Each sub-table has its own Rx checkbox (inside
-                // .mb-subtable-filter-container) which controls BOTH the sub-table filter
-                // string AND the column-level filters of that same sub-table.
+                // In multi-table mode the global Cc/Rx/Ex boxes affect ONLY the
+                // global filter string. Each sub-table's own boxes (inside
+                // .mb-subtable-filter-container) control BOTH the sub-table filter
+                // string AND the column-level filters of that same sub-table —
+                // _resolveColFilterFlags() is the one place that rule lives.
                 const _subTable = tables[groupIdx];
                 const _subH3    = findH3ForTable(_subTable);
-                const _subRxCb  = _subH3
-                    ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-rx-checkbox"]')
-                    : null;
-                const _subCaseCb = _subH3
-                    ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-case-checkbox"]')
-                    : null;
-                const _subExCb = _subH3
-                    ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-ex-checkbox"]')
-                    : null;
-                const _colIsRegExp  = _subRxCb   ? _subRxCb.checked   : false;
-                const _colIsCase    = _subCaseCb ? _subCaseCb.checked : isCaseSensitive;
-                const _colIsExclude = _subExCb   ? _subExCb.checked   : false;
-                matchCtx.colFilters = getColFilters(_subTable, _colIsCase, _colIsRegExp, _colIsExclude);
+                const _colFlags = _resolveColFilterFlags(_subTable);
+                matchCtx.colFilters = getColFilters(_subTable,
+                    _colFlags.isCaseSensitive, _colFlags.isRegExp, _colFlags.isExclude);
                 // See _cellMatchesStructureMode()'s own JSDoc for why this
                 // must be the live table (not derived via cell.closest('table')
                 // inside testRowMatch()'s highlight pass, which runs on a
@@ -49376,11 +49540,15 @@ a { color: #1565c0; }`;
                 matchCtx.pendingEditsOnly = _pendingEditsScopeActive(_subH3);
                 // Keep _activeFilterHighlightCtx in sync so _artHighlightImageLi()
                 // uses the correct per-sub-table column filters when the CAA/EAA
-                // art-cell rebuild fires asynchronously for this group.
+                // art-cell rebuild fires asynchronously for this group. ONLY the
+                // column filters: each descriptor already carries its own
+                // sub-table flags, while the context's isRegExp/isCaseSensitive
+                // are what the GLOBAL query is compiled with. Overwriting them
+                // with this sub-table's flags made the image rows highlight a
+                // global regexp as literal text whenever the sub-table's Rx was
+                // off (and vice versa for Cc).
                 if (_activeFilterHighlightCtx) {
-                    _activeFilterHighlightCtx.colFilters      = matchCtx.colFilters;
-                    _activeFilterHighlightCtx.isRegExp        = _colIsRegExp;
-                    _activeFilterHighlightCtx.isCaseSensitive = _colIsCase;
+                    _activeFilterHighlightCtx.colFilters = matchCtx.colFilters;
                 }
 
                 // ── Merged-view row source ────────────────────────────────────
@@ -49642,9 +49810,12 @@ a { color: #1565c0; }`;
             // Pass isExclude so that f.isExclude in every filter object reflects the
             // global Exclude checkbox — without it f.isExclude defaults to false and
             // testRowMatch's _fIsExclude reads false (not the ctx fallback) because
-            // false !== undefined.
+            // false !== undefined. A single table has no 🔍 panel, so
+            // _resolveColFilterFlags() returns the global boxes here.
             const _singleTable = document.querySelector('table.tbl');
-            matchCtx.colFilters = getColFilters(_singleTable, isCaseSensitive, isRegExp, isExclude);
+            const _colFlags = _resolveColFilterFlags(_singleTable);
+            matchCtx.colFilters = getColFilters(_singleTable,
+                _colFlags.isCaseSensitive, _colFlags.isRegExp, _colFlags.isExclude);
             // See _cellMatchesStructureMode()'s own JSDoc for why this must
             // be the live table (not derived via cell.closest('table')
             // inside testRowMatch()'s highlight pass, which runs on a
@@ -49924,10 +50095,15 @@ a { color: #1565c0; }`;
                 ? filteredArray.reduce((sum, g) => sum + g.rows.length, 0)
                 : singleTableFilteredCount; // use in-memory count; DOM may still be rendering chunks
 
-            // Build filter info string
+            // Build filter info string. The global query is printed as typed
+            // (globalQueryRaw), not in its lower-cased matching form, and every
+            // part carries the modifiers in force — the same shape as the h3
+            // status (_buildSubTableFilterStatus()). On a single-table page the
+            // global boxes also govern every column filter, so a column entry
+            // shows e.g. (ex) while the global field is empty.
             const filterParts = [];
             if (globalQuery) {
-                filterParts.push(`GLOBAL:"${globalQuery}"`);
+                filterParts.push(`GLOBAL:${_filterModsLabel({ isCaseSensitive, isRegExp, isExclude })}"${globalQueryRaw}"`);
             }
 
             // Count active column filters and build a detail string
@@ -49938,17 +50114,7 @@ a { color: #1565c0; }`;
                 // For single-table pages, include column names and values in the summary.
                 // For multi-table pages, per-table column details are shown in the h3 status.
                 if (activeDefinition.tableMode === 'single') {
-                    const colDetail = activeColInputs.map(inp => {
-                        const mainTable = document.querySelector('table.tbl');
-                        const headers   = mainTable
-                            ? mainTable.querySelectorAll('thead tr:first-child th')
-                            : [];
-                        const colIdx  = parseInt(inp.dataset.colIdx, 10);
-                        const colName = headers[colIdx]
-                            ? headers[colIdx].textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim()
-                            : `Col ${colIdx}`;
-                        return `'${colName}':"${stripColFilterPrefix(inp.value)}"`;
-                    }).join(', ');
+                    const colDetail = _describeColFilters(document.querySelector('table.tbl')).join(', ');
                     filterParts.push(`${activeColCount} COLUMN FILTER${activeColCount > 1 ? 'S' : ''} [${colDetail}]`);
                 } else {
                     filterParts.push(`${activeColCount} COLUMN FILTER${activeColCount > 1 ? 'S' : ''}`);
@@ -49960,7 +50126,8 @@ a { color: #1565c0; }`;
             // On multi-table pages: show only global filter info in main status
             // On single-table pages: show all filter info
             if (activeDefinition.tableMode === 'multi') {
-                const globalFilterInfo = globalQuery ? ` [GLOBAL:"${globalQuery}"]` : '';
+                // As typed, not lower-cased — the mode label below already names the flags.
+                const globalFilterInfo = globalQuery ? ` [GLOBAL:"${globalQueryRaw}"]` : '';
 
                 // Build a label that reflects the active filter modes
                 const activeModeParts = [];
@@ -49983,7 +50150,7 @@ a { color: #1565c0; }`;
                 const tables = Array.from(document.querySelectorAll('table.tbl'))
                     .filter(t => t.querySelector('.mb-col-filter-row'));
 
-                tables.forEach((table, tableIdx) => {
+                tables.forEach((table) => {
                     const h3 = findH3ForTable(table);
                     if (h3 && h3.classList.contains('mb-toggle-h3')) {
                         const subFilterStatus = h3.querySelector('.mb-filter-status');
@@ -49991,63 +50158,11 @@ a { color: #1565c0; }`;
                             // If getColFilters wrote a regexp-error message here, do NOT
                             // overwrite it with a success message — leave the error visible.
                             if (subFilterStatus.dataset.colRxError) return;
-
-                            const group = filteredArray[tableIdx];
-                            const rowsInTable = group ? group.rows.length : 0;
-
-                            // ── Collect all active filter layers for this table ───────
-                            const infoParts = [];
-
-                            // 1. Global filter
-                            if (globalQuery) {
-                                const _gMods = [];
-                                if (isCaseSensitive) _gMods.push('case');
-                                if (isRegExp)        _gMods.push('rx');
-                                if (isExclude)       _gMods.push('ex');
-                                const _gMod = _gMods.length ? `(${_gMods.join(',')}) ` : '';
-                                infoParts.push(`GLOBAL:${_gMod}"${globalQuery}"`);
-                            }
-
-                            // 2. Sub-table filter (STF) for this h3
-                            const _stfInput = _getStfInput(h3);
-                            const _stfVal = _stfInput ? _stfInput.value.trim() : '';
-                            if (_stfVal) {
-                                const _stfRxCb   = h3.querySelector('.mb-subtable-filter-container input[id$="-rx-checkbox"]');
-                                const _stfCaseCb = h3.querySelector('.mb-subtable-filter-container input[id$="-case-checkbox"]');
-                                const _stfExCb   = h3.querySelector('.mb-subtable-filter-container input[id$="-ex-checkbox"]');
-                                const _stfMods   = [];
-                                if (_stfCaseCb && _stfCaseCb.checked) _stfMods.push('case');
-                                if (_stfRxCb   && _stfRxCb.checked)   _stfMods.push('rx');
-                                if (_stfExCb   && _stfExCb.checked)   _stfMods.push('ex');
-                                const _stfMod = _stfMods.length ? `(${_stfMods.join(',')}) ` : '';
-                                infoParts.push(`SUB-TABLE:${_stfMod}"${_stfVal}"`);
-                            }
-
-                            // 3. Column filters for this table
-                            const tableColFilters = Array.from(
-                                table.querySelectorAll('.mb-col-filter-input')
-                            ).filter(inp => stripColFilterPrefix(inp.value));
-
-                            if (tableColFilters.length > 0) {
-                                const colDetails = tableColFilters.map(inp => {
-                                    const colIdx  = parseInt(inp.dataset.colIdx, 10);
-                                    const headers = table.querySelectorAll('thead tr:first-child th');
-                                    const colName = headers[colIdx]
-                                        ? headers[colIdx].textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim()
-                                        : `Col ${colIdx}`;
-                                    return `'${colName}':"${stripColFilterPrefix(inp.value)}"`;
-                                });
-                                const _nColA = tableColFilters.length;
-                                infoParts.push(`${_nColA} COLUMN FILTER${_nColA > 1 ? 'S' : ''} [${colDetails.join(', ')}]`);
-                            }
-
-                            if (infoParts.length > 0) {
-                                const _rowWord = rowsInTable === 1 ? 'row' : 'rows';
-                                subFilterStatus.textContent = `✓ Filtered ${rowsInTable} ${_rowWord} [${infoParts.join(', ')}]`;
-                                subFilterStatus.style.color = 'green';
-                            } else {
-                                subFilterStatus.textContent = '';
-                            }
+                            // Shared with applySubFilter() — see its JSDoc for why the
+                            // two writers must not build this text separately.
+                            const statusText = _buildSubTableFilterStatus(table);
+                            subFilterStatus.textContent = statusText;
+                            if (statusText) subFilterStatus.style.color = 'green';
                         }
                     }
                     // Update h3 row-count-stat tooltip for this table — reflects
@@ -50055,23 +50170,15 @@ a { color: #1565c0; }`;
                     _updateSubTableH3Tooltip(table);
                 });
             } else {
-                // Single table mode: show modeLabel and all filter info
-                const singleActiveModeParts = [];
-                if (isRegExp)        singleActiveModeParts.push('Regexp');
-                if (isCaseSensitive) singleActiveModeParts.push('Case-sensitive');
-                if (isExclude)       singleActiveModeParts.push('Exclude');
-                const singleModeLabel = singleActiveModeParts.length > 0
-                    ? singleActiveModeParts.join(' ') + ' filter'
-                    : 'Global filter';
+                // Single table mode: all filter info, with each part's modifiers
+                // (see filterParts above). There used to be a "Regexp Exclude
+                // filter"-style mode label built here that nothing ever printed.
                 // If any column regexp was invalid, show the first error in filterStatusDisplay
                 // instead of the success message, so the user knows why rows weren't narrowed.
                 if (_singleColRxErrors.length > 0) {
                     filterStatusDisplay.textContent = _singleColRxErrors[0];
                     filterStatusDisplay.style.color = filterBorderError();
                 } else {
-                    // Append ' cleared' when the global filter was just cleared and no
-                    // column filters are active — disambiguates the status from the active state.
-                    const _smlSuffix = (!globalQuery && activeColCount === 0) ? ' cleared' : '';
                     filterStatusDisplay.textContent = `✓ Filtered ${rowCount} ${rowCount === 1 ? 'row' : 'rows'} in ${filterDuration}ms${filterInfo}`;
                     filterStatusDisplay.style.color = filterDuration > 1000 ? 'red' : (filterDuration > 500 ? 'orange' : 'green');
                 }
@@ -56014,10 +56121,13 @@ a { color: #1565c0; }`;
             context:  `stf-${safeId}`,
             getQuery: () => filterInput.value.trim(),
             setQuery: (q) => { filterInput.value = q; },
-            onApply:  () => {
+            // An entry restores this sub-table's Cc/Rx/Ex boxes as well as its
+            // text, and those boxes govern the column filters too — so it goes
+            // through applySubTableModes(), not just the debounced text filter.
+            onApply:  () => applySubTableModes(() => {
                 // Trigger the debounced filter by firing an 'input' event
                 _dispatchInternalInputEvent(filterInput, { bubbles: false });
-            },
+            }),
         });
 
         // ── Sync the ✕ clear button visibility ────────────────────────────────
@@ -56303,63 +56413,18 @@ a { color: #1565c0; }`;
 
             // ── Update per-h3 filter status span ─────────────────────────────
             // runFilter() updates this span for global/column filter changes, but
-            // STF-only filtering never calls runFilter() — so we update it here.
-            // Mirror the same format used in the runFilter() multi-table block:
-            //   ✓ Filtered N rows [global:"x", sub-table:"y", ColA:"z"]
+            // STF-only filtering never calls runFilter() — so we update it here,
+            // through the SAME builder runFilter() uses. Building it here by hand
+            // is how the GLOBAL part came to show this sub-table's own Cc: inside
+            // this function `caseCheckbox` is the sub-table's box, not the global
+            // one. See _buildSubTableFilterStatus().
             {
                 const _h3s = findH3ForTable(table);
                 const _sts = _h3s ? _h3s.querySelector('.mb-filter-status') : null;
                 if (_sts && !_sts.dataset.colRxError) {
-                    const _infoParts = [];
-
-                    // Global filter
-                    const _gfEl  = document.getElementById('mb-global-filter-input');
-                    const _gfVal = _gfEl ? stripFilterPrefix(_gfEl.value).trim() : '';
-                    if (_gfVal) {
-                        const _gMods = [];
-                        if (caseCheckbox && caseCheckbox.checked) _gMods.push('case');
-                        if (regexpCheckbox && regexpCheckbox.checked) _gMods.push('rx');
-                        const _gMod = _gMods.length ? `(${_gMods.join(',')}) ` : '';
-                        _infoParts.push(`GLOBAL:${_gMod}"${_gfVal}"`);
-                    }
-
-                    // STF
-                    if (raw) {
-                        const _stfMods = [];
-                        if (useCase) _stfMods.push('case');
-                        if (useRx)   _stfMods.push('rx');
-                        if (useEx)   _stfMods.push('ex');
-                        const _stfMod = _stfMods.length ? `(${_stfMods.join(',')}) ` : '';
-                        _infoParts.push(`SUB-TABLE:${_stfMod}"${raw}"`);
-                    }
-
-                    // Column filters
-                    const _colInputs = Array.from(table.querySelectorAll('.mb-col-filter-input'))
-                        .filter(inp => stripColFilterPrefix(inp.value));
-                    if (_colInputs.length > 0) {
-                        const _colDetails = _colInputs.map(inp => {
-                            const _ci  = parseInt(inp.dataset.colIdx, 10);
-                            const _ths = table.querySelectorAll('thead tr:first-child th');
-                            const _cn  = _ths[_ci]
-                                ? _ths[_ci].textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim()
-                                : `Col ${_ci}`;
-                            return `'${_cn}':"${stripColFilterPrefix(inp.value)}"`;
-                        });
-                        const _nColB = _colInputs.length;
-                        _infoParts.push(`${_nColB} COLUMN FILTER${_nColB > 1 ? 'S' : ''} [${_colDetails.join(', ')}]`);
-                    }
-
-                    // Row count: visible rows only (STF-hidden excluded)
-                    const _visRows = Array.from(table.querySelectorAll('tbody tr'))
-                        .filter(r => r.style.display !== 'none').length;
-
-                    if (_infoParts.length > 0) {
-                        const _rw = _visRows === 1 ? 'row' : 'rows';
-                        _sts.textContent = `✓ Filtered ${_visRows} ${_rw} [${_infoParts.join(', ')}]`;
-                        _sts.style.color = 'green';
-                    } else {
-                        _sts.textContent = '';
-                    }
+                    const _statusText = _buildSubTableFilterStatus(table);
+                    _sts.textContent = _statusText;
+                    if (_statusText) _sts.style.color = 'green';
                 }
             }
             // Sync h2 badge with 3-tier subtable totals
@@ -56462,8 +56527,31 @@ a { color: #1565c0; }`;
             debouncedApply();
         });
 
+        /**
+         * Applies a change to this sub-table's Cc/Rx/Ex boxes.
+         *
+         * Those boxes govern this sub-table's COLUMN filters as well as its
+         * text (`_resolveColFilterFlags()`), but `applySubFilter()` filters by
+         * the text alone — so with a column filter typed, ticking Rx changed
+         * nothing on screen until the next keystroke in some filter field.
+         * `runFilter()` re-evaluates the column filters, and the
+         * `renderGroupedTable()` it ends in re-applies this sub-table filter
+         * too, so it covers both. It re-renders every sub-table, which is why
+         * it is only taken when this table actually has a column filter: the
+         * text-only case keeps the cheap path it always had.
+         *
+         * @param {Function} [textOnly=applySubFilter] - What to run when no
+         *   column filter is active.
+         */
+        function applySubTableModes(textOnly = applySubFilter) {
+            const hasColFilter = !!table && Array.from(table.querySelectorAll('.mb-col-filter-input'))
+                .some(inp => stripColFilterPrefix(inp.value));
+            if (hasColFilter && typeof runFilter === 'function') runFilter();
+            else textOnly();
+        }
+
         [caseCheckbox, rxCheckbox, exCheckbox].forEach(cb => {
-            cb.addEventListener('change', applySubFilter);
+            cb.addEventListener('change', () => applySubTableModes());
         });
 
         // Save to LRU on Enter (history widget also listens for Enter to save,
@@ -78871,8 +78959,10 @@ a { color: #1565c0; }`;
      *   globalQueryRaw  {string|null}   — raw global filter string (pre-lowercasing)
      *   colFilters      {Array}         — output of getColFilters(); each entry has
      *                                     { val, idx } or { isMultiValueFilter, … }
-     *   isCaseSensitive {boolean}
-     *   isRegExp        {boolean}
+     *                                     and carries its OWN case/regexp flags
+     *   isCaseSensitive {boolean}       — the GLOBAL boxes: what the global query
+     *   isRegExp        {boolean}         is compiled with. Never a sub-table's
+     *                                     flags, even on a multi-table page.
      *
      * Null when no filter is active (no global query and no column filters), which
      * means _artHighlightImageLi() becomes a cheap no-op.
@@ -81514,23 +81604,16 @@ a { color: #1565c0; }`;
         // that contains artCell.  For single-table pages this is equivalent.
         const _owningTable = artCell.closest('table');
 
-        // Resolve the per-sub-table checkboxes (multi-table pages only).
-        const _subH3   = _owningTable ? findH3ForTable(_owningTable) : null;
-        const _subRxCb = _subH3
-            ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-rx-checkbox"]')
-            : null;
-        const _subCaseCb = _subH3
-            ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-case-checkbox"]')
-            : null;
-        const _subExCb = _subH3
-            ? _subH3.querySelector('.mb-subtable-filter-container input[id$="-ex-checkbox"]')
-            : null;
-        const colIsRegExp  = _subRxCb   ? _subRxCb.checked   : isRegExp;
-        const colIsCase    = _subCaseCb ? _subCaseCb.checked : isCaseSensitive;
-        const colIsExclude = _subExCb   ? _subExCb.checked   : false;
+        // The boxes that govern this table's column filters — and, on a
+        // multi-table page, its sub-table text. Same rule runFilter() matches
+        // with; see _resolveColFilterFlags().
+        const _subH3    = _owningTable ? findH3ForTable(_owningTable) : null;
+        const _colFlags = _resolveColFilterFlags(_owningTable);
+        const colIsRegExp = _colFlags.isRegExp;
+        const colIsCase   = _colFlags.isCaseSensitive;
 
         const colFilters = _owningTable
-            ? getColFilters(_owningTable, colIsCase, colIsRegExp, colIsExclude)
+            ? getColFilters(_owningTable, colIsCase, colIsRegExp, _colFlags.isExclude)
             : [];
 
         // ── 3. Read the active STF (sub-table filter) query ──────────────────────
@@ -81540,7 +81623,7 @@ a { color: #1565c0; }`;
         // above) rather than the per-column flags embedded in colFilters objects.
         const _stfInput = _getStfInput(_subH3);
         const _stfRaw     = _stfInput ? _stfInput.value.trim() : '';
-        const _stfUseEx   = _subExCb   ? _subExCb.checked   : false;
+        const _stfUseEx   = _colFlags.isExclude;
         // `highlightEnabled` is a closure-local variable of createSubTableFilterContainer
         // and is NOT visible from this module-level function.  Read the authoritative
         // state from the per-sub-table highlight-toggle button's dataset instead:
@@ -81570,7 +81653,12 @@ a { color: #1565c0; }`;
         if (!hasGlobal && !hasCol && !_stfRegex) return;
 
         // ── 5. Build a single context snapshot and highlight every image li ──────
-        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive: colIsCase, isRegExp: colIsRegExp };
+        // isCaseSensitive/isRegExp here are what _artHighlightImageLi() compiles
+        // the GLOBAL query with, so they are the global boxes. They used to be
+        // the sub-table's (colIsCase/colIsRegExp), which highlighted a global
+        // regexp as literal text whenever that sub-table's Rx was off. Column
+        // filters are unaffected: each descriptor carries its own flags.
+        const ctxSnap = { globalQueryRaw, colFilters, isCaseSensitive, isRegExp };
         artCell.querySelectorAll(':scope > ul.mb-caa-art-ul > li.mb-caa-art-li-image')
             .forEach(li => {
                 // Apply global + column filter highlights via the standard path.

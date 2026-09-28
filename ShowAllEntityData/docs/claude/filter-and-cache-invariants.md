@@ -306,3 +306,51 @@ read. Poll the visible row set for a KNOWN value instead, which also refuses a
 trigger that silently did nothing. And assert the badge count against the row
 count rather than against a literal: the agreement is the guarantee, and a
 literal passes while both sides drift together.
+
+## Which Cc / Rx / Ex boxes govern which query
+
+Column filters have no boxes of their own. They borrow a wider level's, and
+**`_resolveColFilterFlags(table)` is the one place that decides which**:
+
+| Page         | Global boxes govern | A sub-table's 🔍 boxes govern                             |
+|--------------|---------------------|-----------------------------------------------------------|
+| single-table | global query AND every column filter | — (no panel)                           |
+| multi-table  | global query only   | that sub-table's text AND every column filter in it — also while the panel is CLOSED |
+
+📊 selections follow the same owner's Cc and Ex (never Rx). Four rules keep this
+consistent, each written after it had been broken (findings F3–F7 of
+`org/column-level-checkbox-filtering.org`, pinned by
+`tests/fixtures/filter-flag-scoping.spec.js` and
+`scripts/mutations/filter-flag-scoping.json`):
+
+- **Never hand-roll the lookup.** `runFilter()`, `_artHighlightArtCell()` and
+  the status lines each had their own copy, and they disagreed about a table
+  with no panel (Rx `false` in one, the global Rx in another). Also: inside
+  `createSubTableFilterContainer()` the names `caseCheckbox`/`rxCheckbox`/
+  `exCheckbox` are the SUB-TABLE's boxes and shadow the global ones — that is
+  how the h3 status came to label the global query with the sub-table's Cc.
+  Use `_globalFilterFlags()` for the global boxes.
+- **A box change must re-run everything it governs.** A sub-table box governs
+  column filters, so its `change` goes through `applySubTableModes()`, which
+  calls `runFilter()` when that table has a column filter (`applySubFilter()`
+  alone only re-applies the sub-table text). Anything that sets a box
+  programmatically — the history widget's `_applyEntry()` does — needs the same
+  path, because `.checked =` fires no `change`.
+- **The highlight context's own flags are the GLOBAL ones.**
+  `_activeFilterHighlightCtx.isRegExp/isCaseSensitive` and
+  `_artHighlightArtCell()`'s snapshot are what `_artHighlightImageLi()` compiles
+  the global query with; column descriptors carry their own flags. Writing a
+  sub-table's flags there made the image rows highlight a global regexp as
+  literal text.
+- **Every status line goes through the shared builders.**
+  `_buildSubTableFilterStatus()` (both writers of a sub-table's h3 span) and
+  `_describeColFilters()` (the column parts of every line) print the modifiers
+  in force per part and the query as typed. The two h3 writers used to disagree
+  about the global flags and about the row count; the last one to run won.
+
+**A plain global query is matched one cell at a time**, like a regexp one:
+`_cachedFullText()` joins the cells with `_CELL_TEXT_SEP` (U+001F) through
+`getCleanVisibleText(row, cellSeparator)`, so "Rest Bruce" can no longer match
+the end of one cell plus the start of the next. Text nodes INSIDE one cell are
+still joined with a space — a name and its disambiguation comment must stay
+matchable, which the spec's `guard: F6` test pins.

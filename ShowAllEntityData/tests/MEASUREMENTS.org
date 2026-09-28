@@ -2825,3 +2825,45 @@ budget.
 depends on how busy MusicBrainz was at 15:22 UTC on a Thursday. Treat it as an
 order of magnitude — "minutes, and the session cookie will outlive it" — not as
 a baseline to compare a later run against.
+
+* 2026-09-28 — per-cell plain global matching, main vs feature/filter-flag-scoping-fixes (NB-3641)
+
+*Probing*: whether F6 of =org/column-level-checkbox-filtering.org= costs
+anything. The plain global filter used to read =getCleanVisibleText(row)= once
+per row; it now reads =getCleanVisibleText(row, _CELL_TEXT_SEP)=, which keeps
+the one strip/clone pass per row but walks and =normalizeExtractedText()=s each
+cell separately. The =globalFilter= metric is its worst case: every sample is a
+fresh page and a never-typed value, so the cold =_rowTextCache= build for all
+4174 rows lands inside the bracket.
+
+=NB-3641= (28 cores, 31 GB, WSL2 6.18.33.2, node v24.19.0, playwright 1.62.1),
+uptime 145.4-145.5 h, one resident =claude= session, median of 5, back to back:
+=main= arm 23:03:31-23:13:45 UTC, branch arm 23:14:01-23:24:24 UTC. Page: Bruce
+Springsteen =/events=, pageType =artist-events=, =tableMode: single=, 4174 rows,
+disk fixture, CAA off. Files:
+=interaction-perf-main-9.99.1173-2026-09-28-NB-3641.json= and
+=interaction-perf-feature-filter-flag-scoping-fixes-9.99.1173-2026-09-28-NB-3641.json=.
+
+*The =main= arm's JSON says =gitBranch: feature/filter-flag-scoping-fixes=, and
+that is correct, not a mix-up.* The branch had uncommitted work, so instead of
+a checkout the =main= arm ran with =git show main:…/ShowAllEntityData.user.js=
+swapped into the working tree (=--label=main=) and the branch file restored and
+SHA-256-verified afterwards. Only the userscript differed between the arms.
+
+| Metric                | main (ms) | branch (ms) | branch/main | Touched by the branch?          |
+|-----------------------+-----------+-------------+-------------+---------------------------------|
+| =globalFilter=        |      1876 |        1914 |       1.02x | yes: F6, the plain global path  |
+| =columnFilter=        |      1823 |        1975 |       1.08x | status line only, once per pass |
+| =sort=                |      3673 |        3674 |       1.00x | no                              |
+| =uniqDropCold=        |     28803 |       30221 |       1.05x | no                              |
+| =uniqDropWarm=        |       899 |         987 |       1.10x | no                              |
+| =headerCountsInitial= |      5593 |        5566 |       1.00x | no                              |
+| =headerCountsRestore= |      5482 |        5608 |       1.02x | no                              |
+
+*Read as: no measurable cost.* The one metric F6 is on moved +2%, while
+=uniqDropWarm= and =uniqDropCold= — code the branch does not touch at all —
+moved +10% and +5% between the same two back-to-back arms, which puts this
+host's arm-to-arm noise above the change. =columnFilter='s +8% is inside that
+band too; the branch's only change on that path is the status-line text, built
+once per pass rather than per row. Not bisected: one pair of arms, no A-B-A
+repeat.
