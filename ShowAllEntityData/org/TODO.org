@@ -772,6 +772,16 @@ Analyze the usage/"usefulness for you" of our current ".md" and ".org" files
 
 definitely shorten the CLAUDE.md file for the basic stuff and redirect for everything else
 
+* DONE The "Recording length" column at e.g. https://musicbrainz.org/release/f62e0d08-44a0-4849-aa32-a4e2b3513c57 (fixed, branch fix-recording-length-uvd-sections, see DEBUG-NOTES.md's 2026-09-28 entry)
+
+The "Recording length" column at e.g. https://musicbrainz.org/release/f62e0d08-44a0-4849-aa32-a4e2b3513c57 should get
+the same sections in the unique value drop-down menu as the "Length" column
+
+#+begin_example
+@debug/Length-RecordingLength-UVD-mismatch-1.html - raw "Length" column unique value drop-down
+@debug/Length-RecordingLength-UVD-mismatch-2.html - raw "Recording length" column unique value drop-down
+#+end_example
+
 
 * TODO What's left from the parking lot in AUDIT.org
 

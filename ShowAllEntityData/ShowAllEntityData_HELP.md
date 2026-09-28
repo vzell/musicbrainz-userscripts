@@ -260,7 +260,9 @@ themselves:
   **Milliseconds** split: `≠ .000` (real sub-second precision), `= .000` (whole
   seconds only) and *no millisecond data*. The split is not offered until some
   cell has milliseconds, and it keeps working with ⏱ switched back off, because
-  the cells still carry them.
+  the cells still carry them. On a release tracklist that also has a
+  **Recording length** column (see below), that column's own 📊 dropdown
+  offers the exact same sections, computed from its own values.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning
   (04:00-11:59), lunch (12:00-12:59), afternoon (13:00-17:59), evening
   (18:00-23:59) or night (00:00-03:59). An empty cell stays under "empty cells".
@@ -461,7 +463,8 @@ free on the next.
 A release tracklist also gets a **Recording length** column whenever some track's
 recording length disagrees with its track length, and flags the disagreements
 with ⚠️ or ❌ past a configurable threshold, with **(N) LENGTH ⚠️** buttons in
-the filter bar to isolate them.
+the filter bar to isolate them. Its own 📊 dropdown offers the same "Length
+info" sections as **Length** (see above), computed from its own values.
 
 ---
 
