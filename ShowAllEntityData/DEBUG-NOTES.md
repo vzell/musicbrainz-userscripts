@@ -16341,3 +16341,39 @@ already established) confirmed failing before the fix (mutation-checked via
 and the full `npm run test:full` fixture suite re-ran clean (one unrelated
 flaky timeout in `rel-column-fetch-failure.spec.js` under parallel load,
 confirmed to pass in isolation — not caused by this change).
+
+## 2026-09-28 — third-party "MBz YouTube Music Lookup" button leaks into release-tracks (branch fix-release-tracks-youtube-lookup-removal)
+
+Reported: on release pages (e.g.
+https://musicbrainz.org/release/f62e0d08-44a0-4849-aa32-a4e2b3513c57), with
+the "MBz YouTube Music Lookup" userscript active
+(github.com/afrocatmusic/userscripts, `@match *://*.musicbrainz.org/release/*`,
+`@run-at document-idle`), its own bare, unlabeled button —
+`<button title="Search &quot;…&quot; on YouTube Music" style="cursor:
+pointer;">YouTube Music Lookup</button>`, no `id`, no `class` — survives our
+render untouched. Confirmed via the real captured snapshot
+`debug/youtube.html` (release-tracks, post-render, 1.4 MB — grepped rather
+than read whole).
+
+No existing `removeSelectors` entry could catch it: the button carries
+nothing distinctive except its own `title` attribute, whose text is
+`Search "<release title>" on YouTube Music` — the release title fills the
+middle, so only the fixed `… on YouTube Music` SUFFIX is safe to anchor a
+selector on. Added `'button[title$="on YouTube Music"]'` to
+`release-tracks`'s existing `features.removeSelectors` array (alongside
+`span#medium-toolbox`) — a plain CSS attribute-suffix selector, applied
+document-wide by the existing post-render `removeSelectors` cleanup pass
+(`ShowAllEntityData.user.js`, "features.removeSelectors (post-render,
+plural)"), so it needed no new mechanism.
+
+Verified against the real 26 native/other-userscript `<button title="…">`
+elements captured in `debug/youtube.html` (grep confirmed) that none of them
+end in that exact suffix, so the selector is unique to this one button.
+
+New regression spec `tests/fixtures/release-tracks-third-party-youtube-lookup.spec.js`
+(2 tests: the button is stripped; an unrelated button whose title merely
+*starts* with "Search" survives, guarding the selector's own specificity),
+mutation-checked via
+`scripts/mutations/release-tracks-third-party-youtube-lookup.json` (breaking
+the selector's suffix reproduces the exact reported bug). Broader
+`release-tracks-*` suite (39 tests) re-ran clean.
