@@ -2,7 +2,7 @@
 
 # [VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities](https://github.com/vzell/mb-userscripts/tree/master?tab=readme-ov-file#mb_show_all_entity_data)
 
-## Changes since last version (9.99.746 -> 9.99.1164)
+## Changes since last version (9.99.746 -> 9.99.1167)
 
 ### Your settings and this update --- read this first (60 seconds)
 
@@ -215,6 +215,8 @@ settings you care about instead. (If you do want a clean slate, press
 [SCREENSHOT: the new 📦 Data ▾ / 🛠 View ▾ menus]
 
 * **❓ Help now opens as a proper page on GitHub** --- with a table of contents and working section links, instead of the old plain-text dialog. Shift-click ❓ (or press `H`) if you'd rather keep using the in-page version.
+
+* **Shorter, tidier action buttons, with the full text still one hover away** --- the page-load buttons above the table used to spell out "Show all Events for Artist", "Tags for Artist", "Relationships for Label (complete)" every time; they now read "Events", "Tags", "Relationships (complete)", dropping the generic "Show all"/"Show" prefix and anything that just repeated the page's own subject. Hovering any button (or a report page's "Unfiltered"/"Subscribed Only" buttons) shows a small tooltip with the full original description plus its Ctrl-M keyboard shortcut, so nothing is actually lost --- it's one hover away instead of always on screen. Three pages (subscriptions, an artist's release groups, an artist's releases) also gain a bold entity-name prefix ahead of their now-shorter buttons, e.g. "Bruce Springsteen | Releases: Artists / Various Artists".
 
 ### Enhancements: report pages
 
