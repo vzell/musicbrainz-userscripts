@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1171",
+    "date": "2026-09-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown (📊): added \"Editor info - Active for\" and \"Editor info - Active since\" sections for the `annotations` pageType's own `editorActivity()` synthetic \"Active for\"/\"Active since\" columns (decomposed from the \"Editor\" column's membership tooltip). Neither existed before this — see org/column-unique-value-drop-down-menu.org's \"Analysis results\" suggestion #2. Also registered `editorActivity()`'s \"Active start date\"/\"Active end date\" synthetic columns in `_dateExprColumnNames()`, so they now get the full \"Date info\" family (Precision/Decade/Month/Year/Weekday) for free, the same way `eventParts()`'s \"Event-Date\" and `dateTimeParts`-fed columns already do. New: `isEditorActiveForCol`/`isEditorActiveSinceCol` column-name gates, `editorActiveForValueCounts`/`editorActiveSinceValueCounts` Maps (added to the `_uniqDropDataCache` bundle), `editoractivefor:`/`editoractivesince:` compound structure-modes in `_cellMatchesStructureMode()`, and `_highlightEditorActiveForMatch()`/`_highlightEditorActiveSinceMatch()`."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1170",
     "date": "2026-09-28",
     "sections": [
