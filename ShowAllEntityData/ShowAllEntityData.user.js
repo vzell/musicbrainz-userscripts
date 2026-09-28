@@ -24440,6 +24440,33 @@
     }
 
     /**
+     * Reads a "Delta" cell's own trend arrow — `reportChangeIndicator()`'s
+     * synthetic "Delta" column (`reports-index` only), fed from the
+     * optional third-party "MusicBrainz: Reports Statistics" userscript's
+     * (chaban) `.report-change-indicator` span. Its own JSDoc gives the
+     * three leading glyphs this reads: `▼` (down), `▲` (up), `↔` (flat) —
+     * always the FIRST character of the cell's own text, since
+     * `reportChangeIndicator()` never puts anything else before it.
+     *
+     * `null` covers both "chaban isn't installed/active" (empty cell) and
+     * chaban's own no-prior-baseline shape ("(New: 260790 items)", which
+     * has no leading arrow at all) — genuinely not a trend in either case,
+     * not a fourth state to invent.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {'up'|'down'|'flat'|null}
+     */
+    function _findCellReportTrend(cell) {
+        if (!cell) return null;
+        const text = getCleanColumnText(cell);
+        if (!text) return null;
+        if (text.startsWith('▼')) return 'down';
+        if (text.startsWith('▲')) return 'up';
+        if (text.startsWith('↔')) return 'flat';
+        return null;
+    }
+
+    /**
      * Whether a live-flag cell (e.g. a native "Attributes" column, or a
      * per-pageType-configured equivalent — see `_getLengthColumnAverages()`'s
      * own JSDoc) flags this row as a "live" performance. Free-text word-
@@ -25361,6 +25388,18 @@
             // Fixed flag counterpart — "normal" (default) data quality,
             // i.e. neither marker span is present at all.
             return _findCellReleaseDataQuality(cell) === 'normal';
+        }
+        if (mode === 'report-trend-up') {
+            // Fixed flag — this "Delta" cell's own leading trend arrow is ▲.
+            return _findCellReportTrend(cell) === 'up';
+        }
+        if (mode === 'report-trend-down') {
+            // Fixed flag counterpart — leading arrow ▼.
+            return _findCellReportTrend(cell) === 'down';
+        }
+        if (mode === 'report-trend-flat') {
+            // Fixed flag counterpart — leading arrow ↔.
+            return _findCellReportTrend(cell) === 'flat';
         }
         if (mode === 'acoustid-linked') {
             // Fixed flag — true when this "AcoustID" cell's own anchor has
@@ -45835,6 +45874,15 @@ a { color: #1565c0; }`;
         // catalogPresence's catalog-has-prefix/catalog-no-prefix/
         // catalog-none), not an open kind-list.
         releaseDataQuality: { label: 'Release info - Data quality', glyph: '⭐' },
+        // "Reports - Trend" — reports-index's own "Delta" synthetic column
+        // (reportChangeIndicator(), gated on the optional third-party
+        // "MusicBrainz: Reports Statistics" userscript by chaban being
+        // installed/active). A fixed 3-value set (up/down/flat), same
+        // fixed-structure-mode shape as releaseDataQuality/acoustidLinkStatus
+        // above — the arrow glyph is a mutually-exclusive flag, distinct
+        // from the free-text count/percent the same cell also carries
+        // (which stays available via the plain per-column value list).
+        reportTrend: { label: 'Reports - Trend', glyph: '📈' },
         // "AcoustID info - Link status" — recording-fingerprints' own
         // "AcoustID" column: whether that AcoustID's own native `<a
         // class="external">` link additionally carries MusicBrainz's own
@@ -45937,6 +45985,7 @@ a { color: #1565c0; }`;
         'changelog-has-message': 'changelogPresence', 'changelog-no-message': 'changelogPresence',
         'release-quality-high': 'releaseDataQuality', 'release-quality-low': 'releaseDataQuality',
         'release-quality-normal': 'releaseDataQuality',
+        'report-trend-up': 'reportTrend', 'report-trend-down': 'reportTrend', 'report-trend-flat': 'reportTrend',
         'acoustid-linked': 'acoustidLinkStatus', 'acoustid-unlinked': 'acoustidLinkStatus',
         'lengthdeviation-within10': 'lengthDeviation',
         'lengthdeviation-shorter10to25': 'lengthDeviation', 'lengthdeviation-longer10to25': 'lengthDeviation',
@@ -47279,6 +47328,24 @@ a { color: #1565c0; }`;
         if (_findCellLengthMsState(cell) !== mode.slice(10)) return;
         cell.normalize();
         highlightCrossTag(cell, /(?<=\d:\d{2})\.\d{1,3}/g, 'mb-column-filter-highlight');
+    }
+
+    /**
+     * Highlights a "Delta" cell's own leading trend arrow (▲/▼/↔) for a
+     * `report-trend-up`/`report-trend-down`/`report-trend-flat` fixed
+     * structure-mode filter — re-derives from `_findCellReportTrend()`
+     * first ("verify before highlighting"). Marks only the single leading
+     * glyph, never the count/percent text after it.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {string} mode - `"report-trend-up"`, `"report-trend-down"` or `"report-trend-flat"`.
+     */
+    function _highlightReportTrendMatch(cell, mode) {
+        if (!cell) return;
+        const _want = mode === 'report-trend-up' ? 'up' : mode === 'report-trend-down' ? 'down' : 'flat';
+        if (_findCellReportTrend(cell) !== _want) return;
+        cell.normalize();
+        highlightCrossTag(cell, /^[▲▼↔]/g, 'mb-column-filter-highlight');
     }
 
     /**
@@ -48683,6 +48750,8 @@ a { color: #1565c0; }`;
                                     _highlightRelTypeCreditMatch(row.cells[f.idx], mode);
                                 } else if (mode === 'length-ms-precise' || mode === 'length-ms-whole' || mode === 'length-ms-none') {
                                     _highlightLengthMsMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'report-trend-up' || mode === 'report-trend-down' || mode === 'report-trend-flat') {
+                                    _highlightReportTrendMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('timeofday:')) {
                                     _highlightTimeOfDayMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('lengthdeviation-')) {
@@ -60768,6 +60837,13 @@ a { color: #1565c0; }`;
         let releaseQualityHighCount   = _uniqCacheHit ? _uniqCacheHit.releaseQualityHighCount   : 0;
         let releaseQualityLowCount    = _uniqCacheHit ? _uniqCacheHit.releaseQualityLowCount    : 0;
         let releaseQualityNormalCount = _uniqCacheHit ? _uniqCacheHit.releaseQualityNormalCount : 0;
+        // "Delta" column only (reports-index): the chaban change-indicator's
+        // own trend arrow — see `_findCellReportTrend()`'s own JSDoc.
+        // Column-gated (isDeltaCol below). All three stay 0 when the
+        // third-party userscript isn't installed/active.
+        let reportTrendUpCount   = _uniqCacheHit ? _uniqCacheHit.reportTrendUpCount   : 0;
+        let reportTrendDownCount = _uniqCacheHit ? _uniqCacheHit.reportTrendDownCount : 0;
+        let reportTrendFlatCount = _uniqCacheHit ? _uniqCacheHit.reportTrendFlatCount : 0;
         // "Length" column only: 7 fixed buckets of how far this row's
         // Length deviates (signed percentage) from the page's average
         // Length — see `_findCellLengthDeviationBucket()`'s own JSDoc.
@@ -61000,6 +61076,12 @@ a { color: #1565c0; }`;
         // via _findCellReleaseDataQuality()'s own "no marker -> normal"
         // fallback. See debug/quality-row.html/debug/quality-page.html.
         const isReleaseCol = _colHeaderName === 'Release' || _colHeaderName === 'Title';
+        // Column-name gate for reports-index's own synthetic "Delta" column
+        // (reportChangeIndicator()) — see _findCellReportTrend()'s own
+        // JSDoc. Name-only, same convention as isReleaseCol above; harmless
+        // no-op when the chaban userscript isn't installed/active (the
+        // cell is simply empty).
+        const isDeltaCol = _colHeaderName === 'Delta';
         // Column-name gate for recording-fingerprints' native "AcoustID"
         // column's own link/unlink state (see
         // _findCellAcoustIdLinkStatus()'s own JSDoc) — name-only, no
@@ -61347,6 +61429,12 @@ a { color: #1565c0; }`;
                         if (_quality === 'low')    releaseQualityLowCount++;
                         if (_quality === 'normal') releaseQualityNormalCount++;
                     }
+                }
+                if (isDeltaCol) {
+                    const _trend = _findCellReportTrend(cell);
+                    if (_trend === 'up')   reportTrendUpCount++;
+                    if (_trend === 'down') reportTrendDownCount++;
+                    if (_trend === 'flat') reportTrendFlatCount++;
                 }
                 if (isAcoustIdCol) {
                     const _linkStatus = _findCellAcoustIdLinkStatus(cell);
@@ -62634,6 +62722,7 @@ a { color: #1565c0; }`;
                 editorActiveForValueCounts, editorActiveSinceValueCounts,
                 changelogHasMessageCount, changelogNoMessageCount,
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
+                reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
@@ -63650,6 +63739,7 @@ a { color: #1565c0; }`;
             barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
             editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+            reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
             lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
@@ -63698,6 +63788,9 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',      releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',        releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality',  releaseQualityNormalCount);
+            if (reportTrendUpCount > 0)   makeSynItem('report-trend-up', '📈 trending up', reportTrendUpCount);
+            if (reportTrendDownCount > 0) makeSynItem('report-trend-down', '📉 trending down', reportTrendDownCount);
+            if (reportTrendFlatCount > 0) makeSynItem('report-trend-flat', '↔️ flat', reportTrendFlatCount);
             // "Length info - Deviation" — 7 fixed buckets of signed
             // percentage deviation from the page's (live-recording-aware)
             // average Length — see _findCellLengthDeviationBucket()'s own
@@ -63832,6 +63925,7 @@ a { color: #1565c0; }`;
             barcodeValidCount > 0 || barcodeInvalidCount > 0 ||
                    editorAnyDeletedCount > 0 || changelogHasMessageCount > 0 || changelogNoMessageCount > 0 ||
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
+                   reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
                    lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
@@ -63862,6 +63956,9 @@ a { color: #1565c0; }`;
             if (releaseQualityHighCount > 0)   makeSynItem('release-quality-high', '🟢 high data quality',     releaseQualityHighCount);
             if (releaseQualityLowCount > 0)    makeSynItem('release-quality-low', '🟠 low data quality',       releaseQualityLowCount);
             if (releaseQualityNormalCount > 0) makeSynItem('release-quality-normal', '⚪ normal data quality', releaseQualityNormalCount);
+            if (reportTrendUpCount > 0)   makeSynItem('report-trend-up', '📈 trending up', reportTrendUpCount);
+            if (reportTrendDownCount > 0) makeSynItem('report-trend-down', '📉 trending down', reportTrendDownCount);
+            if (reportTrendFlatCount > 0) makeSynItem('report-trend-flat', '↔️ flat', reportTrendFlatCount);
             if (lengthDeviationWithin10Count > 0)      makeSynItem('lengthdeviation-within10', '🎯 within 10% of average', lengthDeviationWithin10Count);
             if (lengthDeviationShorter10to25Count > 0) makeSynItem('lengthdeviation-shorter10to25', '🔽 10–25% shorter than average', lengthDeviationShorter10to25Count);
             if (lengthDeviationLonger10to25Count > 0)  makeSynItem('lengthdeviation-longer10to25', '🔼 10–25% longer than average', lengthDeviationLonger10to25Count);
@@ -64577,6 +64674,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-high')   return '🟢 high data quality';
         if (mode === 'release-quality-low')    return '🟠 low data quality';
         if (mode === 'release-quality-normal') return '⚪ normal data quality';
+        if (mode === 'report-trend-up')   return '📈 trending up';
+        if (mode === 'report-trend-down') return '📉 trending down';
+        if (mode === 'report-trend-flat') return '↔️ flat';
         if (mode === 'acoustid-linked')   return '🔗 linked';
         if (mode === 'acoustid-unlinked') return '🚫 unlinked';
         if (mode === 'length-ms-precise')             return '🔬 milliseconds ≠ .000';
@@ -64708,6 +64808,9 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-high') return '🟢 = MusicBrainz\'s own "High quality" data-quality marker: all available data has been added, if possible including cover art with liner info that proves it.';
         if (mode === 'release-quality-low') return '🟠 = MusicBrainz\'s own "Low quality" data-quality marker: the release needs serious fixes, or its existence is hard to prove (but it\'s not clearly fake).';
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
+        if (mode === 'report-trend-up') return '📈 = this "Delta" cell\'s own leading ▲ arrow, from the "MusicBrainz: Reports Statistics" third-party userscript (by chaban) — this report count went up since the last capture.';
+        if (mode === 'report-trend-down') return '📉 = this "Delta" cell\'s own leading ▼ arrow — this report count went down since the last capture.';
+        if (mode === 'report-trend-flat') return '↔️ = this "Delta" cell\'s own leading ↔ arrow — this report count is unchanged since the last capture.';
         if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
         if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
         if (mode === 'length-ms-precise') return `🔬 = this row's ${colName} carries real sub-second precision (milliseconds other than .000).`;

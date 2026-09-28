@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Reports - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <h1>Reports</h1>
+        <!--
+            Regression fixture for "Reports - Trend" unique-values dropdown
+            section (reportChangeIndicator()'s own synthetic "Delta" column,
+            reports-index pageType). The `.report-change-indicator` span
+            shape (arrow + count/percent + trailing "(N ago)") is injected by
+            the optional third-party "MusicBrainz: Reports Statistics"
+            userscript (by chaban) — copied here verbatim from
+            reportChangeIndicator()'s own JSDoc example. Real /reports pages
+            render one <h2> category heading per report family, each
+            followed by a <ul> of report links; renameH2ToH3 + listToTable's
+            "Structure J" converts each into a single-column "Report" table.
+
+            Rows 1/2: "▼" (down) — two, to get count 2.
+            Row 3: "▲" (up).
+            Row 4: "↔" (flat).
+            Row 5: chaban's own no-prior-baseline shape ("(New: N items)",
+            no arrow, no "ago") — must NOT count as any trend direction.
+            Row 6: no chaban span at all (plain report link) — chaban not
+            active/installed shape — must also NOT count as any trend.
+        -->
+        <h2>Release group</h2>
+        <ul>
+            <li><a href="/report/ReleaseGroupsWithNoRT">Release groups with no relationships</a> <span class="report-change-indicator" style="color: red;">▼ -1 (-0.4%) (1 day ago)</span></li>
+            <li><a href="/report/ReleaseGroupsWithoutCoverArt">Release groups without cover art</a> <span class="report-change-indicator" style="color: red;">▼ -3 (-2.1%) (1 day ago)</span></li>
+            <li><a href="/report/ReleaseGroupsWithMultipleLinks">Release groups with multiple links</a> <span class="report-change-indicator" style="color: green;">▲ +5 (+3.2%) (1 day ago)</span></li>
+            <li><a href="/report/ReleaseGroupsWithoutAnnotation">Release groups without an annotation</a> <span class="report-change-indicator" style="color: grey;">↔ 0 (1 day ago)</span></li>
+            <li><a href="/report/ReleaseGroupsFirstReleaseInFuture">Release groups whose first release is in the future</a> <span class="report-change-indicator" style="color: grey;">(New: 42 items)</span></li>
+            <li><a href="/report/ReleaseGroupsWithoutGenre">Release groups without a genre</a></li>
+        </ul>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>
