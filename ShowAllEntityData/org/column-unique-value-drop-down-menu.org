@@ -122,11 +122,14 @@ Ranked by how directly they follow existing precedent and how many pageTypes the
    count/percent next to it - a clean boolean/tri-state flag section, same shape as the existing
    =eventCancelled= flag. Single-pageType reach, but cheapest to build (fixed 3-value
    vocabulary, no new DOM-walk technique needed).
-4. *New section: "Locale info - Primary" as its own flag* (=entity-aliases=,
-   =artist-aliases=). =localeParts= (=ShowAllEntityData.user.js:5373=) already splits into
-   language + a primary-locale boolean; the language half has a section
-   (=localeLanguage=) but the boolean doesn't. Completes an existing pair rather than opening a
-   new topic - lowest-risk pick.
+4. *CORRECTION (2026-09-28): invalid, already shipped.* This suggestion claimed
+   "Locale info - Primary" had no section of its own, contradicting section 1's OWN summary
+   table two headings up ("Locale (alias table) | Locale info (Language/Primary)"). Verified
+   against =main= before starting implementation: =localePrimary: { label: 'Locale info -
+   Primary', glyph: '🥇' }= (SYN_SECTION_META), the =locale-primary=/=locale-not-primary= fixed
+   structure-modes, and =_highlightLocalePrimaryMatch()= all already exist and are fully wired,
+   in both render branches. No branch was created for this item - see "Implementation status"
+   below.
 5. *New section: "Instrument info" gains a structure facet for =Name_Comment_Description=*
    (=instrument-list= only). Description can carry nested links to sibling instruments (family
    cross-references) or be plain text; a "has cross-reference" boolean would sit next to the
@@ -151,9 +154,33 @@ bundled - per the "one logical change per session" rule and the skill's own fail
 |    1 | Event info - Type/Date/Country/State/City                 | ~23 pageTypes                  | =eventParts= (js:5962)               | fixed 6-word vocab + open geo cats | Low risk, highest reach      |
 |    2 | Editor info + =editorActivity= facets                     | annotations                    | =editorActivity= (js:5478)           | duration, year, 2 ISO dates        | Medium - new subtopic shape  |
 |    3 | Reports-index Trend                                       | reports-index                  | =reportChangeIndicator= (js:5769)    | fixed 3-state (up/down/flat)       | Low, cheapest to build       |
-|    4 | Locale info - Primary flag                                | entity-aliases, artist-aliases | =localeParts= (js:5373)              | boolean                            | Lowest risk, completes pair  |
+|    4 | INVALID - already shipped, see correction above           | -                               | =localeParts= (js:5373)              | boolean                            | N/A                          |
 |    5 | Instrument info - has cross-reference                     | instrument-list                | =Name_Comment_Description= (js:5704) | boolean                            | Low, narrow reach            |
 |    - | NOT recommended: Annotation chars bucketing, Video Yes/No | 1 pageType each                | n/a                                  | n/a                                | Low payoff vs. surface added |
+
+*** Implementation status (2026-09-28)
+
+All four valid suggestions implemented, each on its own feature branch off =main=, per the
+"one session/branch, not bundled" rule above. None merged yet - each still needs a real-browser
+spot-check (per this repo's git-workflow rule: a green fixture suite is not sufficient grounds
+to merge on its own).
+
+| # | Section(s)                                   | Branch                                     | Regression tests                                  |
+|---+-----------------------------------------------+---------------------------------------------+-----------------------------------------------------|
+| 1 | Event info - Type / Event info - Country       | =feature/uniq-dropdown-eventparts=          | =tests/fixtures/uniq-drop-event-parts-sections.spec.js= |
+| 2 | Editor info - Active for / - Active since; Active start/end date -> Date info family | =feature/uniq-dropdown-editor-activity= | =tests/fixtures/uniq-drop-editor-activity-sections.spec.js= |
+| 3 | Reports - Trend                                | =feature/uniq-dropdown-reports-trend=       | =tests/fixtures/uniq-drop-reports-trend.spec.js=    |
+| 4 | N/A - invalid, nothing implemented             | (none)                                       | N/A                                                 |
+| 5 | Instrument info - Cross-reference              | =feature/uniq-dropdown-instrument-crossref= | =tests/fixtures/uniq-drop-instrument-crossreference.spec.js= |
+
+Each branch is scoped to exactly its one suggestion (no version bump/changelog on the branch
+itself - recorded in that branch's own =ShowAllEntityData_CHANGELOG.wip.json= as =WIP.1=,
+per project convention) and passes the full non-slow fixture suite with no regressions.
+Suggestion #1 also left =eventParts='s "Event-Date" column note in place for the record (it
+already had the full "Date info" family via =_dateExprColumnNames()= before this session -
+confirmed, not assumed - so nothing needed to change there); suggestion #2 additionally
+registered =editorActivity='s "Active start date"/"Active end date" columns in that same
+function, the same reuse this org file's own performance section already argued for.
 
 ** 3. Performance implications
 
