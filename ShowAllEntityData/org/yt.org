@@ -1,0 +1,30 @@
+* DONE afterwards go on with
+
+1.)
+
+When the following third-party userscript is active
+
+#+begin_example
+// ==UserScript==
+// @name        MBz YouTube Music Lookup
+// @namespace   https://github.com/afrocatmusic/userscripts
+// @updateURL   https://raw.github.com/afrocatmusic/userscripts/main/MBz-YouTube-Music-Lookup.user.js
+// @match       *://*.musicbrainz.org/release/*
+// @match       *://musicbrainz.eu/release/*
+// @exclude     /\/release\/\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\/(discids|cover-art|aliases|tags|details|edit|edit-relationships|delete|change-quality|edits|open_edits)/
+// @exclude     /\/release\/add/
+// @grant       none
+// @version     1.2.1
+// @author      afro
+// @description Add a YouTube Music Lookup button
+// @run-at      document-idle
+// ==/UserScript==
+#+end_example
+
+remove the e.g.
+
+#+begin_example
+<button title="Search &quot;Bruce Springsteen The Wild, the Innocent &amp; The E Street Shuffle&quot; on YouTube Music" style="cursor: pointer;">YouTube Music Lookup</button>
+#+end_example
+
+from the final rendered page of e.g. https://musicbrainz.org/release/f62e0d08-44a0-4849-aa32-a4e2b3513c57 (pageType: release-tracks)

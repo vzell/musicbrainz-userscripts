@@ -1,0 +1,17 @@
+* Analyze
+
+See also the skill "uniq-dropdown-section"
+
+1.)
+
+Analyze the current column unique value drop-down menu implementation sections for the different columns in the
+different pageTypes. Show me a summary.
+
+2.)
+
+Make suggestions for additional sections to the current ones and for new sections in columns which currently have no
+special sections at all.
+
+3.)
+
+Also weigh the potential performance implications.
