@@ -1,0 +1,161 @@
+* DONE Analyze
+
+1.)
+
+Analyze the current filtering on the different levels
+
+#+begin_example
+global
+sub-table (for multi-table pageTypes)
+column
+#+end_example
+
+specifically regarding the additionally boolean filter checkboxes
+
+#+begin_example
+filter-case-label
+filter-rx-label
+filter-exclude-label
+#+end_example
+
+if there are any inconsistencies, e.g. the more narrow the filter is specified, it should win and it should also honour
+the high level filters in effect.
+
+Use the following pages for the analyze:
+
+#+begin_example
+@debug/multi-table-Artist_relationships.html - final rendered multi-table raw HTML - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
+@debug/single-table-Artist_releases.html - final rendered multi-table raw HTML - https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+#+end_example
+
+a.)
+
+each on their own and in combination
+
+b.)
+
+together with the different level filters
+
+c.)
+
+first specifying the narrow column level filters, then additionally filtering on the sub-table level, then the global level
+
+d.)
+
+first specifying the global level, then additionally filtering on the sub-table level, then narrow on the column level filters
+
+e.)
+
+specifying arbitary order combinations
+
+2.)
+
+Report back with different examples on different pageTypes, for both single- and multi-table pageTypes.
+
+3.)
+
+The final goal is to also add boolean filter checkbox support (configurable, default true) on the column level for
+
+#+begin_example
+filter-case-label
+filter-rx-label
+filter-exclude-label
+#+end_example
+
+a.)
+
+Show me some mockups (not ASCII based) how this could best be accomplished in our current userscript version
+
+* DONE Analysis results (2026-09-28)
+
+Report and interactive mockups (private artifact): https://claude.ai/artifact/1h2eXK6h1Aq5V1yFQ5ujjr
+
+Analysed against =ShowAllEntityData.user.js= 9.99.1173. Evidence: code reading plus a throwaway
+Playwright probe (7 tests, chromium-fixtures, NOT committed) on
+=tests/fixtures/saved-data/artist-releases-bodeans.json.gz= (single-table) and
+=tests/snapshots/releasegroup-releases/raw.html= (multi-table).
+
+** 1. Who governs what today
+
+- The three levels always AND together, and every =runFilter()= pass starts from the source rows
+  (=allRows= / =groupedRows=); =renderGroupedTable()= then re-applies each sub-table filter on top.
+- There are no column-level boxes. A column filter borrows a wider level's Cc/Rx/Ex:
+  - single-table: the *global* boxes (=runFilter()=, =getColFilters(_singleTable, isCaseSensitive, isRegExp, isExclude)=)
+  - multi-table: the *sub-table* boxes inside the 🔍 panel (=_colIsRegExp = _subRxCb ? _subRxCb.checked : false=);
+    the global boxes reach the global query only.
+- 📊 value sets inherit the same owner's Cc and Ex (=getColFilters()= → =f.isExclude=).
+
+** 2. Findings
+
+| #  | Kind          | Evidence  | Finding                                                                                                                                              |
+|----+---------------+-----------+------------------------------------------------------------------------------------------------------------------------------------------------------|
+| F1 | inconsistency | measured  | Single-table: global Cc/Rx/Ex rewrite every column filter. Release "live" 4 rows; + global Ex (empty global) 52; + global Cc 0                       |
+| F2 | inconsistency | measured  | Multi-table: column filters obey 🔍 boxes that stay ticked (and active) after the panel is closed. "tunnel" 1 → 5 of 6                               |
+| F3 | bug           | measured  | Ticking a sub-table box does not re-run the column filters it governs (=change= → =applySubFilter()= only). "^Tun" 0 → still 0 → 1 after a keystroke |
+| F4 | bug           | measured  | =applySubFilter()='s h3 status uses the shadowed local =caseCheckbox= for the GLOBAL part: =GLOBAL:(case) "e"= with global Cc off; no global "ex"    |
+| F5 | bug           | from code | CAA/EAA image-row highlight compiles the GLOBAL query with the sub-table Rx/Cc (=_activeFilterHighlightCtx=, =_artHighlightArtCell()= ctxSnap)       |
+| F6 | inconsistency | measured  | Plain global query matches the space-joined row (across cells); Rx tests per cell. "Rest Bruce" 6 rows, 0 highlights; with Rx 0                      |
+| F7 | cosmetic      | measured  | Status lines hide modes: =singleModeLabel= is built and never used; h3 status lists column filters without their flags                               |
+| F8 | design note   | from code | 📊 selections inherit Ex: ticking "guitar and harmonica (8)" with Ex on shows the other 92 rows                                                      |
+
+Minor: =clearAllFilters()= resets no Cc/Rx/Ex box and no sub-table text (hidden 🔍 boxes survive
+"Clear all"); stale comment "Column filters don't have case sensitivity toggle" in
+=saveFilterHighlightState()= (no effect).
+
+** 3. Order of entry (1c–1e)
+
+Row results are order-independent. Measured on releasegroup-releases sub-table 1:
+column "tunnel" → sub-table "1988" → global "cd" and global → sub-table → column give the
+same single row. Two order-dependent paths remain: a sub-table box ticked AFTER typing (F3),
+and the documented 📊-then-type vs type-then-📊 asymmetry.
+
+** 4. Proposal
+
+- Every query owns its own three boxes: global → global query, sub-table → sub-table query,
+  column → that column's text and 📊 selection. Levels still AND; narrower adds a condition,
+  it never switches off a wider one. Plain and Rx both test per cell (F6).
+- Setting =sa_enable_column_filter_modes= (default true). Off = today's borrowing; F3–F7 fixed either way.
+- Ctrl+Click on a global/sub-table box also sets that mode on every column in scope.
+- UI: variant A (Cc/Rx/Ex chips inside each filter cell, faint until hover/focus, Ex turns the
+  field pale red) recommended; B (one mode button + popover) as the narrow-column fallback;
+  C (extra mode-strip row) rejected: one extra header row per table.
+- Performance: no per-row work added (3 attribute reads per non-empty column filter per pass);
+  the F6 per-cell global match is the one hot-path change and needs an A/B before merging.
+- No userscript code changed. Implementation would go on a feature branch with
+  =ShowAllEntityData_CHANGELOG.wip.json=.
+
+* summayr
+
+The report and clickable mockups are published here: ⧉ https://claude.ai/artifact/1h2eXK6h1Aq5V1yFQ5ujjr (private until you share it). I also added the results to org/column-level-checkbox-filtering.org as a * DONE Analysis results (2026-09-28) section, and marked the task DONE. I didn't change any userscript code and didn't commit anything.
+
+The main answer. The three levels (global, sub-table, column) always combine with AND. The rows you get don't depend on which level you type first: I checked column→sub-table→global against global→sub-table→column on releasegroup-releases and got the same single row both ways. The inconsistency is which boxes control a column filter, because columns have no boxes of their own:
+- Single-table pages (artist-releases): the global Cc/Rx/Ex also change every column filter.
+- Multi-table pages (artist-relationships, releasegroup-releases): the sub-table boxes control the column filters instead. They sit in the 🔍 panel, which is closed by default. The global boxes don't reach column filters at all.
+
+Findings. I confirmed six of these by running a temporary Playwright test against the real script:
+- F1: On BoDeans releases, Release "live" gives 4 rows. Ticking global Ex with the global field empty gives 52, because the column filter gets inverted. "CDs that aren't live" can't be expressed.
+- F2: If you tick the 🔍 panel's Ex and then close the panel, the box stays ticked, invisibly, and keeps inverting that sub-table's column filters. "tunnel" went from 1 row to 5 of 6.
+- F3 (bug): Ticking a sub-table box doesn't re-run the column filters it controls. You need one more keystroke before it takes effect.
+- F4 (bug): The sub-table status line shows the sub-table's Cc as if it were the global Cc: GLOBAL:(case) "e" while global Cc is off.
+- F6: A plain global query can match across two cells. "Rest Bruce" matched 6 rows with nothing highlighted; with Rx ticked, the same text matches 0.
+- F7: The status lines never say that Rx, Ex or Cc is on.
+
+Two more come from reading the code, not from a test run:
+- F5: On multi-table pages, the highlight in cover-art image rows uses the sub-table's Rx/Cc for the global query.
+- F8: A 📊 selection inherits Ex, so ticking "guitar and harmonica (8)" with Ex on shows the other 92 rows.
+
+Proposal.
+- One rule: each query owns its own three boxes, and the levels still combine with AND. A narrower filter adds its own condition and never switches off a wider one.
+- Setting: it would be sa_enable_column_filter_modes, default on. Turned off, column filters work as they do today, and F3–F7 get fixed either way.
+- Ctrl+Click: Ctrl+Click on a global or sub-table box would also set that mode on every column filter in its scope.
+
+Mockups. They use real rows from your two snapshots and the script's own colours. You can switch between single- and multi-table, between the three variants, and between today's rules and the proposed ones, and the page compares the resulting rows live.
+- A (my recommendation): Cc/Rx/Ex chips inside each column filter, faint until you hover over it.
+- B: one small mode button per column that opens a popover. It's a good fallback for narrow columns like DD, MM or Tracks.
+- C: an extra row of checkboxes under the filter row. I'd reject it: it costs one header row per table, 24 on your artist-relationships page.
+
+Performance. Nothing new runs per row. The one hot-path change is fixing F6, which means checking the global query cell by cell, and it needs a before/after timing comparison before merging.
+
+The temporary test script is in the session scratchpad, not the repo. It's a starting point for regression tests covering F1–F4, F6 and F7.
+
+Should I start implementing on a feature branch? One choice is yours: whether F3–F7 go in as their own fixes first, or together with the column checkboxes.

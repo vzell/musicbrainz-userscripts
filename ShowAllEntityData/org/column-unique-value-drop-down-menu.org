@@ -1,4 +1,4 @@
-* Analyze
+* DONE Analyze
 
 See also the skill "uniq-dropdown-section"
 
@@ -16,8 +16,7 @@ special sections at all.
 
 Also weigh the potential performance implications.
 
-* Analysis results (2026-09-28)
-
+* DONE Analysis results (2026-09-28)
 ** 1. Summary of current implementation
 
 - Three-table contract just above =openUniqDrop()= (=ShowAllEntityData.user.js= ~45474-45946):
