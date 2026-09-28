@@ -1,0 +1,15 @@
+[
+  {
+    "name": "the Length-info dropdown gate is narrowed back to \"Length\" only",
+    "why": "isLengthCol is the single gate that lets release-tracks' bespoke \"Recording length\" column populate the same \"Length info - Duration/Deviation/Milliseconds/Live status\" sections \"Length\" gets. Narrowing it back silently drops all four sections for that one column, with no error anywhere — the dropdown just renders the plain value list again, exactly the reported bug.",
+    "edits": [
+      {
+        "find": "        const isLengthCol  = _colHeaderName === 'Length' || _colHeaderName === 'Recording length';",
+        "replace": "        const isLengthCol  = _colHeaderName === 'Length';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-recording-length-sections.spec.js",
+    "grep": "the same \"Length info\" sections populate for \"Recording length\" too",
+    "expect": "fail"
+  }
+]

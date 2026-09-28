@@ -23363,16 +23363,18 @@
      * JSDoc) specifically so this reads a plain `"0:45"`/`"?:??"`, not
      * `"0 : 45"`/`"? : ??"`.
      *
-     * Deliberately only called for the "Length" column itself (gated by
-     * column name at the `openUniqDrop()` call site) — `align: ':'` is used
-     * exclusively for "Length" columns across every pageType, but this is
+     * Deliberately only called for a duration column — "Length" or
+     * release-tracks' own "Recording length" (gated by column name at the
+     * `openUniqDrop()` call site, see `isLengthCol`) — `align: ':'` is used
+     * exclusively for those columns across every pageType, but this is
      * still plain text-shape parsing with no CSS-class safety net, matching
      * `_findCellFormatParts()`/`_findCellTracksPerMedium()`'s own column-
-     * name-gating precedent.
+     * name-gating precedent. The function itself never reads the column
+     * name — it parses whatever cell it is given.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {?string} `null` when `cell` has no recognizable "M:SS" (or
-     *   "?:??") text at all (defensive — not expected on a real "Length"
+     *   "?:??") text at all (defensive — not expected on a real duration
      *   column).
      */
     function _findCellLengthBucket(cell) {
@@ -23387,7 +23389,8 @@
     }
 
     /**
-     * Classifies a "Length" cell's millisecond precision: `'precise'` (a
+     * Classifies a duration cell's ("Length" or "Recording length")
+     * millisecond precision: `'precise'` (a
      * sub-second part other than `.000`), `'whole'` (milliseconds are known
      * and are exactly `.000`, so MusicBrainz holds nothing finer than the
      * second) or `'none'` (no millisecond data — the ⏱ toggle was never
@@ -23403,8 +23406,9 @@
      * `getCleanColumnText()` so the `.mb-ic-*` split-alignment spans and a
      * previous pass's highlight span are read as one plain "2:13.250".
      *
-     * Deliberately only called for the "Length" column itself (gated by
-     * column name at the `openUniqDrop()` call site).
+     * Deliberately only called for a duration column — "Length" or
+     * release-tracks' own "Recording length" (gated by column name at the
+     * `openUniqDrop()` call site, see `isLengthCol`).
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {?('precise'|'whole'|'none')} `null` only for a missing cell.
@@ -23517,8 +23521,9 @@
     }
 
     /**
-     * Parses a "Length" cell's own displayed "M:SS[.mmm]" duration into
-     * total seconds (float) — e.g. "5:05.146" → 305.146. Returns `null`
+     * Parses a duration cell's ("Length" or "Recording length") own
+     * displayed "M:SS[.mmm]" duration into total seconds (float) — e.g.
+     * "5:05.146" → 305.146. Returns `null`
      * for MusicBrainz's own "?:??" unknown-duration placeholder or any
      * unparseable text (no signal). Reads `getCleanColumnText()` exactly
      * like `_findCellLengthBucket()` (never a fresh `.mb-ic-left`/
@@ -23544,7 +23549,8 @@
     }
 
     /**
-     * Classifies a "Length" cell's percentage deviation from
+     * Classifies a duration cell's ("Length" or "Recording length")
+     * percentage deviation from
      * `referenceAvgSeconds` into one of 7 fixed buckets — the internal
      * suffix used for this table's `lengthdeviation-*` mode strings (see
      * `_cellMatchesStructureMode()`). `referenceAvgSeconds` comes from
@@ -23561,7 +23567,7 @@
      * @param {?number} referenceAvgSeconds
      * @returns {?('within10'|'shorter10to25'|'longer10to25'|'shorter25to50'|
      *   'longer25to50'|'shorter50plus'|'longer50plus')} `null` when this
-     *   cell has no known Length ("?:??"/unparseable) or
+     *   cell has no known duration ("?:??"/unparseable) or
      *   `referenceAvgSeconds` is null/non-positive (not enough data on
      *   this table to bucket at all).
      */
@@ -25314,22 +25320,24 @@
             return _findCellAcoustIdLinkStatus(cell) === 'unlinked';
         }
         if (mode.startsWith('lengthdeviation-')) {
-            // Fixed-flag family (7 buckets) — matches a "Length" cell's own
-            // percentage deviation from this table's Length-column average,
-            // live-recording-aware when a live-flag column exists — see
-            // _getLengthColumnAverages()'s own JSDoc for the caching/
-            // invalidation contract this relies on to avoid an O(rows)
-            // average recompute on every cell tested here. The settings
-            // check is also done inside _getLengthColumnAverages() itself
-            // (returning a not-ready shape when off); this one is purely
-            // defensive, guarding against a `lengthdeviation-*` value
+            // Fixed-flag family (7 buckets) — matches a duration cell's own
+            // ("Length" or release-tracks' own "Recording length" — see
+            // `isLengthCol` in `openUniqDrop()`) percentage deviation from
+            // THAT column's own average, live-recording-aware when a
+            // live-flag column exists — see _getLengthColumnAverages()'s own
+            // JSDoc for the caching/invalidation contract this relies on to
+            // avoid an O(rows) average recompute on every cell tested here.
+            // The settings check is also done inside _getLengthColumnAverages()
+            // itself (returning a not-ready shape when off); this one is
+            // purely defensive, guarding against a `lengthdeviation-*` value
             // surviving in a persisted/URL-restored filter from a session
             // where the setting was on, after the user later turns it off.
             if (!Lib.settings.sa_enable_length_deviation_section) return false;
             if (!cell) return false;
             const _table = table || cell.closest('table');
             if (!_table) return false;
-            const { referenceAvgSeconds } = _getLengthColumnAverages(_table);
+            const _colName = _resolveColHeaderName(_table, colIdx);
+            const { referenceAvgSeconds } = _getLengthColumnAverages(_table, _colName);
             const bucket = _findCellLengthDeviationBucket(cell, referenceAvgSeconds);
             return bucket !== null && mode === `lengthdeviation-${bucket}`;
         }
@@ -25338,14 +25346,14 @@
             // classification `lengthdeviation-*` already computes
             // internally (see `_getLengthColumnAverages()`'s own JSDoc) as
             // its own directly filterable entries. `cell` here is the
-            // "Length" cell (row.cells[f.idx], the currently-open column);
-            // the live-flag signal lives in a SIBLING cell on the same
-            // `row`, found via the already-resolved `liveIdx` this table's
-            // averages call returns — never re-derive the header lookup
-            // here.
+            // duration cell (row.cells[f.idx], the currently-open "Length"
+            // or "Recording length" column); the live-flag signal lives in
+            // a SIBLING cell on the same `row`, found via the
+            // already-resolved `liveIdx` this table's averages call
+            // returns — never re-derive the header lookup here.
             if (!Lib.settings.sa_enable_length_deviation_section) return false;
             if (!cell || !row) return false;
-            // Scoped to rows with a KNOWN Length — matches
+            // Scoped to rows with a KNOWN duration — matches
             // studioKnownCount/liveKnownCount exactly (the counts these
             // entries render with), so an unknown-length ("?:??") row,
             // which contributes to neither count, can't match either
@@ -25353,7 +25361,8 @@
             if (_findCellLengthSeconds(cell) == null) return false;
             const _table = table || cell.closest('table');
             if (!_table) return false;
-            const { liveIdx } = _getLengthColumnAverages(_table);
+            const _colName = _resolveColHeaderName(_table, colIdx);
+            const { liveIdx } = _getLengthColumnAverages(_table, _colName);
             if (liveIdx === -1) return false;
             const liveCell = row.cells[liveIdx];
             const isLive = !!liveCell && _findCellIsLiveAttribute(liveCell);
@@ -45638,20 +45647,26 @@ a { color: #1565c0; }`;
         barcodeValidity: { label: 'Barcode - Validity', glyph: '⚠️' },
         barcodeFormat:   { label: 'Barcode - Format',   glyph: '🔖' },
         barcodeSameAs:   { label: 'Barcode - Same As',  glyph: '🔢' },
-        // "Length info - Duration" — the "Length" column's own displayed
-        // "M:SS[.mmm]" text (or MusicBrainz's own "?:??" unknown-duration
-        // placeholder), bucketed into fixed-width "N to N+1 minutes" ranges
-        // by `_findCellLengthBucket()`. An open value family (like
+        // "Length info - Duration" — shared by BOTH duration columns
+        // ("Length", and release-tracks' own "Recording length" —
+        // docs/claude/release-tracks-and-length.md), whichever one's
+        // dropdown is currently open (see `isLengthCol` in `openUniqDrop()`).
+        // The open column's own displayed "M:SS[.mmm]" text (or
+        // MusicBrainz's own "?:??" unknown-duration placeholder), bucketed
+        // into fixed-width "N to N+1 minutes" ranges by
+        // `_findCellLengthBucket()`. An open value family (like
         // `catalogPrefix`/`formatSize` above), not a fixed flag set — the
         // number of buckets actually offered depends on the longest track
         // present on the page.
         lengthBucket: { label: 'Length info - Duration', glyph: '⏱️' },
-        // "Length info - Deviation" — a FIXED 7-bucket flag family (like
+        // "Length info - Deviation" — likewise shared by both duration
+        // columns. A FIXED 7-bucket flag family (like
         // `releaseDataQuality`/`acoustidLinkStatus` below, not an open
-        // value list like `lengthBucket` above): how far this row's Length
-        // deviates, as a signed percentage, from the page's average
-        // Length. See `_getLengthColumnAverages()`'s own JSDoc for the
-        // live-recording-aware average this is computed against.
+        // value list like `lengthBucket` above): how far this row's open
+        // duration column deviates, as a signed percentage, from THAT
+        // column's own page-wide average. See `_getLengthColumnAverages()`'s
+        // own JSDoc for the live-recording-aware average this is computed
+        // against.
         lengthDeviation: { label: 'Length info - Deviation', glyph: '🎯' },
         // "Length info - Live status" — a FIXED 2-value flag pair (like
         // `releaseDataQuality`/`acoustidLinkStatus`) surfacing, as its own
@@ -45667,8 +45682,9 @@ a { color: #1565c0; }`;
         // open-shaped value family like `lengthBucket`: only the buckets
         // actually present on the page are offered, in clock order.
         timeOfDay: { label: 'Time info - Time of day', glyph: '🌅' },
-        // "Length info - Milliseconds" — a FIXED 3-flag family (like
-        // `lengthLiveStatus` above): whether a "Length" cell carries real
+        // "Length info - Milliseconds" — likewise shared by both duration
+        // columns. A FIXED 3-flag family (like `lengthLiveStatus` above):
+        // whether the open duration cell carries real
         // sub-second precision (`.mmm` other than `.000`), only whole
         // seconds (`.000`, i.e. MusicBrainz stores nothing finer), or no
         // millisecond data at all (⏱ not pressed / none on record). See
@@ -47307,7 +47323,12 @@ a { color: #1565c0; }`;
      * `_findCellLengthDeviationBucket()`'s own `null` return), so there is
      * nothing to highlight for one.
      *
-     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this
+     *   filter — the "Length" or "Recording length" cell, whichever
+     *   column's dropdown this filter came from (resolved via
+     *   `cell.cellIndex`, same convention as e.g. line ~22774's header
+     *   lookup, so `_getLengthColumnAverages()` averages THAT column, not
+     *   always "Length").
      * @param {string} mode - The compound mode string, e.g.
      *   `"lengthdeviation-longer10to25"`.
      * @param {?HTMLTableElement} [table] - See `_cellMatchesStructureMode()`'s
@@ -47319,7 +47340,8 @@ a { color: #1565c0; }`;
         if (!cell) return;
         const _table = table || cell.closest('table');
         if (!_table) return;
-        const { referenceAvgSeconds } = _getLengthColumnAverages(_table);
+        const _colName = _resolveColHeaderName(_table, cell.cellIndex);
+        const { referenceAvgSeconds } = _getLengthColumnAverages(_table, _colName);
         const bucket = _findCellLengthDeviationBucket(cell, referenceAvgSeconds);
         if (bucket === null || mode !== `lengthdeviation-${bucket}`) return;
         cell.normalize();
@@ -47344,7 +47366,8 @@ a { color: #1565c0; }`;
      * the ABSENCE of the word "live" has no single visible span to wrap.
      *
      * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` (the
-     *   "Length" cell) for this filter.
+     *   "Length" or "Recording length" cell, whichever column's dropdown
+     *   this filter came from) for this filter.
      * @param {string} mode - `"lengthlive-yes"` or `"lengthlive-no"`.
      * @param {?HTMLTableElement} [table] - See `_cellMatchesStructureMode()`'s
      *   own JSDoc for why this MUST be passed explicitly by `testRowMatch()`'s
@@ -47355,7 +47378,8 @@ a { color: #1565c0; }`;
         if (!cell) return;
         const _table = table || cell.closest('table');
         if (!_table) return;
-        const { liveIdx } = _getLengthColumnAverages(_table);
+        const _colName = _resolveColHeaderName(_table, cell.cellIndex);
+        const { liveIdx } = _getLengthColumnAverages(_table, _colName);
         if (liveIdx === -1) return;
         const row = cell.closest('tr');
         const liveCell = row ? row.cells[liveIdx] : null;
@@ -59849,13 +59873,37 @@ a { color: #1565c0; }`;
         _colHeaderCountsCache.delete(table);
     }
 
-    // Per-table memo of _getLengthColumnAverages()'s own computed averages
-    // — table-level (not per-column, unlike _uniqDropDataCache above),
-    // since it's read from BOTH openUniqDrop()'s own "Length" column scan
-    // AND _cellMatchesStructureMode()'s per-row filter-match check (which
-    // has no colIndex context for the live-flag column). Self-invalidated
-    // via the same _visibleRowSetSignature(table) the cache above uses —
-    // see _getLengthColumnAverages()'s own JSDoc.
+    /**
+     * Resolves the display name of the column at `colIndex` on `table` — the
+     * same `dataset.colName` / sort-glyph-stripping cleanup `openUniqDrop()`'s
+     * own `_colHeaderName` IIFE performs, factored out because
+     * `_cellMatchesStructureMode()` and the Length-deviation/live-status
+     * highlight functions need to resolve it too (whichever duration column —
+     * "Length" or release-tracks' own "Recording length" — is currently
+     * open/filtered), and used to each duplicate this inline.
+     *
+     * @param {?HTMLTableElement} table
+     * @param {number} colIndex
+     * @returns {string} '' when there is no `<th>` at that index.
+     */
+    function _resolveColHeaderName(table, colIndex) {
+        if (!table) return '';
+        const headers = table.querySelectorAll('thead tr:first-child th');
+        const th = headers[colIndex];
+        if (!th) return '';
+        return th.dataset.colName ||
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+    }
+
+    // Per-table memo of _getLengthColumnAverages()'s own computed averages —
+    // a WeakMap<table, Map<lengthColName, {sig, data}>>, one inner entry per
+    // duration column ("Length", and release-tracks' own "Recording length")
+    // since both are read from BOTH openUniqDrop()'s own column scan AND
+    // _cellMatchesStructureMode()'s per-row filter-match check (which has no
+    // colIndex context for the live-flag column — only for the duration
+    // column being tested). Self-invalidated via the same
+    // _visibleRowSetSignature(table) the cache above uses — see
+    // _getLengthColumnAverages()'s own JSDoc.
     const _lengthColumnAveragesCache = new WeakMap();
 
     /**
@@ -59917,6 +59965,12 @@ a { color: #1565c0; }`;
      * without ever causing an O(rows²) rescan.
      *
      * @param {?HTMLTableElement} table
+     * @param {string} [lengthColName='Length'] - Which duration column to
+     *   average — `'Length'` or release-tracks' own `'Recording length'`
+     *   (docs/claude/release-tracks-and-length.md). Each name gets its own
+     *   cache slot (see `_lengthColumnAveragesCache` above) so opening one
+     *   column's 📊 dropdown then the other's, on the same table, never
+     *   replays the wrong column's average.
      * @returns {{ready:boolean, referenceAvgSeconds:?number, studioAvgSeconds:?number,
      *   liveAvgSeconds:?number, hasLiveCol:boolean, liveIdx:number,
      *   knownCount:number, studioKnownCount:number, liveKnownCount:number}}
@@ -59926,7 +59980,7 @@ a { color: #1565c0; }`;
      *   status"'s own match/highlight functions) don't have to re-resolve
      *   header names themselves.
      */
-    function _getLengthColumnAverages(table) {
+    function _getLengthColumnAverages(table, lengthColName = 'Length') {
         const empty = { ready:false, referenceAvgSeconds:null, studioAvgSeconds:null,
                          liveAvgSeconds:null, hasLiveCol:false, liveIdx:-1,
                          knownCount:0, studioKnownCount:0, liveKnownCount:0 };
@@ -59938,7 +59992,8 @@ a { color: #1565c0; }`;
         // visible-only one) — see this function's own JSDoc for why.
         let sig = '';
         for (const row of tbody.rows) sig += row.dataset.mbRowIdx + ',';
-        const cached = _lengthColumnAveragesCache.get(table);
+        const perTable = _lengthColumnAveragesCache.get(table);
+        const cached = perTable && perTable.get(lengthColName);
         if (cached && cached.sig === sig) return cached.data;
 
         // Same header-name-cleaning as the existing `_colHeaderName`
@@ -59946,7 +60001,7 @@ a { color: #1565c0; }`;
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
             th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
-        const lengthIdx = headers.findIndex(th => clean(th) === 'Length');
+        const lengthIdx = headers.findIndex(th => clean(th) === lengthColName);
         const liveColName = (activeDefinition && activeDefinition.features &&
             activeDefinition.features.lengthDeviationLiveColumn) || 'Attributes';
         const liveIdx = headers.findIndex(th => clean(th) === liveColName);
@@ -59972,7 +60027,8 @@ a { color: #1565c0; }`;
                     : (studioSum + liveSum) / data.knownCount;
             }
         }
-        _lengthColumnAveragesCache.set(table, { sig, data });
+        if (!perTable) _lengthColumnAveragesCache.set(table, new Map());
+        _lengthColumnAveragesCache.get(table).set(lengthColName, { sig, data });
         return data;
     }
 
@@ -60674,13 +60730,7 @@ a { color: #1565c0; }`;
         // "\d+x" pattern), so their extraction must be scoped to the
         // column it's actually meant for. Mirrors isTitleCol's own
         // header-name resolution above.
-        const _colHeaderName = (() => {
-            const headers = table.querySelectorAll('thead tr:first-child th');
-            const th = headers[colIndex];
-            if (!th) return '';
-            return th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
-        })();
+        const _colHeaderName = _resolveColHeaderName(table, colIndex);
         const isFormatCol  = _colHeaderName === 'Format';
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isCatalogCol = _colHeaderName === 'Catalog#';
@@ -60704,11 +60754,20 @@ a { color: #1565c0; }`;
         // above (name-only, no page-type check), so this applies
         // automatically to every pageType with a native "Attributes" column.
         const isAttributesCol = _colHeaderName === 'Attributes';
-        // Column-name gate for "Length info - Duration" — same convention
-        // as isFormatCol/isTracksCol/isCatalogCol above (name-only, no
-        // page-type check), so this applies automatically to every
-        // pageType with a "Length" column.
-        const isLengthCol  = _colHeaderName === 'Length';
+        // Column-name gate for "Length info - Duration/Deviation/
+        // Milliseconds/Live status" — covers BOTH the native "Length"
+        // column and release-tracks' own bespoke "Recording length" column
+        // (docs/claude/release-tracks-and-length.md), since both are
+        // duration columns sharing the data-mb-ms/data-mb-sec-text stamps
+        // and the same "M:SS[.mmm]"/"?:??" cell shape. Same name-only
+        // convention as isFormatCol/isTracksCol/isCatalogCol above, no
+        // page-type check — applies automatically to every pageType with a
+        // "Length" and/or "Recording length" column. The reference average
+        // is computed independently per column (see
+        // `_getLengthColumnAverages()`'s `lengthColName` param) since the
+        // whole reason "Recording length" exists is that it can disagree
+        // with "Length".
+        const isLengthCol  = _colHeaderName === 'Length' || _colHeaderName === 'Recording length';
         // Column-name gate for "Time info - Time of day" — same name-only
         // convention as isLengthCol above, so it applies to every pageType
         // with a "Time" column (the events listings).
@@ -60825,9 +60884,12 @@ a { color: #1565c0; }`;
         // even when `!_uniqCacheHit` is false for THIS column — it only
         // actually rescans tbody.rows when the visible row set has changed
         // since its own last call for this table. Gated on `isLengthCol`
-        // purely to avoid resolving "Length"/live-flag-column header
-        // indices on every OTHER column's dropdown open too.
-        const _lengthColAvgs = isLengthCol ? _getLengthColumnAverages(table) : null;
+        // purely to avoid resolving this duration column's/live-flag-
+        // column's header indices on every OTHER column's dropdown open
+        // too. `_colHeaderName` (this column's own name, "Length" or
+        // "Recording length") is passed through so the average is
+        // computed from THIS column's own values, not always "Length"'s.
+        const _lengthColAvgs = isLengthCol ? _getLengthColumnAverages(table, _colHeaderName) : null;
         const _lengthColRefAvg = _lengthColAvgs ? _lengthColAvgs.referenceAvgSeconds : null;
         if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
@@ -62635,7 +62697,11 @@ a { color: #1565c0; }`;
          * Also appends `_structureModeTooltip()`'s glyph explanation to
          * `item.title` (already set by the caller to the entry's display
          * label) so the entry's own ▶/◀/▤/✗/✓/≠/~/🖼️/∅ symbol is explained
-         * on hover, same as `renderItems()`'s regular value rows.
+         * on hover, same as `renderItems()`'s regular value rows. Passes
+         * `_colHeaderName` (closed over from `openUniqDrop()`) through so a
+         * `lengthbucket:`/`length-ms-*`/`lengthdeviation-*` tooltip names
+         * whichever duration column ("Length" or "Recording length") is
+         * actually open, instead of always saying "Length".
          *
          * @param {HTMLElement} item - the entry's row `<div>` (already built,
          *   not yet appended to synBox)
@@ -62643,7 +62709,7 @@ a { color: #1565c0; }`;
          */
         const _wireStructureCheckbox = (item, key) => {
             const mode = key.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length);
-            const _tip = _structureModeTooltip(mode);
+            const _tip = _structureModeTooltip(mode, _colHeaderName);
             if (_tip) item.title = `${item.title} — ${_tip}`;
 
             const isChecked = checkedValues.has(key);
@@ -64323,9 +64389,16 @@ a { color: #1565c0; }`;
      * which already gets one via `_proseToggleTitle()`).
      *
      * @param {string} mode
+     * @param {string} [colName='Length'] - Which duration column this
+     *   tooltip is being shown for — `'Length'` or release-tracks' own
+     *   `'Recording length'` (docs/claude/release-tracks-and-length.md) —
+     *   for the `lengthbucket:`/`length-ms-*`/`lengthdeviation-*` branches,
+     *   so the sentence names the column actually open rather than always
+     *   saying "Length". Every other mode's wording is column-name-agnostic
+     *   already.
      * @returns {string}
      */
-    function _structureModeTooltip(mode) {
+    function _structureModeTooltip(mode, colName = 'Length') {
         if (mode === 'empty')          return 'Cells with no content (or, for CAA/EAA columns, no artwork found).';
         if (mode === 'single')         return 'Cells with exactly one item — no expand/collapse toggle shown.';
         if (mode === 'collapsed')      return '▶ = a multi-item cell currently showing only its first item.';
@@ -64381,7 +64454,7 @@ a { color: #1565c0; }`;
         if (mode.startsWith('isrcdesignation:')) return 'One "ISRCs" entry\'s own 5-digit designation code (the NNNNN segment).';
         if (mode.startsWith('reltypecredit:')) return 'One "Relationship types" item\'s credited-as name — the (as “…”) part — with its relationship type in front.';
         if (mode.startsWith('timeofday:')) return 'This "Time" cell\'s start time, bucketed into a part of the day (morning, lunch, afternoon, evening, night). An empty cell stays under "empty cells".';
-        if (mode.startsWith('lengthbucket:')) return 'This "Length" cell\'s own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz\'s own "?:??" placeholder).';
+        if (mode.startsWith('lengthbucket:')) return `This "${colName}" cell's own displayed duration, bucketed into a fixed "N to N+1 minutes" range (or "Unknown length" for MusicBrainz's own "?:??" placeholder).`;
         if (mode.startsWith('partofseriesname:')) return 'One "Part of series" item\'s own credited series name.';
         if (mode.startsWith('partofseriesdate:')) return 'One "Part of series" item\'s own disambiguation-comment text (usually a date, but not guaranteed).';
         if (mode.startsWith('partofseriesnumber:')) return 'One "Part of series" item\'s own numeric series position (e.g. "27" from "(number: 27)").';
@@ -64406,16 +64479,16 @@ a { color: #1565c0; }`;
         if (mode === 'release-quality-normal') return '⚪ = no data-quality marker is present at all — MusicBrainz\'s default/unrated quality state.';
         if (mode === 'acoustid-linked') return '🔗 = this AcoustID\'s own link is still active for this recording (no `disabled-acoustid` class).';
         if (mode === 'acoustid-unlinked') return '🚫 = MusicBrainz\'s own `disabled-acoustid` class — this AcoustID has been unlinked from this recording, but the submission itself isn\'t removed.';
-        if (mode === 'length-ms-precise') return '🔬 = this row\'s Length carries real sub-second precision (milliseconds other than .000).';
-        if (mode === 'length-ms-whole') return '⭕ = this row\'s Length has milliseconds and they are exactly .000, i.e. MusicBrainz stores nothing finer than the whole second.';
-        if (mode === 'length-ms-none') return '∅ = this row\'s Length carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).';
-        if (mode === 'lengthdeviation-within10') return '🎯 = this row\'s Length is within 10% of the page\'s average Length (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known Length on the page).';
-        if (mode === 'lengthdeviation-shorter10to25') return '🔽 = 10–25% SHORTER than the page\'s average Length.';
-        if (mode === 'lengthdeviation-longer10to25') return '🔼 = 10–25% LONGER than the page\'s average Length.';
-        if (mode === 'lengthdeviation-shorter25to50') return '⏬ = 25–50% SHORTER than the page\'s average Length.';
-        if (mode === 'lengthdeviation-longer25to50') return '⏫ = 25–50% LONGER than the page\'s average Length.';
-        if (mode === 'lengthdeviation-shorter50plus') return '⬇️ = more than 50% SHORTER than the page\'s average Length.';
-        if (mode === 'lengthdeviation-longer50plus') return '⬆️ = more than 50% LONGER than the page\'s average Length — the expected bucket for a "live" recording (extended intro/outro, crowd noise, spoken interludes), which is bucketed against the studio average but never counted INTO it.';
+        if (mode === 'length-ms-precise') return `🔬 = this row's ${colName} carries real sub-second precision (milliseconds other than .000).`;
+        if (mode === 'length-ms-whole') return `⭕ = this row's ${colName} has milliseconds and they are exactly .000, i.e. MusicBrainz stores nothing finer than the whole second.`;
+        if (mode === 'length-ms-none') return `∅ = this row's ${colName} carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).`;
+        if (mode === 'lengthdeviation-within10') return `🎯 = this row's ${colName} is within 10% of the page's average ${colName} (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known ${colName} on the page).`;
+        if (mode === 'lengthdeviation-shorter10to25') return `🔽 = 10–25% SHORTER than the page's average ${colName}.`;
+        if (mode === 'lengthdeviation-longer10to25') return `🔼 = 10–25% LONGER than the page's average ${colName}.`;
+        if (mode === 'lengthdeviation-shorter25to50') return `⏬ = 25–50% SHORTER than the page's average ${colName}.`;
+        if (mode === 'lengthdeviation-longer25to50') return `⏫ = 25–50% LONGER than the page's average ${colName}.`;
+        if (mode === 'lengthdeviation-shorter50plus') return `⬇️ = more than 50% SHORTER than the page's average ${colName}.`;
+        if (mode === 'lengthdeviation-longer50plus') return `⬆️ = more than 50% LONGER than the page's average ${colName} — the expected bucket for a "live" recording (extended intro/outro, crowd noise, spoken interludes), which is bucketed against the studio average but never counted INTO it.`;
         if (mode === 'lengthlive-yes') return '🎙️ = this row\'s live-flag cell (e.g. "Attributes") contains the word "live" — excluded from the page\'s reference average, still bucketed against it in "Length info - Deviation".';
         if (mode === 'lengthlive-no')  return '⚪ = no "live" word found — either a studio recording, or this page has no live-flag column at all.';
         if (mode.startsWith('localelanguage:')) return 'One "Locale" cell\'s own language text (e.g. "English", "Chinese (China)").';
@@ -89300,13 +89373,16 @@ a { color: #1565c0; }`;
              * not just the rendered "Length info - Deviation" dropdown counts.
              *
              * @param {string} [tableSelector] - Defaults to `'table.tbl'`.
+             * @param {string} [lengthColName] - Defaults to `'Length'`; pass
+             *   `'Recording length'` to assert on that column's own,
+             *   independently-computed average instead.
              * @returns {?ReturnType<typeof _getLengthColumnAverages>} `null`
              *   when `tableSelector` matches nothing.
              */
-            getLengthColumnAverages(tableSelector) {
+            getLengthColumnAverages(tableSelector, lengthColName) {
                 const table = document.querySelector(tableSelector || 'table.tbl');
                 if (!table) return null;
-                return _getLengthColumnAverages(table);
+                return _getLengthColumnAverages(table, lengthColName);
             },
 
             /**

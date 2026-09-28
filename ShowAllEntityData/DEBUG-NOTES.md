@@ -16275,3 +16275,69 @@ That is the second wrong-reason correction in two days on this work — the othe
 being `updateBarcodeHighlightBtnState()` supposedly rewriting `innerHTML`. Both
 were plausible, both were load-bearing in a rule that is itself correct, and
 both would have licensed a wrong generalisation later.
+
+## 2026-09-28 — "Recording length" had none of "Length"'s 📊 sections (branch fix-recording-length-uvd-sections)
+
+Reported against
+https://musicbrainz.org/release/f62e0d08-44a0-4849-aa32-a4e2b3513c57: the
+"Length" column's 📊 dropdown shows "Length info -
+Duration/Deviation/Milliseconds/Live status"; release-tracks' own bespoke
+"Recording length" column (docs/claude/release-tracks-and-length.md) showed
+none of them, just the raw value list. Confirmed via two debug snapshots,
+`debug/Length-RecordingLength-UVD-mismatch-1.html` (raw "Length" dropdown, 3
+sections) and `debug/Lenght-RecordingLenght-UVD-mismatch-2.html` (note the
+misspelled filename — "Recording length" dropdown, none).
+
+Root cause was a single hardcoded string check, `openUniqDrop()`'s
+`const isLengthCol = _colHeaderName === 'Length';` — the sole gate for all
+four sections, all of it inline (neither column is a declared
+`columnExtractors`/`syntheticColumnExtractors` entry; both are native/bespoke
+DOM columns). Widening the name check was necessary but not sufficient:
+`_getLengthColumnAverages(table)` — the "Deviation" reference average —
+independently hardcoded `clean(th) === 'Length'` to find which column to
+scan, called from THREE places (`openUniqDrop()`'s own population pass,
+`_cellMatchesStructureMode()`'s `lengthdeviation-*`/`lengthlive-*` filter
+branches, and `_highlightLengthDeviationMatch()`/`_highlightLengthLiveMatch()`'s
+highlight pass) — reusing "Length"'s average for "Recording length" would
+have been actively wrong, not just cosmetically off, since the whole reason
+that column exists is that it can disagree with "Length". Its cache
+(`_lengthColumnAveragesCache`, a `WeakMap` keyed only by `table`) also had to
+become per-column (`WeakMap<table, Map<lengthColName, {sig,data}>>`), or
+opening one column's dropdown then the other's on the same table would
+replay the wrong column's cached average. A third, easy-to-miss spot:
+`_structureModeTooltip(mode)` — the long hover-text sentence appended to each
+entry's `title` — hardcoded the word "Length" in its `lengthbucket:`/
+`length-ms-*`/`lengthdeviation-*` branches, so even with the average fixed,
+opening "Recording length"'s dropdown would show tooltips literally saying
+"this row's **Length** is within 10%…" next to the Recording length value.
+Fixed by threading a `colName` parameter through from `_wireStructureCheckbox()`
+(which already closes over `_colHeaderName`).
+
+Factored the three independent copies of "resolve this column's header name"
+(`isTitleCol`'s IIFE, `openUniqDrop()`'s own `_colHeaderName` IIFE, and
+`_getLengthColumnAverages()`'s inline `clean()`+`findIndex`) down to one new
+helper, `_resolveColHeaderName(table, colIndex)`, reused by
+`_cellMatchesStructureMode()` (which already receives `colIdx`) and the two
+highlight functions (via `cell.cellIndex`, the same convention line ~22774's
+header lookup already used — no new parameter needed at either call site).
+
+Design decision: the two duration columns share the IDENTICAL
+`SYN_SECTION_META` labels/glyphs rather than getting parallel
+"Recording length info - …" keys — no `SYN_SECTION_META`/
+`MB_UNIQ_MODE_TO_SECTION`/`MB_UNIQ_KIND_TO_SECTION` changes needed. This
+mirrors how the "Cell structure" section already serves every collapsable
+column with one shared label set, disambiguated only by which column's
+dropdown is open (never two at once).
+
+New regression spec `tests/fixtures/uniq-drop-recording-length-sections.spec.js`
+(4 tests, reusing the real "Born to Run" fixture
+`release-tracks-ms-length.html` that `release-tracks-recording-length.spec.js`
+already established) confirmed failing before the fix (mutation-checked via
+`scripts/mutations/uniq-drop-recording-length-sections.json` — narrowing
+`isLengthCol` back to `'Length'`-only reproduces the exact reported bug, 2 of
+4 tests catch it) and passing after. Full existing length-related suite
+(`uniq-drop-length-*`, `release-tracks-*length*`, `length-duration-sort`,
+`ms-length-filter-after-toggle`, `length-column-filter-colon-gap` — 55 tests)
+and the full `npm run test:full` fixture suite re-ran clean (one unrelated
+flaky timeout in `rel-column-fetch-failure.spec.js` under parallel load,
+confirmed to pass in isolation — not caused by this change).

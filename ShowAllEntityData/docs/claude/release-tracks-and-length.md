@@ -254,6 +254,18 @@ which is the whole reason the single ⏱ button switches both columns:
 resolved column index. Independent of `sa_enable_ms_track_length` — that
 setting governs the toggle and the stamping, not whether the column exists.
 
+**"Recording length" also shares "Length"'s 📊 unique-values-dropdown
+sections** ("Length info - Duration/Deviation/Milliseconds/Live status" — see
+`docs/claude/uniq-dropdown.md`), gated by the same `isLengthCol` check in
+`openUniqDrop()` (widened to match either column name) — the same section
+labels/glyphs render for both, disambiguated only by which column's dropdown
+is open, never two open at once. The reference average behind "Deviation"
+(`_getLengthColumnAverages(table, lengthColName)`) is computed INDEPENDENTLY
+per column, never shared, because the whole reason this column exists is that
+it can disagree with "Length" — reusing Length's average would misclassify
+Recording length's own deviation buckets. `_structureModeTooltip()`'s hover
+text likewise names whichever column is open, not always "Length".
+
 **Track-vs-recording length mismatch flagging** (`_lengthMismatchFlag()`/
 `_applyLengthMismatchFlag()`, release-tracks only) marks BOTH duration cells
 when the two lengths differ by more than `sa_release_tracks_length_mismatch_threshold_ms`
