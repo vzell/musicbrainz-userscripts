@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1168",
+    "date": "2026-09-28",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "\"Recording length\" (release-tracks' bespoke second duration column) now offers the same 📊 \"Length info - Duration/Deviation/Milliseconds/Live status\" unique-values-dropdown sections \"Length\" gets, each computed from Recording length's own values (a separate, independently-computed reference average, not Length's) — previously its dropdown showed only the raw value list."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1167",
     "date": "2026-09-27",
     "sections": [
