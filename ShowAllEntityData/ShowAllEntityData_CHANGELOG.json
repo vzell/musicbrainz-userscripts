@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1173",
+    "date": "2026-09-28",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Unique-values dropdown (📊): added an \"Instrument info - Cross-reference\" section for `instrument-list`'s first-column cells — a more specific facet of the existing \"Instrument info - Description\" flag, true only when the description contains a REAL `<a>` link to another instrument (e.g. a family entry naming its members, or a \"not to be confused with X\" note), not merely free text. Deliberately excludes MusicBrainz's own literal escaped `&lt;a href=...&gt;` text (seen in real data, e.g. the \"bazooka\"/\"bouzouki\" cross-reference), which renders as plain text, not a link. Did not exist before this — see org/column-unique-value-drop-down-menu.org's \"Analysis results\" suggestion #5. New: `_findCellInstrumentFacets()` gained a `hasCrossReference` facet (alongside its existing `hasComment`/`hasDescription`), a new `instrument-has-crossreference` fixed structure-mode, and `_highlightInstrumentCrossReferenceMatch()` (marks each cross-reference link's own text individually, not the whole description)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1172",
     "date": "2026-09-28",
     "sections": [
