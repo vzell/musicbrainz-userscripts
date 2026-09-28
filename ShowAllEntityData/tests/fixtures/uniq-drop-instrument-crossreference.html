@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Instrument list - MusicBrainz</title>
+</head>
+<body>
+    <div id="content">
+        <h1>Instrument list</h1>
+        <!--
+            Regression fixture for "Instrument info - Cross-reference"
+            unique-values dropdown section (_findCellInstrumentFacets()'s
+            own hasCrossReference facet). Markup is real, copied verbatim
+            from debug/instruments.html (a live musicbrainz.org capture).
+
+            Row 1 ("Cembalet"): one real cross-reference <a> link (to
+            "Harpsichord").
+            Row 2 ("chalumeau"): two real cross-reference <a> links,
+            separated by a <br>, to verify the loop does not stop at the
+            first one.
+            Row 3 ("bagpipe"): a plain description, no comment span, no
+            links at all.
+            Row 4 ("bazooka"): a real .comment span AND a description that
+            contains LITERAL ESCAPED "&lt;a href=...&gt;...&lt;/a&gt;" text
+            (MusicBrainz's own real-world rendering artifact) — this must
+            NOT count as a cross-reference, since it is plain text, not an
+            actual link element.
+        -->
+        <h2>Family</h2>
+        <ul>
+            <li><a href="/instrument/2cd8f5f1-0c0e-4a7e-92f3-14e795473a3b"><bdi>Cembalet</bdi></a>&nbsp;<span class="comment"><bdi>(electric piano with reeds)</bdi></span> — <!-- -->Electromechanical piano with stainless steel reeds and an amplified pick-up. Not to be confused with "cembalo" which is another name for <a href="/instrument/bfe379dc-1d65-4862-acd8-60d53bb963a2">Harpsichord</a>.</li>
+            <li><a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c"><bdi>chalumeau</bdi></a>&nbsp;<span class="comment"><bdi>(Baroque/classical predecessor of the clarinet)</bdi></span> — <!-- -->For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the medieval double-reed woodwind see <a href="/instrument/b4f112c3-d666-47f2-bb85-bae28572ca13">shawm</a>.<br> Predecessor of the modern clarinet.</li>
+            <li><a href="/instrument/1d865ced-d86a-4277-8914-009740e37887"><bdi>bagpipe</bdi></a> — <!-- -->The bagpipe is an instrument consisting of a series of enclosed reeds fed by a bag of air.</li>
+            <li><a href="/instrument/ed6df8f9-d2d1-4013-9046-dd7fc300bbe0"><bdi>bazooka</bdi></a>&nbsp;<span class="comment"><bdi>(telescoping brass tube)</bdi></span> — <!-- -->Not to be confused with the &lt;a href="instrument/2091cdd2-7953-453f-a29e-cfcbf5140d44"&gt;bouzouki&lt;/a&gt;. Large wide tube with a very strongly flaring bell.</li>
+        </ul>
+        <ul class="pagination"></ul>
+    </div>
+</body>
+</html>

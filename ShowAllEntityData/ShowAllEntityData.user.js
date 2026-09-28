@@ -24578,15 +24578,24 @@
      * free-text prose, not this specific name/comment/description grammar.
      *
      * @param {?HTMLTableCellElement} cell
-     * @returns {{hasComment: boolean, hasDescription: boolean}}
+     * @returns {{hasComment: boolean, hasDescription: boolean, hasCrossReference: boolean}}
+     *   `hasCrossReference` is true when the description portion (after the
+     *   "—" separator) contains at least one real `<a>` element — e.g. a
+     *   family entry naming its member instruments as links
+     *   (debug/instruments.html's "Cembalet"/"chalumeau"/"cornamuse" rows).
+     *   Deliberately real-element-only: a description can also contain
+     *   LITERAL escaped `&lt;a href=...&gt;` text (debug/instruments.html's
+     *   "bazooka" row, referencing "bouzouki" this way) — that renders as
+     *   plain text, not a link, and must not count.
      */
     function _findCellInstrumentFacets(cell) {
-        if (!cell) return { hasComment: false, hasDescription: false };
+        if (!cell) return { hasComment: false, hasDescription: false, hasCrossReference: false };
         const _commentSpan = cell.querySelector(':scope > span.comment');
         const _commentBdi  = _commentSpan ? _commentSpan.querySelector('bdi') : null;
         const hasComment = !!(_commentBdi && _commentBdi.textContent.trim());
 
         let hasDescription = false;
+        let hasCrossReference = false;
         let _dashSeen = false;
         for (const node of cell.childNodes) {
             if (!_dashSeen) {
@@ -24600,9 +24609,16 @@
             if (node.nodeType === Node.COMMENT_NODE) continue; // skip <!-- --> artifact
             if (node.nodeType === Node.TEXT_NODE && !node.nodeValue.trim()) continue;
             hasDescription = true;
-            break;
+            // Deliberately does NOT `break` here (unlike the earlier version
+            // of this loop) — a cross-reference link can appear in ANY
+            // description node, not only the first one seen after the dash
+            // (e.g. after an intervening `<br>`), so every remaining node
+            // must still be checked.
+            if (node.nodeType === Node.ELEMENT_NODE && (node.tagName === 'A' || node.querySelector('a'))) {
+                hasCrossReference = true;
+            }
         }
-        return { hasComment, hasDescription };
+        return { hasComment, hasDescription, hasCrossReference };
     }
 
     /**
@@ -25514,6 +25530,12 @@
             // Fixed flag — true when this instrument-list first-column cell
             // has free-text description content after its "—" separator.
             return _findCellInstrumentFacets(cell).hasDescription;
+        }
+        if (mode === 'instrument-has-crossreference') {
+            // Fixed flag — true when the description contains a real `<a>`
+            // link to another instrument (not literal escaped `&lt;a&gt;`
+            // text — see _findCellInstrumentFacets()'s own JSDoc).
+            return _findCellInstrumentFacets(cell).hasCrossReference;
         }
         if (mode.startsWith('arttype:')) {
             // Compound mode (openUniqDrop()'s makeValueSynItem, the "CAA
@@ -45908,6 +45930,13 @@ a { color: #1565c0; }`;
         // split above). See `_findCellInstrumentFacets()`'s own JSDoc.
         instrumentHasComment:     { label: 'Instrument info - Comment',     glyph: '💬' },
         instrumentHasDescription: { label: 'Instrument info - Description', glyph: '📝' },
+        // "Instrument info - Cross-reference" — a MORE SPECIFIC facet of the
+        // description above: whether it contains a real `<a>` link to
+        // another instrument (e.g. a family entry naming its member
+        // instruments, or a "not to be confused with X" cross-reference) —
+        // see `_findCellInstrumentFacets()`'s own JSDoc for why this
+        // deliberately excludes literal escaped `&lt;a href=...&gt;` text.
+        instrumentHasCrossReference: { label: 'Instrument info - Cross-reference', glyph: '↗️' },
         // "Date info" — split into three independently-checkable facets
         // (mirrors Format info's/Tracks info's own "one flat cell, several
         // value families" split), applying automatically to every
@@ -45996,6 +46025,7 @@ a { color: #1565c0; }`;
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
+        'instrument-has-crossreference': 'instrumentHasCrossReference',
         'date-complete': 'dateExprPrecision', 'date-partial': 'dateExprPrecision', 'date-range': 'dateExprPrecision',
         'pending-edits-yes': 'pendingEditsPresence', 'pending-edits-no': 'pendingEditsPresence',
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
@@ -47876,6 +47906,37 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights each cross-reference `<a>` link's own text for an
+     * `instrument-has-crossreference` fixed structure-mode filter —
+     * re-derives from `_findCellInstrumentFacets()` first ("verify before
+     * highlighting"), then re-walks the same "after the dash" nodes that
+     * function itself walks (rather than reusing a stored node list — this
+     * file's own convention of re-deriving from live DOM every time, since
+     * nothing here is cached across renders) to find and mark every real
+     * `<a>` individually, unlike `_highlightInstrumentDescriptionMatch()`'s
+     * whole-description marking.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     */
+    function _highlightInstrumentCrossReferenceMatch(cell) {
+        if (!cell) return;
+        if (!_findCellInstrumentFacets(cell).hasCrossReference) return;
+        let _dashSeen = false;
+        for (const node of cell.childNodes) {
+            if (!_dashSeen) {
+                if (node.nodeType === Node.TEXT_NODE && node.nodeValue.includes('—')) _dashSeen = true;
+                continue;
+            }
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            const links = node.tagName === 'A' ? [node] : Array.from(node.querySelectorAll('a'));
+            links.forEach(a => {
+                a.normalize();
+                highlightCrossTag(a, /[\s\S]+/g, 'mb-column-filter-highlight');
+            });
+        }
+    }
+
+    /**
      * Highlights the "(cancelled)" marker's own text for an
      * `entitycancelled:`/`eventcancelled:` compound structure-mode filter
      * — re-derives from `_findCellEventCancelled()` directly (same
@@ -48768,6 +48829,8 @@ a { color: #1565c0; }`;
                                     _highlightInstrumentCommentMatch(row.cells[f.idx]);
                                 } else if (mode === 'instrument-has-description') {
                                     _highlightInstrumentDescriptionMatch(row.cells[f.idx]);
+                                } else if (mode === 'instrument-has-crossreference') {
+                                    _highlightInstrumentCrossReferenceMatch(row.cells[f.idx]);
                                 } else if (mode.startsWith('eventdate:')) {
                                     _highlightEventDateMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('titleageadded:') || mode.startsWith('titleagemodified:')) {
@@ -60879,8 +60942,9 @@ a { color: #1565c0; }`;
         // `instrument-list` first column only: two independent binary flags
         // — see `_findCellInstrumentFacets()`'s own JSDoc. Column-gated
         // (isInstrumentListCol below).
-        let instrumentHasCommentCount     = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount     : 0;
-        let instrumentHasDescriptionCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount : 0;
+        let instrumentHasCommentCount        = _uniqCacheHit ? _uniqCacheHit.instrumentHasCommentCount        : 0;
+        let instrumentHasDescriptionCount    = _uniqCacheHit ? _uniqCacheHit.instrumentHasDescriptionCount    : 0;
+        let instrumentHasCrossReferenceCount = _uniqCacheHit ? _uniqCacheHit.instrumentHasCrossReferenceCount : 0;
         // EVERY column, EVERY page type: MusicBrainz's own native `<span
         // class="mp">` open-edits marker — a binary presence flag pair plus
         // one entry per distinct pending entity name (see
@@ -61459,8 +61523,9 @@ a { color: #1565c0; }`;
                 }
                 if (isInstrumentListCol) {
                     const _instrumentFacets = _findCellInstrumentFacets(cell);
-                    if (_instrumentFacets.hasComment)     instrumentHasCommentCount++;
-                    if (_instrumentFacets.hasDescription) instrumentHasDescriptionCount++;
+                    if (_instrumentFacets.hasComment)        instrumentHasCommentCount++;
+                    if (_instrumentFacets.hasDescription)    instrumentHasDescriptionCount++;
+                    if (_instrumentFacets.hasCrossReference)  instrumentHasCrossReferenceCount++;
                 }
                 if (Lib.settings.sa_enable_pending_edits_section) {
                     // No column gate — see pendingEditValueCounts' own
@@ -62729,7 +62794,7 @@ a { color: #1565c0; }`;
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
                 acoustidLinkedCount, acoustidUnlinkedCount,
                 localeLanguageValueCounts, localePrimaryCount, localeNotPrimaryCount,
-                instrumentHasCommentCount, instrumentHasDescriptionCount,
+                instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
                 pendingEditValueCounts, pendingEditsYesCount, pendingEditsNoCount,
                 eventRoleValueCounts, roleTokenValueCounts, artTypeValueCounts, artCommentValueCounts,
                 flagIconMap, isRelCellCol, relIconCounts, relLoadStateCounts,
@@ -62759,7 +62824,7 @@ a { color: #1565c0; }`;
             lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
             localePrimaryCount, localeNotPrimaryCount,
-            instrumentHasCommentCount, instrumentHasDescriptionCount,
+            instrumentHasCommentCount, instrumentHasDescriptionCount, instrumentHasCrossReferenceCount,
             // "○ no pending edits" is normally the LARGEST count in the
             // whole panel (every row that isn't pending), so omitting it
             // here is what would visibly clip the badge column.
@@ -63110,7 +63175,7 @@ a { color: #1565c0; }`;
          * can be surfaced for every column type (plain text, extractor synthetic,
          * etc.), not only for columns with multi-row / collapsable structure.
          *
-         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'pending-edits-yes' | 'pending-edits-no'
+         * @param {string} mode    - 'empty' | 'single' | 'collapsed' | 'expanded' | 'any' | 'title-mismatch' | 'name-variation' | 'multi-medium' | 'catalog-has-prefix' | 'catalog-no-prefix' | 'catalog-none' | 'editor-any-deleted' | 'changelog-has-message' | 'changelog-no-message' | 'acoustid-linked' | 'acoustid-unlinked' | 'locale-primary' | 'locale-not-primary' | 'instrument-has-comment' | 'instrument-has-description' | 'instrument-has-crossreference' | 'pending-edits-yes' | 'pending-edits-no'
          * @param {string} label   - Human-readable display text
          * @param {number} count   - Number of visible rows matching this mode
          * @param {string} [extraLabelClass] - An extra CSS class to add to
@@ -63748,7 +63813,8 @@ a { color: #1565c0; }`;
             acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
             dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
-            instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries)) {
+            instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
+            instrumentHasCrossReferenceCount > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -63842,6 +63908,7 @@ a { color: #1565c0; }`;
             // comment).
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
+            if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
             // "Pending edits - Presence"/"- Entity" — emitted together, and
             // ONLY when something in this column is actually pending. The
             // `pendingEditsYesCount > 0` gate is what keeps these two
@@ -63934,7 +64001,8 @@ a { color: #1565c0; }`;
                    acoustidLinkedCount > 0 || acoustidUnlinkedCount > 0 ||
                    dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
-                   instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 || _hasValueEntries) {
+                   instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
+                   instrumentHasCrossReferenceCount > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -63992,6 +64060,7 @@ a { color: #1565c0; }`;
             if (localeNotPrimaryCount > 0) makeSynItem('locale-not-primary', '◦ not primary', localeNotPrimaryCount);
             if (instrumentHasCommentCount > 0)     makeSynItem('instrument-has-comment', '💬 has comment', instrumentHasCommentCount);
             if (instrumentHasDescriptionCount > 0) makeSynItem('instrument-has-description', '📝 has description', instrumentHasDescriptionCount);
+            if (instrumentHasCrossReferenceCount > 0) makeSynItem('instrument-has-crossreference', '↗️ has cross-reference', instrumentHasCrossReferenceCount);
             // "Pending edits - Presence"/"- Entity" — see the identical
             // block in the collapsable-column branch above for why these
             // are gated on pendingEditsYesCount rather than emitted
@@ -64703,6 +64772,7 @@ a { color: #1565c0; }`;
         if (mode === 'locale-not-primary') return '◦ not primary';
         if (mode === 'instrument-has-comment')     return '💬 has comment';
         if (mode === 'instrument-has-description') return '📝 has description';
+        if (mode === 'instrument-has-crossreference') return '↗️ has cross-reference';
         return '▶◀ multi-row: any';
     }
 
@@ -64837,6 +64907,7 @@ a { color: #1565c0; }`;
         if (mode === 'locale-not-primary') return '◦ = a non-empty locale with no `(primary)` marker. Excludes alias `Type`s with no locale at all (e.g. "Legal name", "Search hint").';
         if (mode === 'instrument-has-comment') return '💬 = this instrument\'s own cell carries a `<span class="comment">` (a short parenthetical, e.g. "(harmonica/accordion hybrid)").';
         if (mode === 'instrument-has-description') return '📝 = this instrument\'s own cell has free-text description content after its "—" separator.';
+        if (mode === 'instrument-has-crossreference') return '↗️ = this instrument\'s own description contains a real link to another instrument (e.g. a family entry naming its members, or a "not to be confused with X" note).';
         return '';
     }
 
