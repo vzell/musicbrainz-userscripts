@@ -852,6 +852,32 @@
             description: "Decorative prefix prepended to any filter field (global or column) while it has focus (stripped before the value is used as a filter string)"
         },
 
+        sa_enable_column_filter_modes: {
+            label: "Cc / Rx / Ex Switches On Every Column Filter",
+            type: "checkbox",
+            default: true,
+            description: "Gives each column filter its own Case-sensitive (Cc), Regular-expression (Rx) and " +
+                         "Exclude (Ex) switches, shown inside the filter field. With this on, every level owns " +
+                         "its switches: the global ones apply to the global filter only, a sub-table's to its " +
+                         "sub-table filter only, and a column's to that column only (its typed text and its 📊 " +
+                         "selection). Ctrl+Click (Cmd+Click) on a global or sub-table switch also sets it on " +
+                         "every column filter it covers. Off: column filters have no switches and follow the " +
+                         "global ones on single-table pages and the sub-table's on multi-table pages, as before."
+        },
+
+        sa_column_filter_modes_compact_width: {
+            label: "Column Filter Switches: Compact Below (px)",
+            type: "number",
+            default: 160,
+            min: 0,
+            max: 2000,
+            description: "A column filter narrower than this shows one small mode button instead of the three " +
+                         "Cc / Rx / Ex switches; clicking it opens them in a pop-up. Follows the column's width " +
+                         "live (auto-resize, dragging a column edge, resizing the window). Below about 155 px " +
+                         "the three switches would cover the middle of the field, so a click meant for the text " +
+                         "could toggle a switch. 0 = always the three switches. Applies after a page reload."
+        },
+
         // ============================================================
         // UNIQUE COLUMN VALUES DROP DOWN CONFIGURATION SECTION
         // ============================================================
@@ -28456,6 +28482,7 @@ ${sections.join('\n')}
             input.value = '';
             input.style.backgroundColor = '';
             _clearColFilterValueSet(input);
+            _resetColFilterModes(input);
         });
 
         // The length-mismatch summary filter is structural, not a query, so
@@ -31519,6 +31546,7 @@ ${sections.join('\n')}
                     document.querySelectorAll('.mb-col-filter-input').forEach(inp => {
                         inp.value = '';
                         inp.style.backgroundColor = '';
+                        _resetColFilterModes(inp);
                     });
                     if (typeof runFilter === 'function') runFilter();
                     Lib.debug('shortcuts', 'All column filters cleared via Shift+Esc (direct fallback)');
@@ -31564,6 +31592,8 @@ ${sections.join('\n')}
                         e.target.value = _pfx;
                         e.target.setSelectionRange(_pfx.length, _pfx.length);
                         _clearColFilterValueSet(e.target);
+                        // Same as the column ✕: a cleared column loses its switches.
+                        if (isColumn) _resetColFilterModes(e.target);
                         runFilter();
                         Lib.debug('shortcuts', `${filterType} filter cleared via Escape (first press, focus kept)`);
                     }
@@ -37214,6 +37244,18 @@ a { color: #1565c0; }`;
 
     // ── Checkboxes — must be created BEFORE the history widget so the
     //    widget closure can capture the live elements ────────────────────────
+    /**
+     * Tooltip for one global Cc/Rx/Ex box. With column modes on it names the
+     * one string the box governs and the Ctrl+Click bulk action; otherwise
+     * the long-standing text.
+     *
+     * @param {string} base - e.g. "Case Sensitive Filtering".
+     * @returns {string}
+     */
+    const _globalBoxTitle = (base) => {
+        if (_colFilterModesOn()) return `${base} (the global filter string only; Ctrl+Click: also every column filter)`;
+        return activeDefinition && activeDefinition.tableMode === 'multi' ? `${base} (ALL sub-tables)` : base;
+    };
     const caseLabel = document.createElement('label');
     caseLabel.id = 'mb-global-filter-case-label';
     caseLabel.style.cssText = `${uiCheckboxLabelCSS()} font-weight:normal; height:24px;`;
@@ -37223,9 +37265,7 @@ a { color: #1565c0; }`;
     caseCheckbox.style.cssText = uiCheckboxInputCSS();
     caseLabel.appendChild(caseCheckbox);
     caseLabel.appendChild(document.createTextNode('Cc'));
-    caseLabel.title = activeDefinition && activeDefinition.tableMode === 'multi'
-        ? 'Case Sensitive Filtering (ALL sub-tables)'
-        : 'Case Sensitive Filtering';
+    caseLabel.title = _globalBoxTitle('Case Sensitive Filtering');
 
     const regexpLabel = document.createElement('label');
     regexpLabel.id = 'mb-global-filter-rx-label';
@@ -37236,9 +37276,7 @@ a { color: #1565c0; }`;
     regexpCheckbox.style.cssText = uiCheckboxInputCSS();
     regexpLabel.appendChild(regexpCheckbox);
     regexpLabel.appendChild(document.createTextNode('Rx'));
-    regexpLabel.title = activeDefinition && activeDefinition.tableMode === 'multi'
-        ? 'RegExp Filtering (ALL sub-tables)'
-        : 'RegExp Filtering';
+    regexpLabel.title = _globalBoxTitle('RegExp Filtering');
 
     const excludeLabel = document.createElement('label');
     excludeLabel.id = 'mb-global-filter-exclude-label';
@@ -37249,9 +37287,7 @@ a { color: #1565c0; }`;
     excludeCheckbox.style.cssText = uiCheckboxInputCSS();
     excludeLabel.appendChild(excludeCheckbox);
     excludeLabel.appendChild(document.createTextNode('Ex'));
-    excludeLabel.title = activeDefinition && activeDefinition.tableMode === 'multi'
-        ? 'Exclude Matches (ALL sub-tables)'
-        : 'Exclude Matches';
+    excludeLabel.title = _globalBoxTitle('Exclude Matches');
 
     // ── History widget (Pin + History toggle + dropdown) ──────────────────────
     // Outer anchor is position:relative so the dropdown can be positioned below it.
@@ -37506,6 +37542,7 @@ a { color: #1565c0; }`;
             input.value = '';
             input.style.backgroundColor = '';
             _clearColFilterValueSet(input);
+            _resetColFilterModes(input);
         });
 
         // Re-run filter to update display
@@ -38192,6 +38229,7 @@ a { color: #1565c0; }`;
             input.value = '';
             input.style.backgroundColor = '';
             _clearColFilterValueSet(input);
+            _resetColFilterModes(input);
         });
         _getAllStfInputs().forEach(input => {
             if (input.value) { input.value = ''; _dispatchInternalInputEvent(input, { bubbles: false }); }
@@ -38390,6 +38428,7 @@ a { color: #1565c0; }`;
             input.value = '';
             input.style.backgroundColor = '';
             _clearColFilterValueSet(input);
+            _resetColFilterModes(input);
         });
 
         // Also clear the sub-table (STF) filter input for this table and restore
@@ -39178,6 +39217,156 @@ a { color: #1565c0; }`;
         }
         .mb-col-filter-row th {
             padding: 2px 4px !important;
+        }
+        /* ── Per-column Cc / Rx / Ex switches (sa_enable_column_filter_modes) ──
+           Every filter cell carries BOTH forms: three chips, and one compact
+           mode button that opens them in a pop-up. Which one shows is decided
+           here, by a container query on the cell's own width, so it follows
+           auto-resize, a dragged column edge and a window resize with no
+           measuring in script. The class that makes the wrapper a container
+           is only added while the setting is on, so with it off the layout is
+           exactly what it was. Chips and button are absolutely positioned and
+           contribute nothing to the column's width. */
+        .mb-col-filter-wrapper.mb-col-modes {
+            container-type: inline-size;
+            container-name: mb-col-filter;
+        }
+        .mb-col-filter-wrapper.mb-col-modes .mb-col-filter-input {
+            padding-right: 78px;
+        }
+        .mb-col-mode-chips {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: inline-flex;
+            gap: 2px;
+        }
+        .mb-col-mode-chip,
+        .mb-col-mode-btn {
+            font: bold 9px/1 Arial, Helvetica, sans-serif;
+            color: #333;
+            padding: 2px 3px;
+            border: 1px solid var(--mb-hdr-pill-border, rgba(0, 0, 0, 0.30));
+            background: var(--mb-hdr-pill-bg, rgba(255, 255, 255, 0.72));
+            border-radius: var(--mb-hdr-pill-radius, 3px);
+            cursor: pointer;
+            user-select: none;
+        }
+        /* Idle chips stay faint until the cell is hovered or focused, so a
+           wide table does not read as a wall of buttons; a switched-on chip
+           always shows at full strength. */
+        .mb-col-mode-chip {
+            opacity: 0.38;
+        }
+        .mb-col-filter-wrapper:hover .mb-col-mode-chip,
+        .mb-col-filter-wrapper:focus-within .mb-col-mode-chip,
+        .mb-col-mode-chip:focus-visible {
+            opacity: 1;
+        }
+        @media (hover: none) {
+            .mb-col-mode-chip { opacity: 0.7; }
+        }
+        .mb-col-mode-chip[aria-pressed="true"],
+        .mb-col-mode-btn.mb-col-mode-on {
+            opacity: 1;
+            background: var(--mb-hdr-pill-engaged-bg, rgba(0, 100, 255, 0.20));
+            border-color: var(--mb-hdr-pill-engaged-border, #6f9ada);
+            color: #0b3d91;
+        }
+        /* Ex flips what the filter means, so it gets its own colour, and a red
+           stripe down the field's left edge that shows even when the chips are
+           faint or the compact button is in use. */
+        .mb-col-mode-chip.mb-col-mode-ex[aria-pressed="true"],
+        .mb-col-mode-btn.mb-col-mode-has-ex {
+            background: #f9d9d5;
+            border-color: #d9776c;
+            color: #8e1b12;
+        }
+        .mb-col-filter-wrapper.mb-col-modes-ex::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #c0392b;
+            border-radius: 2px 0 0 2px;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .mb-col-mode-btn {
+            display: none;
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            min-width: 18px;
+            text-align: center;
+        }
+        @container mb-col-filter (max-width: ${_colFilterModesCompactPx()}px) {
+            .mb-col-mode-chips { display: none; }
+            .mb-col-mode-btn { display: inline-block; }
+            .mb-col-filter-wrapper.mb-col-modes .mb-col-filter-input { padding-right: 46px; }
+        }
+        #mb-col-mode-pop {
+            position: absolute;
+            z-index: 20002;
+            background: #fff;
+            color: #000;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+            padding: 8px 10px 6px;
+            min-width: 220px;
+            font: 12px/1.35 Arial, Helvetica, sans-serif;
+            text-align: left;
+        }
+        #mb-col-mode-pop .mb-col-mode-pop-ttl {
+            font-weight: bold;
+            font-size: 11.5px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        #mb-col-mode-pop label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        #mb-col-mode-pop label b {
+            display: inline-block;
+            min-width: 18px;
+        }
+        #mb-col-mode-pop .mb-col-mode-pop-all {
+            font-size: 11px;
+            color: #002bba;
+            background: none;
+            border: 0;
+            padding: 3px 0 0;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        #mb-col-mode-pop .mb-col-mode-pop-hint {
+            display: block;
+            color: #666;
+            font-size: 10.5px;
+            border-top: 1px solid #eee;
+            margin-top: 5px;
+            padding-top: 5px;
+        }
+        /* The 📊 panel says so when the column it filters is in Exclude mode:
+           ticked values are then HIDDEN, while each count still says how many
+           rows HAVE the value. */
+        .mb-uniq-ex-banner {
+            background: #fdecea;
+            color: #8e1b12;
+            border-bottom: 1px solid #f1c3bd;
+            padding: 5px 8px;
+            font-size: 11.5px;
+            line-height: 1.35;
         }
         /* Sub-table specific filter container */
         .mb-subtable-filter-container {
@@ -45334,6 +45523,8 @@ a { color: #1565c0; }`;
 
         /** @type {Map<number,string>} colIdx → saved raw value (may include focus prefix) */
         const _savedValues = new Map();
+        /** @type {Map<number,Object<string,string>>} colIdx → saved `data-mb-mode-*` switches */
+        const _savedModes = new Map();
 
         if (_existingFilterRow) {
             if (_existingFilterRow.cells.length === _headerCellCount) {
@@ -45348,9 +45539,17 @@ a { color: #1565c0; }`;
                 `header cells=${_headerCellCount}. Rebuilding and preserving values.`);
             _existingFilterRow.querySelectorAll('.mb-col-filter-input').forEach(inp => {
                 if (inp.value) _savedValues.set(Number(inp.dataset.colIdx), inp.value);
+                // A column's Cc/Rx/Ex switches belong to its filter as much as
+                // its text does — a rebuild must not silently drop an Ex.
+                const modes = {};
+                _COL_FILTER_MODES.forEach(m => { if (inp.dataset[m.key]) modes[m.key] = inp.dataset[m.key]; });
+                if (Object.keys(modes).length) _savedModes.set(Number(inp.dataset.colIdx), modes);
             });
             _existingFilterRow.remove();
         }
+
+        const _withModes = _colFilterModesOn();
+        if (_withModes) _ensureColFilterModeDelegate();
 
         // ── Build the new filter row ──────────────────────────────────────────────
         const filterRow = document.createElement('tr');
@@ -45411,6 +45610,8 @@ a { color: #1565c0; }`;
                 //      prefix and the focus-background tint.
                 //   3. Run the filter immediately.
                 input.value = '';
+                // Clearing a column clears its Cc/Rx/Ex switches with it.
+                _resetColFilterModes(input);
                 input.focus(); // → applyFilterFocusStyle adds prefix + focus bg
                 runFilter();
             };
@@ -45471,6 +45672,14 @@ a { color: #1565c0; }`;
             input.addEventListener('blur', () => removeFilterFocusStyle(input, '…', true));
 
             wrapper.appendChild(input);
+            // Per-column Cc / Rx / Ex (sa_enable_column_filter_modes): three chips
+            // and a compact button; CSS shows one or the other by the cell's width.
+            if (_withModes) {
+                const { chips, btn } = _buildColFilterModeControls(_cleanColHeaderText(cell));
+                wrapper.classList.add('mb-col-modes');
+                wrapper.appendChild(chips);
+                wrapper.appendChild(btn);
+            }
             wrapper.appendChild(clear);
             th.appendChild(wrapper);
             filterRow.appendChild(th);
@@ -45480,10 +45689,15 @@ a { color: #1565c0; }`;
         // Values are keyed by the original data-col-idx, so they land in the correct
         // column even when the total column count changed.  Columns that were removed
         // (their idx no longer exists) are silently dropped.
-        if (_savedValues.size > 0) {
+        if (_savedValues.size > 0 || _savedModes.size > 0) {
             filterRow.querySelectorAll('.mb-col-filter-input').forEach(inp => {
                 const _saved = _savedValues.get(Number(inp.dataset.colIdx));
                 if (_saved) inp.value = _saved;
+                const _modes = _savedModes.get(Number(inp.dataset.colIdx));
+                if (_modes) {
+                    Object.assign(inp.dataset, _modes);
+                    _syncColFilterModeControls(inp);
+                }
             });
         }
 
@@ -46335,6 +46549,345 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether column filters have their own Cc / Rx / Ex switches
+     * (`sa_enable_column_filter_modes`, default on).
+     *
+     * On: every level owns its switches — the global ones govern the global
+     * query only, a sub-table's its text only, and each column's its own
+     * typed text and 📊 selection. Off: column filters have no switches and
+     * borrow the owner's (`_resolveColFilterFlags()`), exactly as before.
+     *
+     * @returns {boolean}
+     */
+    function _colFilterModesOn() {
+        return Lib.settings.sa_enable_column_filter_modes !== false;
+    }
+
+    /**
+     * Width in px below which a column filter shows the compact mode button
+     * instead of the three chips (`sa_column_filter_modes_compact_width`).
+     * Read with `??`, not `||`: 0 is a real value ("always chips").
+     *
+     * Why 160 and not less: the chips span about 61 px ending 16 px from the
+     * right edge, so a click in the MIDDLE of the field lands in the text area
+     * only once the cell is wider than about 154 px. Narrower than that, the
+     * obvious click toggles a switch instead. column-filter-modes.spec.js
+     * asserts exactly that for every cell showing chips.
+     *
+     * @returns {number}
+     */
+    function _colFilterModesCompactPx() {
+        const v = Number(Lib.settings.sa_column_filter_modes_compact_width ?? 160);
+        return Number.isFinite(v) && v >= 0 ? v : 160;
+    }
+
+    /**
+     * One entry per column-filter mode: the `dataset` key its state lives in
+     * on the `.mb-col-filter-input`, the flag name `getColFilters()` uses, and
+     * the words the chips, the pop-up and their tooltips show.
+     */
+    const _COL_FILTER_MODES = [
+        { mode: 'cc', key: 'mbModeCc', flag: 'isCaseSensitive', label: 'Cc', long: 'Case-sensitive' },
+        { mode: 'rx', key: 'mbModeRx', flag: 'isRegExp',        label: 'Rx', long: 'Regular expression' },
+        { mode: 'ex', key: 'mbModeEx', flag: 'isExclude',       label: 'Ex', long: 'Exclude matches (hide what matches)' }
+    ];
+
+    /**
+     * A column filter's own switches, as stored on its input. State lives in
+     * `data-mb-mode-*` attributes rather than JS properties because a
+     * `cloneNode(true)` of the header keeps attributes and drops everything
+     * else — see the "Common pitfalls" entry on cloned rows.
+     *
+     * @param {HTMLInputElement} inp
+     * @returns {{ isCaseSensitive: boolean, isRegExp: boolean, isExclude: boolean }}
+     */
+    function _readColFilterModes(inp) {
+        const f = {};
+        _COL_FILTER_MODES.forEach(m => { f[m.flag] = !!(inp && inp.dataset[m.key] === '1'); });
+        return f;
+    }
+
+    /**
+     * The flags one column filter is matched with: its own switches when
+     * column modes are on, otherwise the owner's (the global or sub-table
+     * boxes, `_resolveColFilterFlags()`).
+     *
+     * @param {HTMLInputElement} inp
+     * @param {HTMLTableElement|null} table
+     * @returns {{ isCaseSensitive: boolean, isRegExp: boolean, isExclude: boolean }}
+     */
+    function _colFilterFlags(inp, table) {
+        return _colFilterModesOn() ? _readColFilterModes(inp) : _resolveColFilterFlags(table);
+    }
+
+    /**
+     * Brings one filter cell's chips, compact button and Ex stripe in line with
+     * its input's stored modes (and the pop-up, if it is open on this input).
+     *
+     * @param {HTMLInputElement} inp
+     */
+    function _syncColFilterModeControls(inp) {
+        const wrap = inp && inp.closest('.mb-col-filter-wrapper');
+        if (!wrap) return;
+        const f = _readColFilterModes(inp);
+        wrap.querySelectorAll('.mb-col-mode-chip').forEach(chip => {
+            const m = _COL_FILTER_MODES.find(x => x.mode === chip.dataset.mbMode);
+            if (m) chip.setAttribute('aria-pressed', String(f[m.flag]));
+        });
+        const btn = wrap.querySelector('.mb-col-mode-btn');
+        if (btn) {
+            const on = _COL_FILTER_MODES.filter(m => f[m.flag]);
+            // Initials keep the button narrow — it only exists for narrow columns.
+            btn.textContent = on.length ? on.map(m => m.label[0]).join('·') : 'Aa';
+            btn.classList.toggle('mb-col-mode-on', on.length > 0);
+            btn.classList.toggle('mb-col-mode-has-ex', f.isExclude);
+        }
+        wrap.classList.toggle('mb-col-modes-ex', f.isExclude);
+        if (_colModePopTarget === inp) _syncColModePop();
+    }
+
+    /**
+     * Sets one mode on one column filter and refreshes its controls. Does not
+     * re-filter — callers decide, so a bulk change runs one pass, not N.
+     *
+     * @param {HTMLInputElement} inp
+     * @param {'cc'|'rx'|'ex'} mode
+     * @param {boolean} on
+     */
+    function _setColFilterMode(inp, mode, on) {
+        const m = _COL_FILTER_MODES.find(x => x.mode === mode);
+        if (!inp || !m) return;
+        if (on) inp.dataset[m.key] = '1';
+        else delete inp.dataset[m.key];
+        _syncColFilterModeControls(inp);
+    }
+
+    /**
+     * Switches every mode of one column filter off — called wherever a column
+     * filter is CLEARED (its ✕, Escape, the "clear" buttons, a new fetch), so
+     * a cleared field never keeps inverting what is typed into it next.
+     *
+     * @param {HTMLInputElement} inp
+     */
+    function _resetColFilterModes(inp) {
+        if (!inp) return;
+        _COL_FILTER_MODES.forEach(m => { delete inp.dataset[m.key]; });
+        _syncColFilterModeControls(inp);
+    }
+
+    /**
+     * Re-runs the filter if any of `inputs` holds a filter. A mode on an empty
+     * field changes nothing that is matched, so it costs no pass.
+     *
+     * @param {Iterable<HTMLInputElement>} inputs
+     */
+    function _rerunIfColFilterActive(inputs) {
+        const active = Array.from(inputs).some(inp => stripColFilterPrefix(inp.value));
+        if (active && typeof runFilter === 'function') runFilter();
+    }
+
+    /**
+     * Ctrl+Click (Cmd+Click) on a global or sub-table Cc / Rx / Ex box: also set
+     * that mode on every column filter the box covers. It is how a user who
+     * used to tick the global Rx to type regexps into several columns gets the
+     * same with one click now that each column owns its switches. No-op with
+     * column modes off, where the columns follow that box anyway.
+     *
+     * The caller runs the pass: a global box's own `change` re-filters, a
+     * sub-table's calls `_rerunIfColFilterActive()` itself.
+     *
+     * @param {Iterable<HTMLInputElement>} inputs
+     * @param {'cc'|'rx'|'ex'} mode
+     * @param {boolean} on
+     */
+    function _bulkSetColFilterMode(inputs, mode, on) {
+        if (!_colFilterModesOn()) return;
+        Array.from(inputs).forEach(inp => _setColFilterMode(inp, mode, on));
+    }
+
+    /**
+     * Builds the per-column switch controls for one filter cell: three chips
+     * and the compact mode button (CSS shows one or the other by width).
+     * `tabindex="-1"` keeps Tab moving from filter field to filter field, as
+     * it always has; the chips take no focus on mousedown either (see
+     * `_ensureColFilterModeDelegate()`), so typing carries on.
+     *
+     * @param {string} colName - For the tooltips.
+     * @returns {{ chips: HTMLSpanElement, btn: HTMLButtonElement }}
+     */
+    function _buildColFilterModeControls(colName) {
+        const chips = document.createElement('span');
+        chips.className = 'mb-col-mode-chips';
+        _COL_FILTER_MODES.forEach(m => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.tabIndex = -1;
+            chip.className = `mb-col-mode-chip mb-col-mode-${m.mode}`;
+            chip.dataset.mbMode = m.mode;
+            chip.setAttribute('aria-pressed', 'false');
+            chip.textContent = m.label;
+            chip.title = `${m.long} — the "${colName}" column filter only`;
+            chips.appendChild(chip);
+        });
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.tabIndex = -1;
+        btn.className = 'mb-col-mode-btn';
+        btn.setAttribute('aria-haspopup', 'true');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.textContent = 'Aa';
+        btn.title = `Filter modes for "${colName}": Cc case-sensitive, Rx regular expression, Ex exclude matches`;
+        return { chips, btn };
+    }
+
+    /** The one shared mode pop-up (compact button), built on first use. */
+    let _colModePop = null;
+    /** The `.mb-col-filter-input` the open pop-up edits, or null when closed. */
+    let _colModePopTarget = null;
+    /** Guards `_ensureColFilterModeDelegate()` against a second install. */
+    let _colModeDelegateInstalled = false;
+
+    /**
+     * Refreshes the open pop-up's boxes from its target input and re-anchors
+     * it under that input's mode button. Closes it if the target left the
+     * page (a full re-render replaced the header).
+     */
+    function _syncColModePop() {
+        if (!_colModePop || !_colModePopTarget) return;
+        if (!_colModePopTarget.isConnected) { _closeColModePop(); return; }
+        const f = _readColFilterModes(_colModePopTarget);
+        _colModePop.querySelectorAll('input[data-mb-mode]').forEach(cb => {
+            const m = _COL_FILTER_MODES.find(x => x.mode === cb.dataset.mbMode);
+            cb.checked = !!(m && f[m.flag]);
+        });
+        const btn = _colModePopTarget.closest('.mb-col-filter-wrapper')?.querySelector('.mb-col-mode-btn');
+        if (!btn) return;
+        const r = btn.getBoundingClientRect();
+        const w = _colModePop.offsetWidth || 220;
+        let left = r.left + window.scrollX;
+        const maxLeft = window.scrollX + document.documentElement.clientWidth - w - 8;
+        if (left > maxLeft) left = Math.max(window.scrollX + 8, r.right + window.scrollX - w);
+        _colModePop.style.left = `${left}px`;
+        _colModePop.style.top  = `${r.bottom + window.scrollY + 4}px`;
+    }
+
+    /**
+     * Opens the mode pop-up for the column filter that owns `btn`.
+     *
+     * @param {HTMLButtonElement} btn - A `.mb-col-mode-btn`.
+     */
+    function _openColModePop(btn) {
+        const inp = btn.closest('.mb-col-filter-wrapper')?.querySelector('.mb-col-filter-input');
+        if (!inp) return;
+        if (!_colModePop) {
+            _colModePop = document.createElement('div');
+            _colModePop.id = 'mb-col-mode-pop';
+            _colModePop.setAttribute('role', 'dialog');
+            _colModePop.hidden = true;
+            _colModePop.addEventListener('change', (e) => {
+                const cb = e.target.closest('input[data-mb-mode]');
+                if (!cb || !_colModePopTarget) return;
+                _setColFilterMode(_colModePopTarget, cb.dataset.mbMode, cb.checked);
+                _rerunIfColFilterActive([_colModePopTarget]);
+                _syncColModePop();
+            });
+            _colModePop.addEventListener('click', (e) => {
+                if (!e.target.closest('.mb-col-mode-pop-all') || !_colModePopTarget) return;
+                const src = _readColFilterModes(_colModePopTarget);
+                const table = _colModePopTarget.closest('table');
+                const inputs = table ? table.querySelectorAll('.mb-col-filter-input') : [];
+                Array.from(inputs).forEach(other => _COL_FILTER_MODES.forEach(m =>
+                    _setColFilterMode(other, m.mode, src[m.flag])));
+                _rerunIfColFilterActive(inputs);
+                _syncColModePop();
+            });
+            document.body.appendChild(_colModePop);
+        }
+        const hdr = inp.closest('table')?.querySelector('thead tr:first-child')
+            ?.cells[parseInt(inp.dataset.colIdx, 10)];
+        const colName = hdr ? _cleanColHeaderText(hdr) : '';
+        _colModePop.innerHTML = '';
+        const ttl = document.createElement('div');
+        ttl.className = 'mb-col-mode-pop-ttl';
+        ttl.textContent = `"${colName}" filter`;
+        _colModePop.appendChild(ttl);
+        _COL_FILTER_MODES.forEach(m => {
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.dataset.mbMode = m.mode;
+            const b = document.createElement('b');
+            b.textContent = m.label;
+            label.append(cb, b, document.createTextNode(m.long));
+            _colModePop.appendChild(label);
+        });
+        const all = document.createElement('button');
+        all.type = 'button';
+        all.className = 'mb-col-mode-pop-all';
+        all.textContent = 'Apply these modes to every column in this table';
+        _colModePop.appendChild(all);
+        const hint = document.createElement('span');
+        hint.className = 'mb-col-mode-pop-hint';
+        hint.textContent = 'Ctrl+Click (Cmd+Click) a global or sub-table Cc / Rx / Ex box to set it on every column filter at once.';
+        _colModePop.appendChild(hint);
+        _colModePopTarget = inp;
+        _colModePop.hidden = false;
+        btn.setAttribute('aria-expanded', 'true');
+        _syncColModePop();
+    }
+
+    /** Closes the mode pop-up, if open. */
+    function _closeColModePop() {
+        if (!_colModePop || _colModePop.hidden) return;
+        _colModePop.hidden = true;
+        const btn = _colModePopTarget?.closest('.mb-col-filter-wrapper')?.querySelector('.mb-col-mode-btn');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        _colModePopTarget = null;
+    }
+
+    /**
+     * Installs, once, the document-level handlers every column filter's chips
+     * and mode button rely on. Delegated rather than per-element because a
+     * filter row can be a `cloneNode(true)` copy, which keeps the buttons and
+     * drops their listeners.
+     */
+    function _ensureColFilterModeDelegate() {
+        if (_colModeDelegateInstalled) return;
+        _colModeDelegateInstalled = true;
+        // Capture phase, so this runs before anything that would move focus:
+        // a chip click must leave the caret in the filter field.
+        document.addEventListener('mousedown', (e) => {
+            const t = e.target;
+            if (!(t instanceof Element)) return;
+            if (t.closest('.mb-col-mode-chip, .mb-col-mode-btn')) { e.preventDefault(); return; }
+            if (_colModePop && !_colModePop.hidden && !t.closest('#mb-col-mode-pop')) _closeColModePop();
+        }, true);
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!(t instanceof Element)) return;
+            const chip = t.closest('.mb-col-mode-chip');
+            if (chip) {
+                const inp = chip.closest('.mb-col-filter-wrapper')?.querySelector('.mb-col-filter-input');
+                if (!inp) return;
+                const m = _COL_FILTER_MODES.find(x => x.mode === chip.dataset.mbMode);
+                _setColFilterMode(inp, chip.dataset.mbMode, !_readColFilterModes(inp)[m.flag]);
+                _rerunIfColFilterActive([inp]);
+                return;
+            }
+            const btn = t.closest('.mb-col-mode-btn');
+            if (btn) {
+                const inp = btn.closest('.mb-col-filter-wrapper')?.querySelector('.mb-col-filter-input');
+                if (_colModePopTarget && _colModePopTarget === inp) _closeColModePop();
+                else _openColModePop(btn);
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && _colModePop && !_colModePop.hidden) _closeColModePop();
+        });
+        window.addEventListener('resize', () => _closeColModePop());
+    }
+
+    /**
      * The "(case,rx,ex) " prefix every filter-status line prints in front of a
      * quoted filter string — `GLOBAL:(rx) "^The"`, `'Title':(ex) "live"` — or
      * '' when no mode is on, which keeps the plain case byte-identical to the
@@ -46356,7 +46909,8 @@ a { color: #1565c0; }`;
      * `table`, in column order, for the filter-status lines.
      *
      * The modifiers are the ones that actually govern that column
-     * (`_resolveColFilterFlags()`). Printing them is the point: on a
+     * (`_colFilterFlags()`: its own switches, or with column modes off the
+     * owner's, `_resolveColFilterFlags()`). Printing them is the point: on a
      * single-table page the global Ex silently inverts every column filter,
      * and on a multi-table page a CLOSED 🔍 panel's boxes still apply — the
      * status line was the only place left that could say so, and it did not.
@@ -46374,11 +46928,12 @@ a { color: #1565c0; }`;
      */
     function _describeColFilters(table) {
         if (!table) return [];
-        const flags = _resolveColFilterFlags(table);
         const headers = table.querySelectorAll('thead tr:first-child th');
         return Array.from(table.querySelectorAll('.mb-col-filter-input'))
             .filter(inp => stripColFilterPrefix(inp.value))
             .map(inp => {
+                // Each column's OWN switches with column modes on; the owner's otherwise.
+                const flags   = _colFilterFlags(inp, table);
                 const colIdx  = parseInt(inp.dataset.colIdx, 10);
                 const colName = headers[colIdx] ? _cleanColHeaderText(headers[colIdx]) : `Col ${colIdx}`;
                 const mods = _filterModsLabel(inp.dataset.mbUniqValues ? { ...flags, isRegExp: false } : flags);
@@ -46465,15 +47020,22 @@ a { color: #1565c0; }`;
      * return) and, for multi-table pages, written directly to the owning
      * `<h3>`'s `.mb-filter-status` span.
      *
+     * WHICH FLAGS: the three flag arguments are the OWNER's — the global or
+     * sub-table boxes (`_resolveColFilterFlags()`) — and apply to every column
+     * only while column modes are off. With `sa_enable_column_filter_modes` on,
+     * each input is matched with its own switches (`_readColFilterModes()`)
+     * and the arguments are ignored; the per-input `isCaseSensitive`/
+     * `isRegExp`/`isExclude` below are what every descriptor carries.
+     *
      * @param   {HTMLTableElement} table           - The table whose column filter row to read.
-     * @param   {boolean}          isCaseSensitive  - Whether text/value comparisons should fold case.
-     * @param   {boolean}          isRegExp         - Whether filter text should be treated as a regexp.
-     * @param   {boolean}          [isExclude=false] - Whether matches should be negated by the caller.
+     * @param   {boolean}          ownerCase       - The owner's Cc: fold case or not.
+     * @param   {boolean}          ownerRx         - The owner's Rx: treat filter text as a regexp.
+     * @param   {boolean}          [ownerEx=false] - The owner's Ex: negate matches.
      * @returns {Array<object> & { _rxErrors: string[] }} Descriptor list, plus a
      *   non-enumerable-in-spirit (but plain) `_rxErrors` property collecting any
      *   invalid-regexp error messages encountered.
      */
-    function getColFilters(table, isCaseSensitive, isRegExp, isExclude = false) {
+    function getColFilters(table, ownerCase, ownerRx, ownerEx = false) {
         if (!table) {
             const empty = [];
             empty._rxErrors = [];
@@ -46504,6 +47066,12 @@ a { color: #1565c0; }`;
                 inp.style.borderWidth = '';
                 return;
             }
+
+            // The flags THIS input is matched with — see the JSDoc's "WHICH FLAGS".
+            const own = _colFilterModesOn() ? _readColFilterModes(inp) : null;
+            const isCaseSensitive = own ? own.isCaseSensitive : ownerCase;
+            const isRegExp        = own ? own.isRegExp        : ownerRx;
+            const isExclude       = own ? own.isExclude       : ownerEx;
 
             // Helper: resolve the human-readable column name for error messages.
             const colIdx  = parseInt(inp.dataset.colIdx, 10);
@@ -50276,6 +50844,16 @@ a { color: #1565c0; }`;
     caseCheckbox.addEventListener('change', runFilter);
     regexpCheckbox.addEventListener('change', runFilter);
     excludeCheckbox.addEventListener('change', runFilter);
+    // Ctrl+Click (Cmd+Click) on a global box: also set that mode on EVERY column
+    // filter of the page (column modes on only). `click`, because only the
+    // mouse event carries the modifier keys; the box is already toggled, and
+    // its own `change` above runs the one filter pass that follows.
+    [[caseCheckbox, 'cc'], [regexpCheckbox, 'rx'], [excludeCheckbox, 'ex']].forEach(([cb, mode]) => {
+        cb.addEventListener('click', (e) => {
+            if (!(e.ctrlKey || e.metaKey)) return;
+            _bulkSetColFilterMode(document.querySelectorAll('table.tbl .mb-col-filter-input'), mode, cb.checked);
+        });
+    });
 
     // Use immediate version for clear button (explicit user action)
     filterClear.addEventListener('click', () => {
@@ -51815,6 +52393,7 @@ a { color: #1565c0; }`;
             inp.value = '';
             inp.style.boxShadow = '';
             inp.style.backgroundColor = '';
+            _resetColFilterModes(inp);
         });
 
         // Reset all buttons back to original grey background
@@ -56042,6 +56621,12 @@ a { color: #1565c0; }`;
         filterWrapper.appendChild(stfInputWrap);
         filterWrapper.appendChild(stfDragHandle);
 
+        // What these three boxes govern, for their tooltips — see
+        // _resolveColFilterFlags() and _colFilterModesOn().
+        const _stfScope = _colFilterModesOn()
+            ? `the "${categoryName}" sub-table filter only; Ctrl+Click: also every column filter of this sub-table`
+            : `the "${categoryName}" sub-table filter and every column filter of this sub-table`;
+
         // ── Case-sensitive checkbox ───────────────────────────────────────────
         const caseCheckbox = document.createElement('input');
         caseCheckbox.id = `${pfx}-case-checkbox`;
@@ -56051,7 +56636,7 @@ a { color: #1565c0; }`;
         const caseLabel = document.createElement('label');
         caseLabel.id = `${pfx}-case-label`;
         caseLabel.htmlFor = caseCheckbox.id;
-        caseLabel.title = `Case Sensitive Filtering (filter for "${categoryName}" sub-table)`;
+        caseLabel.title = `Case Sensitive Filtering (${_stfScope})`;
         caseLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         caseLabel.appendChild(caseCheckbox);
         caseLabel.appendChild(document.createTextNode('Cc'));
@@ -56065,7 +56650,7 @@ a { color: #1565c0; }`;
         const rxLabel = document.createElement('label');
         rxLabel.id = `${pfx}-rx-label`;
         rxLabel.htmlFor = rxCheckbox.id;
-        rxLabel.title = `RegExp Filtering (filter for "${categoryName}" sub-table)`;
+        rxLabel.title = `RegExp Filtering (${_stfScope})`;
         rxLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         rxLabel.appendChild(rxCheckbox);
         rxLabel.appendChild(document.createTextNode('Rx'));
@@ -56079,7 +56664,7 @@ a { color: #1565c0; }`;
         const exLabel = document.createElement('label');
         exLabel.id = `${pfx}-ex-label`;
         exLabel.htmlFor = exCheckbox.id;
-        exLabel.title = `Exclude Matches (filter for "${categoryName}" sub-table)`;
+        exLabel.title = `Exclude Matches (${_stfScope})`;
         exLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         exLabel.appendChild(exCheckbox);
         exLabel.appendChild(document.createTextNode('Ex'));
@@ -56506,6 +57091,7 @@ a { color: #1565c0; }`;
                     inp.value = '';
                     inp.style.backgroundColor = '';
                     inp.style.boxShadow = '';
+                    _resetColFilterModes(inp);
                 });
             }
             // Re-run the global filter so column-filter row visibility is refreshed.
@@ -56540,18 +57126,34 @@ a { color: #1565c0; }`;
          * it is only taken when this table actually has a column filter: the
          * text-only case keeps the cheap path it always had.
          *
+         * With column modes on (`_colFilterModesOn()`) these boxes govern the
+         * sub-table text ONLY — each column has its own switches — so the cheap
+         * path is always the right one.
+         *
          * @param {Function} [textOnly=applySubFilter] - What to run when no
          *   column filter is active.
          */
         function applySubTableModes(textOnly = applySubFilter) {
-            const hasColFilter = !!table && Array.from(table.querySelectorAll('.mb-col-filter-input'))
-                .some(inp => stripColFilterPrefix(inp.value));
+            const hasColFilter = !_colFilterModesOn() && !!table &&
+                Array.from(table.querySelectorAll('.mb-col-filter-input'))
+                    .some(inp => stripColFilterPrefix(inp.value));
             if (hasColFilter && typeof runFilter === 'function') runFilter();
             else textOnly();
         }
 
         [caseCheckbox, rxCheckbox, exCheckbox].forEach(cb => {
             cb.addEventListener('change', () => applySubTableModes());
+        });
+        // Ctrl+Click (Cmd+Click): also set this mode on every column filter of
+        // THIS sub-table. `click` rather than `change` because only the mouse
+        // event carries the modifier keys; the box is already toggled by then.
+        [[caseCheckbox, 'cc'], [rxCheckbox, 'rx'], [exCheckbox, 'ex']].forEach(([cb, mode]) => {
+            cb.addEventListener('click', (e) => {
+                if (!(e.ctrlKey || e.metaKey) || !_colFilterModesOn() || !table) return;
+                const inputs = table.querySelectorAll('.mb-col-filter-input');
+                _bulkSetColFilterMode(inputs, mode, cb.checked);
+                _rerunIfColFilterActive(inputs);
+            });
         });
 
         // Save to LRU on Enter (history widget also listens for Enter to save,
@@ -58871,6 +59473,7 @@ a { color: #1565c0; }`;
             inp.style.backgroundColor = '';
             inp.style.boxShadow        = '';
             inp.style.borderColor      = '';
+            _resetColFilterModes(inp);
         });
 
         // ── 3. Sub-table filters ──────────────────────────────────────────────
@@ -61879,6 +62482,21 @@ a { color: #1565c0; }`;
         qfBar.appendChild(qfInput);
         qfBar.appendChild(qfClear);
         drop.appendChild(qfBar);
+
+        // --- Exclude-mode banner ---
+        // A 📊 selection is matched with the same flags as the column's typed
+        // text (its own switches, or the owner's with column modes off), so in
+        // Exclude mode ticking "X (8)" HIDES those 8 rows. Say so, or the
+        // badge and the result look like they disagree.
+        if (_uniqColInput && _colFilterFlags(_uniqColInput, table).isExclude) {
+            const exBanner = document.createElement('div');
+            exBanner.className = 'mb-uniq-ex-banner';
+            const exLead = document.createElement('b');
+            exLead.textContent = 'Ex is on for this column: ';
+            exBanner.append(exLead, document.createTextNode(
+                'ticked values are HIDDEN. Each count is how many rows have the value.'));
+            drop.appendChild(exBanner);
+        }
 
         // --- Item list container ---
         const listBox = document.createElement('div');

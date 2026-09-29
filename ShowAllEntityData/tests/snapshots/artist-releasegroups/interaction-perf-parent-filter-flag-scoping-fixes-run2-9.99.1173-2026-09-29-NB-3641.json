@@ -1,0 +1,67 @@
+{
+  "pageType": "artist-releasegroups",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0",
+  "tableMode": "multi",
+  "subTableIndex": 29,
+  "totalRows": 2143,
+  "picardArm": null,
+  "relArm": null,
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false,
+    "sa_enable_relationships_column": false
+  },
+  "branch": "parent-filter-flag-scoping-fixes-run2",
+  "gitBranch": "feature/column-filter-modes",
+  "capturedAt": "2026-09-29",
+  "startedAt": "2026-09-29T02:18:05.290Z",
+  "finishedAt": "2026-09-29T02:20:50.936Z",
+  "machine": {
+    "hostname": "NB-3641",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 28,
+    "totalMemGb": 31,
+    "node": "v24.19.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 148.5,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 12.6
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1173+2026-09-28",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 655,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 880,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 1046,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 345,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 121,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 1611,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 1981,
+      "samples": 5
+    }
+  }
+}

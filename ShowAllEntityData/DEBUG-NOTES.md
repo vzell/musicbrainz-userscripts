@@ -16491,3 +16491,83 @@ NB-3641, back to back — `globalFilter` 1876 → 1914 ms (1.02x), while metrics
 the branch does not touch moved up to 1.10x between the same two arms. No
 measurable cost; details and the full table in `tests/MEASUREMENTS.org`,
 "2026-09-28 — per-cell plain global matching".
+
+## 2026-09-29 — per-column Cc/Rx/Ex switches (branch feature/column-filter-modes, stacked on feature/filter-flag-scoping-fixes)
+
+The follow-up `org/column-level-checkbox-filtering.org` proposed after F3–F7:
+mockup variant A (three chips in each column filter field) with variant B (one
+compact mode button + a pop-up) as the automatic fallback for narrow columns.
+Setting `sa_enable_column_filter_modes` (default on) changes the scoping rule:
+every level owns its switches. Off = the F3–F7 borrowing rule, unchanged.
+
+**Design decisions and why.**
+
+- **State in `data-mb-mode-{cc,rx,ex}` on the input, one delegated listener.**
+  A filter row can be a `cloneNode(true)` copy (a second full render clones
+  the first table's `<thead>` as its template), which keeps attributes and
+  drops listeners. The multi-table REUSE branch of `renderGroupedTable()` keeps
+  the `<thead>` untouched, so filter passes never lose the state; the spec's
+  "survives the re-render" test pins that.
+- **`getColFilters()` resolves flags per input**, and its three arguments
+  became the OWNER's, ignored while modes are on. That kept every caller —
+  `runFilter()`'s two branches, `_artHighlightArtCell()` — unchanged, and the
+  filter-cache keys already hash per-descriptor `c`/`r`/`x`.
+- **Chips vs button is a CSS container query**, not script: the wrapper gets
+  `container-type: inline-size` only while the setting is on, and
+  `@container (max-width: <threshold>px)` hides the chips and shows the
+  button. It follows auto-resize, a dragged column edge and window resizes for
+  free. Risk checked, not assumed: size containment could have changed the
+  table's column widths; a spec loads the page with the setting on and off in
+  two tabs and asserts identical `<th>` widths.
+- **The default threshold is 160 px, not the 130 first proposed.** The chips
+  span ~61 px ending 16 px from the right edge, so below ~155 px they cover
+  the middle of the field — the first spec run found it the direct way: a
+  plain Playwright `input.click()` on the narrow Format column landed on the
+  Cc chip. A user clicking the middle of a 135 px field would have toggled a
+  switch. The spec now asserts `elementFromPoint(centre) === input` for every
+  cell showing chips at the default threshold.
+- **A chip click keeps the caret in the field** (capture-phase `mousedown`
+  `preventDefault()`), and chips are `tabindex="-1"` so Tab still walks filter
+  field to filter field.
+- **Clearing resets modes** at every clear site (✕, Escape, `clearAllFilters()`,
+  the clear buttons, Shift+Esc, a new fetch, the discography view reset);
+  backspacing a field empty does not.
+- **The 📊 Ex banner reads `_colFilterFlags()`**, so it also appears with
+  modes OFF when the owner's Ex governs the column — finding F8's panel half.
+
+**Tests.** `tests/fixtures/column-filter-modes.spec.js` (18) and
+`scripts/mutations/column-filter-modes.json` (16: 14 must fail, 2 recorded
+`expect: "pass"` — the now-redundant `runFilter()` from a sub-table box, which
+only costs a pass, and the stale-row rebuild's mode restore, which no fixture
+can trigger after a switch is set). `filter-flag-scoping.spec.js` seeds the
+setting off and still pins the borrowing rule, 16/16. Both live filter/sort
+specs were migrated to drive the column switches; `setColumnModes()` in each
+uses the chips, or the pop-up for a compact column.
+
+**One test-writing trap, twice.** Clicking a field's left edge to dodge the
+chips (first fixture draft) is wrong in a live multi-table run: Playwright
+scrolls a far-right column into view under the STICKY first column, whose own
+filter cell then takes the click (`releasegroup-releases-filter-sort` stalled
+480 s on Label). The centre is safe precisely because of the 160 px threshold.
+
+**Results.** New spec 18/18 on the branch; against the parent branch's
+userscript 15 fail and 3 pass — the setting-off test, the width guard, and
+"threshold 0 always shows the chips", which passed there only vacuously (no
+buttons at all) until it was tightened to require chips in EVERY cell.
+Mutation list: 16/16 as recorded. Live: `releasegroup-releases-filter-sort`
+6/6; `artist-releases-filter-sort` all but §A3's CAA "Booklet" count (19 vs 20),
+which fails identically on 9.99.1173 — live CAA data drift. Full fixture suite
+(14 workers): 723 tests, green apart from load-only failures that pass
+standalone — `uniq-drop-quickfilter-multi-occurrence.spec.js:106` (the
+`marks = []` shape tests/MEASUREMENTS.org already records as a known
+intermittent), and in a later run two `page.goto` timeouts in the disk
+round-trip specs, which fail before the userscript is injected (12/12
+standalone). Slow specs 14/14. Save to Disk excludes the filter row from the
+saved headers, so the switches never reach a saved file.
+
+**Performance** — no measurable cost. Two back-to-back pairs on
+`artist-releasegroups` (multi-table, 17 filter rows) and one on
+`artist-events`, parent branch vs this one; full tables in
+`tests/MEASUREMENTS.org`, "2026-09-29 — per-column Cc/Rx/Ex switches". The one
+alarming number, `headerCountsInitial` 1.17x in pair 1, came out 0.99x in pair
+2 run in the opposite order; the parent alone spread 1369-1611 ms.

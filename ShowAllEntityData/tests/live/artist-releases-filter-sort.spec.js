@@ -131,12 +131,46 @@ async function setModifierCheckboxes(page, { caseSensitive, regExp, exclude } = 
 }
 
 /**
- * Applies one §A/§B-style column-filter case. Modifier checkboxes (Cc/Rx/Ex)
- * are the single global triad this `tableMode: 'single'` page has — see
- * the plan's Context section — so they govern this column filter too.
+ * Sets one column filter's OWN Cc / Rx / Ex switches
+ * (`sa_enable_column_filter_modes`, on by default) to `mods`. A column wider
+ * than the compact threshold shows three chips; a narrower one shows one
+ * mode button whose pop-up holds the same three boxes — this drives
+ * whichever the column actually shows.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} columnName
+ * @param {{ caseSensitive?: boolean, regExp?: boolean, exclude?: boolean }} mods
+ */
+async function setColumnModes(page, columnName, { caseSensitive, regExp, exclude } = {}) {
+    const want = { cc: !!caseSensitive, rx: !!regExp, ex: !!exclude };
+    const wrap = page.locator('table.tbl thead .mb-col-filter-wrapper:has('
+        + `.mb-col-filter-input[data-col-idx="${COLUMN_INDEX[columnName]}"])`).first();
+    if (await wrap.locator('.mb-col-mode-chips').isVisible()) {
+        for (const [mode, on] of Object.entries(want)) {
+            const chip = wrap.locator(`.mb-col-mode-chip.mb-col-mode-${mode}`);
+            if ((await chip.getAttribute('aria-pressed') === 'true') !== on) await chip.click();
+        }
+        return;
+    }
+    const current = await wrap.locator('.mb-col-filter-input').evaluate((inp) => ({
+        cc: inp.dataset.mbModeCc === '1', rx: inp.dataset.mbModeRx === '1', ex: inp.dataset.mbModeEx === '1',
+    }));
+    if (Object.keys(want).every((m) => want[m] === current[m])) return;
+    await wrap.locator('.mb-col-mode-btn').click();
+    const pop = page.locator('#mb-col-mode-pop');
+    for (const [mode, on] of Object.entries(want)) {
+        await pop.locator(`input[data-mb-mode="${mode}"]`).setChecked(on);
+    }
+    await page.keyboard.press('Escape');
+}
+
+/**
+ * Applies one §A/§B-style column-filter case. Its Cc/Rx/Ex modifiers are set
+ * on THAT column's own switches: since `sa_enable_column_filter_modes` the
+ * global triad governs the global query only, even on this single-table page.
  */
 async function applyColumnFilter(page, caseDef) {
-    await setModifierCheckboxes(page, caseDef);
+    await setColumnModes(page, caseDef.column, caseDef);
     const input = colFilterInput(page, caseDef.column);
     // Column filter inputs are readonly-until-a-genuine-trusted-interaction
     // (anti-autofill hardening) — .click() lifts that, and typing must go
@@ -202,6 +236,10 @@ async function clearAllFilters(page, columns = Object.keys(COLUMN_INDEX)) {
     await clearGlobalFilter(page);
     for (const columnName of columns) {
         await clearColumnFilter(page, columnName);
+        // Backspacing a field empty keeps its switches (only ✕/Escape/the
+        // clear buttons reset them), so reset them here, as clearing did
+        // for the global boxes before each column owned its own.
+        await setColumnModes(page, columnName, {});
     }
     await setModifierCheckboxes(page, {});
 }
@@ -276,20 +314,21 @@ function assertHighlight(actualSpans, caseDef) {
  *     least one COLUMN filter is active — see `updateFilterButtonsVisibility()`
  *     (ShowAllEntityData.user.js).
  *
- * `mods` is the global Cc/Rx/Ex state at assertion time — i.e. the modifiers
- * of the LAST `applyColumnFilter()` call, since each call resets the three
- * boxes. On this single-table page those boxes govern the global query and
- * every column filter alike, so the status line prints them on each part.
+ * Each column entry's `mods` are that column's OWN switches (set by
+ * `applyColumnFilter()` → `setColumnModes()`); `globalMods` are the global
+ * boxes, which govern the global query only. The status line prints each
+ * part with its own modifiers.
  *
  * @param {import('@playwright/test').Page} page
  * @param {{ rowCount: number, totalCount?: number, global?: string,
- *           mods?: { caseSensitive?: boolean, regExp?: boolean, exclude?: boolean },
- *           columns?: Array<{column: string, value: string}> }} spec
+ *           globalMods?: { caseSensitive?: boolean, regExp?: boolean, exclude?: boolean },
+ *           columns?: Array<{column: string, value: string,
+ *               mods?: { caseSensitive?: boolean, regExp?: boolean, exclude?: boolean }}> }} spec
  */
-async function assertFilterUiState(page, { rowCount, totalCount = TOTAL_ROWS, global, mods = {}, columns = [] }) {
+async function assertFilterUiState(page, { rowCount, totalCount = TOTAL_ROWS, global, globalMods = {}, columns = [] }) {
     const statusText = await getFilterStatusText(page);
     expect(statusText, 'filter-status text').toMatch(buildFilterStatusRegex({
-        rowCount, global, globalMods: mods, columns: columns.map((c) => ({ ...c, mods })),
+        rowCount, global, globalMods, columns,
     }));
 
     await assertRowCountTooltip(page, { filteredCount: rowCount, totalCount, global, columns });
@@ -352,8 +391,7 @@ test('§A per-column typed filter cases', { tag: '@extended' }, async ({ page })
 
             await assertFilterUiState(page, {
                 rowCount: caseDef.expected,
-                mods: caseDef,
-                columns: [{ column: caseDef.column, value: caseDef.value }],
+                columns: [{ column: caseDef.column, value: caseDef.value, mods: caseDef }],
             });
 
             await clearAllFilters(page, [caseDef.column]);
@@ -528,11 +566,8 @@ test('§B combo and global+column order-pair cases', { tag: '@extended' }, async
 
             const orderedColumns = [...combo.filters]
                 .sort((a, b) => COLUMN_INDEX[a.column] - COLUMN_INDEX[b.column])
-                .map((f) => ({ column: f.column, value: f.value }));
-            // The boxes hold whatever the LAST applyColumnFilter() set.
-            await assertFilterUiState(page, {
-                rowCount: combo.expected, mods: combo.filters[combo.filters.length - 1], columns: orderedColumns,
-            });
+                .map((f) => ({ column: f.column, value: f.value, mods: f }));
+            await assertFilterUiState(page, { rowCount: combo.expected, columns: orderedColumns });
 
             await clearAllFilters(page, combo.filters.map((f) => f.column));
             await assertFilterUiCleared(page);
@@ -623,9 +658,7 @@ test('§C sort-then-restore checkpoints preserve row count across every scenario
                 await assertFilterUiState(page, {
                     rowCount: cp.expectedCount,
                     global: cp.name === 'after order-pair result' ? ORDER_PAIR_CASE.globalValue : undefined,
-                    // The boxes hold whatever the LAST applyColumnFilter() set.
-                    mods: cp.filters[cp.filters.length - 1],
-                    columns: cp.filters.map((f) => ({ column: f.column, value: f.value })),
+                    columns: cp.filters.map((f) => ({ column: f.column, value: f.value, mods: f })),
                 });
             }
 

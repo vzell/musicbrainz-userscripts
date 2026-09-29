@@ -2867,3 +2867,52 @@ host's arm-to-arm noise above the change. =columnFilter='s +8% is inside that
 band too; the branch's only change on that path is the status-line text, built
 once per pass rather than per row. Not bisected: one pair of arms, no A-B-A
 repeat.
+
+* 2026-09-29 — per-column Cc/Rx/Ex switches, feature/filter-flag-scoping-fixes vs feature/column-filter-modes (NB-3641)
+
+*Probing*: what the chips and compact button cost. Matching gains three
+attribute reads per NON-EMPTY column filter per pass (nothing per row);
+rendering gains four small elements per filter cell (3 chips + 1 button), and
+the wrapper becomes a CSS size container. Predicted: nothing measurable. The
+multi-table page matters most here — every sub-table has its own filter row.
+
+=NB-3641= (28 cores, 31 GB, WSL2 6.18.33.2, node v24.19.0, playwright 1.62.1),
+uptime ~146 h, one resident =claude= session, median of 5. The parent arm ran
+with =git show feature/filter-flag-scoping-fixes:…/ShowAllEntityData.user.js=
+swapped into the working tree (label =parent-filter-flag-scoping-fixes=), the
+branch file restored and SHA-256-verified after each; only the userscript
+differed. Arms, UTC: events parent 01:43-01:54, branch 01:54-02:04;
+releasegroups parent 02:04-02:09, branch 02:09-02:12; releasegroups run 2 in the
+OPPOSITE order, branch 02:13-02:18, parent 02:18-02:20.
+
+** =artist-events=, single-table, 4174 rows (Bruce Springsteen =/events=)
+
+| Metric                | parent (ms) | branch (ms) | branch/parent |
+|-----------------------+-------------+-------------+---------------|
+| =globalFilter=        |        1803 |        1782 |         0.99x |
+| =columnFilter=        |        2074 |        1693 |         0.82x |
+| =sort=                |        3675 |        2982 |         0.81x |
+| =uniqDropCold=        |       31046 |       31329 |         1.01x |
+| =uniqDropWarm=        |         766 |         830 |         1.08x |
+| =headerCountsInitial= |        5670 |        5207 |         0.92x |
+| =headerCountsRestore= |        5526 |        5563 |         1.01x |
+
+** =artist-releasegroups=, multi-table, 17 sub-tables (Bruce Springsteen =/artist/…= release groups)
+
+| Metric                | parent 1 | branch 1 | parent 2 | branch 2 | pair 1 | pair 2 |
+|-----------------------+----------+----------+----------+----------+--------+--------|
+| =globalFilter=        |      656 |      660 |      655 |      662 |  1.01x |  1.01x |
+| =columnFilter=        |      903 |      897 |      880 |      876 |  0.99x |  1.00x |
+| =sort=                |     1049 |     1048 |     1046 |     1063 |  1.00x |  1.02x |
+| =uniqDropCold=        |      346 |      370 |      345 |      353 |  1.07x |  1.02x |
+| =uniqDropWarm=        |      136 |      108 |      121 |      116 |  0.79x |  0.96x |
+| =headerCountsInitial= |     1369 |     1596 |     1611 |     1593 |  1.17x |  0.99x |
+| =headerCountsRestore= |     1989 |     2008 |     1981 |     2002 |  1.01x |  1.01x |
+
+*Read as: no measurable cost.* Pair 1's =headerCountsInitial= 1.17x is why pair
+2 exists; the parent's own two runs spread from 1369 to 1611 ms, and pair 2 put
+the branch at 0.99x. That metric waits for four consecutive stable 250 ms
+polls, so one poll step (~250 ms) is its natural jitter. On =artist-events= the
+branch came out FASTER on =sort= and =columnFilter=, which it cannot cause
+(neither path gains work): that is this host's run-to-run noise, the same band
+the 2026-09-28 pair above showed.
