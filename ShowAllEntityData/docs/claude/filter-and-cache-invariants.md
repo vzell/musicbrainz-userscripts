@@ -338,10 +338,10 @@ by `tests/fixtures/column-filter-modes.spec.js` and
 borrow a wider level's, and **`_resolveColFilterFlags(table)` is the one place
 that decides which**:
 
-| Page         | Global boxes govern | A sub-table's 🔍 boxes govern                             |
-|--------------|---------------------|-----------------------------------------------------------|
-| single-table | global query AND every column filter | — (no panel)                           |
-| multi-table  | global query only   | that sub-table's text AND every column filter in it — also while the panel is CLOSED |
+| Page         | Global boxes govern                  | A sub-table's 🔍 boxes govern                                                        |
+|--------------|--------------------------------------|--------------------------------------------------------------------------------------|
+| single-table | global query AND every column filter | — (no panel)                                                                         |
+| multi-table  | global query only                    | that sub-table's text AND every column filter in it — also while the panel is CLOSED |
 
 📊 selections follow the same owner's Cc and Ex (never Rx). Four rules keep this
 consistent, each written after it had been broken (findings F3–F7 of

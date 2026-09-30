@@ -514,14 +514,14 @@ given payload, not across payloads.
 =scripts/probe-multitable-metric-targets.js=, written after the first smoke run
 died with =locator.click: Timeout 30000ms exceeded= on the column-filter input:
 
-| Element                           | Measured                                                      |
-|-----------------------------------+---------------------------------------------------------------|
-| =.mb-master-toggle=               | =data-state="expanded"=, text "Hide all sub-sections"         |
-| =table.tbl= visibility            | *45 of 47 =display:none=*; 2 visible (indices 0 and one more) |
-| sub-table 29 =<table>=            | =display:none=                                                |
-| sub-table 29 =<h3>=               | visible 1570x31                                               |
+| Element                          | Measured                                                      |
+|----------------------------------+---------------------------------------------------------------|
+| =.mb-master-toggle=              | =data-state="expanded"=, text "Hide all sub-sections"         |
+| =table.tbl= visibility           | *45 of 47 =display:none=*; 2 visible (indices 0 and one more) |
+| sub-table 29 =<table>=           | =display:none=                                                |
+| sub-table 29 =<h3>=              | visible 1570x31                                               |
 | its filter input / ✕ / sort / 📊 | *0x0* — targets Playwright will never click                   |
-| after a DOM-level =<h3>= click    | table visible 1570x26142; all four controls clickable         |
+| after a DOM-level =<h3>= click   | table visible 1570x26142; all four controls clickable         |
 
 This is CLAUDE.md's "do not trust =.mb-master-toggle='s =data-state=" warning
 with numbers on it. =clickMasterToggleAndExpandAll()= cannot drive this page —
@@ -860,14 +860,14 @@ pair and three other Relationships specs, and the suite now has a long tail of
 individually slow tests that no worker count shortens. The six heaviest specs,
 by summed test time:
 
-| Seconds | Spec                                                     |
-|---------+----------------------------------------------------------|
-|   149.7 | =rel-auto-retry-failed.spec.js= (=@slow=)                |
-|   111.7 | =rel-column-collapse-toggle.spec.js=                     |
-|    94.4 | =rel-column-browse-batch.spec.js=                        |
-|    90.7 | =rel-retry-failed-only.spec.js=                           |
-|    89.9 | =resume-from-failed-page.spec.js= (=@slow=)              |
-|    77.4 | =rel-cell-state-glyphs.spec.js=                          |
+| Seconds | Spec                                        |
+|---------+---------------------------------------------|
+|   149.7 | =rel-auto-retry-failed.spec.js= (=@slow=)   |
+|   111.7 | =rel-column-collapse-toggle.spec.js=        |
+|    94.4 | =rel-column-browse-batch.spec.js=           |
+|    90.7 | =rel-retry-failed-only.spec.js=             |
+|    89.9 | =resume-from-failed-page.spec.js= (=@slow=) |
+|    77.4 | =rel-cell-state-glyphs.spec.js=             |
 
 *=rel-auto-retry-failed= is NOT a 324 s floor inside a parallel run*, and
 =tests/README.org= should not be read as saying so. That figure was measured
@@ -1001,11 +1001,11 @@ chased — so a single pair would have proved nothing either way.
 
 One =test:full= per tree, JSON reporter, same session:
 
-| Version   | Wall     | Results | Spec starts at | Its span | Spec ends at |
+|   Version | Wall     | Results | Spec starts at | Its span | Spec ends at |
 |-----------+----------+---------+----------------+----------+--------------|
-| 9.99.1142 | 345.47 s |     534 |       +47.05 s | 296.89 s |    +343.94 s |
-| 9.99.1139 | 341.14 s |     490 |       +44.74 s | 294.40 s |    +339.15 s |
-| *delta*   | *+4.33*  |     +44 |        *+2.31* |  *+2.49* |       *+4.79* |
+| 9.99.1142 | 345.47 s |     534 | +47.05 s       | 296.89 s | +343.94 s    |
+| 9.99.1139 | 341.14 s |     490 | +44.74 s       | 294.40 s | +339.15 s    |
+|   *delta* | *+4.33*  |     +44 | *+2.31*        | *+2.49*  | *+4.79*      |
 
 The suite ends 1.5-2.0 s after that file does, in both arms — so
 =rel-auto-retry-failed= is the critical path and
@@ -1373,8 +1373,8 @@ change.
 |       Date | Host    | Condition                                                                                                                                                                                  |
 |------------+---------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2026-09-07 | =petri= | musicbrainz.org intermittently unreachable — roughly 1 probe in 3 timing out, ending in =ERR_CONNECTION_RESET=. Two complete 20-minute perf runs lost to a single 30 s navigation timeout. |
-| 2026-09-11 | =petri= | Slow window, 1.45-1.98x the floor, at 43-68 h uptime (lasting 24-69 h); it cleared with no reboot. A Claude Code session had run on 2026-09-10. See Arm E results.                          |
-| 2026-09-15 | =petri= | WSL VM down 03:43-23:15 CEST, both arm-E slots lost; the new boot's monotonic clock started at 16.36 h, so logged =uptimeHours= runs 16.36 h high. See Arm E results.                       |
+| 2026-09-11 | =petri= | Slow window, 1.45-1.98x the floor, at 43-68 h uptime (lasting 24-69 h); it cleared with no reboot. A Claude Code session had run on 2026-09-10. See Arm E results.                         |
+| 2026-09-15 | =petri= | WSL VM down 03:43-23:15 CEST, both arm-E slots lost; the new boot's monotonic clock started at 16.36 h, so logged =uptimeHours= runs 16.36 h high. See Arm E results.                      |
 
 *Known intermittent, not load-explained*: =release-tracks-ms-length-overflow.spec.js='s
 "a row already stamped by the embedded payload is never re-sent to the network"

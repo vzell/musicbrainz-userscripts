@@ -16470,10 +16470,10 @@ section forbids — and the Barcode header's ▌█ toggle is not on the list.
 
 **Full fixture suite** (`npm test`, 14 workers, NB-3641), three runs:
 
-| Run                              | Result                                            |
-|----------------------------------|---------------------------------------------------|
-| 1                                | 703 passed, 1 failed — `rel-column-fetch-failure.spec.js:210` |
-| 2                                | 704 passed                                        |
+| Run                                          | Result                                                        |
+|----------------------------------------------|---------------------------------------------------------------|
+| 1                                            | 703 passed, 1 failed — `rel-column-fetch-failure.spec.js:210` |
+| 2                                            | 704 passed                                                    |
 | 3 (after the `_cleanColHeaderText()` change) | 704 passed, 1 failed — `rel-column-fetch-failure.spec.js:109` |
 
 Both victims are named members of the load-flaky family tracked here since
