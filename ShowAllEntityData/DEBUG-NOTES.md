@@ -16571,3 +16571,39 @@ saved headers, so the switches never reach a saved file.
 `tests/MEASUREMENTS.org`, "2026-09-29 — per-column Cc/Rx/Ex switches". The one
 alarming number, `headerCountsInitial` 1.17x in pair 1, came out 0.99x in pair
 2 run in the opposite order; the parent alone spread 1369-1611 ms.
+
+## 2026-10-01 — Cc/Rx/Ex chip click raises "You are about to leave this page" on single-table pages (branch feature/column-filter-modes)
+
+**Symptom** (reported live, logged in, `artist/b3c01c39-…/releases`, single
+table): type "von" in the Release column filter, click its Cc chip → the
+script's own `window.confirm()` "You are about to leave this page…". OK → the
+mode toggles; Cancel → the click is silently swallowed. Not reproducible on
+multi-table pages.
+
+**Root cause:** `initNavigationGuard()` Guard 3 (merge-form submit-button
+guard). Its JSDoc says it guards `button[type="submit"]`, but the code did
+`e.target.closest('button')` + `btn.closest('form')` and never looked at the
+type. On a logged-in single-table page the rendered `table.tbl` still sits
+inside MusicBrainz's merge `<form>` (the one holding
+`div.list-merge-buttons-row-container`), so every `<button>` in the table
+matched — the chips and the compact `Aa` button carry `type="button"` and
+submit nothing. Guard 3 is a capture-phase listener that calls
+`stopImmediatePropagation()` on Cancel, which is why Cancel also killed the
+chip's own delegated handler. Multi-table pages are clean because
+`renderGroupedTable()` builds its h3/table pairs outside that form. The defect
+is older than the chips (only the `mb-picard-btn` exemption had papered over
+it once); the chips are just the first buttons users click inside that form
+all the time.
+
+**Fix:** bail unless `btn.type === 'submit'` (the IDL property is `'submit'`
+for a missing/invalid type attribute, so MusicBrainz's own merge buttons stay
+guarded), and use `btn.form` rather than `closest('form')`.
+
+**Why the suite missed it:** the BoDeans disk-fixture shell carries no merge
+form, and Playwright auto-dismisses `confirm()` without failing — a guarded
+click just looks like a no-op. New test
+`column-filter-modes.spec.js` "inside the merge form a chip raises no
+leave-page prompt; a submit button still does" wraps the table in a merge form
+itself, records dialogs, and also asserts a real submit button still prompts.
+Mutation list `scripts/mutations/nav-guard-merge-form.json` (type check
+removed → fails; guard dropped instead of narrowed → fails).

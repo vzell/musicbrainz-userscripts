@@ -294,6 +294,52 @@ test.describe('single-table: each column owns its Cc / Rx / Ex (artist-releases)
             .filter({ hasText: /^\s*☐?\s*\(\d+\)\s*CD\s*$/ }).first().click();
         await expect.poll(() => rowsIn(page), { ...SETTLE, message: 'the ticked value is hidden' }).toBe(AR.total - exactCd);
     });
+
+    // Logged in, a single-table page's table.tbl stays inside MusicBrainz's
+    // merge <form> (div.list-merge-buttons-row-container). The navigation
+    // guard's merge-form arm used to match EVERY <button> in that form, so a
+    // chip click raised "You are about to leave this page" — and Playwright
+    // auto-dismisses confirm(), which swallowed the click silently. The disk
+    // fixture's shell has no such form, so this test builds one around the
+    // table, the way the live page has it.
+    test('inside the merge form a chip raises no leave-page prompt; a submit button still does', async ({ page }) => {
+        await page.evaluate(() => {
+            const table = document.querySelector('table.tbl');
+            const form = document.createElement('form');
+            form.action = '/release/merge_queue';
+            form.method = 'post';
+            const row = document.createElement('div');
+            row.className = 'list-merge-buttons-row-container';
+            const submit = document.createElement('button');
+            submit.type = 'submit';
+            submit.id = 'test-merge-submit';
+            submit.textContent = 'Add selected releases for merging';
+            row.appendChild(submit);
+            table.before(form);
+            form.append(table, row);
+        });
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
+
+        await typeColumn(columnFilterInput(page, release), 'live');
+        await expect.poll(() => rowsIn(page), SETTLE).toBe(4);
+        await chip(page, release, 'cc').click();
+        await expect(chip(page, release, 'cc')).toHaveAttribute('aria-pressed', 'true');
+        await expect.poll(() => rowsIn(page), { ...SETTLE, message: 'the Cc click took effect' }).toBe(0);
+        // The compact button is hidden under CHIPS; a DOM click still runs
+        // every document-level click listener, the guard included.
+        await page.evaluate((i) => document.querySelector(
+            `table.tbl thead .mb-col-filter-input[data-col-idx="${i}"]`)
+            .closest('.mb-col-filter-wrapper').querySelector('.mb-col-mode-btn').click(), release);
+        await expect(page.locator('#mb-col-mode-pop')).toBeVisible();
+        expect(dialogs, 'no type="button" control may raise the leave-page prompt').toEqual([]);
+
+        // The guard is narrowed, not gone: a real merge submit still asks.
+        await page.locator('#test-merge-submit').click();
+        await expect.poll(() => dialogs.length, SETTLE).toBe(1);
+        expect(dialogs[0]).toContain('You are about to leave this page');
+        expect(await rowsIn(page), 'dismissed: still on the page').toBe(0);
+    });
 });
 
 test.describe('multi-table: each column owns its Cc / Rx / Ex (releasegroup-releases)', () => {

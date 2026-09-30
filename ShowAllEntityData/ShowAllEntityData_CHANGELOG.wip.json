@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On single-table pages such as an artist's Releases tab, clicking a column's Cc, Rx or Ex switch (or its compact mode button) no longer pops up \"You are about to leave this page\". The leave-page guard around MusicBrainz's merge form reacted to every button inside that form, not just the ones that submit it — and answering Cancel silently swallowed the click. Real merge buttons still ask before leaving."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-09-29",
     "sections": [

@@ -68392,8 +68392,17 @@ a { color: #1565c0; }`;
             // Exempt Picard tagger buttons — they never submit a form
             if (btn.classList.contains('mb-picard-btn')) return;
 
-            // The button must be inside a <form> that contains a merge-buttons container
-            const form = btn.closest('form');
+            // Only a button that would actually SUBMIT is a navigation. On a
+            // single-table page the rendered table.tbl still sits inside
+            // MusicBrainz's merge <form>, so without this every type="button"
+            // control in the table (the per-column Cc/Rx/Ex chips first among
+            // them) raised the "leave this page" confirm — and a Cancel
+            // swallowed the click. The IDL `type` is 'submit' for a button
+            // with no/invalid type attribute, so MB's own buttons stay guarded.
+            if (btn.type !== 'submit') return;
+
+            // The button must submit a <form> that contains a merge-buttons container
+            const form = btn.form;
             if (!form) return;
             if (!form.querySelector('div.list-merge-buttons-row-container')) return;
 

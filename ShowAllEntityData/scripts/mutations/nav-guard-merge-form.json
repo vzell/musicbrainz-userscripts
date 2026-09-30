@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the merge-form guard matches every button again",
+    "why": "Without the btn.type check, initNavigationGuard()'s merge-form arm fires on the per-column Cc/Rx/Ex chips of a single-table page (the table sits inside MusicBrainz's merge <form>): a native 'You are about to leave this page' confirm on every chip click, and a Cancel swallows the click.",
+    "edits": [
+      {
+        "find": "            if (btn.type !== 'submit') return;\n",
+        "replace": "\n"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "inside the merge form a chip raises no leave-page prompt",
+    "expect": "fail"
+  },
+  {
+    "name": "the merge-form guard is dropped instead of narrowed",
+    "why": "The lazy fix for the chip prompt is to stop guarding merge forms at all. Then a real merge submit navigates away and throws the whole loaded session away without asking.",
+    "edits": [
+      {
+        "find": "            if (!form.querySelector('div.list-merge-buttons-row-container')) return;\n",
+        "replace": "            return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "inside the merge form a chip raises no leave-page prompt",
+    "expect": "fail"
+  }
+]
