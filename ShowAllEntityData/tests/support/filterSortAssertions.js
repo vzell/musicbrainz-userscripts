@@ -428,6 +428,27 @@ function escapeRegExp(s) {
 }
 
 /**
+ * @typedef {{ caseSensitive?: boolean, regExp?: boolean, exclude?: boolean }} StatusMods
+ */
+
+/**
+ * The "(case,rx,ex) " prefix the filter-status lines print in front of a
+ * quoted filter string, or '' when no mode is on — mirrors
+ * `_filterModsLabel()` (ShowAllEntityData.user.js), from the same
+ * `caseSensitive`/`regExp`/`exclude` fields the specs' filter cases use.
+ *
+ * @param {StatusMods} [mods]
+ * @returns {string}
+ */
+function statusModsLabel(mods = {}) {
+    const p = [];
+    if (mods.caseSensitive) p.push('case');
+    if (mods.regExp) p.push('rx');
+    if (mods.exclude) p.push('ex');
+    return p.length ? `(${p.join(',')}) ` : '';
+}
+
+/**
  * Builds the exact `RegExp` a single-table page's `#mb-filter-status-display`
  * success text must match for a given global/column-filter combination — see
  * `runFilter()`'s `filterParts`/`filterInfo` construction
@@ -442,29 +463,29 @@ function escapeRegExp(s) {
  * order, which does not necessarily match the order a test applied filters
  * in for a multi-column combo case.
  *
- * Asymmetric quirk this function deliberately encodes (confirmed live, not
- * a bug): `runFilter()`'s own `globalQuery` variable (used in the
- * `GLOBAL:"..."` part) is lowercased whenever the global filter is NOT
- * case-sensitive (`globalQuery = (isCaseSensitive || isRegExp) ?
- * globalQueryRaw : globalQueryRaw.toLowerCase()`, ShowAllEntityData.user.js)
- * — unlike a COLUMN filter's own status text, which always shows the raw
- * typed value regardless of case-sensitivity. Pass `globalCaseSensitive:
- * true` when the Cc checkbox was on for the global filter.
+ * Every part carries the modifiers in force (`_filterModsLabel()`), e.g.
+ * `GLOBAL:(case) "BoDeans"` or `'Format':(ex) "CD"`, and the global query is
+ * printed as typed. On a single-table page the global Cc/Rx/Ex also govern
+ * every column filter, so a caller passes the same box state as `globalMods`
+ * and as each column's `mods`. (Until the F7 fix in
+ * org/column-level-checkbox-filtering.org, column parts had no modifiers and
+ * the global query was printed lower-cased; this helper used to encode that
+ * as a `globalCaseSensitive` quirk.)
  *
- * @param {{ rowCount: number, global?: string, globalCaseSensitive?: boolean, columns?: Array<{column: string, value: string}> }} spec
+ * @param {{ rowCount: number, global?: string, globalMods?: StatusMods,
+ *           columns?: Array<{column: string, value: string, mods?: StatusMods}> }} spec
  * @returns {RegExp}
  */
-function buildFilterStatusRegex({ rowCount, global, globalCaseSensitive = false, columns = [] }) {
+function buildFilterStatusRegex({ rowCount, global, globalMods, columns = [] }) {
     const rowWord = rowCount === 1 ? 'row' : 'rows';
     const parts = [];
     if (global) {
-        const displayedGlobal = globalCaseSensitive ? global : global.toLowerCase();
-        parts.push(`GLOBAL:"${escapeRegExp(displayedGlobal)}"`);
+        parts.push(`GLOBAL:${escapeRegExp(statusModsLabel(globalMods))}"${escapeRegExp(global)}"`);
     }
     if (columns.length > 0) {
         const n = columns.length;
         const colDetail = columns
-            .map((c) => `'${escapeRegExp(c.column)}':"${escapeRegExp(c.value)}"`)
+            .map((c) => `'${escapeRegExp(c.column)}':${escapeRegExp(statusModsLabel(c.mods))}"${escapeRegExp(c.value)}"`)
             .join(', ');
         parts.push(`${n} COLUMN FILTER${n > 1 ? 'S' : ''} \\[${colDetail}\\]`);
     }

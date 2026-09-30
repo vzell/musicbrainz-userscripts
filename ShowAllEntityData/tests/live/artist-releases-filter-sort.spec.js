@@ -276,12 +276,21 @@ function assertHighlight(actualSpans, caseDef) {
  *     least one COLUMN filter is active — see `updateFilterButtonsVisibility()`
  *     (ShowAllEntityData.user.js).
  *
+ * `mods` is the global Cc/Rx/Ex state at assertion time — i.e. the modifiers
+ * of the LAST `applyColumnFilter()` call, since each call resets the three
+ * boxes. On this single-table page those boxes govern the global query and
+ * every column filter alike, so the status line prints them on each part.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ rowCount: number, totalCount?: number, global?: string, globalCaseSensitive?: boolean, columns?: Array<{column: string, value: string}> }} spec
+ * @param {{ rowCount: number, totalCount?: number, global?: string,
+ *           mods?: { caseSensitive?: boolean, regExp?: boolean, exclude?: boolean },
+ *           columns?: Array<{column: string, value: string}> }} spec
  */
-async function assertFilterUiState(page, { rowCount, totalCount = TOTAL_ROWS, global, globalCaseSensitive = false, columns = [] }) {
+async function assertFilterUiState(page, { rowCount, totalCount = TOTAL_ROWS, global, mods = {}, columns = [] }) {
     const statusText = await getFilterStatusText(page);
-    expect(statusText, 'filter-status text').toMatch(buildFilterStatusRegex({ rowCount, global, globalCaseSensitive, columns }));
+    expect(statusText, 'filter-status text').toMatch(buildFilterStatusRegex({
+        rowCount, global, globalMods: mods, columns: columns.map((c) => ({ ...c, mods })),
+    }));
 
     await assertRowCountTooltip(page, { filteredCount: rowCount, totalCount, global, columns });
 
@@ -343,6 +352,7 @@ test('§A per-column typed filter cases', { tag: '@extended' }, async ({ page })
 
             await assertFilterUiState(page, {
                 rowCount: caseDef.expected,
+                mods: caseDef,
                 columns: [{ column: caseDef.column, value: caseDef.value }],
             });
 
@@ -519,7 +529,10 @@ test('§B combo and global+column order-pair cases', { tag: '@extended' }, async
             const orderedColumns = [...combo.filters]
                 .sort((a, b) => COLUMN_INDEX[a.column] - COLUMN_INDEX[b.column])
                 .map((f) => ({ column: f.column, value: f.value }));
-            await assertFilterUiState(page, { rowCount: combo.expected, columns: orderedColumns });
+            // The boxes hold whatever the LAST applyColumnFilter() set.
+            await assertFilterUiState(page, {
+                rowCount: combo.expected, mods: combo.filters[combo.filters.length - 1], columns: orderedColumns,
+            });
 
             await clearAllFilters(page, combo.filters.map((f) => f.column));
             await assertFilterUiCleared(page);
@@ -610,6 +623,8 @@ test('§C sort-then-restore checkpoints preserve row count across every scenario
                 await assertFilterUiState(page, {
                     rowCount: cp.expectedCount,
                     global: cp.name === 'after order-pair result' ? ORDER_PAIR_CASE.globalValue : undefined,
+                    // The boxes hold whatever the LAST applyColumnFilter() set.
+                    mods: cp.filters[cp.filters.length - 1],
                     columns: cp.filters.map((f) => ({ column: f.column, value: f.value })),
                 });
             }

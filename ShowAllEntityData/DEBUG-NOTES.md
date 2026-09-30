@@ -16377,3 +16377,117 @@ mutation-checked via
 `scripts/mutations/release-tracks-third-party-youtube-lookup.json` (breaking
 the selector's suffix reproduces the exact reported bug). Broader
 `release-tracks-*` suite (39 tests) re-ran clean.
+
+## 2026-09-29 — Cc/Rx/Ex scoping: five inconsistencies between the filter levels (branch feature/filter-flag-scoping-fixes)
+
+From the analysis in `org/column-level-checkbox-filtering.org` (2026-09-28),
+which found eight findings F1–F8 with a throwaway Playwright probe. This branch
+fixes F3–F7 and deliberately leaves the scoping RULE alone: column filters
+still borrow the global boxes on a single-table page and the sub-table's 🔍
+boxes on a multi-table page (F1/F2 — giving column filters boxes of their own
+is the separate follow-up the org file proposes).
+
+**Root causes, one per finding.**
+
+- **F3** — a sub-table box's `change` called only `applySubFilter()`, which
+  re-applies the sub-table TEXT. `runFilter()` reads the same boxes for that
+  sub-table's column filters, but nothing re-ran it: a typed `^Tun` stayed
+  literal (0 rows) after ticking Rx until the next keystroke. The history
+  widget's `_applyEntry()` sets `.checked` programmatically (no `change` at
+  all) and had the same gap. Both now go through `applySubTableModes()`.
+- **F4** — the h3 `.mb-filter-status` span had two writers building the text
+  separately. Inside `createSubTableFilterContainer()` the local
+  `caseCheckbox` is the SUB-TABLE's box and shadows the global one, so
+  `applySubFilter()` printed `GLOBAL:(case) "e"` with the global Cc off, and it
+  never printed the global `ex`. `runFilter()` counted `group.rows.length` —
+  rows BEFORE the sub-table filter hid any, and 0 for a group a scoped sort
+  pass skipped. Last writer won. Both now call `_buildSubTableFilterStatus()`.
+- **F5** — `runFilter()`'s multi-table loop overwrote
+  `_activeFilterHighlightCtx.isRegExp/isCaseSensitive` with each sub-table's
+  flags, and `_artHighlightArtCell()` built its snapshot the same way; both are
+  what `_artHighlightImageLi()` compiles the GLOBAL query with. Global Rx
+  `Back|Nothing` kept the row but the image badge got no highlight.
+- **F6** — plain global matching used `getCleanVisibleText(row)`, the whole row
+  as one space-joined string, while the Rx branch tests one cell at a time.
+  `getCleanVisibleText()` gained a `cellSeparator` argument; `_cachedFullText()`
+  and the clone pass join cells with `_CELL_TEXT_SEP` (U+001F). The strip/clone
+  pass still runs once per row; text nodes inside a cell are still joined with
+  a space.
+- **F7** — `runFilter()` built `singleModeLabel` and never printed it (and an
+  equally dead `_smlSuffix`); no status line listed a column filter's
+  modifiers; the global query was printed lower-cased. `_describeColFilters()`
+  and `_filterModsLabel()` now build every column part and modifier prefix.
+
+**One resolver.** Three hand-rolled copies of "which boxes govern this table's
+column filters" disagreed about a table without a 🔍 panel (`runFilter()`: Rx
+and Ex false, Cc global; `_artHighlightArtCell()`: Rx and Cc global).
+`_resolveColFilterFlags()` replaces all three; its global fallback is the one
+the only reachable case (a single-table page) needs.
+
+**Tests.** `tests/fixtures/filter-flag-scoping.spec.js`, 15 tests on the
+releasegroup-releases shell, the BoDeans disk fixture and the network-free CAA
+arrangement of `global-filter-art-search.spec.js` (16 with the `status:` test
+added below). Run against 9.99.1173's userscript (swapped into the tree,
+hash-verified on restore): the 13 finding tests fail, the two `guard:` tests
+pass, as intended. On the branch: all pass.
+`scripts/mutations/filter-flag-scoping.json`: 18 planted defects (19 with the
+one added below), all but one fail as expected; 1 is recorded
+`expect: "pass"` — restoring the `_activeFilterHighlightCtx`
+overwrite alone is invisible, because `_artHighlightArtCell()` unwraps and
+re-applies from its own snapshot after every build.
+
+Two test-writing traps hit on the way, both worth knowing:
+
+- **A row-count poll proves nothing when the filter keeps every row.**
+  "Tougher Than the Rest" matches all 6 rows of sub-table 0, so
+  `expect.poll(rows).toBe(6)` passed before the pass had run and the highlight
+  count read 0. Wait for the status line to name the query instead.
+- **A test of the h3 status must control WHICH writer runs last.** Typing a
+  global query and then a sub-table query inside one debounce window let the
+  global `runFilter()` land after `applySubFilter()`; on 9.99.1173 that pass
+  printed the right global flags and the F4 test passed on unfixed code. Poll
+  the global status before touching the sub-table.
+
+And one fixture fact: MusicBrainz separates a label name from its
+disambiguation comment with a NO-BREAK SPACE, so `innerText.includes("CBS/Sony
+(imprint")` is false until `\s+` is folded — `normalizeExtractedText()` folds it,
+which is why the filter matches.
+
+**Live spec.** `buildFilterStatusRegex()` no longer encodes the lower-cased
+global query as a "quirk" and takes per-part modifiers;
+`tests/live/artist-releases-filter-sort.spec.js` passes the box state of the
+last `applyColumnFilter()` call, since on that single-table page the global
+boxes govern every column filter. Its first run on the branch found one more
+status-line defect, PRE-EXISTING and deterministic: §A's Barcode case read
+`'▌█Barcode':"[none]"`. Every status writer named a column by stripping a fixed
+glyph list from `th.textContent` — the very pattern the
+`filter-and-cache-invariants.md` "resolve it with `_cleanColHeaderText(th)`"
+section forbids — and the Barcode header's ▌█ toggle is not on the list.
+`_describeColFilters()` now uses `_cleanColHeaderText()`; the spec gained a
+`status:` test and the mutation list a matching entry (19 in all). The other
+§A3 failure, CAA "Booklet" 19 rows instead of 20, fails identically on
+9.99.1173's userscript: live CAA data drift, not this branch.
+
+**Full fixture suite** (`npm test`, 14 workers, NB-3641), three runs:
+
+| Run                              | Result                                            |
+|----------------------------------|---------------------------------------------------|
+| 1                                | 703 passed, 1 failed — `rel-column-fetch-failure.spec.js:210` |
+| 2                                | 704 passed                                        |
+| 3 (after the `_cleanColHeaderText()` change) | 704 passed, 1 failed — `rel-column-fetch-failure.spec.js:109` |
+
+Both victims are named members of the load-flaky family tracked here since
+2026-09-18, and :210 is the one that types a PLAIN global query — the path F6
+changed — so it was not waved through on its name. A/B in isolation, the
+branch's userscript against 9.99.1173's swapped into the tree: :210 alone 6/6
+on each arm; the whole spec `--repeat-each=3`, twice per arm, 6/6 every time.
+It fails only under full-suite load, on a different test each time, and the
+same shape was recorded on `main` and on `help-github-md` before this branch
+existed.
+
+**Performance** (F6 is on the plain global filter's hot path): one `main` /
+branch pair of `capture-interaction-perf.js --pageType=artist-events` on
+NB-3641, back to back — `globalFilter` 1876 → 1914 ms (1.02x), while metrics
+the branch does not touch moved up to 1.10x between the same two arms. No
+measurable cost; details and the full table in `tests/MEASUREMENTS.org`,
+"2026-09-28 — per-cell plain global matching".

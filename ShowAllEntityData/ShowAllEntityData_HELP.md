@@ -141,7 +141,7 @@ Two controls act on one table, so they sit beside that table's heading, just
 before the global filter box:
 
 ```
-▼ Events (4174)   ↔️  👁️   🔍[ Global Filter… ]  ☐Aa ☐.* ☐!
+▼ Events (4174)   ↔️  👁️   🔍[ Global Filter… ]  ☐Cc ☐Rx ☐Ex
 ```
 
 - **↔️** fits every column to its content; click again to restore. It is tinted
@@ -164,15 +164,28 @@ Three independent levels, and they combine:
 | **Column**    | the filter row under each header | one column                  |
 | **Sub-table** | above each sub-table             | that sub-table only         |
 
-Every input supports plain text, **Aa** case-sensitive, **.*** regular
-expressions, and **!** exclude-matches (hide what matches instead of keeping
-it). Highlighting works across inline markup, so a phrase split by a link or a
-`<bdi>` still matches and still highlights.
+Every input takes plain text. The global box and every sub-table box also have
+three switches: **Cc** case-sensitive, **Rx** regular expression, and **Ex**
+exclude matches (hide what matches instead of keeping it). A plain query is
+matched inside one cell at a time, exactly like a regular expression, so it
+never matches the end of one cell plus the start of the next. Highlighting
+works across inline markup, so a phrase split by a link or a `<bdi>` still
+matches and still highlights.
 
-A status line under each heading reports what is active and what survived:
+**Column filters have no switches of their own.** They follow:
+
+- on a single-table page, the **global** switches — ticking the global **Ex**
+  also inverts every column filter;
+- on a multi-table page, **that sub-table's** switches in its 🔍 panel — and
+  they keep applying while the panel is closed. The global switches affect the
+  global box only.
+
+A status line reports what is active and what survived, with the switches
+that apply to each part in brackets:
 
 ```
-✓ Filtered 55 rows [GLOBAL:"bruce", SUB-TABLE:"vinyl"]
+✓ Filtered 55 rows [GLOBAL:"Bruce", SUB-TABLE:"vinyl"]
+✓ Filtered 52 rows in 70ms [1 COLUMN FILTER ['Release':(ex) "live"]]
 ✓ Sorted by: "Year"▲ (133 rows)
 ```
 
@@ -180,7 +193,7 @@ A status line under each heading reports what is active and what survived:
 <summary>Filter field states, focus indicators and history</summary>
 
 **Three visual states per input** — idle (empty), active (has text), and error
-(an invalid regular expression while **.*** is on, which also writes
+(an invalid regular expression while **Rx** is on, which also writes
 `⚠ Invalid regexp: …` into the status area). All three border colours are
 configurable, separately for global and sub-table fields.
 
