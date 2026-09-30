@@ -13,8 +13,9 @@
 //     the global boxes govern the global query only.
 //   - single-table: no 🔍 panel, so the global boxes govern the global query
 //     AND every column filter.
-// That rule is unchanged here. What these tests pin is that the code applies
-// it consistently and SAYS so:
+// That rule is what `sa_enable_column_filter_modes: false` keeps (every page
+// here seeds it off; see LEGACY). What these tests pin is that the code
+// applies it consistently and SAYS so:
 //   F3  ticking a sub-table box re-runs the column filters it governs;
 //   F4  both writers of a sub-table's status line agree (global flags, count);
 //   F5  cover-art image rows highlight the global query with the GLOBAL flags;
@@ -47,6 +48,14 @@ const AR = {
 
 /** How long a filter pass may take to land: the debounce plus a render. */
 const SETTLE = { timeout: 10000 };
+
+/**
+ * Every page here runs with column modes OFF: this spec pins the BORROWING
+ * rule (column filters follow the global / sub-table boxes), which is what
+ * `sa_enable_column_filter_modes: false` keeps. The per-column switches that
+ * replace it by default are column-filter-modes.spec.js's subject.
+ */
+const LEGACY = { sa_enable_column_filter_modes: false };
 
 /**
  * Rows shown in one `table.tbl`. runFilter() removes rows, the sub-table
@@ -134,7 +143,7 @@ const subTableInput = (page, i) =>
 async function openReleaseGroup(page) {
     await loadUserscriptPage(page, {
         url: RG.url, fixtureFile: RG.shell, testMode: true,
-        settingsOverride: { sa_enable_caa_pics: false, sa_enable_relationships_column: false },
+        settingsOverride: { ...LEGACY, sa_enable_caa_pics: false, sa_enable_relationships_column: false },
     });
     await page.route(RG.routeGlob, (route) => route.fulfill({ path: RG.shell, contentType: 'text/html' }));
     await page.click(RG.button);
@@ -302,7 +311,7 @@ test.describe('single-table: Cc/Rx/Ex scoping (artist-releases)', () => {
 
     test.beforeEach(async ({ page }) => {
         pageErrors = collectPageErrors(page);
-        await loadFromDiskFixture(page, { url: AR.url, fixturePath: AR.fixture, testMode: true });
+        await loadFromDiskFixture(page, { url: AR.url, fixturePath: AR.fixture, testMode: true, settingsOverride: LEGACY });
         await expect.poll(() => rowsIn(page, 0), { timeout: 30000 }).toBe(AR.total);
     });
 
@@ -389,7 +398,7 @@ function releaseMbids() {
 async function openWithArtwork(page, backMbid) {
     await loadUserscriptPage(page, {
         url: RG.url, fixtureFile: RG.shell, testMode: true,
-        settingsOverride: { sa_enable_caa_pics: true, sa_caa_pics_inline: true, sa_enable_relationships_column: false },
+        settingsOverride: { ...LEGACY, sa_enable_caa_pics: true, sa_caa_pics_inline: true, sa_enable_relationships_column: false },
     });
     await page.route(RG.routeGlob, (route) => route.fulfill({ path: RG.shell, contentType: 'text/html' }));
     await page.route('https://coverartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));

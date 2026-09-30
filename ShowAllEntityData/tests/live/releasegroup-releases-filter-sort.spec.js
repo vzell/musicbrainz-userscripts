@@ -40,11 +40,14 @@ const {
  *   1. Column filters are genuinely PER-SUB-TABLE — `runFilter()`'s
  *      multi-table branch calls `getColFilters()` once per group's own
  *      table. A column-filter locator must be scoped by table index.
- *   2. Cc/Rx/Ex modifiers for a COLUMN filter are governed by that
- *      column's own SUB-TABLE's STF checkboxes
- *      (`#mb-stf-{TableName}-{case,rx,ex}-checkbox`), NOT the global triad —
- *      confirmed via an explicit `runFilter()` code comment. The global
- *      triad (`#mb-global-filter-*-checkbox`) affects ONLY the global filter.
+ *   2. Cc/Rx/Ex modifiers for a COLUMN filter are that column's OWN
+ *      switches (`sa_enable_column_filter_modes`, on by default — chips in
+ *      the filter cell, or a compact mode button's pop-up; see
+ *      `setColumnModes()`). A sub-table's STF checkboxes
+ *      (`#mb-stf-{TableName}-{case,rx,ex}-checkbox`) govern its STF text
+ *      only, and the global triad (`#mb-global-filter-*-checkbox`) the
+ *      global filter only. (Before those switches existed, the STF
+ *      checkboxes governed the column filters too.)
  *   3. `window.__saTest.getUniqDropSections()` is NOT table-scoped — it
  *      resolves to the FIRST matching `<th>` page-wide (always "Official
  *      release", table index 0). "Promotion release" needs a table-scoped
@@ -151,7 +154,42 @@ async function setGlobalModifierCheckboxes(page, { caseSensitive, regExp, exclud
     if (exclude) await ex.check(); else if (await ex.isChecked()) await ex.uncheck();
 }
 
-/** Sets one sub-table's OWN Cc/Rx/Ex checkboxes — see architecture note 2. */
+/**
+ * Sets one column filter's OWN Cc / Rx / Ex switches in one sub-table — see
+ * architecture note 2. Drives the three chips, or for a column narrower than
+ * the compact threshold, its mode button's pop-up.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} tableIndex
+ * @param {string} columnName
+ * @param {{ caseSensitive?: boolean, regExp?: boolean, exclude?: boolean }} mods
+ */
+async function setColumnModes(page, tableIndex, columnName, { caseSensitive, regExp, exclude } = {}) {
+    const want = { cc: !!caseSensitive, rx: !!regExp, ex: !!exclude };
+    const input = colFilterInput(page, tableIndex, columnName);
+    const current = await input.evaluate((inp) => ({
+        cc: inp.dataset.mbModeCc === '1', rx: inp.dataset.mbModeRx === '1', ex: inp.dataset.mbModeEx === '1',
+    }));
+    if (Object.keys(want).every((m) => want[m] === current[m])) return;
+    const wrap = input.locator('xpath=..');
+    if (await wrap.locator('.mb-col-mode-chips').isVisible()) {
+        for (const [mode, on] of Object.entries(want)) {
+            if (current[mode] !== on) await wrap.locator(`.mb-col-mode-chip.mb-col-mode-${mode}`).click();
+        }
+        return;
+    }
+    await wrap.locator('.mb-col-mode-btn').click();
+    const pop = page.locator('#mb-col-mode-pop');
+    for (const [mode, on] of Object.entries(want)) {
+        await pop.locator(`input[data-mb-mode="${mode}"]`).setChecked(on);
+    }
+    await page.keyboard.press('Escape');
+}
+
+/**
+ * Sets one sub-table's OWN Cc/Rx/Ex checkboxes — which, with per-column
+ * switches on (the default), govern that sub-table's TEXT filter only.
+ */
 async function setSubTableModifierCheckboxes(page, groupLabel, { caseSensitive, regExp, exclude } = {}) {
     const pfx = `mb-stf-${groupLabel.replace(/ /g, '_')}`;
     const cc = page.locator(`#${pfx}-case-checkbox`);
@@ -264,8 +302,13 @@ async function waitForPageFilteredCount(page, expectedCount, { timeout = 30000 }
  * filtering (confirmed live via the fixture's own recording pass).
  */
 async function applyColumnFilter(page, tableIndex, groupLabel, caseDef, expectedCount = null) {
-    await setSubTableModifierCheckboxes(page, groupLabel, caseDef);
+    await setColumnModes(page, tableIndex, caseDef.column, caseDef);
     const input = colFilterInput(page, tableIndex, caseDef.column);
+    // The middle, as before: the compact threshold (160 px) guarantees it is
+    // the text area (column-filter-modes.spec.js asserts that). The left edge
+    // is NOT safe here — on a horizontally scrolled table Playwright scrolls
+    // the field in right under the sticky first column, which then takes the
+    // click.
     await input.click();
     await input.pressSequentially(caseDef.value);
     if (expectedCount !== null) await waitForGroupFilteredCount(page, groupLabel, expectedCount);
@@ -279,7 +322,7 @@ async function clearColumnFilter(page, tableIndex, groupLabel, columnName, expec
     await clearFilterInputEl(input);
     if (expectedCount !== null) await waitForGroupFilteredCount(page, groupLabel, expectedCount);
     else await page.waitForTimeout(2500);
-    await setSubTableModifierCheckboxes(page, groupLabel, {});
+    await setColumnModes(page, tableIndex, columnName, {});
 }
 
 async function applySubTableFilter(page, groupLabel, value, expectedCount = null, modifiers = {}) {

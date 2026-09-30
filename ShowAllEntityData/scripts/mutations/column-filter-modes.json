@@ -1,0 +1,210 @@
+[
+  {
+    "name": "getColFilters() ignores a column's own switches",
+    "why": "Every input is matched with the OWNER's flags again, as before sa_enable_column_filter_modes. The Release chip's Ex then changes nothing: 'live' stays at 4 rows instead of 52. Must fail.",
+    "edits": [
+      {
+        "find": "            const own = _colFilterModesOn() ? _readColFilterModes(inp) : null;",
+        "replace": "            const own = null;"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "a column's Ex inverts that column",
+    "expect": "fail"
+  },
+  {
+    "name": "_colFilterFlags() always answers with the owner's flags",
+    "why": "The status line and the 📊 banner read a column's flags through _colFilterFlags(). Answering with the owner's boxes drops the column's own (ex) from the status text and the banner from the panel. Must fail on the 📊 test (banner count 1 expected).",
+    "edits": [
+      {
+        "find": "        return _colFilterModesOn() ? _readColFilterModes(inp) : _resolveColFilterFlags(table);",
+        "replace": "        return _resolveColFilterFlags(table);"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "📊 selection follows",
+    "expect": "fail"
+  },
+  {
+    "name": "a chip click does not re-run the filter",
+    "why": "The chip toggles its state but no pass runs, so the table keeps showing the pre-toggle rows until the next keystroke — the F3 defect again, one level down. Must fail.",
+    "edits": [
+      {
+        "find": "                _rerunIfColFilterActive([inp]);\n                return;",
+        "replace": "                return;"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "a column's Ex inverts that column",
+    "expect": "fail"
+  },
+  {
+    "name": "the sub-table boxes re-run column filters although they no longer govern them",
+    "why": "Drops the !_colFilterModesOn() guard in applySubTableModes(), so ticking a sub-table box with a column filter typed runs a full runFilter() pass again. The result is the same — getColFilters() ignores the owner's flags per input — so only the wasted pass changes. KNOWN OVERLAP, recorded: no spec can see it.",
+    "edits": [
+      {
+        "find": "            const hasColFilter = !_colFilterModesOn() && !!table &&",
+        "replace": "            const hasColFilter = !!table &&"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "sub-table Rx no longer governs",
+    "expect": "pass"
+  },
+  {
+    "name": "the column ✕ keeps the switches",
+    "why": "Removes the reset from the ✕ handler. The Ex chip stays pressed and the next text typed is inverted. Must fail.",
+    "edits": [
+      {
+        "find": "                _resetColFilterModes(input);\n                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg",
+        "replace": "                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "the column ✕ clears its switches",
+    "expect": "fail"
+  },
+  {
+    "name": "a chip mousedown takes focus from the field",
+    "why": "Without the capture-phase preventDefault the button takes focus on mousedown and the next keystroke goes nowhere. Must fail on the caret test.",
+    "edits": [
+      {
+        "find": "            if (t.closest('.mb-col-mode-chip, .mb-col-mode-btn')) { e.preventDefault(); return; }",
+        "replace": "            if (t.closest('.mb-col-mode-chip, .mb-col-mode-btn')) { return; }"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "leaves the caret in the filter field",
+    "expect": "fail"
+  },
+  {
+    "name": "the container query never switches to the compact button",
+    "why": "A 0 px query never matches, so every cell shows chips whatever its width. Must fail: the page's narrow columns must show the button.",
+    "edits": [
+      {
+        "find": "        @container mb-col-filter (max-width: ${_colFilterModesCompactPx()}px) {",
+        "replace": "        @container mb-col-filter (max-width: 0px) {"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "at the default threshold",
+    "expect": "fail"
+  },
+  {
+    "name": "the default threshold goes back to 130 px",
+    "why": "The value first proposed. Between ~130 and ~155 px the chips cover the middle of the field, which the default-threshold test asserts cannot happen (elementFromPoint at the field's centre must be the field) and which also breaks its 'button iff width <= 160'. Must fail.",
+    "edits": [
+      {
+        "find": "            default: 160,\n            min: 0,\n            max: 2000,",
+        "replace": "            default: 130,\n            min: 0,\n            max: 2000,"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "at the default threshold",
+    "expect": "fail"
+  },
+  {
+    "name": "the filter cell is never made a query container",
+    "why": "Without .mb-col-modes the wrapper is no container, the @container rule has nothing to measure, and the compact button never shows even when forced (threshold 5000). Must fail.",
+    "edits": [
+      {
+        "find": "                wrapper.classList.add('mb-col-modes');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "the button opens the switches in a pop-up",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click on a global box sets nothing on the columns",
+    "why": "Removes the bulk-set from the global boxes' click listener. The Rx box ticks, the columns' Rx chips stay off. Must fail.",
+    "edits": [
+      {
+        "find": "            _bulkSetColFilterMode(document.querySelectorAll('table.tbl .mb-col-filter-input'), mode, cb.checked);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "Click on a global box also sets",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click on a sub-table box sets nothing on its columns",
+    "why": "Removes the bulk-set from the sub-table boxes' click listener. Must fail: sub-table 0's Ex chips must all be pressed.",
+    "edits": [
+      {
+        "find": "                _bulkSetColFilterMode(inputs, mode, cb.checked);\n                _rerunIfColFilterActive(inputs);",
+        "replace": "                _rerunIfColFilterActive(inputs);"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "Click on a sub-table box sets",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click on a sub-table box reaches the other sub-tables too",
+    "why": "Bulk-sets every column of the PAGE instead of this sub-table's. Must fail: sub-table 1 must stay untouched.",
+    "edits": [
+      {
+        "find": "                const inputs = table.querySelectorAll('.mb-col-filter-input');\n                _bulkSetColFilterMode(inputs, mode, cb.checked);",
+        "replace": "                const inputs = document.querySelectorAll('table.tbl .mb-col-filter-input');\n                _bulkSetColFilterMode(inputs, mode, cb.checked);"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "Click on a sub-table box sets",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 panel never shows the Ex banner",
+    "why": "Removes the banner. Must fail on the 📊 test (banner count 1 expected with the column's Ex on).",
+    "edits": [
+      {
+        "find": "        if (_uniqColInput && _colFilterFlags(_uniqColInput, table).isExclude) {",
+        "replace": "        if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "📊 selection follows",
+    "expect": "fail"
+  },
+  {
+    "name": "'Apply these modes to every column' applies to one column",
+    "why": "Copies the modes only onto the pop-up's own target. Must fail: every button in the table must read C·R.",
+    "edits": [
+      {
+        "find": "                Array.from(inputs).forEach(other => _COL_FILTER_MODES.forEach(m =>",
+        "replace": "                [_colModePopTarget].forEach(other => _COL_FILTER_MODES.forEach(m =>"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "Apply these modes to every column",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting cannot be switched off",
+    "why": "_colFilterModesOn() always answers true. With the setting off the chips still appear and the global Ex no longer inverts the column filter. Must fail.",
+    "edits": [
+      {
+        "find": "        return Lib.settings.sa_enable_column_filter_modes !== false;",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "off: no switches",
+    "expect": "fail"
+  },
+  {
+    "name": "a stale filter-row rebuild drops the switches",
+    "why": "addColumnFilterRow()'s rebuild restores values but no longer the data-mb-mode-* attributes. KNOWN UNCOVERED: the rebuild only runs when a column is added AFTER the first build (the Picard column, a second cleanupHeaders pass), which no fixture can trigger after a user has set a switch. Recorded rather than left unmentioned.",
+    "edits": [
+      {
+        "find": "                if (_modes) {\n                    Object.assign(inp.dataset, _modes);",
+        "replace": "                if (false) {\n                    Object.assign(inp.dataset, _modes);"
+      }
+    ],
+    "spec": "tests/fixtures/column-filter-modes.spec.js",
+    "grep": "a column's switch survives the re-render",
+    "expect": "pass"
+  }
+]

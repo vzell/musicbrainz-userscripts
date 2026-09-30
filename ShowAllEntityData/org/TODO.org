@@ -782,6 +782,11 @@ the same sections in the unique value drop-down menu as the "Length" column
 @debug/Length-RecordingLength-UVD-mismatch-2.html - raw "Recording length" column unique value drop-down
 #+end_example
 
+* DONE remove "Search YouTube"-button from the pageType 'release-tracks' - visible on NB-xxx
+
+remove "Search YouTube"-button from the pageType 'release-tracks'
+
+* DONE filter checkboxes per column
 
 * TODO What's left from the parking lot in AUDIT.org
 
@@ -898,10 +903,6 @@ The CDN one wants vendoring, the status-text one wants a decision about what tha
 
 
 
-* TODO remove "Search YouTube"-button from the pageType 'release-tracks' - visible on NB-xxx
-
-remove "Search YouTube"-button from the pageType 'release-tracks'
-
 * TODO add acoustid support
 
 #+begin_example
@@ -935,4 +936,3 @@ remove "Search YouTube"-button from the pageType 'release-tracks'
 #+end_example
 
 
-* TODO filter checkboxes per column

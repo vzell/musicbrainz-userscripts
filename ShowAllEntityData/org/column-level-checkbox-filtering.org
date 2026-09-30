@@ -123,3 +123,89 @@ and the documented 📊-then-type vs type-then-📊 asymmetry.
   the F6 per-cell global match is the one hot-path change and needs an A/B before merging.
 - No userscript code changed. Implementation would go on a feature branch with
   =ShowAllEntityData_CHANGELOG.wip.json=.
+
+* DONE summary
+
+The report and clickable mockups are published here: ⧉ https://claude.ai/artifact/1h2eXK6h1Aq5V1yFQ5ujjr (private until
+you share it). I also added the results to org/column-level-checkbox-filtering.org as a * DONE Analysis results
+(2026-09-28) section, and marked the task DONE. I didn't change any userscript code and didn't commit anything.
+
+The main answer. The three levels (global, sub-table, column) always combine with AND. The rows you get don't depend on
+which level you type first: I checked column→sub-table→global against global→sub-table→column on releasegroup-releases
+and got the same single row both ways. The inconsistency is which boxes control a column filter, because columns have no
+boxes of their own:
+- Single-table pages (artist-releases): the global Cc/Rx/Ex also change every column filter.
+- Multi-table pages (artist-relationships, releasegroup-releases): the sub-table boxes control the column filters instead. They sit in the 🔍 panel, which is closed by default. The global boxes don't reach column filters at all.
+
+Findings. I confirmed six of these by running a temporary Playwright test against the real script:
+- F1: On BoDeans releases, Release "live" gives 4 rows. Ticking global Ex with the global field empty gives 52, because the column filter gets inverted. "CDs that aren't live" can't be expressed.
+- F2: If you tick the 🔍 panel's Ex and then close the panel, the box stays ticked, invisibly, and keeps inverting that sub-table's column filters. "tunnel" went from 1 row to 5 of 6.
+- F3 (bug): Ticking a sub-table box doesn't re-run the column filters it controls. You need one more keystroke before it takes effect.
+- F4 (bug): The sub-table status line shows the sub-table's Cc as if it were the global Cc: GLOBAL:(case) "e" while global Cc is off.
+- F6: A plain global query can match across two cells. "Rest Bruce" matched 6 rows with nothing highlighted; with Rx ticked, the same text matches 0.
+- F7: The status lines never say that Rx, Ex or Cc is on.
+
+Two more come from reading the code, not from a test run:
+- F5: On multi-table pages, the highlight in cover-art image rows uses the sub-table's Rx/Cc for the global query.
+- F8: A 📊 selection inherits Ex, so ticking "guitar and harmonica (8)" with Ex on shows the other 92 rows.
+
+Proposal.
+- One rule: each query owns its own three boxes, and the levels still combine with AND. A narrower filter adds its own condition and never switches off a wider one.
+- Setting: it would be sa_enable_column_filter_modes, default on. Turned off, column filters work as they do today, and F3–F7 get fixed either way.
+- Ctrl+Click: Ctrl+Click on a global or sub-table box would also set that mode on every column filter in its scope.
+
+Mockups. They use real rows from your two snapshots and the script's own colours. You can switch between single- and multi-table, between the three variants, and between today's rules and the proposed ones, and the page compares the resulting rows live.
+- A (my recommendation): Cc/Rx/Ex chips inside each column filter, faint until you hover over it.
+- B: one small mode button per column that opens a popover. It's a good fallback for narrow columns like DD, MM or Tracks.
+- C: an extra row of checkboxes under the filter row. I'd reject it: it costs one header row per table, 24 on your artist-relationships page.
+
+Performance. Nothing new runs per row. The one hot-path change is fixing F6, which means checking the global query cell by cell, and it needs a before/after timing comparison before merging.
+
+The temporary test script is in the session scratchpad, not the repo. It's a starting point for regression tests covering F1–F4, F6 and F7.
+
+Should I start implementing on a feature branch? One choice is yours: whether F3–F7 go in as their own fixes first, or together with the column checkboxes.
+
+* DONE summary 2
+
+The per-column Cc/Rx/Ex switches are built and tested on feature/column-filter-modes, branched off the F3–F7 branch. Nothing is committed yet.
+
+How it behaves
+- Chips: each column filter field has three small Cc / Rx / Ex chips next to its ✕. Idle chips stay faint until you hover or focus the field; a switched-on chip stays visible, and Ex also adds a red stripe down the field's left edge.
+- Narrow columns: they show one small mode button instead (Aa, or initials such as R·E). It opens the same three
+  switches in a pop-up, plus "Apply these modes to every column in this table". The choice between chips and button
+  follows the column's width live, including auto-resize and dragging a column edge.
+- Each level owns its switches: the global ones apply to the global filter only, a sub-table's to its sub-table filter only, and a column's to that column's text and its 📊 selection. So "CDs, but no live albums" now works as CD in Format plus live with Ex in Release.
+- Ctrl+Click (Cmd+Click) on a global or sub-table switch also sets it on every column filter it covers.
+- Clearing a column (its ✕, Escape, or any clear button) switches its modes off. Clicking a chip leaves the cursor in the field.
+- 📊 panel: when the column's Ex is on, a banner says that ticked values are hidden.
+- Settings: column switches on/off (on by default; off gives exactly the old behaviour), and the width below which the compact button is used.
+
+One change from what we agreed: the width threshold defaults to 160 px, not 130. Below about 155 px the chips cover the
+middle of the field, so an ordinary click in the field would toggle a switch instead. The first test run hit exactly
+that on the Format column. A test now checks, for every field showing chips, that its middle is the field itself.
+
+Testing
+- New spec: tests/fixtures/column-filter-modes.spec.js, 18 tests, all pass. Against the F3–F7 branch's userscript, 15
+  fail. The other 3 are the setting-off test, a check that the switches never change a column's width, and the
+  threshold-0 test, which I tightened after it passed trivially there.
+- Mutation list: 16 planted defects, all behave as recorded. Two are documented as undetectable: a now-redundant filter pass, and restoring modes when the filter row is rebuilt, which no fixture can trigger.
+- Old rule: the filter-flag-scoping spec now runs with the setting off and still passes 16/16.
+- Full fixture suite: 723 tests. The only failures were two timeouts while loading the page, which happens before the userscript is injected, and one test already recorded as intermittent. All three pass on their own.
+- Slow specs: 14 of 14 pass.
+- Live specs:
+  - releasegroup-releases-filter-sort passes 6/6.
+  - artist-releases-filter-sort passes except one cover-art count (19 instead of 20), which fails identically on main: live data has changed.
+  - Both had set column modifiers through the global or sub-table boxes. I rewrote their helpers to use the column's own chips, or its pop-up when the column is narrow.
+
+Performance: no measurable cost. One comparison against the F3–F7 branch on the single-table events page and two on the
+multi-table release-groups page. One metric looked 17% slower in the first run and came out at 0.99x in the repeat; the
+numbers are in tests/MEASUREMENTS.org.
+
+Also changed: HELP, the WIP changelog (entry WIP.2), docs/claude/filter-and-cache-invariants.md, the DOM table in CLAUDE.md, a DEBUG-NOTES.md entry, and the regenerated config-defaults file.
+
+Still open:
+- The config audit only accepts the two new settings once they are committed. So committing means two commits: this work, then a small follow-up with the regenerated scripts/config-default-history.json.
+- There are no keyboard shortcuts for the column switches yet. That would be a follow-up.
+
+Should I commit? Once you're back at a browser, check a narrow column's pop-up, then Ctrl+Click on the global Rx.
+

@@ -309,18 +309,44 @@ literal passes while both sides drift together.
 
 ## Which Cc / Rx / Ex boxes govern which query
 
-Column filters have no boxes of their own. They borrow a wider level's, and
-**`_resolveColFilterFlags(table)` is the one place that decides which**:
+**With `sa_enable_column_filter_modes` on (the default), every level owns its
+switches**: the global boxes govern the global query only, a sub-table's 🔍
+boxes its text only, and each column's own chips (or its compact button's
+pop-up) that column's typed text and 📊 selection. **`_colFilterFlags(inp,
+table)` is the one place that decides a column filter's flags**; it reads the
+input's `data-mb-mode-{cc,rx,ex}` attributes (`_readColFilterModes()`), which
+survive a `cloneNode(true)` of the header where JS properties would not. Pinned
+by `tests/fixtures/column-filter-modes.spec.js` and
+`scripts/mutations/column-filter-modes.json`.
 
-| Page         | Global boxes govern | A sub-table's 🔍 boxes govern                             |
-|--------------|---------------------|-----------------------------------------------------------|
-| single-table | global query AND every column filter | — (no panel)                           |
-| multi-table  | global query only   | that sub-table's text AND every column filter in it — also while the panel is CLOSED |
+- `getColFilters()`'s three flag arguments are the OWNER's and are ignored per
+  input while modes are on — do not "fix" a caller to pass column flags.
+- Every clear path resets a column's modes (`_resetColFilterModes()`): the ✕,
+  Escape, `clearAllFilters()`, the clear buttons, a new fetch. Backspacing a
+  field empty does not — the switches are the field's, not its text's.
+- The chips/button switch is a CSS container query on
+  `.mb-col-filter-wrapper.mb-col-modes`, threshold
+  `sa_column_filter_modes_compact_width` (160). Below ~155 px the chips cover
+  the field's middle, so the obvious click would toggle a switch; the spec
+  asserts `elementFromPoint(middle) === input` for every cell showing chips. A
+  layout guard asserts that the container class changes no column's width.
+- Chips and the button are handled by ONE delegated listener
+  (`_ensureColFilterModeDelegate()`), and a capture-phase `mousedown`
+  `preventDefault()` keeps the caret in the field.
+
+**With the setting off**, column filters have no boxes of their own. They
+borrow a wider level's, and **`_resolveColFilterFlags(table)` is the one place
+that decides which**:
+
+| Page         | Global boxes govern                  | A sub-table's 🔍 boxes govern                                                        |
+|--------------|--------------------------------------|--------------------------------------------------------------------------------------|
+| single-table | global query AND every column filter | — (no panel)                                                                         |
+| multi-table  | global query only                    | that sub-table's text AND every column filter in it — also while the panel is CLOSED |
 
 📊 selections follow the same owner's Cc and Ex (never Rx). Four rules keep this
 consistent, each written after it had been broken (findings F3–F7 of
 `org/column-level-checkbox-filtering.org`, pinned by
-`tests/fixtures/filter-flag-scoping.spec.js` and
+`tests/fixtures/filter-flag-scoping.spec.js` — which seeds the setting off — and
 `scripts/mutations/filter-flag-scoping.json`):
 
 - **Never hand-roll the lookup.** `runFilter()`, `_artHighlightArtCell()` and

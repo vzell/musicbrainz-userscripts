@@ -148,14 +148,14 @@ bundled - per the "one logical change per session" rule and the skill's own fail
 
 *** Suggestions at a glance
 
-| Rank | Section                                                   | PageType reach                 | Extractor (file:line)                | Value shape                        | Risk / effort                |
-|------+-----------------------------------------------------------+--------------------------------+--------------------------------------+------------------------------------+------------------------------|
-|    1 | Event info - Type/Date/Country/State/City                 | ~23 pageTypes                  | =eventParts= (js:5962)               | fixed 6-word vocab + open geo cats | Low risk, highest reach      |
-|    2 | Editor info + =editorActivity= facets                     | annotations                    | =editorActivity= (js:5478)           | duration, year, 2 ISO dates        | Medium - new subtopic shape  |
-|    3 | Reports-index Trend                                       | reports-index                  | =reportChangeIndicator= (js:5769)    | fixed 3-state (up/down/flat)       | Low, cheapest to build       |
-|    4 | INVALID - already shipped, see correction above           | -                               | =localeParts= (js:5373)              | boolean                            | N/A                          |
-|    5 | Instrument info - has cross-reference                     | instrument-list                | =Name_Comment_Description= (js:5704) | boolean                            | Low, narrow reach            |
-|    - | NOT recommended: Annotation chars bucketing, Video Yes/No | 1 pageType each                | n/a                                  | n/a                                | Low payoff vs. surface added |
+| Rank | Section                                                   | PageType reach  | Extractor (file:line)                | Value shape                        | Risk / effort                |
+|------+-----------------------------------------------------------+-----------------+--------------------------------------+------------------------------------+------------------------------|
+|    1 | Event info - Type/Date/Country/State/City                 | ~23 pageTypes   | =eventParts= (js:5962)               | fixed 6-word vocab + open geo cats | Low risk, highest reach      |
+|    2 | Editor info + =editorActivity= facets                     | annotations     | =editorActivity= (js:5478)           | duration, year, 2 ISO dates        | Medium - new subtopic shape  |
+|    3 | Reports-index Trend                                       | reports-index   | =reportChangeIndicator= (js:5769)    | fixed 3-state (up/down/flat)       | Low, cheapest to build       |
+|    4 | INVALID - already shipped, see correction above           | -               | =localeParts= (js:5373)              | boolean                            | N/A                          |
+|    5 | Instrument info - has cross-reference                     | instrument-list | =Name_Comment_Description= (js:5704) | boolean                            | Low, narrow reach            |
+|    - | NOT recommended: Annotation chars bucketing, Video Yes/No | 1 pageType each | n/a                                  | n/a                                | Low payoff vs. surface added |
 
 *** Implementation status (2026-09-28)
 
@@ -164,13 +164,13 @@ All four valid suggestions implemented, each on its own feature branch off =main
 spot-check (per this repo's git-workflow rule: a green fixture suite is not sufficient grounds
 to merge on its own).
 
-| # | Section(s)                                   | Branch                                     | Regression tests                                  |
-|---+-----------------------------------------------+---------------------------------------------+-----------------------------------------------------|
-| 1 | Event info - Type / Event info - Country       | =feature/uniq-dropdown-eventparts=          | =tests/fixtures/uniq-drop-event-parts-sections.spec.js= |
-| 2 | Editor info - Active for / - Active since; Active start/end date -> Date info family | =feature/uniq-dropdown-editor-activity= | =tests/fixtures/uniq-drop-editor-activity-sections.spec.js= |
-| 3 | Reports - Trend                                | =feature/uniq-dropdown-reports-trend=       | =tests/fixtures/uniq-drop-reports-trend.spec.js=    |
-| 4 | N/A - invalid, nothing implemented             | (none)                                       | N/A                                                 |
-| 5 | Instrument info - Cross-reference              | =feature/uniq-dropdown-instrument-crossref= | =tests/fixtures/uniq-drop-instrument-crossreference.spec.js= |
+| # | Section(s)                                                                           | Branch                                      | Regression tests                                             |
+|---+--------------------------------------------------------------------------------------+---------------------------------------------+--------------------------------------------------------------|
+| 1 | Event info - Type / Event info - Country                                             | =feature/uniq-dropdown-eventparts=          | =tests/fixtures/uniq-drop-event-parts-sections.spec.js=      |
+| 2 | Editor info - Active for / - Active since; Active start/end date -> Date info family | =feature/uniq-dropdown-editor-activity=     | =tests/fixtures/uniq-drop-editor-activity-sections.spec.js=  |
+| 3 | Reports - Trend                                                                      | =feature/uniq-dropdown-reports-trend=       | =tests/fixtures/uniq-drop-reports-trend.spec.js=             |
+| 4 | N/A - invalid, nothing implemented                                                   | (none)                                      | N/A                                                          |
+| 5 | Instrument info - Cross-reference                                                    | =feature/uniq-dropdown-instrument-crossref= | =tests/fixtures/uniq-drop-instrument-crossreference.spec.js= |
 
 Each branch is scoped to exactly its one suggestion (no version bump/changelog on the branch
 itself - recorded in that branch's own =ShowAllEntityData_CHANGELOG.wip.json= as =WIP.1=,
