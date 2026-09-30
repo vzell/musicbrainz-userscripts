@@ -209,3 +209,20 @@ Still open:
 
 Should I commit? Once you're back at a browser, check a narrow column's pop-up, then Ctrl+Click on the global Rx.
 
+* DONE Bugs
+** plan
+
+The introduction of the per-column Cc/Rx/Ex switches in the feature/column-filter-modes branch introduced the following
+bug for single-table pageTypes, for e.g. the URL https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/releases
+
+1.)
+
+When typing e.g. "von" in the "Release" column filter field and then clicking one of the per-column Cc/Rx/Ex switches,
+e.g. the "Cc" switch, the browser pops-up it's native "You are about to leave this page." dialog with "OK" and "Cancel",
+see [Image #2]
+
+When then pressing e.g. the "OK" button, the filtering ist still done, see [Image #3]
+
+2.)
+
+This does NOT happen for multi-table pageTypes when clicking one of the per-column Cc/Rx/Ex switches in a sub-table column.
