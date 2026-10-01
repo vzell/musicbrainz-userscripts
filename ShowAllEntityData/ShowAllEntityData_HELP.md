@@ -348,6 +348,41 @@ themselves:
     number), **📼 Format designation** (`EP`, `LP`, `CD` or `Single` in the
     title) and **🧐 Style issues** (titles cut off with `…`, OC ReMix titles,
     ALL-UPPERCASE titles).
+- **🎤 Live title info** — on the same columns as **Title info**, but only for
+  titles that link a **release** or a **release group**. They are checked
+  against MusicBrainz's
+  [live bootleg convention](https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs)
+  `YYYY-MM-DD[, early show]: Venue, City, State, Country`, for example
+  `2008‐12‐17, early show: Mellon Arena, Pittsburgh, PA, USA`. Titles that
+  don't start with a date are ignored, so a studio album or `1984 Revisited`
+  never counts. A trailing date part may be missing (`2008‐12`, `2008`), the
+  year may be missing in front (`12‐07`), and an unknown part may be written
+  `??`. Switch the sections off with "Unique-Values Dropdown: Live Title
+  Info" in ⚙️ Settings.
+  - **Validity** — `✅ follows the live title convention` and `❌ impossible
+    date` (month 13, day 42, 29 February in a non-leap year). On a release
+    group's status sub-tables the status is added, e.g. `✅ follows the live
+    title convention (Bootleg)`.
+  - **❗ Near miss** — titles that start with a date but aren't in the live
+    form: `05.02.1975: …`, `1975-2-5: …`, a missing `: ` after the date, or a
+    location without `, `. These are usually data-entry errors.
+  - **📅 Date completeness** — complete and incomplete dates, plus one entry
+    per date shape (`YYYY-MM-DD`, `YYYY-MM`, `YYYY`, `MM-DD`, `??` for an
+    unknown part).
+  - **🕗 Additional date info** — one flag plus one entry per text before the
+    colon (`early show`, `late show`, …).
+  - **Separator ‐ only / - only / mixed** — one section per way the date's
+    parts are separated: only the Unicode hyphen `‐` (U+2010, the form
+    MusicBrainz normalizes to), only a plain `-`, or both. Each section repeats
+    the counts for live titles, valid, impossible date, incomplete date and
+    additional date information. A year-only date has no separator, so it
+    appears in none of the three.
+
+  The title cells are marked too. **Light red with ❌** means an impossible
+  date or a near miss. **Light yellow with ⚠️** means a plain `-` anywhere in
+  the date. Red wins over yellow, and the cell's tooltip says what is wrong.
+  Each tint has its own switch in ⚙️ Settings: "Live Titles: Flag Invalid Dates
+  And Near Misses" and "Live Titles: Flag ASCII Date Separators".
 - **🌟 Rating info - Presence** — on every **Rating** column: `🌟 has a rating`
   and `☆ no rating`.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning

@@ -970,6 +970,34 @@
                          "Title columns only."
         },
 
+        sa_enable_uvd_live_titles: {
+            label: "Unique-Values Dropdown: Live Title Info",
+            type: "checkbox",
+            default: true,
+            description: "Offer the \"Live title info - …\" sections in the 📊 dropdown of the Title-info columns above: " +
+                         "release and release group titles checked against the live bootleg convention " +
+                         "\"YYYY-MM-DD[, early show]: Venue, City, State, Country\" " +
+                         "(https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs) — validity, " +
+                         "near misses, date completeness, additional date information and the date separator used."
+        },
+
+        sa_enable_live_title_error_flag: {
+            label: "Live Titles: Flag Invalid Dates And Near Misses",
+            type: "checkbox",
+            default: true,
+            description: "Tint a release/release group title cell light red with a ❌ when its live-title date is " +
+                         "impossible (month 13, day 42, 29 February in a non-leap year) or the title starts with a date " +
+                         "but does not follow \"DATE: Venue, City, …\"."
+        },
+
+        sa_enable_live_title_separator_flag: {
+            label: "Live Titles: Flag ASCII Date Separators",
+            type: "checkbox",
+            default: true,
+            description: "Tint a live title cell light yellow with a ⚠️ when its date uses a plain \"-\" between any " +
+                         "of its parts instead of the Unicode hyphen \"‐\" (U+2010) MusicBrainz normalizes titles to."
+        },
+
         sa_enable_length_deviation_section: {
             label: 'Enable "Length info - Deviation"/"Live status" dropdown sections',
             type: 'checkbox',
@@ -23959,6 +23987,309 @@
         return el ? _parseTitleAnatomy(el.textContent) : null;
     }
 
+    // Grammar of https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+    // (checked 2026-10-01): "YYYY-MM-DD[, additional info]: Venue, City,
+    // State/Province, Country", for bootleg releases AND release groups. The
+    // page says nothing about unknown date parts, so a part may be missing at
+    // the end ("2008-12", "2008") or written "??"/"????", and a year may be
+    // missing in front ("12-07", org/RG-R-live-UVD.org 1a). Each separator is
+    // either MusicBrainz's normalized U+2010 "‐" or a plain "-" (1b).
+    //   _LIVE_TITLE_RE groups: 1 year, 2 sep, 3 month, 4 sep, 5 day (year-led);
+    //   6 month, 7 sep, 8 day (year-less); 9 additional info; 10 location.
+    //   _LIVE_DATE_LED_RE: "starts like a date" — a year followed by a second
+    //   part over ANY separator (also "–", ".", "/", one digit), or a
+    //   day-month pair followed by another separator ("05.02.1975",
+    //   "12-07:"). A title that matches this but not _LIVE_TITLE_RE is a near
+    //   miss. A bare year never triggers it on its own, so "1984 Revisited"
+    //   and "2000: A Space Odyssey" are not live titles at all.
+    const _LIVE_DATE_SRC = '(?:(\\d{4}|\\?{4})(?:([‐-])(\\d{2}|\\?\\?)(?:([‐-])(\\d{2}|\\?\\?))?)?' +
+                           '|(\\d{2}|\\?\\?)([‐-])(\\d{2}|\\?\\?))';
+    const _LIVE_TITLE_RE    = new RegExp(`^${_LIVE_DATE_SRC}(?:, ([^:]+?))?: (.+)$`);
+    // A well-formed date with nothing glued to it — tells a near miss's
+    // "bad date" apart from its "bad rest".
+    const _LIVE_DATE_HEAD_RE = new RegExp(`^${_LIVE_DATE_SRC}(?![\\d‐\\-–./])`);
+    const _LIVE_DATE_LED_RE = /^(?:(?:\d{4}|\?{4})[‐\-–./]\s?(?:\d{1,2}|\?\?)|(?:\d{1,2}|\?\?)[‐\-–./](?:\d{1,2}|\?\?)[‐\-–./,:])/;
+
+    /**
+     * Number of days in `month` of `year`, for the live-title date check.
+     * An unknown year allows 29 February.
+     *
+     * @param {number} month - 1–12.
+     * @param {?number} year - `null` when unknown.
+     * @returns {number}
+     */
+    function _liveDaysInMonth(month, year) {
+        if (month === 2) {
+            if (year === null) return 29;
+            return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0 ? 29 : 28;
+        }
+        return [4, 6, 9, 11].includes(month) ? 30 : 31;
+    }
+
+    /**
+     * Checks a title against MusicBrainz's live bootleg naming convention for
+     * the 📊 "Live title info - …" sections and the live-title cell flags.
+     * Pure — no DOM — so counting, matching and flagging agree by
+     * construction.
+     *
+     * Three outcomes besides `null`:
+     *   - `valid`    — "DATE[, info]: Venue, City, …" with a possible date.
+     *   - `invalid`  — the same shape, but month or day out of range
+     *                  (`problems` says which).
+     *   - `nearmiss` — starts like a date (`_LIVE_DATE_LED_RE`) but is not in
+     *                  that shape: "05.02.1975: …", "1975-2-5: …",
+     *                  "1975-02-05 Venue", a location without ", ".
+     * A bare-year title whose location lacks ", " is `null`, not a near miss
+     * ("1984: The Musical" is a title, not a live date).
+     *
+     * @param {?string} text - The displayed title.
+     * @returns {?{kind: ('valid'|'invalid'|'nearmiss'), shape: ?string,
+     *   complete: boolean, sep: ?('unicode'|'ascii'|'mixed'), extra: ?string,
+     *   problems: string[]}} `null` when the title is not date-led. `shape`
+     *   spells the date's parts, e.g. `YYYY-MM-DD`, `YYYY-MM`, `MM-DD`,
+     *   `YYYY-??-??`; it, `sep` and `extra` are `null` on a near miss.
+     */
+    function _parseLiveTitle(text) {
+        if (!text) return null;
+        const full = text.trim();
+        const c0 = full.charCodeAt(0);
+        if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
+        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, problems: [problem] });
+        const m = _LIVE_TITLE_RE.exec(full);
+        if (!m || !m[10].includes(', ')) {
+            if (!_LIVE_DATE_LED_RE.test(full)) return null;
+            if (!m) {
+                return nearMiss(_LIVE_DATE_HEAD_RE.test(full)
+                    ? 'no ": " between the date and the location'
+                    : 'date is not written YYYY-MM-DD');
+            }
+            return nearMiss('location is not "Venue, City, …"');
+        }
+        const yearRaw = m[1] || null;
+        const monthRaw = m[1] ? (m[3] || null) : m[6];
+        const dayRaw = m[1] ? (m[5] || null) : m[8];
+        const seps = (m[1] ? [m[2], m[4]] : [m[7]]).filter(Boolean);
+        const known = s => s !== null && !s.startsWith('?');
+        const year = known(yearRaw) ? parseInt(yearRaw, 10) : null;
+        const month = known(monthRaw) ? parseInt(monthRaw, 10) : null;
+        const problems = [];
+        if (month !== null && (month < 1 || month > 12)) problems.push(`month ${monthRaw}`);
+        if (known(dayRaw)) {
+            const day = parseInt(dayRaw, 10);
+            const max = month !== null && month >= 1 && month <= 12 ? _liveDaysInMonth(month, year) : 31;
+            if (day < 1 || day > max) problems.push(`day ${dayRaw}`);
+        }
+        const shape = [
+            yearRaw === null ? null : (known(yearRaw) ? 'YYYY' : '????'),
+            monthRaw === null ? null : (known(monthRaw) ? 'MM' : '??'),
+            dayRaw === null ? null : (known(dayRaw) ? 'DD' : '??'),
+        ].filter(Boolean).join('-');
+        return {
+            kind: problems.length ? 'invalid' : 'valid',
+            shape,
+            complete: shape === 'YYYY-MM-DD',
+            sep: !seps.length ? null : seps.every(s => s === '‐') ? 'unicode' : seps.every(s => s === '-') ? 'ascii' : 'mixed',
+            extra: m[9] ? m[9].trim() : null,
+            problems,
+        };
+    }
+
+    // Live-title checks read release and release group titles only — the
+    // two entities the live bootleg guideline covers.
+    const _LIVE_ENTITY_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/(?:release|release-group)\/[0-9a-f-]{36}(?:[/?#]|$)/;
+
+    /**
+     * Parses a title cell with `_parseLiveTitle()` when its title element
+     * (`_findCellTitleEl()`) links a release or a release group; `null` for
+     * anything else (recordings, works, tracks, artists).
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _findCellLiveTitle(cell) {
+        const el = _findCellTitleEl(cell);
+        if (!el) return null;
+        const a = el.closest('a[href]');
+        if (!a || !_LIVE_ENTITY_HREF_RE.test(a.getAttribute('href'))) return null;
+        return _parseLiveTitle(el.textContent);
+    }
+
+    // MusicBrainz's release statuses, as a sub-table heading names them
+    // (releasegroup-releases groups its releases by status).
+    const _RELEASE_STATUS_NAMES = new Set(['Official', 'Promotion', 'Bootleg', 'Pseudo-Release', 'Withdrawn', 'Expunged', 'Cancelled']);
+
+    /**
+     * The release status a multi-table sub-table stands for, read from its
+     * h3's sub-table name (`.mb-filter-status[data-table-name]`, the group's
+     * category). On releasegroup-releases that name is the status followed
+     * by " release" ("Bootleg release", checked in
+     * tests/fixtures/uvd-live-titles.spec.js), so a trailing " release(s)"
+     * is dropped before the lookup. `null` on single-table pages and on
+     * sub-tables grouped by anything else (types, years). Feeds the status
+     * suffix of the "Live title info - Validity" entries.
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {?string}
+     */
+    function _tableReleaseStatus(table) {
+        const h3 = findH3ForTable(table);
+        const status = h3 && h3.querySelector('.mb-filter-status[data-table-name]');
+        const name = status ? status.dataset.tableName.trim().replace(/\s+releases?$/i, '') : '';
+        return _RELEASE_STATUS_NAMES.has(name) ? name : null;
+    }
+
+    /**
+     * The cell flag a live-title verdict earns: `'error'` for an invalid date
+     * or a near miss, `'warn'` for a plain "-" anywhere between the date's
+     * parts, `null` otherwise. Error wins over warn. Each half honours its
+     * own setting.
+     *
+     * @param {?ReturnType<typeof _parseLiveTitle>} live
+     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     */
+    function _liveTitleFlag(live) {
+        if (!live) return null;
+        if ((live.kind === 'invalid' || live.kind === 'nearmiss') && Lib.settings.sa_enable_live_title_error_flag !== false) {
+            return {
+                kind: 'error',
+                tip: live.kind === 'invalid'
+                    ? `Live title date is impossible: ${live.problems.join(', ')}.`
+                    : `Starts with a date but is not a live title "YYYY-MM-DD: Venue, City, …": ${live.problems[0]}.`,
+            };
+        }
+        if ((live.sep === 'ascii' || live.sep === 'mixed') && Lib.settings.sa_enable_live_title_separator_flag !== false) {
+            return {
+                kind: 'warn',
+                tip: live.sep === 'ascii'
+                    ? 'Live title date uses a plain "-" between its parts instead of "‐" (U+2010).'
+                    : 'Live title date mixes a plain "-" and "‐" (U+2010) between its parts.',
+            };
+        }
+        return null;
+    }
+
+    // The three "Live title info - Separator …" sections and the facets each
+    // repeats (org/RG-R-live-UVD.org 2b), as `live-sep-<kind>-<facet>` modes.
+    const _LIVE_SEP_KINDS  = ['unicode', 'ascii', 'mixed'];
+    const _LIVE_SEP_FACETS = ['all', 'valid', 'invalid', 'partial', 'extra'];
+    const _LIVE_SEP_MODE_RE = /^live-sep-(unicode|ascii|mixed)-(all|valid|invalid|partial|extra)$/;
+
+    /**
+     * Whether a `_parseLiveTitle()` verdict matches one "Live title info"
+     * 📊 mode — the single definition the structure-mode matcher uses, kept
+     * in step with the counting loop in `openUniqDrop()` (same facets).
+     *
+     * @param {ReturnType<typeof _parseLiveTitle>} live - Non-null.
+     * @param {string} mode - `live-*`, `liveshape:<shape>` or `liveextra:<text>`.
+     * @returns {boolean}
+     */
+    function _liveTitleMatchesMode(live, mode) {
+        if (mode === 'live-nearmiss') return live.kind === 'nearmiss';
+        if (live.kind === 'nearmiss') return false;
+        if (mode.startsWith('liveshape:')) return live.shape === mode.slice(10);
+        if (mode.startsWith('liveextra:')) return live.extra === mode.slice(10);
+        const sm = _LIVE_SEP_MODE_RE.exec(mode);
+        if (sm) {
+            if (live.sep !== sm[1]) return false;
+            const facet = sm[2];
+            return facet === 'all' || (facet === 'partial' ? !live.complete : facet === 'extra' ? !!live.extra : live.kind === facet);
+        }
+        if (mode === 'live-valid')    return live.kind === 'valid';
+        if (mode === 'live-invalid')  return live.kind === 'invalid';
+        if (mode === 'live-complete') return live.complete;
+        if (mode === 'live-partial')  return !live.complete;
+        if (mode === 'live-extra')    return !!live.extra;
+        return false;
+    }
+
+    /**
+     * Indices of `table`'s "Title info" columns — every "Title" column plus
+     * `sa_uvd_title_info_columns`, the same gate `openUniqDrop()` uses — that
+     * the live-title cell flags read.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {number[]}
+     */
+    function _liveTitleColIdxs(table) {
+        const names = _uvdTitleInfoColumns();
+        const out = [];
+        const count = table.querySelectorAll('thead tr:first-child th').length;
+        for (let i = 0; i < count; i++) {
+            const name = _resolveColHeaderName(table, i);
+            if (name === 'Title' || names.has(name)) out.push(i);
+        }
+        return out;
+    }
+
+    /**
+     * Stamps (or clears) one row's live-title flag on each of `colIdxs`'
+     * cells: `data-mb-live-flag` drives the tint and glyph from CSS, `title`
+     * explains it, `data-mb-col-tip` marks the tooltip as this script's own.
+     * Clearing removes the tooltip only from a cell this function flagged,
+     * so a foreign `title` is never touched.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {number[]} colIdxs - From `_liveTitleColIdxs()`.
+     */
+    function _stampLiveTitleRow(row, colIdxs) {
+        colIdxs.forEach(i => {
+            const td = row.cells[i];
+            if (!td) return;
+            const flag = _liveTitleFlag(_findCellLiveTitle(td));
+            if (flag) {
+                td.dataset.mbLiveFlag = flag.kind;
+                td.title = flag.tip;
+                td.dataset.mbColTip = '1';
+            } else if (td.dataset.mbLiveFlag) {
+                delete td.dataset.mbLiveFlag;
+                td.removeAttribute('title');
+                delete td.dataset.mbColTip;
+            }
+        });
+    }
+
+    /**
+     * Marks every release/release group title that breaks the live bootleg
+     * convention (org/RG-R-live-UVD.org items 3/4): `error` for an impossible
+     * date or a near miss, `warn` for a plain "-" in the date — see
+     * `_liveTitleFlag()`.
+     *
+     * Runs ONCE per fetch or disk load, at the render tail, and never on a
+     * filter or sort re-render: the flag is an attribute, so `cloneNode(true)`
+     * carries it from the source rows into every later render for free. That
+     * is why it must reach the SOURCE rows, not just the live ones —
+     * `renderGroupedTable()` always renders clones, so in `tableMode: 'multi'`
+     * a stamp on a live row alone would vanish on the next keystroke. Each
+     * live row's master is resolved through `_buildMasterRowIndex()` (one
+     * map, not a scan per row), and its `owner` array reaches the group's
+     * rows the active filter left out of the live tbody. The attribute adds
+     * no cell text, so no filter or 📊 cache is affected.
+     */
+    function stampLiveTitleFlags() {
+        const master = _buildMasterRowIndex();
+        const done = new Set();
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const tbody = table.tBodies[0];
+            if (!tbody) return;
+            const colIdxs = _liveTitleColIdxs(table);
+            if (!colIdxs.length) return;
+            const owners = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                _stampLiveTitleRow(row, colIdxs);
+                const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
+                if (!m) return;
+                if (m.row !== row) _stampLiveTitleRow(m.row, colIdxs);
+                done.add(m.row);
+                owners.add(m.owner);
+            });
+            owners.forEach(owner => owner.forEach(r => {
+                if (done.has(r)) return;
+                _stampLiveTitleRow(r, colIdxs);
+                done.add(r);
+            }));
+        });
+    }
+
     /**
      * Index of the "Recording of work" column in `table`, or -1. Feeds the
      * "Title info - Work" section, which is offered only where that column
@@ -25947,6 +26278,12 @@
             // Fixed flags — "Rating info - Presence", from
             // _findCellRatingPresence().
             return !!cell && _findCellRatingPresence(cell) === mode.slice(7);
+        }
+        if (mode.startsWith('live-') || mode.startsWith('liveshape:') || mode.startsWith('liveextra:')) {
+            // "Live title info - …" — one _parseLiveTitle() verdict per
+            // release/release group title, see _liveTitleMatchesMode().
+            const live = _findCellLiveTitle(cell);
+            return !!live && _liveTitleMatchesMode(live, mode);
         }
         if (mode === 'title-no-work' || mode === 'title-has-work') {
             // Fixed flags — "Title info - Work": whether the SAME row's
@@ -39900,9 +40237,38 @@ a { color: #1565c0; }`;
            and the sticky Title cell's inline background. The cells that carry
            a warning flag keep their own tint — a flag is the more urgent
            message, and the rest of the row still shows the target. */
-        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]) {
+        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]) {
             background-color: #f2f2b2 !important;
         }
+        /* A release/release group title that breaks the live bootleg
+           convention (see stampLiveTitleFlags()): red + a cross for an
+           impossible date or a near miss, yellow + a warning sign for a plain
+           "-" between the date's parts. Same idiom and same reasons as
+           td[data-mb-work-flag] above: attribute only, a sticky Title cell's
+           inline position:sticky keeps winning, and the background needs
+           !important against the zebra rule and the sticky inline
+           background. */
+        td[data-mb-live-flag] {
+            position: relative;
+            padding-right: 1.6em;
+        }
+        td[data-mb-live-flag="error"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'} !important;
+        }
+        td[data-mb-live-flag="warn"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
+        }
+        td[data-mb-live-flag]::after {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8em;
+            line-height: 1;
+            pointer-events: none;
+        }
+        td[data-mb-live-flag="error"]::after { content: '❌'; }
+        td[data-mb-live-flag="warn"]::after  { content: '⚠️'; }
         td[data-mb-work-flag="none"]::after {
             content: '⚠️';
             position: absolute;
@@ -47033,6 +47399,22 @@ a { color: #1565c0; }`;
         titleSeries:   { label: 'Title info - Series numbering',         glyph: '🔂' },
         titleFormat:   { label: 'Title info - Format designation',       glyph: '📼' },
         titleStyle:    { label: 'Title info - Style issues',             glyph: '🧐' },
+        // "Live title info - …" — release and release group titles on the
+        // same columns, checked against the live bootleg convention
+        // "YYYY-MM-DD[, info]: Venue, City, …" by `_parseLiveTitle()`
+        // (`_findCellLiveTitle()` reads only release/release-group links).
+        // Behind `sa_enable_uvd_live_titles`. A status sub-table adds its
+        // status to the Validity entries (`_tableReleaseStatus()`). The three
+        // Separator sections repeat the facets per separator kind
+        // (org/RG-R-live-UVD.org 2b); their modes are filled into
+        // MB_UNIQ_MODE_TO_SECTION by a loop below it.
+        liveValidity:    { label: 'Live title info - Validity',              glyph: '🎤' },
+        liveNearMiss:    { label: 'Live title info - Near miss',             glyph: '❗' },
+        liveDate:        { label: 'Live title info - Date completeness',     glyph: '📅' },
+        liveExtra:       { label: 'Live title info - Additional date info',  glyph: '🕗' },
+        liveSepUnicode:  { label: 'Live title info - Separator ‐ only',      glyph: '‐' },
+        liveSepAscii:    { label: 'Live title info - Separator - only',      glyph: '⚠️' },
+        liveSepMixed:    { label: 'Live title info - Separator mixed',       glyph: '⚠️' },
         // "Rating info - Presence" — a "Rating" cell with or without a
         // rating (`_findCellRatingPresence()`).
         ratingPresence: { label: 'Rating info - Presence', glyph: '🌟' },
@@ -47259,6 +47641,8 @@ a { color: #1565c0; }`;
         'title-no-work': 'titleWork', 'title-has-work': 'titleWork',
         'title-eti': 'titleEti', 'title-subtitle': 'titleSubtitle', 'title-series': 'titleSeries',
         'title-truncated': 'titleStyle', 'title-ocremix': 'titleStyle', 'title-allcaps': 'titleStyle',
+        'live-valid': 'liveValidity', 'live-invalid': 'liveValidity', 'live-nearmiss': 'liveNearMiss',
+        'live-complete': 'liveDate', 'live-partial': 'liveDate', 'live-extra': 'liveExtra',
         'rating-has': 'ratingPresence', 'rating-none': 'ratingPresence',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
@@ -47269,6 +47653,10 @@ a { color: #1565c0; }`;
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
         'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
     };
+    // "Live title info - Separator …": 3 kinds × 5 facets, one section per kind.
+    _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet => {
+        MB_UNIQ_MODE_TO_SECTION[`live-sep-${sep}-${facet}`] = `liveSep${sep[0].toUpperCase()}${sep.slice(1)}`;
+    }));
 
     /**
      * Maps a `makeValueSynItem()` kind string to the `SYN_SECTION_META` key
@@ -47332,6 +47720,7 @@ a { color: #1565c0; }`;
         titleageadded: 'titleAgeAdded', titleagemodified: 'titleAgeModified',
         titlecount: 'titleCount', titlepart: 'titlePart', titleeti: 'titleEti',
         titleseries: 'titleSeries', titleformat: 'titleFormat',
+        liveshape: 'liveDate', liveextra: 'liveExtra',
     };
 
     /**
@@ -50492,7 +50881,8 @@ a { color: #1565c0; }`;
                     // 'partofseriesnumber:'/'trackspermedium:'/'trackstotal:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
                     // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark;
                     // likewise never 'lenflag-*'/'videomedium-*', whose match is an attribute the cell's own tint already shows,
-                    // nor 'rating-*' or a whole-title 'title-*' flag; only 'title-medley' and the 'titlepart:'/'titleeti:'/
+                    // nor 'rating-*', a 'live-*'/'liveshape:'/'liveextra:' live-title verdict (the data-mb-live-flag tint
+                    // marks those) or a whole-title 'title-*' flag; only 'title-medley' and the 'titlepart:'/'titleeti:'/
                     // 'titleseries:'/'titleformat:' values mark text — see _highlightTitleAnatomyMatch)/
                     // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
@@ -55823,6 +56213,9 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            // Live-title flags — once per fetch, onto the source rows too
+            // (see stampLiveTitleFlags()), so re-renders need no call.
+            stampLiveTitleFlags();
 
             // Re-align the filter row after Picard injection.
             // initPicardTaggerColumn appends a <th class="mb-picard-th"> to the first
@@ -62757,6 +63150,17 @@ a { color: #1565c0; }`;
             truncated: 0, ocRemix: 0, allCaps: 0, noWork: 0, hasWork: 0,
             count: new Map(), part: new Map(), etiValue: new Map(), seriesNum: new Map(), format: new Map(),
         };
+        // "Live title info - …" (release/release group titles on the same
+        // columns) — see _parseLiveTitle(). Counted unconditionally, like
+        // _ta; sa_enable_uvd_live_titles gates only the rendering. `sep`
+        // holds one facet counter per separator kind, for the three
+        // per-separator sections.
+        const _liveFacets = () => ({ all: 0, valid: 0, invalid: 0, partial: 0, extra: 0 });
+        const _tl = _uniqCacheHit ? _uniqCacheHit.liveTitleCounts : {
+            valid: 0, invalid: 0, nearMiss: 0, complete: 0, partial: 0, extra: 0,
+            shape: new Map(), extraValue: new Map(),
+            sep: { unicode: _liveFacets(), ascii: _liveFacets(), mixed: _liveFacets() },
+        };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
@@ -63153,6 +63557,23 @@ a { color: #1565c0; }`;
                     const _hasWork = _rowHasRecordingOfWork(row, _recOfWorkIdx);
                     if (_hasWork === true) _ta.hasWork++;
                     else if (_hasWork === false) _ta.noWork++;
+                    const _l = _findCellLiveTitle(cell);
+                    if (_l && _l.kind === 'nearmiss') {
+                        _tl.nearMiss++;
+                    } else if (_l) {
+                        const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+                        _tl[_l.kind]++;
+                        if (_l.complete) _tl.complete++; else _tl.partial++;
+                        _bump(_tl.shape, _l.shape);
+                        if (_l.extra) { _tl.extra++; _bump(_tl.extraValue, _l.extra); }
+                        if (_l.sep) {
+                            const _f = _tl.sep[_l.sep];
+                            _f.all++;
+                            _f[_l.kind]++;
+                            if (!_l.complete) _f.partial++;
+                            if (_l.extra) _f.extra++;
+                        }
+                    }
                 }
                 if (isRatingCol) {
                     const _rp = _findCellRatingPresence(cell);
@@ -64686,7 +65107,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, ratingHasCount, ratingNoneCount,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, ratingHasCount, ratingNoneCount,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -65147,7 +65568,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -65291,6 +65712,8 @@ a { color: #1565c0; }`;
                  : kind === 'titleeti'      ? '» ETI: '
                  : kind === 'titleseries'   ? '» number: '
                  : kind === 'titleformat'   ? '» format: '
+                 : kind === 'liveshape'     ? '» date: '
+                 : kind === 'liveextra'     ? '» info: '
                  : kind === 'lengthbucket'  ? '» duration: '
                  : kind === 'timeofday'     ? '» time of day: '
                  : kind === 'reltypecredit' ? '» '
@@ -65732,6 +66155,22 @@ a { color: #1565c0; }`;
             _pushSyn('title-truncated', '✂️ truncated ("…")', _ta.truncated);
             _pushSyn('title-ocremix', '🎮 OC ReMix title', _ta.ocRemix);
             _pushSyn('title-allcaps', '🔠 ALL UPPERCASE', _ta.allCaps);
+        }
+        if (Lib.settings.sa_enable_uvd_live_titles !== false) {
+            // A status sub-table (releasegroup-releases' Official/Bootleg/…)
+            // names its status on the validity entries; elsewhere no split.
+            const _liveStatus = isTitleInfoCol ? _tableReleaseStatus(table) : null;
+            const _sfx = _liveStatus ? ` (${_liveStatus})` : '';
+            _pushSyn('live-valid', `${_structureModeLabel('live-valid')}${_sfx}`, _tl.valid);
+            _pushSyn('live-invalid', `${_structureModeLabel('live-invalid')}${_sfx}`, _tl.invalid);
+            _pushSyn('live-nearmiss', _structureModeLabel('live-nearmiss'), _tl.nearMiss);
+            _pushSyn('live-complete', _structureModeLabel('live-complete'), _tl.complete);
+            _pushSyn('live-partial', _structureModeLabel('live-partial'), _tl.partial);
+            _pushVals('liveshape', _tl.shape, _byText(_tl.shape));
+            _pushSyn('live-extra', _structureModeLabel('live-extra'), _tl.extra);
+            _pushVals('liveextra', _tl.extraValue, _byText(_tl.extraValue));
+            _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet =>
+                _pushSyn(`live-sep-${sep}-${facet}`, _structureModeLabel(`live-sep-${sep}-${facet}`), _tl.sep[sep][facet])));
         }
         _pushSyn('rating-has', '🌟 has a rating', ratingHasCount);
         _pushSyn('rating-none', '☆ no rating', ratingNoneCount);
@@ -66706,8 +67145,23 @@ a { color: #1565c0; }`;
         if (mode === 'title-truncated') return '✂️ truncated ("…")';
         if (mode === 'title-ocremix')   return '🎮 OC ReMix title';
         if (mode === 'title-allcaps')   return '🔠 ALL UPPERCASE';
+        if (mode === 'live-valid')      return '✅ follows the live title convention';
+        if (mode === 'live-invalid')    return '❌ impossible date';
+        if (mode === 'live-nearmiss')   return '❗ starts with a date, not "DATE: Venue, City, …"';
+        if (mode === 'live-complete')   return '📅 complete date (YYYY-MM-DD)';
+        if (mode === 'live-partial')    return '◐ incomplete date';
+        if (mode === 'live-extra')      return '🕗 has additional date information';
+        {
+            const sm = _LIVE_SEP_MODE_RE.exec(mode);
+            if (sm) {
+                return { all: '∑ live titles', valid: '✅ valid', invalid: '❌ impossible date',
+                         partial: '◐ incomplete date', extra: '🕗 additional date information' }[sm[2]];
+            }
+        }
         if (mode === 'rating-has')      return '🌟 has a rating';
         if (mode === 'rating-none')     return '☆ no rating';
+        if (mode.startsWith('liveshape:'))   return `» date: ${mode.slice(10)}`;
+        if (mode.startsWith('liveextra:'))   return `» info: ${mode.slice(10)}`;
         if (mode.startsWith('titlecount:'))  return `» titles: ${mode.slice(11)}`;
         if (mode.startsWith('titlepart:'))   return `» title: ${mode.slice(10)}`;
         if (mode.startsWith('titleeti:'))    return `» ETI: ${mode.slice(9)}`;
@@ -66862,6 +67316,20 @@ a { color: #1565c0; }`;
         if (mode === 'title-truncated') return '✂️ = the title ends in "…" — MusicBrainz truncates titles longer than 1,024 characters this way.';
         if (mode === 'title-ocremix') return '🎮 = an OC ReMix title, in the style guide\'s \'Game "Title" OC ReMix\' form.';
         if (mode === 'title-allcaps') return '🔠 = the whole title is in capitals, which the style guide\'s capitalization rules disallow (unless it is the artist\'s intended styling).';
+        if (mode === 'live-valid') return '✅ = a release/release group title in the live bootleg form "YYYY-MM-DD[, early show]: Venue, City, State, Country" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs), with a possible date. Trailing date parts may be missing or "??".';
+        if (mode === 'live-invalid') return '❌ = a live title whose date cannot exist: month outside 01–12, or a day the month does not have (29 February only in a leap year). The cell is tinted red.';
+        if (mode === 'live-nearmiss') return '❗ = the title starts with a date but is not in the live form: wrong date notation ("05.02.1975", "1975-2-5"), no ": " after the date, or a location without ", ". Usually a data-entry error; the cell is tinted red.';
+        if (mode === 'live-complete') return '📅 = the live title\'s date has year, month and day.';
+        if (mode === 'live-partial') return '◐ = the live title\'s date lacks a part: "2008-12", "2008", "12-07" (year unknown) or a "??" part.';
+        if (mode === 'live-extra') return '🕗 = the live title carries additional date information before the colon, e.g. "2008-12-17, early show: …".';
+        if (_LIVE_SEP_MODE_RE.test(mode)) {
+            const sep = mode.split('-')[2];
+            return sep === 'unicode' ? 'Live titles whose date uses only the Unicode hyphen "‐" (U+2010) between its parts — MusicBrainz\'s normalized form.'
+                : sep === 'ascii' ? 'Live titles whose date uses only a plain "-" between its parts. The cell is tinted yellow.'
+                : 'Live titles whose date mixes "‐" (U+2010) and a plain "-". The cell is tinted yellow.';
+        }
+        if (mode.startsWith('liveshape:')) return 'One live-title date shape: YYYY = year, MM = month, DD = day, ?? = written as unknown.';
+        if (mode.startsWith('liveextra:')) return 'One additional-date-information text, e.g. "early show" or "late show".';
         if (mode === 'rating-has') return '🌟 = this row has a rating (an average rating, or your own).';
         if (mode === 'rating-none') return '☆ = this row has no rating yet.';
         if (mode.startsWith('titlecount:')) return 'How many " / "-separated titles a multi-title recording joins.';
@@ -79138,6 +79606,7 @@ a { color: #1565c0; }`;
             initIsrcFormatting();
             initIswcValidation();
             initBarcodeValidation();
+            stampLiveTitleFlags();
 
             // Re-align the filter row after Picard injection (stale-detection no-op
             // when counts already match; self-heals on mismatch — see addColumnFilterRow).
@@ -90874,6 +91343,17 @@ a { color: #1565c0; }`;
              */
             mediumFormatVideoCapable() {
                 return Array.from(MEDIUM_FORMAT_VIDEO_CAPABLE, ([id, v]) => [id, { name: v.name, video: v.video }]);
+            },
+            /**
+             * Runs the shipping `_parseLiveTitle()` on one title string, so a
+             * spec can pin the live-title grammar's edge cases without a row
+             * per case in a fixture.
+             *
+             * @param {string} text
+             * @returns {?Object} `_parseLiveTitle()`'s own result.
+             */
+            parseLiveTitle(text) {
+                return _parseLiveTitle(text);
             },
             /**
              * Opens (or reads the current state of, if already open) the 📊

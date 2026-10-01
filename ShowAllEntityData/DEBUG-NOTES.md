@@ -16826,3 +16826,39 @@ and 8px vertically. Fixed with `box-sizing: border-box` on
 **Mutation check:** `scripts/mutations/uniq-drop-resize.json`, 4 of 4 caught
 (swallower removed, per-open reset removed, border-box removed, key dropped
 from the workspace allowlist).
+
+## 2026-10-01 — 📊 "Live title info - …" sections and live-title cell flags (branch feature/uvd-live-titles)
+
+**Request:** `org/RG-R-live-UVD.org`. Check release and release group titles
+against https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+("YYYY-MM-DD[, info]: Venue, City, State, Country"; fetched 2026-10-01; it
+says nothing about unknown date parts): partial dates, the "‐" (U+2010) vs
+"-" separator, impossible dates, additional date info, near misses. Show
+counts in the 📊 panel, tint impossible/near-miss cells red, and tint "-"/mixed
+cells yellow. Decisions taken with the user: near misses get their own
+section; status split only from status sub-tables, no WS/2 lookups; same
+column gate as "Title info".
+
+**Design:** one pure parser, `_parseLiveTitle()`, feeds the count loop, the
+matcher (`_liveTitleMatchesMode()`) and the cell flag (`_liveTitleFlag()`).
+`stampLiveTitleFlags()` runs once at the fetch tail and the disk-load tail,
+never on a re-render. It stamps each live row and its master row
+(`_buildMasterRowIndex()`), and the master's `owner` array reaches the rows the
+filter left out. After that, `cloneNode(true)` carries the attribute.
+
+**Found by the spec, not by reading:** releasegroup-releases names its status
+sub-tables "Official release" / "Bootleg release", not the bare status, so the
+first `_tableReleaseStatus()` never matched. It now strips a trailing
+" release(s)". Also: `tests/snapshots/artist-releasegroups/raw.html` is page 1
+of 22, so serving it as a fixture repeats every row.
+`scripts/build-live-titles-fixture.py` strips the two pagination widgets into
+`tests/fixtures/artist-releasegroups-live-titles.html` (real markup, 11 "‐"
+live titles).
+
+**Mutation check:** `scripts/mutations/uvd-live-titles.json`, 8 of 8 caught.
+The mutations: master-row stamp dropped, warn outranking error, near misses
+not flagged, the section setting ignored, day check without month length, the
+release/RG link restriction dropped, the " release" strip removed, and a
+per-separator facet ignoring the separator. The error-vs-warn one needed a
+fixture row that is both impossible and written with "-" ("1975-13-05: …").
+Without that row the priority was untested.

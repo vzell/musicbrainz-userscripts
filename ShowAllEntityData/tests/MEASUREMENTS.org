@@ -2965,3 +2965,41 @@ parse disappears inside the run-to-run spread of a 5.3 s cold open (branch
 more entries in six "Title info" sections, i.e. rendering, not scanning.
 *Pre-existing and worth its own Step:* the cold open itself takes ~5.3 s on
 this column on =main= — every arm pays it, so it is not caused by this branch.
+
+* 2026-10-01 — live-title cell flags, main vs feature/uvd-live-titles, live (petri)
+
+*Probing*: the once-per-fetch =stampLiveTitleFlags()= pass, which sits inside
+the =sa-render-phase= measure. =capture-snapshots.js --perf= (5 samples,
+medians) for each arm in one session, with =main= run from a detached git
+worktree because the branch work was uncommitted. A direct timing came from a
+TEMPORARY =performance.measure('sa-live-stamp')= around the call (scratch
+script; userscript restored and hash-verified).
+
+*Trap, recorded so it is not repeated:* the first two rounds (UTC 20:22–20:33)
+showed render +80–100 ms (+15–19 %). That gap was the arms, not the code. The
+worktree had no =playwright/.auth/vzell.json=, so =main= ran with no storage
+state while the branch loaded one (session expired, other cookies still sent).
+With the file copied into the worktree the gap closed to what the direct
+timing predicts. *Any worktree arm needs the gitignored auth file copied in.*
+
+** =artist-releasegroups=, multi-table, 2143 rows (Bruce Springsteen =/artist/70248960-…?all=1&va=0=, "Title" column)
+
+| Arm (UTC)                                     | wall median ms | fetch median ms | render median ms |
+|-----------------------------------------------+----------------+-----------------+------------------|
+| =main=, same auth state (20:40–20:42)         |          27904 |         19372.0 |            602.9 |
+| branch, same auth state (20:42–20:45)         |          29508 |         19364.5 |            622.4 |
+
+| Direct =sa-live-stamp= timing, 5 samples (UTC ~20:36) | ms                           |
+|-------------------------------------------------------+------------------------------|
+| per sample                                            | 32.7, 22.4, 24.1, 22.8, 24.5 |
+| median                                                | 24.1                         |
+
+*Read as: render +19.5 ms (1.03x), once per fetch; filter and sort pay
+nothing.* That matches the 24 ms direct timing. Wall time is fetch-dominated
+and its difference is network noise (fetch medians agree to 0.04 %). On a
+multi-table page each row is parsed twice, once for the live clone and once
+for its master row. Parsing the master once and copying the attribute onto
+the live row would roughly halve the 24 ms. Not done, pending a decision.
+The 📊 open cost on Title-info columns (one extra regex per date-led title)
+was not measured. The comparable =_parseTitleAnatomy()= pass in the entry
+above stayed inside cold-open noise.

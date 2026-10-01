@@ -1,0 +1,106 @@
+[
+  {
+    "name": "the live-title flag is stamped on the live rows only, not on their master rows",
+    "why": "renderGroupedTable() always renders clones of groupedRows. A flag that never reached the master row is gone after the first filter or sort re-render on a multi-table page.",
+    "edits": [
+      {
+        "find": "                if (m.row !== row) _stampLiveTitleRow(m.row, colIdxs);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "survive a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "the separator warning outranks the error",
+    "why": "An impossible date written with a plain '-' must show red, not yellow: the error is the more urgent message.",
+    "edits": [
+      {
+        "find": "        if ((live.kind === 'invalid' || live.kind === 'nearmiss') && Lib.settings.sa_enable_live_title_error_flag !== false) {",
+        "replace": "        if ((live.kind === 'invalid' || live.kind === 'nearmiss') && live.sep !== 'ascii' && Lib.settings.sa_enable_live_title_error_flag !== false) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "cells: red for impossible dates",
+    "expect": "fail"
+  },
+  {
+    "name": "near misses are not flagged red",
+    "why": "A date-led title that is not 'DATE: Venue, City, …' is a data-entry error the cell tint must show.",
+    "edits": [
+      {
+        "find": "        if ((live.kind === 'invalid' || live.kind === 'nearmiss') && Lib.settings.sa_enable_live_title_error_flag !== false) {",
+        "replace": "        if (live.kind === 'invalid' && Lib.settings.sa_enable_live_title_error_flag !== false) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "cells: red for impossible dates",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_enable_uvd_live_titles no longer gates the sections",
+    "why": "The setting must drop every 'Live title info' section from the panel.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_enable_uvd_live_titles !== false) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "settings off",
+    "expect": "fail"
+  },
+  {
+    "name": "the day check ignores the month's length",
+    "why": "29 February 1999 and 31 April do not exist; a flat 1-31 range accepts them.",
+    "edits": [
+      {
+        "find": "            if (day < 1 || day > max) problems.push(`day ${dayRaw}`);",
+        "replace": "            if (day < 1 || day > 31) problems.push(`day ${dayRaw}`);"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "Bootleg sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the release/release group link restriction is dropped",
+    "why": "The live bootleg guideline covers releases and release groups only. A live-shaped title on a recording link must not count.",
+    "edits": [
+      {
+        "find": "        if (!a || !_LIVE_ENTITY_HREF_RE.test(a.getAttribute('href'))) return null;",
+        "replace": "        if (!a) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "Bootleg sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "the sub-table's ' release' suffix is not stripped",
+    "why": "releasegroup-releases names its status sub-tables 'Bootleg release', 'Official release'. Without the strip no status is ever recognized and the Validity entries lose their status.",
+    "edits": [
+      {
+        "find": "status.dataset.tableName.trim().replace(/\\s+releases?$/i, '')",
+        "replace": "status.dataset.tableName.trim()"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "Bootleg sub-table",
+    "expect": "fail"
+  },
+  {
+    "name": "a per-separator facet ignores the separator",
+    "why": "'Separator - only' > '✅ valid' must match only valid titles written with a plain '-', not every valid live title.",
+    "edits": [
+      {
+        "find": "            if (live.sep !== sm[1]) return false;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "per-separator facet",
+    "expect": "fail"
+  }
+]
