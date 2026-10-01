@@ -788,6 +788,46 @@ remove "Search YouTube"-button from the pageType 'release-tracks'
 
 * DONE filter checkboxes per column
 
+* DONE "Video" column (if present) should be background highlighted in light red+Flagged ❌
+
+1.)
+
+The title of the following action button on pageType 'artist-releases' e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
+
+#+begin_example
+<button type="button" title="Fetch all official artist releases from the MusicBrainz backend database (Ctrl+M, then 1)" data-mbtt="&lt;strong&gt;🧮 Artist releases&lt;/strong&gt;&lt;br&gt;Fetch all official artist releases from the MusicBrainz backend database&lt;div class=&quot;mb-mbtt-shortcut&quot;&gt;Ctrl+M, then 1&lt;/div&gt;" data-label="🧮 Artist releases" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(204, 255, 204); color: black;" class="">🧮¹ Artists</button>
+#+end_example
+
+should be "Artist" instead of "Artists"
+
+2.)
+
+On pageTypes 'release-tracks' e.g. https://musicbrainz.org/release/812b0aa0-0550-4235-9c3b-fa97f2572e74 the data cells
+in the "Video" column (if present) should be background highlighted in light red+Flagged ❌ (like "Length" column cells where the
+track length has a large deviation from the associated recording length - [Image #2]), when they show the glyph
+
+#+begin_example
+<span class="video" title="This recording is a video"></span>
+#+end_example
+
+also the associated medium, where that row is associated with, is actually not a video medium e.g. a CD or vinyl (parse it from the h3 header). - [Image #1]
+
+See also @debug/release-tracks-video-on-CD-bug.html - raw HTML from the final rendered URL above, a CD based medium with a couple of recordings of type video.
+
+3.)
+
+List of supported MusicBrainz medium formats: @debug/medium-formats.html
+
+Check the internet which formats actually could hold video formats, to correctly decide bullet point 2.) when to highlight a data cell
+
+4.)
+
+Also create a new section in the unique value drop-down menu of the "Video" column to show the number of wrongly choosen video recordings (skill: uniq-dropdown-section)
+
+5.)
+
+Also create a new section in the unique value drop-down menu of the "Length"/"Recording length" columns when their cell data are flagged with ❌
+
 * TODO What's left from the parking lot in AUDIT.org
 
 - that icon-mirror half
@@ -936,42 +976,3 @@ The CDN one wants vendoring, the status-text one wants a decision about what tha
 #+end_example
 
 
-* two bugs
-
-1.)
-
-The title of the following action button on pageType 'artist-releases' e.g. https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases
-
-#+begin_example
-<button type="button" title="Fetch all official artist releases from the MusicBrainz backend database (Ctrl+M, then 1)" data-mbtt="&lt;strong&gt;🧮 Artist releases&lt;/strong&gt;&lt;br&gt;Fetch all official artist releases from the MusicBrainz backend database&lt;div class=&quot;mb-mbtt-shortcut&quot;&gt;Ctrl+M, then 1&lt;/div&gt;" data-label="🧮 Artist releases" style="font-size: 0.8em; padding: 2px 8px; height: 24px; border-radius: 6px; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; background-color: rgb(204, 255, 204); color: black;" class="">🧮¹ Artists</button>
-#+end_example
-
-should be "Artist" instead of "Artists"
-
-2.)
-
-On pageTypes 'release-tracks' e.g. https://musicbrainz.org/release/812b0aa0-0550-4235-9c3b-fa97f2572e74 the data cells
-in the "Video" column (if present) should be background highlighted in light red+Flagged ❌ (like "Length" column cells where the
-track length has a large deviation from the associated recording length - [Image #2]), when they show the glyph
-
-#+begin_example
-<span class="video" title="This recording is a video"></span>
-#+end_example
-
-also the associated medium, where that row is associated with, is actually not a video medium e.g. a CD or vinyl (parse it from the h3 header). - [Image #1]
-
-See also @debug/release-tracks-video-on-CD-bug.html - raw HTML from the final rendered URL above, a CD based medium with a couple of recordings of type video.
-
-3.)
-
-List of supported MusicBrainz medium formats: @debug/medium-formats.html
-
-Check the internet which formats actually could hold video formats, to correctly decide bullet point 2.) when to highlight a data cell
-
-4.)
-
-Also create a new section in the unique value drop-down menu of the "Video" column to show the number of wrongly choosen video recordings (skill: uniq-dropdown-section)
-
-5.)
-
-Also create a new section in the unique value drop-down menu of the "Length"/"Recording length" columns when their cell data are flagged with ❌
