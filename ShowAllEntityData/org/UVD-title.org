@@ -1,4 +1,5 @@
 * TODO plan: UVD "Title" column needs new section
+** DONE i
 
 The UVD of the "Title" C on PT 'release-tracks' e.g. at
 https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d49521d0e (see @debug/release-tracks-UVD-final.html for the
@@ -58,3 +59,118 @@ Also add other UVD sections corresponding to the other sections in https://music
 6.)
 
 The "Rating" column needs a section which "has"/"has no" ratings see also @debug/release-tracks-UVD-ETI-final.html
+
+** DONE bug
+
+titles which have NO associated W in the "Recording of work" C should get the background warning highlightning+glyph
+like in [Image #6] for the "Length" C
+
+** DONE other non "Title" columns should get the same treatment
+
+1.)
+
+everything tested live in browser ==> OK, commit it on the branch then see the following bullet points
+
+2.)
+
+other non "Title" columns in other PTs (make it configurable too) should also get the same treatment what we currently
+implemented for the "Title" C, e.g.
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings - "Name" C
+https://musicbrainz.org/release-group/7f76b82a-912f-39ee-bf39-477f3cf2c062 - "Release" C
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works - "Work" C
+https://musicbrainz.org/work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2 - "Title" C
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases - "Release" C
+https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/releases - "Release" C
+etc.
+#+end_example
+
+Check if there are other potential candidates before starting implementation
+
+3.)
+
+I want the test-helper fix as its own change afterwards
+
+** TODO Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
+
+1.)
+
+Warn on ETI inside "()" (light yellow background highlighning+warning glyph) which starts with an uppercase letter like
+"(Version 1)" instead of "(version 1)" for specific keywords. Make the keywords end-user configurable, starting with
+
+#+begin_example
+version
+single
+soundtrack
+live
+rehearsal
+studio
+etc.
+#+end_example
+
+2.)
+
+On URL https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149, @debug/release-tracks-remix-ETI.html
+the "Moonitor remix" also qualifies as ETI in
+
+#+begin_example
+<bdi>Situations Like These (Moonitor remix)</bdi>
+#+end_example
+
+See also other examples of these guidelines (https://musicbrainz.org/doc/Style/Titles) in:
+
+#+begin_example
+Never Ending Story (power club vocal mix)
+The Age of Love (Watch Out for Stella club mix)
+#+end_example
+
+** TODO Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+
+Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the
+guidline specific event name format
+
+#+begin_example
+2008-12-07: Rose Garden, Portland, OR, USA ==> A standard live bootleg (in the US)
+1994-05-21: Barrowland, Glasgow, Scotland, UK ==> A standard live bootleg (in the UK)
+2002-05-02: Ahoy, Rotterdam, Netherlands ==> A live bootleg with bonus tracks
+2008-12-17, early show: Mellon Arena, Pittsburgh, PA, USA ==> A live bootleg with additional date information
+#+end_example
+
+The date expression could also be partial in the above examples, e.g
+
+#+begin_example
+2008-12 ==> yyyy-mm
+2008    ==> yyyy
+12-07   ==> mm-dd (year unknow)
+same for other unknown parts
+#+end_example
+
+
+** TODO Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+
+** TODO generalize the error/warning buttons to a drop-down menu in H1 probably
+
+** support 'release-tracks' PTs with the additional virtual path syntax where a specific track is already pre background highlighted
+
+support 'release-tracks' PTs with the additional virtual path syntax where a specific track is already pre background highlighted
+e.g. https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149/disc/1#dcee82bf-26f7-3e58-a1ed-f463a64ed647 for the URL format (userscript @include directive)
+and @debug/release-tracks-track.html for the raw HTML on the initial rendered page
+
+** TODO resize the UVD
+
+each UVD should be resizable (see @debug/resize-UVD.html) by adding a drag handle to the lower right corner
+
+1.)
+
+make sure that when dragging to the right (increasing its width) and releasing the mouse, the uvd is still open
+
+2.)
+
+dragging should be possible in horizontal and vertical direction and the width and height of the opened UVD should be
+remembered per PT and C in broser storage
+
+3.)
+
+additionally, when exporting/importing the settings, these values should also survive
+

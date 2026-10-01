@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1179+2026-10-01",
-    "schema_entries": 284,
+    "schema_entries": 290,
     "sections": 39,
-    "settings": 245,
-    "settings_with_default": 240,
+    "settings": 251,
+    "settings_with_default": 246,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,14 +15,14 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 96,
+      "checkbox": 101,
       "color_picker": 62,
       "divider": 39,
       "number": 39,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
+      "text": 6,
       "table": 5,
-      "text": 5,
       "function": 1
     }
   },
@@ -288,6 +288,7 @@
     "sa_enable_release_tracks_isrc_column": "Show \"ISRCs\" column",
     "sa_enable_release_tracks_length_mismatch_flag": "Flag tracks whose two lengths disagree",
     "sa_enable_release_tracks_live_date_check": "Flag live-recording credit dates that don't match \"Recording date\"",
+    "sa_enable_release_tracks_no_work_flag": "Flag tracks whose recording has no associated work",
     "sa_enable_release_tracks_recording_of_columns": "Show \"Recording of\" / \"Recorded at\" / \"Recorded in\" / \"Mixed at\" columns",
     "sa_enable_release_tracks_video_medium_flag": "Flag video recordings on a medium that cannot carry video",
     "sa_enable_release_tracks_work_ar_columns": "Add columns for the recorded WORK's own relationships",
@@ -298,6 +299,10 @@
     "sa_enable_sticky_headers": "Enable Sticky Headers",
     "sa_enable_tooltip_debug": "Enable tooltip debug logging",
     "sa_enable_uniq_drop_context_debug": "Enable unique-values dropdown debug logging",
+    "sa_enable_uvd_title_format": "Unique-Values Dropdown: Title Format Designations",
+    "sa_enable_uvd_title_series": "Unique-Values Dropdown: Title Series Numbering",
+    "sa_enable_uvd_title_style_issues": "Unique-Values Dropdown: Title Style Issues",
+    "sa_enable_uvd_title_subtitle": "Unique-Values Dropdown: Title Subtitles",
     "sa_export_convert_multirow_glyphs": "Convert multi-row collapse glyphs on export",
     "sa_export_include_sort_state": "Include sort-state glyph in exported column headers",
     "sa_export_include_uniq_counts": "Include unique-value counts in exported column headers",
@@ -429,7 +434,8 @@
     "sa_uniq_count_color": "Unique-Values Count Badge Text Color",
     "sa_uniq_dropdown_visible_rows": "Unique-Values Dropdown Visible Rows",
     "sa_uniq_quickfilter_highlight_bg": "Unique-Values Quickfilter Highlight Background",
-    "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color"
+    "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color",
+    "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too"
   },
   "defaults": {
     "sa_annotation_column_max_height_em": 5.6,
@@ -534,6 +540,7 @@
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_live_date_check": true,
+    "sa_enable_release_tracks_no_work_flag": true,
     "sa_enable_release_tracks_recording_of_columns": true,
     "sa_enable_release_tracks_video_medium_flag": true,
     "sa_enable_release_tracks_work_ar_columns": true,
@@ -544,6 +551,10 @@
     "sa_enable_sticky_headers": true,
     "sa_enable_tooltip_debug": false,
     "sa_enable_uniq_drop_context_debug": false,
+    "sa_enable_uvd_title_format": true,
+    "sa_enable_uvd_title_series": true,
+    "sa_enable_uvd_title_style_issues": true,
+    "sa_enable_uvd_title_subtitle": true,
     "sa_export_convert_multirow_glyphs": false,
     "sa_export_include_sort_state": true,
     "sa_export_include_uniq_counts": false,
@@ -671,7 +682,8 @@
     "sa_uniq_count_color": "#111111",
     "sa_uniq_dropdown_visible_rows": 30,
     "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
-    "sa_uniq_quickfilter_highlight_color": "#c0392b"
+    "sa_uniq_quickfilter_highlight_color": "#c0392b",
+    "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work"
   },
   "tables": {
     "sa_default_hidden_columns": {
