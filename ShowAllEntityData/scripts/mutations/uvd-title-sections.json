@@ -201,5 +201,44 @@
     "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
     "grep": "other than \"none\"",
     "expect": "fail"
+  },
+  {
+    "name": "the entity gate is dropped",
+    "why": "Without it an artist or label name in a Name/Title column is parsed as a title: 'ABBA' becomes ALL UPPERCASE.",
+    "edits": [
+      {
+        "find": "            return _TITLE_ENTITY_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? bdi : null;",
+        "replace": "            return bdi;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-info-columns.spec.js",
+    "grep": "only recording/release/RG/work/track titles count",
+    "expect": "fail"
+  },
+  {
+    "name": "only Title columns get the sections",
+    "why": "The configured column list is the whole extension; ignoring it silently reverts to Title only.",
+    "edits": [
+      {
+        "find": "        const isTitleInfoCol = isTitleCol || _uvdTitleInfoColumns().has(_colHeaderName);",
+        "replace": "        const isTitleInfoCol = isTitleCol;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-info-columns.spec.js",
+    "grep": "gets the sections",
+    "expect": "fail"
+  },
+  {
+    "name": "the column-list setting is ignored",
+    "why": "A hard-coded list would keep the sections on columns the user removed.",
+    "edits": [
+      {
+        "find": "        const raw = Lib.settings.sa_uvd_title_info_columns ?? 'Name, Recording, Release, Release group, Release groups, Work';",
+        "replace": "        const raw = 'Name, Recording, Release, Release group, Release groups, Work';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-info-columns.spec.js",
+    "grep": "empty sa_uvd_title_info_columns",
+    "expect": "fail"
   }
 ]

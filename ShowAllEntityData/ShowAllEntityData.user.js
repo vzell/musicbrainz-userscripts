@@ -958,6 +958,17 @@
                          "and ALL-UPPERCASE titles, which the style guide's capitalization rules disallow."
         },
 
+        sa_uvd_title_info_columns: {
+            label: "Unique-Values Dropdown: Title Info On These Columns Too",
+            type: "text",
+            default: "Name, Recording, Release, Release group, Release groups, Work",
+            description: "Comma-separated column names that get the 📊 \"Title info - …\" sections in addition to " +
+                         "every \"Title\" column, e.g. an artist's recordings (\"Name\"), releases (\"Release\") or " +
+                         "works (\"Work\"). On every one of them only a cell whose title links a recording, release, " +
+                         "release group, work or track counts — an artist or label name never does. Leave empty for " +
+                         "Title columns only."
+        },
+
         sa_enable_length_deviation_section: {
             label: 'Enable "Length info - Deviation"/"Live status" dropdown sections',
             type: 'checkbox',
@@ -23816,12 +23827,22 @@
         };
     }
 
+    // The entities whose names follow https://musicbrainz.org/doc/Style/Titles
+    // — the only ones the 📊 "Title info - …" sections read. Matches a
+    // relative or an absolute musicbrainz.org href.
+    const _TITLE_ENTITY_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/(?:recording|release|release-group|work|track)\/[0-9a-f-]{36}(?:[/?#]|$)/;
+
     /**
-     * Finds a "Title" cell's own title element: the `<bdi>` of its first
-     * entity link, outside any `.comment` disambiguation. On release-tracks
-     * that is the recording/track link (the AR `<dl>` that follows it holds
-     * other links, but always later in document order). Highlighters scope
-     * to this element, so a title match never marks a credit below it.
+     * Finds a title cell's own title element: the `<bdi>` of its first
+     * entity link, outside any `.comment` disambiguation — provided that link
+     * is a recording, release, release group, work or track
+     * (`_TITLE_ENTITY_HREF_RE`). Any other entity (an artist on a
+     * relationships page's Title column, a CD stub, a label) yields `null`, so
+     * no "Title info" section ever reads an artist name like "ABBA" as an
+     * ALL-UPPERCASE title. On release-tracks the first link is the
+     * recording/track (the AR `<dl>` that follows holds other links, always
+     * later in document order). Highlighters scope to this element, so a
+     * title match never marks a credit below it.
      *
      * @param {?HTMLTableCellElement} cell
      * @returns {?Element}
@@ -23829,9 +23850,22 @@
     function _findCellTitleEl(cell) {
         if (!cell) return null;
         for (const bdi of cell.querySelectorAll('a[href] bdi')) {
-            if (!bdi.closest('.comment')) return bdi;
+            if (bdi.closest('.comment')) continue;
+            return _TITLE_ENTITY_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? bdi : null;
         }
         return null;
+    }
+
+    /**
+     * Column names that get the 📊 "Title info - …" sections besides every
+     * "Title" column, from `sa_uvd_title_info_columns` (comma-separated). An
+     * empty setting means Title columns only.
+     *
+     * @returns {Set<string>}
+     */
+    function _uvdTitleInfoColumns() {
+        const raw = Lib.settings.sa_uvd_title_info_columns ?? 'Name, Recording, Release, Release group, Release groups, Work';
+        return new Set(String(raw).split(',').map(s => s.trim()).filter(Boolean));
     }
 
     /**
@@ -62575,6 +62609,10 @@ a { color: #1565c0; }`;
         const isFormatCol  = _colHeaderName === 'Format';
         const isTracksCol  = _colHeaderName === 'Tracks';
         const isRatingCol  = _colHeaderName === 'Rating';
+        // "Title info - …": every Title column, plus the columns named in
+        // sa_uvd_title_info_columns. _findCellTitleEl() then counts only
+        // cells whose title links a recording/release/RG/work/track.
+        const isTitleInfoCol = isTitleCol || _uvdTitleInfoColumns().has(_colHeaderName);
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
         // Column-name gate for the native/synthetic "ISRCs" column's
@@ -62756,7 +62794,7 @@ a { color: #1565c0; }`;
         const _lengthColRefAvg = _lengthColAvgs ? _lengthColAvgs.referenceAvgSeconds : null;
         // "Title info - Work" needs the SAME row's "Recording of work" cell;
         // resolved once per open, -1 (section skipped) on every other table.
-        const _recOfWorkIdx = isTitleCol ? _findRecOfWorkColIdx(table) : -1;
+        const _recOfWorkIdx = isTitleInfoCol ? _findRecOfWorkColIdx(table) : -1;
         if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
@@ -62818,7 +62856,7 @@ a { color: #1565c0; }`;
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 _rowAnyHrefValues.forEach(h => entityHrefAnyValueCounts.set(h, (entityHrefAnyValueCounts.get(h) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
-                if (isTitleCol) {
+                if (isTitleInfoCol) {
                     const _a = _findCellTitleAnatomy(cell);
                     if (_a) {
                         const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);

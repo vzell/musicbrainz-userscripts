@@ -310,7 +310,12 @@ themselves:
   video-capable medium` (see "Release tracklists" under "Page-specific
   behaviour").
 - **Title info** — on every **Title** column, following MusicBrainz's
-  [title style guide](https://musicbrainz.org/doc/Style/Titles):
+  [title style guide](https://musicbrainz.org/doc/Style/Titles), and on the
+  columns listed in ⚙️ Settings ("Title Info On These Columns Too", by default
+  **Name, Recording, Release, Release group, Release groups, Work** — e.g. an
+  artist's recordings, releases and works). Only a cell whose title links a
+  recording, release, release group, work or track counts, so an artist or
+  label name is never read as a title:
   - **🎶 Medley** — titles starting with `Medley:`, `Medley 2:` or `Medley;`.
     Ticking it marks the `Medley N` prefix.
   - **➗ Multiple titles**, **🔟 Number of titles** and **🎼 Single title** —

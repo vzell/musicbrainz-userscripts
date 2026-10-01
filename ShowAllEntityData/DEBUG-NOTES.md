@@ -16732,3 +16732,19 @@ external-network dependency, not this branch; the third arm,
 `length-column-filter-colon-gap:25`, is the known load flake listed above.
 Possible harness fix (not done here): abort `archive.org`/`coverartarchive.org`
 image requests in `loadUserscriptPage()` when a `fixtureFile` is given.
+
+**Follow-up — Title info on other columns.** Requested: the same sections on
+non-Title columns (artist recordings "Name", RG/artist/area releases
+"Release", artist works "Work", …). A survey of every saved page in `debug/`
+and `tests/fixtures/` (columns whose cells lead with a recording/release/
+release-group/work link) found: Name, Recording, Release, Release group(s),
+Work, and the synthetic MB-Name (88 PTs, entity-agnostic, duplicates the
+original column). User decisions: an editable list
+(`sa_uvd_title_info_columns`, MB-Name left out) and an entity gate on EVERY
+column, Title included (`_TITLE_ENTITY_HREF_RE` in `_findCellTitleEl()`). The
+gate changes the committed Title behaviour in two places: the CD-stub Title
+column (links `/cdstub/`) and relationship pages' Title columns that target an
+artist/label no longer get the sections. Spec
+`uniq-drop-title-info-columns.spec.js` (7); the artist-recordings fixture
+needs its `?page=N` and WS/2 requests routed, or "Show all" goes to the
+network.

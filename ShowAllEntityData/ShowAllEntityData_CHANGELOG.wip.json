@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "📊 \"Title info\" sections (see WIP.1) now also appear on other columns that hold a title: by default \"Name\", \"Recording\", \"Release\", \"Release group\", \"Release groups\" and \"Work\" — an artist's recordings, releases and works, a release group's releases, an area's releases, and so on. The list is editable in ⚙️ Settings (\"Unique-Values Dropdown: Title Info On These Columns Too\"); leave it empty for Title columns only.",
+          "Only a cell whose title links a recording, release, release group, work or track counts, on every column including Title, so an artist or label name (e.g. \"ABBA\") is never read as an ALL-UPPERCASE title."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-01",
     "sections": [

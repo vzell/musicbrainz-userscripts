@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1179+2026-10-01",
-    "schema_entries": 289,
+    "schema_entries": 290,
     "sections": 39,
-    "settings": 250,
-    "settings_with_default": 245,
+    "settings": 251,
+    "settings_with_default": 246,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -21,8 +21,8 @@
       "number": 39,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
+      "text": 6,
       "table": 5,
-      "text": 5,
       "function": 1
     }
   },
@@ -434,7 +434,8 @@
     "sa_uniq_count_color": "Unique-Values Count Badge Text Color",
     "sa_uniq_dropdown_visible_rows": "Unique-Values Dropdown Visible Rows",
     "sa_uniq_quickfilter_highlight_bg": "Unique-Values Quickfilter Highlight Background",
-    "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color"
+    "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color",
+    "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too"
   },
   "defaults": {
     "sa_annotation_column_max_height_em": 5.6,
@@ -681,7 +682,8 @@
     "sa_uniq_count_color": "#111111",
     "sa_uniq_dropdown_visible_rows": 30,
     "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
-    "sa_uniq_quickfilter_highlight_color": "#c0392b"
+    "sa_uniq_quickfilter_highlight_color": "#c0392b",
+    "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work"
   },
   "tables": {
     "sa_default_hidden_columns": {
