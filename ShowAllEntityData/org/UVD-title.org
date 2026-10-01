@@ -1,0 +1,60 @@
+* TODO plan: UVD "Title" column needs new section
+
+The UVD of the "Title" C on PT 'release-tracks' e.g. at
+https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d49521d0e (see @debug/release-tracks-UVD-final.html for the
+raw HTML of the final rendered page) needs new sections
+
+1.)
+
+for RECs with multiple " / " separated titles (see also section "Multiple or split titles" at https://musicbrainz.org/doc/Style/Titles)
+
+#+begin_example
+Title 1 / Title 2 / ... / Title <n>
+#+end_example
+
+optionally having a medley identifier like e.g.
+
+#+begin_example
+<bdi>Medley: Volare / On an Evening in Roma</bdi>
+<bdi>Medley 2: I Can’t Give You Anything but Love / Too Marvelous for Words / Pennies From Heaven / A Foggy Day / Embraceable You / The Lady Is a Tramp / Where or When</bdi>
+#+end_example
+
+add new sections for
+
+- medleys in general
+- an entry for multi-title recordings in general
+- an entry for the number of different titles per multi-title recordings
+- each title also listed separately in a multi-title recording
+
+2.)
+
+- titles which have NO associated W in the "Recording of work" C, e.g.
+
+#+begin_example
+<bdi>Fanfare &amp; Introduction</bdi>
+#+end_example
+
+3.)
+
+Titles in the "Title" C having "Extra title information" (ETI section in  https://musicbrainz.org/doc/Style/Titles) e.g. the "single version" in
+https://musicbrainz.org/release/ef7147b8-19ac-4c2c-a9e1-a1136a6ffce4 (see @debug/release-tracks-UVD-ETI-final.html for the raw HTML of the final rendered page)
+
+#+begin_example
+<bdi>I Believe in Your Sweet Love (single version)</bdi>
+#+end_example
+
+should get new sections too:
+
+- titles with ETI in general
+
+4.)
+
+Add "ETI" ==> "extra title information" also to the "## Abbreviations used in prompts" section in CLAUDE.md
+
+5.)
+
+Also add other UVD sections corresponding to the other sections in https://musicbrainz.org/doc/Style/Titles not yet covered
+
+6.)
+
+The "Rating" column needs a section which "has"/"has no" ratings see also @debug/release-tracks-UVD-ETI-final.html
