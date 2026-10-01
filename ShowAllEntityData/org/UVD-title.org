@@ -103,9 +103,13 @@ soundtrack
 etc.
 #+end_example
 
-** Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+make the keywords end-user configurable
+
+** TODO Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
 
 Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the
 guidline specific event name format
 
-** Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+** TODO Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+
+** TODO generalize the error/warning buttons to a drop-down menu in H1 probably
