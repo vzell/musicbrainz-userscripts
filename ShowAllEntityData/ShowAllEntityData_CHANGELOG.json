@@ -1,5 +1,42 @@
 [
   {
+    "version": "9.99.1179",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release tracklist, 📊 dropdown on the Length and Recording length columns: a new \"Length info - Track vs recording\" section counts the tracks whose two lengths are flagged — \"❌ far apart from the other length\" and \"⚠️ apart beyond the threshold\" — and ticking one shows just those tracks. The counts are the same ones the (N) LENGTH ⚠️/❌ buttons show.",
+          "Release tracklist, 📊 dropdown on the Video column: a new \"Video info - Medium format\" section counts \"❌ video on a medium that cannot carry video\" and \"✅ video on a video-capable medium\", and ticking one shows just those tracks (see 9.99.1178)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1178",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklist: a recording marked as a video that sits on a medium which cannot carry video — a CD, a vinyl record, a cassette, an SACD, … — now has its Video cell tinted light red with a ❌, exactly like a far-over length mismatch, and a tooltip naming the medium and its format. Either the recording's video flag or the medium's format is wrong. Formats that can hold video files (Digital Media, Data CD, Enhanced CD, Mixed Mode CD, USB, SD card, …) and unknown formats (\"Other\", no format) are never flagged. Every one of MusicBrainz's 115 medium formats is classified, by format id, so the check does not depend on the interface language. The flag survives Save to Disk / Load from Disk. Switch it off in ⚙️ Settings → 💿 RELEASE TRACKLIST (\"Flag video recordings on a medium that cannot carry video\")."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1177",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "An artist's Releases tab and its release-group overview: the first action button now reads \"🧮¹ Artist\" instead of \"🧮¹ Artists\" — it fetches that one artist's own releases (or release groups). \"Various Artists\" stays as it is."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1176",
     "date": "2026-10-01",
     "sections": [
