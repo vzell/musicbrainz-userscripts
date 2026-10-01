@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklist: the script now also runs on MusicBrainz's single-medium links, /release/<mbid>/disc/<n>, including the form that points at one track (/release/<mbid>/disc/<n>#<track>). MusicBrainz highlights that track in pale yellow; after \"Show all Tracks\" the consolidated tracklist keeps the highlight, through filtering and sorting too, and scrolls the track into view once. A cell carrying a warning (length mismatch, video on the wrong medium, no work) keeps its own colour."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-01",
     "sections": [

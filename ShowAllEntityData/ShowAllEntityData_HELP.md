@@ -777,8 +777,8 @@ an import brings your deletions back.
 - **Release group, release, recording, work, label, series, place, area,
   instrument, event** — all supported sub-tabs, including release groups with
   MusicBrainz's own h3-grouped sub-tables
-- **Release tracklists** (`/release/<mbid>`) — the whole tracklist across every
-  medium, consolidated
+- **Release tracklists** (`/release/<mbid>`, and `/release/<mbid>/disc/<n>`) —
+  the whole tracklist across every medium, consolidated
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -829,6 +829,13 @@ Mode CD (whose data part is where bonus music videos live), USB sticks, SD
 cards and download cards. Neither is a medium whose format is "Other" or
 missing. The Video column's 📊 dropdown counts both sides under **Video info -
 Medium format**. Switch the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST.
+
+**A link to one track.** MusicBrainz links a single track as
+`/release/<mbid>/disc/<n>#<track>` and highlights that track's row in pale
+yellow. The consolidated tracklist keeps that highlight — through filtering and
+sorting too — and scrolls the track into view once. A cell that carries a
+warning (a length mismatch, a video on the wrong medium, no work) keeps its own
+warning colour.
 
 **Recording with no work.** When a track's recording is not linked to any
 work, so its **Recording of work** cell is empty, its **Title** cell is tinted

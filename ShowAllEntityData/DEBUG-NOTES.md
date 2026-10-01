@@ -16748,3 +16748,27 @@ artist/label no longer get the sections. Spec
 `uniq-drop-title-info-columns.spec.js` (7); the artist-recordings fixture
 needs its `?page=N` and WS/2 requests routed, or "Show all" goes to the
 network.
+
+## 2026-10-01 — release-tracks on /release/<mbid>/disc/<n>#<track> (branch feature/uvd-title-sections)
+
+**Request:** support the `/disc/<n>` URL form, whose targeted track is shown
+pre-highlighted. `debug/release-tracks-track.html` is `#page` only (no
+`<head>`), so the highlight mechanism was probed live: the row is just
+`<tr id="<track MBID>">`; MusicBrainz's stylesheet paints `tr:target > td`
+rgb(242, 242, 178). The cross-origin stylesheets cannot be read from the page,
+so the rule was confirmed by computed style (target row tinted, neighbours
+transparent). Live quirk: the first navigation went through the
+browser-verification redirect and arrived WITHOUT the fragment; a second
+navigation kept it.
+
+**Why it broke:** `:target` matches only the element the browser resolved the
+fragment to; release-tracks renders `cloneNode(true)` copies (multi-table), so
+the consolidated rows lost the highlight. Fix: `data-mb-track-target` on the
+source row (`_stampTrackTarget()`, before capture) + CSS, and a one-time
+`scrollIntoView` (`_scrollToTrackTarget()`). Also a new `@include` and the
+matcher's `(?:\/disc\/\d+)?`.
+
+**Mutation note:** dropping the rule's `!important` is invisible to the spec —
+the `:not()` exclusions out-specify MusicBrainz's zebra rule, and the cells'
+inline rest/sticky backgrounds are captured from computed style AFTER the
+stamp, so they already hold the tint. Recorded `expect: pass`.

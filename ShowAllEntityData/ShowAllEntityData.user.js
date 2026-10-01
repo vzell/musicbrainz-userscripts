@@ -15,6 +15,7 @@
 // @require      file:///V:/home/vzell/git/musicbrainz-userscripts/lib/VZ_MBLibrary.user.js
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event|collection)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/?(?:\?.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:artist|release-group|release|work|recording|label|series|place|area|instrument|event)\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:aliases|releases|recordings|works|events|relationships|discids|fingerprints|performances|places|artists|labels|tags|users|collections|ratings|edits|annotations)\/?(?:\?.*)?$/
+// @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @connect      raw.githubusercontent.com
@@ -9617,6 +9618,11 @@
         // (_initMsLengthColHeaderToggle) is what switches precision later.
         _msStampReleaseTrackLengths(_tables);
 
+        // /release/<mbid>/disc/<n>#<track MBID>: carry MusicBrainz's own
+        // :target highlight over to the consolidated rows (see
+        // _stampTrackTarget()).
+        _stampTrackTarget(_tables);
+
         const _acoustIdEnabled = Lib.settings.sa_enable_release_tracks_acoustid_column === true;
         const _isrcEnabled = Lib.settings.sa_enable_release_tracks_isrc_column === true;
 
@@ -17734,7 +17740,10 @@
             // matches a sub-path like /release/<mbid>/aliases (those have their own
             // dedicated pageDefinitions above). Gated by sa_enable_release_tracks so
             // the whole feature (and its toolbar button) can be turned off.
-            match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}\/?$/),
+            // Also /release/<mbid>/disc/<n> — the same page, scrolled to one
+            // medium, usually with #<track MBID> highlighting one track (see
+            // _stampTrackTarget(); the fragment is not part of `path`).
+            match: (path) => Lib.settings.sa_enable_release_tracks && path.match(/^\/release\/[a-f0-9-]{36}(?:\/disc\/\d+)?\/?$/),
             buttons: [ { label: 'Show all Tracks for Release', shortLabel: 'Tracks' } ],
             features: {
                 removeYomoWidget: true,          // strip the "Batch Add Recording Aliases" userscript's widget, if present
@@ -19006,6 +19015,74 @@
               + 'threshold.';
 
         return lead + why + level + ' Both are configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.';
+    }
+
+    /**
+     * The track MBID a release tracklist URL points at —
+     * `/release/<mbid>/disc/<n>#<track MBID>` (or the bare release URL with
+     * the same fragment) — or `null`. MusicBrainz highlights that track's row
+     * (`<tr id="<track MBID>">`) through its own CSS `:target` rule.
+     *
+     * @returns {?string}
+     */
+    function _trackTargetIdFromUrl() {
+        const id = decodeURIComponent((location.hash || '').slice(1)).toLowerCase();
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id) ? id : null;
+    }
+
+    /**
+     * Marks the release-tracks row the URL fragment targets with
+     * `data-mb-track-target`, before the rows are captured.
+     *
+     * MusicBrainz paints that row through CSS `:target`, which only ever
+     * matches the ONE element the browser resolved the fragment to. The
+     * consolidated tables are `cloneNode(true)` copies (multi-table render),
+     * so the highlight vanished the moment "Show all Tracks" ran. An
+     * attribute rides every clone, filter and sort for free; the CSS rule
+     * keyed on it reproduces MusicBrainz's colour, and
+     * `_scrollToTrackTarget()` brings the row into view once.
+     *
+     * Compares `row.id` as a string — never builds a selector from the
+     * user-controlled fragment.
+     *
+     * @param {HTMLTableElement[]} tables
+     * @returns {boolean} Whether a row was marked.
+     */
+    function _stampTrackTarget(tables) {
+        const id = _trackTargetIdFromUrl();
+        if (!id) return false;
+        for (const table of tables) {
+            for (const row of table.querySelectorAll(':scope > tbody > tr')) {
+                if (row.id === id) {
+                    row.dataset.mbTrackTarget = '1';
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Track MBID `_scrollToTrackTarget()` last scrolled to, so the
+     * re-renders that follow every filter and sort never scroll again.
+     * @type {?string}
+     */
+    let _trackTargetScrolledFor = null;
+
+    /**
+     * Scrolls the rendered `data-mb-track-target` row into view, once per
+     * target. Called from `renderGroupedTable()`'s tail; a no-op on every
+     * other page and on every later re-render.
+     *
+     * @returns {void}
+     */
+    function _scrollToTrackTarget() {
+        const id = _trackTargetIdFromUrl();
+        if (!id || _trackTargetScrolledFor === id) return;
+        const row = document.querySelector('table.tbl tbody tr[data-mb-track-target]');
+        if (!row || row.style.display === 'none') return;
+        _trackTargetScrolledFor = id;
+        row.scrollIntoView({ block: 'center' });
     }
 
     /**
@@ -39817,6 +39894,15 @@ a { color: #1565c0; }`;
             padding-right: 1.6em;
             background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
         }
+        /* The row a /release/<mbid>/disc/<n>#<track MBID> URL targets (see
+           _stampTrackTarget()): MusicBrainz's own tr:target > td colour,
+           measured live as rgb(242, 242, 178). !important for the zebra rule
+           and the sticky Title cell's inline background. The cells that carry
+           a warning flag keep their own tint — a flag is the more urgent
+           message, and the rest of the row still shows the target. */
+        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]) {
+            background-color: #f2f2b2 !important;
+        }
         td[data-mb-work-flag="none"]::after {
             content: '⚠️';
             position: absolute;
@@ -59993,6 +60079,7 @@ a { color: #1565c0; }`;
         _initColHeaderGlyph('Recorded at place', 'placelink');
         _initColHeaderGlyph('Recorded in area', 'arealink');
         _initColHeaderGlyph('Mixed at place', 'placelink');
+        _scrollToTrackTarget();
         // Same re-injection for "Performer"/"Vocals"/"Instruments" and
         // every CREDIT_ROLES column (all credit an artist, so all use the
         // "artistlink" glyph) plus "Phonographic copyright (℗) by

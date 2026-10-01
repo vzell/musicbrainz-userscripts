@@ -744,7 +744,7 @@ lists converted into sortable tables), tableMode =multi=.
 
 ** 83. release-tracks
 - URL: [[https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897][/release/REL_BTR]]
-- Match: ~Lib.settings.sa_enable_release_tracks && /^\/release\/[a-f0-9-]{36}$/~ — *gated by the =sa_enable_release_tracks= setting; enable it in the Tampermonkey menu first or the button will not appear*
+- Match: ~Lib.settings.sa_enable_release_tracks && /^\/release\/[a-f0-9-]{36}(?:\/disc\/\d+)?\/?$/~ (also =/release/REL/disc/N#TRACK=, whose targeted track keeps its highlight — =_stampTrackTarget()=) —*gated by the =sa_enable_release_tracks= setting; enable it in the Tampermonkey menu first or the button will not appear*
 - Button: "Show all Tracks for Release"
 - tableMode: multi, non_paginated
 - Features exercised: bespoke =applyExtractTrackTitleData()= AR-column engine (does NOT use the generic columnExtractors pipeline — see project CLAUDE.md's "release-tracks: dynamic AR-column classification" section); removes the Yomo widget/work-button/settings-icon/medium-toolbox DOM clutter; ensures credits render inline; loads overflow tracks; normalises medium tracklists; column eraser on Length; numeric #/Length/Rating columns; collapsible ARs/Streaming/AcoustIDs/ISRCs/engineer-role columns/Mixed-at/Phonographic-copyright/Produced-for/Recorded-at/Recorded-in/Performer/Instruments/Vocals; sticky/main Title

@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the target row is never stamped",
+    "why": "The attribute is the only thing that survives the multi-table clones; without it MusicBrainz's :target highlight is simply gone after 'Show all Tracks'.",
+    "edits": [
+      {
+        "find": "        _stampTrackTarget(_tables);",
+        "replace": "        void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "stays highlighted",
+    "expect": "fail"
+  },
+  {
+    "name": "the target tint loses !important",
+    "why": "Recorded as a guard the spec cannot see: the :not() exclusions already lift the selector above MusicBrainz's zebra rule, and the row is stamped BEFORE render, so the per-cell inline rest/sticky background the script captures from the computed style is already the tint. The !important only matters if something later writes an inline background onto a targeted cell.",
+    "edits": [
+      {
+        "find": "            background-color: #f2f2b2 !important;",
+        "replace": "            background-color: #f2f2b2;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "stays highlighted",
+    "expect": "pass"
+  },
+  {
+    "name": "the targeted row is never scrolled to",
+    "why": "Track 22 of 25 sits below the fold; the highlight is useless if nobody sees it.",
+    "edits": [
+      {
+        "find": "        row.scrollIntoView({ block: 'center' });",
+        "replace": "        void row;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "stays highlighted",
+    "expect": "fail"
+  },
+  {
+    "name": "the target tint paints over warning flags",
+    "why": "A flagged cell's tint is the more urgent message; the exclusions keep it.",
+    "edits": [
+      {
+        "find": "        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag=\"mismatch\"]):not([data-mb-work-flag]) {",
+        "replace": "        tr[data-mb-track-target] > td {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "keeps its own tint",
+    "expect": "fail"
+  },
+  {
+    "name": "the release-tracks matcher rejects /disc/<n>",
+    "why": "Then the /disc/1 page gets no 'Show all Tracks' button at all.",
+    "edits": [
+      {
+        "find": "path.match(/^\\/release\\/[a-f0-9-]{36}(?:\\/disc\\/\\d+)?\\/?$/)",
+        "replace": "path.match(/^\\/release\\/[a-f0-9-]{36}\\/?$/)"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "stays highlighted",
+    "expect": "fail"
+  },
+  {
+    "name": "the /disc/<n> @include is missing",
+    "why": "Tampermonkey would never inject the script on a /disc/<n> URL.",
+    "edits": [
+      {
+        "find": "\\/release\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\\/disc\\/\\d+)?\\/?(?:\\?[^#]*)?(?:#.*)?$/",
+        "replace": "\\/release\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\/?(?:\\?[^#]*)?$/"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-track-target.spec.js",
+    "grep": "header @include",
+    "expect": "fail"
+  }
+]

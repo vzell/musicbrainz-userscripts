@@ -561,3 +561,31 @@ Rules that fail silently if broken:
 
 Spec: `release-tracks-no-work-flag.spec.js`; mutations in
 `scripts/mutations/uvd-title-sections.json`.
+
+## /disc/<n>#<track>: the targeted track's highlight
+
+`/release/<mbid>/disc/<n>` is the release page scrolled to one medium; with
+`#<track MBID>` MusicBrainz highlights that track through CSS `tr:target > td`
+(rgb(242, 242, 178), measured live 2026-10-01). Supported by a dedicated
+`@include` line (optional `?query`, optional `#fragment`) and the
+release-tracks matcher's optional `(?:\/disc\/\d+)?`.
+
+Rules that fail silently if broken:
+
+- **`:target` cannot survive the render.** It matches the ONE element the
+  browser resolved the fragment to, and multi-table render shows clones. So
+  `_stampTrackTarget()` sets `data-mb-track-target` on the SOURCE row, from
+  `applyExtractTrackTitleData()` before rows are captured, and CSS repaints
+  from that attribute. Compares `row.id` as a string — never builds a selector
+  from the fragment.
+- **Flags win over the target tint.** The rule excludes cells carrying
+  `data-mb-len-flag`, `data-mb-video-flag="mismatch"` or `data-mb-work-flag`.
+- **Scroll once.** `_scrollToTrackTarget()` runs from `renderGroupedTable()`'s
+  tail, i.e. on every filter and sort; `_trackTargetScrolledFor` stops it after
+  the first time per target.
+- Not handled: a later `hashchange` (pointing at another track without a
+  reload) does not move the marker.
+
+Spec: `release-tracks-track-target.spec.js`; mutations
+`scripts/mutations/release-tracks-track-target.json` (the `!important` entry is
+`expect: pass` — see its `why`).
