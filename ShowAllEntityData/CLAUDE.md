@@ -20,6 +20,34 @@ is what the ❓ button opens on GitHub; see docs/claude/toolbar-and-header-ui.md
 `PAGETYPES-TESTING-REFERENCE.org` (every pageType, its URL, its coverage plan),
 `DEBUG-NOTES.md` (dated root-cause log), `REFACTORING.org`, `FORUM.org`
 
+## Abbreviations used in prompts
+
+When a prompt uses one of these abbreviations, read it with the full meaning
+and context below.
+
+| Abbreviation | Meaning                                        | Context                                                                        | Example translation                                                        |
+|--------------|------------------------------------------------|--------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| UVD          | column specific unique value drop-down menu    | typically used in the context of the "uniq-dropdown-section" skill             |                                                                            |
+| A            | MusicBrainz "Artist" entity                    | https://musicbrainz.org/doc/MusicBrainz_Entity                                 | The A RG => The artist release group                                       |
+| RG           | MusicBrainz "Release Group" entity             | "                                                                              |                                                                            |
+| R            | MusicBrainz "Release" entity                   | "                                                                              |                                                                            |
+| REC          | MusicBrainz "Recording" entity                 | "                                                                              |                                                                            |
+| W            | MusicBrainz "Work" entity                      | "                                                                              |                                                                            |
+| L            | MusicBrainz "Label" entity                     | "                                                                              |                                                                            |
+| E            | MusicBrainz "Event" entity                     | "                                                                              |                                                                            |
+| S            | MusicBrainz "Series" entity                    | "                                                                              |                                                                            |
+| ARE          | MusicBrainz "Area" entity                      | "                                                                              |                                                                            |
+| P            | MusicBrainz "Place" entity                     | "                                                                              |                                                                            |
+| I            | MusicBrainz "Instrument" entity                | "                                                                              |                                                                            |
+| PT           | pageType(s)                                    | const pageDefinitions                                                          |                                                                            |
+| GF           | global filter for single/multi-table pageTypes | <span id="mb-global-filter-wrapper"                                            |                                                                            |
+| STF          | sub-table filter on multi-table pageTypes      | <span class="mb-subtable-filter-wrapper">                                      |                                                                            |
+| CF           | column specific filter                         | <span class="mb-col-filter-wrapper mb-col-modes">                              |                                                                            |
+| T            | table                                          |                                                                                |                                                                            |
+| ST           | sub-table                                      |                                                                                |                                                                            |
+| C            | column                                         |                                                                                | In the "Title" C of ST "1-CD" => In the "title" column of sub-table "1-CD" |
+| AR           | advanced relationship                          | the release-tracks AR columns, _findAllArDts(), the split-ar-peer-column skill |                                                                            |
+
 ## Doc map — what to read, and when
 
 This file is deliberately the short version. Per-feature design rationale lives
