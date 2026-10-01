@@ -44,6 +44,22 @@ const SETTINGS_MIGRATION_PRE_APPLIED = {
     sa_settings_migration_level: 9999,
 };
 
+// A fixture page is served from disk, but only its main document is routed:
+// every subresource it references still goes to the network, and `page.goto()`
+// waits for all of them before `load` fires. One of them is a saved release
+// page's sidebar cover thumbnail, fetched straight from the Internet Archive
+// (`archive.org/download/mbid-…_thumb250.jpg`, or a `*.archive.org` mirror it
+// redirects to). Under load that request has taken 20 s, and in one full-suite
+// trace never finished — so `len-flag-disk-roundtrip` and
+// `live-date-flags-survive-disk-roundtrip` timed out in `page.goto()` before
+// the userscript was even injected (DEBUG-NOTES.md, 2026-10-01).
+//
+// Matches `archive.org` and its subdomains only. `coverartarchive.org` and
+// `eventartarchive.org` are different hosts and do NOT match, so every spec
+// that mocks those keeps working; and a non-image request falls back to
+// whatever other route applies.
+const ARCHIVE_ORG_RE = /^https?:\/\/(?:[^/]+\.)?archive\.org\//;
+
 /**
  * Loads ShowAllEntityData.user.js onto `page`, matching the exact
  * `@require` order declared in the userscript header (iro, pako,
@@ -106,6 +122,10 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
 
     if (fixtureFile) {
         await page.route(url, (route) => route.fulfill({ path: fixtureFile, contentType: 'text/html' }));
+        // See ARCHIVE_ORG_RE: a fixture must not wait on the Internet Archive.
+        await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'
+            ? route.abort('blockedbyclient')
+            : route.fallback()));
     }
 
     await page.goto(url);
@@ -116,4 +136,4 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
     await page.addScriptTag({ path: USERSCRIPT_PATH });
 }
 
-module.exports = { loadUserscriptPage, USERSCRIPT_PATH, MB_LIBRARY_PATH };
+module.exports = { loadUserscriptPage, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE };

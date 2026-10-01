@@ -1,0 +1,30 @@
+[
+  {
+    "name": "fixture loads no longer abort archive.org images",
+    "why": "Without the route, page.goto() waits for the saved page's live Internet Archive thumbnail; when archive.org stalls, the fixture load times out before the userscript is injected.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "        await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'",
+        "replace": "        if (0) await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'"
+      }
+    ],
+    "spec": "tests/fixtures/fixture-load-no-archive-org-wait.spec.js",
+    "grep": "never waits on an archive.org image",
+    "expect": "fail"
+  },
+  {
+    "name": "the pattern also swallows coverartarchive.org",
+    "why": "CAA specs register their coverartarchive.org mocks before loadUserscriptPage(); the helper's newer route would then abort their images.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "const ARCHIVE_ORG_RE = /^https?:\\/\\/(?:[^/]+\\.)?archive\\.org\\//;",
+        "replace": "const ARCHIVE_ORG_RE = /archive\\.org\\//;"
+      }
+    ],
+    "spec": "tests/fixtures/fixture-load-no-archive-org-wait.spec.js",
+    "grep": "mock registered BEFORE the load",
+    "expect": "fail"
+  }
+]

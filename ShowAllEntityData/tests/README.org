@@ -59,8 +59,19 @@ The harness is split into two Playwright projects, by directory.
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
-page while nothing leaves the machine. Deterministic and fast — this is where a
-new test belongs unless it genuinely cannot be reproduced offline.
+page. Deterministic and fast — this is where a new test belongs unless it
+genuinely cannot be reproduced offline.
+
+Only the main DOCUMENT is routed, though: the subresources a saved page
+references (MusicBrainz's CSS/JS on =static.metabrainz.org=, a release's
+sidebar cover thumbnail on =archive.org=) are still fetched live, and
+=page.goto()= waits for every one of them before =load=. The Internet Archive
+was the one that hurt — a stalled thumbnail made two disk round-trip specs time
+out inside =page.goto()= (=DEBUG-NOTES.md=, 2026-10-01) — so
+=loadUserscriptPage()= now aborts image requests to =archive.org= and its
+subdomains whenever a =fixtureFile= is given (=ARCHIVE_ORG_RE=). It never
+matches =coverartarchive.org= or =eventartarchive.org=, so a spec's own mocks
+for those keep answering (=fixture-load-no-archive-org-wait.spec.js=).
 
 *Live* specs drive real musicbrainz.org pages. They are slower, occasionally
 flaky through no fault of the code (MusicBrainz 503s under load, and the Cover
