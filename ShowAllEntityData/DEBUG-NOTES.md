@@ -16663,3 +16663,72 @@ of them (the new counts missing from `openUniqDrop()`'s two render gates) is
 invisible on Length, whose duration buckets always open the gate, and is only
 caught on the Video column, where the medium-format counts are the sole
 synthetic entries.
+
+## 2026-10-01 — 📊 "Title info - …" and "Rating info - Presence" sections (branch feature/uvd-title-sections)
+
+**Request:** `org/UVD-title.org` — UVD sections on the Title column for
+medleys, multi-title (" / ") recordings, the number of titles, each separate
+title, titles with no work, ETI, and the other detectable sections of
+https://musicbrainz.org/doc/Style/Titles; plus has/has-no rating on Rating.
+
+**Snapshots:** `debug/release-tracks-UVD-final.html` (release a9a3b139…, "Live
+and Swingin'") shows the release-tracks Title cell as `td.title > a[href=
+"/recording/…"] > bdi`, followed by the AR `<dl>`; medleys "Medley:", "Medley
+1:" (13 titles), "Medley 2:" (7 titles). "Fanfare & Introduction" has an empty
+"Recording of work" cell. `debug/release-tracks-UVD-ETI-final.html` (release
+ef7147b8…) shows an ETI title as `span.name-variation > a[title=<recording
+name>] > bdi` ("I Believe in Your Sweet Love (single version)"). A Rating cell
+has `span.star-rating > span.current-rating` only when rated.
+
+**Grammar decisions** (all in `_parseTitleAnatomy()`):
+- The medley prefix is stripped before anything else, so its colon is never a
+  subtitle and "Medley 1" is never a title of its own.
+- Split on the SPACED slash only; "AC/DC" stays whole.
+- ETI = trailing `(…)`/`[…]` starting lowercase (the user chose this over "any
+  parentheses"; "Cecilia (Does Your Mother Know You're Out)" is an alternative
+  title). The fixture then showed "Nancy (with the Laughing Face)" read as ETI:
+  English title case keeps a preposition lowercase INSIDE a title. Fixed with
+  `_TITLE_ETI_MINOR_RE` (a leading article/conjunction/preposition is not ETI).
+- "Performers in titles" (style guide §7) is not offered: nothing in the text
+  distinguishes it.
+
+**Render gate trap, again:** an unrated Rating cell also counts as "○ empty
+cells", which opens `openUniqDrop()`'s render gate by itself, so removing the
+new entries from both gates passed every count test. Caught only by a spec that
+rates every track first (`still offered when it is the panel's only section`).
+Same shape as the Video-column note in the entry above.
+
+**Anonymous fixtures:** `release-tracks-medley.html`/`release-tracks-eti.html`
+via `scripts/fetch-release-fixture.js` (Mapbox token scrubbed). Anonymous pages
+still render the Rating column with the average rating (`.current-rating`).
+
+**Tests:** `tests/fixtures/uniq-drop-title-anatomy.spec.js` (13 tests). Mutation
+list `scripts/mutations/uvd-title-sections.json`: 10 entries, 9 caught, 1
+recorded `expect: pass` (title highlighter scoped to the whole cell — the
+assertions read marks inside the title element only).
+
+**Follow-up, same day — ⚠️ on Title cells with no work.** Requested: tracks
+with no work get the Length column's over-threshold look. Implemented as
+`data-mb-work-flag="none"` on the Title `<td>` (`_applyNoWorkFlag()`), set in
+the row loop's `_recOfTh` block when `_workAnchor` is null. The one trap is the
+sticky Title column: its inline `background` must lose (tint is `!important`)
+while its inline `position: sticky` must win (the rule's `position: relative`
+is not `!important`). The spec asserts the computed `position` is still
+`sticky` on a flagged cell, and the "loses !important" mutation is caught by
+the computed-background assertion. Disk: `workFlag` field,
+`_restoreNoWorkFlag()`. Setting `sa_enable_release_tracks_no_work_flag`.
+
+**Merge-gate noise on this branch, root-caused.** `npm run test:full` ran three
+times on the branch: 2, 3 and 1 failed. A comparison run with `main`'s
+userscript had none outside the new specs. The repeat offenders were
+`len-flag-disk-roundtrip:159` and `live-date-flags-survive-disk-roundtrip:129`,
+both timing out (90 s) in `page.goto` of the REOPENED page, before the
+userscript is injected. The third run's trace
+(`0-trace.network`) shows why: `loadUserscriptPage()` routes only the main
+document, so the saved release page's sidebar cover thumbnail is fetched live
+from `archive.org/download/mbid-…_thumb250.jpg`. It took 20.8 s for the first
+page and never finished for the reopened one, and `load` waits for it. An
+external-network dependency, not this branch; the third arm,
+`length-column-filter-colon-gap:25`, is the known load flake listed above.
+Possible harness fix (not done here): abort `archive.org`/`coverartarchive.org`
+image requests in `loadUserscriptPage()` when a `fixtureFile` is given.

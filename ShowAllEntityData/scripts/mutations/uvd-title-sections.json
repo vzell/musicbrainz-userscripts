@@ -1,0 +1,205 @@
+[
+  {
+    "name": "the Title/Rating entries are dropped from the first render gate",
+    "why": "Both render blocks are gated by a long 'anything to show?' OR. A Title column with nothing else to offer renders no section at all if the new entries are missing from the gate — silently.",
+    "edits": [
+      {
+        "find": "            instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries)) {",
+        "replace": "            instrumentHasCrossReferenceCount > 0 || _hasValueEntries)) {"
+      },
+      {
+        "find": "                   instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries) {",
+        "replace": "                   instrumentHasCrossReferenceCount > 0 || _hasValueEntries) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "only section",
+    "expect": "fail"
+  },
+  {
+    "name": "ETI accepts any trailing parenthesized group",
+    "why": "The style guide's ETI is lowercase. Without that rule an alternative title such as 'Cecilia (Does Your Mother Know You're Out)' is listed as ETI and lost from the single-title entries.",
+    "edits": [
+      {
+        "find": "    const _TITLE_ETI_RE      = /\\s[(\\[]([a-z][^()\\[\\]]*)[)\\]]$/;",
+        "replace": "    const _TITLE_ETI_RE      = /\\s[(\\[]([^()\\[\\]]*)[)\\]]$/;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "medley release: medley",
+    "expect": "fail"
+  },
+  {
+    "name": "the lowercase-preposition exception is dropped",
+    "why": "'Nancy (with the Laughing Face)' is a song title; title case keeps 'with' lowercase. Without the exception it shows up as ETI.",
+    "edits": [
+      {
+        "find": "            while ((em = _TITLE_ETI_RE.exec(part)) && !_TITLE_ETI_MINOR_RE.test(em[1])) {",
+        "replace": "            while ((em = _TITLE_ETI_RE.exec(part))) {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "medley release: medley",
+    "expect": "fail"
+  },
+  {
+    "name": "titles split on a bare slash",
+    "why": "Only the spaced ' / ' joins titles; 'AC/DC' is one name.",
+    "edits": [
+      {
+        "find": "        const parts = body.split(' / ').map(p => {",
+        "replace": "        const parts = body.split('/').map(p => {"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "edge cases",
+    "expect": "fail"
+  },
+  {
+    "name": "rating presence is inverted",
+    "why": "The has/none decision is one selector test; inverting it swaps every count.",
+    "edits": [
+      {
+        "find": "        return cell.querySelector('.current-rating, .current-user-rating') ? 'has' : 'none';",
+        "replace": "        return cell.querySelector('.current-rating, .current-user-rating') ? 'none' : 'has';"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "counts rated and unrated tracks",
+    "expect": "fail"
+  },
+  {
+    "name": "the medley prefix is not stripped before the slash split",
+    "why": "Then 'Medley 1: Brazil' becomes a single title of its own and the prefix's colon reads as a subtitle.",
+    "edits": [
+      {
+        "find": "            body = body.slice(mm[0].length);",
+        "replace": "            body = body.slice(0);"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "medley release: medley",
+    "expect": "fail"
+  },
+  {
+    "name": "the title highlighter is never dispatched",
+    "why": "Filtering still works without it; only the marks disappear — the classic 'narrows but does not highlight' gap.",
+    "edits": [
+      {
+        "find": "                                    _highlightTitleAnatomyMatch(row.cells[f.idx], row, f.idx, mode);",
+        "replace": "                                    void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "ticking a single title",
+    "expect": "fail"
+  },
+  {
+    "name": "the title highlighter scopes to the whole cell",
+    "why": "Scoped to the cell, a title match can also mark the same words in the relationship list under the title. The two-title spec reads marks inside the title element only, so it cannot see this; recorded as a known blind spot.",
+    "edits": [
+      {
+        "find": "        el.normalize();\n        highlightCrossTag(el, _regex, 'mb-column-filter-highlight');",
+        "replace": "        cell.normalize();\n        highlightCrossTag(cell, _regex, 'mb-column-filter-highlight');"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "ticking a single title",
+    "expect": "pass"
+  },
+  {
+    "name": "the subtitle setting is ignored",
+    "why": "Each extra has its own setting; a gate that never reads it keeps the section on.",
+    "edits": [
+      {
+        "find": "        if (_uvdTitleExtraEnabled('subtitle')) _pushSyn(",
+        "replace": "        if (true) _pushSyn("
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "hides its own section",
+    "expect": "fail"
+  },
+  {
+    "name": "the Work flag ignores which column is Recording of work",
+    "why": "Without the header gate the section would appear on every Title column, reading an arbitrary column.",
+    "edits": [
+      {
+        "find": "            if (_resolveColHeaderName(table, i) === 'Recording of work') return i;",
+        "replace": "            if (i === headers.length - 1) return i;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "needs a \"Recording of work\" column",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-work flag is never applied",
+    "why": "The row loop's else branch is the only writer; dropping it leaves every Title cell plain with no error.",
+    "edits": [
+      {
+        "find": "                            _applyNoWorkFlag(_titleTd);",
+        "replace": "                            void 0;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
+    "grep": "exactly the rows with an empty",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-work tint loses !important",
+    "why": "The sticky Title column paints its own inline background, and MusicBrainz's zebra rule outranks a plain attribute selector; without !important the attribute is there but nothing shows.",
+    "edits": [
+      {
+        "find": "            padding-right: 1.6em;\n            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;",
+        "replace": "            padding-right: 1.6em;\n            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'};"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
+    "grep": "exactly the rows with an empty",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-work setting is ignored",
+    "why": "Switched off must mean no tint.",
+    "edits": [
+      {
+        "find": "        if (!titleTd || Lib.settings.sa_enable_release_tracks_no_work_flag === false) return false;",
+        "replace": "        if (!titleTd) return false;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
+    "grep": "switched off",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-work flag is not restored from disk",
+    "why": "Attributes are not in a cell record's html; without the restore a reopened tracklist loses every flag.",
+    "edits": [
+      {
+        "find": "                            _restoreVideoMediumFlag(td, cellData);\n                            _restoreNoWorkFlag(td, cellData);",
+        "replace": "                            _restoreVideoMediumFlag(td, cellData);"
+      },
+      {
+        "find": "                        _restoreVideoMediumFlag(td, cellData);\n                        _restoreNoWorkFlag(td, cellData);",
+        "replace": "                        _restoreVideoMediumFlag(td, cellData);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
+    "grep": "reopened tracklist",
+    "expect": "fail"
+  },
+  {
+    "name": "the restore accepts any saved value",
+    "why": "A saved file is user-supplied data; only 'none' may reach the DOM.",
+    "edits": [
+      {
+        "find": "        if (!cellData || cellData.workFlag !== 'none') return;",
+        "replace": "        if (!cellData || !cellData.workFlag) return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-no-work-flag.spec.js",
+    "grep": "other than \"none\"",
+    "expect": "fail"
+  }
+]

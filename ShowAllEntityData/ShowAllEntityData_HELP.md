@@ -309,6 +309,35 @@ themselves:
   column: `❌ video on a medium that cannot carry video` and `✅ video on a
   video-capable medium` (see "Release tracklists" under "Page-specific
   behaviour").
+- **Title info** — on every **Title** column, following MusicBrainz's
+  [title style guide](https://musicbrainz.org/doc/Style/Titles):
+  - **🎶 Medley** — titles starting with `Medley:`, `Medley 2:` or `Medley;`.
+    Ticking it marks the `Medley N` prefix.
+  - **➗ Multiple titles**, **🔟 Number of titles** and **🎼 Single title** —
+    titles joining several songs with a spaced slash
+    (`Volare / On an Evening in Roma`): one flag, one entry per number of
+    titles, and one entry per title in them (without the medley prefix or
+    extra title information). A bare slash, as in `AC/DC`, does not split.
+  - **🖋️ Work** — `🚫 no associated work` and `🖋️ has an associated work`, from
+    the same row's **Recording of work** column. It only appears where that
+    column exists (release tracklists), where the Title cells of the "no
+    work" tracks are also tinted with a ⚠️ (see "Release tracklists" under
+    "Page-specific behaviour").
+  - **➕ Extra title information** (ETI) — a trailing `(…)` or `[…]` whose text
+    starts lowercase, such as `(single version)` or `(live)`: one flag plus one
+    entry per text. A capitalized group, like `Cecilia (Does Your Mother Know
+    You're Out)`, is an alternative title and does not count. Neither does a
+    group starting with a lowercase article, conjunction or preposition, like
+    `Nancy (with the Laughing Face)`, because title case keeps those words
+    lowercase inside a title.
+  - Four more, each with its own switch in ⚙️ Settings: **🪧 Subtitle**
+    (`Biography: The Greatest Hits`), **🔂 Series numbering** (`, Volume 1`,
+    `, vol. 2`, `, Part 3`, `, Parts I–V`, `, Pt. II`, with one entry per
+    number), **📼 Format designation** (`EP`, `LP`, `CD` or `Single` in the
+    title) and **🧐 Style issues** (titles cut off with `…`, OC ReMix titles,
+    ALL-UPPERCASE titles).
+- **🌟 Rating info - Presence** — on every **Rating** column: `🌟 has a rating`
+  and `☆ no rating`.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning
   (04:00-11:59), lunch (12:00-12:59), afternoon (13:00-17:59), evening
   (18:00-23:59) or night (00:00-03:59). An empty cell stays under "empty cells".
@@ -795,6 +824,13 @@ Mode CD (whose data part is where bonus music videos live), USB sticks, SD
 cards and download cards. Neither is a medium whose format is "Other" or
 missing. The Video column's 📊 dropdown counts both sides under **Video info -
 Medium format**. Switch the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST.
+
+**Recording with no work.** When a track's recording is not linked to any
+work, so its **Recording of work** cell is empty, its **Title** cell is tinted
+like a length over the threshold, with a ⚠️ and a tooltip saying why. The Title
+column's 📊 dropdown counts these tracks under **Title info - Work**. Switch
+the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST ("Flag tracks whose
+recording has no associated work"); the 📊 counts stay either way.
 
 </details>
 

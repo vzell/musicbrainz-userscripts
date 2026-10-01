@@ -1,4 +1,5 @@
 * TODO plan: UVD "Title" column needs new section
+** DONE i
 
 The UVD of the "Title" C on PT 'release-tracks' e.g. at
 https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d49521d0e (see @debug/release-tracks-UVD-final.html for the
@@ -58,3 +59,53 @@ Also add other UVD sections corresponding to the other sections in https://music
 6.)
 
 The "Rating" column needs a section which "has"/"has no" ratings see also @debug/release-tracks-UVD-ETI-final.html
+
+** DONE bug
+
+titles which have NO associated W in the "Recording of work" C should get the background warning highlightning+glyph
+like in [Image #6] for the "Length" C
+
+** TODO other non "Title" columns should get the same treatment
+
+1.)
+
+everything tested live in browser ==> OK, commit it on the branch then see the following bullet points
+
+2.)
+
+other non "Title" columns in other PTs (make it configurable too) should also get the same treatment what we currently
+implemented for the "Title" C, e.g.
+
+#+begin_example
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/recordings - "Name" C
+https://musicbrainz.org/release-group/7f76b82a-912f-39ee-bf39-477f3cf2c062 - "Release" C
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/works - "Work" C
+https://musicbrainz.org/work/9893a23c-f282-3b07-a2db-b4f2f3b9f4b2 - "Title" C
+https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/releases - "Release" C
+https://musicbrainz.org/area/489ce91b-6658-3307-9877-795b68554c98/releases - "Release" C
+etc.
+#+end_example
+
+Check if there are other potential candidates before starting implementation
+
+3.)
+
+I want the test-helper fix as its own change afterwards
+
+** TODO Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
+
+Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
+
+#+begin_example
+version
+single
+soundtrack
+etc.
+#+end_example
+
+** Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+
+Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the
+guidline specific event name format
+
+** Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs

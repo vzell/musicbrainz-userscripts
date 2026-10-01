@@ -533,3 +533,31 @@ Fixtures are real pages saved with their payload by
 a plain HTTP client with a JavaScript proof-of-work page as of 2026-10-01):
 `release-tracks-video-on-cd.html` (four videos on a CD) and
 `release-tracks-video-on-dvd.html` (five videos on a DVD-Video beside a CD).
+
+## Title column: recordings with no associated work
+
+A track whose recording links no work (empty "Recording of work" cell) gets
+`data-mb-work-flag="none"` on its **Title** `<td>`, stamped by
+`_applyNoWorkFlag()` in the row loop's `_recOfTh` block — the `else` of the
+`_workAnchor` test, so the flag and the column can never disagree. Painted with
+the over-threshold length look: `sa_release_tracks_length_mismatch_warn_bg`
+and a ⚠️ `::after`. Setting: `sa_enable_release_tracks_no_work_flag`
+(default on). The 📊 "Title info - Work" counts do NOT depend on it — they read
+the row's "Recording of work" cell directly.
+
+Rules that fail silently if broken:
+
+- **The Title column is the sticky one.** Its inline `position: sticky` must
+  keep beating the rule's `position: relative` (so no `!important` on
+  position — a sticky cell is a containing block for the absolute glyph
+  anyway), and its inline `background` must LOSE to the tint (so `!important`
+  on background-color, which also beats MusicBrainz's zebra rule).
+- **Attributes only**, as for the other two flags: the Title cell is emptied
+  (`_titleTd.innerHTML = ''`) and rebuilt later in the same loop, which keeps
+  attributes, and the glyph never reaches filter or sort text.
+- **Save/Load to Disk** carries it as `workFlag` alone (the tooltip is a fixed
+  text, re-supplied by `_applyNoWorkFlag()`); `_restoreNoWorkFlag()` accepts
+  only `none` and honours the setting.
+
+Spec: `release-tracks-no-work-flag.spec.js`; mutations in
+`scripts/mutations/uvd-title-sections.json`.

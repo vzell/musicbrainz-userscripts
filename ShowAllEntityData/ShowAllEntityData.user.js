@@ -923,6 +923,41 @@
                          "Place/Country-Date columns, and release-tracks' own \"Recorded at place\" column."
         },
 
+        sa_enable_uvd_title_subtitle: {
+            label: "Unique-Values Dropdown: Title Subtitles",
+            type: "checkbox",
+            default: true,
+            description: "Offer \"Title info - Subtitle\" in a Title column's 📊 dropdown: titles with a " +
+                         "colon-separated subtitle, e.g. \"Biography: The Greatest Hits\" " +
+                         "(https://musicbrainz.org/doc/Style/Titles). A medley's \"Medley:\" prefix never counts."
+        },
+
+        sa_enable_uvd_title_series: {
+            label: "Unique-Values Dropdown: Title Series Numbering",
+            type: "checkbox",
+            default: true,
+            description: "Offer \"Title info - Series numbering\" in a Title column's 📊 dropdown: titles " +
+                         "ending in \", Volume 1\", \", vol. 2\", \", Part 3\", \", Parts I–V\" or \", Pt. II\", " +
+                         "with one entry per volume/part number."
+        },
+
+        sa_enable_uvd_title_format: {
+            label: "Unique-Values Dropdown: Title Format Designations",
+            type: "checkbox",
+            default: true,
+            description: "Offer \"Title info - Format designation\" in a Title column's 📊 dropdown: one entry " +
+                         "per format word (EP, LP, CD, Single) that appears in a title, e.g. \"Flatline EP\"."
+        },
+
+        sa_enable_uvd_title_style_issues: {
+            label: "Unique-Values Dropdown: Title Style Issues",
+            type: "checkbox",
+            default: true,
+            description: "Offer \"Title info - Style issues\" in a Title column's 📊 dropdown: titles cut " +
+                         "off with \"…\" (the 1,024-character limit), OC ReMix titles ('Game \"Title\" OC ReMix') " +
+                         "and ALL-UPPERCASE titles, which the style guide's capitalization rules disallow."
+        },
+
         sa_enable_length_deviation_section: {
             label: 'Enable "Length info - Deviation"/"Live status" dropdown sections',
             type: 'checkbox',
@@ -1986,6 +2021,17 @@
                          + 'files (Digital Media, Data CD, Enhanced CD, USB, …) and unknown formats '
                          + 'are never flagged. The Video column\'s 📊 dropdown counts both sides '
                          + 'under "Video info - Medium format".'
+        },
+
+        sa_enable_release_tracks_no_work_flag: {
+            label: 'Flag tracks whose recording has no associated work',
+            type: 'checkbox',
+            default: true,
+            description: 'When the consolidated release tracklist shows the "Recording of work" '
+                         + 'column, mark the Title cell of every track whose recording is not linked '
+                         + 'to any work: the cell is tinted like a length mismatch over the '
+                         + 'threshold and gets a ⚠️, plus a tooltip. The Title column\'s 📊 dropdown '
+                         + 'counts these tracks under "Title info - Work" either way.'
         },
 
         sa_release_tracks_length_mismatch_threshold_ms: {
@@ -10509,6 +10555,9 @@
                                 _td.appendChild(_attrSpan);
                                 _td.appendChild(document.createTextNode(')'));
                             }
+                        } else {
+                            // No work at all: flag the Title cell (⚠️ tint).
+                            _applyNoWorkFlag(_titleTd);
                         }
                         row.appendChild(_td);
                     }
@@ -18949,6 +18998,34 @@
     }
 
     /**
+     * Tooltip of a Title cell flagged by `_applyNoWorkFlag()`.
+     * @type {string}
+     */
+    const _NO_WORK_FLAG_TIP = 'This recording is not linked to any work (its "Recording of work" cell is empty). '
+        + 'Most recordings of a song should be linked to the work they perform. '
+        + 'Configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.';
+
+    /**
+     * Marks a release-tracks Title `<td>` whose recording links no work:
+     * `data-mb-work-flag="none"` drives the warning tint and the ⚠️ from CSS,
+     * `title` explains it. Attributes only, for the same reasons as
+     * `_applyLengthMismatchFlag()`: they survive `cloneNode(true)` and the
+     * Title cell's own `innerHTML = ''` rebuild, and a CSS `::after` glyph
+     * never reaches the cell's filter/sort text. `data-mb-col-tip` marks the
+     * tooltip as this script's own, so `_buildDiskCellData()` saves it.
+     *
+     * @param {?HTMLTableCellElement} titleTd
+     * @returns {boolean} Whether the cell was marked.
+     */
+    function _applyNoWorkFlag(titleTd) {
+        if (!titleTd || Lib.settings.sa_enable_release_tracks_no_work_flag === false) return false;
+        titleTd.dataset.mbWorkFlag = 'none';
+        titleTd.title = _NO_WORK_FLAG_TIP;
+        titleTd.dataset.mbColTip = '1';
+        return true;
+    }
+
+    /**
      * Marks a flagged track's two duration `<td>`s.
      *
      * Everything the marking needs rides on ATTRIBUTES — `data-mb-len-flag`
@@ -23660,6 +23737,173 @@
         return { added, modified, bdiEl };
     }
 
+    // Grammar of https://musicbrainz.org/doc/Style/Titles, as used by
+    // _parseTitleAnatomy(). Module-level so each regex is compiled once.
+    //   - Medley prefix: "Medley: …", "Medley 2: …", "Medley; …".
+    //   - ETI: a trailing "(…)"/"[…]" whose text starts LOWERCASE — the style
+    //     guide's own rule; "Cecilia (Does Your Mother Know You're Out)" is an
+    //     alternative title, not ETI. Except when that lowercase first word is
+    //     an article, conjunction or preposition (_TITLE_ETI_MINOR_RE): English
+    //     title case keeps those lowercase INSIDE a title, so "Nancy (with the
+    //     Laughing Face)" is part of the song's name, not ETI.
+    //   - Series numbering: ", Volume 1" / ", vol. 2" / ", Part 3" /
+    //     ", Parts I–V" / ", Pt. II".
+    //   - OC ReMix: 'Game "Title" OC ReMix' (the guide's one named exception).
+    const _TITLE_MEDLEY_RE   = /^(Medley(?:\s+(\d+))?)\s*[:;]\s*/i;
+    const _TITLE_ETI_RE      = /\s[(\[]([a-z][^()\[\]]*)[)\]]$/;
+    const _TITLE_ETI_MINOR_RE = /^(?:a|an|the|and|or|but|nor|with|of|in|on|at|to|by|for|as|into|onto|upon)\b/;
+    const _TITLE_SERIES_RE   = /,\s(?:Vol(?:ume)?\.?|Parts?|Pt\.)\s*([IVXLC\d]+(?:\s*[–-]\s*[IVXLC\d]+)?)\b/i;
+    const _TITLE_FORMAT_RE   = /\b(EP|LP|CD|Single)\b/g;
+    const _TITLE_OCREMIX_RE  = /"[^"]+" OC ReMix$/;
+    const _TITLE_SUBTITLE_RE = /\S: \S/;
+
+    /**
+     * Breaks a title string down along the sections of MusicBrainz's title
+     * style guide (https://musicbrainz.org/doc/Style/Titles) for the 📊
+     * "Title info - …" sections. Pure — no DOM — so the count loop, the
+     * structure-mode matcher and the highlighters all agree by construction.
+     *
+     * Order matters: the medley prefix is stripped first, so its colon is
+     * never read as a subtitle and "Medley 1" is never a title of its own;
+     * then the text is split on the SPACED slash " / " only (a bare "/", as
+     * in "AC/DC", is part of a name); then each part loses its trailing
+     * lowercase ETI groups, repeatedly, so "(live) (remastered)" yields two.
+     *
+     * @param {?string} text - The displayed title.
+     * @returns {?{medley: ?{label: string, num: ?string}, parts: string[],
+     *   eti: string[], subtitle: boolean, seriesNum: ?string,
+     *   formats: string[], truncated: boolean, ocRemix: boolean,
+     *   allCaps: boolean}} `null` for an empty title. `parts` always holds
+     *   at least one entry; two or more means a multi-title recording.
+     */
+    function _parseTitleAnatomy(text) {
+        if (!text) return null;
+        const full = text.trim();
+        if (!full) return null;
+        let body = full;
+        let medley = null;
+        const mm = _TITLE_MEDLEY_RE.exec(body);
+        if (mm) {
+            medley = { label: mm[1], num: mm[2] || null };
+            body = body.slice(mm[0].length);
+        }
+        const eti = [];
+        const parts = body.split(' / ').map(p => {
+            let part = p.trim();
+            let em;
+            while ((em = _TITLE_ETI_RE.exec(part)) && !_TITLE_ETI_MINOR_RE.test(em[1])) {
+                eti.unshift(em[1].trim());
+                part = part.slice(0, em.index).trim();
+            }
+            return part;
+        }).filter(Boolean);
+        const sm = _TITLE_SERIES_RE.exec(body);
+        const formats = [];
+        for (const fm of body.matchAll(_TITLE_FORMAT_RE)) {
+            if (!formats.includes(fm[1])) formats.push(fm[1]);
+        }
+        const letters = full.replace(/[^\p{L}]/gu, '');
+        return {
+            medley,
+            parts: parts.length ? parts : [body],
+            eti: Array.from(new Set(eti)),
+            subtitle: _TITLE_SUBTITLE_RE.test(body),
+            seriesNum: sm ? sm[1].replace(/\s+/g, '') : null,
+            formats,
+            truncated: /…$/.test(full),
+            ocRemix: _TITLE_OCREMIX_RE.test(full),
+            allCaps: letters.length >= 4 && letters === letters.toUpperCase() && letters !== letters.toLowerCase(),
+        };
+    }
+
+    /**
+     * Finds a "Title" cell's own title element: the `<bdi>` of its first
+     * entity link, outside any `.comment` disambiguation. On release-tracks
+     * that is the recording/track link (the AR `<dl>` that follows it holds
+     * other links, but always later in document order). Highlighters scope
+     * to this element, so a title match never marks a credit below it.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?Element}
+     */
+    function _findCellTitleEl(cell) {
+        if (!cell) return null;
+        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
+            if (!bdi.closest('.comment')) return bdi;
+        }
+        return null;
+    }
+
+    /**
+     * Parses a "Title" cell with `_parseTitleAnatomy()`. Reads the title
+     * element's `textContent`, which reads straight through any
+     * `.mb-column-filter-highlight` span a previous filter pass added, so a
+     * second pass sees the same text as the first.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?ReturnType<typeof _parseTitleAnatomy>}
+     */
+    function _findCellTitleAnatomy(cell) {
+        const el = _findCellTitleEl(cell);
+        return el ? _parseTitleAnatomy(el.textContent) : null;
+    }
+
+    /**
+     * Index of the "Recording of work" column in `table`, or -1. Feeds the
+     * "Title info - Work" section, which is offered only where that column
+     * exists (release-tracks).
+     *
+     * @param {?HTMLTableElement} table
+     * @returns {number}
+     */
+    function _findRecOfWorkColIdx(table) {
+        if (!table) return -1;
+        const headers = table.querySelectorAll('thead tr:first-child th');
+        for (let i = 0; i < headers.length; i++) {
+            if (_resolveColHeaderName(table, i) === 'Recording of work') return i;
+        }
+        return -1;
+    }
+
+    /**
+     * Whether a row's "Recording of work" cell links at least one work.
+     *
+     * @param {?HTMLTableRowElement} row
+     * @param {number} recOfIdx - From `_findRecOfWorkColIdx()`.
+     * @returns {?boolean} `null` when there is no such column.
+     */
+    function _rowHasRecordingOfWork(row, recOfIdx) {
+        if (!row || recOfIdx < 0) return null;
+        const cell = row.cells[recOfIdx];
+        if (!cell) return null;
+        return !!cell.querySelector('a[href*="/work/"]');
+    }
+
+    /**
+     * Rating presence of a "Rating" cell: `'has'` when MusicBrainz shows an
+     * average or a user rating (`.current-rating`/`.current-user-rating`
+     * inside `.star-rating`), `'none'` when the stars are there but nothing is
+     * set, `null` when the cell carries no star widget at all.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?('has'|'none')}
+     */
+    function _findCellRatingPresence(cell) {
+        if (!cell || !cell.querySelector('.star-rating')) return null;
+        return cell.querySelector('.current-rating, .current-user-rating') ? 'has' : 'none';
+    }
+
+    /**
+     * Whether the 📊 "Title info" extras behind a setting are shown.
+     *
+     * @param {'subtitle'|'series'|'format'|'style'} group
+     * @returns {boolean}
+     */
+    function _uvdTitleExtraEnabled(group) {
+        const key = group === 'style' ? 'sa_enable_uvd_title_style_issues' : `sa_enable_uvd_title_${group}`;
+        return Lib.settings[key] !== false;
+    }
+
     /**
      * Splits a "Tracks" cell into its per-medium track counts — e.g.
      * `"5 + 6"` → `['5', '6']`. Mirrors `sumTracks()`'s own `text.split('+')`
@@ -25587,6 +25831,40 @@
             // Fixed flags — a Video cell's medium-format verdict, from
             // _findCellVideoMediumFlag() (the data-mb-video-flag attribute).
             return !!cell && _findCellVideoMediumFlag(cell) === mode.slice(12);
+        }
+        if (mode === 'rating-has' || mode === 'rating-none') {
+            // Fixed flags — "Rating info - Presence", from
+            // _findCellRatingPresence().
+            return !!cell && _findCellRatingPresence(cell) === mode.slice(7);
+        }
+        if (mode === 'title-no-work' || mode === 'title-has-work') {
+            // Fixed flags — "Title info - Work": whether the SAME row's
+            // "Recording of work" cell links a work. Resolved through the
+            // table's header, so `table` (passed by testRowMatch() for the
+            // detached clone) matters here.
+            const _has = _rowHasRecordingOfWork(row, _findRecOfWorkColIdx(table || (cell && cell.closest('table'))));
+            return _has !== null && _has === (mode === 'title-has-work');
+        }
+        if (mode.startsWith('title-') || mode.startsWith('titlecount:') || mode.startsWith('titlepart:') ||
+            mode.startsWith('titleeti:') || mode.startsWith('titleseries:') || mode.startsWith('titleformat:')) {
+            // "Title info - …" — every flag and value from one
+            // _parseTitleAnatomy() pass (see its own JSDoc for the grammar).
+            const a = _findCellTitleAnatomy(cell);
+            if (!a) return false;
+            if (mode === 'title-medley')    return !!a.medley;
+            if (mode === 'title-multi')     return a.parts.length > 1;
+            if (mode === 'title-eti')       return a.eti.length > 0;
+            if (mode === 'title-subtitle')  return a.subtitle;
+            if (mode === 'title-series')    return a.seriesNum !== null;
+            if (mode === 'title-truncated') return a.truncated;
+            if (mode === 'title-ocremix')   return a.ocRemix;
+            if (mode === 'title-allcaps')   return a.allCaps;
+            if (mode.startsWith('titlecount:'))  return a.parts.length > 1 && String(a.parts.length) === mode.slice(11);
+            if (mode.startsWith('titlepart:'))   return a.parts.length > 1 && a.parts.includes(mode.slice(10));
+            if (mode.startsWith('titleeti:'))    return a.eti.includes(mode.slice(9));
+            if (mode.startsWith('titleseries:')) return a.seriesNum === mode.slice(12);
+            if (mode.startsWith('titleformat:')) return a.formats.includes(mode.slice(12));
+            return false;
         }
         if (mode.startsWith('timeofday:')) {
             // Compound mode — matches a "Time" cell whose start time falls
@@ -35020,9 +35298,14 @@ a { color: #1565c0; }`;
      * travels the same way, as `videoFlag`/`videoTip`;
      * `_restoreVideoMediumFlag()` is its reader.
      *
+     * The Title cell's "no associated work" flag (`data-mb-work-flag`, see
+     * `_applyNoWorkFlag()`) travels as `workFlag` alone — its tooltip is a
+     * fixed text that `_restoreNoWorkFlag()` re-supplies.
+     *
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
-     *            lenFlag?: string, lenTip?: string, videoFlag?: string, videoTip?: string}}
+     *            lenFlag?: string, lenTip?: string, videoFlag?: string, videoTip?: string,
+     *            workFlag?: string}}
      */
     function _buildDiskCellData(cell) {
         const data = {
@@ -35042,7 +35325,25 @@ a { color: #1565c0; }`;
             data.videoFlag = cell.dataset.mbVideoFlag;
             if (cell.dataset.mbColTip === '1' && cell.title) data.videoTip = cell.title;
         }
+        if (cell.dataset.mbWorkFlag) data.workFlag = cell.dataset.mbWorkFlag;
         return data;
+    }
+
+    /**
+     * Re-marks a hydrated release-tracks Title `<td>` with the "no associated
+     * work" flag its cell record carries (`workFlag`, written by
+     * `_buildDiskCellData()`). Same contract as `_restoreVideoMediumFlag()`:
+     * only the one value `_applyNoWorkFlag()` produces (`none`) is accepted,
+     * and `_applyNoWorkFlag()` itself honours the on/off setting and supplies
+     * the tooltip, so nothing user-supplied reaches `title`.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _restoreNoWorkFlag(td, cellData) {
+        if (!cellData || cellData.workFlag !== 'none') return;
+        _applyNoWorkFlag(td);
     }
 
     /**
@@ -39468,6 +39769,30 @@ a { color: #1565c0; }`;
             pointer-events: none;
         }
         td[data-mb-len-flag="warn"]::after   { content: '⚠️'; }
+        /* A release-tracks Title cell whose recording links no work (see
+           _applyNoWorkFlag()): the over-threshold length tint and ⚠️. The
+           Title column is usually the sticky one, whose inline
+           position:sticky must keep winning over position:relative here —
+           hence no !important on position (a sticky cell is a containing
+           block for the absolute glyph too). The background needs
+           !important for the zebra rule above AND to beat the sticky
+           column's own inline background. padding-right keeps the glyph
+           off the title text. */
+        td[data-mb-work-flag="none"] {
+            position: relative;
+            padding-right: 1.6em;
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
+        }
+        td[data-mb-work-flag="none"]::after {
+            content: '⚠️';
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8em;
+            line-height: 1;
+            pointer-events: none;
+        }
         td[data-mb-len-flag="severe"]::after,
         td[data-mb-video-flag="mismatch"]::after { content: '❌'; }
         /* ISRC/ISWC format-validity glyph (org/ISRC.org items 6/7). Driven
@@ -46467,6 +46792,27 @@ a { color: #1565c0; }`;
         // whose medium can (✅), read off the cell's `data-mb-video-flag`.
         // See `_findCellVideoMediumFlag()` and `MEDIUM_FORMAT_VIDEO_CAPABLE`.
         videoMedium: { label: 'Video info - Medium format', glyph: '🎞️' },
+        // "Title info - …" — every "Title" column, following
+        // https://musicbrainz.org/doc/Style/Titles. All read from one
+        // `_parseTitleAnatomy()` pass over the cell's own title element
+        // (`_findCellTitleEl()`); see that function for the grammar.
+        // Subtitle / Series numbering / Format designation / Style issues are
+        // each behind their own `sa_enable_uvd_title_*` setting
+        // (`_uvdTitleExtraEnabled()`). "Work" is offered only where the
+        // table has a "Recording of work" column (`_findRecOfWorkColIdx()`).
+        titleMedley:   { label: 'Title info - Medley',                   glyph: '🎶' },
+        titleMulti:    { label: 'Title info - Multiple titles',          glyph: '➗' },
+        titleCount:    { label: 'Title info - Number of titles',         glyph: '🔟' },
+        titlePart:     { label: 'Title info - Single title',             glyph: '🎼' },
+        titleWork:     { label: 'Title info - Work',                     glyph: '🖋️' },
+        titleEti:      { label: 'Title info - Extra title information',  glyph: '➕' },
+        titleSubtitle: { label: 'Title info - Subtitle',                 glyph: '🪧' },
+        titleSeries:   { label: 'Title info - Series numbering',         glyph: '🔂' },
+        titleFormat:   { label: 'Title info - Format designation',       glyph: '📼' },
+        titleStyle:    { label: 'Title info - Style issues',             glyph: '🧐' },
+        // "Rating info - Presence" — a "Rating" cell with or without a
+        // rating (`_findCellRatingPresence()`).
+        ratingPresence: { label: 'Rating info - Presence', glyph: '🌟' },
         // "Relationship types - Credited as" — the `(as “credit”)` part of a
         // "Relationship types" list item (an instrument/vocal/… relationship
         // credited under a different name than the entity's own), listed as
@@ -46686,6 +47032,11 @@ a { color: #1565c0; }`;
         'length-ms-precise': 'lengthMs', 'length-ms-whole': 'lengthMs', 'length-ms-none': 'lengthMs',
         'lenflag-severe': 'lengthMismatch', 'lenflag-warn': 'lengthMismatch',
         'videomedium-mismatch': 'videoMedium', 'videomedium-ok': 'videoMedium',
+        'title-medley': 'titleMedley', 'title-multi': 'titleMulti',
+        'title-no-work': 'titleWork', 'title-has-work': 'titleWork',
+        'title-eti': 'titleEti', 'title-subtitle': 'titleSubtitle', 'title-series': 'titleSeries',
+        'title-truncated': 'titleStyle', 'title-ocremix': 'titleStyle', 'title-allcaps': 'titleStyle',
+        'rating-has': 'ratingPresence', 'rating-none': 'ratingPresence',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
@@ -46756,6 +47107,8 @@ a { color: #1565c0; }`;
         dateyear: 'dateExprYear', dateweekday: 'dateExprWeekday',
         pendingedit: 'pendingEditsEntity',
         titleageadded: 'titleAgeAdded', titleagemodified: 'titleAgeModified',
+        titlecount: 'titleCount', titlepart: 'titlePart', titleeti: 'titleEti',
+        titleseries: 'titleSeries', titleformat: 'titleFormat',
     };
 
     /**
@@ -48432,6 +48785,45 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Highlights the visible text behind a "Title info - …" entry:
+     * `title-medley` marks the "Medley N" prefix, `titlepart:` the one title,
+     * `titleeti:` the ETI text, `titleseries:` the volume/part number and
+     * `titleformat:` the format word. Every other `title-*` flag is a property
+     * of the whole title and is left unmarked, like `lenflag-*`.
+     *
+     * Verifies with `_cellMatchesStructureMode()` first, and scopes the mark
+     * to `_findCellTitleEl()`, so a credit or relationship below the title
+     * that happens to contain the same words is never marked.
+     *
+     * @param {?HTMLTableCellElement} cell - `row.cells[f.idx]` for this filter.
+     * @param {HTMLTableRowElement} row
+     * @param {number} colIdx
+     * @param {string} mode - e.g. `"titlepart:Volare"`.
+     */
+    function _highlightTitleAnatomyMatch(cell, row, colIdx, mode) {
+        if (!cell) return;
+        const el = _findCellTitleEl(cell);
+        if (!el || !_cellMatchesStructureMode(mode, cell, row, colIdx, new Map(), false)) return;
+        const _esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        let _regex = null;
+        if (mode === 'title-medley') {
+            const a = _findCellTitleAnatomy(cell);
+            if (a && a.medley) _regex = new RegExp(`^${_esc(a.medley.label)}`, 'g');
+        } else if (mode.startsWith('titlepart:')) {
+            _regex = new RegExp(`(?<=^|[:;]\\s|\\s/\\s)${_esc(mode.slice(10))}(?=$|\\s/\\s|\\s[(\\[])`, 'g');
+        } else if (mode.startsWith('titleeti:')) {
+            _regex = new RegExp(`(?<=[(\\[])${_esc(mode.slice(9))}(?=[)\\]])`, 'g');
+        } else if (mode.startsWith('titleseries:')) {
+            _regex = new RegExp(`(?<=,\\s(?:Vol(?:ume)?\\.?|Parts?|Pt\\.)\\s*)${_esc(mode.slice(12)).replace(/[–-]/g, '\\s*[–-]\\s*')}\\b`, 'gi');
+        } else if (mode.startsWith('titleformat:')) {
+            _regex = new RegExp(`\\b${_esc(mode.slice(12))}\\b`, 'g');
+        }
+        if (!_regex) return;
+        el.normalize();
+        highlightCrossTag(el, _regex, 'mb-column-filter-highlight');
+    }
+
+    /**
      * Highlights the matched value for an `eventtype:` compound
      * structure-mode filter. The whole "Event-Type" cell IS the value
      * (`eventParts()` writes nothing else into it), so this marks the
@@ -49876,7 +50268,9 @@ a { color: #1565c0; }`;
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
                     // 'partofseriesnumber:'/'trackspermedium:'/'trackstotal:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
                     // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark;
-                    // likewise never 'lenflag-*'/'videomedium-*', whose match is an attribute the cell's own tint already shows)/
+                    // likewise never 'lenflag-*'/'videomedium-*', whose match is an attribute the cell's own tint already shows,
+                    // nor 'rating-*' or a whole-title 'title-*' flag; only 'title-medley' and the 'titlepart:'/'titleeti:'/
+                    // 'titleseries:'/'titleformat:' values mark text — see _highlightTitleAnatomyMatch)/
                     // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -49963,6 +50357,9 @@ a { color: #1565c0; }`;
                                     _highlightTracksPerMediumMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('trackstotal:')) {
                                     _highlightTracksTotalMatch(row.cells[f.idx], mode);
+                                } else if (mode === 'title-medley' || mode.startsWith('titlepart:') || mode.startsWith('titleeti:') ||
+                                           mode.startsWith('titleseries:') || mode.startsWith('titleformat:')) {
+                                    _highlightTitleAnatomyMatch(row.cells[f.idx], row, f.idx, mode);
                                 } else if (mode.startsWith('eventtype:')) {
                                     _highlightEventTypeMatch(row.cells[f.idx], mode);
                                 } else if (mode.startsWith('eventcountry:')) {
@@ -62040,6 +62437,18 @@ a { color: #1565c0; }`;
         let lenFlagWarnCount         = _uniqCacheHit ? _uniqCacheHit.lenFlagWarnCount         : 0;
         let videoMediumMismatchCount = _uniqCacheHit ? _uniqCacheHit.videoMediumMismatchCount : 0;
         let videoMediumOkCount       = _uniqCacheHit ? _uniqCacheHit.videoMediumOkCount       : 0;
+        // "Title info - …" (every "Title" column) and "Rating info -
+        // Presence" (every "Rating" column) — see _parseTitleAnatomy() and
+        // _findCellRatingPresence(). Counted unconditionally; the
+        // sa_enable_uvd_title_* settings gate only the rendering, so
+        // toggling one never leaves this cache stale.
+        const _ta = _uniqCacheHit ? _uniqCacheHit.titleAnatomyCounts : {
+            medley: 0, multi: 0, eti: 0, subtitle: 0, series: 0,
+            truncated: 0, ocRemix: 0, allCaps: 0, noWork: 0, hasWork: 0,
+            count: new Map(), part: new Map(), etiValue: new Map(), seriesNum: new Map(), format: new Map(),
+        };
+        let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
+        let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -62165,6 +62574,7 @@ a { color: #1565c0; }`;
         const _colHeaderName = _resolveColHeaderName(table, colIndex);
         const isFormatCol  = _colHeaderName === 'Format';
         const isTracksCol  = _colHeaderName === 'Tracks';
+        const isRatingCol  = _colHeaderName === 'Rating';
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
         // Column-name gate for the native/synthetic "ISRCs" column's
@@ -62344,6 +62754,9 @@ a { color: #1565c0; }`;
         // computed from THIS column's own values, not always "Length"'s.
         const _lengthColAvgs = isLengthCol ? _getLengthColumnAverages(table, _colHeaderName) : null;
         const _lengthColRefAvg = _lengthColAvgs ? _lengthColAvgs.referenceAvgSeconds : null;
+        // "Title info - Work" needs the SAME row's "Recording of work" cell;
+        // resolved once per open, -1 (section skipped) on every other table.
+        const _recOfWorkIdx = isTitleCol ? _findRecOfWorkColIdx(table) : -1;
         if (!_uniqCacheHit && tbody) {
             Array.from(tbody.rows).forEach(row => {
                 if (row.style.display === 'none') return;
@@ -62405,6 +62818,33 @@ a { color: #1565c0; }`;
                 _rowAnyNameValues.forEach(t => entityNameAnyValueCounts.set(t, (entityNameAnyValueCounts.get(t) || 0) + 1));
                 _rowAnyHrefValues.forEach(h => entityHrefAnyValueCounts.set(h, (entityHrefAnyValueCounts.get(h) || 0) + 1));
                 if (isTitleCol && _titleHasRecNameMismatch(cell)) titleMismatchCount++;
+                if (isTitleCol) {
+                    const _a = _findCellTitleAnatomy(cell);
+                    if (_a) {
+                        const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+                        if (_a.medley) _ta.medley++;
+                        if (_a.parts.length > 1) {
+                            _ta.multi++;
+                            _bump(_ta.count, String(_a.parts.length));
+                            new Set(_a.parts).forEach(p => _bump(_ta.part, p));
+                        }
+                        if (_a.eti.length) { _ta.eti++; _a.eti.forEach(e => _bump(_ta.etiValue, e)); }
+                        if (_a.subtitle) _ta.subtitle++;
+                        if (_a.seriesNum !== null) { _ta.series++; _bump(_ta.seriesNum, _a.seriesNum); }
+                        _a.formats.forEach(f => _bump(_ta.format, f));
+                        if (_a.truncated) _ta.truncated++;
+                        if (_a.ocRemix) _ta.ocRemix++;
+                        if (_a.allCaps) _ta.allCaps++;
+                    }
+                    const _hasWork = _rowHasRecordingOfWork(row, _recOfWorkIdx);
+                    if (_hasWork === true) _ta.hasWork++;
+                    else if (_hasWork === false) _ta.noWork++;
+                }
+                if (isRatingCol) {
+                    const _rp = _findCellRatingPresence(cell);
+                    if (_rp === 'has') ratingHasCount++;
+                    else if (_rp === 'none') ratingNoneCount++;
+                }
                 if (isTitleCol) {
                     const _ageParts = _findCellTitleAgeParts(cell);
                     if (_ageParts) {
@@ -63932,6 +64372,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
+                titleAnatomyCounts: _ta, ratingHasCount, ratingNoneCount,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -63964,6 +64405,10 @@ a { color: #1565c0; }`;
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
             lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
+            _ta.medley, _ta.multi, _ta.eti, _ta.subtitle, _ta.series, _ta.truncated, _ta.ocRemix, _ta.allCaps,
+            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount,
+            ..._ta.count.values(), ..._ta.part.values(), ..._ta.etiValue.values(),
+            ..._ta.seriesNum.values(), ..._ta.format.values(),
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
             lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -64388,7 +64833,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -64527,6 +64972,11 @@ a { color: #1565c0; }`;
                  : kind === 'workattrid'    ? '» identifier: '
                  : kind === 'titleageadded'    ? '» added: '
                  : kind === 'titleagemodified' ? '» modified: '
+                 : kind === 'titlecount'    ? '» titles: '
+                 : kind === 'titlepart'     ? '» title: '
+                 : kind === 'titleeti'      ? '» ETI: '
+                 : kind === 'titleseries'   ? '» number: '
+                 : kind === 'titleformat'   ? '» format: '
                  : kind === 'lengthbucket'  ? '» duration: '
                  : kind === 'timeofday'     ? '» time of day: '
                  : kind === 'reltypecredit' ? '» '
@@ -64942,6 +65392,41 @@ a { color: #1565c0; }`;
             _sortedDateYearValues.length > 0 || _sortedDateWeekdayValues.length > 0 ||
             _sortedPendingEditValues.length > 0;
 
+        // "Title info - …" / "Rating info - Presence" entries, in render
+        // order. Built once and replayed by _renderTitleAndRatingItems() from
+        // BOTH render blocks below, so the two can never drift apart; the
+        // sa_enable_uvd_title_* settings drop their groups here.
+        const _byText = m => Array.from(m.keys()).sort((a, b) => a.localeCompare(b));
+        const _titleRatingItems = [];
+        const _pushSyn = (mode, label, count) => { if (count > 0) _titleRatingItems.push(() => makeSynItem(mode, label, count)); };
+        const _pushVals = (kind, map, keys) => keys.forEach(v => _titleRatingItems.push(() => makeValueSynItem(kind, v, map.get(v))));
+        _pushSyn('title-medley', '🎶 medley', _ta.medley);
+        _pushSyn('title-multi', '➗ multiple titles (" / ")', _ta.multi);
+        _pushVals('titlecount', _ta.count, Array.from(_ta.count.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)));
+        _pushVals('titlepart', _ta.part, _byText(_ta.part));
+        _pushSyn('title-no-work', '🚫 no associated work', _ta.noWork);
+        _pushSyn('title-has-work', '🖋️ has an associated work', _ta.hasWork);
+        _pushSyn('title-eti', '➕ has extra title information', _ta.eti);
+        _pushVals('titleeti', _ta.etiValue, _byText(_ta.etiValue));
+        if (_uvdTitleExtraEnabled('subtitle')) _pushSyn('title-subtitle', '🪧 has a subtitle', _ta.subtitle);
+        if (_uvdTitleExtraEnabled('series')) {
+            _pushSyn('title-series', '🔂 has series numbering', _ta.series);
+            _pushVals('titleseries', _ta.seriesNum, _byText(_ta.seriesNum));
+        }
+        if (_uvdTitleExtraEnabled('format')) _pushVals('titleformat', _ta.format, _byText(_ta.format));
+        if (_uvdTitleExtraEnabled('style')) {
+            _pushSyn('title-truncated', '✂️ truncated ("…")', _ta.truncated);
+            _pushSyn('title-ocremix', '🎮 OC ReMix title', _ta.ocRemix);
+            _pushSyn('title-allcaps', '🔠 ALL UPPERCASE', _ta.allCaps);
+        }
+        _pushSyn('rating-has', '🌟 has a rating', ratingHasCount);
+        _pushSyn('rating-none', '☆ no rating', ratingNoneCount);
+        /**
+         * Renders the "Title info - …" / "Rating info - Presence" entries
+         * collected in `_titleRatingItems`. Called from both render blocks.
+         */
+        const _renderTitleAndRatingItems = () => _titleRatingItems.forEach(fn => fn());
+
         if (isCollapsableCol && (emptyCellCount > 0 || singleRowCount > 0 || totalMultiRow > 0 ||
             multiMediumCount > 0 || catalogHasPrefixCount > 0 || catalogNoPrefixCount > 0 || catalogNoneCount > 0 ||
             isrcValidCount > 0 || isrcInvalidCount > 0 || iswcValidCount > 0 || iswcInvalidCount > 0 ||
@@ -64959,7 +65444,7 @@ a { color: #1565c0; }`;
             dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
             localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
             instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-            instrumentHasCrossReferenceCount > 0 || _hasValueEntries)) {
+            instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries)) {
              // "empty cells" pinned first; remaining entries in ascending complexity order.
             // For CAA/EAA columns the generic structural labels are replaced with more
             // descriptive artwork-presence labels that match user intent:
@@ -65029,6 +65514,7 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            _renderTitleAndRatingItems();
             // "Length info - Live status" — surfaces the SAME live/studio
             // classification the buckets above already compute internally
             // (see _getLengthColumnAverages()'s own JSDoc) as its own
@@ -65156,7 +65642,7 @@ a { color: #1565c0; }`;
                    dateCompleteCount > 0 || datePartialCount > 0 || dateRangeCount > 0 ||
                    localePrimaryCount > 0 || localeNotPrimaryCount > 0 ||
                    instrumentHasCommentCount > 0 || instrumentHasDescriptionCount > 0 ||
-                   instrumentHasCrossReferenceCount > 0 || _hasValueEntries) {
+                   instrumentHasCrossReferenceCount > 0 || _titleRatingItems.length > 0 || _hasValueEntries) {
             // Non-collapsable column (or a collapsable one with zero rows in
             // any multi-row-family state this render).
             if (emptyCellCount > 0)     makeSynItem('empty',          '○ empty cells',           emptyCellCount);
@@ -65204,6 +65690,7 @@ a { color: #1565c0; }`;
             if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
             if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
             if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
+            _renderTitleAndRatingItems();
             if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
                 if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
                 if (_lengthColAvgs.studioKnownCount > 0) makeSynItem('lengthlive-no', '⚪ Not live', _lengthColAvgs.studioKnownCount);
@@ -65871,6 +66358,23 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return `» country code: ${mode.slice(12)}`;
         if (mode.startsWith('trackspermedium:')) return `» tracks: ${mode.slice(16)}`;
         if (mode.startsWith('trackstotal:')) return `» total tracks: ${mode.slice(12)}`;
+        if (mode === 'title-medley')    return '🎶 medley';
+        if (mode === 'title-multi')     return '➗ multiple titles (" / ")';
+        if (mode === 'title-no-work')   return '🚫 no associated work';
+        if (mode === 'title-has-work')  return '🖋️ has an associated work';
+        if (mode === 'title-eti')       return '➕ has extra title information';
+        if (mode === 'title-subtitle')  return '🪧 has a subtitle';
+        if (mode === 'title-series')    return '🔂 has series numbering';
+        if (mode === 'title-truncated') return '✂️ truncated ("…")';
+        if (mode === 'title-ocremix')   return '🎮 OC ReMix title';
+        if (mode === 'title-allcaps')   return '🔠 ALL UPPERCASE';
+        if (mode === 'rating-has')      return '🌟 has a rating';
+        if (mode === 'rating-none')     return '☆ no rating';
+        if (mode.startsWith('titlecount:'))  return `» titles: ${mode.slice(11)}`;
+        if (mode.startsWith('titlepart:'))   return `» title: ${mode.slice(10)}`;
+        if (mode.startsWith('titleeti:'))    return `» ETI: ${mode.slice(9)}`;
+        if (mode.startsWith('titleseries:')) return `» number: ${mode.slice(12)}`;
+        if (mode.startsWith('titleformat:')) return `» format: ${mode.slice(12)}`;
         if (mode.startsWith('eventtype:'))    return `» type: ${mode.slice(10)}`;
         if (mode.startsWith('eventcountry:')) return `» country: ${mode.slice(13)}`;
         if (mode.startsWith('catalogprefix:'))   return `» prefix: ${mode.slice(14)}`;
@@ -66010,6 +66514,23 @@ a { color: #1565c0; }`;
         if (mode.startsWith('countrycode:')) return 'One entry\'s own 2-letter country code, from the synthetic "Country" column.';
         if (mode.startsWith('trackspermedium:')) return 'One "Tracks" cell\'s own per-medium track count.';
         if (mode.startsWith('trackstotal:')) return 'One "Tracks" cell\'s summed track count over all its mediums (the synthetic "Total Tracks" value).';
+        if (mode === 'title-medley') return '🎶 = the title starts with "Medley:" (or "Medley 2:", "Medley;") — a medley of several songs.';
+        if (mode === 'title-multi') return '➗ = the title joins several titles with a spaced slash " / ", MusicBrainz\'s style for multiple or split titles (https://musicbrainz.org/doc/Style/Titles).';
+        if (mode === 'title-no-work') return '🚫 = this row\'s "Recording of work" cell links no work.';
+        if (mode === 'title-has-work') return '🖋️ = this row\'s "Recording of work" cell links at least one work.';
+        if (mode === 'title-eti') return '➕ = the title ends in extra title information: a "(…)" or "[…]" whose text starts lowercase, e.g. "(single version)". A capitalized "(…)" is an alternative title, not ETI.';
+        if (mode === 'title-subtitle') return '🪧 = the title carries a colon-separated subtitle, e.g. "Biography: The Greatest Hits". A medley prefix never counts.';
+        if (mode === 'title-series') return '🔂 = the title carries series numbering: ", Volume 1", ", vol. 2", ", Part 3", ", Parts I–V" or ", Pt. II".';
+        if (mode === 'title-truncated') return '✂️ = the title ends in "…" — MusicBrainz truncates titles longer than 1,024 characters this way.';
+        if (mode === 'title-ocremix') return '🎮 = an OC ReMix title, in the style guide\'s \'Game "Title" OC ReMix\' form.';
+        if (mode === 'title-allcaps') return '🔠 = the whole title is in capitals, which the style guide\'s capitalization rules disallow (unless it is the artist\'s intended styling).';
+        if (mode === 'rating-has') return '🌟 = this row has a rating (an average rating, or your own).';
+        if (mode === 'rating-none') return '☆ = this row has no rating yet.';
+        if (mode.startsWith('titlecount:')) return 'How many " / "-separated titles a multi-title recording joins.';
+        if (mode.startsWith('titlepart:')) return 'One title inside a multi-title recording (medley prefix and ETI removed).';
+        if (mode.startsWith('titleeti:')) return 'One extra-title-information text, e.g. "single version" or "live".';
+        if (mode.startsWith('titleseries:')) return 'One volume/part number from the title\'s series numbering.';
+        if (mode.startsWith('titleformat:')) return 'One format word (EP, LP, CD, Single) found in the title.';
         if (mode.startsWith('eventtype:')) return 'One "Event-Type" cell\'s own value, from eventParts()\'s fixed vocabulary (live/soundcheck/studio/interview/audition/live rehearsal).';
         if (mode.startsWith('eventcountry:')) return 'One "Event-Country" cell\'s own value, from eventParts()\'s location-parsing rules.';
         if (mode.startsWith('catalogprefix:')) return 'One "Catalog#" list item\'s own leading string prefix (e.g. "CBS", "S CBS").';
@@ -77559,6 +78080,7 @@ a { color: #1565c0; }`;
                             // for the Video column's medium-format flag.
                             _restoreLenMismatchFlag(td, cellData);
                             _restoreVideoMediumFlag(td, cellData);
+                            _restoreNoWorkFlag(td, cellData);
                             tr.appendChild(td);
                         });
 
@@ -77714,6 +78236,7 @@ a { color: #1565c0; }`;
                         // the Video column's medium-format flag.
                         _restoreLenMismatchFlag(td, cellData);
                         _restoreVideoMediumFlag(td, cellData);
+                        _restoreNoWorkFlag(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
@@ -90643,6 +91166,18 @@ a { color: #1565c0; }`;
                 const cell = document.querySelector(selector);
                 if (!cell) return null;
                 return _cellMatchesStructureMode(mode, cell, cell.closest('tr'), 0, new Map(), false);
+            },
+
+            /**
+             * Thin wrapper around `_parseTitleAnatomy()` — the pure title
+             * grammar behind the 📊 "Title info - …" sections — so its edge
+             * cases can be pinned without building a table.
+             *
+             * @param {string} text
+             * @returns {?Object} See `_parseTitleAnatomy()`.
+             */
+            parseTitleAnatomy(text) {
+                return _parseTitleAnatomy(text);
             },
 
             /**
