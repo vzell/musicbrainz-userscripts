@@ -301,7 +301,14 @@ themselves:
   cell has milliseconds, and it keeps working with ⏱ switched back off, because
   the cells still carry them. On a release tracklist that also has a
   **Recording length** column (see below), that column's own 📊 dropdown
-  offers the exact same sections, computed from its own values.
+  offers the exact same sections, computed from its own values — plus
+  **Track vs recording**: the tracks whose two lengths are flagged, `❌ far
+  apart from the other length` and `⚠️ apart beyond the threshold`, counted
+  exactly like the **(N) LENGTH** buttons.
+- **🎞️ Video info - Medium format** — on a release tracklist's **Video**
+  column: `❌ video on a medium that cannot carry video` and `✅ video on a
+  video-capable medium` (see "Release tracklists" under "Page-specific
+  behaviour").
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning
   (04:00-11:59), lunch (12:00-12:59), afternoon (13:00-17:59), evening
   (18:00-23:59) or night (00:00-03:59). An empty cell stays under "empty cells".
@@ -503,7 +510,9 @@ A release tracklist also gets a **Recording length** column whenever some track'
 recording length disagrees with its track length, and flags the disagreements
 with ⚠️ or ❌ past a configurable threshold, with **(N) LENGTH ⚠️** buttons in
 the filter bar to isolate them. Its own 📊 dropdown offers the same "Length
-info" sections as **Length** (see above), computed from its own values.
+info" sections as **Length** (see above), computed from its own values, and
+both columns' dropdowns add **Track vs recording** to pick the ❌ or the ⚠️
+tracks.
 
 ---
 
@@ -774,6 +783,18 @@ recording's, because they are relationships of a different entity.
 Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
 the recording date.
+
+**Video on a medium that cannot carry video.** When a recording marked as a
+video sits on a CD, a vinyl record, a cassette, an SACD or any other format
+that cannot hold video, its **Video** cell is tinted light red with a ❌ — the
+same look as a far-over length mismatch — and its tooltip names the medium and
+its format. Either the recording's video flag or the medium's format is wrong.
+Formats that can hold video, or video files, are never flagged: DVD, Blu-ray,
+VHS, LaserDisc, Video CD, but also Digital Media, Data CD, Enhanced CD and Mixed
+Mode CD (whose data part is where bonus music videos live), USB sticks, SD
+cards and download cards. Neither is a medium whose format is "Other" or
+missing. The Video column's 📊 dropdown counts both sides under **Video info -
+Medium format**. Switch the marking off in ⚙️ Settings → 💿 RELEASE TRACKLIST.
 
 </details>
 

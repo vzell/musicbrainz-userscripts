@@ -1974,6 +1974,20 @@
                          + 'Recording length column but drop all marking.'
         },
 
+        sa_enable_release_tracks_video_medium_flag: {
+            label: 'Flag video recordings on a medium that cannot carry video',
+            type: 'checkbox',
+            default: true,
+            description: 'When the consolidated release tracklist shows the "Video" column, mark '
+                         + 'every video recording whose medium is a format that cannot carry '
+                         + 'video at all — a CD, a vinyl record, a cassette, an SACD, … . The Video '
+                         + 'cell is tinted like a far-over length mismatch and gets a ❌, plus a '
+                         + 'tooltip naming the medium and its format. Formats that can hold video '
+                         + 'files (Digital Media, Data CD, Enhanced CD, USB, …) and unknown formats '
+                         + 'are never flagged. The Video column\'s 📊 dropdown counts both sides '
+                         + 'under "Video info - Medium format".'
+        },
+
         sa_release_tracks_length_mismatch_threshold_ms: {
             label: 'Length-mismatch threshold (milliseconds)',
             type: 'number',
@@ -9086,6 +9100,15 @@
             const _format = _linkClone.textContent.trim();
             const _title = [_discNumber, _format].filter(Boolean).join(' - ');
 
+            // The medium's identity rides on the table itself, for
+            // _mediumCanCarryVideo(): its gid keys the embedded payload's
+            // language-independent format id, and the format text is the
+            // fallback when that payload is absent.
+            const _mediumGid = (_expandLink.getAttribute('href') || '').match(/\/medium\/([0-9a-f-]{36})/);
+            if (_mediumGid) table.dataset.mbMediumGid = _mediumGid[1];
+            if (_format) table.dataset.mbMediumFormat = _format;
+            if (_discNumber) table.dataset.mbMediumPosition = _discNumber;
+
             const _h3 = document.createElement('h3');
             _h3.textContent = _title;
             table.before(_h3);
@@ -9856,6 +9879,10 @@
                 _videoTh = document.createElement('th');
                 _videoTh.textContent = 'Video';
             }
+            // Whether THIS medium's format can carry video at all — decided
+            // once per table, not per row, and only when there is a Video
+            // column to mark. See _applyVideoMediumFlag().
+            const _videoMediumVerdict = _videoTh ? _mediumCanCarryVideo(table) : null;
             // Disambiguation: same page-wide-decision reasoning as Video —
             // only added once ANY track on the release has the comment.
             if (!_hasDisambig && _pageHasDisambig) {
@@ -10288,6 +10315,11 @@
                 // <a>, so it would otherwise be silently discarded when
                 // the Title cell is rebuilt further down.
                 const _videoTd = _videoTh ? ColumnDataExtractor.video(_titleTd)[0] : null;
+                // A video recording on a medium that cannot carry video is a
+                // data error worth seeing — see _applyVideoMediumFlag().
+                if (_videoTd && _videoTd.querySelector('span.video')) {
+                    _applyVideoMediumFlag(_videoTd, _videoMediumVerdict);
+                }
 
                 const _recAnchor = _titleTd.querySelector('a[href^="/recording/"]');
 
@@ -17476,7 +17508,7 @@
                 // "Complete (merged)".  Kept here (commented) for reference only.
                 // { label: '🧮 Official RGs',         params: { all: '0', va: '0' } },
                 // { label: '🧮 Official VA RGs',      params: { all: '0', va: '1' } },
-                { label: '🧮 Artist RGs',           shortLabel: 'Artists',         params: { all: '1', va: '0' } },
+                { label: '🧮 Artist RGs',           shortLabel: 'Artist',          params: { all: '1', va: '0' } },
                 { label: '🧮 Various Artists RGs',  shortLabel: 'Various Artists', params: { all: '1', va: '1' } }
             ],
             features: {
@@ -17515,7 +17547,7 @@
             match: (path, params) => path.match(/\/artist\/[a-f0-9-]{36}\/releases\/?$/),
             buttonGroupLabel: 'Releases',
             buttons: [
-                { label: '🧮 Artist releases', shortLabel: 'Artists',         params: { va: '0' } },
+                { label: '🧮 Artist releases', shortLabel: 'Artist',          params: { va: '0' } },
                 { label: '🧮 VA releases',     shortLabel: 'Various Artists', params: { va: '1' } }
             ],
             features: {
@@ -18965,6 +18997,293 @@
             td.dataset.mbColTip   = '1';
         });
         return flag.kind;
+    }
+
+    /**
+     * Every MusicBrainz medium format, by its database id, with whether a
+     * medium of that format can carry VIDEO at all — the question behind the
+     * Video column's ❌ flag (see `_applyVideoMediumFlag()`).
+     *
+     * Ids and names are MusicBrainz's own, in the order and nesting of the
+     * release editor's format dropdown (`debug/medium-formats.html`, copied to
+     * `tests/fixtures/medium-formats.html`, which a spec checks this table
+     * against so a format MusicBrainz adds later is noticed rather than
+     * silently treated as unknown). The `// under …` comments mirror that
+     * dropdown's nesting.
+     *
+     * `video` is three-valued, and the asymmetry is the point:
+     *   - `false` — the format DEFINITELY cannot carry video: audio-only
+     *     optical discs (CD and its audio variants, SACD, the CD side of a
+     *     DualDisc/DVDplus/VinylDisc), every phonograph record, every audio
+     *     tape and cartridge, and the mechanical formats. A video recording on
+     *     one of these is a data error, so it is flagged.
+     *   - `true` — the format can carry video, either because it is a video
+     *     format (DVD, Blu-ray, VHS, LaserDisc, VCD, CDV, UMD, …) or because
+     *     it is a data carrier that can hold video files (Digital Media, Data
+     *     CD, Enhanced CD and Mixed Mode CD — whose data session is where CD
+     *     Extra music videos live —, SD/USB/floppy, Download Card, KiT Album).
+     *   - `null` — unknown ("Other"). Never flagged.
+     * An id that is NOT in this table — a medium with no format, or a format
+     * MusicBrainz adds later — is treated as `null` too: the flag only ever
+     * fires on a positive "cannot", never on a guess.
+     *
+     * Three judgement calls, recorded so they can be revisited:
+     *   - CD-R (33) and 8cm CD-R (210) are `false`: MusicBrainz has a separate
+     *     "Data CD" format, so a CD-R in its data is an audio disc.
+     *   - CD+G (39, 40) is `false`: its "+G" is a low-resolution graphics
+     *     channel for karaoke lyrics, not video.
+     *   - The generic "Cartridge" (9) is `false`: every listed child is an
+     *     audio tape cartridge except "ROM cartridge" (208), which has its own
+     *     id and is `true`.
+     *
+     * Sources (checked 2026-10-01): https://musicbrainz.org/doc/Release/Format,
+     * https://en.wikipedia.org/wiki/Enhanced_CD,
+     * https://en.wikipedia.org/wiki/Blue_Book_(CD_standard),
+     * https://en.wikipedia.org/wiki/Mixed_Mode_CD.
+     *
+     * @type {Map<number, {name: string, video: ?boolean}>}
+     */
+    const MEDIUM_FORMAT_VIDEO_CAPABLE = new Map([
+        [ 12, { name: 'Digital Media',                          video: true  }],
+        [  1, { name: 'CD',                                     video: false }],
+        [ 61, { name: 'Copy Control CD',                        video: false }], // under CD
+        [ 43, { name: 'Data CD',                                video: true  }], // under CD
+        [ 44, { name: 'DTS CD',                                 video: false }], // under CD
+        [ 42, { name: 'Enhanced CD',                            video: true  }], // under CD
+        [ 25, { name: 'HDCD',                                   video: false }], // under CD
+        [129, { name: 'Mixed Mode CD',                          video: true  }], // under CD
+        [ 33, { name: 'CD-R',                                   video: false }], // under CD
+        [ 34, { name: '8cm CD',                                 video: false }], // under CD
+        [210, { name: '8cm CD-R',                               video: false }], // under 8cm CD
+        [ 35, { name: 'Blu-spec CD',                            video: false }], // under CD
+        [165, { name: 'Minimax CD',                             video: false }], // under CD
+        [ 36, { name: 'SHM-CD',                                 video: false }], // under CD
+        [ 37, { name: 'HQCD',                                   video: false }], // under CD
+        [209, { name: 'CD-i',                                   video: true  }], // under CD
+        [ 39, { name: 'CD+G',                                   video: false }], // under CD
+        [ 40, { name: '8cm CD+G',                               video: false }], // under CD+G
+        [ 73, { name: 'Phonograph record',                      video: false }],
+        [  7, { name: 'Vinyl',                                  video: false }], // under Phonograph record
+        [ 29, { name: '7" Vinyl',                               video: false }], // under Vinyl
+        [ 30, { name: '10" Vinyl',                              video: false }], // under Vinyl
+        [ 31, { name: '12" Vinyl',                              video: false }], // under Vinyl
+        [ 51, { name: 'Flexi-disc',                             video: false }], // under Vinyl
+        [ 52, { name: '7" Flexi-disc',                          video: false }], // under Flexi-disc
+        [207, { name: '3" Vinyl',                               video: false }], // under Vinyl
+        [ 53, { name: 'Shellac',                                video: false }], // under Phonograph record
+        [ 56, { name: '7" Shellac',                             video: false }], // under Shellac
+        [ 54, { name: '10" Shellac',                            video: false }], // under Shellac
+        [ 55, { name: '12" Shellac',                            video: false }], // under Shellac
+        [203, { name: 'Acetate',                                video: false }], // under Phonograph record
+        [204, { name: '7" Acetate',                             video: false }], // under Acetate
+        [205, { name: '10" Acetate',                            video: false }], // under Acetate
+        [206, { name: '12" Acetate',                            video: false }], // under Acetate
+        [  8, { name: 'Cassette',                               video: false }],
+        [ 83, { name: 'Microcassette',                          video: false }], // under Cassette
+        [  2, { name: 'DVD',                                    video: true  }],
+        [ 94, { name: 'Data DVD',                               video: true  }], // under DVD
+        [ 18, { name: 'DVD-Audio',                              video: true  }], // under DVD
+        [ 93, { name: 'Data DVD-R',                             video: true  }], // under DVD
+        [ 92, { name: 'DVD-R Video',                            video: true  }], // under DVD
+        [ 19, { name: 'DVD-Video',                              video: true  }], // under DVD
+        [166, { name: 'MiniDVD',                                video: true  }], // under DVD
+        [168, { name: 'MiniDVD-Audio',                          video: true  }], // under MiniDVD
+        [169, { name: 'MiniDVD-Video',                          video: true  }], // under MiniDVD
+        [167, { name: 'Minimax DVD',                            video: true  }], // under DVD
+        [170, { name: 'Minimax DVD-Audio',                      video: true  }], // under Minimax DVD
+        [171, { name: 'Minimax DVD-Video',                      video: true  }], // under Minimax DVD
+        [  3, { name: 'SACD',                                   video: false }],
+        [ 84, { name: 'SACD (2 channels)',                      video: false }], // under SACD
+        [ 85, { name: 'SACD (multichannel)',                    video: false }], // under SACD
+        [ 38, { name: 'Hybrid SACD',                            video: false }], // under SACD
+        [ 63, { name: 'Hybrid SACD (CD layer)',                 video: false }], // under Hybrid SACD
+        [ 64, { name: 'Hybrid SACD (SACD layer)',               video: false }], // under Hybrid SACD
+        [ 87, { name: 'Hybrid SACD (SACD layer, 2 channels)',   video: false }], // under Hybrid SACD (SACD layer)
+        [ 86, { name: 'Hybrid SACD (SACD layer, multichannel)', video: false }], // under Hybrid SACD (SACD layer)
+        [ 57, { name: 'SHM-SACD',                               video: false }], // under SACD
+        [ 89, { name: 'SHM-SACD (2 channels)',                  video: false }], // under SHM-SACD
+        [ 88, { name: 'SHM-SACD (multichannel)',                video: false }], // under SHM-SACD
+        [  4, { name: 'DualDisc',                               video: true  }],
+        [ 67, { name: 'DualDisc (CD side)',                     video: false }], // under DualDisc
+        [ 66, { name: 'DualDisc (DVD-Video side)',              video: true  }], // under DualDisc
+        [ 65, { name: 'DualDisc (DVD-Audio side)',              video: true  }], // under DualDisc
+        [130, { name: 'DualDisc (DVD side)',                    video: true  }], // under DualDisc
+        [  6, { name: 'MiniDisc',                               video: false }],
+        [ 20, { name: 'Blu-ray',                                video: true  }],
+        [ 79, { name: 'Blu-ray-R',                              video: true  }], // under Blu-ray
+        [211, { name: 'Ultra HD Blu-ray',                       video: true  }], // under Blu-ray
+        [ 41, { name: 'CDV',                                    video: true  }],
+        [ 22, { name: 'VCD',                                    video: true  }],
+        [ 23, { name: 'SVCD',                                   video: true  }], // under VCD
+        [  5, { name: 'LaserDisc',                              video: true  }],
+        [ 71, { name: '8" LaserDisc',                           video: true  }], // under LaserDisc
+        [ 72, { name: '12" LaserDisc',                          video: true  }], // under LaserDisc
+        [ 62, { name: 'SD Card',                                video: true  }],
+        [164, { name: 'microSD',                                video: true  }], // under SD Card
+        [ 27, { name: 'slotMusic',                              video: true  }], // under microSD
+        [ 26, { name: 'USB Flash Drive',                        video: true  }],
+        [ 21, { name: 'VHS',                                    video: true  }],
+        [ 13, { name: 'Other',                                  video: null  }],
+        [131, { name: 'Betacam SP',                             video: true  }], // under Other
+        [ 24, { name: 'Betamax',                                video: true  }], // under Other
+        [  9, { name: 'Cartridge',                              video: false }], // under Other
+        [ 78, { name: '8-Track Cartridge',                      video: false }], // under Cartridge
+        [ 75, { name: 'HiPac',                                  video: false }], // under Cartridge
+        [ 74, { name: 'PlayTape',                               video: false }], // under Cartridge
+        [208, { name: 'ROM cartridge',                          video: true  }], // under Cartridge
+        [ 60, { name: 'CED',                                    video: true  }], // under Other
+        [ 11, { name: 'DAT',                                    video: false }], // under Other
+        [128, { name: 'DataPlay',                               video: true  }], // under Other
+        [ 16, { name: 'DCC',                                    video: false }], // under Other
+        [ 46, { name: 'Download Card',                          video: true  }], // under Other
+        [ 47, { name: 'DVDplus',                                video: true  }], // under Other
+        [ 70, { name: 'DVDplus (CD side)',                      video: false }], // under DVDplus
+        [ 69, { name: 'DVDplus (DVD-Video side)',               video: true  }], // under DVDplus
+        [ 68, { name: 'DVDplus (DVD-Audio side)',               video: true  }], // under DVDplus
+        [ 50, { name: 'Edison Diamond Disc',                    video: false }], // under Other
+        [ 76, { name: 'Floppy Disk',                            video: true  }], // under Other
+        [ 49, { name: '3.5" Floppy Disk',                       video: true  }], // under Floppy Disk
+        [ 91, { name: '5.25" Floppy Disk',                      video: true  }], // under Floppy Disk
+        [ 77, { name: 'Zip Disk',                               video: true  }], // under Floppy Disk
+        [ 17, { name: 'HD-DVD',                                 video: true  }], // under Other
+        [ 95, { name: 'KiT Album',                              video: true  }], // under Other
+        [ 58, { name: 'Pathé disc',                             video: false }], // under Other
+        [ 15, { name: 'Piano Roll',                             video: false }], // under Other
+        [ 45, { name: 'Playbutton',                             video: false }], // under Other
+        [ 10, { name: 'Reel-to-reel',                           video: false }], // under Other
+        [ 90, { name: 'Tefifon',                                video: false }], // under Other
+        [ 28, { name: 'UMD',                                    video: true  }], // under Other
+        [ 59, { name: 'VHD',                                    video: true  }], // under Other
+        [ 48, { name: 'VinylDisc',                              video: true  }], // under Other
+        [ 82, { name: 'VinylDisc (CD side)',                    video: false }], // under VinylDisc
+        [ 80, { name: 'VinylDisc (DVD side)',                   video: true  }], // under VinylDisc
+        [ 81, { name: 'VinylDisc (Vinyl side)',                 video: false }], // under VinylDisc
+        [ 14, { name: 'Wax Cylinder',                           video: false }], // under Other
+    ]);
+
+    /** @type {?Map<string, number>} Lower-cased format name → id; built on first use. */
+    let _mediumFormatIdByNameCache = null;
+
+    /**
+     * Resolves a medium table to its MusicBrainz format id.
+     *
+     * Two sources, in order:
+     *   1. The page's embedded release payload (`_readEmbeddedReleaseJson()`),
+     *      matched by the medium gid `applyNormalizeMediumTracklists()` stamped
+     *      on the table as `data-mb-medium-gid`, reading
+     *      `release.mediums[].format.id`. Preferred because the id does not
+     *      depend on the interface language — MusicBrainz translates format
+     *      NAMES — and because it is matched by gid, never by position.
+     *   2. The format text from the medium header (`data-mb-medium-format`,
+     *      the same text the sub-table's "1 - CD" h3 is built from), looked up
+     *      by English name. Anything after a ": " is the medium's own title and
+     *      is cut off; no format name contains a colon.
+     *
+     * @param   {HTMLTableElement} table - A release-tracks medium table.
+     * @returns {?number} The format id, or `null` when neither source knows it.
+     */
+    function _mediumFormatId(table) {
+        const gid = table?.dataset?.mbMediumGid;
+        const payload = gid ? _readEmbeddedReleaseJson() : null;
+        if (payload) {
+            const medium = (payload.release.mediums || []).find(m => m && m.gid === gid);
+            const id = medium?.format?.id ?? medium?.format_id;
+            if (typeof id === 'number') return id;
+        }
+        const text = (table?.dataset?.mbMediumFormat || '').split(': ')[0].trim().toLowerCase();
+        if (!text) return null;
+        if (!_mediumFormatIdByNameCache) {
+            _mediumFormatIdByNameCache = new Map();
+            MEDIUM_FORMAT_VIDEO_CAPABLE.forEach((v, id) => _mediumFormatIdByNameCache.set(v.name.toLowerCase(), id));
+        }
+        return _mediumFormatIdByNameCache.get(text) ?? null;
+    }
+
+    /**
+     * Decides whether one medium table's format can carry video, from
+     * `MEDIUM_FORMAT_VIDEO_CAPABLE`.
+     *
+     * `formatName` is the format as the PAGE shows it (the medium header's
+     * text, which MusicBrainz translates), so the tooltip speaks the reader's
+     * interface language; the table's English name is only the fallback.
+     *
+     * @param   {HTMLTableElement} table - A release-tracks medium table.
+     * @returns {?{canCarry: boolean, formatName: string, position: string}}
+     *   `null` when the format is unknown, has no verdict ("Other"), or the
+     *   table carries no medium identity at all — every one of which means
+     *   "never flag".
+     */
+    function _mediumCanCarryVideo(table) {
+        const id = _mediumFormatId(table);
+        const entry = id === null ? null : MEDIUM_FORMAT_VIDEO_CAPABLE.get(id);
+        if (!entry || typeof entry.video !== 'boolean') {
+            Lib.debug('init', `_mediumCanCarryVideo: medium ${table?.dataset?.mbMediumPosition || '?'} `
+                + `format ${id === null ? '(unresolved)' : id} has no video verdict — not flagged.`);
+            return null;
+        }
+        return {
+            canCarry: entry.video,
+            formatName: (table.dataset.mbMediumFormat || '').split(': ')[0].trim() || entry.name,
+            position: table.dataset.mbMediumPosition || '',
+        };
+    }
+
+    /**
+     * Marks a release-tracks Video `<td>` holding a video recording with
+     * whether its medium can carry video: `data-mb-video-flag="mismatch"`
+     * (tinted, ❌, explained in a tooltip) when it cannot, `"ok"` (no visual
+     * change) when it can. Nothing is written when the medium's format is
+     * unknown — see `MEDIUM_FORMAT_VIDEO_CAPABLE`.
+     *
+     * Attributes only, for the same three reasons `_applyLengthMismatchFlag()`
+     * gives: they survive `cloneNode(true)` on every re-render, they never
+     * reach the cell's text (which is what the Video column sorts and filters
+     * on, via its hidden `video`/`audio` sort key), and the tint and ❌ are
+     * pure CSS on the attribute. `"ok"` is stamped although it paints nothing
+     * so the 📊 "Video info - Medium format" section can count both sides
+     * (`_findCellVideoMediumFlag()`).
+     *
+     * `data-mb-col-tip` marks the tooltip as this script's own, the same
+     * contract the length flag keeps — `_buildDiskCellData()` only saves a
+     * tooltip that carries it.
+     *
+     * Runs during pre-processing, before the rows are captured, so the flag is
+     * on the source rows from the start and no post-render cache needs
+     * refreshing.
+     *
+     * @param   {HTMLTableCellElement} td - The Video cell, holding `span.video`.
+     * @param   {?{canCarry: boolean, formatName: string, position: string}} verdict
+     *   From `_mediumCanCarryVideo()`.
+     * @returns {?string} The flag written (`'mismatch'`/`'ok'`), or `null`.
+     */
+    function _applyVideoMediumFlag(td, verdict) {
+        if (!td || !verdict) return null;
+        if (Lib.settings.sa_enable_release_tracks_video_medium_flag === false) return null;
+        if (verdict.canCarry) {
+            td.dataset.mbVideoFlag = 'ok';
+            return 'ok';
+        }
+        td.dataset.mbVideoFlag = 'mismatch';
+        td.title = _videoMediumTooltip(verdict);
+        td.dataset.mbColTip = '1';
+        return 'mismatch';
+    }
+
+    /**
+     * Builds the tooltip for a Video cell flagged `mismatch`.
+     *
+     * Names both halves of the contradiction, because either one can be the
+     * wrong one: the recording's video flag lives on the RECORDING (shared by
+     * every release using it), the format on this release's MEDIUM.
+     *
+     * @param   {{formatName: string, position: string}} verdict
+     * @returns {string}
+     */
+    function _videoMediumTooltip(verdict) {
+        const medium = verdict.position ? `medium ${verdict.position}` : 'this medium';
+        return `This recording is marked as a video, but ${medium} is a ${verdict.formatName}, `
+            + 'a format that cannot carry video. Either the recording\'s video flag or the '
+            + 'medium\'s format is wrong. Configurable in ⚙️ Settings → 💿 RELEASE TRACKLIST.';
     }
 
     /**
@@ -23471,6 +23790,43 @@
     }
 
     /**
+     * Reads a release-tracks duration cell's track-vs-recording length
+     * mismatch level — the `data-mb-len-flag` attribute
+     * `_applyLengthMismatchFlag()` stamps on BOTH the "Length" and the
+     * "Recording length" cell of a flagged track. Feeds the 📊 "Length info -
+     * Track vs recording" section (`lenflag-severe`/`lenflag-warn`).
+     *
+     * The attribute is the single source of truth, the same one the tint, the
+     * ⚠️/❌ glyph, the LENGTH summary buttons and the disk round trip read —
+     * so this cannot disagree with what the cell shows. No text is involved,
+     * so there is no highlight wrapper to read through.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?('severe'|'warn')} `null` when the cell is not flagged.
+     */
+    function _findCellLenFlag(cell) {
+        const v = cell?.dataset?.mbLenFlag;
+        return (v === 'severe' || v === 'warn') ? v : null;
+    }
+
+    /**
+     * Reads a release-tracks Video cell's medium-format verdict — the
+     * `data-mb-video-flag` attribute `_applyVideoMediumFlag()` stamps on a
+     * video recording's cell: `mismatch` (its medium cannot carry video) or
+     * `ok` (it can). Feeds the 📊 "Video info - Medium format" section
+     * (`videomedium-mismatch`/`videomedium-ok`). Same single-source-of-truth
+     * reasoning as `_findCellLenFlag()`.
+     *
+     * @param   {?HTMLTableCellElement} cell
+     * @returns {?('mismatch'|'ok')} `null` for audio rows and for video rows
+     *   whose medium format is unknown.
+     */
+    function _findCellVideoMediumFlag(cell) {
+        const v = cell?.dataset?.mbVideoFlag;
+        return (v === 'mismatch' || v === 'ok') ? v : null;
+    }
+
+    /**
      * Extracts every `(as “credit”)` part of a "Relationship types" cell —
      * `instrument (as “lead guitar”)` → `{type: 'instrument', credit: 'lead
      * guitar'}`. One entry per list item (the column is a `renderMultiRowCell`
@@ -25221,6 +25577,16 @@
             // Fixed flags — a "Length" cell's millisecond precision, from
             // _findCellLengthMsState()'s own classification.
             return !!cell && _findCellLengthMsState(cell) === mode.slice(10);
+        }
+        if (mode === 'lenflag-severe' || mode === 'lenflag-warn') {
+            // Fixed flags — a duration cell's track-vs-recording mismatch
+            // level, from _findCellLenFlag() (the data-mb-len-flag attribute).
+            return !!cell && _findCellLenFlag(cell) === mode.slice(8);
+        }
+        if (mode === 'videomedium-mismatch' || mode === 'videomedium-ok') {
+            // Fixed flags — a Video cell's medium-format verdict, from
+            // _findCellVideoMediumFlag() (the data-mb-video-flag attribute).
+            return !!cell && _findCellVideoMediumFlag(cell) === mode.slice(12);
         }
         if (mode.startsWith('timeofday:')) {
             // Compound mode — matches a "Time" cell whose start time falls
@@ -34649,9 +35015,14 @@ a { color: #1565c0; }`;
      * optional, so a file saved before them loads exactly as it always did;
      * `_restoreLenMismatchFlag()` is the reader.
      *
+     * The Video column's medium-format flag (`data-mb-video-flag`, see
+     * `_applyVideoMediumFlag()`) is attributes-only for the same reasons and
+     * travels the same way, as `videoFlag`/`videoTip`;
+     * `_restoreVideoMediumFlag()` is its reader.
+     *
      * @param {HTMLTableCellElement} cell
      * @returns {{html: string, colSpan: number, rowSpan: number, mbid?: (string|null), relDone?: boolean,
-     *            lenFlag?: string, lenTip?: string}}
+     *            lenFlag?: string, lenTip?: string, videoFlag?: string, videoTip?: string}}
      */
     function _buildDiskCellData(cell) {
         const data = {
@@ -34667,7 +35038,34 @@ a { color: #1565c0; }`;
             data.lenFlag = cell.dataset.mbLenFlag;
             if (cell.dataset.mbColTip === '1' && cell.title) data.lenTip = cell.title;
         }
+        if (cell.dataset.mbVideoFlag) {
+            data.videoFlag = cell.dataset.mbVideoFlag;
+            if (cell.dataset.mbColTip === '1' && cell.title) data.videoTip = cell.title;
+        }
         return data;
+    }
+
+    /**
+     * Re-marks a hydrated Video `<td>` with the medium-format flag its cell
+     * record carries (`videoFlag`/`videoTip`, written by `_buildDiskCellData()`).
+     * Called next to `_restoreLenMismatchFlag()` in both of
+     * `_hydrateAndRenderFromSnapshotData()`'s cell loops, and bound by the same
+     * contract: a saved file is user-supplied data, so only the two values
+     * `_applyVideoMediumFlag()` produces — `mismatch`, `ok` — are written, the
+     * tooltip only when it is a string, and the on/off setting is honoured.
+     *
+     * @param {HTMLTableCellElement} td - The reconstructed cell.
+     * @param {Object} cellData - Its saved record.
+     * @returns {void}
+     */
+    function _restoreVideoMediumFlag(td, cellData) {
+        if (!cellData || (cellData.videoFlag !== 'mismatch' && cellData.videoFlag !== 'ok')) return;
+        if (Lib.settings.sa_enable_release_tracks_video_medium_flag === false) return;
+        td.dataset.mbVideoFlag = cellData.videoFlag;
+        if (cellData.videoFlag === 'mismatch' && typeof cellData.videoTip === 'string' && cellData.videoTip) {
+            td.title = cellData.videoTip;
+            td.dataset.mbColTip = '1';
+        }
     }
 
     /**
@@ -39034,8 +39432,14 @@ a { color: #1565c0; }`;
            every cloneNode(true) re-render for free.
            position:relative scopes the absolutely-positioned glyph to the cell;
            pointer-events:none keeps the td's own title tooltip reachable
-           through it. */
-        td[data-mb-len-flag] { position: relative; }
+           through it.
+           The Video column's "video recording on a medium that cannot carry
+           video" flag (data-mb-video-flag="mismatch", see
+           _applyVideoMediumFlag()) shares every rule here with the far-over
+           length level: same tint setting, same red X, same reasons for
+           being attribute-only. Its "ok" value paints nothing on purpose. */
+        td[data-mb-len-flag],
+        td[data-mb-video-flag="mismatch"] { position: relative; }
         /* !important is load-bearing, not defensive styling: MusicBrainz's own
            native zebra-striping rule (tr.even > td { background: … }) outranks
            a plain td[data-mb-len-flag="…"] background-color declaration on
@@ -39049,10 +39453,12 @@ a { color: #1565c0; }`;
         td[data-mb-len-flag="warn"] {
             background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
         }
-        td[data-mb-len-flag="severe"] {
+        td[data-mb-len-flag="severe"],
+        td[data-mb-video-flag="mismatch"] {
             background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'} !important;
         }
-        td[data-mb-len-flag]::after {
+        td[data-mb-len-flag]::after,
+        td[data-mb-video-flag="mismatch"]::after {
             position: absolute;
             right: 2px;
             top: 50%;
@@ -39062,7 +39468,8 @@ a { color: #1565c0; }`;
             pointer-events: none;
         }
         td[data-mb-len-flag="warn"]::after   { content: '⚠️'; }
-        td[data-mb-len-flag="severe"]::after { content: '❌'; }
+        td[data-mb-len-flag="severe"]::after,
+        td[data-mb-video-flag="mismatch"]::after { content: '❌'; }
         /* ISRC/ISWC format-validity glyph (org/ISRC.org items 6/7). Driven
            entirely off the anchor's own data-mb-isrc-invalid/
            data-mb-iswc-invalid attribute — see initIsrcFormatting()/
@@ -46049,6 +46456,17 @@ a { color: #1565c0; }`;
         // `_findCellLengthMsState()`. Only offered once some cell carries
         // milliseconds, so it never shows an "everything is 'none'" panel.
         lengthMs: { label: 'Length info - Milliseconds', glyph: '⏲️' },
+        // "Length info - Track vs recording" — release-tracks' "Length" and
+        // "Recording length" columns only, and only once some track is
+        // flagged: the two levels of `_applyLengthMismatchFlag()`'s
+        // track-vs-recording mismatch (❌ far over / ⚠️ over the threshold),
+        // read off the cell's `data-mb-len-flag`. See `_findCellLenFlag()`.
+        lengthMismatch: { label: 'Length info - Track vs recording', glyph: '⚖️' },
+        // "Video info - Medium format" — release-tracks' "Video" column only:
+        // video recordings whose medium cannot carry video (❌) and those
+        // whose medium can (✅), read off the cell's `data-mb-video-flag`.
+        // See `_findCellVideoMediumFlag()` and `MEDIUM_FORMAT_VIDEO_CAPABLE`.
+        videoMedium: { label: 'Video info - Medium format', glyph: '🎞️' },
         // "Relationship types - Credited as" — the `(as “credit”)` part of a
         // "Relationship types" list item (an instrument/vocal/… relationship
         // credited under a different name than the entity's own), listed as
@@ -46266,6 +46684,8 @@ a { color: #1565c0; }`;
         'lengthdeviation-shorter50plus': 'lengthDeviation', 'lengthdeviation-longer50plus': 'lengthDeviation',
         'lengthlive-yes': 'lengthLiveStatus', 'lengthlive-no': 'lengthLiveStatus',
         'length-ms-precise': 'lengthMs', 'length-ms-whole': 'lengthMs', 'length-ms-none': 'lengthMs',
+        'lenflag-severe': 'lengthMismatch', 'lenflag-warn': 'lengthMismatch',
+        'videomedium-mismatch': 'videoMedium', 'videomedium-ok': 'videoMedium',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
         'instrument-has-description': 'instrumentHasDescription',
@@ -49455,7 +49875,8 @@ a { color: #1565c0; }`;
                     // 'countrycode:'/'revdate:'/'revweekday:'/'catalogprefix:'/
                     // 'catalog-none'/'partofseriesname:'/'partofseriesdate:'/
                     // 'partofseriesnumber:'/'trackspermedium:'/'trackstotal:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
-                    // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark)/
+                    // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark;
+                    // likewise never 'lenflag-*'/'videomedium-*', whose match is an attribute the cell's own tint already shows)/
                     // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
                     // 'role:'/'roletoken:'/'editordeleted:'/'editor-any-deleted'/
@@ -61610,6 +62031,15 @@ a { color: #1565c0; }`;
         let lengthMsPreciseCount = _uniqCacheHit ? _uniqCacheHit.lengthMsPreciseCount : 0;
         let lengthMsWholeCount   = _uniqCacheHit ? _uniqCacheHit.lengthMsWholeCount   : 0;
         let lengthMsNoneCount    = _uniqCacheHit ? _uniqCacheHit.lengthMsNoneCount    : 0;
+        // "Length info - Track vs recording" / "Video info - Medium format" —
+        // release-tracks' attribute-only flags (see _findCellLenFlag()/
+        // _findCellVideoMediumFlag()). Not column-gated: only the duration
+        // and Video cells ever carry those attributes, so every other column
+        // counts zero and never shows the section.
+        let lenFlagSevereCount       = _uniqCacheHit ? _uniqCacheHit.lenFlagSevereCount       : 0;
+        let lenFlagWarnCount         = _uniqCacheHit ? _uniqCacheHit.lenFlagWarnCount         : 0;
+        let videoMediumMismatchCount = _uniqCacheHit ? _uniqCacheHit.videoMediumMismatchCount : 0;
+        let videoMediumOkCount       = _uniqCacheHit ? _uniqCacheHit.videoMediumOkCount       : 0;
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -62120,6 +62550,12 @@ a { color: #1565c0; }`;
                     const _timeBucket = _findCellTimeBucket(cell);
                     if (_timeBucket) timeOfDayValueCounts.set(_timeBucket, (timeOfDayValueCounts.get(_timeBucket) || 0) + 1);
                 }
+                const _lenFlag = _findCellLenFlag(cell);
+                if (_lenFlag === 'severe')    lenFlagSevereCount++;
+                else if (_lenFlag === 'warn') lenFlagWarnCount++;
+                const _videoMediumFlag = _findCellVideoMediumFlag(cell);
+                if (_videoMediumFlag === 'mismatch') videoMediumMismatchCount++;
+                else if (_videoMediumFlag === 'ok')  videoMediumOkCount++;
                 if (isLengthCol) {
                     const _bucket = _findCellLengthBucket(cell);
                     if (_bucket) lengthBucketValueCounts.set(_bucket, (lengthBucketValueCounts.get(_bucket) || 0) + 1);
@@ -63495,6 +63931,7 @@ a { color: #1565c0; }`;
                 releaseQualityHighCount, releaseQualityLowCount, releaseQualityNormalCount,
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
+                lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -63526,6 +63963,7 @@ a { color: #1565c0; }`;
             dateCompleteCount, datePartialCount, dateRangeCount,
             acoustidLinkedCount, acoustidUnlinkedCount,
             lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
+            lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
             lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
             lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -64512,6 +64950,7 @@ a { color: #1565c0; }`;
             releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
             reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
             lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
+            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
             lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
             lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
             lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -64582,6 +65021,14 @@ a { color: #1565c0; }`;
                 if (lengthMsWholeCount > 0)   makeSynItem('length-ms-whole', '⭕ milliseconds = .000 (whole seconds)', lengthMsWholeCount);
                 if (lengthMsNoneCount > 0)    makeSynItem('length-ms-none', '∅ no millisecond data', lengthMsNoneCount);
             }
+            // "Length info - Track vs recording" / "Video info - Medium
+            // format" — release-tracks' attribute-only flags, offered only
+            // where some cell carries them (see _findCellLenFlag()/
+            // _findCellVideoMediumFlag()).
+            if (lenFlagSevereCount > 0) makeSynItem('lenflag-severe', '❌ far apart from the other length', lenFlagSevereCount);
+            if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
+            if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
+            if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
             // "Length info - Live status" — surfaces the SAME live/studio
             // classification the buckets above already compute internally
             // (see _getLengthColumnAverages()'s own JSDoc) as its own
@@ -64700,6 +65147,7 @@ a { color: #1565c0; }`;
                    releaseQualityHighCount > 0 || releaseQualityLowCount > 0 || releaseQualityNormalCount > 0 ||
                    reportTrendUpCount > 0 || reportTrendDownCount > 0 || reportTrendFlatCount > 0 ||
                    lengthMsPreciseCount > 0 || lengthMsWholeCount > 0 ||
+                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||
                    lengthDeviationWithin10Count > 0 || lengthDeviationShorter10to25Count > 0 || lengthDeviationLonger10to25Count > 0 ||
                    lengthDeviationShorter25to50Count > 0 || lengthDeviationLonger25to50Count > 0 ||
                    lengthDeviationShorter50plusCount > 0 || lengthDeviationLonger50plusCount > 0 ||
@@ -64748,6 +65196,14 @@ a { color: #1565c0; }`;
                 if (lengthMsWholeCount > 0)   makeSynItem('length-ms-whole', '⭕ milliseconds = .000 (whole seconds)', lengthMsWholeCount);
                 if (lengthMsNoneCount > 0)    makeSynItem('length-ms-none', '∅ no millisecond data', lengthMsNoneCount);
             }
+            // "Length info - Track vs recording" / "Video info - Medium
+            // format" — release-tracks' attribute-only flags, offered only
+            // where some cell carries them (see _findCellLenFlag()/
+            // _findCellVideoMediumFlag()).
+            if (lenFlagSevereCount > 0) makeSynItem('lenflag-severe', '❌ far apart from the other length', lenFlagSevereCount);
+            if (lenFlagWarnCount > 0)   makeSynItem('lenflag-warn', '⚠️ apart beyond the threshold', lenFlagWarnCount);
+            if (videoMediumMismatchCount > 0) makeSynItem('videomedium-mismatch', '❌ video on a medium that cannot carry video', videoMediumMismatchCount);
+            if (videoMediumOkCount > 0)       makeSynItem('videomedium-ok', '✅ video on a video-capable medium', videoMediumOkCount);
             if (_lengthColAvgs && _lengthColAvgs.hasLiveCol) {
                 if (_lengthColAvgs.liveKnownCount > 0)   makeSynItem('lengthlive-yes', '🎙️ Live recording', _lengthColAvgs.liveKnownCount);
                 if (_lengthColAvgs.studioKnownCount > 0) makeSynItem('lengthlive-no', '⚪ Not live', _lengthColAvgs.studioKnownCount);
@@ -65457,6 +65913,10 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-precise')             return '🔬 milliseconds ≠ .000';
         if (mode === 'length-ms-whole')               return '⭕ milliseconds = .000 (whole seconds)';
         if (mode === 'length-ms-none')                return '∅ no millisecond data';
+        if (mode === 'lenflag-severe')                return '❌ far apart from the other length';
+        if (mode === 'lenflag-warn')                  return '⚠️ apart beyond the threshold';
+        if (mode === 'videomedium-mismatch')          return '❌ video on a medium that cannot carry video';
+        if (mode === 'videomedium-ok')                return '✅ video on a video-capable medium';
         if (mode === 'lengthdeviation-within10')      return '🎯 within 10% of average';
         if (mode === 'lengthdeviation-shorter10to25') return '🔽 10–25% shorter than average';
         if (mode === 'lengthdeviation-longer10to25')  return '🔼 10–25% longer than average';
@@ -65592,6 +66052,10 @@ a { color: #1565c0; }`;
         if (mode === 'length-ms-precise') return `🔬 = this row's ${colName} carries real sub-second precision (milliseconds other than .000).`;
         if (mode === 'length-ms-whole') return `⭕ = this row's ${colName} has milliseconds and they are exactly .000, i.e. MusicBrainz stores nothing finer than the whole second.`;
         if (mode === 'length-ms-none') return `∅ = this row's ${colName} carries no millisecond data (the ⏱ toggle was never pressed, none is on record, or the length is unknown).`;
+        if (mode === 'lenflag-severe') return '❌ = this track\'s length and its recording\'s own length differ by more than the "far over" level (threshold × multiple) — the same cells tinted red with a ❌.';
+        if (mode === 'lenflag-warn') return '⚠️ = this track\'s length and its recording\'s own length differ by more than the threshold, but not by the "far over" level — the same cells tinted yellow with a ⚠️.';
+        if (mode === 'videomedium-mismatch') return '❌ = this recording is marked as a video, but its medium is a format that cannot carry video (a CD, a vinyl record, a cassette, …). Either the recording\'s video flag or the medium\'s format is wrong.';
+        if (mode === 'videomedium-ok') return '✅ = this recording is marked as a video and its medium is a format that can carry video (DVD, Blu-ray, Digital Media, Enhanced CD, …).';
         if (mode === 'lengthdeviation-within10') return `🎯 = this row's ${colName} is within 10% of the page's average ${colName} (the studio-only average when a "live"-flagged row exists and was excluded from it, otherwise every known ${colName} on the page).`;
         if (mode === 'lengthdeviation-shorter10to25') return `🔽 = 10–25% SHORTER than the page's average ${colName}.`;
         if (mode === 'lengthdeviation-longer10to25') return `🔼 = 10–25% LONGER than the page's average ${colName}.`;
@@ -77091,8 +77555,10 @@ a { color: #1565c0; }`;
                             // hydrated table always starts in seconds.
                             _msResetCarriedOverPrecision(td);
                             // A LENGTH mismatch lives on the <td>, not in its
-                            // HTML — put it back from the cell record.
+                            // HTML — put it back from the cell record. Same
+                            // for the Video column's medium-format flag.
                             _restoreLenMismatchFlag(td, cellData);
+                            _restoreVideoMediumFlag(td, cellData);
                             tr.appendChild(td);
                         });
 
@@ -77244,8 +77710,10 @@ a { color: #1565c0; }`;
                         // seconds — exactly like one reached by pagination.
                         _msResetCarriedOverPrecision(td);
                         // A LENGTH mismatch lives on the <td>, not in its
-                        // HTML — put it back from the cell record.
+                        // HTML — put it back from the cell record. Same for
+                        // the Video column's medium-format flag.
                         _restoreLenMismatchFlag(td, cellData);
+                        _restoreVideoMediumFlag(td, cellData);
                         if (_beforeFp !== null) {
                             const _afterFp = _caaArtDebugFingerprint(td.innerHTML);
                             Lib.debug('cache',
@@ -89535,6 +90003,17 @@ a { color: #1565c0; }`;
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
             /**
+             * Returns `MEDIUM_FORMAT_VIDEO_CAPABLE` as plain `[id, {name, video}]`
+             * pairs, so a spec can check it against MusicBrainz's own format
+             * list (`tests/fixtures/medium-formats.html`). A copy — the live Map
+             * is never handed out.
+             *
+             * @returns {Array<[number, {name: string, video: ?boolean}]>}
+             */
+            mediumFormatVideoCapable() {
+                return Array.from(MEDIUM_FORMAT_VIDEO_CAPABLE, ([id, v]) => [id, { name: v.name, video: v.video }]);
+            },
+            /**
              * Opens (or reads the current state of, if already open) the 📊
              * unique-values dropdown for the column named `colName`, and
              * returns its rendered synthetic-value sections (per
@@ -89550,6 +90029,11 @@ a { color: #1565c0; }`;
              * @param {string} colName - Column header text with sort
              *   arrows/counts/glyphs already stripped (e.g. "Format", not
              *   "⇅ Format 📊").
+             * @param {?number} [tableIndex] - Index into `table.tbl` (document
+             *   order) whose column to open. Omitted: the first matching
+             *   header anywhere — on a multi-table page, the first sub-table.
+             *   The panel counts the table it was opened on, so a sub-table's
+             *   own counts need this.
              * @returns {Array<{label: string, items: Array<{label: string, count: number|null, checked: boolean, cancelled: boolean}>}>|null}
              *   `null` when no column header matching `colName` is found.
              *   `cancelled` reports whether the entry's own label span
@@ -89559,7 +90043,7 @@ a { color: #1565c0; }`;
              *   cancelled" entry, matching the red styling MusicBrainz
              *   itself applies to the "(cancelled)" marker in the cell.
              */
-            getUniqDropSections(colName) {
+            getUniqDropSections(colName, tableIndex = null) {
                 const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
                 // Prefer th.dataset.colName (set by makeTableSortableUnified()
                 // for every header) over a re-derived textContent strip —
@@ -89570,7 +90054,11 @@ a { color: #1565c0; }`;
                 // invisible zero-width-space character this regex doesn't
                 // strip, so a pure-textContent match silently returns nothing
                 // for those columns without this fallback.
-                const th = Array.from(document.querySelectorAll('table.tbl thead th'))
+                const scope = typeof tableIndex === 'number'
+                    ? document.querySelectorAll('table.tbl')[tableIndex]
+                    : document;
+                if (!scope) return null;
+                const th = Array.from(scope.querySelectorAll(typeof tableIndex === 'number' ? 'thead th' : 'table.tbl thead th'))
                     .find((t) => (t.dataset.colName || stripDecorations(t.textContent)) === colName);
                 const wrap = th ? th.querySelector('.mb-col-uniq-wrap') : null;
                 if (!wrap) return null;

@@ -20,6 +20,9 @@ const SUBSCRIPTIONS_FIXTURE = path.join(__dirname, 'user-subscriptions-series-en
 const ARTIST_RELEASES_URL = 'https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases';
 const ARTIST_RELEASES_FIXTURE = path.join(__dirname, 'saved-data', 'artist-releases-bodeans.json.gz');
 
+const ARTIST_RGS_URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f';
+const ARTIST_RGS_FIXTURE = path.join(__dirname, 'saved-data', 'artist-releasegroups.json.gz');
+
 const ISWC_URL = 'https://musicbrainz.org/iswc/T-070.127.339-3';
 const ISWC_FIXTURE = path.join(__dirname, 'iswc.html');
 
@@ -69,16 +72,31 @@ test.describe('action buttons: shortLabel, buttonGroupLabel and rich hover toolt
         expect(row.buttons[4].text).toBe('🧮⁵ Editor');
     });
 
-    test('artist-releases: "Releases:" heading, "Artists"/"Various Artists" short labels', async ({ page }) => {
+    // The first button is the artist's OWN releases, so its short label is
+    // the singular "Artist" — "Artists" read as if it fetched several artists'
+    // releases. "Various Artists" is a proper name and stays plural.
+    test('artist-releases: "Releases:" heading, "Artist"/"Various Artists" short labels', async ({ page }) => {
         await loadFromDiskFixture(page, { url: ARTIST_RELEASES_URL, fixturePath: ARTIST_RELEASES_FIXTURE, testMode: true });
 
         const row = await buttonRow(page);
         expect(row.groupLabel).toBe('Releases:');
         expect(row.buttons).toHaveLength(2);
-        expect(row.buttons[0].text).toBe('🧮¹ Artists');
+        expect(row.buttons[0].text).toBe('🧮¹ Artist');
         expect(row.buttons[0].dataLabel).toBe('🧮 Artist releases');
         expect(row.buttons[1].text).toBe('🧮² Various Artists');
         expect(row.buttons[1].dataLabel).toBe('🧮 VA releases');
+    });
+
+    test('artist-releasegroups: "RGs:" heading, "Artist"/"Various Artists" short labels', async ({ page }) => {
+        await loadFromDiskFixture(page, { url: ARTIST_RGS_URL, fixturePath: ARTIST_RGS_FIXTURE, testMode: true });
+
+        const row = await buttonRow(page);
+        expect(row.groupLabel).toBe('RGs:');
+        expect(row.buttons).toHaveLength(2);
+        expect(row.buttons[0].text).toBe('🧮¹ Artist');
+        expect(row.buttons[0].dataLabel).toBe('🧮 Artist RGs');
+        expect(row.buttons[1].text).toBe('🧮² Various Artists');
+        expect(row.buttons[1].dataLabel).toBe('🧮 Various Artists RGs');
     });
 
     test('iswc: the rich tooltip restores the full label and the shortcut hint, and shows on hover', async ({ page }) => {
