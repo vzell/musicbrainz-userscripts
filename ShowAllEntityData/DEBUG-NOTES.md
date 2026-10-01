@@ -16663,3 +16663,31 @@ of them (the new counts missing from `openUniqDrop()`'s two render gates) is
 invisible on Length, whose duration buckets always open the gate, and is only
 caught on the Video column, where the medium-format counts are the sole
 synthetic entries.
+
+## 2026-10-01 — fixture loads waited on the Internet Archive (branch fix/fixture-subresource-isolation)
+
+**Symptom:** on `feature/uvd-title-sections`, three `npm run test:full` runs
+failed `len-flag-disk-roundtrip:159` and/or
+`live-date-flags-survive-disk-roundtrip:129` with "page.goto: Test timeout of
+90000ms exceeded", waiting for `load` on the REOPENED page, before the
+userscript was injected. Both pass alone and under `--repeat-each=4`. A
+comparison run with `main`'s userscript passed them, by luck of timing.
+
+**Root cause (trace `0-trace.network`):** `loadUserscriptPage()` routes only the
+main document. The saved release page's sidebar cover thumbnail
+(`//archive.org/download/mbid-…_thumb250.jpg`) is fetched live; it took 20.8 s
+for the first page and never finished for the reopened one, and `load` waits
+for it. Nothing in the userscript is involved.
+
+**Fix:** with a `fixtureFile`, `loadUserscriptPage()` aborts IMAGE requests
+matching `ARCHIVE_ORG_RE` (`archive.org` and subdomains), falling back for
+everything else. `coverartarchive.org`/`eventartarchive.org` deliberately do
+not match: the CAA/EAA specs register their mocks BEFORE the load, and the
+helper's newer route would otherwise win for those hosts. Regression spec
+`fixture-load-no-archive-org-wait.spec.js` makes archive.org hang on purpose
+(a never-answered route registered first); mutation list
+`scripts/mutations/fixture-archive-org.json` (2 entries, both caught: the
+abort route removed → the load times out; the pattern widened to
+`/archive\.org\//` → a pre-registered coverartarchive.org mock stops answering).
+`tests/README.org` no longer claims a fixture run sends nothing off the
+machine — MusicBrainz's static CSS/JS still loads live.
