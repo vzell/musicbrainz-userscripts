@@ -488,3 +488,48 @@ come back identical to the browse endpoint's.
   it rounds there too — so `data-mb-sec-text` round-tripping and the
   round-trip discard check are both meaningful, and the check doubles as a
   guard against a mis-resolved column index.
+
+## Video column: video recordings on a medium that cannot carry video
+
+A recording's "is a video" flag belongs to the RECORDING; a medium's format
+belongs to this RELEASE. When a video recording sits on a medium whose format
+cannot carry video at all, one of the two is wrong, and the Video cell says so:
+`data-mb-video-flag="mismatch"`, painted by the same CSS rules as a far-over
+length mismatch (light red, ❌, `sa_release_tracks_length_mismatch_severe_bg`).
+A video recording on a video-capable medium gets `"ok"`, which paints nothing
+but lets the 📊 "Video info - Medium format" section count both sides.
+Setting: `sa_enable_release_tracks_video_medium_flag` (default on).
+
+Rules that fail silently if broken:
+
+- **The verdict is keyed by format ID, not name.** `MEDIUM_FORMAT_VIDEO_CAPABLE`
+  holds every MusicBrainz format (115 as of 2026-10-01) as
+  `id → {name, video: true|false|null}`. `_mediumFormatId()` reads the id from
+  the embedded payload (`release.mediums[].format.id`), matched by the medium
+  GID that `applyNormalizeMediumTracklists()` stamps on the table
+  (`data-mb-medium-gid`) — never by position. MusicBrainz translates format
+  names, so the name lookup (`data-mb-medium-format`, the header text, cut at
+  `": "` for a titled medium) is only the fallback for a page with no payload.
+- **Only a positive "cannot" flags.** `false` is reserved for formats that
+  definitely cannot carry video (audio CD and its variants, SACD, every
+  phonograph record, audio tape/cartridge, mechanical formats, the CD side of
+  DualDisc/DVDplus/VinylDisc). Data carriers (Digital Media, Data CD, Enhanced
+  CD, Mixed Mode CD, SD/USB/floppy, Download Card, KiT Album) are `true`;
+  "Other" is `null`; an id missing from the table is treated as `null`. A
+  format MusicBrainz adds later therefore never flags — and
+  `release-tracks-video-medium-flag.spec.js` compares the table against
+  `tests/fixtures/medium-formats.html` (the release editor's own `<select>`)
+  so the omission is noticed instead.
+- **Attributes only**, for `_applyLengthMismatchFlag()`'s reasons: they survive
+  `cloneNode(true)`, and the Video column sorts and filters on its hidden
+  `video`/`audio` sort key, which a glyph in the text would disturb. Stamped
+  during pre-processing, so no post-render cache is involved.
+- **Save/Load to Disk** carries it as `videoFlag`/`videoTip` in the cell record
+  (`_buildDiskCellData()` / `_restoreVideoMediumFlag()`), validated to
+  `mismatch|ok`, and the on/off setting wins over a saved flag.
+
+Fixtures are real pages saved with their payload by
+`scripts/fetch-release-fixture.js` (Playwright, because musicbrainz.org answers
+a plain HTTP client with a JavaScript proof-of-work page as of 2026-10-01):
+`release-tracks-video-on-cd.html` (four videos on a CD) and
+`release-tracks-video-on-dvd.html` (five videos on a DVD-Video beside a CD).

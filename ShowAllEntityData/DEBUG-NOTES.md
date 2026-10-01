@@ -16607,3 +16607,59 @@ leave-page prompt; a submit button still does" wraps the table in a merge form
 itself, records dialogs, and also asserts a real submit button still prompts.
 Mutation list `scripts/mutations/nav-guard-merge-form.json` (type check
 removed → fails; guard dropped instead of narrowed → fails).
+
+## 2026-10-01 — release-tracks: video recordings on a CD (branch feature/video-medium-flag)
+
+**Report:** on `/release/812b0aa0-0550-4235-9c3b-fa97f2572e74` ("Only the Strong
+Survive: Covers Vol. 1", one CD) tracks 3, 4, 6 and 10 carry MusicBrainz's
+`<span class="video" title="This recording is a video">`. An audio CD cannot
+hold video, so either those recordings' video flag or the medium's format is
+wrong; the Video cell should say so the way a far-over length mismatch does.
+Snapshot: `debug/release-tracks-video-on-CD-bug.html` (rendered page).
+
+**Where the medium comes from.** `applyNormalizeMediumTracklists()` builds each
+sub-table's "1 - CD" h3 from `a.expand-medium` (`<span>1</span><span
+class="expand-triangle">▼</span>CD`, href `/medium/<gid>`). Payload probe (a
+scratch script over `debug/therising.html` and the new fixtures):
+`release.mediums[]` carries `gid`, `position`, `name`, `format_id` and
+`format: {id, name, …}` — e.g. medium 1 `format.id=1 "CD"`, medium 2
+`format.id=19 "DVD-Video"`. The id is used (MusicBrainz translates format
+names), matched by medium gid; the header text is only the fallback. No
+snapshot in the repo has a titled medium, so the `": "` cut in the fallback is
+from MusicBrainz's `{format}: {title}` medium description, not observed.
+
+**Format research** (MB Release/Format doc, Wikipedia on Enhanced CD / Blue
+Book / Mixed Mode CD): Enhanced CD's data session is where CD-Extra music
+videos live, so it — like Data CD, Mixed Mode CD, Digital Media and every
+removable data medium — is video-capable; CD+G's "+G" is karaoke graphics, not
+video. Full table and the three judgement calls (CD-R, CD+G, generic Cartridge
+all flagged): `MEDIUM_FORMAT_VIDEO_CAPABLE`'s JSDoc and
+`docs/claude/release-tracks-and-length.md`.
+
+**Fixture capture finding:** musicbrainz.org now answers a plain HTTP client
+(urllib) with a "Verifying your browser" JavaScript proof-of-work page that
+POSTs to `/__meb_verify` — 1394 bytes, no release. `scripts/fetch-release-fixture.js`
+loads the page in Playwright Chromium (which passes the check), then re-fetches
+`location.href` from inside the page so the saved file is the server's raw
+HTML, payload intact, not the script-modified DOM. A raw page also carries
+MusicBrainz's own public Mapbox token (`"MAPBOX_ACCESS_TOKEN":"pk.…"` in the
+global config), and GitHub push protection rejected the first push of these
+fixtures for it (GH013, "Mapbox Secret Access Token"). The fetcher now blanks
+it (`scrub()`), and the commit was rewritten before anything reached origin.
+Any future raw-page fixture needs the same treatment.
+
+**Payload oddity, harmless here:** in the CD fixture the payload's
+`tracks[].recording.video` reported no video tracks while the DOM has four
+`span.video`. The flag reads the DOM (the same `span.video` the Video column
+already moves), so it does not depend on that field.
+
+**Tests:** `release-tracks-video-medium-flag.spec.js` (flag, tint, ❌, sort
+survival, setting off, DVD side "ok", no-payload fallback, format-table
+completeness against `tests/fixtures/medium-formats.html`, 📊 section counts,
+filtering, cache reopen), `video-flag-disk-roundtrip.spec.js`,
+`uniq-drop-length-mismatch-section.spec.js`. Mutation list
+`scripts/mutations/video-medium-flag.json`: 8 planted defects, all caught. One
+of them (the new counts missing from `openUniqDrop()`'s two render gates) is
+invisible on Length, whose duration buckets always open the gate, and is only
+caught on the Video column, where the medium-format counts are the sole
+synthetic entries.

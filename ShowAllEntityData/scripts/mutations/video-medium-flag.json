@@ -1,0 +1,110 @@
+[
+  {
+    "name": "every medium is treated as video-capable",
+    "why": "The classifier is the whole decision. If it answers 'can carry video' for a CD, the Video cells stay plain — no error, no visual hint that a check even ran. The reported bug simply reappears.",
+    "edits": [
+      {
+        "find": "            canCarry: entry.video,",
+        "replace": "            canCarry: true,"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "exactly the four video rows are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the video flag is dropped from the shared red tint rule",
+    "why": "The flag is attributes-only; CSS is the only thing that makes it visible. Losing the selector leaves the data attribute (and the 📊 counts) intact while the cells stop looking flagged.",
+    "edits": [
+      {
+        "find": "        td[data-mb-len-flag=\"severe\"],\n        td[data-mb-video-flag=\"mismatch\"] {\n            background-color:",
+        "replace": "        td[data-mb-len-flag=\"severe\"] {\n            background-color:"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "exactly the four video rows are flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the header-name fallback never resolves",
+    "why": "Without the embedded payload the format comes from the medium header's text. A fallback that returns nothing makes every such medium 'unknown', which is never flagged — silent by design, so only a test without the payload can see it.",
+    "edits": [
+      {
+        "find": "        return _mediumFormatIdByNameCache.get(text) ?? null;",
+        "replace": "        return null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "without the embedded payload",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 Video mismatch entry matches no row",
+    "why": "The entry renders with the right count either way — counting and matching are separate code. A dead matcher filters every row out when the box is ticked.",
+    "edits": [
+      {
+        "find": "            return !!cell && _findCellVideoMediumFlag(cell) === mode.slice(12);",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "checking ❌ leaves those four",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 Video counts are not stored in the dropdown cache",
+    "why": "The first open counts from the DOM; every later open on an unchanged table is served from the cache object. Leaving the counters out of it makes the section vanish on the second open only.",
+    "edits": [
+      {
+        "find": "                lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,\n                lengthDeviationWithin10Count,",
+        "replace": "                lenFlagSevereCount, lenFlagWarnCount,\n                lengthDeviationWithin10Count,"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "re-opened panel",
+    "expect": "fail"
+  },
+  {
+    "name": "the saved video flag is not restored on load",
+    "why": "A saved file carries the flag in its own field, not in the cell HTML. Without the reader, a reopened tracklist comes back with every video cell plain.",
+    "edits": [
+      {
+        "find": "        td.dataset.mbVideoFlag = cellData.videoFlag;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/video-flag-disk-roundtrip.spec.js",
+    "grep": "a reopened tracklist shows the same flags",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 Length ❌ entry matches no row",
+    "why": "Same separation as the Video entry: the count is right, ticking it filters everything out.",
+    "edits": [
+      {
+        "find": "            return !!cell && _findCellLenFlag(cell) === mode.slice(8);",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-length-mismatch-section.spec.js",
+    "grep": "leaves only the far-over track",
+    "expect": "fail"
+  },
+  {
+    "name": "the new counts are missing from the render gates",
+    "why": "Both makeSynItem branches sit behind a long 'is there anything to show' condition. On the Video column the medium-format counts are the ONLY synthetic entries, so without them in the gate the section never renders. (On Length the gate is always opened by the duration buckets anyway, which is why this targets the Video spec.)",
+    "edits": [
+      {
+        "find": "            lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||\n            lengthDeviationWithin10Count > 0",
+        "replace": "            lengthDeviationWithin10Count > 0"
+      },
+      {
+        "find": "                   lenFlagSevereCount > 0 || lenFlagWarnCount > 0 || videoMediumMismatchCount > 0 || videoMediumOkCount > 0 ||\n                   lengthDeviationWithin10Count > 0",
+        "replace": "                   lengthDeviationWithin10Count > 0"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-video-medium-flag.spec.js",
+    "grep": "counts the four video rows",
+    "expect": "fail"
+  }
+]

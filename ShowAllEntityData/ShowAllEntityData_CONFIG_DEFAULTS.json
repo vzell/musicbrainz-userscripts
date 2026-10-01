@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1173+2026-09-28",
-    "schema_entries": 283,
+    "script_version": "9.99.1176+2026-10-01",
+    "schema_entries": 284,
     "sections": 39,
-    "settings": 244,
-    "settings_with_default": 239,
+    "settings": 245,
+    "settings_with_default": 240,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 95,
+      "checkbox": 96,
       "color_picker": 62,
       "divider": 39,
       "number": 39,
@@ -289,6 +289,7 @@
     "sa_enable_release_tracks_length_mismatch_flag": "Flag tracks whose two lengths disagree",
     "sa_enable_release_tracks_live_date_check": "Flag live-recording credit dates that don't match \"Recording date\"",
     "sa_enable_release_tracks_recording_of_columns": "Show \"Recording of\" / \"Recorded at\" / \"Recorded in\" / \"Mixed at\" columns",
+    "sa_enable_release_tracks_video_medium_flag": "Flag video recordings on a medium that cannot carry video",
     "sa_enable_release_tracks_work_ar_columns": "Add columns for the recorded WORK's own relationships",
     "sa_enable_save_load": "Enable Save/Load to Disk",
     "sa_enable_show_single_table_btn": "Enable \"Show single-table\" button",
@@ -534,6 +535,7 @@
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_live_date_check": true,
     "sa_enable_release_tracks_recording_of_columns": true,
+    "sa_enable_release_tracks_video_medium_flag": true,
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_save_load": true,
     "sa_enable_show_single_table_btn": true,
