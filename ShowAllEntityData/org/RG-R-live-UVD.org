@@ -1,0 +1,83 @@
+* TODO artist-RGs/R and PTs which have columns with either a release group or release anchor
+** DONE i
+
+On PTs artist-releasegroups/artist-releases and PTs which have columns with either a release group or release anchor (a href=) add
+new UVD sections for the following cases (see also https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs specifically for live bootlegs but not ONLY):
+
+1.)
+
+check if the release group or release name follows the following naming conventions:
+
+#+begin_example
+2008-12-07: Rose Garden, Portland, OR, USA ==> A standard live bootleg (in the US)
+1994-05-21: Barrowland, Glasgow, Scotland, UK ==> A standard live bootleg (in the UK)
+2002-05-02: Ahoy, Rotterdam, Netherlands ==> A live bootleg with bonus tracks
+2008-12-17, early show: Mellon Arena, Pittsburgh, PA, USA ==> A live bootleg with additional date information
+#+end_example
+
+a.)
+
+The date expression could also be partial in the above examples, e.g
+
+#+begin_example
+2008-12 ==> yyyy-mm
+2008    ==> yyyy
+12-07   ==> mm-dd (year unknow)
+same for other unknown parts
+#+end_example
+
+b.)
+
+the character divider between date components could also either be a unicode "‐" or plain "-" between all components, or
+even a mixture, e.g.
+
+#+begin_example
+1975‐02‐05: The Main Point, Bryn Mawr, PA, USA
+1975-02-05: The Main Point, Bryn Mawr, PA, USA
+1975-02‐05: The Main Point, Bryn Mawr, PA, USA
+1975‐02-05: The Main Point, Bryn Mawr, PA, USA
+#+end_example
+
+c.)
+
+check for valid date components, e.g. the following would be invalid/errors
+
+#+begin_example
+1975‐13-05: The Main Point, Bryn Mawr, PA, USA
+1975‐02-42: The Main Point, Bryn Mawr, PA, USA
+#+end_example
+
+2.)
+
+show the following info in the UVD section/sections (This should be configurable, default: true)):
+
+a.)
+
+#+begin_example
+number of unique valid/invalid live bootleg/official/promotion entities
+number of entries NOT following the live guidelines
+number of non complete entities (with non complete dates)
+number of unique entities which have additional date information e.g. "early show"
+#+end_example
+
+b.)
+
+also list the above info (in different sections) for the three cases of having a unicode "‐" or plain "-" between all
+components, or a mixture
+
+3.)
+
+highlight the data cells with invalid/errors with a light red background+error glyph and also make them filerable via a
+section in the UVD. This should be configurable (default: true)
+
+4.)
+
+When "-" between all components, or a mixture between "‐"/"-" is used, highlight in background yellow+warning glyph and
+also make them filterable via a section in the UVD. This should be configurable (default: true)
+
+** TODO The optional performance tweak (checking each row once on multi-table pages, which saves about 12 ms per load) is still open if you want it later.
+
+The optional performance tweak (checking each row once on multi-table pages, which saves about 12 ms per load) is still
+open if you want it later.
+
+
