@@ -149,3 +149,26 @@ green; only removing both reproduces the defect, and
 `scripts/mutations/release-events-native-markup.json` records that as one
 combined entry plus two `expect: "pass"` singles. Do not "tidy" either guard
 away on the evidence that its own mutation passes.
+
+## Resizing: one shared panel, a grip rebuilt on every open
+
+The dropdown is ONE element (`getUniqDropEl()`) reused by every column, and
+`openUniqDrop()` empties it with `drop.innerHTML = ''` on each open. Two
+consequences for the corner grip (`_wireUvdResizeGrip()`):
+
+- The grip is re-appended on every open — it is not part of the element's
+  one-time setup.
+- The positioning block clears `style.width`/`style.height` and the
+  `data-mb-uvd-sized` marker BEFORE applying this column's stored size
+  (`sa_uniq_dropdown_geometry`, `{pageType: {columnName: {w, h}}}`).
+  Without that reset a column with no stored size inherits the last resized
+  column's size.
+
+The size is stored as the rendered border-box size, so a sized panel is
+`box-sizing: border-box` (CSS keyed on `[data-mb-uvd-sized]`); as content-box
+every reopen grew it by border + padding. Staying open after a release outside
+the panel rests on three things in the grip, not on the outside-mousedown
+close handler: `preventDefault()` on `pointerdown`, pointer capture, and a
+one-shot capture-phase `click` swallower. All of this is pinned by
+`tests/fixtures/uniq-drop-resize.spec.js` and
+`scripts/mutations/uniq-drop-resize.json`.

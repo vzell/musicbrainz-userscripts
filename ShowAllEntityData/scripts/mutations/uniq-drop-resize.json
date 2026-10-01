@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the release click is not swallowed",
+    "why": "A drag released outside the panel still produces a click on the page. Without the one-shot swallower it reaches whatever lies under the pointer (a sortable header, a link) while the panel itself looks fine.",
+    "edits": [
+      {
+        "find": "                window.addEventListener('click', swallow, { capture: true, once: true });",
+        "replace": "                void swallow;"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-resize.spec.js",
+    "grep": "a drag released outside the panel",
+    "expect": "fail"
+  },
+  {
+    "name": "the shared panel keeps the previous column's size",
+    "why": "One element serves every column. Without the reset at the top of the positioning block, a column with no stored size opens at whatever size the last resized column left behind.",
+    "edits": [
+      {
+        "find": "        drop.style.width  = '';\n        drop.style.height = '';\n        delete drop.dataset.mbUvdSized;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-resize.spec.js",
+    "grep": "the size is remembered for that column only",
+    "expect": "fail"
+  },
+  {
+    "name": "the stored size is applied as content-box",
+    "why": "The size is stored as the rendered border-box size. Applied as content-box, every reopen grows the panel by its border and padding.",
+    "edits": [
+      {
+        "find": "            max-width: none;\n            box-sizing: border-box;\n",
+        "replace": "            max-width: none;\n"
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-resize.spec.js",
+    "grep": "a stored size",
+    "expect": "fail"
+  },
+  {
+    "name": "the dropdown size is left out of the config export",
+    "why": "The workspace block is an allowlist; a key missing from _CFG_WORKSPACE_GROUPS is silently neither exported nor accepted on import.",
+    "edits": [
+      {
+        "find": "                MB_UNIQ_DROP_GEOMETRY_KEY,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/config-workspace-roundtrip.spec.js",
+    "grep": "every workspace group survives",
+    "expect": "fail"
+  }
+]

@@ -16800,3 +16800,29 @@ matcher's `(?:\/disc\/\d+)?`.
 the `:not()` exclusions out-specify MusicBrainz's zebra rule, and the cells'
 inline rest/sticky backgrounds are captured from computed style AFTER the
 stamp, so they already hold the tint. Recorded `expect: pass`.
+
+## 2026-10-01 — 📊 dropdown resize grip (branch feature/uvd-resize)
+
+**Request:** a lower-right drag grip on the unique-values dropdown
+(`debug/resize-UVD.html` shows long "Medley 1: …" titles ellipsised at the
+440px cap). The panel must stay open after a drag released outside it, the
+size is remembered per pageType + column, and it must survive config
+export/import.
+
+**Design:** `_wireUvdResizeGrip()` re-appends the grip on every open (the
+panel is one shared element, emptied by `innerHTML = ''`). The size is stored
+in GM key `sa_uniq_dropdown_geometry` (`{pageType: {column: {w, h}}}`), listed
+in `_CFG_WORKSPACE_GROUPS`' `geometry` group, which handles export/import. The
+outside-mousedown close never sees the drag (`preventDefault` on pointerdown
+plus pointer capture). The stray `click` a release outside the panel produces
+is swallowed once in the capture phase.
+
+**Found by the spec, not by reading:** the stored size is
+`getBoundingClientRect()` (border-box) while the inline width/height were
+applied as content-box, so every reopen grew the panel by 2px horizontally
+and 8px vertically. Fixed with `box-sizing: border-box` on
+`[data-mb-uvd-sized]` only, so the default (unsized) panel lays out as before.
+
+**Mutation check:** `scripts/mutations/uniq-drop-resize.json`, 4 of 4 caught
+(swallower removed, per-open reset removed, border-box removed, key dropped
+from the workspace allowlist).
