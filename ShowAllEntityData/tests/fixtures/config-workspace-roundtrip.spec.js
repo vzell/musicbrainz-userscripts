@@ -79,6 +79,8 @@ const WORKSPACE = {
     // geometry — plain objects, with numbers
     'sa_stats_panel_geometry': { top: 40, left: 60, width: 500, height: 400, fontSize: 125 },
     'sa_load_dialog_geometry': { top: 10, left: 20, width: 700, height: 300 },
+    // geometry — the 📊 dropdown's per-pageType, per-column resized size
+    'sa_uniq_dropdown_geometry': { 'series-releases': { Artist: { w: 600, h: 400 } } },
     // dropdown — object of booleans
     'mb_sa_uniq_section_collapse': { structure: true, entity_artist: false },
     // dialog — objects written by VZ_MBLibrary into this script's storage
@@ -371,7 +373,7 @@ test.describe('config file schema_version 2 — the workspace block', () => {
                 pinned: 1,
                 history: 1,
                 colvis: 2,          // the state and its -touched- companion
-                geometry: 2,
+                geometry: 3,
                 dropdown: 1,
                 dialog: 4,
                 libprefs: 1,

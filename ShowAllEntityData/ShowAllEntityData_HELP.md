@@ -268,6 +268,13 @@ the box already holds `bruce` and you check *» join phrase: with*, the field
 shows both and the rows are the intersection. The count badge is computed
 against what is currently visible, which is why it agrees with the result.
 
+**The panel is resizable.** Drag the grip in its lower-right corner to make it
+wider (for long values) or taller. The panel stays open when you let go, even
+outside it. The size is remembered per page type and column, so a release
+tracklist's *Title* column can be wide while its *Length* column stays narrow.
+Double-click the grip to go back to the automatic size. Remembered sizes travel
+with the 💾/📂 configuration file.
+
 <details>
 <summary>What else is in that panel</summary>
 
@@ -751,7 +758,7 @@ link, or by clicking outside — asks first.
 **💾 / 📂 in the settings dialog** export and import a configuration file. It
 carries your settings *and* your workspace: the pinned filter list, per-page-type
 and per-sub-table column visibility, filter history, panel geometry, the 📊
-dropdown's collapsed sections and the dialog's own layout.
+dropdown's collapsed sections and per-column sizes, and the dialog's own layout.
 
 It deliberately does **not** carry install state — which version's migrations
 have run — so importing someone else's file cannot disable your own upgrade

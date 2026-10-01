@@ -40943,6 +40943,32 @@ a { color: #1565c0; }`;
             padding: 3px 0;
             font-size: 0.87em;
         }
+        /* A user-resized dropdown (corner grip) carries an inline width that
+           may exceed the default cap above, so lift the cap for it. The size
+           is stored as the rendered (border-box) size, so it must be applied
+           as one too, or every reopen grows the panel by its border and
+           padding. */
+        #mb-col-uniq-dropdown[data-mb-uvd-sized] {
+            max-width: none;
+            box-sizing: border-box;
+        }
+        /* Corner resize grip. Sticky at the bottom of the panel's own scroll
+           area so it stays in the lower-right corner while the list scrolls;
+           the negative top margin keeps it from adding any height. */
+        .mb-uniq-resize-grip {
+            position: sticky;
+            bottom: 0;
+            z-index: 1;
+            display: block;
+            width: 14px;
+            height: 14px;
+            margin: -14px 0 0 auto;
+            cursor: nwse-resize;
+            touch-action: none;
+            background: linear-gradient(135deg,
+                transparent 0 45%, #999 45% 52%, transparent 52% 64%,
+                #999 64% 71%, transparent 71% 83%, #999 83% 90%, transparent 90%);
+        }
         .mb-col-uniq-item {
             padding: 5px 12px;
             cursor: pointer;
@@ -46636,6 +46662,83 @@ a { color: #1565c0; }`;
      * every column/page, not scoped per-column.
      */
     const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
+
+    /**
+     * GM storage key for the user-resized size of the unique-values dropdown
+     * (the corner grip — see `_wireUvdResizeGrip()`). Value shape:
+     * `{ [pageType]: { [columnName]: {w, h} } }`. Keyed by column NAME, not
+     * index, so the size survives hidden/reordered columns; sub-tables of a
+     * multi-table page that share a column name share its size. A missing
+     * entry means "no stored size" — the dropdown then sizes itself exactly
+     * as it did before the grip existed. Carried by the config export via the
+     * `geometry` group of `_CFG_WORKSPACE_GROUPS`.
+     */
+    const MB_UNIQ_DROP_GEOMETRY_KEY = 'sa_uniq_dropdown_geometry';
+
+    /** Smallest size the corner grip lets the dropdown shrink to, in px. */
+    const UVD_MIN_W = 140;
+    const UVD_MIN_H = 120;
+
+    /**
+     * Reads the whole stored dropdown-size map, tolerating a missing or
+     * corrupt value (anything that is not a plain object reads as empty).
+     *
+     * @returns {Object<string, Object<string, {w: number, h: number}>>}
+     */
+    function _uvdGeoReadAll() {
+        let all = null;
+        try { all = GM_getValue(MB_UNIQ_DROP_GEOMETRY_KEY, null); } catch (_) { all = null; }
+        return (all && typeof all === 'object' && !Array.isArray(all)) ? all : {};
+    }
+
+    /**
+     * Returns the stored dropdown size for one pageType/column, or null when
+     * none is stored (or the stored entry is malformed).
+     *
+     * @param {string} pt - pageType.
+     * @param {string} col - Column header name.
+     * @returns {?{w: number, h: number}}
+     */
+    function _uvdGeoGet(pt, col) {
+        if (!pt || !col) return null;
+        const perPt = _uvdGeoReadAll()[pt];
+        const g = perPt && perPt[col];
+        if (!g || typeof g.w !== 'number' || typeof g.h !== 'number' ||
+            !(g.w > 0) || !(g.h > 0)) return null;
+        return { w: g.w, h: g.h };
+    }
+
+    /**
+     * Stores the dropdown size for one pageType/column.
+     *
+     * @param {string} pt - pageType.
+     * @param {string} col - Column header name.
+     * @param {number} w - Width in px.
+     * @param {number} h - Height in px.
+     */
+    function _uvdGeoSet(pt, col, w, h) {
+        if (!pt || !col) return;
+        const all = _uvdGeoReadAll();
+        if (!all[pt] || typeof all[pt] !== 'object') all[pt] = {};
+        all[pt][col] = { w: Math.round(w), h: Math.round(h) };
+        GM_setValue(MB_UNIQ_DROP_GEOMETRY_KEY, all);
+    }
+
+    /**
+     * Forgets the stored dropdown size for one pageType/column (the grip's
+     * double-click reset). Drops the pageType entry once it is empty.
+     *
+     * @param {string} pt - pageType.
+     * @param {string} col - Column header name.
+     */
+    function _uvdGeoClear(pt, col) {
+        if (!pt || !col) return;
+        const all = _uvdGeoReadAll();
+        if (!all[pt] || !(col in all[pt])) return;
+        delete all[pt][col];
+        if (Object.keys(all[pt]).length === 0) delete all[pt];
+        GM_setValue(MB_UNIQ_DROP_GEOMETRY_KEY, all);
+    }
 
     /**
      * Generic, non-per-prefix explanation appended to every `catalogprefix:`
@@ -61590,6 +61693,92 @@ a { color: #1565c0; }`;
         _uniqDropOwnerOpenRect = null;
     }
 
+    /**
+     * Appends the lower-right corner resize grip to the (just rebuilt)
+     * unique-values dropdown and wires the drag.
+     *
+     * Must be called on EVERY open: `openUniqDrop()` empties the one shared
+     * panel element with `drop.innerHTML = ''`, which takes the previous grip
+     * with it.
+     *
+     * **The panel must stay open when the drag ends outside it.** Three paths
+     * could close or disturb it, and each is closed off here:
+     *   • `preventDefault()` on `pointerdown` suppresses the compatibility
+     *     `mousedown`, and the grip is inside the panel anyway, so
+     *     `getUniqDropEl()`'s outside-mousedown close never sees it.
+     *   • `setPointerCapture()` keeps every `pointermove`/`pointerup` on the
+     *     grip however far the pointer travels.
+     *   • A release outside the panel still produces a `click` on the common
+     *     ancestor; a one-shot capture-phase swallower stops it reaching a
+     *     sortable column header or anything else on the page.
+     *
+     * The size is stored per pageType + column name on release
+     * ({@link _uvdGeoSet}); a double-click forgets it and re-opens the panel at
+     * its default size.
+     *
+     * @param {HTMLDivElement} drop - The shared dropdown element.
+     * @param {string} pt - pageType the size is stored under.
+     * @param {string} col - Column header name the size is stored under.
+     * @param {function(): void} reopen - Re-opens the panel for the same
+     *        column (used after a double-click reset to re-run the default
+     *        sizing/positioning).
+     */
+    function _wireUvdResizeGrip(drop, pt, col, reopen) {
+        const grip = document.createElement('div');
+        grip.className = 'mb-uniq-resize-grip';
+        grip.title = 'Drag to resize (remembered for this column) — double-click to reset';
+        grip.setAttribute('aria-hidden', 'true');
+
+        grip.addEventListener('pointerdown', (ev) => {
+            if (ev.button !== 0) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            const r  = drop.getBoundingClientRect();
+            const sx = ev.clientX;
+            const sy = ev.clientY;
+            let moved = false;
+            try { grip.setPointerCapture(ev.pointerId); } catch (_) { /* no capture — the drag still works while over the grip */ }
+
+            const onMove = (e) => {
+                const maxW = Math.max(UVD_MIN_W, window.innerWidth  - r.left - 6);
+                const maxH = Math.max(UVD_MIN_H, window.innerHeight - r.top  - 6);
+                const w = Math.max(UVD_MIN_W, Math.min(maxW, r.width  + (e.clientX - sx)));
+                const h = Math.max(UVD_MIN_H, Math.min(maxH, r.height + (e.clientY - sy)));
+                drop.dataset.mbUvdSized = '1';
+                drop.style.width     = `${w}px`;
+                drop.style.height    = `${h}px`;
+                drop.style.maxHeight = `${h}px`;
+                moved = true;
+            };
+            const onUp = (e) => {
+                grip.removeEventListener('pointermove', onMove);
+                grip.removeEventListener('pointerup', onUp);
+                grip.removeEventListener('pointercancel', onUp);
+                try { grip.releasePointerCapture(e.pointerId); } catch (_) { /* already released */ }
+                if (!moved) return;
+                const rr = drop.getBoundingClientRect();
+                _uvdGeoSet(pt, col, rr.width, rr.height);
+                // The click that follows this release (dispatched in the same
+                // task, before any timer) must not reach the page.
+                const swallow = (ce) => { ce.preventDefault(); ce.stopPropagation(); };
+                window.addEventListener('click', swallow, { capture: true, once: true });
+                setTimeout(() => window.removeEventListener('click', swallow, true), 0);
+            };
+            grip.addEventListener('pointermove', onMove);
+            grip.addEventListener('pointerup', onUp);
+            grip.addEventListener('pointercancel', onUp);
+        });
+
+        grip.addEventListener('dblclick', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            _uvdGeoClear(pt, col);
+            reopen();
+        });
+
+        drop.appendChild(grip);
+    }
+
     // Per-(table, column) memo of openUniqDrop()'s expensive row-scan results
     // (valueCounts, all the per-column-family Maps, flag/rel/inline-art
     // structural scans — see openUniqDrop()'s own comments at each pass).
@@ -66297,6 +66486,23 @@ a { color: #1565c0; }`;
         // ---- Position panel below the button (flip upward if needed) -------
         drop.style.display = 'block';
 
+        // User-resized size (corner grip) for THIS pageType + column. The
+        // panel element is shared by every column, so the previous column's
+        // inline size is always cleared first — without a stored size the
+        // panel then sizes itself exactly as before the grip existed.
+        drop.style.width  = '';
+        drop.style.height = '';
+        delete drop.dataset.mbUvdSized;
+        const _uvdGeo = _uvdGeoGet(pageType, _colHeaderName);
+        if (_uvdGeo) {
+            drop.dataset.mbUvdSized = '1';
+            drop.style.width = `${Math.max(UVD_MIN_W, Math.min(_uvdGeo.w, window.innerWidth - 12))}px`;
+        }
+        _wireUvdResizeGrip(drop, pageType, _colHeaderName, () => {
+            closeUniqDrop(false);
+            openUniqDrop(btn, table, colIndex);
+        });
+
         // Visible-rows cap: user-configurable via sa_uniq_dropdown_visible_rows
         // (default 8 — the same effective cap the dropdown's original
         // hardcoded 320px gave: 8 rows * 29px/row + 88px overhead (50 syn
@@ -66328,7 +66534,13 @@ a { color: #1565c0; }`;
         // height regardless of any max-height/overflow clamp currently
         // applied (e.g. left over from a previous open), so it's safe to
         // read before this open's own clamp is set below.
-        const dropH = Math.min(maxDropH, drop.scrollHeight);
+        // A stored (user-resized) height replaces both the content height and
+        // the visible-rows cap — the user chose it — but is still clamped to
+        // the room on the chosen side below, like any other height.
+        const _capH = _uvdGeo ? Infinity : maxDropH;
+        const dropH = _uvdGeo
+            ? Math.max(UVD_MIN_H, _uvdGeo.h)
+            : Math.min(maxDropH, drop.scrollHeight);
         const dropW = drop.offsetWidth || 200;
 
         // Pick whichever side has more room and CLAMP the panel's height to
@@ -66364,14 +66576,15 @@ a { color: #1565c0; }`;
             // room, matching the previous default direction.
             _openDir = 'down';
             top = bRect.bottom + 3;
-            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceBelow - 3));
+            effectiveMaxH = Math.max(120, Math.min(_capH, dropH, spaceBelow - 3));
         } else {
             // Open upward.
             _openDir = 'up';
-            effectiveMaxH = Math.max(120, Math.min(maxDropH, dropH, spaceAbove - 3));
+            effectiveMaxH = Math.max(120, Math.min(_capH, dropH, spaceAbove - 3));
             top = bRect.top - effectiveMaxH - 3;
         }
         drop.style.maxHeight = `${effectiveMaxH}px`;
+        if (_uvdGeo) drop.style.height = `${effectiveMaxH}px`;
 
         let left = bRect.left;
         if (left + dropW > vw - 6) {
@@ -72049,6 +72262,7 @@ a { color: #1565c0; }`;
             keys: [
                 'sa_stats_panel_geometry', 'sa_load_dialog_geometry',
                 'sa_shortcuts_help_geometry', 'sa_app_help_geometry',
+                MB_UNIQ_DROP_GEOMETRY_KEY,
             ],
         },
         {

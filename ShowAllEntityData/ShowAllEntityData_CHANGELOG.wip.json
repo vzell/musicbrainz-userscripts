@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "The 📊 unique-values dropdown is resizable: drag the grip in its lower-right corner horizontally and vertically. The panel stays open when the mouse is released outside it, and the release click no longer reaches the page underneath. The size is remembered per page type and column (GM key sa_uniq_dropdown_geometry) and is carried by the 💾/📂 configuration export/import (Panel geometry group). Double-clicking the grip returns to the automatic size."
+        ]
+      }
+    ]
+  }
+]
