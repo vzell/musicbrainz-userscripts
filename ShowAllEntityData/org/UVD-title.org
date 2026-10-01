@@ -98,7 +98,7 @@ support 'release-tracks' PTs with the additional virtual path syntax where a spe
 e.g. https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149/disc/1#dcee82bf-26f7-3e58-a1ed-f463a64ed647 for the URL format (userscript @include directive)
 and @debug/release-tracks-track.html for the raw HTML on the initial rendered page
 
-** TODO resize the UVD
+** DONE resize the UVD
 
 each UVD should be resizable (see @debug/resize-UVD.html) by adding a drag handle to the lower right corner
 
@@ -134,6 +134,8 @@ etc.
 
 2.)
 
+a.)
+
 On URL https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149, @debug/release-tracks-remix-ETI.html
 the "Moonitor remix" also qualifies as ETI in
 
@@ -143,31 +145,24 @@ the "Moonitor remix" also qualifies as ETI in
 
 See also other examples of these guidelines (https://musicbrainz.org/doc/Style/Titles) in:
 
+b.)
+
+On URL https://musicbrainz.org/release/5cf63c93-e27e-4d98-81bc-9aba8b6861a7
+in "I Do What I Do (Theme for 9 1/2 Weeks) (7” version)" the "7” version" would also qualify as ETI
+
 #+begin_example
 Never Ending Story (power club vocal mix)
 The Age of Love (Watch Out for Stella club mix)
 #+end_example
 
-** TODO Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+** https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - "Title Info - Subtitle" Subtitle not highlighted and not filterable by value, same as title itself
+
+On e.g https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - "Title Info - Subtitle", Subtitle not highlighted and not filterable by value, same as Title itself
+
+** TODO Events in the "Event" column should also get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
 
 Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the
 guidline specific event name format
-
-#+begin_example
-2008-12-07: Rose Garden, Portland, OR, USA ==> A standard live bootleg (in the US)
-1994-05-21: Barrowland, Glasgow, Scotland, UK ==> A standard live bootleg (in the UK)
-2002-05-02: Ahoy, Rotterdam, Netherlands ==> A live bootleg with bonus tracks
-2008-12-17, early show: Mellon Arena, Pittsburgh, PA, USA ==> A live bootleg with additional date information
-#+end_example
-
-The date expression could also be partial in the above examples, e.g
-
-#+begin_example
-2008-12 ==> yyyy-mm
-2008    ==> yyyy
-12-07   ==> mm-dd (year unknow)
-same for other unknown parts
-#+end_example
 
 ** TODO Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
 ** TODO generalize the error/warning buttons to a drop-down menu in H1 probably

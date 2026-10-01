@@ -76,8 +76,21 @@ When "-" between all components, or a mixture between "‐"/"-" is used, highlig
 also make them filterable via a section in the UVD. This should be configurable (default: true)
 
 ** TODO The optional performance tweak (checking each row once on multi-table pages, which saves about 12 ms per load) is still open if you want it later.
+*** i
 
 The optional performance tweak (checking each row once on multi-table pages, which saves about 12 ms per load) is still
 open if you want it later.
 
+*** prompt
+
+In ShowAllEntityData.user.js, optimize stampLiveTitleFlags() (shipped in 9.99.1186, see tests/MEASUREMENTS.org entry
+"2026-10-01 — live-title cell flags"): on multi-table pages every row's title is parsed twice — once for the live clone
+and once for its master row (m.row !== row). Parse only the master row via _stampLiveTitleRow() and copy the result
+(data-mb-live-flag, title, data-mb-col-tip — or their removal) onto the live row's cells at the same colIdxs, without
+re-parsing. Single-table behaviour stays as is.  Work on a feature branch with a WIP changelog entry.  Verify with
+tests/fixtures/uvd-live-titles.spec.js and scripts/mutation-check.py scripts/mutations/uvd-live-titles.json (add a
+mutation if the copy path needs its own guard). Then measure: plant a temporary performance.measure('sa-live-stamp')
+around the stampLiveTitleFlags() call at the fetch tail and time it on the live artist-releasegroups page (5 samples,
+before vs after, same session, same playwright/.auth state for both arms), restore the userscript hash-verified, and
+append the result to that MEASUREMENTS.org entry.
 
