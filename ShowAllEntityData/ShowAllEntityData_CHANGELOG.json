@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1180",
+    "date": "2026-10-01",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Test harness only, no change to the userscript: fixture pages no longer wait on the Internet Archive. A saved release page's sidebar cover thumbnail used to be fetched live from archive.org, and when that stalled, fixture loads timed out before the script was even injected (seen as intermittent failures of two Save/Load-to-Disk tests). Image requests to archive.org are now blocked for fixture loads; the Cover Art Archive and Event Art Archive mocks are untouched."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1179",
     "date": "2026-10-01",
     "sections": [
