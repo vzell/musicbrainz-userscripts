@@ -113,12 +113,12 @@ after a divider:
 🧮¹ …  |  📦 Data ▾   🛠 View ▾   [ ⚙️ | ❓ ]  |  ⚠️ WARNING (12) ▾   ❌ ERROR (3) ▾
 ```
 
-| Menu          | Rows                                                                                                                                  |
-|---------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| **📦 Data ▾** | 💾 Save to Disk · 📂 Load from Disk · 💾 Export                                                                                       |
-| **🛠 View ▾**  | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                                                                                    |
-| **⚙️ ❓**      | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
-| **⚠️ WARNING ▾ / ❌ ERROR ▾** | One row per kind of problem found on the page, with how many rows have it. See [Warnings and errors](#warnings-and-errors). |
+| Menu                          | Rows                                                                                                                                  |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| **📦 Data ▾**                 | 💾 Save to Disk · 📂 Load from Disk · 💾 Export                                                                                       |
+| **🛠 View ▾**                  | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                                                                                    |
+| **⚙️ ❓**                      | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
+| **⚠️ WARNING ▾ / ❌ ERROR ▾**  | One row per kind of problem found on the page, with how many rows have it. See [Warnings and errors](#warnings-and-errors).           |
 
 Each row shows its own keyboard shortcut on the right. Open a menu with the
 mouse or with that shortcut — pressing `Ctrl+D` opens **🛠 View** and then the
@@ -460,23 +460,23 @@ filter with a ✕ to remove it.
 <details>
 <summary>What is checked</summary>
 
-| Level | Problem | Where |
-|-------|---------|-------|
-| ⚠️ | Track and recording length differ by more than the threshold | Release tracklist: Length, Recording length |
-| ⚠️ | Recording has no associated work | Release tracklist: Title |
-| ⚠️ | Live title date uses a plain "-" instead of "‐" (U+2010) | Release and release group titles |
-| ⚠️ | Title in ALL UPPERCASE | Title columns |
-| ⚠️ | Title truncated with "…" | Title columns |
-| ⚠️ | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title |
-| ⚠️ | 🟠 Release has low data quality | Release / Title columns |
-| ⚠️ | Invalid ISRC / ISWC / barcode format | ISRCs, ISWC, Barcode |
-| ⚠️ | Pending edits | any column |
-| ⚠️ | Live credit without a date | Release tracklist: credit columns |
-| ❌ | Track and recording length far apart | Release tracklist: Length, Recording length |
-| ❌ | Video on a medium that cannot carry video | Release tracklist: Video |
-| ❌ | Live title with an impossible date | Release and release group titles |
-| ❌ | Title starts with a date but is not a live title | Release and release group titles |
-| ❌ | Live credit date differs from the recording date | Release tracklist: credit columns |
+| Level | Problem                                                         | Where                                       |
+|-------|-----------------------------------------------------------------|---------------------------------------------|
+| ⚠️     | Track and recording length differ by more than the threshold    | Release tracklist: Length, Recording length |
+| ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
+| ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
+| ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
+| ⚠️     | Title truncated with "…"                                        | Title columns                               |
+| ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
+| ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
+| ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISWC, Barcode                        |
+| ⚠️     | Pending edits                                                   | any column                                  |
+| ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
+| ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
+| ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
+| ❌    | Live title with an impossible date                              | Release and release group titles            |
+| ❌    | Title starts with a date but is not a live title                | Release and release group titles            |
+| ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
 ⚠️ Findings; turning one off keeps the problem in the menu. The menus
@@ -808,46 +808,46 @@ you automatically.
 <details>
 <summary>The setting groups</summary>
 
-| Group                                           | What is in it                                                                                                                                                             |
-|-------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 🛠️ Generic                                       | Debug logging; overflow tables in a new tab; artwork diagnostics                                                                                                          |
-| 🔬 Experimental                                 | Collapsible sidebar                                                                                                                                                       |
-| 🏷️ Page header and body                          | Relocating h1 alias blocks, legal names and trailing h2 sections                                                                                                          |
-| 💬 Tooltips                                     | Rich row-count tooltips and their colours                                                                                                                                 |
-| 🔢 Numeric alignment                            | Digit and colon alignment on numeric and duration columns                                                                                                                 |
-| 🧮 Optional column removal                      | Drop the Tagger, Rating and checkbox columns                                                                                                                              |
-| 🎹 Keyboard shortcuts                           | The prefix key, the direct-shortcuts master switch, and 20+ individual bindings                                                                                           |
-| 🎨 Table filter configuration                   | Every filter colour and border state, the focus prefix and focus backgrounds                                                                                              |
-| #₁ Unique column values drop down configuration | Badge colours, quick-filter highlight colours, flag icons, visible row count                                                                                              |
-| Σ Threshold settings                            | Auto-expand rows, max page warning, sort progress indicator                                                                                                               |
-| 📝 Annotation columns                           | Collapsible prose columns, clamp height, max width, nested heading colours                                                                                                |
-| 📖 Annotation section                           | Auto-expand the native annotation section                                                                                                                                 |
-| 🔀 Annotation history                           | Open *Compare versions* in a new tab                                                                                                                                      |
-| 🎨 Edits page                                   | Per-category edit colours, collapse defaults, diff colours, zebra striping                                                                                                |
-| ⚡ Performance                                  | Debounce, sort chunk size, render and warning thresholds, history limit                                                                                                   |
-| 🎨 UI features                                  | Column visibility, density control, sticky headers, default hidden columns per page type                                                                                  |
-| 📌 Table stickiness                             | Sticky column and header configuration                                                                                                                                    |
-| 🖌️ Element UI styles                             | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours  |
-| 🔗 Relationships column                         | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching                                                                                              |
-| ↔️ Column resize                                 | Enable resizing; auto-resize on load                                                                                                                                      |
-| 📤 Export                                       | What headers and cells carry in an export                                                                                                                                 |
-| 📊 Statistics panel                             | Enable; maximum width and height                                                                                                                                          |
-| 💾 Load and save                                | Edit the pinned filter list                                                                                                                                               |
-| 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                      |
-| ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                               |
-| 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                 |
-| ⚠️ Findings                                     | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates) |
-| 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                         |
-| 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                            |
-| 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                |
-| 🎨 Artist role colours                          | Main and guest performer label colours                                                                                                                                    |
-| 🖼️ CAA/EAA illustrated discography               | The whole artwork feature: icons, strips, inline thumbnails, sizes, concurrency                                                                                           |
-| 🗄️ Art archive IndexedDB                         | The image cache: TTL, entry count, store sizes                                                                                                                            |
-| 🎵 Picard tagger                                | The ♪ column, its collapse default, host and port range                                                                                                                   |
-| ⏱️ Track length precision                        | Millisecond lengths, the `.000` suffix, the IndexedDB cache and its TTL                                                                                                   |
-| 📅 Release events column                        | Enable the asynchronous release-events column                                                                                                                             |
-| ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                               |
-| 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                 |
+| Group                                           | What is in it                                                                                                                                                                                              |
+|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 🛠️ Generic                                       | Debug logging; overflow tables in a new tab; artwork diagnostics                                                                                                                                           |
+| 🔬 Experimental                                 | Collapsible sidebar                                                                                                                                                                                        |
+| 🏷️ Page header and body                          | Relocating h1 alias blocks, legal names and trailing h2 sections                                                                                                                                           |
+| 💬 Tooltips                                     | Rich row-count tooltips and their colours                                                                                                                                                                  |
+| 🔢 Numeric alignment                            | Digit and colon alignment on numeric and duration columns                                                                                                                                                  |
+| 🧮 Optional column removal                      | Drop the Tagger, Rating and checkbox columns                                                                                                                                                               |
+| 🎹 Keyboard shortcuts                           | The prefix key, the direct-shortcuts master switch, and 20+ individual bindings                                                                                                                            |
+| 🎨 Table filter configuration                   | Every filter colour and border state, the focus prefix and focus backgrounds                                                                                                                               |
+| #₁ Unique column values drop down configuration | Badge colours, quick-filter highlight colours, flag icons, visible row count                                                                                                                               |
+| Σ Threshold settings                            | Auto-expand rows, max page warning, sort progress indicator                                                                                                                                                |
+| 📝 Annotation columns                           | Collapsible prose columns, clamp height, max width, nested heading colours                                                                                                                                 |
+| 📖 Annotation section                           | Auto-expand the native annotation section                                                                                                                                                                  |
+| 🔀 Annotation history                           | Open *Compare versions* in a new tab                                                                                                                                                                       |
+| 🎨 Edits page                                   | Per-category edit colours, collapse defaults, diff colours, zebra striping                                                                                                                                 |
+| ⚡ Performance                                  | Debounce, sort chunk size, render and warning thresholds, history limit                                                                                                                                    |
+| 🎨 UI features                                  | Column visibility, density control, sticky headers, default hidden columns per page type                                                                                                                   |
+| 📌 Table stickiness                             | Sticky column and header configuration                                                                                                                                                                     |
+| 🖌️ Element UI styles                             | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours                                   |
+| 🔗 Relationships column                         | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching                                                                                                                               |
+| ↔️ Column resize                                 | Enable resizing; auto-resize on load                                                                                                                                                                       |
+| 📤 Export                                       | What headers and cells carry in an export                                                                                                                                                                  |
+| 📊 Statistics panel                             | Enable; maximum width and height                                                                                                                                                                           |
+| 💾 Load and save                                | Edit the pinned filter list                                                                                                                                                                                |
+| 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                       |
+| ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                |
+| 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                  |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates)  |
+| 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                          |
+| 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                             |
+| 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                 |
+| 🎨 Artist role colours                          | Main and guest performer label colours                                                                                                                                                                     |
+| 🖼️ CAA/EAA illustrated discography               | The whole artwork feature: icons, strips, inline thumbnails, sizes, concurrency                                                                                                                            |
+| 🗄️ Art archive IndexedDB                         | The image cache: TTL, entry count, store sizes                                                                                                                                                             |
+| 🎵 Picard tagger                                | The ♪ column, its collapse default, host and port range                                                                                                                                                    |
+| ⏱️ Track length precision                        | Millisecond lengths, the `.000` suffix, the IndexedDB cache and its TTL                                                                                                                                    |
+| 📅 Release events column                        | Enable the asynchronous release-events column                                                                                                                                                              |
+| ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                |
+| 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                  |
 
 </details>
 

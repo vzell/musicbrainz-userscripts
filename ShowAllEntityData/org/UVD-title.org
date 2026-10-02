@@ -165,4 +165,5 @@ Events in the "Event" column should als get a UVD section if they use the "<date
 guidline specific event name format
 
 ** TODO Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
-** TODO generalize the error/warning buttons to a drop-down menu in H1 probably
+
+

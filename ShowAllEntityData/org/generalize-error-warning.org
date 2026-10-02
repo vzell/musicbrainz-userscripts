@@ -1,0 +1,53 @@
+* TODO plan: generalize the errors/warnings to a drop-down menu in H1
+** DONE i
+
+Generalize the current column cell data background highlightning+glyph
+
+#+begin_example
+WARNING - light yellow background+⚠️ glyph
+ERROR - light red background+❌ glyph
+#+end_example
+
+and corresponding UVD filtering for different findings (which can also be in different columns, in the case of
+multi-table PTs sometimes even spread over multiple sub-tables)
+
+1.)
+
+#+begin_example
+"Length" mismatches either flagged as WARNINGs or ERRORs 
+Live title date uses a plain "-" between its parts instead of "‐" (U+2010) flagged as WARNING
+etc. - parse it from the code
+#+end_example
+
+2.)
+
+The following in this whole scenario should behave like "WARNINGs"
+
+#+begin_example
+"Pending edits"
+"Title info - Style issues ==> ALL UPPERCASE"
+🟠 low data quality
+etc. - identify potential candidates for WARNING/ERROR by parsing the code
+#+end_example
+
+3.)
+
+I want two additional menu drop-down buttons, WARNING(yellow background)/ERROR(red background) modeled like the current
+"Data" and "View" buttons in the h1 header line, after the "Help"-button. There should be a divider between the "Help"
+button and the two new ones
+
+4.)
+
+Each button should a clickable filter entry line which when clicked automatically filter pagewide all sub-tables
+(multi-table PT) or the one table for single-table PTs, by emulating a corresponding click in the UVD of each column (in
+all tables) which represents either a WARNING/ERROR (see the above bullet points)
+
+5.)
+
+The text of each line in the new WARNING/ERROR button menu drop-down should be descriptive+glyph (inclusive tooltip)
+
+6.)
+
+also generate a nice web based mockup
+
+** DONE Create a new skill for handling our new "findings" functionality
