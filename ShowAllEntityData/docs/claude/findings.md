@@ -49,6 +49,15 @@ release/RG live-title findings (`live-*`) and the event-name ones
 different readers (`_findCellLiveTitle()` vs `_findCellEventName()`), so
 neither family ever counts the other's cells.
 
+Recording comments add `plan.recComment(name)` (`_recCommentColumnKind()`:
+`'plain'`/`'link'`/`null`, read per cell via `_findingRecComment()`),
+`plan.recPlainIdx` (the row's "Disambiguation" cell, which `rec-date-*`
+compares with the "Recording date" cell they test and tint) and
+`plan.eventStateIdx` (for `event-state-missing` on Event-Country). The
+`rec-date-*` tint deliberately sits on the Recording date cell, not on the
+comment cell: that one may already carry `data-mb-live-flag`, which
+suppresses the generic tint.
+
 ## The stamp: `stampFindings()`
 
 Same shape and same reasons as `stampLiveTitleFlags()`, and called right after

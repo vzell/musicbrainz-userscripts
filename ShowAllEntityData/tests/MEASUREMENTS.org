@@ -3033,3 +3033,28 @@ The cold open came out 10 % FASTER in both rounds, which this change cannot
 cause; the branch arm always ran second, so treat cold as unchanged within
 order/noise. Header counts are not touched by this change and moved within
 the usual spread.
+
+* 2026-10-02 — 📊 "Recording comment info", main vs feature/uvd-recording-comments (petri)
+
+*Probing*: the once-per-load stamp (one `_parseRecordingComment()` per Name
+cell inside the render), the cold 📊 open on Name (one more parse per cell)
+and, as a control, a global filter. A TEMPORARY Playwright spec (deleted
+afterwards) on a generated 2000-row artist-recordings page: the 85 real
+comments of `debug/Recording-Bruce-initial.html` cycled, 1700 rows with a
+comment. `main` from a detached worktree with the auth file copied in. Arms
+interleaved main / branch / main / branch, 5 samples each, so 10 per arm.
+Render = "⊚ All recordings" click to `waitForRenderComplete()`; uniq = a
+synchronous `__saTest.getUniqDropSections('Name', 0)`; filter = typing "Gund"
+until the status reports the pass.
+
+** =artist-recordings=, single-table, 2000 rows (generated, "Name" column)
+
+| Metric (median of 10, ms) | =main= | branch (UTC 14:34–14:37) | ratio |
+|---------------------------+--------+--------------------------+-------|
+| render (incl. stamp)      |   4142 |                     4114 |  0.99 |
+| 📊 cold open, Name        |   1439 |                     1469 |  1.02 |
+| global filter             |   1017 |                     1009 |  0.99 |
+
+*Read as: render and filter unchanged within noise; the cold 📊 open on a
+recording column costs about +30 ms (1.02x) for 2000 comments.* The stamp's
+extra work is not visible in the render time at this size.

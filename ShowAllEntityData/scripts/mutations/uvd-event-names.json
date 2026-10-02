@@ -43,8 +43,8 @@
     "why": "The Location completeness entries must name the real number of \", \"-separated parts.",
     "edits": [
       {
-        "find": "            locParts: m[10].split(', ').length,",
-        "replace": "            locParts: m[10].split(', ').length - 1,"
+        "find": "            locParts: locStr ? locStr.split(', ').length : null,",
+        "replace": "            locParts: locStr ? locStr.split(', ').length - 1 : null,"
       }
     ],
     "spec": "tests/fixtures/uvd-live-titles.spec.js",
@@ -56,7 +56,7 @@
     "why": "Without the liveloc: branch a ticked Location completeness entry matches no row.",
     "edits": [
       {
-        "find": "        if (mode.startsWith('liveloc:'))   return _liveLocLabel(live.locParts) === mode.slice(8);\n",
+        "find": "        if (mode.startsWith('liveloc:'))   return !!live.locParts && _liveLocLabel(live.locParts) === mode.slice(8);\n",
         "replace": ""
       }
     ],
@@ -69,8 +69,8 @@
     "why": "The red/yellow live-form tint reaches event names only because _liveTitleColIdxs() includes the event-name columns.",
     "edits": [
       {
-        "find": "            if (name === 'Title' || names.has(name) || eventNames.has(name)) out.push(i);",
-        "replace": "            if (name === 'Title' || names.has(name)) out.push(i);"
+        "find": "            if (name === 'Title' || names.has(name) || eventNames.has(name) || rec) out.push({ i, rec });",
+        "replace": "            if (name === 'Title' || names.has(name) || rec) out.push({ i, rec });"
       }
     ],
     "spec": "tests/fixtures/uvd-event-names.spec.js",

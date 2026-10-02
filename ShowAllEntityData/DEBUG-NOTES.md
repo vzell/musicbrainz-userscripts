@@ -16982,3 +16982,83 @@ from the grammar before the first run; all matched.
 and a filter test. **Mutation check:** `scripts/mutations/uvd-event-names.json`,
 9 entries, 8 caught, 1 recorded `expect: "pass"` (the render gate on
 `isEventNameCol` is covered by the identical gate on the counting loop).
+
+## 2026-10-02 — 📊 "Recording comment info - …" sections and eventParts follow-ups (branch feature/uvd-recording-comments)
+
+**Request:** org/recordings-UVD.org. Recording disambiguation comments
+("live, 2004‐10‐02: Gund Arena, Cleveland, OH, USA") get the live-title /
+event-name treatment, plus suggestions built on `eventParts`.
+
+**Snapshot:** `debug/Recording-Bruce-initial.html`, 100 recordings: 85 with a
+comment, 79 "live, DATE: location", 3 bare "live", 2 "rehearsal, 1978‐05‐19:
+Paramount Theatre, …", 1 "alternate take". "rehearsal" was not in
+`eventParts()`'s keyword list (only "live rehearsal"), so those two rows got
+no Event-* split; `EVENT_TYPE_KEYWORDS` is now one module-level constant,
+longest first, with "rehearsal".
+
+**Where the comment lives** decides the reader: on listing pages it is the
+`.comment` beside the `/recording/` link in Name/Recording
+(`extractMainColumn` copies it into a synthetic "Comment" column, which is
+deliberately NOT read, so the counts appear once); on release-tracks
+`applyExtractTrackTitleData()` MOVES it into "Disambiguation" with the parens
+stripped, so that column is read as plain text. `_recCommentColumnKind()`
+returns 'plain'/'link'; `_liveTitleColIdxs()` now returns `{i, rec}` so the
+stamp reads each column its own way.
+
+**Refactor, proven neutral:** `_parseLiveTitle()`'s verdict tail is now
+`_liveVerdictFromMatch(m, locStr)`, shared with the date-only form
+(`_LIVE_DATE_ONLY_RE`, "live, 2002"). Both earlier live-title/event specs
+stayed green before any new code used it. `_countLiveVerdict()` and the
+`liveloc:` matcher now skip a null `locParts` (a date-only comment);
+without that guard `_liveLocLabel(null)` read as "2 parts".
+
+**Decided against the plan, and why:** "state missing for USA/Canada" was
+planned as "Event-State empty". `eventParts()` fills the state slot whenever
+the location has 2+ parts, so that never fires on real data; the actual
+failure is "…: The Roxy, West Hollywood, USA", where the CITY lands in the
+state slot. The finding tests for a non-two-letter state instead.
+
+**Fixture trap, recorded so it is not repeated:** the first version of
+`scripts/build-recording-comments-fixture.py` removed the FIRST
+"(on 1999-04-11)" in a release-tracks row to blank its Recording date, but a
+row carries several relationship dates before "recording of:" — the spec's
+"imprecise" assertion caught it. It now cuts only after "recording of:".
+
+**Mutation anchors moved by this branch** (re-pointed, all re-run green):
+`uvd-event-names.json` (`_liveTitleColIdxs()` line, `locParts` line,
+`liveloc:` matcher) and `uvd-title-sections.json` (`_findRecOfWorkColIdx()`
+now delegates to `_findColIdxByName()`).
+
+**Tests:** `tests/fixtures/uvd-recording-comments.spec.js` (11 tests) on
+`artist-recordings-comments.html` (22 rows) and
+`release-tracks-comment-dates.html` (the committed live-release fixture with
+9 injected comments). Counts derived by hand first; all matched except the
+two above, each a real defect (one in the plan, one in the fixture builder).
+**Mutation check:** `scripts/mutations/uvd-recording-comments.json`, 9
+entries, 9 caught.
+
+**Not fixed, noted in HELP:** `eventParts()` does not split the style guide's
+colon-less "live, Los Angeles, CA, USA" into City/State/Country (it lands in
+Event-Detail). The new parser handles that form itself.
+
+**Addendum — a pre-existing filter-box bug this branch exposed.**
+`source-row-tally-memo.spec.js` "single-table" started failing ~1 in 6
+(branch: 4 failures in ~25 whole-file runs; `main`: 0 in 21). It is NOT
+caused by the recording code: the page has no comments. Instrumented repro
+(15× a minimal copy): after `fill('')` the box held only "🔍 " and the status
+still said `[GLOBAL:"Track E"]`, with no `runFilter()` log at all. Cause, in
+`guardFilterPrefixKeydown()`: Playwright's `fill('')` = select-all + Delete;
+when the Delete keydown beat the async `selectionchange` clamp, the selection
+still started inside the prefix, and the "partial overlap" branch rewrote
+`.value` by hand — which fires no 'input' event, so the filter never re-ran.
+The branch's slightly different render timing widened that window. Probing
+the same guard found a worse sibling, reproducible every time on `main`:
+**Ctrl+A then Backspace did nothing** (the Backspace rule blocked any
+selection starting at the boundary). Fixed both: a selection reaching past
+the prefix is deleted (by the browser from the boundary, by hand from inside
+the prefix, then `_dispatchInternalInputEvent()`). Regression spec
+`tests/fixtures/filter-prefix-guard-delete.spec.js`: 3 of 4 tests fail on
+`main`, all pass here; the race is made deterministic by setting the
+selection and dispatching the keydown in one task. After the fix the tally
+spec ran 15/15 green. `scripts/mutations/filter-prefix-guard-delete.json`,
+2 entries, 2 caught.

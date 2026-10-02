@@ -125,8 +125,8 @@
     "why": "Without the header gate the section would appear on every Title column, reading an arbitrary column.",
     "edits": [
       {
-        "find": "            if (_resolveColHeaderName(table, i) === 'Recording of work') return i;",
-        "replace": "            if (i === headers.length - 1) return i;"
+        "find": "        return _findColIdxByName(table, 'Recording of work');",
+        "replace": "        return table ? table.querySelectorAll('thead tr:first-child th').length - 1 : -1;"
       }
     ],
     "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",

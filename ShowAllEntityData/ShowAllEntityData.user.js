@@ -985,16 +985,17 @@
             label: "Live Titles: Flag Invalid Dates And Near Misses",
             type: "checkbox",
             default: true,
-            description: "Tint a release, release group or event title cell light red with a ❌ when its live-title " +
-                         "date is impossible (month 13, day 42, 29 February in a non-leap year) or the title starts with " +
-                         "a date but does not follow \"DATE: Venue, City, …\"."
+            description: "Tint a release, release group or event title cell — or a recording's comment cell — light " +
+                         "red with a ❌ when its live-title date is impossible (month 13, day 42, 29 February in a " +
+                         "non-leap year) or it starts with a date but does not follow \"DATE: Venue, City, …\" (for a " +
+                         "recording comment: any near miss of \"live, DATE: Venue, City, …\")."
         },
 
         sa_enable_live_title_separator_flag: {
             label: "Live Titles: Flag ASCII Date Separators",
             type: "checkbox",
             default: true,
-            description: "Tint a live title cell (release, release group or event) light yellow with a ⚠️ when its " +
+            description: "Tint a live title cell (release, release group, event or recording comment) light yellow with a ⚠️ when its " +
                          "date uses a plain \"-\" between any of its parts instead of the Unicode hyphen \"‐\" (U+2010) " +
                          "MusicBrainz normalizes titles to."
         },
@@ -1018,6 +1019,29 @@
             description: "Comma-separated column names that get the 📊 \"Event name info - …\" sections in addition " +
                          "to every \"Event\" column. Only a cell whose name links an event counts. Leave empty for " +
                          "Event columns only."
+        },
+
+        sa_enable_uvd_recording_comments: {
+            label: "Unique-Values Dropdown: Recording Comment Info",
+            type: "checkbox",
+            default: true,
+            description: "Offer the \"Recording comment info - …\" sections in the 📊 dropdown of recording columns " +
+                         "(the Title-info columns above, for recording links, and the plain comment columns below): " +
+                         "recording disambiguation comments checked against " +
+                         "https://musicbrainz.org/doc/Style/Recording#Live_recordings — \"live\", \"live, 2002\", " +
+                         "\"live, Los Angeles, CA, USA\" or \"live, YYYY-MM-DD[, early show]: Venue, City, State, " +
+                         "Country[; more info]\" — with the event type, near misses, and the same date, location and " +
+                         "separator details as \"Live title info\"."
+        },
+
+        sa_uvd_recording_comment_columns: {
+            label: "Unique-Values Dropdown: Columns Holding A Recording Comment As Text",
+            type: "text",
+            default: "Disambiguation",
+            description: "Comma-separated names of columns whose whole text is a recording's disambiguation comment, " +
+                         "e.g. the release tracklist's \"Disambiguation\". They get the \"Recording comment info - …\" " +
+                         "sections too. Recording-link columns (Name, Recording, Title, …) are found by their link and " +
+                         "need no entry here."
         },
 
         sa_enable_length_deviation_section: {
@@ -2059,6 +2083,23 @@
             description: 'Tint an Event cell light yellow with a ⚠️ when the event name is in none of the ' +
                          'https://musicbrainz.org/doc/Style/Event title forms but almost is one: "@" or "AT" for ' +
                          '"at", " - " for ": ", a colon without one space after it, an abbreviated or glued year.'
+        },
+
+        sa_findings_tint_rec_date: {
+            label: 'Highlight recording dates that disagree with the comment',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist: tint a "Recording date" cell light red with a ❌ when the date in the ' +
+                         'recording\'s comment ("live, 2004‐10‐02: …") is a different date, and light yellow with a ⚠️ ' +
+                         'when one is less precise than the other (2004-10 vs 2004-10-02) or only one of them has a date.'
+        },
+
+        sa_findings_tint_event_state: {
+            label: 'Highlight a missing state for USA/Canada as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint an "Event-Country" cell light yellow with a ⚠️ when the country parsed from a recording ' +
+                         'comment is USA or Canada but no state or province was found before it.'
         },
 
         sa_findings_tint_title_mismatch: {
@@ -6051,6 +6092,19 @@
         }
     };
 
+    /**
+     * Event types a recording comment can start with ("live, 2004‐10‐02: …",
+     * "soundcheck, …"). Shared by `SyntheticColumnDataExtractor.eventParts`
+     * (Event-Type column) and `_parseRecordingComment()` (📊 "Recording
+     * comment info"), so both recognise the same comments. Ordered longest
+     * first: "live rehearsal" must win over "live". "rehearsal" added
+     * 2026-10-02 (org/recordings-UVD.org: Bruce Springsteen's
+     * "rehearsal, 1978‐05‐19: Paramount Theatre, …").
+     *
+     * @type {string[]}
+     */
+    const EVENT_TYPE_KEYWORDS = ['live rehearsal', 'soundcheck', 'rehearsal', 'interview', 'audition', 'studio', 'live'];
+
     // --- SyntheticColumnDataExtractor: Second-Pass Extraction Registry ---
     //
     // Each named function receives a <td> element that was produced by a first-pass
@@ -6230,7 +6284,6 @@
 
             // ── Pre-colon extraction (Type, Date, Detail) ──────────────────────
             const preParts = prePart.split(', ').map(s => s.trim()).filter(s => s.length > 0);
-            const EVENT_TYPE_KEYWORDS = ['live', 'soundcheck', 'studio', 'interview', 'audition', 'live rehearsal'];
             if (preParts.length === 0 || !EVENT_TYPE_KEYWORDS.includes(preParts[0])) {
                 // Doesn't start with a recognized event-type keyword, so the whole
                 // string isn't Event-Type/Date/Detail/Location metadata at all —
@@ -24131,6 +24184,11 @@
     const _LIVE_DATE_SRC = '(?:(\\d{4}|\\?{4})(?:([‐-])(\\d{2}|\\?\\?)(?:([‐-])(\\d{2}|\\?\\?))?)?' +
                            '|(\\d{2}|\\?\\?)([‐-])(\\d{2}|\\?\\?))';
     const _LIVE_TITLE_RE    = new RegExp(`^${_LIVE_DATE_SRC}(?:, ([^:]+?))?: (.+)$`);
+    // A date with optional additional info and no location — the recording
+    // comment form "live, 2002" / "live, 2004‐10‐02, early show"
+    // (https://musicbrainz.org/doc/Style/Recording#Live_recordings). Same
+    // groups as _LIVE_TITLE_RE minus the location.
+    const _LIVE_DATE_ONLY_RE = new RegExp(`^${_LIVE_DATE_SRC}(?:, ([^:;]+?))?$`);
     // A well-formed date with nothing glued to it — tells a near miss's
     // "bad date" apart from its "bad rest".
     const _LIVE_DATE_HEAD_RE = new RegExp(`^${_LIVE_DATE_SRC}(?![\\d‐\\-–./])`);
@@ -24193,6 +24251,23 @@
             }
             return nearMiss('location is not "Venue, City, …"');
         }
+        return _liveVerdictFromMatch(m, m[10]);
+    }
+
+    /**
+     * Builds a `valid`/`invalid` live verdict from a match of a regex that
+     * starts with `_LIVE_DATE_SRC` (groups 1–8) and carries the additional
+     * date info in group 9 — `_LIVE_TITLE_RE` (location in group 10) or
+     * `_LIVE_DATE_ONLY_RE` (no location). The one place the date's validity,
+     * shape and separator kind are decided, so a title, an event name and a
+     * recording comment are judged alike.
+     *
+     * @param {RegExpExecArray} m
+     * @param {?string} locStr - The location text, `null` when there is none.
+     * @returns {ReturnType<typeof _parseLiveTitle>} `locParts` is `null`
+     *   without a location.
+     */
+    function _liveVerdictFromMatch(m, locStr) {
         const yearRaw = m[1] || null;
         const monthRaw = m[1] ? (m[3] || null) : m[6];
         const dayRaw = m[1] ? (m[5] || null) : m[8];
@@ -24218,7 +24293,7 @@
             complete: shape === 'YYYY-MM-DD',
             sep: !seps.length ? null : seps.every(s => s === '‐') ? 'unicode' : seps.every(s => s === '-') ? 'ascii' : 'mixed',
             extra: m[9] ? m[9].trim() : null,
-            locParts: m[10].split(', ').length,
+            locParts: locStr ? locStr.split(', ').length : null,
             problems,
         };
     }
@@ -24421,7 +24496,8 @@
         counts[live.kind]++;
         if (live.complete) counts.complete++; else counts.partial++;
         bump(counts.shape, live.shape);
-        bump(counts.loc, _liveLocLabel(live.locParts));
+        // A date-only recording comment ("live, 2002") has no location.
+        if (live.locParts) bump(counts.loc, _liveLocLabel(live.locParts));
         if (live.extra) { counts.extra++; bump(counts.extraValue, live.extra); }
         if (live.sep) {
             const f = counts.sep[live.sep];
@@ -24430,6 +24506,246 @@
             if (!live.complete) f.partial++;
             if (live.extra) f.extra++;
         }
+    }
+
+    // Grammar of a recording's live disambiguation comment
+    // (https://musicbrainz.org/doc/Style/Recording#Live_recordings, checked
+    // 2026-10-02, plus the "; additional info" tail of org/recordings-UVD.org):
+    //   <type>[, DATE[, info]][: Venue, City, State, Country][; additional info]
+    //   <type>, City, State, Country[; additional info]
+    //   <type>
+    // <type> is one of EVENT_TYPE_KEYWORDS, DATE the live bootleg date
+    // (_LIVE_DATE_SRC), optionally followed by uncertain days "/DD"
+    // (eventParts' convention, "2001-12-22/23").
+    const _REC_MULTIDAY_RE = /^([\d?‐-]+)((?:\/\d{2})+)(?=$|[,:])/;
+
+    /**
+     * Classifies a recording disambiguation comment for the 📊 "Recording
+     * comment info - …" sections, the comment cell tint and the recording
+     * findings. Pure — no DOM. The date part goes through the same
+     * `_liveVerdictFromMatch()`/`_parseLiveTitle()` as live titles and event
+     * names, so all three judge a date alike.
+     *
+     * Forms: `typeonly` ("live"), `date` ("live, 2002"), `datelocation`
+     * ("live, 2004‐10‐02: Gund Arena, Cleveland, OH, USA"), `location`
+     * ("live, Los Angeles, CA, USA"), `other` (any other text after
+     * "<type>, "), `nearmiss` (`problem` says why). A comment that does not
+     * start with an event type is `null` ("alternate take") — unless it is a
+     * whole live title without one, which is a near miss.
+     *
+     * @param {?string} text - The comment, without its parentheses.
+     * @returns {?{type: ?string, form: string,
+     *   live: ?ReturnType<typeof _parseLiveTitle>, info: ?string,
+     *   date: ?string, locParts: ?number, multiDay: boolean, problem: ?string}} `live` is
+     *   set for `date`/`datelocation` and for a near miss in the date, `date`
+     *   (with plain "-", for comparing) for `date`/`datelocation` only;
+     *   `locParts` for `datelocation`/`location`; `info` is the text after
+     *   the first ";".
+     */
+    function _parseRecordingComment(text) {
+        const full = (text || '').trim();
+        if (!full) return null;
+        const semi = full.indexOf(';');
+        const head = (semi === -1 ? full : full.slice(0, semi)).trim();
+        const info = semi === -1 ? null : (full.slice(semi + 1).trim() || null);
+        const lower = head.toLowerCase();
+        const type = EVENT_TYPE_KEYWORDS.find(k => lower === k || /^[ ,:]/.test(lower.slice(k.length)) && lower.startsWith(k)) || null;
+        const out = (form, extra) => Object.assign({ type, form, live: null, date: null, info, locParts: null, multiDay: false, problem: null }, extra);
+        if (!type) {
+            const live = _parseLiveTitle(head);
+            return live && live.kind !== 'nearmiss' ? out('nearmiss', { problem: 'no event type before the date ("live, …")' }) : null;
+        }
+        let rest = head.slice(type.length);
+        if (!rest.startsWith(', ') && rest !== '') {
+            // "live 2004-10-02: …", "live: …" — a date or colon right after
+            // the type. Anything else ("studio version") is not a live comment.
+            return /^ ?[:\d?]/.test(rest) ? out('nearmiss', { problem: 'no ", " after the event type' }) : null;
+        }
+        if (head.slice(0, type.length) !== type) return out('nearmiss', { problem: `event type not in lower case ("${type}")` });
+        if (!rest) return out('typeonly');
+        rest = rest.slice(2).trim();
+        let multiDay = false;
+        rest = rest.replace(_REC_MULTIDAY_RE, (all, date) => { multiDay = true; return date; });
+        // The date as "Recording date" writes it: plain "-", no "/DD".
+        const head0 = _LIVE_DATE_HEAD_RE.exec(rest);
+        const date = head0 ? head0[0].replace(/‐/g, '-') : null;
+        const dm = _LIVE_DATE_ONLY_RE.exec(rest);
+        if (dm) {
+            if (dm[9] && dm[9].includes(', ')) return out('nearmiss', { multiDay, problem: 'no ": " between the date and the location' });
+            return out('date', { live: _liveVerdictFromMatch(dm, null), date, multiDay });
+        }
+        const live = _parseLiveTitle(rest);
+        if (live && live.kind !== 'nearmiss') return out('datelocation', { live, date, locParts: live.locParts, multiDay });
+        if (live) return out('nearmiss', { live, multiDay, problem: live.problems[0] });
+        if (/^\d{4}/.test(rest)) return out('nearmiss', { multiDay, problem: 'location is not "Venue, City, …"' });
+        const parts = rest.split(', ').length;
+        if (!rest.includes(':') && parts >= 2) return out('location', { locParts: parts });
+        return out('other');
+    }
+
+    // A recording's own page — the link whose comment a recording-link
+    // column carries.
+    const _RECORDING_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/recording\/[0-9a-f-]{36}(?:[?#]|$)/;
+
+    /**
+     * The comment text inside `scope`, without a Primary-alias `<i>` (read
+     * through the way `_extractMainColumnParts()` does), a leading ", " left
+     * by it, or the "( )" MusicBrainz writes around a comment.
+     *
+     * @param {Element} scope
+     * @returns {string}
+     */
+    function _recCommentTextOf(scope) {
+        const clone = scope.cloneNode(true);
+        clone.querySelectorAll('i[title="Primary alias"]').forEach(i => i.remove());
+        return clone.textContent.replace(/\s+/g, ' ').trim().replace(/^\((.*)\)$/, '$1').replace(/^,\s*/, '').trim();
+    }
+
+    /**
+     * Parses a recording comment cell with `_parseRecordingComment()`.
+     * `plain` (a "Disambiguation" column) reads the cell's whole text; else
+     * the cell must be a recording-link cell — first non-comment `<bdi>`
+     * linking `/recording/<mbid>` — and its `.comment` is read.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {boolean} plain
+     * @returns {?ReturnType<typeof _parseRecordingComment>}
+     */
+    function _findCellRecordingComment(cell, plain) {
+        if (!cell) return null;
+        if (plain) return _parseRecordingComment(_recCommentTextOf(cell));
+        let link = null;
+        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
+            if (bdi.closest('.comment')) continue;
+            link = bdi.closest('a[href]');
+            break;
+        }
+        if (!link || !_RECORDING_HREF_RE.test(link.getAttribute('href'))) return null;
+        const span = cell.querySelector('.comment');
+        if (!span) return null;
+        return _parseRecordingComment(_recCommentTextOf(span.querySelector('bdi') || span));
+    }
+
+    /**
+     * Columns whose recording link carries the comment: every "Title" column
+     * plus `_uvdTitleInfoColumns()` (Name, Recording, …).
+     *
+     * @param {string} name
+     * @returns {boolean}
+     */
+    function _isRecCommentLinkColumn(name) {
+        return name === 'Title' || _uvdTitleInfoColumns().has(name);
+    }
+
+    /**
+     * Columns holding a recording comment as plain text, from
+     * `sa_uvd_recording_comment_columns` (default "Disambiguation", the
+     * release tracklist's comment column).
+     *
+     * @returns {Set<string>}
+     */
+    function _uvdRecCommentPlainColumns() {
+        const raw = Lib.settings.sa_uvd_recording_comment_columns ?? 'Disambiguation';
+        return new Set(String(raw).split(',').map(s => s.trim()).filter(Boolean));
+    }
+
+    /**
+     * How one column reads recording comments: `'plain'`, `'link'` or
+     * `null` (not a recording comment column). Plain wins, so a column named
+     * in both lists is read as text.
+     *
+     * @param {string} name
+     * @returns {?('plain'|'link')}
+     */
+    function _recCommentColumnKind(name) {
+        if (_uvdRecCommentPlainColumns().has(name)) return 'plain';
+        return _isRecCommentLinkColumn(name) ? 'link' : null;
+    }
+
+    /**
+     * Whether a `_parseRecordingComment()` verdict matches one "Recording
+     * comment info" 📊 mode. The `rclive…` modes are the live modes with an
+     * `rc` prefix and go to `_liveTitleMatchesMode()`, except location
+     * completeness, which a location-only comment has without a date.
+     *
+     * @param {ReturnType<typeof _parseRecordingComment>} rc - Non-null.
+     * @param {string} mode
+     * @returns {boolean}
+     */
+    function _recCommentMatchesMode(rc, mode) {
+        if (mode.startsWith('rcform-'))  return rc.form === mode.slice(7);
+        if (mode.startsWith('rctype:'))  return rc.type === mode.slice(7);
+        if (mode.startsWith('rcmiss:'))  return rc.form === 'nearmiss' && rc.problem === mode.slice(7);
+        if (mode === 'rc-multiday')      return rc.multiDay;
+        if (mode === 'rc-info-has')      return !!rc.type && !!rc.info;
+        if (mode === 'rc-info-none')     return !!rc.type && !rc.info;
+        if (mode.startsWith('rcinfo:'))  return rc.info === mode.slice(7);
+        if (mode.startsWith('rcliveloc:')) return !!rc.locParts && _liveLocLabel(rc.locParts) === mode.slice(10);
+        if (mode.startsWith('rclive'))   return !!rc.live && rc.form !== 'nearmiss' && _liveTitleMatchesMode(rc.live, mode.slice(2));
+        return false;
+    }
+
+    /**
+     * Whether a 📊 mode is one of the "Recording comment info" modes.
+     *
+     * @param {string} mode
+     * @returns {boolean}
+     */
+    function _isRecCommentMode(mode) {
+        return mode.startsWith('rcform-') || mode.startsWith('rclive') || mode.startsWith('rctype:') ||
+            mode.startsWith('rcmiss:') || mode.startsWith('rcinfo:') || mode.startsWith('rc-');
+    }
+
+    /**
+     * Compares a release tracklist row's "Recording date" (the "recording of"
+     * relationship's date, plain "YYYY-MM-DD") with the date in the same
+     * recording's comment. Only a comment with an event type counts, and a
+     * near miss never does (its own red flag says enough).
+     *
+     *   - same date, or neither has one        → `null`
+     *   - one a less precise prefix of the other ("2004-10" vs "2004-10-02"),
+     *     or only one of them has a date       → `'imprecise'`
+     *   - anything else                        → `'mismatch'`
+     *
+     * @param {string} recDate - The "Recording date" cell's text.
+     * @param {?ReturnType<typeof _parseRecordingComment>} rc
+     * @returns {?('mismatch'|'imprecise')}
+     */
+    function _recDateCheck(recDate, rc) {
+        if (!rc || !rc.type || rc.form === 'nearmiss') return null;
+        const a = (recDate || '').trim();
+        const b = rc.date || '';
+        if (a === b) return null;
+        if (!a || !b) return 'imprecise';
+        const [short, long] = a.length < b.length ? [a, b] : [b, a];
+        return long.startsWith(short + '-') ? 'imprecise' : 'mismatch';
+    }
+
+    /**
+     * The recording comment verdict of a cell a finding tests, read the way
+     * its column carries the comment (`plan.recComment()`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {{recComment: function(string): ?string, nameOf: function(number): string}} plan
+     * @returns {?ReturnType<typeof _parseRecordingComment>}
+     */
+    function _findingRecComment(cell, plan) {
+        const kind = plan.recComment(plan.nameOf(cell.cellIndex));
+        return kind ? _findCellRecordingComment(cell, kind === 'plain') : null;
+    }
+
+    /**
+     * `_recDateCheck()` for a "Recording date" cell, against the same row's
+     * plain comment column (`plan.recPlainIdx`).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?('mismatch'|'imprecise')}
+     */
+    function _findingRecDate(cell, row, plan) {
+        const src = row.cells[plan.recPlainIdx];
+        return src ? _recDateCheck(cell.textContent, _findCellRecordingComment(src, true)) : null;
     }
 
     // MusicBrainz's release statuses, as a sub-table heading names them
@@ -24507,7 +24823,7 @@
         if (live.kind === 'nearmiss') return false;
         if (mode.startsWith('liveshape:')) return live.shape === mode.slice(10);
         if (mode.startsWith('liveextra:')) return live.extra === mode.slice(10);
-        if (mode.startsWith('liveloc:'))   return _liveLocLabel(live.locParts) === mode.slice(8);
+        if (mode.startsWith('liveloc:'))   return !!live.locParts && _liveLocLabel(live.locParts) === mode.slice(8);
         const sm = _LIVE_SEP_MODE_RE.exec(mode);
         if (sm) {
             if (live.sep !== sm[1]) return false;
@@ -24525,11 +24841,13 @@
     /**
      * Indices of `table`'s "Title info" columns — every "Title" column plus
      * `sa_uvd_title_info_columns`, the same gate `openUniqDrop()` uses — and
-     * of its event-name columns (`_uvdEventNameColumns()`), which the
-     * live-title cell flags read.
+     * of its event-name columns (`_uvdEventNameColumns()`) and plain
+     * recording comment columns (`_uvdRecCommentPlainColumns()`), which the
+     * live-title cell flags read. `rec` says how the column carries a
+     * recording comment (`_recCommentColumnKind()`).
      *
      * @param {HTMLTableElement} table
-     * @returns {number[]}
+     * @returns {Array<{i: number, rec: ?('plain'|'link')}>}
      */
     function _liveTitleColIdxs(table) {
         const names = _uvdTitleInfoColumns();
@@ -24538,9 +24856,39 @@
         const count = table.querySelectorAll('thead tr:first-child th').length;
         for (let i = 0; i < count; i++) {
             const name = _resolveColHeaderName(table, i);
-            if (name === 'Title' || names.has(name) || eventNames.has(name)) out.push(i);
+            const rec = _recCommentColumnKind(name);
+            if (name === 'Title' || names.has(name) || eventNames.has(name) || rec) out.push({ i, rec });
         }
         return out;
+    }
+
+    /**
+     * The cell flag a recording comment earns — the recording counterpart of
+     * `_liveTitleFlag()`, under the same two settings: `'error'` for an
+     * impossible date or a near miss, `'warn'` for a plain "-" in the date.
+     *
+     * @param {?ReturnType<typeof _parseRecordingComment>} rc
+     * @returns {?{kind: ('error'|'warn'), tip: string}}
+     */
+    function _recCommentFlag(rc) {
+        if (!rc) return null;
+        const errorOn = Lib.settings.sa_enable_live_title_error_flag !== false;
+        if (rc.form === 'nearmiss' && errorOn) {
+            return { kind: 'error', tip: `Recording comment almost follows "live, YYYY-MM-DD: Venue, City, …": ${rc.problem}.` };
+        }
+        const live = rc.form === 'nearmiss' ? null : rc.live;
+        if (live && live.kind === 'invalid' && errorOn) {
+            return { kind: 'error', tip: `Recording comment date is impossible: ${live.problems.join(', ')}.` };
+        }
+        if (live && (live.sep === 'ascii' || live.sep === 'mixed') && Lib.settings.sa_enable_live_title_separator_flag !== false) {
+            return {
+                kind: 'warn',
+                tip: live.sep === 'ascii'
+                    ? 'Recording comment date uses a plain "-" between its parts instead of "‐" (U+2010).'
+                    : 'Recording comment date mixes a plain "-" and "‐" (U+2010) between its parts.',
+            };
+        }
+        return null;
     }
 
     /**
@@ -24566,14 +24914,19 @@
      * Clearing removes the tooltip only from a cell this function flagged,
      * so a foreign `title` is never touched.
      *
+     * A recording comment column is judged by its comment
+     * (`_recCommentFlag()`) first; a link column whose link is a release,
+     * release group or event falls through to the title check.
+     *
      * @param {HTMLTableRowElement} row
-     * @param {number[]} colIdxs - From `_liveTitleColIdxs()`.
+     * @param {Array<{i: number, rec: ?string}>} colIdxs - From `_liveTitleColIdxs()`.
      */
     function _stampLiveTitleRow(row, colIdxs) {
-        colIdxs.forEach(i => {
+        colIdxs.forEach(({ i, rec }) => {
             const td = row.cells[i];
             if (!td) return;
-            const flag = _liveTitleFlag(_findCellAnyLiveTitle(td));
+            const flag = (rec && _recCommentFlag(_findCellRecordingComment(td, rec === 'plain'))) ||
+                (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
                 td.title = flag.tip;
@@ -24731,6 +25084,41 @@
             tint: _findingTintSetting('sa_findings_tint_event_style'),
         },
         {
+            id: 'rec-live-sep', level: 'warn', glyph: '➖', scope: 'cell',
+            label: 'Recording comment date uses "-" instead of "‐"',
+            tip: 'A recording comment like "live, 2004-10-02: …" whose date separates its parts with a plain "-" instead of "‐" (U+2010).',
+            cols: (name, plan) => !!plan.recComment(name),
+            test: (cell, row, plan) => {
+                const rc = _findingRecComment(cell, plan);
+                return !!rc && rc.form !== 'nearmiss' && !!rc.live && rc.live.kind === 'valid' &&
+                    (rc.live.sep === 'ascii' || rc.live.sep === 'mixed');
+            },
+            tint: () => false,
+        },
+        {
+            id: 'rec-date-imprecise', level: 'warn', glyph: '🗓️', scope: 'cell',
+            label: 'Recording date and comment date differ in precision',
+            tip: 'Release tracklist: the "Recording date" and the date in the recording\'s comment ("live, 2004‐10‐02: …") agree as far as they go, but one is less precise (2004-10 vs 2004-10-02), or only one of them has a date.',
+            cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'imprecise',
+            tint: _findingTintSetting('sa_findings_tint_rec_date'),
+        },
+        {
+            id: 'event-state-missing', level: 'warn', glyph: '🗺️', scope: 'cell',
+            label: 'No state code for a USA/Canada event location',
+            tip: 'The location parsed from a recording comment ends in USA or Canada, but the part before it is not a two-letter state or province code ("OH", "NJ", "ON"): the state is missing ("The Roxy, West Hollywood, USA" puts the city in its place) or written out.',
+            cols: (name, plan) => name === 'Event-Country' && plan.eventStateIdx >= 0,
+            test: (cell, row, plan) => {
+                // eventParts() fills Event-State for USA/Canada whenever the
+                // location has two or more parts, so an EMPTY state is rare;
+                // the real-world miss is a city in the state slot.
+                const country = cell.textContent.trim();
+                const state = row.cells[plan.eventStateIdx];
+                return (country === 'USA' || country === 'Canada') && !!state && !/^[A-Z]{2}$/.test(state.textContent.trim());
+            },
+            tint: _findingTintSetting('sa_findings_tint_event_state'),
+        },
+        {
             id: 'allcaps', level: 'warn', glyph: '🔠', scope: 'cell',
             label: 'Title in ALL UPPERCASE',
             tip: 'A title of at least four letters, all upper case, which the style guide\'s capitalization rules disallow (https://musicbrainz.org/doc/Style/Titles).',
@@ -24857,6 +25245,33 @@
             tint: () => false,
         },
         {
+            id: 'rec-live-invalid', level: 'error', glyph: '📆', scope: 'cell',
+            label: 'Recording comment with an impossible date',
+            tip: 'A recording comment like "live, 2004‐13‐02: …" whose date cannot exist (month 13, day 42, 29 February in a non-leap year).',
+            cols: (name, plan) => !!plan.recComment(name),
+            test: (cell, row, plan) => {
+                const rc = _findingRecComment(cell, plan);
+                return !!rc && rc.form !== 'nearmiss' && !!rc.live && rc.live.kind === 'invalid';
+            },
+            tint: () => false,
+        },
+        {
+            id: 'rec-live-nearmiss', level: 'error', glyph: '❗', scope: 'cell',
+            label: 'Recording comment almost in the live form',
+            tip: 'A recording comment that almost follows "live, YYYY-MM-DD[, early show]: Venue, City, State, Country[; info]" (https://musicbrainz.org/doc/Style/Recording#Live_recordings): a date not written YYYY-MM-DD, no ", " after the event type, no ": " before the location, a type in capitals, or a live date with no type.',
+            cols: (name, plan) => !!plan.recComment(name),
+            test: (cell, row, plan) => { const rc = _findingRecComment(cell, plan); return !!rc && rc.form === 'nearmiss'; },
+            tint: () => false,
+        },
+        {
+            id: 'rec-date-mismatch', level: 'error', glyph: '🗓️', scope: 'cell',
+            label: 'Recording date differs from the comment date',
+            tip: 'Release tracklist: the "Recording date" is a different date from the one in the recording\'s comment ("live, 2004‐10‐02: …").',
+            cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'mismatch',
+            tint: _findingTintSetting('sa_findings_tint_rec_date'),
+        },
+        {
             id: 'live-credit-date', level: 'error', glyph: '📅', scope: 'row', inlineGlyph: true,
             label: 'Live credit date differs from the recording date',
             tip: 'A live recording\'s credit carries a date that differs from the recording date. Can sit in several credit columns, so this filters by row.',
@@ -24913,7 +25328,11 @@
      * @param {HTMLTableElement} table
      * @returns {{byCol: Map<number, object[]>, rowWide: object[], recOfIdx: number,
      *            titleInfo: function(string): boolean, eventName: function(string): boolean,
-     *            nameOf: function(number): string}}
+     *            recComment: function(string): ?string, recPlainIdx: number,
+     *            eventStateIdx: number, nameOf: function(number): string}}
+     *   `recComment` is `_recCommentColumnKind()`; `recPlainIdx` the first
+     *   plain recording comment column ("Disambiguation"), `-1` if none;
+     *   `eventStateIdx` the "Event-State" column, `-1` if none.
      */
     function _findingPlanForTable(table) {
         const count = table.querySelectorAll('thead tr:first-child th').length;
@@ -24921,12 +25340,16 @@
         for (let i = 0; i < count; i++) names.push(_resolveColHeaderName(table, i));
         const titleCols = _uvdTitleInfoColumns();
         const eventCols = _uvdEventNameColumns();
+        const plainCols = _uvdRecCommentPlainColumns();
         const plan = {
             byCol: new Map(),
             rowWide: [],
             recOfIdx: _findRecOfWorkColIdx(table),
             titleInfo: name => name === 'Title' || titleCols.has(name),
             eventName: name => eventCols.has(name),
+            recComment: name => _recCommentColumnKind(name),
+            recPlainIdx: names.findIndex(n => plainCols.has(n)),
+            eventStateIdx: names.indexOf('Event-State'),
             nameOf: i => names[i] || '',
         };
         _activeFindings().forEach(f => {
@@ -25123,12 +25546,38 @@
      * @returns {number}
      */
     function _findRecOfWorkColIdx(table) {
+        return _findColIdxByName(table, 'Recording of work');
+    }
+
+    /**
+     * Index of the column named `name` in `table` (resolved through
+     * `_resolveColHeaderName()`), or -1.
+     *
+     * @param {?HTMLTableElement} table
+     * @param {string} name
+     * @returns {number}
+     */
+    function _findColIdxByName(table, name) {
         if (!table) return -1;
         const headers = table.querySelectorAll('thead tr:first-child th');
         for (let i = 0; i < headers.length; i++) {
-            if (_resolveColHeaderName(table, i) === 'Recording of work') return i;
+            if (_resolveColHeaderName(table, i) === name) return i;
         }
         return -1;
+    }
+
+    /**
+     * "Event info - Country form" of an Event-Country value: `'abbr'` for an
+     * all-capitals abbreviation (USA, UK, UAE), `'full'` for anything else
+     * (United States, England, Deutschland), `null` for an empty cell.
+     *
+     * @param {string} text
+     * @returns {?('abbr'|'full')}
+     */
+    function _eventCountryForm(text) {
+        const t = (text || '').trim();
+        if (!t) return null;
+        return /^[A-Z]{2,4}$/.test(t) ? 'abbr' : 'full';
     }
 
     /**
@@ -26967,6 +27416,24 @@
             const want = mode.slice(13);
             return !!cell && getCleanColumnText(cell) === want;
         }
+        if (mode === 'evcountry-abbr' || mode === 'evcountry-full') {
+            // "Event info - Country form" — see _eventCountryForm().
+            return !!cell && _eventCountryForm(getCleanColumnText(cell)) === mode.slice(10);
+        }
+        if (mode.startsWith('eventdetail:') || mode.startsWith('eventaddinfo:')) {
+            // "Event info - Detail"/"- Additional info" values — whole-cell
+            // equality, the same shape as eventtype: above.
+            return !!cell && getCleanColumnText(cell) === mode.slice(mode.indexOf(':') + 1);
+        }
+        if (mode === 'evdetail-has' || mode === 'evdetail-none' || mode === 'evaddinfo-has' || mode === 'evaddinfo-none') {
+            // Presence, counted only on rows whose comment had an event type
+            // (a non-live comment's empty Detail is not "no detail").
+            const _tbl = table || (cell && cell.closest('table'));
+            const _typeIdx = _findColIdxByName(_tbl, 'Event-Type');
+            const _typed = _typeIdx >= 0 && !!row && !!row.cells[_typeIdx] && !!getCleanColumnText(row.cells[_typeIdx]);
+            const _has = !!cell && !!getCleanColumnText(cell);
+            return _typed && (mode.endsWith('-has') ? _has : !_has);
+        }
         if (mode.startsWith('trackstotal:')) {
             // Compound mode — matches one "Tracks" cell's SUMMED track
             // count (e.g. "15" for "5 + 5 + 5"), from
@@ -27113,6 +27580,15 @@
             // release/release group title, see _liveTitleMatchesMode().
             const live = _findCellLiveTitle(cell);
             return !!live && _liveTitleMatchesMode(live, mode);
+        }
+        if (_isRecCommentMode(mode)) {
+            // "Recording comment info - …" — one _parseRecordingComment()
+            // verdict per comment, read as text on a plain comment column
+            // ("Disambiguation") and from the recording link's .comment
+            // elsewhere, see _recCommentMatchesMode().
+            const kind = _recCommentColumnKind(_resolveColHeaderName(table || (cell && cell.closest('table')), colIdx));
+            const rc = kind ? _findCellRecordingComment(cell, kind === 'plain') : null;
+            return !!rc && _recCommentMatchesMode(rc, mode);
         }
         if (_isEventNameMode(mode)) {
             // "Event name info - …" — one _parseEventName() verdict per
@@ -48389,6 +48865,24 @@ a { color: #1565c0; }`;
         evLiveSepUnicode:  { label: 'Event name info - Separator ‐ only',         glyph: '‐' },
         evLiveSepAscii:    { label: 'Event name info - Separator - only',         glyph: '⚠️' },
         evLiveSepMixed:    { label: 'Event name info - Separator mixed',          glyph: '⚠️' },
+        // "Recording comment info - …" — a recording's disambiguation comment
+        // ("live, 2004‐10‐02: Gund Arena, Cleveland, OH, USA"), classified by
+        // `_parseRecordingComment()` (org/recordings-UVD.org), on recording-link
+        // columns and on plain comment columns ("Disambiguation"). Behind
+        // `sa_enable_uvd_recording_comments`. The `rcLive*` sections are the
+        // "Live title info" ones with an `rc` mode prefix, like `evLive*`.
+        rcForm:            { label: 'Recording comment info - Form',                  glyph: '🏷️' },
+        rcType:            { label: 'Recording comment info - Event type',            glyph: '🎤' },
+        rcNearMiss:        { label: 'Recording comment info - Near miss',             glyph: '❗' },
+        rcLiveValidity:    { label: 'Recording comment info - Validity',              glyph: '✅' },
+        rcLiveDate:        { label: 'Recording comment info - Date completeness',     glyph: '📅' },
+        rcMultiDay:        { label: 'Recording comment info - Uncertain day',         glyph: '❔' },
+        rcLiveExtra:       { label: 'Recording comment info - Additional date info',  glyph: '🕗' },
+        rcLiveLoc:         { label: 'Recording comment info - Location completeness', glyph: '📍' },
+        rcInfo:            { label: 'Recording comment info - Additional info',       glyph: '📝' },
+        rcLiveSepUnicode:  { label: 'Recording comment info - Separator ‐ only',      glyph: '‐' },
+        rcLiveSepAscii:    { label: 'Recording comment info - Separator - only',      glyph: '⚠️' },
+        rcLiveSepMixed:    { label: 'Recording comment info - Separator mixed',       glyph: '⚠️' },
         // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
         // in the open column (mode `finding-<id>`, read off the
         // data-mb-findings attribute stampFindings() writes). The entries the
@@ -48435,6 +48929,14 @@ a { color: #1565c0; }`;
         // writes plain text, no `.flag`-class markup).
         eventPartsType:    { label: 'Event info - Type',    glyph: '🎤' },
         eventPartsCountry: { label: 'Event info - Country', glyph: '🗺️' },
+        // "Event info - Country form"/"- Detail"/"- Additional info" — more
+        // eventParts() columns (org/recordings-UVD.org 3): abbreviated vs full
+        // country names, and presence + values of Event-Detail and
+        // Event-Additional-Info. Presence counts only rows whose comment had
+        // an event type (Event-Type set).
+        eventPartsCountryForm: { label: 'Event info - Country form',     glyph: '🔤' },
+        eventPartsDetail:      { label: 'Event info - Detail',           glyph: '🕗' },
+        eventPartsAddInfo:     { label: 'Event info - Additional info',  glyph: '📝' },
         // "Editor info" — the annotations pageType's own family, one
         // sub-section per Editor-column facet (deleted-editor identity,
         // tooltip-recorded historical name, tooltip membership span, and
@@ -48628,6 +49130,14 @@ a { color: #1565c0; }`;
         'evform-tour': 'evForm', 'evform-other': 'evForm', 'evform-nearmiss': 'evStyleNearMiss',
         'evlive-valid': 'evLiveValidity', 'evlive-invalid': 'evLiveValidity', 'evlive-nearmiss': 'evLiveNearMiss',
         'evlive-complete': 'evLiveDate', 'evlive-partial': 'evLiveDate', 'evlive-extra': 'evLiveExtra',
+        'rcform-typeonly': 'rcForm', 'rcform-date': 'rcForm', 'rcform-datelocation': 'rcForm',
+        'rcform-location': 'rcForm', 'rcform-other': 'rcForm', 'rcform-nearmiss': 'rcNearMiss',
+        'rclive-valid': 'rcLiveValidity', 'rclive-invalid': 'rcLiveValidity',
+        'rclive-complete': 'rcLiveDate', 'rclive-partial': 'rcLiveDate', 'rclive-extra': 'rcLiveExtra',
+        'rc-multiday': 'rcMultiDay', 'rc-info-has': 'rcInfo', 'rc-info-none': 'rcInfo',
+        'evcountry-abbr': 'eventPartsCountryForm', 'evcountry-full': 'eventPartsCountryForm',
+        'evdetail-has': 'eventPartsDetail', 'evdetail-none': 'eventPartsDetail',
+        'evaddinfo-has': 'eventPartsAddInfo', 'evaddinfo-none': 'eventPartsAddInfo',
         'rating-has': 'ratingPresence', 'rating-none': 'ratingPresence',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
@@ -48644,6 +49154,7 @@ a { color: #1565c0; }`;
         const kind = `${sep[0].toUpperCase()}${sep.slice(1)}`;
         MB_UNIQ_MODE_TO_SECTION[`live-sep-${sep}-${facet}`] = `liveSep${kind}`;
         MB_UNIQ_MODE_TO_SECTION[`evlive-sep-${sep}-${facet}`] = `evLiveSep${kind}`;
+        MB_UNIQ_MODE_TO_SECTION[`rclive-sep-${sep}-${facet}`] = `rcLiveSep${kind}`;
     }));
     // "Findings - Warning/Error": one `finding-<id>` mode per FINDINGS entry.
     FINDINGS.forEach(f => {
@@ -48715,6 +49226,9 @@ a { color: #1565c0; }`;
         liveshape: 'liveDate', liveextra: 'liveExtra', liveloc: 'liveLoc',
         evliveshape: 'evLiveDate', evliveextra: 'evLiveExtra', evliveloc: 'evLiveLoc',
         evstylemiss: 'evStyleNearMiss', evedition: 'evFestEdition',
+        rcliveshape: 'rcLiveDate', rcliveextra: 'rcLiveExtra', rcliveloc: 'rcLiveLoc',
+        rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo',
+        eventdetail: 'eventPartsDetail', eventaddinfo: 'eventPartsAddInfo',
     };
 
     /**
@@ -63998,6 +64512,13 @@ a { color: #1565c0; }`;
         // plain text with no CSS-class markup to key a flag off.
         const eventTypeValueCounts    = _uniqCacheHit ? _uniqCacheHit.eventTypeValueCounts    : new Map();
         const eventCountryValueCounts = _uniqCacheHit ? _uniqCacheHit.eventCountryValueCounts : new Map();
+        // "Event info - Country form"/"- Detail"/"- Additional info" — see
+        // eventPartsCountryForm's own SYN_SECTION_META comment. Presence is
+        // counted only on rows with an Event-Type.
+        const _ep = _uniqCacheHit ? _uniqCacheHit.eventPartsExtraCounts : {
+            abbr: 0, full: 0, detailHas: 0, detailNone: 0, addHas: 0, addNone: 0,
+            detail: new Map(), addInfo: new Map(),
+        };
         // Distinct "Country" (the synthetic column splitCountryDate()
         // itself produces from "Country/Date") name/code values — see
         // `_findCellCountryNameParts()`'s own JSDoc. countryCodeFlagMap
@@ -64159,6 +64680,17 @@ a { color: #1565c0; }`;
             form: { live: 0, oneoff: 0, festival: 0, tour: 0, nearmiss: 0, other: 0 },
             styleMiss: new Map(), edition: new Map(), live: _newLiveCounts(),
         };
+        // "Recording comment info - …" (recording comments, see
+        // _parseRecordingComment()). Same rules as _tl/_te; gated in the
+        // rendering by sa_enable_uvd_recording_comments. `live` is a
+        // _newLiveCounts() set; location completeness is counted here from
+        // the comment's own locParts, so "live, Los Angeles, CA, USA" counts
+        // without a date.
+        const _rc = _uniqCacheHit ? _uniqCacheHit.recCommentCounts : {
+            form: { typeonly: 0, date: 0, location: 0, datelocation: 0, other: 0, nearmiss: 0 },
+            type: new Map(), miss: new Map(), info: new Map(), infoHas: 0, infoNone: 0, multiDay: 0,
+            live: _newLiveCounts(),
+        };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
         // "Findings - Warning/Error" — cells per FINDINGS id, read off the
@@ -64299,6 +64831,9 @@ a { color: #1565c0; }`;
         // in sa_uvd_event_name_columns; _findCellEventName() then counts
         // only cells whose name links an event.
         const isEventNameCol = _uvdEventNameColumns().has(_colHeaderName);
+        // "Recording comment info - …": 'plain' (Disambiguation) or 'link'
+        // (Name, Recording, Title, …), see _recCommentColumnKind().
+        const recCommentKind = _recCommentColumnKind(_colHeaderName);
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
         // Column-name gate for the native/synthetic "ISRCs" column's
@@ -64419,6 +64954,9 @@ a { color: #1565c0; }`;
         // native "Event" column's isEventCol just below.
         const isEventTypeCol = _colHeaderName === 'Event-Type';
         const isEventCountryCol = _colHeaderName === 'Event-Country';
+        const isEventDetailCol  = _colHeaderName === 'Event-Detail';
+        const isEventAddInfoCol = _colHeaderName === 'Event-Additional-Info';
+        const _eventTypeColIdx  = (isEventDetailCol || isEventAddInfoCol) ? _findColIdxByName(table, 'Event-Type') : -1;
         // Column-name gate for `instrument-list`'s own per-family first
         // column (see `INSTRUMENT_LIST_COLUMN_NAMES`'s own JSDoc and
         // `_findCellInstrumentFacets()`'s) — a Set-membership check, not a
@@ -64573,6 +65111,27 @@ a { color: #1565c0; }`;
                         if (_ev.problem) _bump(_te.styleMiss, _ev.problem);
                         if (_ev.edition) _bump(_te.edition, _ev.edition);
                         _countLiveVerdict(_te.live, _ev.live);
+                    }
+                }
+                if (recCommentKind) {
+                    const _r = _findCellRecordingComment(cell, recCommentKind === 'plain');
+                    if (_r) {
+                        const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+                        _rc.form[_r.form]++;
+                        if (_r.type) _bump(_rc.type, _r.type);
+                        if (_r.form === 'nearmiss') {
+                            _bump(_rc.miss, _r.problem);
+                        } else {
+                            _countLiveVerdict(_rc.live, _r.live);
+                            // _countLiveVerdict() counted a dated location
+                            // already; a location-only comment has no live
+                            // verdict, so its parts are counted here.
+                            if (_r.form === 'location') _bump(_rc.live.loc, _liveLocLabel(_r.locParts));
+                        }
+                        if (_r.multiDay) _rc.multiDay++;
+                        if (_r.type) {
+                            if (_r.info) { _rc.infoHas++; _bump(_rc.info, _r.info); } else _rc.infoNone++;
+                        }
                     }
                 }
                 if (isRatingCol) {
@@ -64825,6 +65384,21 @@ a { color: #1565c0; }`;
                 if (isEventCountryCol) {
                     const _eventCountry = getCleanColumnText(cell);
                     if (_eventCountry) eventCountryValueCounts.set(_eventCountry, (eventCountryValueCounts.get(_eventCountry) || 0) + 1);
+                    const _form = _eventCountryForm(_eventCountry);
+                    if (_form) _ep[_form]++;
+                }
+                if ((isEventDetailCol || isEventAddInfoCol) && _eventTypeColIdx >= 0 &&
+                        row.cells[_eventTypeColIdx] && getCleanColumnText(row.cells[_eventTypeColIdx])) {
+                    const _v = getCleanColumnText(cell);
+                    const _map = isEventDetailCol ? _ep.detail : _ep.addInfo;
+                    if (_v) {
+                        _map.set(_v, (_map.get(_v) || 0) + 1);
+                        if (isEventDetailCol) _ep.detailHas++; else _ep.addHas++;
+                    } else if (isEventDetailCol) {
+                        _ep.detailNone++;
+                    } else {
+                        _ep.addNone++;
+                    }
                 }
                 if (isInstrumentListCol) {
                     const _instrumentFacets = _findCellInstrumentFacets(cell);
@@ -66095,7 +66669,7 @@ a { color: #1565c0; }`;
                 recAttrValueCounts, workAttrIdValueCounts,
                 titleAgeAddedValueCounts, titleAgeModifiedValueCounts,
                 revCountryValueCounts, revCountryFlagMap, revDateValueCounts, revWeekdayValueCounts,
-                eventTypeValueCounts, eventCountryValueCounts,
+                eventTypeValueCounts, eventCountryValueCounts, eventPartsExtraCounts: _ep,
                 countryNameValueCounts, countryCodeValueCounts, countryCodeFlagMap, countryNameFlagMap,
                 tracksPerMediumValueCounts, tracksTotalValueCounts, catalogPrefixValueCounts, lengthBucketValueCounts, timeOfDayValueCounts,
                 relTypeCreditValueCounts,
@@ -66110,7 +66684,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, ratingHasCount, ratingNoneCount, findingCounts,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, recCommentCounts: _rc, ratingHasCount, ratingNoneCount, findingCounts,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -66571,7 +67145,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'rcliveshape'|'rcliveextra'|'rcliveloc'|'rctype'|'rcmiss'|'rcinfo'|'eventdetail'|'eventaddinfo'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -66717,7 +67291,14 @@ a { color: #1565c0; }`;
                  : kind === 'titleformat'   ? '» format: '
                  : kind === 'liveshape'     ? '» date: '
                  : kind === 'liveextra'     ? '» info: '
-                 : (kind === 'liveloc' || kind === 'evliveloc') ? '» location: '
+                 : (kind === 'liveloc' || kind === 'evliveloc' || kind === 'rcliveloc') ? '» location: '
+                 : kind === 'rcliveshape'   ? '» date: '
+                 : kind === 'rcliveextra'   ? '» info: '
+                 : kind === 'rctype'        ? '» type: '
+                 : kind === 'rcmiss'        ? '» problem: '
+                 : kind === 'rcinfo'        ? '» info: '
+                 : kind === 'eventdetail'   ? '» detail: '
+                 : kind === 'eventaddinfo'  ? '» info: '
                  : kind === 'evliveshape'   ? '» date: '
                  : kind === 'evliveextra'   ? '» info: '
                  : kind === 'evstylemiss'   ? '» problem: '
@@ -67204,6 +67785,26 @@ a { color: #1565c0; }`;
             _pushVals('evedition', _te.edition, _byText(_te.edition));
             _pushLiveSections('ev', _te.live, '');
         }
+        if (recCommentKind && Lib.settings.sa_enable_uvd_recording_comments !== false) {
+            ['typeonly', 'date', 'location', 'datelocation', 'other'].forEach(f =>
+                _pushSyn(`rcform-${f}`, _structureModeLabel(`rcform-${f}`), _rc.form[f]));
+            _pushVals('rctype', _rc.type, _byText(_rc.type));
+            _pushSyn('rcform-nearmiss', _structureModeLabel('rcform-nearmiss'), _rc.form.nearmiss);
+            _pushVals('rcmiss', _rc.miss, _byText(_rc.miss));
+            _pushSyn('rc-multiday', _structureModeLabel('rc-multiday'), _rc.multiDay);
+            _pushSyn('rc-info-has', _structureModeLabel('rc-info-has'), _rc.infoHas);
+            _pushSyn('rc-info-none', _structureModeLabel('rc-info-none'), _rc.infoNone);
+            _pushVals('rcinfo', _rc.info, _byText(_rc.info));
+            _pushLiveSections('rc', _rc.live, '');
+        }
+        _pushSyn('evcountry-abbr', _structureModeLabel('evcountry-abbr'), _ep.abbr);
+        _pushSyn('evcountry-full', _structureModeLabel('evcountry-full'), _ep.full);
+        _pushSyn('evdetail-has', _structureModeLabel('evdetail-has'), _ep.detailHas);
+        _pushSyn('evdetail-none', _structureModeLabel('evdetail-none'), _ep.detailNone);
+        _pushVals('eventdetail', _ep.detail, _byText(_ep.detail));
+        _pushSyn('evaddinfo-has', _structureModeLabel('evaddinfo-has'), _ep.addHas);
+        _pushSyn('evaddinfo-none', _structureModeLabel('evaddinfo-none'), _ep.addNone);
+        _pushVals('eventaddinfo', _ep.addInfo, _byText(_ep.addInfo));
         _pushSyn('rating-has', '🌟 has a rating', ratingHasCount);
         _pushSyn('rating-none', '☆ no rating', ratingNoneCount);
         /**
@@ -68128,6 +68729,29 @@ a { color: #1565c0; }`;
         if (mode.startsWith('evedition:'))   return `» edition: ${mode.slice(10)}`;
         if (mode.startsWith('evlive'))       return _structureModeLabel(mode.slice(2));
         if (mode.startsWith('liveloc:'))     return `» location: ${mode.slice(8)}`;
+        if (mode.startsWith('rcform-')) {
+            return {
+                typeonly: '🎤 event type only ("live")', date: '📅 type and date ("live, 2002")',
+                location: '📍 type and location ("live, City, State, Country")',
+                datelocation: '📅📍 type, date and location ("live, DATE: Venue, City, …")',
+                other: '✍️ other text after the type', nearmiss: '❗ almost "live, DATE: Venue, City, …"',
+            }[mode.slice(7)] || mode;
+        }
+        if (mode.startsWith('rctype:'))      return `» type: ${mode.slice(7)}`;
+        if (mode.startsWith('rcmiss:'))      return `» problem: ${mode.slice(7)}`;
+        if (mode.startsWith('rcinfo:'))      return `» info: ${mode.slice(7)}`;
+        if (mode === 'rc-multiday')          return '❔ uncertain day ("2001-12-22/23")';
+        if (mode === 'rc-info-has')          return '📝 has "; additional info"';
+        if (mode === 'rc-info-none')         return '☐ no additional info';
+        if (mode.startsWith('rclive'))       return _structureModeLabel(mode.slice(2));
+        if (mode === 'evcountry-abbr')       return '🔤 abbreviation (USA, UK)';
+        if (mode === 'evcountry-full')       return '📛 full name';
+        if (mode === 'evdetail-has')         return '🕗 has detail';
+        if (mode === 'evdetail-none')        return '☐ no detail';
+        if (mode === 'evaddinfo-has')        return '📝 has additional info';
+        if (mode === 'evaddinfo-none')       return '☐ no additional info';
+        if (mode.startsWith('eventdetail:')) return `» detail: ${mode.slice(12)}`;
+        if (mode.startsWith('eventaddinfo:')) return `» info: ${mode.slice(13)}`;
         if (mode === 'empty')          return '○ empty cells';
         if (mode === 'collapsed')      return '▶ multi-row: collapsed';
         if (mode === 'expanded')       return '◀ multi-row: expanded';
@@ -68322,6 +68946,31 @@ a { color: #1565c0; }`;
         if (mode.startsWith('evstylemiss:')) return 'Why an event name almost follows a https://musicbrainz.org/doc/Style/Event form.';
         if (mode.startsWith('evedition:'))   return 'How a festival name gives its edition: a year (YYYY) or a running number.';
         if (mode.startsWith('evlive'))       return _structureModeTooltip(mode.slice(2), colName);
+        if (mode.startsWith('rcform-')) {
+            return {
+                typeonly: '🎤 = the comment is just the event type, e.g. "live" — the style guide\'s form when neither date nor location is known (https://musicbrainz.org/doc/Style/Recording#Live_recordings).',
+                date: '📅 = "<type>, DATE", e.g. "live, 2002" or "live, 2004‐10‐02, early show": a date, no location.',
+                location: '📍 = "<type>, City, State, Country", e.g. "live, Los Angeles, CA, USA": a location, no date.',
+                datelocation: '📅📍 = "<type>, YYYY-MM-DD[, early show]: Venue, City, State, Country", the live bootleg form after the type — possibly with an impossible date (see Validity).',
+                other: '✍️ = an event type followed by other text, e.g. "live, early show".',
+                nearmiss: '❗ = almost the live form: a date not written YYYY-MM-DD, no ", " after the type, no ": " before the location, a type in capitals, or a live date with no type in front. The cell is tinted red.',
+            }[mode.slice(7)] || '';
+        }
+        if (mode.startsWith('rctype:'))      return 'The event type the comment starts with (live, soundcheck, rehearsal, live rehearsal, interview, audition, studio).';
+        if (mode.startsWith('rcmiss:'))      return 'Why a recording comment almost follows "live, YYYY-MM-DD: Venue, City, …".';
+        if (mode.startsWith('rcinfo:'))      return 'One text after the ";" that ends a recording comment.';
+        if (mode === 'rc-multiday')          return '❔ = the date ends in one or more "/DD" days, MusicBrainz\'s way of saying "one of these days".';
+        if (mode === 'rc-info-has')          return '📝 = the comment ends in "; …" with more information, e.g. "; intro".';
+        if (mode === 'rc-info-none')         return '☐ = a recording comment with an event type and no "; …" part.';
+        if (mode.startsWith('rclive'))       return _structureModeTooltip(mode.slice(2), colName);
+        if (mode === 'evcountry-abbr')       return '🔤 = the country is written as an abbreviation in capitals (USA, UK, UAE). Mixing these with full names for one artist makes the same country appear twice.';
+        if (mode === 'evcountry-full')       return '📛 = the country is written out (United States, England, Deutschland).';
+        if (mode === 'evdetail-has')         return '🕗 = the comment has text between the date and the colon, e.g. "early show" in "live, 2008‐12‐17, early show: …".';
+        if (mode === 'evdetail-none')        return '☐ = a comment with an event type and no detail before the colon.';
+        if (mode === 'evaddinfo-has')        return '📝 = the comment ends in "; …" with more information.';
+        if (mode === 'evaddinfo-none')       return '☐ = a comment with an event type and no "; …" part.';
+        if (mode.startsWith('eventdetail:')) return 'One Event-Detail value: the text between the date and the colon.';
+        if (mode.startsWith('eventaddinfo:')) return 'One Event-Additional-Info value: the text after the ";".';
         if (mode.startsWith('liveloc:'))     return 'How many ", "-separated parts the live title\'s location has. The full form is "Venue, City, State, Country"; only some countries have states, so three parts can be complete too. Which part a shorter one lacks cannot be told.';
         if (mode === 'empty')          return 'Cells with no content (or, for CAA/EAA columns, no artwork found).';
         if (mode === 'single')         return 'Cells with exactly one item — no expand/collapse toggle shown.';
@@ -92439,6 +93088,16 @@ a { color: #1565c0; }`;
              */
             parseEventName(text) {
                 return _parseEventName(text);
+            },
+            /**
+             * Runs the shipping `_parseRecordingComment()` on one recording
+             * comment, for the same reason as `parseLiveTitle()`.
+             *
+             * @param {string} text
+             * @returns {?Object} `_parseRecordingComment()`'s own result.
+             */
+            parseRecordingComment(text) {
+                return _parseRecordingComment(text);
             },
             /**
              * Opens (or reads the current state of, if already open) the 📊
