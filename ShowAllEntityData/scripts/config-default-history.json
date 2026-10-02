@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8d76edb02acc6b2d21c25857402e54750d13dc6f",
-    "revisions_walked": 665
+    "head": "caf3f51676378638bca028edbfa072a829fab6b8",
+    "revisions_walked": 667
   },
   "changes": [
     {
@@ -320,6 +320,8 @@
     "sa_enable_live_title_separator_flag": true,
     "sa_enable_uvd_event_names": true,
     "sa_uvd_event_name_columns": "",
+    "sa_enable_uvd_recording_comments": true,
+    "sa_uvd_recording_comment_columns": "Disambiguation",
     "sa_enable_length_deviation_section": true,
     "sa_enable_pending_edits_section": true,
     "sa_uniq_dropdown_visible_rows": 30,
@@ -412,6 +414,8 @@
     "sa_findings_tint_allcaps": true,
     "sa_findings_tint_truncated": true,
     "sa_findings_tint_event_style": true,
+    "sa_findings_tint_rec_date": true,
+    "sa_findings_tint_event_state": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_low_quality": true,
     "sa_findings_tint_pending": true,
