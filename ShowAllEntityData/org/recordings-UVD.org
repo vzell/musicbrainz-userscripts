@@ -1,4 +1,5 @@
 ** TODO recordings
+*** DONE i
 
 Disambiguation comments
 
@@ -56,12 +57,4 @@ namings should be adopted.
 The current 'eventParts' extractor already extracts all relevant parts of the disambiguation. Maybe this information can
 be used for new UVD sections too. Make some suggestions
 
-
-
-
-
-
-
-
-
-
+*** Fix the "the style guide's live, Los Angeles, CA, USA (no colon) still isn't split into City/State/Country by eventParts"
