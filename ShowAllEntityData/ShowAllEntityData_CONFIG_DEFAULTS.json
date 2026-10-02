@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1193+2026-10-02",
-    "schema_entries": 311,
+    "schema_entries": 312,
     "sections": 40,
-    "settings": 271,
-    "settings_with_default": 266,
+    "settings": 272,
+    "settings_with_default": 267,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 119,
+      "checkbox": 120,
       "color_picker": 62,
       "divider": 40,
       "number": 39,
@@ -304,6 +304,7 @@
     "sa_enable_stats_panel": "Enable Quick Stats Panel",
     "sa_enable_sticky_columns": "Enable Sticky Columns",
     "sa_enable_sticky_headers": "Enable Sticky Headers",
+    "sa_enable_sticky_page_headers": "Enable Sticky Page Headers",
     "sa_enable_tooltip_debug": "Enable tooltip debug logging",
     "sa_enable_uniq_drop_context_debug": "Enable unique-values dropdown debug logging",
     "sa_enable_uvd_event_names": "Unique-Values Dropdown: Event Name Info",
@@ -576,6 +577,7 @@
     "sa_enable_stats_panel": true,
     "sa_enable_sticky_columns": true,
     "sa_enable_sticky_headers": true,
+    "sa_enable_sticky_page_headers": true,
     "sa_enable_tooltip_debug": false,
     "sa_enable_uniq_drop_context_debug": false,
     "sa_enable_uvd_event_names": true,

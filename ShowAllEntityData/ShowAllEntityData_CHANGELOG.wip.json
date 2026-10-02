@@ -1,0 +1,67 @@
+[
+  {
+    "version": "WIP.4",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sticky Page Headers: the bar holding the global filter no longer paints over a vertically sticky MusicBrainz header (e.g. jesus2099's 'mb. STICKY HEADER' userstyle) right after every render. The filter field is focused after each render, and a bar containing focus was raised above everything until focus moved. Focus resting in a text field no longer raises its bar; a focused button and an open dropdown (including the filter-history dropdown) still do."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.3",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sticky Page Headers: the pass that switches the feature on now measures AFTER switching it on. Engaging changes the page's geometry (<body> loses its margins and becomes as wide as the table), so offsets measured beforehand were already wrong when applied, and every pinned bar sat off by <body>'s former margin until a later layout change happened to trigger a correcting pass. Costs one extra layout, once per engage."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Ported the WIP.1/WIP.2 sticky-page-headers work, written against 9.99.1167, onto current main unchanged (the patch applied with line offsets only), apart from the WIP.3 fix above.",
+          "New fixture spec tests/fixtures/sticky-page-headers.spec.js. It measures that header, entity header, tabs, h2/h3 bars and footer keep their left edge across a full horizontal scroll and end inside the viewport, with auto-resize on and off; that the engaging pass is already correct; that the feature lets go again (no ratchet); that it stays inert with the sidebar expanded; that it is a no-op with the setting off; and that a natively sticky header keeps its own top and z-index. scripts/mutations/sticky-page-headers.json has 10 planted defects: 9 are caught, and the collapsed-sidebar transform guard is recorded as a live-only blind spot, because fixtures load without MusicBrainz's stylesheet.",
+          "toolbar-menus.spec.js: the outside-click step now clicks a hit-tested non-interactive point instead of a fixed (5, 400). That point only ever hit the bare fixture's 8px <body> margin, which Sticky Page Headers removes while engaged."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-09-29",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Sticky Page Headers: the MusicBrainz top header (div.header) now stays pinned too. It was skipped whenever it is already sticky on its own — as with jesus2099's 'mb. STICKY HEADER' userstyle (position: sticky; top: 0) — because only elements made sticky by this feature were accepted. Natively sticky elements are now pinned as well: only left/max-width are added, their own top and z-index are kept, so such a header sticks both vertically and horizontally.",
+          "Sticky Page Headers: the feature could lock itself on. MusicBrainz's body { margin: auto } reports a negative used margin-right once <body> is wider than the window, and the min-width derived from it froze <body> at its widest size, so hiding or narrowing a table never switched the feature off again. <body>'s margins/box model are now fixed while engaged and its native min-width (780px) is captured beforehand and kept as a floor.",
+          "Sticky Page Headers: bars were dragged along during the last part of a horizontal scroll. The collapsed sidebar is slid out with transform: translateX(100%), which left an invisible ghost box and a dead scroll area past the end of the page; its transform is now dropped while the feature is engaged (layout-neutral), and the overflow test measures layout boxes only, so engaging can never flip-flop. Each bar's width also accounts for its own margin-right (plain MB header: 16px) and for content extending past its container.",
+          "Sticky Page Headers: the h1/tabs/h2/h3 bars no longer get a base z-index (was 104), so they no longer paint over a vertically sticky header scrolling above them. A bar is still raised above the sticky thead and sidebar while it is hovered, focused or holding an open dropdown."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-09-29",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "New setting 'Enable Sticky Page Headers' (📌 TABLE STICKINESS, on by default): while a wide table is scrolled horizontally, the MusicBrainz top header, the h1 entity header with the action bar, the tabs, every h2 section bar and every h3 sub-table bar (plus the footer) now stay in place instead of scrolling off to the left — the page-level counterpart of the sticky column. Pure CSS position:sticky (compositor-driven, so no scroll jitter); only engages while the page really overflows horizontally, so pages that fit the viewport are untouched. Stays inert while the sidebar is expanded and columns are not auto-resized, because widening the page would push the native sidebar off-screen."
+        ]
+      },
+      {
+        "label": "⚙️ Internal",
+        "items": [
+          "New initStickyPageHeaders() module: each pinned element gets left = its natural unscrolled offset and a max-width clamped to the visible viewport, and <body> is widened to fit-content only while the document overflows horizontally (so the body-level header/footer have room to travel). A ResizeObserver (html, body, #page, #content, #sidebar, every table.tbl) re-evaluates after re-renders, auto-resize, column visibility/density changes and sidebar toggling; the refresh pass is read-then-write, writes only on change and never toggles classes for measuring. Pinned bars sit at z-index 104 (above the sticky thead 100, below the sticky sidebar 105), body-level chrome at 106, and a bar is raised to 107 while hovered, focused or holding an open in-place popup, so the filter-history dropdown is never covered by the next h3."
+        ]
+      }
+    ]
+  }
+]

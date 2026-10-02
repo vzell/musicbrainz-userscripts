@@ -1,0 +1,162 @@
+[
+  {
+    "name": "the engaging pass measures before it sets html.mb-sph-on",
+    "why": "The ported 9.99.1167 order, restored: offsets are read while <body> still has its disengaged margins, then the class lands and moves everything by them. Self-corrects only when a ResizeObserver round-trip triggers a second pass, so only a test that reads the engaging pass itself can see it; the settle-based tests cannot.",
+    "edits": [
+      {
+        "find": "            const engaging = !_sph.active;\n            if (engaging) {\n                docEl.classList.add('mb-sph-on');\n                _sph.active = true;\n            }\n            const extentNow = engaging ? _sphContentExtent() : extent;",
+        "replace": "            const engaging = !_sph.active;\n            const extentNow = extent;"
+      },
+      {
+        "find": "            if (engaging) {\n                Lib.debug('ui', `Sticky page headers: engaged for",
+        "replace": "            if (engaging) {\n                docEl.classList.add('mb-sph-on');\n                _sph.active = true;\n                Lib.debug('ui', `Sticky page headers: engaged for"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "observer round-trip",
+    "expect": "fail"
+  },
+  {
+    "name": "body-level chrome is no longer collected",
+    "why": "Drops the MB top header, banners and footer from the targets. Content bars still pin, so a test asserting only h2/h3 would pass.",
+    "edits": [
+      {
+        "find": "        for (const el of Array.from(document.body.children)) {\n            if (el !== page) add(el, true);\n        }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "fail"
+  },
+  {
+    "name": "h3 sub-table bars are no longer collected",
+    "why": "Only h2 bars are pinned; the multi-table page is the only place h3 bars exist in this spec.",
+    "edits": [
+      {
+        "find": "(page || document.body).querySelectorAll('h2, h3')",
+        "replace": "(page || document.body).querySelectorAll('h2')"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "every h3 sub-table bar",
+    "expect": "fail"
+  },
+  {
+    "name": "the expanded-sidebar gate is dropped",
+    "why": "Engages with the native sidebar expanded and no auto-resize, which pushes the sidebar to the far right end of the widened page.",
+    "edits": [
+      {
+        "find": "const engage = extent > vw + 1 && !_sphSidebarBlocksWidening();",
+        "replace": "const engage = extent > vw + 1;"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "stays inert while the sidebar is expanded",
+    "expect": "fail"
+  },
+  {
+    "name": "a bar's own margin-right is not subtracted",
+    "why": "WIP.2: sticky keeps the MARGIN box inside the containing block, so the bar is 16px too wide and is pushed back during the last 16px of the scroll. The fixture header has no margin of its own, so the test injects MB's 16px.",
+    "edits": [
+      {
+        "find": "vw - left - gutter - (parseFloat(cs.marginRight) || 0)",
+        "replace": "vw - left - gutter"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "own margin-right",
+    "expect": "fail"
+  },
+  {
+    "name": "the feature never lets go once engaged",
+    "why": "The class stays on after the overflow is gone, which is what the WIP.2 lock-on bug looked like from outside.",
+    "edits": [
+      {
+        "find": "                    docEl.classList.remove('mb-sph-on');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "no ratchet",
+    "expect": "fail"
+  },
+  {
+    "name": "_sphNativeStyle() reads live values instead of what it saw first",
+    "why": "Once marked, an element's live position is this feature's sticky, so a plain MB header reads as natively sticky on the second pass and loses SPH_Z_CHROME (106).",
+    "edits": [
+      {
+        "find": "        return nat || { position: cs.position, zIndex: cs.zIndex };",
+        "replace": "        return { position: cs.position, zIndex: cs.zIndex };"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "fail"
+  },
+  {
+    "name": "initStickyPageHeaders() does nothing",
+    "why": "Whole-feature kill switch: every positive test must notice.",
+    "edits": [
+      {
+        "find": "    function initStickyPageHeaders() {\n        if (!_sph.initialized) {",
+        "replace": "    function initStickyPageHeaders() {\n        return;\n        if (!_sph.initialized) {"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "fail"
+  },
+  {
+    "name": "the collapsed sidebar's transform is kept while engaged",
+    "why": "KNOWN BLIND SPOT, live-only. WIP.2: on the real page #page is display: table and #sidebar its right-hand cell, so translateX(100%) leaves a ghost box (and a dead scroll area) past the end of #page, and every bar is dragged along during the last part of the scroll. The fixtures load WITHOUT MusicBrainz's stylesheet: measured 2026-10-02, the collapsed #sidebar is then a 0-width display: block box BELOW #content (rect.right 10, document scrollWidth unchanged by the transform), so the ghost cannot exist and no fixture assertion can see this guard. Needs a live spec.",
+    "edits": [
+      {
+        "find": "            html.mb-sph-on #sidebar.sidebar-collapsed {\n                transform: none !important;\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "pass"
+  },
+  {
+    "name": "<body>'s margins are not zeroed while engaged",
+    "why": "WIP.2: while engaged <body> is fit-content wide; with its own margins left in place (8px UA, or MB's margin: auto) it does not shrink back to the viewport once the overflow is gone. Caught by the ratchet test only (measured per test, 2026-10-02): the pinning tests stay green because every offset is derived from the same, consistently shifted geometry.",
+    "edits": [
+      {
+        "find": "                margin-left: 0 !important;\n                margin-right: 0 !important;\n                box-sizing: border-box !important;\n",
+        "replace": "                box-sizing: border-box !important;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "no ratchet",
+    "expect": "fail"
+  },
+  {
+    "name": "every ResizeObserver notification schedules a refresh again",
+    "why": "The ported behaviour before WIP.4: height-only notifications (a sort re-appending rows) each schedule a pass that forces a layout of the whole table. Measured on artist-events: 4-7 passes per sort, up to 253 ms.",
+    "edits": [
+      {
+        "find": "                _sph.observer = new ResizeObserver(_sphOnResize);",
+        "replace": "                _sph.observer = new ResizeObserver(() => scheduleStickyPageHeadersRefresh());"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "a sort triggers no refresh pass",
+    "expect": "fail"
+  },
+  {
+    "name": "the width gate drops every notification",
+    "why": "Over-correction guard: a gate that never schedules would also pass the \"no pass on sort\" half; the positive control (a table getting wider) must catch it.",
+    "edits": [
+      {
+        "find": "        if (widthChanged) scheduleStickyPageHeadersRefresh();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "a sort triggers no refresh pass",
+    "expect": "fail"
+  }
+]

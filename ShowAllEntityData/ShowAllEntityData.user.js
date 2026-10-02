@@ -1231,6 +1231,19 @@
                          "compatible and active simultaneously when both are enabled."
         },
 
+        sa_enable_sticky_page_headers: {
+            label: 'Enable Sticky Page Headers',
+            type: 'checkbox',
+            default: true,
+            description: 'Keep the page chrome — the MusicBrainz top header, the h1 entity header ' +
+                         'with the action bar, the tabs, every h2 section bar and every h3 ' +
+                         'sub-table bar (and the footer) — pinned in place while a wide table is ' +
+                         'scrolled horizontally, the page-level counterpart of \'Enable Sticky ' +
+                         'Columns\'. Only engages while the page really overflows horizontally; ' +
+                         'stays inert while the sidebar is expanded and columns are not ' +
+                         'auto-resized (the native sidebar would otherwise be pushed off-screen).'
+        },
+
         // ============================================================
         // UI APPEARANCE SECTION
         // Condensed pipe-separated config strings for every interactive
@@ -21648,6 +21661,668 @@
         Lib.debug('ui', 'Sticky headers enabled - column headers will remain visible while scrolling');
     }
 
+    // ============================================================================
+    // STICKY PAGE HEADERS (horizontal pinning of the page chrome)
+    // ============================================================================
+    //
+    // Horizontal counterpart of applyStickyColumn(): while a wide table scrolls
+    // sideways at WINDOW level (see toggleAutoResizeColumns(): horizontal
+    // scrolling is deliberately kept on the window so the vertical sticky thead
+    // keeps working), the MusicBrainz top header, the h1 entity header with the
+    // action bar, the tabs, every h2 section bar and every h3 sub-table bar stay
+    // where they are instead of scrolling off to the left.
+    //
+    // Mechanism — plain CSS `position: sticky; left: <natural offset>`, NOT a
+    // scroll listener + transform: sticky is resolved by the compositor, so it
+    // stays jitter-free under async (threaded) scrolling, exactly like the
+    // sticky column. Three preconditions make sticky work horizontally:
+    //
+    //   1. The element must be NARROWER than its containing block, otherwise it
+    //      has no room to travel. Each target therefore gets a `max-width`
+    //      clamped to the visible viewport width (minus its own left inset and
+    //      a right gutter, see _sphRefresh()).
+    //   2. The containing block must be as WIDE as the scrolled content. For
+    //      everything inside #page/#content this is already true while
+    //      auto-resize (#page width:fit-content) or full-width stretching
+    //      (.mb-full-width-stretching) is active. For the native header/footer,
+    //      which are direct children of <body> (root/layout/index.js), <body>
+    //      itself is widened to `fit-content` — only while the page really
+    //      overflows horizontally. Its margins are forced to 0 and its box to
+    //      border-box meanwhile: MusicBrainz's own `body { margin: auto }`
+    //      reports a NEGATIVE used margin-right once <body> is wider than the
+    //      window, and any min-width derived from it would lock <body> at its
+    //      widest size forever (a ratchet the feature could never leave).
+    //   3. Nothing may scroll BEYOND those containing blocks, or every bar is
+    //      dragged along during the last part of the scroll. The one known
+    //      culprit is this script's own collapsed sidebar: `.sidebar-collapsed`
+    //      slides it out with `transform: translateX(100%)`, which leaves an
+    //      invisible ghost box — and a dead scroll area — past the end of
+    //      #page. While engaged its transform is dropped. That is layout
+    //      neutral (transforms never affect layout), and the overflow test
+    //      itself ignores transforms (_sphContentExtent()), so engaging can
+    //      never feed back into the decision to engage.
+    //
+    // Natively sticky elements are pinned too — notably the header of
+    // jesus2099's "mb. STICKY HEADER" userstyle (`html > body > div.header {
+    // position: sticky; top: 0; z-index: 1 }`): only `left`/`max-width` are
+    // added, its own `top` and z-index are kept.
+    //
+    // Stacking: position:sticky always creates a stacking context, which traps
+    // in-place popups (the filter-history dropdown, z-index 20001; MusicBrainz's
+    // header menus) inside their bar. So a pinned element is raised above the
+    // sticky thead (100), the sticky sidebar (105) and every other bar while it
+    // is hovered, contains focus or holds an open popup. Focus resting in a
+    // text field does not count: the global filter is focused after every
+    // render, which would otherwise keep the data h2 raised. Otherwise the native
+    // stacking is left alone: content bars get NO base z-index (a vertically
+    // sticky header keeps covering the bars scrolling under it), and only a
+    // non-positioned, z-index:auto body-level element (the plain MB header)
+    // gets SPH_Z_CHROME, so the page (#page is position:relative) does not
+    // paint over its menus when they are opened without hover or focus.
+
+    /** z-index of pinned body-level chrome that had no stacking of its own (plain MB header, footer, banners). */
+    const SPH_Z_CHROME = 106;
+    /** z-index of a hovered / focus-containing / popup-holding pinned element: above sticky thead (100) and sidebar (105). */
+    const SPH_Z_RAISED = 107;
+    /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
+    const SPH_REFRESH_DELAY_MS = 60;
+    /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
+    const SPH_MIN_WIDTH_PX = 120;
+
+    /**
+     * Mutable module state of the sticky-page-headers feature.
+     *
+     * @type {{
+     *   initialized:    boolean,          - initStickyPageHeaders() has run (listeners/observer installed)
+     *   active:         boolean,          - html.mb-sph-on is currently set (page overflows horizontally)
+     *   timer:          ?number,          - non-null while a refresh is pending (setTimeout id; stays set through the idle wait)
+     *   observer:       ?ResizeObserver,  - watches html/body/#page/#content/#sidebar and every table.tbl
+     *   observed:       Set<Element>,     - elements currently observed by `observer`
+     *   targets:        Set<HTMLElement>, - elements currently marked with .mb-sph-target
+     *   native:         WeakMap<HTMLElement, {position: string, zIndex: string}>
+     *                                     - each target's own position/z-index, captured before marking
+     *   widths:         WeakMap<Element, number>
+     *                                     - last border-box width the observer reported per element
+     *   passes:         number            - refresh passes run so far (read by the test hook only)
+     * }}
+     */
+    const _sph = {
+        initialized: false,
+        active:      false,
+        timer:       null,
+        observer:    null,
+        observed:    new Set(),
+        targets:     new Set(),
+        native:      new WeakMap(),
+        widths:      new WeakMap(),
+        passes:      0
+    };
+
+    /**
+     * Installs the (static) stylesheet of the sticky-page-headers feature once.
+     *
+     * Every rule is scoped under `html.mb-sph-on`, so marked elements are
+     * completely inert while the page does not overflow horizontally. The
+     * per-element offsets are supplied as inline custom properties
+     * (`--mb-sph-left`, `--mb-sph-maxw`) by `_sphRefresh()`; `!important` on
+     * `position`/`left`/`max-width` is needed because native MusicBrainz rules
+     * (e.g. `position: relative` on entity headers) would otherwise win.
+     * Sticky keeps acting as containing block for absolutely positioned
+     * descendants, so replacing `relative` by `sticky` is layout-neutral.
+     * `top` is never touched, so a natively (vertically) sticky element keeps
+     * sticking vertically. See the section comment above for the `<body>`,
+     * collapsed-sidebar and z-index rules.
+     *
+     * Uses GM_addStyle so the rules are exempt from page CSP style-src
+     * restrictions, like every other stylesheet of this script.
+     *
+     * @returns {void}
+     */
+    function _sphEnsureStyle() {
+        if (document.getElementById('mb-sticky-page-headers-style')) return;
+        const style = GM_addStyle(`
+            /* Widen <body> to the scrolled content so its direct children
+               (MB header, banners, footer) have room to stay pinned. Margins
+               and box model are pinned down so the widening cannot feed back
+               into itself (MB: body { margin: auto; min-width: 780px }). */
+            html.mb-sph-on body {
+                width: fit-content !important;
+                min-width: max(100%, var(--mb-sph-body-native-minw, 0px)) !important;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                box-sizing: border-box !important;
+            }
+            /* No ghost box / dead scroll area past the end of #page. */
+            html.mb-sph-on #sidebar.sidebar-collapsed {
+                transform: none !important;
+            }
+            html.mb-sph-on .mb-sph-target {
+                position: sticky !important;
+                left: var(--mb-sph-left, 0px) !important;
+                max-width: var(--mb-sph-maxw, none) !important;
+            }
+            html.mb-sph-on .mb-sph-target.mb-sph-chrome {
+                z-index: ${SPH_Z_CHROME};
+            }
+            /* Must follow the rule above: equal specificity, wins by order. */
+            html.mb-sph-on .mb-sph-target:hover {
+                z-index: ${SPH_Z_RAISED};
+            }
+            /* Focus raises too (a menu opened by click or keyboard keeps its
+               bar on top after the pointer leaves), but NOT while focus merely
+               rests in a text field: the global filter is focused after every
+               render, and a raised data h2 would then paint over a vertically
+               sticky MB header until focus moves. A text field's own popup
+               (the filter-history dropdown) is caught by the popup rule
+               below. Separate rule: a browser without :has() drops only it. */
+            html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
+                z-index: ${SPH_Z_RAISED};
+            }
+            /* Open in-place popup (e.g. the filter-history dropdown, whose
+               inline cssText serializes as "display: block; position: absolute")
+               while neither hovered nor focused. Separate rule on purpose: a
+               browser without :has() drops only this rule, not the one above. */
+            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"]) {
+                z-index: ${SPH_Z_RAISED};
+            }
+        `);
+        style.id = 'mb-sticky-page-headers-style';
+    }
+
+    /**
+     * Writes an inline custom property only when its value actually changes,
+     * so an idle refresh pass (the common case: an observer fired for a height
+     * change only) never invalidates style or layout.
+     *
+     * @param {HTMLElement} el    - Element receiving the inline custom property.
+     * @param {string}      name  - Custom property name, e.g. `'--mb-sph-left'`.
+     * @param {string}      value - New value, e.g. `'14px'`.
+     * @returns {void}
+     */
+    function _sphSetVar(el, name, value) {
+        if (el.style.getPropertyValue(name) !== value) {
+            el.style.setProperty(name, value);
+        }
+    }
+
+    /**
+     * Removes every trace of the feature from one element (classes + inline
+     * custom properties). Safe on elements already detached from the DOM.
+     *
+     * @param {HTMLElement} el - Previously marked element.
+     * @returns {void}
+     */
+    function _sphUnmark(el) {
+        el.classList.remove('mb-sph-target', 'mb-sph-chrome');
+        el.style.removeProperty('--mb-sph-left');
+        el.style.removeProperty('--mb-sph-maxw');
+    }
+
+    /**
+     * Returns an element's OWN `position` and `z-index`, i.e. the values it
+     * has without this feature's rules.
+     *
+     * Captured from the computed style the first time the element is seen
+     * unmarked, and cached: once marked, its computed `position` is this
+     * feature's `sticky` and its z-index may be `SPH_Z_CHROME`, so the live
+     * values can no longer tell a static MB header from one made sticky by
+     * the "mb. STICKY HEADER" userstyle.
+     *
+     * @param {HTMLElement}         el - Element to inspect.
+     * @param {CSSStyleDeclaration} cs - Its live computed style.
+     * @returns {{position: string, zIndex: string}} The element's own values.
+     */
+    function _sphNativeStyle(el, cs) {
+        let nat = _sph.native.get(el);
+        if (!nat && !el.classList.contains('mb-sph-target')) {
+            nat = { position: cs.position, zIndex: cs.zIndex };
+            _sph.native.set(el, nat);
+        }
+        return nat || { position: cs.position, zIndex: cs.zIndex };
+    }
+
+    /**
+     * Decides whether an element may be pinned.
+     *
+     * Rejected are: non-rendering tags; anything inside `#sidebar` or inside a
+     * table (e.g. wiki `h2.mb-toggle-h2` sub-headings in Annotation cells);
+     * anything CONTAINING a table (capping its width would squeeze the table);
+     * elements that are not rendered at all (`display:none` on itself or an
+     * ancestor — they get picked up by a later refresh once shown); floated
+     * elements; and elements whose own position (see `_sphNativeStyle()`) is
+     * `absolute`/`fixed` (overlays, menus, tooltips, the sidebar toggle
+     * handle). Natively `sticky` elements ARE accepted — e.g. the header of
+     * the "mb. STICKY HEADER" userstyle, which sticks vertically; this feature
+     * only adds `left`, so both directions work together.
+     *
+     * @param {Element}      el      - Candidate element.
+     * @param {?HTMLElement} sidebar - The native `#sidebar`, if present.
+     * @returns {boolean} `true` when the element can safely be pinned.
+     */
+    function _sphIsEligible(el, sidebar) {
+        if (!(el instanceof HTMLElement)) return false;
+        if (/^(SCRIPT|STYLE|LINK|META|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return false;
+        if (sidebar && sidebar.contains(el)) return false;
+        if (el.closest('table')) return false;
+        if (el.querySelector('table')) return false;
+        if (el.getClientRects().length === 0) return false;
+
+        const cs  = getComputedStyle(el);
+        const pos = _sphNativeStyle(el, cs).position;
+        if (pos !== 'static' && pos !== 'relative' && pos !== 'sticky') return false;
+        if (cs.float !== 'none') return false;
+        return true;
+    }
+
+    /**
+     * Collects the elements to pin, in document order.
+     *
+     * Candidates:
+     *   - every in-flow direct child of `<body>` except `#page` — the native
+     *     MB top header, server/beta banners and the footer ("chrome"); the
+     *     footer has to be included because widening `<body>` would otherwise
+     *     push its right-aligned text off-screen;
+     *   - direct children of `#content` / `#page` that are the entity header
+     *     block (any `div` with a class ending in `header`, e.g.
+     *     `releaseheader`, `artistheader`, `blankheader` — matched per class,
+     *     because MB renders e.g. `class="wrap-anywhere releaseheader"`), a
+     *     bare `<h1>` (search / list pages) or the `.tabs` bar;
+     *   - every rendered `<h2>` / `<h3>` below `#page` (section bars incl.
+     *     `.mb-toggle-h2`, sub-table bars `.mb-toggle-h3`, Credits sub-bars
+     *     `.mb-credits-toggle-h3`).
+     *
+     * Each candidate passes `_sphIsEligible()`; a candidate nested inside
+     * another candidate is dropped (nested sticky boxes would have no room to
+     * travel inside their already-clamped parent anyway).
+     *
+     * @returns {Array<{el: HTMLElement, chrome: boolean}>} Targets to pin;
+     *   `chrome` is `true` for body-level elements.
+     */
+    function _sphCollectTargets() {
+        const page    = document.getElementById('page');
+        const content = document.getElementById('content');
+        const sidebar = document.getElementById('sidebar');
+        const found   = [];
+        const seen    = new Set();
+
+        /**
+         * Registers one candidate if it is eligible and not yet registered.
+         *
+         * @param {Element} el     - Candidate element.
+         * @param {boolean} chrome - `true` for direct children of `<body>`.
+         * @returns {void}
+         */
+        function add(el, chrome) {
+            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar)) return;
+            seen.add(el);
+            found.push({ el, chrome });
+        }
+
+        for (const el of Array.from(document.body.children)) {
+            if (el !== page) add(el, true);
+        }
+
+        [content, page].forEach(root => {
+            if (!root) return;
+            for (const el of Array.from(root.children)) {
+                const isEntityHeader = el.tagName === 'DIV' &&
+                    Array.from(el.classList).some(c => /header$/i.test(c));
+                if (el.tagName === 'H1' || el.classList.contains('tabs') || isEntityHeader) {
+                    add(el, false);
+                }
+            }
+        });
+
+        (page || document.body).querySelectorAll('h2, h3').forEach(el => add(el, false));
+
+        return found.filter(({ el }) => {
+            for (let p = el.parentElement; p; p = p.parentElement) {
+                if (seen.has(p)) return false;
+            }
+            return true;
+        });
+    }
+
+    /**
+     * Measures how far the page content really extends to the right, in
+     * document coordinates.
+     *
+     * Deliberately NOT `documentElement.scrollWidth`: that also counts
+     * transformed and absolutely positioned boxes — above all the collapsed
+     * sidebar's `translateX(100%)` ghost, which this feature itself removes
+     * while engaged. Deciding on scrollWidth could therefore flip-flop (ghost
+     * alone overflows → engage → ghost gone → no overflow → disengage → …).
+     * Instead the right edges of the in-flow direct children of `<body>`
+     * (other than this feature's own viewport-clamped targets) and of every
+     * rendered `table.tbl` are taken — layout boxes only, which transforms
+     * never move. Tables are included because without auto-resize a wide
+     * table overflows `#content`/`#page` rather than widening them.
+     *
+     * @returns {number} Right edge of the content in document px (0 if none).
+     */
+    function _sphContentExtent() {
+        const scrollX = window.scrollX;
+        let right = 0;
+
+        /**
+         * Extends `right` by one element's border box, if it is rendered.
+         *
+         * @param {Element} el - Element to account for.
+         * @returns {void}
+         */
+        function consider(el) {
+            const r = el.getBoundingClientRect();
+            if (r.width || r.height) right = Math.max(right, r.right + scrollX);
+        }
+
+        for (const el of Array.from(document.body.children)) {
+            if (el.classList.contains('mb-sph-target')) continue;
+            const pos = getComputedStyle(el).position;
+            if (pos === 'absolute' || pos === 'fixed') continue;
+            consider(el);
+        }
+        document.querySelectorAll('table.tbl').forEach(consider);
+        return right;
+    }
+
+    /**
+     * Tells whether an expanded, natively laid-out sidebar makes widening
+     * `<body>` unsafe.
+     *
+     * The native sidebar is the second table cell of `#page`
+     * (`display: table`); once `<body>` (and with it a width:100% `#page`) is
+     * widened to the scrolled content, it would jump to the far right end of
+     * the page. The feature therefore stays inert in that one configuration
+     * (sidebar expanded AND auto-resize not active). It is fine when there is
+     * no sidebar, when it is collapsed (`.sidebar-collapsed`, the default via
+     * `sa_sidebar_collapsed`) or when auto-resize already made it
+     * `position: sticky` (see `toggleAutoResizeColumns()`).
+     *
+     * @returns {boolean} `true` when the feature must not engage.
+     */
+    function _sphSidebarBlocksWidening() {
+        const sidebar = document.getElementById('sidebar');
+        if (!sidebar || sidebar.getClientRects().length === 0) return false;
+        if (sidebar.classList.contains('sidebar-collapsed')) return false;
+        return getComputedStyle(sidebar).position !== 'sticky';
+    }
+
+    /**
+     * Keeps the ResizeObserver's watch list in sync with the live DOM: drops
+     * detached elements and starts observing the layout roots and every
+     * `table.tbl` not observed yet. `#sidebar` is watched because expanding
+     * or collapsing it (0 ↔ 240px) is what flips `_sphSidebarBlocksWidening()`.
+     * Tables must be watched individually because a table growing wider
+     * (manual column drag, column visibility, density) does not necessarily
+     * resize `<body>`/`#page` while those still have their normal width.
+     * Elements already observed are never re-observed (a second `observe()`
+     * would queue a fresh initial notification and turn refresh → observe →
+     * notify into an endless loop).
+     *
+     * @returns {void}
+     */
+    function _sphSyncObserved() {
+        const ro = _sph.observer;
+        if (!ro) return;
+        _sph.observed.forEach(el => {
+            if (!el.isConnected) {
+                ro.unobserve(el);
+                _sph.observed.delete(el);
+            }
+        });
+        const roots = [document.documentElement, document.body,
+                       document.getElementById('page'), document.getElementById('content'),
+                       document.getElementById('sidebar')];
+        const tables = Array.from(document.querySelectorAll('table.tbl'));
+        roots.concat(tables).forEach(el => {
+            if (el && !_sph.observed.has(el)) {
+                ro.observe(el);
+                _sph.observed.add(el);
+            }
+        });
+    }
+
+    /**
+     * Floors a pixel value to 1/100 px.
+     *
+     * Whole-pixel flooring would make a bar with a fractional natural offset
+     * (e.g. an h3 at 42.5px from its 1.5em margin) jump by up to 1px the
+     * moment it starts sticking; keeping sub-pixel precision avoids that,
+     * while flooring (instead of rounding) guarantees `left` never exceeds
+     * the natural offset, so nothing is nudged at scrollX = 0.
+     *
+     * @param {number} px - Pixel value.
+     * @returns {number} `px` floored to two decimals.
+     */
+    function _sphFloor2(px) {
+        return Math.floor(px * 100) / 100;
+    }
+
+    /**
+     * One refresh pass: decides whether the feature must be engaged, and if
+     * so (re)collects the targets and (re)computes their offsets.
+     *
+     * Engaged when the content extends past the viewport
+     * (`_sphContentExtent() > clientWidth`) and `_sphSidebarBlocksWidening()`
+     * does not object. On the engage transition `html.mb-sph-on` is set
+     * BEFORE anything is measured, because the class itself moves `<body>`
+     * (margins, width); that costs one extra layout, once per engage. For
+     * each target (read phase first, then write phase, so a steady-state pass
+     * forces at most one layout), in document px:
+     *
+     *   parentLeft  = content-box left edge of its parent
+     *   parentRight = content-box right edge of its parent
+     *   left        = parentLeft + margin-left   (its natural, unscrolled left)
+     *   gutter      = max(parentLeft, extent − parentRight)
+     *   width       = viewport − left − gutter − margin-right
+     *
+     * The right gutter mirrors the parent's left inset, but is widened to
+     * however far the content extends past the parent: at maximum scroll the
+     * bar then ends exactly at its containing block's edge instead of being
+     * pushed back by it. The parent is never itself pinned (see the nesting
+     * filter in `_sphCollectTargets()`), so its rect is its natural geometry
+     * even while the page is scrolled; no per-target class has to be toggled
+     * for measuring, which would force a full relayout of potentially huge
+     * tables on every pass. `width` is converted to a content-box `max-width` where needed;
+     * values are floored to 1/100 px (see `_sphFloor2()`) and only written
+     * when they change.
+     *
+     * `<body>`'s own min-width (MB: 780px) is captured while disengaged and
+     * kept as a floor (`--mb-sph-body-native-minw`), since the engaged rule
+     * replaces it.
+     *
+     * Capping can never remove the overflow it reacts to (a capped bar only
+     * wraps text that could wrap anyway, and `_sphContentExtent()` skips the
+     * capped targets), so engaging/disengaging cannot oscillate.
+     *
+     * @returns {void}
+     */
+    function _sphRefresh() {
+        _sph.timer = null;
+        _sph.passes++;
+        const docEl = document.documentElement;
+        const body  = document.body;
+        if (!body) return;
+
+        try {
+            _sphSyncObserved();
+
+            const vw = docEl.clientWidth;
+            const extent = _sphContentExtent();
+            const engage = extent > vw + 1 && !_sphSidebarBlocksWidening();
+
+            if (!_sph.active) {
+                const nativeMinW = getComputedStyle(body).minWidth;
+                _sphSetVar(docEl, '--mb-sph-body-native-minw', /px$/.test(nativeMinW) ? nativeMinW : '0px');
+            }
+
+            if (!engage) {
+                if (_sph.active) {
+                    docEl.classList.remove('mb-sph-on');
+                    _sph.active = false;
+                    Lib.debug('ui', 'Sticky page headers: disengaged (no horizontal overflow)');
+                }
+                return;
+            }
+
+            // Engage BEFORE the read phase. html.mb-sph-on itself moves the
+            // geometry read below — <body> loses its margins (8px under a
+            // bare UA stylesheet) and becomes fit-content wide — so offsets
+            // read while still disengaged are stale the moment the class
+            // lands, and stay wrong until some ResizeObserver round-trip
+            // happens to trigger another pass. Costs one extra layout, on the
+            // engage transition only; `extent` is re-read for the same reason.
+            const engaging = !_sph.active;
+            if (engaging) {
+                docEl.classList.add('mb-sph-on');
+                _sph.active = true;
+            }
+            const extentNow = engaging ? _sphContentExtent() : extent;
+
+            const targets = _sphCollectTargets();
+            const next = new Set(targets.map(t => t.el));
+            _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
+
+            // ── Read phase ──────────────────────────────────────────────────
+            const scrollX = window.scrollX;
+            const plans = targets.map(({ el, chrome }) => {
+                const parent = el.parentElement || body;
+                const pcs = getComputedStyle(parent);
+                const pr  = parent.getBoundingClientRect();
+                const parentLeft  = pr.left + scrollX + parent.clientLeft + (parseFloat(pcs.paddingLeft) || 0);
+                const parentRight = pr.right + scrollX - (parseFloat(pcs.borderRightWidth) || 0)
+                                                      - (parseFloat(pcs.paddingRight) || 0);
+                const cs  = getComputedStyle(el);
+                const nat = _sphNativeStyle(el, cs);
+                const left   = parentLeft + (parseFloat(cs.marginLeft) || 0);
+                const gutter = Math.max(0, parentLeft, extentNow - parentRight);
+                // Sticky keeps the MARGIN box inside the containing block, so the
+                // element's own margin-right (plain MB header: 16px) must come off
+                // too, or it widens by that much and is pushed back at max scroll.
+                let width = Math.max(SPH_MIN_WIDTH_PX, vw - left - gutter - (parseFloat(cs.marginRight) || 0));
+                if (cs.boxSizing !== 'border-box') {
+                    width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
+                             (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
+                }
+                // Only chrome without stacking of its own gets a base z-index
+                // (see the section comment); a natively sticky / z-indexed
+                // element keeps its own.
+                const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
+                return { el, baseZ, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+            });
+
+            // ── Write phase ─────────────────────────────────────────────────
+            plans.forEach(({ el, baseZ, left, width }) => {
+                _sphSetVar(el, '--mb-sph-left', `${left}px`);
+                _sphSetVar(el, '--mb-sph-maxw', `${width}px`);
+                // classList.add()/toggle() rewrite the class attribute even when
+                // nothing changes (DOM "update steps") — only write on change.
+                if (!el.classList.contains('mb-sph-target')) el.classList.add('mb-sph-target');
+                if (el.classList.contains('mb-sph-chrome') !== baseZ) el.classList.toggle('mb-sph-chrome', baseZ);
+            });
+            _sph.targets = next;
+
+            if (engaging) {
+                Lib.debug('ui', `Sticky page headers: engaged for ${plans.length} element(s)`);
+            }
+        } catch (err) {
+            Lib.warn('ui', 'Sticky page headers: refresh failed', err);
+        }
+    }
+
+    /**
+     * ResizeObserver callback: schedules a refresh only when an observed
+     * element's WIDTH changed.
+     *
+     * Everything this feature decides depends on widths and horizontal
+     * positions: whether the content extends past the viewport, each bar's
+     * clamped max-width, the sidebar opening (0 <-> 240px). Heights never
+     * matter, yet the observer reports them too — and a sort, a filter or a
+     * chunked render changes the height of `table.tbl`, `#content`, `<body>`
+     * and `<html>` over and over while every width stays put. Measured on
+     * artist-events (4174 rows, 2026-10-02): 4-7 refresh passes per sort, each
+     * forcing a layout of the whole table, up to 81 ms apiece and 253 ms per
+     * sort in total. Ignoring height-only notifications removes all of them.
+     *
+     * The first notification for an element (sent by `observe()` itself)
+     * always counts, since there is no previous width to compare with.
+     *
+     * @param {ResizeObserverEntry[]} entries - Entries delivered by the observer.
+     * @returns {void}
+     */
+    function _sphOnResize(entries) {
+        let widthChanged = false;
+        for (const entry of entries) {
+            const box = entry.borderBoxSize && entry.borderBoxSize[0];
+            const w = box ? box.inlineSize : entry.contentRect.width;
+            if (_sph.widths.get(entry.target) !== w) {
+                _sph.widths.set(entry.target, w);
+                widthChanged = true;
+            }
+        }
+        if (widthChanged) scheduleStickyPageHeadersRefresh();
+    }
+
+    /**
+     * Schedules a debounced `_sphRefresh()` pass. Bursts of triggers (window
+     * resize, ResizeObserver notifications during sidebar transitions,
+     * auto-resize) collapse into one pass that reads the settled layout. A
+     * no-op until `initStickyPageHeaders()` has run, so it is safe to call
+     * from code paths that also run with the feature disabled.
+     *
+     * After the debounce the pass runs in the next animation frame. It
+     * reads layout, so it forces whatever layout is still pending. From a
+     * plain timer task in the middle of a chunked sort or render, that is a
+     * full layout of a partly rebuilt table, which the next chunk throws away
+     * again. Measured on artist-events (4174 rows, 2026-10-02): 131 ms for a
+     * pass landing mid-sort, 4-12 ms for the same pass on a clean layout. A
+     * requestAnimationFrame callback runs just before the frame's own
+     * style/layout, so the layout it forces is the one that frame needs
+     * anyway and is not computed twice. Idle time was tried first, and its
+     * timeout fires mid-sort because a chunked sort leaves no idle time.
+     * `_sph.timer` stays non-null until the pass starts, so triggers arriving
+     * meanwhile still collapse into it.
+     *
+     * @returns {void}
+     */
+    function scheduleStickyPageHeadersRefresh() {
+        if (!_sph.initialized || _sph.timer !== null) return;
+        _sph.timer = setTimeout(() => requestAnimationFrame(_sphRefresh), SPH_REFRESH_DELAY_MS);
+    }
+
+    /**
+     * Enables horizontal pinning of the page chrome (setting
+     * `sa_enable_sticky_page_headers`): the MusicBrainz top header, the h1
+     * entity header with the action bar, the tabs, every h2 section bar and
+     * every h3 sub-table bar stay in place while a wide table is scrolled
+     * horizontally — the page-level counterpart of `applyStickyColumn()`.
+     * See the section comment above for the mechanism.
+     *
+     * Idempotent: the first call installs the stylesheet, a ResizeObserver
+     * (html, body, #page, #content, #sidebar, every `table.tbl`), a `resize`
+     * listener and a passive `scroll` listener (fallback: engages on the first
+     * horizontal scroll should no observer have noticed the overflow); every
+     * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
+     * pick up their new h2/h3 bars.
+     *
+     * @returns {void}
+     */
+    function initStickyPageHeaders() {
+        if (!_sph.initialized) {
+            _sphEnsureStyle();
+            if (typeof ResizeObserver === 'function') {
+                _sph.observer = new ResizeObserver(_sphOnResize);
+            }
+            window.addEventListener('resize', scheduleStickyPageHeadersRefresh, { passive: true });
+            window.addEventListener('scroll', () => {
+                if (!_sph.active && window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+            }, { passive: true });
+            _sph.initialized = true;
+            Lib.debug('ui', 'Sticky page headers enabled - page chrome stays pinned while scrolling horizontally');
+        }
+        scheduleStickyPageHeadersRefresh();
+    }
+
     /**
      * Normalise the interior of every `<span class="comment">` in `table`.
      *
@@ -37994,6 +38669,10 @@ a { color: #1565c0; }`;
             page.style.minWidth = '';
             page.style.width = '';
         }
+
+        // The page may no longer overflow horizontally — let the sticky page
+        // headers re-evaluate (no-op when that feature is not initialized).
+        scheduleStickyPageHeadersRefresh();
     }
 
     /**
@@ -38431,6 +39110,9 @@ a { color: #1565c0; }`;
             if (_measureContainer && _measureContainer.parentNode) {
                 _measureContainer.parentNode.removeChild(_measureContainer);
             }
+            // #page is now fit-content wide: pin the page chrome right away
+            // instead of waiting for the ResizeObserver round-trip.
+            scheduleStickyPageHeadersRefresh();
         }
     }
 
@@ -57601,6 +58283,12 @@ a { color: #1565c0; }`;
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
                 applyStickyHeaders();
+            }
+
+            // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
+            // while a wide table is scrolled horizontally.
+            if (Lib.settings.sa_enable_sticky_page_headers !== false) {
+                initStickyPageHeaders();
             }
 
             // Add auto-resize columns button
@@ -81245,6 +81933,12 @@ a { color: #1565c0; }`;
                 applyStickyHeaders();
             }
 
+            // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
+            // while a wide table is scrolled horizontally.
+            if (Lib.settings.sa_enable_sticky_page_headers !== false) {
+                initStickyPageHeaders();
+            }
+
             // Add auto-resize columns button
             if (Lib.settings.sa_enable_column_resizing) {
                 addAutoResizeButton();
@@ -93091,6 +93785,16 @@ a { color: #1565c0; }`;
              */
             mediumFormatVideoCapable() {
                 return Array.from(MEDIUM_FORMAT_VIDEO_CAPABLE, ([id, v]) => [id, { name: v.name, video: v.video }]);
+            },
+            /**
+             * Number of sticky-page-headers refresh passes run so far, so a
+             * spec can assert that an interaction triggered none (a sort only
+             * changes heights; see `_sphOnResize()`).
+             *
+             * @returns {number}
+             */
+            sphRefreshPasses() {
+                return _sph.passes;
             },
             /**
              * Runs the shipping `_parseLiveTitle()` on one title string, so a

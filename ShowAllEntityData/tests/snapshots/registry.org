@@ -333,6 +333,31 @@ respectively — one per table carrying a Barcode =<th>=, which is what makes th
 counts differ between the two pages. No other baseline moved on this account,
 confirming the toggle is per-Barcode-column and not page-wide.
 
+** Sticky Page Headers (branch feature/sticky-areas, 2026-10-02) — NOT yet re-captured
+
+A script change, not upstream movement. It DOES change markup, but only on a
+baseline whose table is wider than the capture viewport (Playwright's default
+1280 px, which is most of them). The feature is on by default
+(=sa_enable_sticky_page_headers=) and engages only while the page overflows
+horizontally. Then:
+
+  - =<html>= gains the class =mb-sph-on= and an inline
+    =--mb-sph-body-native-minw= custom property (written even while
+    disengaged, so it can appear on a narrow baseline too);
+  - every pinned element gains =mb-sph-target= (body-level chrome without
+    stacking of its own, i.e. the plain MB header and the footer, also gets
+    =mb-sph-chrome=) and inline =--mb-sph-left= / =--mb-sph-maxw= custom
+    properties: the MB header, the entity-header =div= or bare =h1=, =.tabs=,
+    and every h2 and h3 bar outside tables and the sidebar;
+  - the page gains one =<style id="mb-sticky-page-headers-style">= block.
+
+The values are viewport-derived but deterministic for one viewport, so this is
+a one-time diff, NOT noise; that is why it is recorded here rather than added
+to =scrub()=. If a re-capture shows =mb-sph-on= on a baseline whose table fits
+the viewport, or a =--mb-sph-maxw= wider than the viewport, that IS a
+regression (tests/fixtures/sticky-page-headers.spec.js pins the same two
+properties).
+
 ** Column-header count badges filling in
 
 Unlike everything else in this section, this one is OUR movement, not

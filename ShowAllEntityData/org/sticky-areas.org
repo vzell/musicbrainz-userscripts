@@ -1,0 +1,20 @@
+* TODO sticky areas
+
+1.)
+
+Create a new branch "feature/sticky-areas" from current main
+
+2.)
+
+Read both files from @debug/1169 and create a diff file (for patching) between the userscript
+@debug/1169/ShowAllEntityData_user.js and the "@version 9.99.1167+2026-09-27" checked in in the git repo in the
+directory @debug/1169
+
+3.)
+
+Apply the patch to the userscript on the "feature/sticky-areas" branch
+
+4.)
+
+I want to continue work on the stickyness features of my userscript. Currently the version has some implementations, but
+it was taken from the then current version "9.99.1167"

@@ -3058,3 +3058,47 @@ until the status reports the pass.
 *Read as: render and filter unchanged within noise; the cold 📊 open on a
 recording column costs about +30 ms (1.02x) for 2000 comments.* The stamp's
 extra work is not visible in the render time at this size.
+
+* 2026-10-02 — Sticky Page Headers, main vs feature/sticky-areas, interaction perf (NB-3641)
+
+*Probing*: the feature (on by default) observes every =table.tbl= with a
+ResizeObserver and runs a debounced (60 ms) refresh pass, and it puts the page
+chrome in =position: sticky= with =<body>= at =width: fit-content= while the
+page overflows horizontally, which artist-events at 1280 px does.
+=capture-interaction-perf.js --pageType=artist-events= (5 samples, medians),
+ABBA order, =main= (9.99.1193, =f0fc97d=) from a detached worktree WITH the
+auth file copied in. Branch work was uncommitted. Machine NB-3641 (WSL2, 28
+cores, node v24.19.0, Playwright 1.62.1). Files:
+=tests/snapshots/artist-events/interaction-perf-{main,feature-sticky-areas}-auth{1,2}-9.99.1193-2026-10-02-NB-3641.json=.
+
+*Trap hit again, so it is recorded again:* two earlier rounds (UTC
+16:57–17:42) ran =main= WITHOUT the auth file and showed sort +14–19 %. Those
+arms were thrown away and their files deleted. With matched auth the sort gap
+shrank, but did NOT vanish (below).
+
+** =artist-events=, single-table, 4174 rows (Bruce Springsteen =/artist/70248960-…/events=)
+
+| Metric (median ms)  | =main= #1 (17:42–17:53) | branch #1 (17:53–18:04) | branch #2 (18:04–18:15) | =main= #2 (18:15–18:25) | ratio |
+|---------------------+-------------------------+-------------------------+-------------------------+-------------------------+-------|
+| globalFilter        |                    1788 |                    1752 |                    1832 |                    1919 |  0.97 |
+| columnFilter        |                    1936 |                    1787 |                    1914 |                    1730 |  1.01 |
+| sort                |                    3189 |                    3595 |                    3522 |                    3204 |  1.11 |
+| uniqDropCold        |                   29869 |                   31210 |                   30959 |                   28542 |  1.06 |
+| uniqDropWarm        |                     854 |                     805 |                     812 |                     799 |  0.98 |
+| headerCountsInitial |                    5088 |                    5492 |                    5459 |                    5103 |  1.07 |
+| headerCountsRestore |                    5455 |                    5492 |                    5684 |                    5433 |  1.03 |
+
+(ratio = mean of the two branch arms / mean of the two =main= arms)
+
+*Read as: sort about +360 ms (1.11x) and the initial header-count settle
+about +380 ms (1.07x) on 4174 rows. Both came out the same way in both branch
+arms and on both sides of the ABBA order, so they are treated as real.* The
+cold 📊 open also came out higher in both branch arms (+1.9 s, 1.06x, against
+a cold-open spread that has flipped direction by run order in earlier
+entries), so treat it as probably real too. Filter and the warm 📊 open are
+unchanged within noise. The cause was not isolated. The
+candidates are the refresh pass that every sort re-render triggers (a forced
+layout plus rect/style reads, landing inside the sort-settle window), and the
+layout cost of =<body>= =fit-content= + sticky bars around a 4174-row table.
+An ablation arm (no =table.tbl= observation) would tell them apart. Flagged to
+the user before merge, per the performance gate.
