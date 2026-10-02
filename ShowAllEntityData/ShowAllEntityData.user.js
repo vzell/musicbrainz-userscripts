@@ -6229,6 +6229,14 @@
          *
          * Expected source format (all segments are optional):
          * [Event-Type][, Event-Date][, Event-Detail][: Venue[, Venue-Detail][, City][, State][, Country[; Additional-Info]]]
+         * or, with no colon, the style guide's location-only form
+         * (https://musicbrainz.org/doc/Style/Recording#Live_recordings):
+         * Event-Type, [Venue, ]City, State, Country[; Additional-Info]
+         * — recognised when the text after the type has two or more ", "
+         * parts and does not start with a date (the same rule as
+         * `_parseRecordingComment()`'s `location` form, so the 📊 sections and
+         * these columns agree). One part ("live, early show") stays
+         * Event-Detail. Without a colon, a "; …" tail is split off first too.
          *
          * Event-Date accepts partial ISO 8601 ('YYYY', 'YYYY-MM', 'YYYY-MM-DD')
          * as well as an uncertain-day suffix of one or more '/DD' segments on a
@@ -6279,8 +6287,15 @@
             if (!raw) return tds;
 
             const colonIdx = raw.indexOf(': ');
-            const prePart  = colonIdx !== -1 ? raw.slice(0, colonIdx).trim() : raw;
+            // Without a colon the "; …" tail must come off before the comma
+            // split, or "live, Los Angeles, CA, USA; intro" leaves "USA; intro"
+            // as the country (with a colon it is split off the post-colon
+            // part below, as before).
+            const noColonSemi = colonIdx === -1 ? raw.indexOf(';') : -1;
+            const prePart  = colonIdx !== -1 ? raw.slice(0, colonIdx).trim()
+                : noColonSemi !== -1 ? raw.slice(0, noColonSemi).trim() : raw;
             const postPart = colonIdx !== -1 ? raw.slice(colonIdx + 2).trim() : '';
+            const noColonInfo = noColonSemi !== -1 ? raw.slice(noColonSemi + 1).trim() : '';
 
             // ── Pre-colon extraction (Type, Date, Detail) ──────────────────────
             const preParts = prePart.split(', ').map(s => s.trim()).filter(s => s.length > 0);
@@ -6297,7 +6312,10 @@
             tds[0].textContent = preParts[0]; // Event-Type (recognized keyword)
 
             const DATE_RE = /^\d{4}(?:-\d{2}(?:-\d{2}(?:\/\d{2})*)?)?$/;
-            if (preParts.length > 1) {
+            // "live, Los Angeles, CA, USA": no colon, 2+ parts after the type,
+            // no date first — a location, not a detail.
+            const locationOnly = colonIdx === -1 && preParts.length >= 3 && !DATE_RE.test(preParts[1]);
+            if (preParts.length > 1 && !locationOnly) {
                 if (DATE_RE.test(preParts[1])) {
                     tds[1].textContent = preParts[1]; // Event-Date
                     if (preParts.length > 2) tds[2].textContent = preParts[2]; // Event-Detail
@@ -6306,17 +6324,23 @@
                 }
             }
 
-            // ── Post-colon (Location) extraction ──────────────────────────────
+            // ── Location extraction (post-colon, or the colon-less form) ──────
+            let locStr = '';
+            let additionalInfo = '';
             if (postPart) {
                 // Split off Additional-Info at the FIRST ';' in the whole post-colon
                 // string before any comma-splitting — if Additional-Info itself
                 // contains a ', ' (e.g. "USA; YouTube – X, from Y"), comma-splitting
                 // the raw postPart first would fragment it into extra pseudo-location
                 // segments and misalign every field below (see debug/event-extraction-bug.org).
-                const semiIdx        = postPart.indexOf(';');
-                const locStr         = semiIdx !== -1 ? postPart.slice(0, semiIdx).trim() : postPart;
-                const additionalInfo = semiIdx !== -1 ? postPart.slice(semiIdx + 1).trim() : '';
-
+                const semiIdx  = postPart.indexOf(';');
+                locStr         = semiIdx !== -1 ? postPart.slice(0, semiIdx).trim() : postPart;
+                additionalInfo = semiIdx !== -1 ? postPart.slice(semiIdx + 1).trim() : '';
+            } else {
+                if (locationOnly) locStr = preParts.slice(1).join(', ');
+                additionalInfo = noColonInfo;
+            }
+            if (locStr) {
                 const loc = locStr.split(', ').map(s => s.trim()).filter(s => s.length > 0);
                 const n = loc.length;
                 const country = n >= 1 ? loc[n - 1] : '';
@@ -6340,8 +6364,8 @@
                     if (n >= 3) tds[3].textContent = loc[n - 3]; // Event-Venue
                     if (n >= 4) tds[4].textContent = loc[n - 4]; // Event-Venue-Detail
                 }
-                if (additionalInfo) tds[8].textContent = additionalInfo; // Event-Additional-Info
             }
+            if (additionalInfo) tds[8].textContent = additionalInfo; // Event-Additional-Info
 
             return tds;
         },
@@ -53875,7 +53899,7 @@ a { color: #1565c0; }`;
                     case 'Event-Type':         return `Derived from '${src}': the event type, parsed from the free-form live-performance metadata encoded in the Comment field.`;
                     case 'Event-Date':         return `Derived from '${src}': the event date (YYYY, YYYY-MM, or YYYY-MM-DD), parsed from the Comment field.`;
                     case 'Event-Detail':       return `Derived from '${src}': additional event detail text following the event type in the Comment field.`;
-                    case 'Event-Venue':        return `Derived from '${src}': the venue name, parsed from the post-colon location segment of the Comment field.`;
+                    case 'Event-Venue':        return `Derived from '${src}': the venue name, parsed from the location segment of the Comment field (after the colon, or the whole colon-less "live, Venue, City, State, Country").`;
                     case 'Event-Venue-Detail': return `Derived from '${src}': venue sub-detail (e.g. hall or stage name), parsed from the Comment field.`;
                     case 'Event-City':         return `Derived from '${src}': the city name, parsed from the location segment of the Comment field.`;
                     case 'Event-State':        return `Derived from '${src}': the state or province (used for USA / Canada / UK), parsed from the Comment field.`;
@@ -93098,6 +93122,23 @@ a { color: #1565c0; }`;
              */
             parseRecordingComment(text) {
                 return _parseRecordingComment(text);
+            },
+            /**
+             * Runs the shipping `SyntheticColumnDataExtractor.eventParts` on
+             * one comment string and returns its nine cells' text, keyed by
+             * the synthetic column names, so a spec can pin each comment
+             * shape without a fixture row per case.
+             *
+             * @param {string} text
+             * @returns {Object<string, string>}
+             */
+            eventPartsOf(text) {
+                const td = document.createElement('td');
+                td.textContent = text;
+                const names = ['Event-Type', 'Event-Date', 'Event-Detail', 'Event-Venue', 'Event-Venue-Detail',
+                    'Event-City', 'Event-State', 'Event-Country', 'Event-Additional-Info'];
+                const tds = SyntheticColumnDataExtractor.eventParts(td);
+                return Object.fromEntries(names.map((n, i) => [n, tds[i].textContent]));
             },
             /**
              * Opens (or reads the current state of, if already open) the 📊

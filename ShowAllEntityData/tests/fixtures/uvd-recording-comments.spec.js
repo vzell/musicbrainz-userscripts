@@ -277,12 +277,14 @@ test.describe('📊 Recording comment info', () => {
     test('eventParts sections: country form, detail, additional info', async ({ page }) => {
         await openArtist(page);
         expect(await sections(page, 'Event-Country', 'Event info - Country form')).toEqual({
-            'Event info - Country form': { '🔤 abbreviation (USA, UK)': 11, '📛 full name': 1 },
+            // "live, Los Angeles, CA, USA" (Johnny 99) has a country since the
+            // colon-less location form is split (event-parts-location-only.spec.js).
+            'Event info - Country form': { '🔤 abbreviation (USA, UK)': 12, '📛 full name': 1 },
         });
         expect(await sections(page, 'Event-Detail', 'Event info - Detail')).toEqual({
             'Event info - Detail': {
-                '🕗 has detail': 5, '☐ no detail': 12,
-                '» detail: 05.02.1975': 1, '» detail: Gund Arena': 1, '» detail: Los Angeles': 1, '» detail: early show': 2,
+                '🕗 has detail': 4, '☐ no detail': 13,
+                '» detail: 05.02.1975': 1, '» detail: Gund Arena': 1, '» detail: early show': 2,
             },
         });
         expect(await sections(page, 'Event-Additional-Info', 'Event info - Additional info')).toEqual({
@@ -295,7 +297,7 @@ test.describe('📊 Recording comment info', () => {
         await sections(page, 'Event-Detail', 'Event info - Detail');
         await tick(page, 'Event info - Detail', '🕗 has detail');
         expect((await visibleRows(page, 'Event-Detail', 'Name')).map((r) => r.name).sort()).toEqual([
-            'Kitty’s Back', 'Johnny 99', 'Lucky Town', 'Racing in the Street', 'Thunder Road',
+            'Kitty’s Back', 'Lucky Town', 'Racing in the Street', 'Thunder Road',
         ].sort());
     });
 

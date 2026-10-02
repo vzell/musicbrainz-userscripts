@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the colon-less location form is not recognised",
+    "why": "Without it \"live, Los Angeles, CA, USA\" puts Los Angeles into Event-Detail and leaves City/State/Country empty — the bug.",
+    "edits": [
+      {
+        "find": "            const locationOnly = colonIdx === -1 && preParts.length >= 3 && !DATE_RE.test(preParts[1]);",
+        "replace": "            const locationOnly = false;"
+      }
+    ],
+    "spec": "tests/fixtures/event-parts-location-only.spec.js",
+    "grep": "shapes",
+    "expect": "fail"
+  },
+  {
+    "name": "the colon-less \"; …\" tail is not split off first",
+    "why": "\"…, USA; intro\" would keep \"USA; intro\" as the country.",
+    "edits": [
+      {
+        "find": "            const noColonSemi = colonIdx === -1 ? raw.indexOf(';') : -1;",
+        "replace": "            const noColonSemi = -1;"
+      }
+    ],
+    "spec": "tests/fixtures/event-parts-location-only.spec.js",
+    "grep": "shapes",
+    "expect": "fail"
+  },
+  {
+    "name": "one part after the type counts as a location",
+    "why": "\"live, early show\" is a detail, not a city; the 2-part minimum is what keeps it so.",
+    "edits": [
+      {
+        "find": "            const locationOnly = colonIdx === -1 && preParts.length >= 3 && !DATE_RE.test(preParts[1]);",
+        "replace": "            const locationOnly = colonIdx === -1 && preParts.length >= 2 && !DATE_RE.test(preParts[1]);"
+      }
+    ],
+    "spec": "tests/fixtures/event-parts-location-only.spec.js",
+    "grep": "shapes",
+    "expect": "fail"
+  },
+  {
+    "name": "the rendered row is not affected",
+    "why": "End-to-end: the Johnny 99 row's Event-* cells come from the same extractor through the synthetic-column pipeline.",
+    "edits": [
+      {
+        "find": "                if (locationOnly) locStr = preParts.slice(1).join(', ');",
+        "replace": "                if (locationOnly) locStr = '';"
+      }
+    ],
+    "spec": "tests/fixtures/event-parts-location-only.spec.js",
+    "grep": "the rendered row",
+    "expect": "fail"
+  }
+]

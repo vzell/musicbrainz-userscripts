@@ -469,9 +469,10 @@ themselves:
   whose state is not a two-letter code is tinted **light yellow with ⚠️**
   ("Highlight a missing state for USA/Canada as WARNING"): the state is
   missing (`The Roxy, West Hollywood, USA` puts the city in its place) or
-  written out. Note: the colon-less style guide form `live, Los Angeles, CA,
-  USA` is not split into City/State/Country by these columns; it lands in
-  Event-Detail.
+  written out. The style guide's colon-less form `live, Los Angeles, CA, USA`
+  is split into City/State/Country like a location after a colon: two or more
+  parts after the type with no date first are a location, a single part
+  (`live, early show`) stays Event-Detail.
 - **🌟 Rating info - Presence** — on every **Rating** column: `🌟 has a rating`
   and `☆ no rating`.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning

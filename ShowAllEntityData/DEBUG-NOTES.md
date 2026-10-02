@@ -17062,3 +17062,35 @@ the prefix, then `_dispatchInternalInputEvent()`). Regression spec
 selection and dispatching the keydown in one task. After the fix the tally
 spec ran 15/15 green. `scripts/mutations/filter-prefix-guard-delete.json`,
 2 entries, 2 caught.
+
+## 2026-10-02 — eventParts: the colon-less location form (branch feature/eventparts-location-only)
+
+**Bug:** `SyntheticColumnDataExtractor.eventParts` split a location only
+after ": ", so the recording style guide's own example
+"live, Los Angeles, CA, USA"
+(https://musicbrainz.org/doc/Style/Recording#Live_recordings) put
+"Los Angeles" into Event-Detail and left City/State/Country empty. Noted as
+a known limit when the "Recording comment info" sections shipped (9.99.1190),
+whose `_parseRecordingComment()` already read that form as `location`.
+
+**Fix:** with no colon, the text after a known type is a location when it has
+2+ ", " parts and does not start with a date — the same rule as the parser,
+so the 📊 sections and the Event-* columns agree — and goes through the
+unchanged USA/Canada/UK and right-to-left rules. A single part
+("live, early show") stays a detail; a date + location without a colon
+("live, 2004‐10‐02, Gund Arena, …") is a near miss and stays date + detail.
+Without a colon the "; …" tail is now split off before the comma split (it
+would otherwise stick to the country), which also makes "live; intro" type
+"live" + additional info "intro" instead of all additional info.
+
+**Trade-off, stated:** a free-text comment with a type and two comma parts
+("live, acoustic, solo") now reads as City "acoustic", Country "solo". No such
+comment is in the Bruce snapshot (85 comments), and the 📊 parser already
+made the same call.
+
+**Tests:** `tests/fixtures/event-parts-location-only.spec.js` (shapes via the
+new `__saTest.eventPartsOf()`, plus the rendered Johnny 99 row);
+`uvd-recording-comments.spec.js`'s Event-* counts updated (Country form
+abbr 11 → 12, Detail has 5 → 4 / none 12 → 13, "Los Angeles" no longer a
+detail). `scripts/mutations/event-parts-location-only.json`, 4 entries, 4
+caught.
