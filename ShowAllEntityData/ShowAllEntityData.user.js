@@ -57180,48 +57180,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Removes every jesus2099 artifact from one of THIS script's rendered
-     * tables (or from one captured source `<tr>`), so the consolidated table
-     * we render carries no third-party leftovers.
-     *
-     * Scope is deliberately limited to what is handed in — always a
-     * `table.tbl` we built, or a captured row destined for one. Everything
-     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
-     * the pending-edit toggles, its own toolbar) is left untouched: those are
-     * live features of the surrounding page, which must keep working exactly
-     * as before. The audit behind that boundary (scripts/scope-jesus2099-
-     * leaks.py against debug/work-rec.html and debug/therising.html) found
-     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
-     * outside our tables versus only `treleases` and the
-     * `jesus2099userjs81127*` tracklist family inside them.
-     *
-     * Three dispositions, in priority order:
-     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
-     *      already owned, with a load-bearing gate, elsewhere.
-     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
-     *   3. Anything else → marker class token(s) removed, element kept.
-     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
-     *      jesus2099 sets to its own script name — e.g.
-     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
-     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
-     *      except a `title` of our own, marked `data-mb-col-tip` (see
-     *      `_isOwnColumnTooltip()`). Both
-     *      are restricted to marker-carrying cells on purpose: native
-     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
-     *      (artist sort names, country abbreviations), and a `text-shadow`
-     *      with no jesus2099 marker belongs to some other third-party script
-     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
-     *      elements in debug/therising.html alone — verified via
-     *      scripts/check-text-shadow-owner.py), so neither may be stripped
-     *      blind.
-     *
-     * Idempotent: a second call finds nothing and is a no-op. Safe on a
-     * detached node, which is what the captured-source-row pass relies on.
-     *
-     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
-     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
-     */
-    /**
      * Adopts a jesus2099-leaked millisecond-precision Length value into
      * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
      * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
@@ -57273,6 +57231,48 @@ a { color: #1565c0; }`;
         return true;
     }
 
+    /**
+     * Removes every jesus2099 artifact from one of THIS script's rendered
+     * tables (or from one captured source `<tr>`), so the consolidated table
+     * we render carries no third-party leftovers.
+     *
+     * Scope is deliberately limited to what is handed in — always a
+     * `table.tbl` we built, or a captured row destined for one. Everything
+     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
+     * the pending-edit toggles, its own toolbar) is left untouched: those are
+     * live features of the surrounding page, which must keep working exactly
+     * as before. The audit behind that boundary (scripts/scope-jesus2099-
+     * leaks.py against debug/work-rec.html and debug/therising.html) found
+     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
+     * outside our tables versus only `treleases` and the
+     * `jesus2099userjs81127*` tracklist family inside them.
+     *
+     * Three dispositions, in priority order:
+     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
+     *      already owned, with a load-bearing gate, elsewhere.
+     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
+     *   3. Anything else → marker class token(s) removed, element kept.
+     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
+     *      jesus2099 sets to its own script name — e.g.
+     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
+     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
+     *      except a `title` of our own, marked `data-mb-col-tip` (see
+     *      `_isOwnColumnTooltip()`). Both
+     *      are restricted to marker-carrying cells on purpose: native
+     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
+     *      (artist sort names, country abbreviations), and a `text-shadow`
+     *      with no jesus2099 marker belongs to some other third-party script
+     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
+     *      elements in debug/therising.html alone — verified via
+     *      scripts/check-text-shadow-owner.py), so neither may be stripped
+     *      blind.
+     *
+     * Idempotent: a second call finds nothing and is a no-op. Safe on a
+     * detached node, which is what the captured-source-row pass relies on.
+     *
+     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
+     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
+     */
     function _stripJesus2099InTable(root) {
         const result = { removed: 0, stripped: 0 };
         if (!root || root.nodeType !== Node.ELEMENT_NODE) return result;

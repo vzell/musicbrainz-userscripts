@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Source comments only: the description of the jesus2099 clean-up function sat above the wrong function (the millisecond-length adopter, which already had its own). It now sits above the function it describes. No change in behaviour."
+        ]
+      }
+    ]
+  }
+]
