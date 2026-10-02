@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "0614b9a33a75036a3808be093624c454bd743c49",
-    "revisions_walked": 663
+    "head": "e00d902dda0290bcdd520ad88253f1d914b2eb55",
+    "revisions_walked": 664
   },
   "changes": [
     {
@@ -318,6 +318,8 @@
     "sa_enable_uvd_live_titles": true,
     "sa_enable_live_title_error_flag": true,
     "sa_enable_live_title_separator_flag": true,
+    "sa_enable_uvd_event_names": true,
+    "sa_uvd_event_name_columns": "",
     "sa_enable_length_deviation_section": true,
     "sa_enable_pending_edits_section": true,
     "sa_uniq_dropdown_visible_rows": 30,
@@ -409,6 +411,7 @@
     "sa_enable_findings_menus": true,
     "sa_findings_tint_allcaps": true,
     "sa_findings_tint_truncated": true,
+    "sa_findings_tint_event_style": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_low_quality": true,
     "sa_findings_tint_pending": true,
