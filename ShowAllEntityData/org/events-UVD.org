@@ -1,4 +1,5 @@
-* TODO Events in the "Event" column should also get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+* DONE Events in the "Event" column should also get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+** DONE i
 
 1.)
 
