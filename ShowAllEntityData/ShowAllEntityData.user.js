@@ -47516,11 +47516,17 @@ a { color: #1565c0; }`;
      * the field has focus.  Works identically for the global filter and column filters.
      *
      * Rules enforced:
-     *  • Backspace  — blocked when the cursor (or selection start) is at or before
-     *                 the end of the prefix, so the prefix characters can never be
-     *                 consumed by backwards deletion.
-     *  • Delete     — blocked when the selection end is within or before the prefix
-     *                 range, so forward deletion cannot eat prefix characters either.
+     *  • Backspace / Delete with a selection reaching past the prefix — deletes
+     *                 the selected user text: by the browser when the selection
+     *                 starts at the prefix boundary, by hand (prefix kept, plus an
+     *                 internal 'input' event so the filter re-runs) when it starts
+     *                 inside the prefix.
+     *  • Backspace  — otherwise blocked when the caret is at or before the end of
+     *                 the prefix, so the prefix characters can never be consumed
+     *                 by backwards deletion.
+     *  • Delete     — otherwise blocked when the selection end is within or before
+     *                 the prefix range, so forward deletion cannot eat prefix
+     *                 characters either.
      *  • ArrowLeft  — clamped: if moving left would place the caret inside the
      *                 prefix the caret is pinned just after the prefix instead.
      *                 Shift+ArrowLeft (extend selection leftward) is clamped the
@@ -47545,28 +47551,32 @@ a { color: #1565c0; }`;
         const selEnd   = input.selectionEnd;
 
         switch (e.key) {
-            case 'Backspace': {
-                // Block when cursor or selection start is within/at the prefix boundary
-                if (selStart <= pfxLen) {
-                    e.preventDefault();
-                    // Ensure caret is placed right after the prefix
-                    input.setSelectionRange(pfxLen, pfxLen);
-                }
-                break;
-            }
-
+            case 'Backspace':
             case 'Delete': {
-                // Block when the selection could consume prefix characters
-                if (selEnd <= pfxLen) {
+                // A selection reaching past the prefix deletes its user part.
+                // Starting AT the boundary ("Ctrl+A", rewritten below) the
+                // browser's own deletion is right; starting INSIDE the prefix
+                // (a select-all whose async selectionchange clamp has not run
+                // yet) only the part after the prefix goes — by hand, so the
+                // change must be announced: a bare `.value` write fires no
+                // 'input' event, and the filter would keep its old query.
+                // Before 2026-10-02 Backspace on any selection starting at or
+                // before the boundary was simply blocked, so Ctrl+A then
+                // Backspace did nothing.
+                if (selEnd > pfxLen && selEnd > selStart) {
+                    if (selStart < pfxLen) {
+                        e.preventDefault();
+                        input.value = prefix + input.value.slice(selEnd);
+                        input.setSelectionRange(pfxLen, pfxLen);
+                        _dispatchInternalInputEvent(input, { bubbles: true });
+                    }
+                    break;
+                }
+                // No selection past the prefix: Backspace at/before the
+                // boundary, or Delete with the whole selection inside the
+                // prefix, would eat prefix characters.
+                if ((e.key === 'Backspace' && selStart <= pfxLen) || (e.key === 'Delete' && selEnd <= pfxLen)) {
                     e.preventDefault();
-                    input.setSelectionRange(pfxLen, pfxLen);
-                } else if (selStart < pfxLen) {
-                    // Partial overlap: allow the Delete but pin the selection start
-                    e.preventDefault();
-                    // Remove only the portion after the prefix
-                    const after = input.value.slice(pfxLen);
-                    const deleteLen = selEnd - pfxLen;
-                    input.value = prefix + after.slice(deleteLen);
                     input.setSelectionRange(pfxLen, pfxLen);
                 }
                 break;
