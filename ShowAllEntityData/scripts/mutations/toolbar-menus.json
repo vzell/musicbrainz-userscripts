@@ -205,5 +205,31 @@
     "spec": "tests/fixtures/toolbar-menus.spec.js",
     "grep": "does not hang outside it",
     "expect": "fail"
+  },
+  {
+    "name": "the outside-click handler never closes the panel",
+    "why": "Guards the neutralPoint() rewrite (2026-10-02). The step used a fixed (5, 400), which only hit empty page because of the bare fixture's 8px UA <body> margin. Once Sticky Page Headers zeroes that margin, the point lands on a sticky-column <a> whose click never bubbles to document, so a fixed point would prove nothing about this handler.",
+    "edits": [
+      {
+        "find": "            if (panel.contains(e.target) || btn.contains(e.target) || e.target === btn) return;\n            close();\n        };",
+        "replace": "            if (panel.contains(e.target) || btn.contains(e.target) || e.target === btn) return;\n        };"
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "closes on Escape, on an outside click",
+    "expect": "fail"
+  },
+  {
+    "name": "the capture-phase mousedown dismiss is dropped",
+    "why": "Only the bubbling click is left, and the leave-page navigation guard swallows a link click with stopImmediatePropagation() when its confirm is cancelled, so the menu stays open. Reported 2026-10-02; the plain outside-click test cannot see this, because nothing swallows a click on empty page.",
+    "edits": [
+      {
+        "find": "        document.addEventListener('mousedown', closeIfOutside, true);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/toolbar-menus.spec.js",
+    "grep": "leave-page confirm is cancelled",
+    "expect": "fail"
   }
 ]

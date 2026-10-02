@@ -17094,3 +17094,129 @@ new `__saTest.eventPartsOf()`, plus the rendered Johnny 99 row);
 abbr 11 → 12, Detail has 5 → 4 / none 12 → 13, "Los Angeles" no longer a
 detail). `scripts/mutations/event-parts-location-only.json`, 4 entries, 4
 caught.
+
+## 2026-10-02 — Sticky Page Headers: port from the 9.99.1167 snapshot, and the engage-order bug (branch feature/sticky-areas)
+
+**Port:** `debug/1169/ShowAllEntityData_user.js` was written outside the repo
+against 9.99.1167 (commit `3b36ee0`). Its diff against that commit has 7
+hunks. Hunk 1 swaps the VZ_MBLibrary `@require` to the network URL, which
+main already carries since `bfe0c7b`, so it was dropped as a no-op. The other
+6 hunks (the `sa_enable_sticky_page_headers` setting, the `_sph*` module +
+`initStickyPageHeaders()`, two `scheduleStickyPageHeadersRefresh()` calls in
+the auto-resize paths, two `initStickyPageHeaders()` calls after
+`applyStickyHeaders()`) applied to 9.99.1193 with line offsets only, no fuzz.
+The patch is kept at `debug/1169/sticky-areas.patch` (gitignored). WIP.1/WIP.2
+came along unchanged as `ShowAllEntityData_CHANGELOG.wip.json`.
+
+**Bug found by the new spec:** `_sphRefresh()` measured offsets first and added
+`html.mb-sph-on` last. That class itself moves what was measured: `<body>`'s
+margins are zeroed and it turns fit-content wide. Measured on the
+series-releases fixture (UA `body { margin: 8px }`): the engaging pass wrote
+`--mb-sph-left: 8px` for the header, which then sat 8 px right of its natural
+spot (every content bar likewise 28 instead of 20). A second pass ~50 ms
+later corrected it, but only because widening `<body>` happens to fire the
+ResizeObserver. On real MB, `body { margin: auto }` with `width: auto` uses 0,
+so the visible effect there is probably nil, but the order was wrong for any
+engagement-dependent geometry. **Fix:** on the engage transition, set the
+class (and `_sph.active`) BEFORE collecting and reading, and re-read the
+extent. Costs one extra layout, once per engage; steady-state passes are
+unchanged.
+
+**Test traps worth knowing (all bare-fixture artefacts):**
+- the global filter input is focused shortly AFTER `waitForRenderComplete`, and
+  `focus()` scrolls it into view: a `scrollTo(far right)` landed at
+  scrollX 70. The spec waits for that focus, then blurs it.
+- a pinned bar is raised to z-index 107 while hovered or `:focus-within` (by
+  design). So right after a render, the data h2 (holding the focused GF input)
+  is at 107, and Playwright's pointer rests at (0, 0) on the MB header.
+- without MB's stylesheet the header's nested menu lists render expanded; made
+  natively sticky, it covers most of the viewport and is `:hover`ed wherever
+  the pointer is parked.
+- fixtures have no MB layout CSS at all: `#sidebar` collapsed is a 0-width
+  block below `#content`, so the translateX ghost-box guard cannot be exercised
+  (mutation recorded `"expect": "pass"`, live-only).
+
+**Open design question, not changed:** because the GF input is auto-focused
+after every render, the data h2 sits at z-index 107 until focus leaves it. With
+a vertically sticky MB header (jesus2099 "mb. STICKY HEADER", z-index 1), that
+bar paints over the header while scrolling down, the very case WIP.2 removed
+the base z-index for.
+
+**Tests:** `tests/fixtures/sticky-page-headers.spec.js`, 9 tests (pinning
+geometry with auto-resize on/off, margin-right, engaging-pass offsets, no
+ratchet, inert with sidebar expanded + positive control, setting off,
+natively sticky header, multi-table h3 bars). `scripts/mutations/sticky-page-headers.json`
+has 10 entries: 9 caught, 1 recorded blind spot.
+
+**Collateral, `npm run test:full` (858/859 on first run):**
+`toolbar-menus.spec.js` › "closes on … an outside click" clicked a fixed
+`(5, 400)`, which only ever hit the bare fixture's 8 px UA `<body>` margin.
+Engaged, that margin is 0, so the point lands on a sticky-column `<a>`, and the
+menu stayed open. **Not caused by this feature:** with
+`sa_enable_sticky_page_headers: false`, a click on that same link also leaves
+the menu open. The click reaches `document` in the capture phase but never
+bubbles there, so something on the table's cells stops propagation and the
+toolbar menus' bubble-phase outside-click listener never runs. Pre-existing and
+left alone; noted as a follow-up. The spec now clicks a hit-tested
+non-interactive point (`neutralPoint()`), and `scripts/mutations/toolbar-menus.json`
+gained an entry proving that step still catches a handler that never closes.
+
+**Perf (tests/MEASUREMENTS.org, same date):** on artist-events (4174 rows),
+ABBA with matched auth state: sort 1.11x (+~360 ms), initial header-count
+settle 1.07x, cold 📊 open probably 1.06x; filter unchanged. Cause not
+isolated (the refresh pass after every sort re-render vs. the layout cost of
+fit-content `<body>` + sticky bars). Open, pending a decision.
+
+## 2026-10-03 — Sticky Page Headers: the "sort regression", the menu that would not close, the focused-filter raise (branch feature/sticky-areas)
+
+**Perf, "sort 1.11x–1.18x slower" (tests/MEASUREMENTS.org, 2026-10-02/03):**
+that was a measurement artefact. `capture-interaction-perf.js` clicks the sort
+right after `waitForRenderComplete()`, while the feature is still engaging, so
+the one-time engagement work landed inside the sort timing. Settled first, sorting is not slower. The real
+cost is ~1.1 s of main-thread work once after each render of the 4174-row
+artist-events page. Fixed along the way:
+- `_sphOnResize()`: only WIDTH changes schedule a pass. A sort's re-render
+  changes heights only, and used to cost 4–7 passes, each forcing a full-table
+  layout.
+- `scheduleStickyPageHeadersRefresh()`: the pass runs in
+  `requestAnimationFrame` after the 60 ms debounce. Idle time was tried
+  first, but its timeout fires mid-sort (a chunked sort leaves no idle time),
+  and a pass forced mid-render cost 131 ms against 11–15 ms in a frame.
+- `@property … inherits: false` for `--mb-sph-body-native-minw`,
+  `--mb-sph-left`, `--mb-sph-maxw`, with the floor written on `<body>`, not
+  `<html>`. An inherited custom property on the root cost a 249 ms
+  full-document style recalc (trace: `UpdateLayoutTree` ← `_sphContentExtent`).
+- Tried and REVERTED: rounding the bars' right gutter to 64 px steps. On
+  artist-events `#page` is fit-content (`mb-full-width-stretching`), so a
+  bar's parent grows with the table, there is no overhang, and the passes
+  were writing nothing. No measurable benefit, so it did not ship.
+
+**Still open:** with the feature on, the layout + pre-paint frames that the
+header-count scan triggers cost about 2x (88–109 / 98–105 ms vs 41–47 ms), and
+the page keeps re-rendering about 1 s longer. Freezing the refresh passes
+leaves 700–860 ms; dropping `<body>` widening, sticky bars, the `:has()` rules
+or the sidebar rule one at a time does not remove it. Next step, if wanted:
+bisect per declaration (`left`, `max-width`, `position` on bars, each `<body>`
+declaration), or a DevTools "Layout/PrePaint" breakdown on a real page.
+
+**Menu stays open after a cancelled leave-page confirm:** found with an
+init-script wrapper around `Event.prototype.stopPropagation`/`stopImmediatePropagation`
+(stack captured per click). The leave-page guard (Guard 1, capture-phase
+click on `document`) calls `stopImmediatePropagation()` on a cancelled
+confirm, so the toolbar menus' bubbling outside-click listener never runs.
+Fix: the menus also dismiss on a capture-phase `mousedown` (`closeIfOutside`),
+the pattern the other in-place popups already use. The click listener stays,
+for keyboard activation. Test: `toolbar-menus.spec.js` "a link click whose
+leave-page confirm is cancelled still closes the menu". Not changed:
+`addDensityControl()`'s pull-down and the other click-dismissed menus have the
+same exposure.
+
+**Focused global filter raising the data h2:** the `:focus-within` raise now
+skips focus resting in a text field. The filter-history dropdown, which moves
+focus into its own text field, is raised by the open-popup rule. Tests: the
+two "stacking while the global filter has focus" tests, one of them a hit test
+against a vertically sticky header.
+
+**Mutation checks:** `scripts/mutations/sticky-page-headers.json` (16 entries:
+15 caught, 1 recorded live-only blind spot) and two `toolbar-menus.json`
+entries, all scoring as expected.

@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "8e4a2a6bdace5e13041ac5b4acda7c6bb6beb802",
-    "revisions_walked": 669
+    "head": "b3df0fe6f479e93c7a9f91fbdf9a939ccde705e2",
+    "revisions_walked": 671
   },
   "changes": [
     {
@@ -336,6 +336,7 @@
     "sa_enable_density_control": true,
     "sa_enable_sticky_headers": true,
     "sa_enable_sticky_columns": true,
+    "sa_enable_sticky_page_headers": true,
     "sa_ui_action_btn_style": "0.8em|2px 8px|24px|6px",
     "sa_ui_stop_btn_style": "#f44336|white|1px solid #d32f2f",
     "sa_ui_settings_btn_style": "#ECEFF1|#263238|1px solid #B0BEC5",

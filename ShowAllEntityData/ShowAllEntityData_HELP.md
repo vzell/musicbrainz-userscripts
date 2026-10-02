@@ -604,6 +604,14 @@ restore the original order. The indicator goes `⇅ → ▲ → ▼`.
 their right edge, and a column can never be dragged narrower than its own
 header needs.
 
+**Scrolling a wide table sideways** keeps the first (sticky) column and the page
+around it in place: the MusicBrainz top header, the entity
+header with its action bar, the tabs and every h2/h3 bar stay where they are
+instead of scrolling off to the left (*Enable Sticky Page Headers* in 📌 Table
+stickiness). This only engages while the page really is wider than the window.
+It stays off while the sidebar is expanded and columns are not auto-resized,
+because widening the page would push the sidebar off-screen.
+
 <details>
 <summary>Extracted, derived and injected columns</summary>
 
@@ -920,7 +928,7 @@ you automatically.
 | 🎨 Edits page                                   | Per-category edit colours, collapse defaults, diff colours, zebra striping                                                                                                                                 |
 | ⚡ Performance                                  | Debounce, sort chunk size, render and warning thresholds, history limit                                                                                                                                    |
 | 🎨 UI features                                  | Column visibility, density control, sticky headers, default hidden columns per page type                                                                                                                   |
-| 📌 Table stickiness                             | Sticky column and header configuration                                                                                                                                                                     |
+| 📌 Table stickiness                             | Sticky column and header configuration; sticky page headers (the MB header, tabs and h2/h3 bars stay put while a wide table scrolls sideways)                                                              |
 | 🖌️ Element UI styles                             | Action button base style, per-button colours (including the two halves of the ⚙️❓ pill), toolbar menu button colours, dividers, filter input styles, header cell colours                                   |
 | 🔗 Relationships column                         | Enable, auto-collapse threshold, cell load-state glyphs, whole-page fetching                                                                                                                               |
 | ↔️ Column resize                                 | Enable resizing; auto-resize on load                                                                                                                                                                       |

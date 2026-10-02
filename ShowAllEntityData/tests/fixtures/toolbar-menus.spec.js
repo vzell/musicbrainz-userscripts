@@ -56,6 +56,31 @@ async function loadAndRender(page, settingsOverride) {
     await waitForRenderComplete(page, { waitForAutoResize: false });
 }
 
+/**
+ * A viewport point whose hit-test target is plain, non-interactive page
+ * surface outside the toolbar — what "an outside click" means.
+ *
+ * This used to be a fixed `(5, 400)`, which only ever worked because it hit
+ * the bare fixture's 8px UA `<body>` margin. Sticky Page Headers zeroes that
+ * margin while engaged, and the same point then lands on a sticky-column
+ * `<a>` whose click never bubbles to `document` (true with that feature off
+ * as well), so the menu stayed open for a reason unrelated to the menu.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<?{x: number, y: number}>}
+ */
+const neutralPoint = (page) => page.evaluate(() => {
+    const INTERACTIVE = 'a, button, input, select, textarea, label, summary, th, td, '
+        + '[role="menu"], [onclick], #mb-show-all-controls-container';
+    for (let y = 5; y < innerHeight; y += 15) {
+        for (let x = 5; x < innerWidth; x += 15) {
+            const el = document.elementFromPoint(x, y);
+            if (el && !el.closest(INTERACTIVE)) return { x, y };
+        }
+    }
+    return null;
+});
+
 test.describe('the h1 toolbar menus', () => {
     test('each menu adopts the real buttons, keeping their ids', async ({ page }) => {
         await loadAndRender(page);
@@ -214,7 +239,9 @@ test.describe('the h1 toolbar menus', () => {
 
         await btn.click();
         await expect(panel).toBeVisible();
-        await page.mouse.click(5, 400);
+        const outside = await neutralPoint(page);
+        expect(outside, 'no non-interactive spot outside the menu in the viewport').not.toBeNull();
+        await page.mouse.click(outside.x, outside.y);
         await expect(panel).toBeHidden();
 
         // Activating a row closes the menu too — the conventional behaviour,
@@ -223,6 +250,29 @@ test.describe('the h1 toolbar menus', () => {
         await btn.click();
         await expect(panel).toBeVisible();
         await page.locator('#mb-export-btn').click();
+        await expect(panel).toBeHidden();
+    });
+
+    test('a link click whose leave-page confirm is cancelled still closes the menu', async ({ page }) => {
+        // The leave-page navigation guard is a capture-phase click listener
+        // on document. When its "You are about to leave this page" confirm is
+        // cancelled, it calls stopImmediatePropagation(), so a bubbling
+        // outside-click listener never hears that click and the menu used to
+        // stay open over the page the user chose to stay on. The menus now
+        // also dismiss on the capture-phase mousedown, which comes first.
+        await loadAndRender(page);
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
+
+        const panel = page.locator('#mb-data-menu-btn-panel');
+        await page.locator('#mb-data-menu-btn').click();
+        await expect(panel).toBeVisible();
+
+        const urlBefore = page.url();
+        await page.locator('table.tbl tbody td.mb-sticky-col a[href]').nth(5).click();
+        expect(dialogs.length, 'premise: the leave-page guard asked').toBe(1);
+        expect(dialogs[0]).toContain('leave this page');
+        expect(page.url(), 'premise: cancelling kept the page').toBe(urlBefore);
         await expect(panel).toBeHidden();
     });
 
