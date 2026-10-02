@@ -1,4 +1,5 @@
 * TODO sticky areas
+** DONE i
 
 1.)
 
@@ -18,3 +19,34 @@ Apply the patch to the userscript on the "feature/sticky-areas" branch
 
 I want to continue work on the stickyness features of my userscript. Currently the version has some implementations, but
 it was taken from the then current version "9.99.1167"
+
+** TODO findings
+
+I found the cause, and sorting is not actually slower: the regression I reported yesterday was a measuring mistake. Both issues are fixed. The fixes are committed as 6375998 and pushed to feature/sticky-areas; nothing is merged to main. The full fixture suite passes (864/864), and every planted defect in the two mutation lists is caught except the one known blind spot that only a live test can see.
+
+The sort cost. The perf script clicks sort immediately after the table renders, while the feature is still switching on. The one-time switch-on work therefore got counted as sort time. When I let the page settle for 2 s first, sorting with the feature on (median 3262 ms) is no slower than with it off (3763 ms).
+
+The real cost is about 1.1 s of extra main-thread work once after each render on the 4,174-row artist-events table, against ~0.15 s with the feature off. Of that:
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────────────┐
+│                                                             Part                                                             │                                  Status                                   │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────┤
+│ ~250 ms: one value the feature set on the page root was inherited by every element, forcing a full restyle of the whole page │ Fixed: its three internal style values no longer pass down to child       │
+│                                                                                                                              │ elements                                                                  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────┤
+│ Refresh passes on every sort (4–7 per sort, one up to 131 ms)                                                                │ Fixed: re-checks only when a width changes, and runs just before the next │
+│                                                                                                                              │  frame (now 11–36 ms each)                                                │
+├──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────────────┤
+│ Still open (~0.7 s): while the feature is on, the page redraws triggered by the column-header counts cost about twice as     │ Not isolated                                                              │
+│ much, and redrawing continues about 1 s longer                                                                               │                                                                           │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────────────┘
+
+For the open part I removed each suspect on its own: the full-width <body>, sticky bars, the :has() rules, the sidebar rule. None of them was it by itself. Pinning it down further means testing one style declaration at a time. I also tried a rounding change to bar widths, found it did nothing on this page, and took it out again.
+
+Issue 1: the data bar painting over a sticky MB header. The bar holding the global filter is no longer lifted above the sticky header just because the filter field has focus after a render. Focused buttons and open dropdowns, including filter history, still lift it. A test checks the actual overlap against a sticky header.
+
+Issue 2: menu stays open after clicking a link. The cause is the "You are about to leave this page" guard: when you cancel it, it blocks the click from reaching anything else, including the menu's close-on-outside-click. The 📦 Data and View menus now also close as soon as the mouse button goes down outside them. A test covers the cancel case. The density pull-down and other click-closed menus elsewhere have the same weakness; I left them alone.
+
+The analysis and all measurements are in tests/MEASUREMENTS.org and DEBUG-NOTES.md, and the probes and temporary worktrees are removed.
+
+Should I go after the remaining ~0.7 s, or is that acceptable for now? You'd need to re-import the script in Tampermonkey to try the two fixes live.
