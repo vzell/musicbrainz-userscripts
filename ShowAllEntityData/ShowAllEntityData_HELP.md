@@ -377,6 +377,12 @@ themselves:
     unknown part).
   - **🕗 Additional date info** — one flag plus one entry per text before the
     colon (`early show`, `late show`, …).
+  - **📍 Location completeness** — how many `, `-separated parts the location
+    after the colon has: `2 parts (Venue, City)`, `3 parts (Venue, City,
+    Country)`, `4 parts (Venue, City, State, Country)` or `5+ parts`. Only
+    some countries have states, so three parts can be complete too. The
+    script only counts parts; it cannot tell which one a short location
+    lacks.
   - **Separator ‐ only / - only / mixed** — one section per way the date's
     parts are separated: only the Unicode hyphen `‐` (U+2010, the form
     MusicBrainz normalizes to), only a plain `-`, or both. Each section repeats
@@ -389,6 +395,38 @@ themselves:
   the date. Red wins over yellow, and the cell's tooltip says what is wrong.
   Each tint has its own switch in ⚙️ Settings: "Live Titles: Flag Invalid Dates
   And Near Misses" and "Live Titles: Flag ASCII Date Separators".
+- **🏷️ Event name info** — on every **Event** column (artist, place and area
+  events, …), for names that link an event. Add more columns with
+  "Unique-Values Dropdown: Event Name Info On These Columns Too", or switch
+  the sections off with "Unique-Values Dropdown: Event Name Info" in ⚙️
+  Settings. Each name is checked against two conventions: the live bootleg
+  form `YYYY-MM-DD[, early show]: Venue, City, State, Country` above (for
+  example `2026‐10‐03: Merriweather Post Pavilion, Columbia, MD, USA`), and
+  the title forms of the [event style guide](https://musicbrainz.org/doc/Style/Event).
+  - **Form** — which form a name follows: `📅 live form`, `🎤 "[artist] at
+    [venue]"` (`KISS at Rod Laver Arena`), `🎪 "[festival] [N/YYYY]"`
+    (`Hellfest 2023, Day 1: Mainstage 01`, `Wacken Open Air 33`), `🚌
+    "[tour]: [city]"` (`End of the Road World Tour: Toronto`) or `✍️ free
+    form`. The live form is tried first, then "at", then the festival edition,
+    then the tour form, so `KISS at Lucca Summer Festival 2023` counts as "at".
+    A number after Day, Week, Night, Part, … is not an edition.
+  - **🧭 Style guide near miss** — names in none of the forms that almost are
+    one, with one entry per reason: `@` or `AT` for `at`, ` - ` for `: `, a
+    colon without exactly one space after it (`Tour:City`, `Tour : City`), an
+    abbreviated year (`Hellfest '23`) or a year glued to the name
+    (`Hellfest2024`). The check is by shape only, so a typo like `Tour ar
+    Estadio …` counts as free form.
+  - **🎪 Festival edition** — whether a festival name gives a year or a
+    running number.
+  - **Live form validity, near miss, date completeness, additional date info,
+    location completeness and the three Separator sections** — the same
+    entries as **Live title info**, for the event names in the live form.
+
+  The Event cells are marked like live titles: **light red with ❌** for an
+  impossible date or a live-form near miss, **light yellow with ⚠️** for a
+  plain `-` in the date (same two switches as live titles), and **light
+  yellow with ⚠️** for a style guide near miss ("Highlight event names that
+  almost follow the style guide as WARNING" in ⚙️ Settings → ⚠️ Findings).
 - **🌟 Rating info - Presence** — on every **Rating** column: `🌟 has a rating`
   and `☆ no rating`.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning
@@ -465,6 +503,8 @@ filter with a ✕ to remove it.
 | ⚠️     | Track and recording length differ by more than the threshold    | Release tracklist: Length, Recording length |
 | ⚠️     | Recording has no associated work                                | Release tracklist: Title                    |
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
+| ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
+| ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
@@ -476,6 +516,8 @@ filter with a ✕ to remove it.
 | ❌    | Video on a medium that cannot carry video                       | Release tracklist: Video                    |
 | ❌    | Live title with an impossible date                              | Release and release group titles            |
 | ❌    | Title starts with a date but is not a live title                | Release and release group titles            |
+| ❌    | Event name with an impossible date                              | Event columns                               |
+| ❌    | Event name starts with a date but is not in the live form       | Event columns                               |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →

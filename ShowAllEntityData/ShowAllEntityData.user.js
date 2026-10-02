@@ -985,17 +985,39 @@
             label: "Live Titles: Flag Invalid Dates And Near Misses",
             type: "checkbox",
             default: true,
-            description: "Tint a release/release group title cell light red with a ❌ when its live-title date is " +
-                         "impossible (month 13, day 42, 29 February in a non-leap year) or the title starts with a date " +
-                         "but does not follow \"DATE: Venue, City, …\"."
+            description: "Tint a release, release group or event title cell light red with a ❌ when its live-title " +
+                         "date is impossible (month 13, day 42, 29 February in a non-leap year) or the title starts with " +
+                         "a date but does not follow \"DATE: Venue, City, …\"."
         },
 
         sa_enable_live_title_separator_flag: {
             label: "Live Titles: Flag ASCII Date Separators",
             type: "checkbox",
             default: true,
-            description: "Tint a live title cell light yellow with a ⚠️ when its date uses a plain \"-\" between any " +
-                         "of its parts instead of the Unicode hyphen \"‐\" (U+2010) MusicBrainz normalizes titles to."
+            description: "Tint a live title cell (release, release group or event) light yellow with a ⚠️ when its " +
+                         "date uses a plain \"-\" between any of its parts instead of the Unicode hyphen \"‐\" (U+2010) " +
+                         "MusicBrainz normalizes titles to."
+        },
+
+        sa_enable_uvd_event_names: {
+            label: "Unique-Values Dropdown: Event Name Info",
+            type: "checkbox",
+            default: true,
+            description: "Offer the \"Event name info - …\" sections in the 📊 dropdown of \"Event\" columns: which " +
+                         "naming form each event name follows — the live bootleg form \"YYYY-MM-DD[, early show]: " +
+                         "Venue, City, State, Country\" or one of the https://musicbrainz.org/doc/Style/Event title forms " +
+                         "(\"[artist] at [venue]\", \"[tour]: [city]\", \"[festival] [N/YYYY]\") — near misses of both, " +
+                         "and, for the live form, the same validity, date, location and separator details as " +
+                         "\"Live title info\"."
+        },
+
+        sa_uvd_event_name_columns: {
+            label: "Unique-Values Dropdown: Event Name Info On These Columns Too",
+            type: "text",
+            default: "",
+            description: "Comma-separated column names that get the 📊 \"Event name info - …\" sections in addition " +
+                         "to every \"Event\" column. Only a cell whose name links an event counts. Leave empty for " +
+                         "Event columns only."
         },
 
         sa_enable_length_deviation_section: {
@@ -2028,6 +2050,15 @@
             default: true,
             description: 'Tint a title cell light yellow with a ⚠️ when the title ends in "…", the mark of a ' +
                          'title cut off at the 1,024-character limit or copied from a cut-off source.'
+        },
+
+        sa_findings_tint_event_style: {
+            label: 'Highlight event names that almost follow the style guide as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint an Event cell light yellow with a ⚠️ when the event name is in none of the ' +
+                         'https://musicbrainz.org/doc/Style/Event title forms but almost is one: "@" or "AT" for ' +
+                         '"at", " - " for ": ", a colon without one space after it, an abbreviated or glued year.'
         },
 
         sa_findings_tint_title_mismatch: {
@@ -24140,16 +24171,18 @@
      * @param {?string} text - The displayed title.
      * @returns {?{kind: ('valid'|'invalid'|'nearmiss'), shape: ?string,
      *   complete: boolean, sep: ?('unicode'|'ascii'|'mixed'), extra: ?string,
-     *   problems: string[]}} `null` when the title is not date-led. `shape`
-     *   spells the date's parts, e.g. `YYYY-MM-DD`, `YYYY-MM`, `MM-DD`,
-     *   `YYYY-??-??`; it, `sep` and `extra` are `null` on a near miss.
+     *   locParts: ?number, problems: string[]}} `null` when the title is not
+     *   date-led. `shape` spells the date's parts, e.g. `YYYY-MM-DD`,
+     *   `YYYY-MM`, `MM-DD`, `YYYY-??-??`. `locParts` counts the location's
+     *   ", "-separated parts (always 2 or more, see `_liveLocLabel()`).
+     *   `shape`, `sep`, `extra` and `locParts` are `null` on a near miss.
      */
     function _parseLiveTitle(text) {
         if (!text) return null;
         const full = text.trim();
         const c0 = full.charCodeAt(0);
         if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
-        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, problems: [problem] });
+        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, locParts: null, problems: [problem] });
         const m = _LIVE_TITLE_RE.exec(full);
         if (!m || !m[10].includes(', ')) {
             if (!_LIVE_DATE_LED_RE.test(full)) return null;
@@ -24185,8 +24218,28 @@
             complete: shape === 'YYYY-MM-DD',
             sep: !seps.length ? null : seps.every(s => s === '‐') ? 'unicode' : seps.every(s => s === '-') ? 'ascii' : 'mixed',
             extra: m[9] ? m[9].trim() : null,
+            locParts: m[10].split(', ').length,
             problems,
         };
+    }
+
+    /**
+     * Label of one "Location completeness" 📊 entry, from a live title's
+     * `locParts`. The guideline's full form is "Venue, City, State,
+     * Country", and only some countries have states, so both four and three
+     * parts look complete. Which part a shorter location lacks cannot be
+     * told without a gazetteer, so the entry names only the count and the
+     * parts that count usually stands for. The label doubles as the
+     * `liveloc:` mode value.
+     *
+     * @param {number} n - `_parseLiveTitle()`'s `locParts` (2 or more).
+     * @returns {string}
+     */
+    function _liveLocLabel(n) {
+        if (n <= 2) return '2 parts (Venue, City)';
+        if (n === 3) return '3 parts (Venue, City, Country)';
+        if (n === 4) return '4 parts (Venue, City, State, Country)';
+        return '5+ parts';
     }
 
     // Live-title checks read release and release group titles only — the
@@ -24207,6 +24260,176 @@
         const a = el.closest('a[href]');
         if (!a || !_LIVE_ENTITY_HREF_RE.test(a.getAttribute('href'))) return null;
         return _parseLiveTitle(el.textContent);
+    }
+
+    // Grammar of https://musicbrainz.org/doc/Style/Event, "Title" (checked
+    // 2026-10-02): "[main artist(s)] at [venue]" for a one-off event,
+    // "[tour name]: [city]" for a tour stop, "[festival] [123/YYYY]" for a
+    // festival edition. Event names are checked against the live bootleg
+    // form FIRST (org/events-UVD.org 1: the user's own events follow it),
+    // then against these, in this order — so "Hellfest 2023, Day 1:
+    // Mainstage 01" is a festival, not a tour stop, and "KISS at Lucca Summer
+    // Festival 2023" is a one-off. The check is by shape only: "Monsters of
+    // Rock Tour ar Estadio …" (a typo) reads as free form.
+    const _EVENT_ONEOFF_RE   = /^.+? at .+$/;
+    const _EVENT_FESTIVAL_RE = /^(.+?) (\d{4}|\d{1,3})(?=$|, |: )/;
+    // A number after one of these words counts a day, week, … — not an
+    // edition ("The KISS Kruise XI, Week 2").
+    const _EVENT_NOT_EDITION_RE = /(?:^|\s)(?:Day|Week|Night|Part|Pt\.|Vol\.|No\.|Show|Stage|Round|Leg)$/i;
+    // No space before the colon, exactly one after it ("Tour : City" and
+    // "Tour:  City" are near misses).
+    const _EVENT_TOUR_RE     = /^[^:]*[^:\s]: [^:\s][^:]*$/;
+    // Style-guide near misses: a name in none of the forms above that
+    // almost is one. First match wins; the text is the 📊 value and the
+    // cell tooltip.
+    const _EVENT_STYLE_NEAR_MISSES = [
+        [/(?:^|\s)@(?:\s|$)/, '"@" instead of " at "'],
+        [/\s(?:At|AT)\s/, '" At " or " AT " instead of " at "'],
+        [/^[^:]+? [-–—] [^:]+$/, '" - " instead of " at " or ": "'],
+        [/(?<!\d):(?! \S)| :/, 'colon not followed by exactly one space'],
+        [/\s'\d{2}(?=$|[\s,:])/, 'abbreviated year ("\'23") instead of YYYY'],
+        [/[A-Za-z]\d{4}(?=$|[\s,:])/, 'year glued to the name'],
+    ];
+
+    /**
+     * Classifies an event name for the 📊 "Event name info - …" sections and
+     * the event-name findings: the live bootleg form (via
+     * `_parseLiveTitle()`, whose verdict rides along as `live`), one of the
+     * three https://musicbrainz.org/doc/Style/Event title forms, a near miss
+     * of those, or free form. Pure — no DOM — so counting, matching and
+     * flagging agree by construction.
+     *
+     * @param {?string} text - The displayed event name.
+     * @returns {?{form: ('live'|'oneoff'|'festival'|'tour'|'nearmiss'|'other'),
+     *   live: ?ReturnType<typeof _parseLiveTitle>, edition: ?string,
+     *   problem: ?string}} `null` for an empty name. `live` is set only for
+     *   `form: 'live'` (a live near miss included); `edition` (`'year
+     *   (YYYY)'`/`'number (N)'`) only for a festival; `problem` only for a
+     *   style-guide near miss.
+     */
+    function _parseEventName(text) {
+        const full = (text || '').trim();
+        if (!full) return null;
+        const out = (form, extra) => Object.assign({ form, live: null, edition: null, problem: null }, extra);
+        const live = _parseLiveTitle(full);
+        if (live) return out('live', { live });
+        if (_EVENT_ONEOFF_RE.test(full)) return out('oneoff');
+        const fm = _EVENT_FESTIVAL_RE.exec(full);
+        if (fm && !_EVENT_NOT_EDITION_RE.test(fm[1])) {
+            return out('festival', { edition: fm[2].length === 4 ? 'year (YYYY)' : 'number (N)' });
+        }
+        if (_EVENT_TOUR_RE.test(full)) return out('tour');
+        const miss = _EVENT_STYLE_NEAR_MISSES.find(([re]) => re.test(full));
+        if (miss) return out('nearmiss', { problem: miss[1] });
+        return out('other');
+    }
+
+    // An event's own page, not its /event-art sub-page (the EAA icon link
+    // that precedes the name in an "Event" cell carries no <bdi>, but the
+    // exact match keeps that from mattering).
+    const _EVENT_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/event\/[0-9a-f-]{36}(?:[?#]|$)/;
+
+    /**
+     * Column names that get the 📊 "Event name info - …" sections: every
+     * "Event" column plus `sa_uvd_event_name_columns` (comma-separated).
+     *
+     * @returns {Set<string>}
+     */
+    function _uvdEventNameColumns() {
+        const raw = Lib.settings.sa_uvd_event_name_columns ?? '';
+        const out = new Set(String(raw).split(',').map(s => s.trim()).filter(Boolean));
+        out.add('Event');
+        return out;
+    }
+
+    /**
+     * Parses an event cell with `_parseEventName()`: the first `<bdi>` inside
+     * a link, outside a `.comment`, when that link is an event's own page;
+     * `null` for anything else. Reads `textContent`, so a filter highlight
+     * inside the name is read straight through.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @returns {?ReturnType<typeof _parseEventName>}
+     */
+    function _findCellEventName(cell) {
+        if (!cell) return null;
+        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
+            if (bdi.closest('.comment')) continue;
+            return _EVENT_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? _parseEventName(bdi.textContent) : null;
+        }
+        return null;
+    }
+
+    /**
+     * Whether an `_parseEventName()` verdict matches one "Event name info"
+     * 📊 mode. The `evlive…` modes are the "Live title info" modes with an
+     * `ev` prefix, so they reuse `_liveTitleMatchesMode()` rather than a
+     * copy of it.
+     *
+     * @param {ReturnType<typeof _parseEventName>} ev - Non-null.
+     * @param {string} mode - `evform-<form>`, `evstylemiss:<problem>`,
+     *   `evedition:<edition>` or `ev` + a live-title mode.
+     * @returns {boolean}
+     */
+    function _eventNameMatchesMode(ev, mode) {
+        if (mode.startsWith('evform-'))     return ev.form === mode.slice(7);
+        if (mode.startsWith('evstylemiss:')) return ev.problem === mode.slice(12);
+        if (mode.startsWith('evedition:'))  return ev.edition === mode.slice(10);
+        if (mode.startsWith('evlive'))      return !!ev.live && _liveTitleMatchesMode(ev.live, mode.slice(2));
+        return false;
+    }
+
+    /**
+     * Whether a 📊 mode is one of the "Event name info" modes
+     * `_eventNameMatchesMode()` answers.
+     *
+     * @param {string} mode
+     * @returns {boolean}
+     */
+    function _isEventNameMode(mode) {
+        return mode.startsWith('evform-') || mode.startsWith('evlive') ||
+            mode.startsWith('evstylemiss:') || mode.startsWith('evedition:');
+    }
+
+    /**
+     * A fresh counter set for one family of "… - Live …" 📊 sections, filled
+     * by `_countLiveVerdict()`.
+     *
+     * @returns {object}
+     */
+    function _newLiveCounts() {
+        const facets = () => ({ all: 0, valid: 0, invalid: 0, partial: 0, extra: 0 });
+        return {
+            valid: 0, invalid: 0, nearMiss: 0, complete: 0, partial: 0, extra: 0,
+            shape: new Map(), extraValue: new Map(), loc: new Map(),
+            sep: { unicode: facets(), ascii: facets(), mixed: facets() },
+        };
+    }
+
+    /**
+     * Adds one `_parseLiveTitle()` verdict to a `_newLiveCounts()` set — the
+     * one counting rule the release/RG and the event sections share, kept in
+     * step with `_liveTitleMatchesMode()` (same facets).
+     *
+     * @param {object} counts - From `_newLiveCounts()`.
+     * @param {?ReturnType<typeof _parseLiveTitle>} live
+     */
+    function _countLiveVerdict(counts, live) {
+        if (!live) return;
+        if (live.kind === 'nearmiss') { counts.nearMiss++; return; }
+        const bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
+        counts[live.kind]++;
+        if (live.complete) counts.complete++; else counts.partial++;
+        bump(counts.shape, live.shape);
+        bump(counts.loc, _liveLocLabel(live.locParts));
+        if (live.extra) { counts.extra++; bump(counts.extraValue, live.extra); }
+        if (live.sep) {
+            const f = counts.sep[live.sep];
+            f.all++;
+            f[live.kind]++;
+            if (!live.complete) f.partial++;
+            if (live.extra) f.extra++;
+        }
     }
 
     // MusicBrainz's release statuses, as a sub-table heading names them
@@ -24275,7 +24498,8 @@
      * in step with the counting loop in `openUniqDrop()` (same facets).
      *
      * @param {ReturnType<typeof _parseLiveTitle>} live - Non-null.
-     * @param {string} mode - `live-*`, `liveshape:<shape>` or `liveextra:<text>`.
+     * @param {string} mode - `live-*`, `liveshape:<shape>`, `liveextra:<text>`
+     *   or `liveloc:<label>` (`_liveLocLabel()`).
      * @returns {boolean}
      */
     function _liveTitleMatchesMode(live, mode) {
@@ -24283,6 +24507,7 @@
         if (live.kind === 'nearmiss') return false;
         if (mode.startsWith('liveshape:')) return live.shape === mode.slice(10);
         if (mode.startsWith('liveextra:')) return live.extra === mode.slice(10);
+        if (mode.startsWith('liveloc:'))   return _liveLocLabel(live.locParts) === mode.slice(8);
         const sm = _LIVE_SEP_MODE_RE.exec(mode);
         if (sm) {
             if (live.sep !== sm[1]) return false;
@@ -24299,21 +24524,39 @@
 
     /**
      * Indices of `table`'s "Title info" columns — every "Title" column plus
-     * `sa_uvd_title_info_columns`, the same gate `openUniqDrop()` uses — that
-     * the live-title cell flags read.
+     * `sa_uvd_title_info_columns`, the same gate `openUniqDrop()` uses — and
+     * of its event-name columns (`_uvdEventNameColumns()`), which the
+     * live-title cell flags read.
      *
      * @param {HTMLTableElement} table
      * @returns {number[]}
      */
     function _liveTitleColIdxs(table) {
         const names = _uvdTitleInfoColumns();
+        const eventNames = _uvdEventNameColumns();
         const out = [];
         const count = table.querySelectorAll('thead tr:first-child th').length;
         for (let i = 0; i < count; i++) {
             const name = _resolveColHeaderName(table, i);
-            if (name === 'Title' || names.has(name)) out.push(i);
+            if (name === 'Title' || names.has(name) || eventNames.has(name)) out.push(i);
         }
         return out;
+    }
+
+    /**
+     * The live-title verdict a cell's flag is stamped from: a release or
+     * release group title (`_findCellLiveTitle()`), else an event name in
+     * the live bootleg form (`_findCellEventName()`). A cell without an event
+     * link — every release Title cell — skips the second lookup.
+     *
+     * @param {?HTMLTableCellElement} td
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _findCellAnyLiveTitle(td) {
+        const live = _findCellLiveTitle(td);
+        if (live || !td || !td.querySelector('a[href*="/event/"]')) return live;
+        const ev = _findCellEventName(td);
+        return ev ? ev.live : null;
     }
 
     /**
@@ -24330,7 +24573,7 @@
         colIdxs.forEach(i => {
             const td = row.cells[i];
             if (!td) return;
-            const flag = _liveTitleFlag(_findCellLiveTitle(td));
+            const flag = _liveTitleFlag(_findCellAnyLiveTitle(td));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
                 td.title = flag.tip;
@@ -24468,6 +24711,26 @@
             tint: () => false,
         },
         {
+            id: 'event-live-sep', level: 'warn', glyph: '➖', scope: 'cell',
+            label: 'Event name date uses "-" instead of "‐"',
+            tip: 'An event name in the live form "YYYY-MM-DD: Venue, City, …" whose date separates its parts with a plain "-" instead of "‐" (U+2010), the hyphen MusicBrainz normalizes names to.',
+            cols: (name, plan) => plan.eventName(name),
+            test: cell => {
+                const ev = _findCellEventName(cell);
+                const live = ev && ev.live;
+                return !!live && (live.sep === 'ascii' || live.sep === 'mixed') && live.kind === 'valid';
+            },
+            tint: () => false,
+        },
+        {
+            id: 'event-style-nearmiss', level: 'warn', glyph: '🧭', scope: 'cell',
+            label: 'Event name almost follows the style guide',
+            tip: 'An event name in none of the https://musicbrainz.org/doc/Style/Event title forms ("[artist] at [venue]", "[tour]: [city]", "[festival] [N/YYYY]") that almost is one: "@" or "AT" for "at", " - " for ": ", a colon without one space after it, an abbreviated or glued year.',
+            cols: (name, plan) => plan.eventName(name),
+            test: cell => { const ev = _findCellEventName(cell); return !!ev && ev.form === 'nearmiss'; },
+            tint: _findingTintSetting('sa_findings_tint_event_style'),
+        },
+        {
             id: 'allcaps', level: 'warn', glyph: '🔠', scope: 'cell',
             label: 'Title in ALL UPPERCASE',
             tip: 'A title of at least four letters, all upper case, which the style guide\'s capitalization rules disallow (https://musicbrainz.org/doc/Style/Titles).',
@@ -24578,6 +24841,22 @@
             tint: () => false,
         },
         {
+            id: 'event-live-invalid', level: 'error', glyph: '📆', scope: 'cell',
+            label: 'Event name with an impossible date',
+            tip: 'An event name in the live form "YYYY-MM-DD: Venue, City, …" whose date cannot exist (month 13, day 42, 29 February in a non-leap year).',
+            cols: (name, plan) => plan.eventName(name),
+            test: cell => { const ev = _findCellEventName(cell); return !!ev && !!ev.live && ev.live.kind === 'invalid'; },
+            tint: () => false,
+        },
+        {
+            id: 'event-live-nearmiss', level: 'error', glyph: '❗', scope: 'cell',
+            label: 'Event name starts with a date but is not in the live form',
+            tip: 'An event name that starts with a date but does not follow "YYYY-MM-DD[, early show]: Venue, City, State, Country" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs): wrong date notation, no ": " after the date, or a location without ", ".',
+            cols: (name, plan) => plan.eventName(name),
+            test: cell => { const ev = _findCellEventName(cell); return !!ev && !!ev.live && ev.live.kind === 'nearmiss'; },
+            tint: () => false,
+        },
+        {
             id: 'live-credit-date', level: 'error', glyph: '📅', scope: 'row', inlineGlyph: true,
             label: 'Live credit date differs from the recording date',
             tip: 'A live recording\'s credit carries a date that differs from the recording date. Can sit in several credit columns, so this filters by row.',
@@ -24633,18 +24912,21 @@
      *
      * @param {HTMLTableElement} table
      * @returns {{byCol: Map<number, object[]>, rowWide: object[], recOfIdx: number,
-     *            titleInfo: function(string): boolean, nameOf: function(number): string}}
+     *            titleInfo: function(string): boolean, eventName: function(string): boolean,
+     *            nameOf: function(number): string}}
      */
     function _findingPlanForTable(table) {
         const count = table.querySelectorAll('thead tr:first-child th').length;
         const names = [];
         for (let i = 0; i < count; i++) names.push(_resolveColHeaderName(table, i));
         const titleCols = _uvdTitleInfoColumns();
+        const eventCols = _uvdEventNameColumns();
         const plan = {
             byCol: new Map(),
             rowWide: [],
             recOfIdx: _findRecOfWorkColIdx(table),
             titleInfo: name => name === 'Title' || titleCols.has(name),
+            eventName: name => eventCols.has(name),
             nameOf: i => names[i] || '',
         };
         _activeFindings().forEach(f => {
@@ -26826,11 +27108,17 @@
             // _findCellRatingPresence().
             return !!cell && _findCellRatingPresence(cell) === mode.slice(7);
         }
-        if (mode.startsWith('live-') || mode.startsWith('liveshape:') || mode.startsWith('liveextra:')) {
+        if (mode.startsWith('live-') || mode.startsWith('liveshape:') || mode.startsWith('liveextra:') || mode.startsWith('liveloc:')) {
             // "Live title info - …" — one _parseLiveTitle() verdict per
             // release/release group title, see _liveTitleMatchesMode().
             const live = _findCellLiveTitle(cell);
             return !!live && _liveTitleMatchesMode(live, mode);
+        }
+        if (_isEventNameMode(mode)) {
+            // "Event name info - …" — one _parseEventName() verdict per
+            // event name, see _eventNameMatchesMode().
+            const ev = _findCellEventName(cell);
+            return !!ev && _eventNameMatchesMode(ev, mode);
         }
         if (mode === 'title-no-work' || mode === 'title-has-work') {
             // Fixed flags — "Title info - Work": whether the SAME row's
@@ -48068,9 +48356,29 @@ a { color: #1565c0; }`;
         liveNearMiss:    { label: 'Live title info - Near miss',             glyph: '❗' },
         liveDate:        { label: 'Live title info - Date completeness',     glyph: '📅' },
         liveExtra:       { label: 'Live title info - Additional date info',  glyph: '🕗' },
+        liveLoc:         { label: 'Live title info - Location completeness', glyph: '📍' },
         liveSepUnicode:  { label: 'Live title info - Separator ‐ only',      glyph: '‐' },
         liveSepAscii:    { label: 'Live title info - Separator - only',      glyph: '⚠️' },
         liveSepMixed:    { label: 'Live title info - Separator mixed',       glyph: '⚠️' },
+        // "Event name info - …" — event names in every "Event" column (plus
+        // sa_uvd_event_name_columns), classified by `_parseEventName()`:
+        // the live bootleg form, or one of the Style/Event title forms
+        // (org/events-UVD.org). Behind `sa_enable_uvd_event_names`. The
+        // `evLive*` sections are the "Live title info" ones for event names:
+        // their modes are the live modes with an `ev` prefix
+        // (`_eventNameMatchesMode()`), filled in by the loop below
+        // MB_UNIQ_MODE_TO_SECTION for the Separator three.
+        evForm:            { label: 'Event name info - Form',                     glyph: '🏷️' },
+        evStyleNearMiss:   { label: 'Event name info - Style guide near miss',    glyph: '🧭' },
+        evFestEdition:     { label: 'Event name info - Festival edition',         glyph: '🎪' },
+        evLiveValidity:    { label: 'Event name info - Live form validity',       glyph: '🎤' },
+        evLiveNearMiss:    { label: 'Event name info - Live form near miss',      glyph: '❗' },
+        evLiveDate:        { label: 'Event name info - Date completeness',        glyph: '📅' },
+        evLiveExtra:       { label: 'Event name info - Additional date info',     glyph: '🕗' },
+        evLiveLoc:         { label: 'Event name info - Location completeness',    glyph: '📍' },
+        evLiveSepUnicode:  { label: 'Event name info - Separator ‐ only',         glyph: '‐' },
+        evLiveSepAscii:    { label: 'Event name info - Separator - only',         glyph: '⚠️' },
+        evLiveSepMixed:    { label: 'Event name info - Separator mixed',          glyph: '⚠️' },
         // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
         // in the open column (mode `finding-<id>`, read off the
         // data-mb-findings attribute stampFindings() writes). The entries the
@@ -48306,6 +48614,10 @@ a { color: #1565c0; }`;
         'title-truncated': 'titleStyle', 'title-ocremix': 'titleStyle', 'title-allcaps': 'titleStyle',
         'live-valid': 'liveValidity', 'live-invalid': 'liveValidity', 'live-nearmiss': 'liveNearMiss',
         'live-complete': 'liveDate', 'live-partial': 'liveDate', 'live-extra': 'liveExtra',
+        'evform-live': 'evForm', 'evform-oneoff': 'evForm', 'evform-festival': 'evForm',
+        'evform-tour': 'evForm', 'evform-other': 'evForm', 'evform-nearmiss': 'evStyleNearMiss',
+        'evlive-valid': 'evLiveValidity', 'evlive-invalid': 'evLiveValidity', 'evlive-nearmiss': 'evLiveNearMiss',
+        'evlive-complete': 'evLiveDate', 'evlive-partial': 'evLiveDate', 'evlive-extra': 'evLiveExtra',
         'rating-has': 'ratingPresence', 'rating-none': 'ratingPresence',
         'locale-primary': 'localePrimary', 'locale-not-primary': 'localePrimary',
         'instrument-has-comment': 'instrumentHasComment',
@@ -48316,9 +48628,12 @@ a { color: #1565c0; }`;
         'rel-state-pending': 'relLoadState', 'rel-state-has': 'relLoadState',
         'rel-state-none': 'relLoadState', 'rel-state-error': 'relLoadState',
     };
-    // "Live title info - Separator …": 3 kinds × 5 facets, one section per kind.
+    // "Live title info - Separator …": 3 kinds × 5 facets, one section per
+    // kind — and the same for "Event name info - Separator …" (`ev` prefix).
     _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet => {
-        MB_UNIQ_MODE_TO_SECTION[`live-sep-${sep}-${facet}`] = `liveSep${sep[0].toUpperCase()}${sep.slice(1)}`;
+        const kind = `${sep[0].toUpperCase()}${sep.slice(1)}`;
+        MB_UNIQ_MODE_TO_SECTION[`live-sep-${sep}-${facet}`] = `liveSep${kind}`;
+        MB_UNIQ_MODE_TO_SECTION[`evlive-sep-${sep}-${facet}`] = `evLiveSep${kind}`;
     }));
     // "Findings - Warning/Error": one `finding-<id>` mode per FINDINGS entry.
     FINDINGS.forEach(f => {
@@ -48387,7 +48702,9 @@ a { color: #1565c0; }`;
         titleageadded: 'titleAgeAdded', titleagemodified: 'titleAgeModified',
         titlecount: 'titleCount', titlepart: 'titlePart', titleeti: 'titleEti',
         titleseries: 'titleSeries', titleformat: 'titleFormat',
-        liveshape: 'liveDate', liveextra: 'liveExtra',
+        liveshape: 'liveDate', liveextra: 'liveExtra', liveloc: 'liveLoc',
+        evliveshape: 'evLiveDate', evliveextra: 'evLiveExtra', evliveloc: 'evLiveLoc',
+        evstylemiss: 'evStyleNearMiss', evedition: 'evFestEdition',
     };
 
     /**
@@ -51546,8 +51863,9 @@ a { color: #1565c0; }`;
                     // 'partofseriesnumber:'/'trackspermedium:'/'trackstotal:'/'lengthbucket:'/'lengthdeviation-*'/'lengthlive-yes'/'eventdate:'/'tagcount:'/
                     // 'timeofday:'/'reltypecredit:'/'length-ms-precise'/'length-ms-whole' (never 'length-ms-none' — no text to mark;
                     // likewise never 'lenflag-*'/'videomedium-*', whose match is an attribute the cell's own tint already shows,
-                    // nor 'rating-*', a 'live-*'/'liveshape:'/'liveextra:' live-title verdict (the data-mb-live-flag tint
-                    // marks those) or a whole-title 'title-*' flag; only 'title-medley' and the 'titlepart:'/'titleeti:'/
+                    // nor 'rating-*', a 'live-*'/'liveshape:'/'liveextra:'/'liveloc:' live-title verdict (the data-mb-live-flag tint
+                    // marks those), an 'evform-*'/'evlive*'/'evstylemiss:'/'evedition:' event-name verdict
+                    // (whole-name, like the live ones) or a whole-title 'title-*' flag; only 'title-medley' and the 'titlepart:'/'titleeti:'/
                     // 'titleseries:'/'titleformat:' values mark text — see _highlightTitleAnatomyMatch)/
                     // 'entitycancelled:'/'eventcancelled:'/'date-complete'/'date-partial'/'date-range'/'datedecade:'/'datemonth:'/
                     // 'formatsize:'/'formatcount:'/'formatcombo:'/'formattype:'/
@@ -63821,12 +64139,15 @@ a { color: #1565c0; }`;
         // columns) — see _parseLiveTitle(). Counted unconditionally, like
         // _ta; sa_enable_uvd_live_titles gates only the rendering. `sep`
         // holds one facet counter per separator kind, for the three
-        // per-separator sections.
-        const _liveFacets = () => ({ all: 0, valid: 0, invalid: 0, partial: 0, extra: 0 });
-        const _tl = _uniqCacheHit ? _uniqCacheHit.liveTitleCounts : {
-            valid: 0, invalid: 0, nearMiss: 0, complete: 0, partial: 0, extra: 0,
-            shape: new Map(), extraValue: new Map(),
-            sep: { unicode: _liveFacets(), ascii: _liveFacets(), mixed: _liveFacets() },
+        // per-separator sections (see _newLiveCounts()).
+        const _tl = _uniqCacheHit ? _uniqCacheHit.liveTitleCounts : _newLiveCounts();
+        // "Event name info - …" (event names in the event-name columns) —
+        // see _parseEventName(). Same rules as _tl: counted
+        // unconditionally, sa_enable_uvd_event_names gates the rendering.
+        // `live` is a _newLiveCounts() set for the live-form names.
+        const _te = _uniqCacheHit ? _uniqCacheHit.eventNameCounts : {
+            form: { live: 0, oneoff: 0, festival: 0, tour: 0, nearmiss: 0, other: 0 },
+            styleMiss: new Map(), edition: new Map(), live: _newLiveCounts(),
         };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
@@ -63964,6 +64285,10 @@ a { color: #1565c0; }`;
         // sa_uvd_title_info_columns. _findCellTitleEl() then counts only
         // cells whose title links a recording/release/RG/work/track.
         const isTitleInfoCol = isTitleCol || _uvdTitleInfoColumns().has(_colHeaderName);
+        // "Event name info - …": every Event column, plus the columns named
+        // in sa_uvd_event_name_columns; _findCellEventName() then counts
+        // only cells whose name links an event.
+        const isEventNameCol = _uvdEventNameColumns().has(_colHeaderName);
         const isCatalogCol = _colHeaderName === 'Catalog#';
         const isEventCol   = _colHeaderName === 'Event';
         // Column-name gate for the native/synthetic "ISRCs" column's
@@ -64228,22 +64553,16 @@ a { color: #1565c0; }`;
                     const _hasWork = _rowHasRecordingOfWork(row, _recOfWorkIdx);
                     if (_hasWork === true) _ta.hasWork++;
                     else if (_hasWork === false) _ta.noWork++;
-                    const _l = _findCellLiveTitle(cell);
-                    if (_l && _l.kind === 'nearmiss') {
-                        _tl.nearMiss++;
-                    } else if (_l) {
+                    _countLiveVerdict(_tl, _findCellLiveTitle(cell));
+                }
+                if (isEventNameCol) {
+                    const _ev = _findCellEventName(cell);
+                    if (_ev) {
                         const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
-                        _tl[_l.kind]++;
-                        if (_l.complete) _tl.complete++; else _tl.partial++;
-                        _bump(_tl.shape, _l.shape);
-                        if (_l.extra) { _tl.extra++; _bump(_tl.extraValue, _l.extra); }
-                        if (_l.sep) {
-                            const _f = _tl.sep[_l.sep];
-                            _f.all++;
-                            _f[_l.kind]++;
-                            if (!_l.complete) _f.partial++;
-                            if (_l.extra) _f.extra++;
-                        }
+                        _te.form[_ev.form]++;
+                        if (_ev.problem) _bump(_te.styleMiss, _ev.problem);
+                        if (_ev.edition) _bump(_te.edition, _ev.edition);
+                        _countLiveVerdict(_te.live, _ev.live);
                     }
                 }
                 if (isRatingCol) {
@@ -65781,7 +66100,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, liveTitleCounts: _tl, ratingHasCount, ratingNoneCount, findingCounts,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, eventNameCounts: _te, ratingHasCount, ratingNoneCount, findingCounts,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -66242,7 +66561,7 @@ a { color: #1565c0; }`;
          * deliberately, rather than adding a second, parallel filter path
          * for parameterized values.
          *
-         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
+         * @param {'attr'|'task'|'date'|'instrument'|'altname'|'name'|'comment'|'alias'|'joinphrase'|'namevariation'|'formatsize'|'formatcount'|'formatcombo'|'formattype'|'recattr'|'workattrid'|'revcountry'|'revdate'|'revweekday'|'eventtype'|'eventcountry'|'countryname'|'countrycode'|'trackspermedium'|'trackstotal'|'catalogprefix'|'lengthbucket'|'timeofday'|'reltypecredit'|'partofseriesname'|'partofseriesdate'|'partofseriesnumber'|'role'|'roletoken'|'arttype'|'artcomment'|'eventdate'|'titleageadded'|'titleagemodified'|'titlecount'|'titlepart'|'titleeti'|'titleseries'|'titleformat'|'liveshape'|'liveextra'|'liveloc'|'evliveshape'|'evliveextra'|'evliveloc'|'evstylemiss'|'evedition'|'tagcount'|'entitycancelled'|'eventcancelled'|'editordeleted'|'editorrecordedname'|'editormembership'|'editorcomment'|'editoractivefor'|'editoractivesince'|'localelanguage'|'datedecade'|'datemonth'|'dateyear'|'dateweekday'} kind
          * @param {string} value  - The exact attribute word, task string,
          *   date/date-range annotation, instrument type, credited-as
          *   alternate name, entity name, comment, alias, event role, CAA/EAA
@@ -66388,6 +66707,11 @@ a { color: #1565c0; }`;
                  : kind === 'titleformat'   ? '» format: '
                  : kind === 'liveshape'     ? '» date: '
                  : kind === 'liveextra'     ? '» info: '
+                 : (kind === 'liveloc' || kind === 'evliveloc') ? '» location: '
+                 : kind === 'evliveshape'   ? '» date: '
+                 : kind === 'evliveextra'   ? '» info: '
+                 : kind === 'evstylemiss'   ? '» problem: '
+                 : kind === 'evedition'     ? '» edition: '
                  : kind === 'lengthbucket'  ? '» duration: '
                  : kind === 'timeofday'     ? '» time of day: '
                  : kind === 'reltypecredit' ? '» '
@@ -66834,21 +67158,41 @@ a { color: #1565c0; }`;
             _pushSyn('title-ocremix', '🎮 OC ReMix title', _ta.ocRemix);
             _pushSyn('title-allcaps', '🔠 ALL UPPERCASE', _ta.allCaps);
         }
+        /**
+         * Pushes one family of "… - Live …" entries from a `_newLiveCounts()`
+         * set: `''` for "Live title info" (release/RG titles), `'ev'` for
+         * the live-form entries of "Event name info".
+         *
+         * @param {string} p - Mode prefix, `''` or `'ev'`.
+         * @param {object} c - From `_newLiveCounts()`.
+         * @param {string} sfx - Suffix for the two validity entries.
+         */
+        const _pushLiveSections = (p, c, sfx) => {
+            _pushSyn(`${p}live-valid`, `${_structureModeLabel('live-valid')}${sfx}`, c.valid);
+            _pushSyn(`${p}live-invalid`, `${_structureModeLabel('live-invalid')}${sfx}`, c.invalid);
+            _pushSyn(`${p}live-nearmiss`, _structureModeLabel('live-nearmiss'), c.nearMiss);
+            _pushSyn(`${p}live-complete`, _structureModeLabel('live-complete'), c.complete);
+            _pushSyn(`${p}live-partial`, _structureModeLabel('live-partial'), c.partial);
+            _pushVals(`${p}liveshape`, c.shape, _byText(c.shape));
+            _pushSyn(`${p}live-extra`, _structureModeLabel('live-extra'), c.extra);
+            _pushVals(`${p}liveextra`, c.extraValue, _byText(c.extraValue));
+            _pushVals(`${p}liveloc`, c.loc, _byText(c.loc));
+            _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet =>
+                _pushSyn(`${p}live-sep-${sep}-${facet}`, _structureModeLabel(`live-sep-${sep}-${facet}`), c.sep[sep][facet])));
+        };
         if (Lib.settings.sa_enable_uvd_live_titles !== false) {
             // A status sub-table (releasegroup-releases' Official/Bootleg/…)
             // names its status on the validity entries; elsewhere no split.
             const _liveStatus = isTitleInfoCol ? _tableReleaseStatus(table) : null;
-            const _sfx = _liveStatus ? ` (${_liveStatus})` : '';
-            _pushSyn('live-valid', `${_structureModeLabel('live-valid')}${_sfx}`, _tl.valid);
-            _pushSyn('live-invalid', `${_structureModeLabel('live-invalid')}${_sfx}`, _tl.invalid);
-            _pushSyn('live-nearmiss', _structureModeLabel('live-nearmiss'), _tl.nearMiss);
-            _pushSyn('live-complete', _structureModeLabel('live-complete'), _tl.complete);
-            _pushSyn('live-partial', _structureModeLabel('live-partial'), _tl.partial);
-            _pushVals('liveshape', _tl.shape, _byText(_tl.shape));
-            _pushSyn('live-extra', _structureModeLabel('live-extra'), _tl.extra);
-            _pushVals('liveextra', _tl.extraValue, _byText(_tl.extraValue));
-            _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet =>
-                _pushSyn(`live-sep-${sep}-${facet}`, _structureModeLabel(`live-sep-${sep}-${facet}`), _tl.sep[sep][facet])));
+            _pushLiveSections('', _tl, _liveStatus ? ` (${_liveStatus})` : '');
+        }
+        if (isEventNameCol && Lib.settings.sa_enable_uvd_event_names !== false) {
+            ['live', 'oneoff', 'festival', 'tour', 'other'].forEach(f =>
+                _pushSyn(`evform-${f}`, _structureModeLabel(`evform-${f}`), _te.form[f]));
+            _pushSyn('evform-nearmiss', _structureModeLabel('evform-nearmiss'), _te.form.nearmiss);
+            _pushVals('evstylemiss', _te.styleMiss, _byText(_te.styleMiss));
+            _pushVals('evedition', _te.edition, _byText(_te.edition));
+            _pushLiveSections('ev', _te.live, '');
         }
         _pushSyn('rating-has', '🌟 has a rating', ratingHasCount);
         _pushSyn('rating-none', '☆ no rating', ratingNoneCount);
@@ -67763,6 +68107,17 @@ a { color: #1565c0; }`;
             const f = _FINDING_BY_ID.get(mode.slice(8));
             return f ? `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}` : mode;
         }
+        if (mode.startsWith('evform-')) {
+            return {
+                live: '📅 live form "DATE: Venue, City, …"', oneoff: '🎤 "[artist] at [venue]"',
+                festival: '🎪 "[festival] [N/YYYY]"', tour: '🚌 "[tour]: [city]"', other: '✍️ free form',
+                nearmiss: '🧭 almost a style guide form',
+            }[mode.slice(7)] || mode;
+        }
+        if (mode.startsWith('evstylemiss:')) return `» problem: ${mode.slice(12)}`;
+        if (mode.startsWith('evedition:'))   return `» edition: ${mode.slice(10)}`;
+        if (mode.startsWith('evlive'))       return _structureModeLabel(mode.slice(2));
+        if (mode.startsWith('liveloc:'))     return `» location: ${mode.slice(8)}`;
         if (mode === 'empty')          return '○ empty cells';
         if (mode === 'collapsed')      return '▶ multi-row: collapsed';
         if (mode === 'expanded')       return '◀ multi-row: expanded';
@@ -67944,6 +68299,20 @@ a { color: #1565c0; }`;
             const f = _FINDING_BY_ID.get(mode.slice(8));
             return f ? `${f.level === 'error' ? 'ERROR' : 'WARNING'}: ${f.tip}` : '';
         }
+        if (mode.startsWith('evform-')) {
+            return {
+                live: '📅 = the event name follows the live bootleg form "YYYY-MM-DD[, early show]: Venue, City, State, Country" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs), possibly with an impossible date or as a near miss — see the "Live form" sections.',
+                oneoff: '🎤 = "[main artist(s)] at [venue]", the https://musicbrainz.org/doc/Style/Event form for a one-off event.',
+                festival: '🎪 = "[festival] [123/YYYY]", the https://musicbrainz.org/doc/Style/Event form for a festival edition. Anything may follow ", " or ": " (e.g. ", Day 1: Main Stage").',
+                tour: '🚌 = "[tour name]: [city]", the https://musicbrainz.org/doc/Style/Event form for a concert that is part of a tour.',
+                other: '✍️ = none of the forms above and not a near miss of one. Typos ("ar" for "at") land here: the check is by shape only.',
+                nearmiss: '🧭 = in none of the forms but almost: "@" or "AT" for "at", " - " for ": ", a colon without one space after it, an abbreviated or glued year. The cell is tinted yellow.',
+            }[mode.slice(7)] || '';
+        }
+        if (mode.startsWith('evstylemiss:')) return 'Why an event name almost follows a https://musicbrainz.org/doc/Style/Event form.';
+        if (mode.startsWith('evedition:'))   return 'How a festival name gives its edition: a year (YYYY) or a running number.';
+        if (mode.startsWith('evlive'))       return _structureModeTooltip(mode.slice(2), colName);
+        if (mode.startsWith('liveloc:'))     return 'How many ", "-separated parts the live title\'s location has. The full form is "Venue, City, State, Country"; only some countries have states, so three parts can be complete too. Which part a shorter one lacks cannot be told.';
         if (mode === 'empty')          return 'Cells with no content (or, for CAA/EAA columns, no artwork found).';
         if (mode === 'single')         return 'Cells with exactly one item — no expand/collapse toggle shown.';
         if (mode === 'collapsed')      return '▶ = a multi-item cell currently showing only its first item.';
@@ -68002,7 +68371,7 @@ a { color: #1565c0; }`;
         if (mode === 'title-truncated') return '✂️ = the title ends in "…" — MusicBrainz truncates titles longer than 1,024 characters this way.';
         if (mode === 'title-ocremix') return '🎮 = an OC ReMix title, in the style guide\'s \'Game "Title" OC ReMix\' form.';
         if (mode === 'title-allcaps') return '🔠 = the whole title is in capitals, which the style guide\'s capitalization rules disallow (unless it is the artist\'s intended styling).';
-        if (mode === 'live-valid') return '✅ = a release/release group title in the live bootleg form "YYYY-MM-DD[, early show]: Venue, City, State, Country" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs), with a possible date. Trailing date parts may be missing or "??".';
+        if (mode === 'live-valid') return '✅ = a release, release group or event title in the live bootleg form "YYYY-MM-DD[, early show]: Venue, City, State, Country" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs), with a possible date. Trailing date parts may be missing or "??".';
         if (mode === 'live-invalid') return '❌ = a live title whose date cannot exist: month outside 01–12, or a day the month does not have (29 February only in a leap year). The cell is tinted red.';
         if (mode === 'live-nearmiss') return '❗ = the title starts with a date but is not in the live form: wrong date notation ("05.02.1975", "1975-2-5"), no ": " after the date, or a location without ", ". Usually a data-entry error; the cell is tinted red.';
         if (mode === 'live-complete') return '📅 = the live title\'s date has year, month and day.';
@@ -92050,6 +92419,16 @@ a { color: #1565c0; }`;
              */
             parseLiveTitle(text) {
                 return _parseLiveTitle(text);
+            },
+            /**
+             * Runs the shipping `_parseEventName()` on one event name, for the
+             * same reason as `parseLiveTitle()`.
+             *
+             * @param {string} text
+             * @returns {?Object} `_parseEventName()`'s own result.
+             */
+            parseEventName(text) {
+                return _parseEventName(text);
             },
             /**
              * Opens (or reads the current state of, if already open) the 📊
