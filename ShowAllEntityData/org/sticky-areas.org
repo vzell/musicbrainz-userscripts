@@ -50,3 +50,85 @@ Issue 2: menu stays open after clicking a link. The cause is the "You are about 
 The analysis and all measurements are in tests/MEASUREMENTS.org and DEBUG-NOTES.md, and the probes and temporary worktrees are removed.
 
 Should I go after the remaining ~0.7 s, or is that acceptable for now? You'd need to re-import the script in Tampermonkey to try the two fixes live.
+
+** DONE bug
+
+On multi-table PTs, e.g https://musicbrainz.org/release/5cf63c93-e27e-4d98-81bc-9aba8b6861a7, see
+
+#+begin_example
+@debug/sticky-final-collapsed.html - [Image #1] - raw HTML of above URL after final rendering
+#+end_example
+
+1.)
+
+as long as the h2 header lines (e.g the sole one in this case titled "Credist", @debug/h2-credits.html), above the actual h2 headerline
+where the global filter field is located are collapsed the whole page works fine when it comes to stickyness. Everything
+according to our spec does not move, when scrolling to the right and back
+
+2.)
+
+When uncollapsing the h2 header lines above the one with the filter field, eg. the "Credits" h2 line
+(@debug/h2-credits-uncollapsed.html) and then scrolling to the right ([Image #2]), the contents of each those h2 header
+lines (below it) still moves when scrolling, instead of being STICKY too.
+
+#+begin_example
+@debug/h2-table-credits-uncollapsed.html - raw HTML of complete page uncollapsed
+@debug/h2-table-credits-uncollapsed-scrolled.html - raw HTML of complete page uncollapsed, scrolled to the right
+#+end_example
+
+a.)
+
+the contents below h2 header lines BEFORE the one, who has the actual page wide global filter field, should also ALWAYS be sticky took
+
+b.)
+
+except, if the contents itself happens to have h3 lines in its very body like e.g.
+
+#+begin_example
+<h3 class="mb-credits-h3-processed mb-credits-toggle-h3 mb-sph-target" title="Click to collapse this section" style="--mb-sph-left: 20px; --mb-sph-maxw: 1646.29px;"><span class="mb-toggle-icon">▼</span>Release</h3>
+<h3 class="mb-credits-h3-processed mb-credits-toggle-h3 mb-sph-target" title="Click to collapse this section" style="--mb-sph-left: 20px; --mb-sph-maxw: 1646.29px;"><span class="mb-toggle-icon">▼</span>Release group</h3>
+#+end_example
+
+THESE h3 lines should also be STICKY
+
+** TODO solution
+
+Expanded sections now stay in view while you scroll right, not just their header bars. Commit 285c58f is pushed on
+feature/sticky-section-bodies, not merged; the full fixture suite passes (867/867).
+
+What happens now:
+- (a) Section content: whatever an expanded section shows under its header stays in place, the same content that
+  expanding and collapsing the section shows and hides. On release-tracks that's the Credits URL lists; on series pages,
+  the Relationships table and the Annotation.
+- (b) Release / Release group lines: they move with the Credits content, which stays put, so they're effectively sticky
+  as well.
+- The tracklist is unaffected: its sub-table header bars stay pinned and the data tables scroll, as before. Expanding a
+  section takes effect immediately, by click, Ctrl+click "toggle all", keyboard or master toggle, and collapsing it
+  releases the content again.
+
+Why it scrolled away: the feature only ever pinned header bars, never section content. It also refused to pin anything
+containing a table, a rule meant for the data tables that caught Credits' small link tables too. And expanding a section
+didn't trigger a re-check.
+
+Scope choice: this pins the content of every section other than the one holding the data tables. You asked for the
+sections above the global filter. On release pages that's the same set, because Credits is moved above Tracklist and the
+later sections live in the sidebar, which is never pinned. If you've turned off the setting that moves trailing sections
+above the table, sections left below it would be pinned too. Say if you want that narrowed.
+
+Checks:
+- Three new tests: Credits on the release fixture, the bare Relationships table on the series fixture, and data tables never pinned.
+- Three new planted defects, all caught. One of them removes all three data-table safeguards at once, because each covers for the others, so removing just one would go unnoticed.
+- Performance on artist-events is unchanged (settled sort equal; post-render work 1043 vs 143 ms with the feature off, as before).
+
+The help file, changelog draft (WIP.1), DEBUG-NOTES.md, tests/MEASUREMENTS.org and the snapshot registry are
+updated. Your uncommitted edits to org/sticky-areas.org are left alone; that file has a trailing blank line, which is
+why my whitespace check skips it.
+
+To try it live: re-import into Tampermonkey, open release 5cf63c93-…, expand Credits and scroll right. Tell me when to merge.
+
+** TODO Scope choice
+
+This pins the content of every section other than the one holding the data tables. You asked for the sections above the
+global filter. On release pages that's the same set, because Credits is moved above Tracklist and the later sections
+live in the sidebar, which is never pinned. If you've turned off the setting that moves trailing sections above the
+table, sections left below it would be pinned too. Say if you want that narrowed.
