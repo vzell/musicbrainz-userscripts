@@ -17220,3 +17220,47 @@ against a vertically sticky header.
 **Mutation checks:** `scripts/mutations/sticky-page-headers.json` (16 entries:
 15 caught, 1 recorded live-only blind spot) and two `toolbar-menus.json`
 entries, all scoring as expected.
+
+## 2026-10-03 — Sticky Page Headers: expanded section content scrolled away (branch feature/sticky-section-bodies)
+
+**Report:** on release `5cf63c93-e27e-4d98-81bc-9aba8b6861a7` (multi-table
+release-tracks), with the "Credits" h2 expanded, scrolling right kept the
+Credits, Release and Release group BARS in place, but the URL lists below them
+scrolled off to the left (`debug/h2-table-credits-uncollapsed-scrolled.html`,
+screenshot in the session). With Credits collapsed everything was fine
+(`debug/sticky-final-collapsed.html`).
+
+**Root cause, three parts:**
+1. `_sphCollectTargets()` only collected bars and chrome; section content was
+   never a candidate.
+2. `_sphIsEligible()` rejected any element CONTAINING a `<table>`, a rule meant
+   for data tables that also excluded every `table.details` section
+   (`div#release-relationships > h3 + table.details`, series
+   `h2.relationships + table.details`).
+3. A collapsed body is skipped, and expanding it changes no observed WIDTH, so
+   since the width-only gate (`_sphOnResize()`) nothing re-collected it.
+
+**Fix:** `_sphSectionBodies()` returns the element siblings after every
+non-data h2 up to the next h2, the same set `makeH2sCollapsible()` toggles. It
+excludes the data h2 (`.mb-row-count-stat`), anything that is or contains a
+`table.tbl` / CAA/EAA strip / `h2`, the sidebar, and h2s inside tables. Bodies
+are collected with `isBody`, for which `_sphIsEligible()` only rules out
+`table.tbl`. The table check now uses the PARENT's ancestry, because a body
+may itself be a `<table>`. `_sphSyncObserved()` observes every body, hidden
+ones included, so an expand (0 → W) passes the width gate. The Credits
+`h3.mb-credits-toggle-h3` bars are inside the pinned wrappers now: the nesting
+rule drops them as targets, and they ride along.
+
+A bare `<table class="details" style="width:100%">` body pins correctly
+(probed on series-releases: `max-width` applies and `left` holds over a 4658 px
+scroll), so no table-specific rule was needed.
+
+**Tests:** three new ones in `sticky-page-headers.spec.js` (Credits expand on
+release-tracks incl. the ride-along h3 bars and collapse-again; series bare
+table; data tables never pinned with everything expanded). `measure()`
+now treats "carried by a pinned ancestor" as pinned, uses the parent's table
+ancestry, and takes the last VISIBLE cell for its scroll premise. On
+release-tracks the last cell is a hidden column, which never moves. Three new
+mutation entries, all caught. One of them removes all three `table.tbl`
+guards together: they back each other up, so dropping a single one is
+invisible by design.
