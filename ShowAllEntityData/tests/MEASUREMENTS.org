@@ -3172,3 +3172,19 @@ bars alone carry it.*
 | off                                    |                    147 / 95 / 157 |
 
 (the frozen and off rows ran in three rounds; one value per round)
+
+* 2026-10-03 — Sticky Page Headers section bodies (branch feature/sticky-section-bodies), artist-events check (NB-3641)
+
+Same settled on/off scratch harness as the entry above (fresh page per
+sample, disk fixture, 2 s settle, arms round-robin), UTC 23:23–23:27 on
+2026-10-02, 5 samples per arm. artist-events has no expanded non-data section
+after render, so this checks that collecting and observing section bodies
+costs nothing where there are none to pin.
+
+| Arm (median of 5, ms) | sort (settled) | long tasks in 2 s after render |
+|-----------------------+----------------+--------------------------------|
+| feature on            |           3566 |                           1043 |
+| feature off           |           3502 |                            143 |
+
+*Read as: unchanged against the entry above (on 1166–1284, off 147–148 there,
+within the spread).*

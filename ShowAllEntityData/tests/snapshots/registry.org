@@ -349,6 +349,12 @@ horizontally. Then:
     =mb-sph-chrome=) and inline =--mb-sph-left= / =--mb-sph-maxw= custom
     properties: the MB header, the entity-header =div= or bare =h1=, =.tabs=,
     and every h2 and h3 bar outside tables and the sidebar;
+  - (branch feature/sticky-section-bodies, 2026-10-03) the content of every
+    EXPANDED non-data h2 section is pinned as well, i.e. its element siblings
+    up to the next h2 (Annotation body, the Credits =div#…-relationships=
+    wrappers, a bare =table.details=). The h3 bars inside such a body then
+    lose =mb-sph-target= (they ride along with the body). Capture runs leave
+    those sections collapsed, so a clean capture shows none of this;
   - the page gains one =<style id="mb-sticky-page-headers-style">= block.
 
 The values are viewport-derived but deterministic for one viewport, so this is

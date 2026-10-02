@@ -1237,7 +1237,8 @@
             default: true,
             description: 'Keep the page chrome — the MusicBrainz top header, the h1 entity header ' +
                          'with the action bar, the tabs, every h2 section bar and every h3 ' +
-                         'sub-table bar (and the footer) — pinned in place while a wide table is ' +
+                         'sub-table bar, the content of every expanded section above the data ' +
+                         '(e.g. Credits, Annotation) and the footer — pinned in place while a wide table is ' +
                          'scrolled horizontally, the page-level counterpart of \'Enable Sticky ' +
                          'Columns\'. Only engages while the page really overflows horizontally; ' +
                          'stays inert while the sidebar is expanded and columns are not ' +
@@ -21670,7 +21671,9 @@
     // scrolling is deliberately kept on the window so the vertical sticky thead
     // keeps working), the MusicBrainz top header, the h1 entity header with the
     // action bar, the tabs, every h2 section bar and every h3 sub-table bar stay
-    // where they are instead of scrolling off to the left.
+    // where they are instead of scrolling off to the left — and so does the
+    // CONTENT of every expanded non-data h2 section (Credits, Annotation,
+    // Relationships; see _sphSectionBodies()), while the data tables scroll.
     //
     // Mechanism — plain CSS `position: sticky; left: <natural offset>`, NOT a
     // scroll listener + transform: sticky is resolved by the compositor, so it
@@ -21736,7 +21739,7 @@
      *   initialized:    boolean,          - initStickyPageHeaders() has run (listeners/observer installed)
      *   active:         boolean,          - html.mb-sph-on is currently set (page overflows horizontally)
      *   timer:          ?number,          - non-null while a refresh is pending (setTimeout id; stays set through the idle wait)
-     *   observer:       ?ResizeObserver,  - watches html/body/#page/#content/#sidebar and every table.tbl
+     *   observer:       ?ResizeObserver,  - watches html/body/#page/#content/#sidebar, every table.tbl and section body
      *   observed:       Set<Element>,     - elements currently observed by `observer`
      *   targets:        Set<HTMLElement>, - elements currently marked with .mb-sph-target
      *   native:         WeakMap<HTMLElement, {position: string, zIndex: string}>
@@ -21900,7 +21903,11 @@
      *
      * Rejected are: non-rendering tags; anything inside `#sidebar` or inside a
      * table (e.g. wiki `h2.mb-toggle-h2` sub-headings in Annotation cells);
-     * anything CONTAINING a table (capping its width would squeeze the table);
+     * anything CONTAINING a table (capping its width would squeeze the table) —
+     * except for a section body (`isBody`, see `_sphSectionBodies()`), where
+     * only a data table (`table.tbl`) is ruled out: a `table.details` holding
+     * Credits URLs or relationships is exactly the content that has to stay
+     * in view, and capping it to the viewport only lets its text wrap;
      * elements that are not rendered at all (`display:none` on itself or an
      * ancestor — they get picked up by a later refresh once shown); floated
      * elements; and elements whose own position (see `_sphNativeStyle()`) is
@@ -21909,16 +21916,23 @@
      * the "mb. STICKY HEADER" userstyle, which sticks vertically; this feature
      * only adds `left`, so both directions work together.
      *
-     * @param {Element}      el      - Candidate element.
-     * @param {?HTMLElement} sidebar - The native `#sidebar`, if present.
+     * @param {Element}      el       - Candidate element.
+     * @param {?HTMLElement} sidebar  - The native `#sidebar`, if present.
+     * @param {boolean}      [isBody] - `true` for a section body from
+     *   `_sphSectionBodies()`, which may contain (or be) a non-data table.
      * @returns {boolean} `true` when the element can safely be pinned.
      */
-    function _sphIsEligible(el, sidebar) {
+    function _sphIsEligible(el, sidebar, isBody) {
         if (!(el instanceof HTMLElement)) return false;
         if (/^(SCRIPT|STYLE|LINK|META|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return false;
         if (sidebar && sidebar.contains(el)) return false;
-        if (el.closest('table')) return false;
-        if (el.querySelector('table')) return false;
+        // The PARENT's ancestry: a section body may itself be a <table>.
+        if (el.parentElement && el.parentElement.closest('table')) return false;
+        if (isBody) {
+            if (el.matches('table.tbl') || el.querySelector('table.tbl')) return false;
+        } else if (el.querySelector('table')) {
+            return false;
+        }
         if (el.getClientRects().length === 0) return false;
 
         const cs  = getComputedStyle(el);
@@ -21929,7 +21943,44 @@
     }
 
     /**
-     * Collects the elements to pin, in document order.
+     * Returns the bodies of every non-data h2 section in the page content —
+     * for each `<h2>` the element siblings that follow it up to the next
+     * `<h2>`, i.e. exactly what `makeH2sCollapsible()` shows and hides — so
+     * that an expanded section (Credits, Annotation, Relationships, …) stays
+     * in view while a wide table is scrolled sideways, not just its bar.
+     *
+     * Left out: h2s inside a table or `#sidebar`; the DATA h2 (the one holding
+     * `.mb-row-count-stat`, the same test `makeH2sCollapsible()` and
+     * `_relocateTrailingH2Sections()` use), whose body is the data tables and
+     * their artwork strips, which must keep scrolling (its h3 bars are pinned
+     * as bars); and any sibling that is or contains a `table.tbl`, a CAA/EAA
+     * big-image strip or another `<h2>` (a wrapper around a later section).
+     *
+     * Hidden (collapsed) bodies are included on purpose: `_sphSyncObserved()`
+     * observes them, so expanding a section — a 0 → W width change that
+     * `_sphOnResize()` lets through — schedules the pass that pins it.
+     * `_sphIsEligible()` keeps them out of the targets while hidden.
+     *
+     * @returns {HTMLElement[]} Section bodies, in document order.
+     */
+    function _sphSectionBodies() {
+        const root    = document.getElementById('page') || document.body;
+        const sidebar = document.getElementById('sidebar');
+        const bodies  = [];
+        root.querySelectorAll('h2').forEach(h2 => {
+            if (h2.closest('table') || (sidebar && sidebar.contains(h2))) return;
+            if (h2.querySelector('.mb-row-count-stat')) return;
+            for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
+                if (el.matches('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox')) continue;
+                if (el.querySelector('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox, h2')) continue;
+                bodies.push(el);
+            }
+        });
+        return bodies;
+    }
+
+    /**
+     * Collects the elements to pin.
      *
      * Candidates:
      *   - every in-flow direct child of `<body>` except `#page` — the native
@@ -21943,7 +21994,10 @@
      *     bare `<h1>` (search / list pages) or the `.tabs` bar;
      *   - every rendered `<h2>` / `<h3>` below `#page` (section bars incl.
      *     `.mb-toggle-h2`, sub-table bars `.mb-toggle-h3`, Credits sub-bars
-     *     `.mb-credits-toggle-h3`).
+     *     `.mb-credits-toggle-h3`);
+     *   - every rendered section body from `_sphSectionBodies()`. A bar
+     *     inside a pinned body (the Credits `Release` / `Release group` h3s)
+     *     is then dropped by the nesting rule below and rides along with it.
      *
      * Each candidate passes `_sphIsEligible()`; a candidate nested inside
      * another candidate is dropped (nested sticky boxes would have no room to
@@ -21962,12 +22016,13 @@
         /**
          * Registers one candidate if it is eligible and not yet registered.
          *
-         * @param {Element} el     - Candidate element.
-         * @param {boolean} chrome - `true` for direct children of `<body>`.
+         * @param {Element} el       - Candidate element.
+         * @param {boolean} chrome   - `true` for direct children of `<body>`.
+         * @param {boolean} [isBody] - `true` for a section body.
          * @returns {void}
          */
-        function add(el, chrome) {
-            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar)) return;
+        function add(el, chrome, isBody) {
+            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar, isBody)) return;
             seen.add(el);
             found.push({ el, chrome });
         }
@@ -21988,6 +22043,7 @@
         });
 
         (page || document.body).querySelectorAll('h2, h3').forEach(el => add(el, false));
+        _sphSectionBodies().forEach(el => add(el, false, true));
 
         return found.filter(({ el }) => {
             for (let p = el.parentElement; p; p = p.parentElement) {
@@ -22069,6 +22125,9 @@
      * Tables must be watched individually because a table growing wider
      * (manual column drag, column visibility, density) does not necessarily
      * resize `<body>`/`#page` while those still have their normal width.
+     * Every section body from `_sphSectionBodies()` is watched too, hidden
+     * ones included: expanding a collapsed section changes no other observed
+     * WIDTH, so without this nothing would schedule the pass that pins it.
      * Elements already observed are never re-observed (a second `observe()`
      * would queue a fresh initial notification and turn refresh → observe →
      * notify into an endless loop).
@@ -22088,7 +22147,7 @@
                        document.getElementById('page'), document.getElementById('content'),
                        document.getElementById('sidebar')];
         const tables = Array.from(document.querySelectorAll('table.tbl'));
-        roots.concat(tables).forEach(el => {
+        roots.concat(tables, _sphSectionBodies()).forEach(el => {
             if (el && !_sph.observed.has(el)) {
                 ro.observe(el);
                 _sph.observed.add(el);

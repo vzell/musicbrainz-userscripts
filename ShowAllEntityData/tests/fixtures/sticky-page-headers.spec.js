@@ -176,23 +176,30 @@ const measure = (page, selectors) => page.evaluate((sels) => {
     };
     sels.forEach((sel) => {
         document.querySelectorAll(sel).forEach((el, i) => {
-            if (el.closest('table') || (sidebar && sidebar.contains(el))) return;
+            // The PARENT's ancestry: a section body may itself be a table.
+            const inTable = el.parentElement && el.parentElement.closest('table');
+            if (inTable || (sidebar && sidebar.contains(el))) return;
             if (el.getClientRects().length === 0 || nested(el)) return;
             const r = el.getBoundingClientRect();
             items.push({
                 key: `${sel}[${i}]`,
-                marked: el.classList.contains('mb-sph-target'),
+                // Pinned itself, or carried by a pinned ancestor (a bar
+                // inside a pinned section body is not a target of its own).
+                marked: !!el.closest('.mb-sph-target'),
                 left: r.left,
                 right: r.right,
             });
         });
     });
-    // The last cell of the widest rendered table: never the sticky column,
-    // and on a multi-table page never a collapsed or narrow sub-table.
+    // The last VISIBLE cell of the widest rendered table: never the sticky
+    // column, never a hidden column (0x0, it would not move), and on a
+    // multi-table page never a collapsed or narrow sub-table.
     const widest = Array.from(document.querySelectorAll('table.tbl'))
         .filter((t) => t.getClientRects().length > 0)
         .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
-    const cell = widest && widest.querySelector('tbody tr td:last-child');
+    const cells = widest ? Array.from(widest.querySelectorAll('tbody tr:first-child td')) : [];
+    const cell = cells.filter((td) => td.getClientRects().length > 0
+        && !td.classList.contains('mb-sticky-col')).pop();
     return {
         scrollX: window.scrollX,
         clientWidth: document.documentElement.clientWidth,
@@ -604,6 +611,125 @@ test.describe('sticky page headers — stacking while the global filter has focu
         expect(probe.barInsideHeader, 'premise: the bar is scrolled under the stuck header').toBe(true);
         expect(probe, 'the stuck header paints over the bar, not the other way round')
             .toMatchObject({ hitHeader: true, hitBar: false });
+    });
+});
+
+test.describe('sticky page headers — expanded section bodies', () => {
+    // The CONTENT of an expanded non-data h2 section (Credits, Annotation,
+    // Relationships) used to scroll away under its pinned bar: it was never
+    // collected, the "contains a table" rule excluded every table.details
+    // body, and expanding a section changed no observed width, so nothing
+    // re-collected it. Bodies are pinned now; a bar inside one rides along;
+    // the data h2's own body (table.tbl sub-tables) keeps scrolling.
+
+    const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
+    const RELEASE_SHELL = path.join(__dirname, '..', 'snapshots', 'release-tracks', 'raw.html');
+
+    /**
+     * Opens the release-tracks fixture (multi-table, with Annotation and the
+     * relocated Credits section above the Tracklist) at VIEWPORT.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<void>}
+     */
+    async function openRelease(page) {
+        await page.setViewportSize(VIEWPORT);
+        await loadUserscriptPage(page, {
+            url: RELEASE_URL,
+            fixtureFile: RELEASE_SHELL,
+            testMode: true,
+            settingsOverride: { sa_enable_release_tracks: true },
+        });
+        await page.route(`${RELEASE_URL}?**`, (r) => r.fulfill({ path: RELEASE_SHELL, contentType: 'text/html' }));
+        await page.$eval('button[data-label="Show all Tracks for Release"]', (b) => b.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await settleFocusAndPointer(page);
+    }
+
+    /**
+     * Whether any data table, or an ancestor of one, is pinned.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<boolean>}
+     */
+    const dataTablePinned = (page) => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+        .some((t) => !!t.closest('.mb-sph-target')));
+
+    /**
+     * Whether an element is a pin target itself.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {string} sel
+     * @returns {Promise<boolean>}
+     */
+    const isTarget = (page, sel) => page.evaluate((s) => {
+        const el = document.querySelector(s);
+        return !!el && el.classList.contains('mb-sph-target');
+    }, sel);
+
+    test('expanding Credits pins its content, and its Release / Release group bars ride along', async ({ page }) => {
+        await openRelease(page);
+        await waitEngaged(page);
+
+        const order = await page.evaluate(() => {
+            const credits = document.querySelector('#bottom-credits > h2');
+            const tracklist = Array.from(document.querySelectorAll('h2'))
+                .find((h) => h.querySelector('.mb-row-count-stat'));
+            return !!(credits && tracklist
+                && (credits.compareDocumentPosition(tracklist) & Node.DOCUMENT_POSITION_FOLLOWING));
+        });
+        expect(order, 'premise: Credits is relocated above the Tracklist (data) h2').toBe(true);
+        expect(await isTarget(page, '#release-relationships'), 'premise: collapsed, not pinned').toBe(false);
+
+        // A real click on the bar; nothing else (no scroll, no resize) may
+        // be needed for the pass that pins the newly shown content.
+        await page.locator('#bottom-credits > h2').click();
+        await expect.poll(() => isTarget(page, '#release-relationships'),
+            { message: 'expanding must schedule the pass that pins the body' }).toBe(true);
+        await expect.poll(() => isTarget(page, '#release-group-relationships')).toBe(true);
+
+        const sels = ['#release-relationships', '#release-group-relationships'];
+        const bars = ['#bottom-credits h3.mb-credits-toggle-h3'];
+        const before = await measure(page, sels);
+        const barsBefore = await measure(page, bars);
+        expect(barsBefore.items.length, 'premise: the Release and Release group bars').toBe(2);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+        expectPinned(barsBefore, await measure(page, bars));
+        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+
+        // Collapsing again releases the bodies on the next pass.
+        await page.evaluate(() => window.scrollTo(0, window.scrollY));
+        await page.locator('#bottom-credits > h2').click();
+        await expect.poll(() => isTarget(page, '#release-relationships')).toBe(false);
+    });
+
+    test('a section whose body is a bare table.details (series Relationships) pins that table', async ({ page }) => {
+        await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
+        await waitEngaged(page);
+        const sel = 'h2.relationships + table.details';
+        expect(await isTarget(page, sel), 'premise: collapsed, not pinned').toBe(false);
+
+        await page.locator('h2.relationships').click();
+        await expect.poll(() => isTarget(page, sel)).toBe(true);
+        const before = await measure(page, [sel]);
+        expect(before.items).toHaveLength(1);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, [sel]));
+        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+    });
+
+    test('with every section expanded, the data h2\'s own tables are still never pinned', async ({ page }) => {
+        await openRelease(page);
+        await waitEngaged(page);
+        await page.evaluate(() => document.querySelectorAll('h2').forEach((h) => {
+            if (h._mbToggle && !h.closest('#sidebar')) h._mbToggle(true);
+        }));
+        await expect.poll(() => isTarget(page, '#release-relationships')).toBe(true);
+        expect(await dataTablePinned(page)).toBe(false);
+        // The data section's sub-table bars are pinned as bars, as before.
+        expect(await page.evaluate(() => Array.from(document.querySelectorAll('h3.mb-toggle-h3'))
+            .every((h) => h.classList.contains('mb-sph-target')))).toBe(true);
     });
 });
 
