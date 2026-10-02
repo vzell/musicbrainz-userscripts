@@ -16,6 +16,35 @@ corrupt on the second). This skill is the checklist that shortens that
 instruction cycle to "describe the new section" instead of re-deriving the
 wiring from scratch each time.
 
+## First: is this a data problem? Then it is a finding, not a section
+
+If the new entry marks something WRONG with a cell — a style issue, an
+invalid identifier, a mismatch between two columns, a third-party "this is
+off" marker — it belongs in the `FINDINGS` registry, not in a hand-built 📊
+section. One registry entry gives it a 📊 entry for free (the shared
+"Findings - Warning" / "Findings - Error" sections, mode `finding-<id>`), a
+row in the ⚠️ WARNING / ❌ ERROR h1 menus that filters every table at once,
+and the yellow/red cell tint. Use the **`add-finding`** skill for that and
+stop here (docs/claude/findings.md).
+
+A finer, per-family 📊 section for the same data can still be worth adding
+on top — the existing ones stay beside the Findings sections ("Length info -
+Track vs recording", "Live title info - Validity", "ISRC - Validity", …)
+because they also list the GOOD values and the facets a finding does not.
+That is this skill's job; the "is it a problem" entry is the finding's.
+
+Two rules this skill's touch points must respect since the findings menus
+exist:
+
+- **The menus write 📊 values programmatically** through
+  `_writeUniqValueSet()` (the `applyUniqValueSet()` body without its
+  `runFilter()`). A change to how a value set is stored, labelled or cleared
+  in `applyUniqValueSet()` must keep that split intact, or the menu ticks and
+  the hand ticks drift apart.
+- **The `\u0003finding-` prefix is taken.** Do not name a new structure mode
+  `finding-…`; `_cellMatchesStructureMode()`, `_structureModeLabel()` and
+  `MB_UNIQ_MODE_TO_SECTION` all dispatch on it.
+
 ## Before writing any code
 
 Ask (or infer from the conversation) these four things — they determine

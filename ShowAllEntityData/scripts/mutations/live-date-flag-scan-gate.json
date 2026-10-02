@@ -1,10 +1,10 @@
 [
   {
-    "name": "the gate is never armed",
-    "why": "Stops _countLiveDateFlags() caching its 'no flags here' answer, so every filter pass walks every row again — the state PERFORMANCE.org Step 25 describes. Must fail on the gate test: the scan counter moves after a keystroke.",
+    "name": "the findings tally memo is never consulted",
+    "why": "Every filter pass re-walks every source row — what PERFORMANCE.org Step 25 removed for the live-date button the findings menus replaced. Must fail on \"stops scanning after the first pass\".",
     "edits": [
       {
-        "find": "            _liveDateFlagsPresent = (result.warning.total + result.error.total) > 0;",
+        "find": "        if (hit && hit.gen === _findingStampGen && hit.length === rows.length) return hit.counts;",
         "replace": ""
       }
     ],
@@ -13,81 +13,29 @@
     "expect": "fail"
   },
   {
-    "name": "the gate is read but never honoured",
-    "why": "Removes the early return, leaving the bookkeeping in place. Same observable as above and pinned by the same assertion; listed separately because the two halves can be broken independently — a refactor that keeps the flag but drops its use looks harmless in a diff.",
+    "name": "the findings tally walks but never counts",
+    "why": "Keeps the walk (so the scan counter moves once and then stops) but counts nothing. The gate half passes perfectly; only the guarantee half — the count of the DATA under a filter — can see it. Must fail on \"keeps counting under a filter\".",
     "edits": [
       {
-        "find": "        if (_liveDateFlagsPresent === false) return result;",
+        "find": "            ids.forEach(id => counts.set(id, (counts.get(id) || 0) + 1));",
         "replace": ""
       }
     ],
     "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
-    "grep": "stops scanning after the first pass",
-    "expect": "fail"
-  },
-  {
-    "name": "the gate closes on a page that HAS flags",
-    "why": "Caches 'no flags' unconditionally, ignoring what the tally found. The ⚠️ button then disappears on the first filter pass after the render — the same user-visible loss as AUDIT.md §3.6, reached from the opposite direction. This is the mutation that makes the guarantee test earn its place: without it, `return result` at the top of the function would pass the gate test.",
-    "edits": [
-      {
-        "find": "            _liveDateFlagsPresent = (result.warning.total + result.error.total) > 0;",
-        "replace": "            _liveDateFlagsPresent = false;"
-      }
-    ],
-    "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
     "grep": "keeps counting under a filter",
     "expect": "fail"
   },
   {
-    "name": "building a flag no longer arms the 'present' signal",
-    "why": "Drops the _appendLiveDateFlag() assignment. The tally over the captured rows still finds the flags and sets it true, so this is covered for — the assignment matters for the ORDER (a pass that runs before capture must not conclude 'none'), which no fixture reaches. KNOWN UNCOVERED, kept because it is the only signal that does not depend on the DOM.",
+    "name": "the disk-load tail does not stamp",
+    "why": "A hydrated tracklist arrives with its .mb-live-date-flag spans as stored HTML, but the menu counts the data-mb-findings stamp. Without stampFindings() on the disk path a reopened tracklist offers no live-date row. Must fail on the disk round trip after a flagless page.",
     "edits": [
       {
-        "find": "        _liveDateFlagsPresent = true;\n        const _flag = document.createElement('span');",
-        "replace": "        const _flag = document.createElement('span');"
-      }
-    ],
-    "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
-    "grep": "keeps counting under a filter",
-    "expect": "pass"
-  },
-  {
-    "name": "a new fetch inherits the previous page's answer",
-    "why": "Drops the reset in startFetchingProcess(). Each fixture spec loads one page and fetches once, so nothing here re-fetches with a different row set. KNOWN UNCOVERED; the reset is belt-and-braces anyway, since _appendLiveDateFlag() re-arms the signal on any page that builds one.",
-    "edits": [
-      {
-        "find": "        _liveDateFlagsPresent = null;\n        // MERGE LOGIC: Combine base definition with button-specific overrides.",
-        "replace": "        // MERGE LOGIC: Combine base definition with button-specific overrides."
-      }
-    ],
-    "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
-    "grep": "keeps counting under a filter",
-    "expect": "pass"
-  },
-  {
-    "name": "a hydrated snapshot inherits the previous answer",
-    "why": "Drops the reset in _hydrateAndRenderFromSnapshotData(). Hydrated rows carry their flags as stored HTML without _appendLiveDateFlag() ever running, so a page that had already concluded 'no flags' keeps both buttons hidden on the restored tracklist. Covered since live-date-flags-survive-disk-roundtrip.spec.js — flow B renders and filters a FLAGLESS release first (which is what caches the false), then loads the flagged snapshot into that same page session. Flow A cannot see this: a fresh page starts with the gate unset, so the tally runs anyway.",
-    "edits": [
-      {
-        "find": "        _liveDateFlagsPresent = null;\n        const {\n            file = null,",
-        "replace": "        const {\n            file = null,"
+        "find": "            stampLiveTitleFlags();\n            stampFindings();\n",
+        "replace": "            stampLiveTitleFlags();\n"
       }
     ],
     "spec": "tests/fixtures/live-date-flags-survive-disk-roundtrip.spec.js",
     "grep": "after a flagless page has already been filtered",
-    "expect": "fail"
-  },
-  {
-    "name": "the per-row scan loses the flag's own column",
-    "why": "Pins the other half of the change: the column index now comes from the flag's <td> rather than from a per-cell loop. Hard-coding it makes every flag fall into one positional bucket. Must fail on the breakdown test.",
-    "edits": [
-      {
-        "find": "                    const colIdx = cell ? cell.cellIndex : -1;",
-        "replace": "                    const colIdx = -1;"
-      }
-    ],
-    "spec": "tests/fixtures/live-date-flag-scan-gate.spec.js",
-    "grep": "names the right column",
     "expect": "fail"
   }
 ]

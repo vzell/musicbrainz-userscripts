@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "efb1aea201eb6fa4facac20cec54aadd8c24c9c5",
-    "revisions_walked": 650
+    "head": "408ce0b27bc3e89c79fcd5a5335297e9172fe710",
+    "revisions_walked": 660
   },
   "changes": [
     {
@@ -310,6 +310,14 @@
     "sa_uniq_count_color": "#111111",
     "sa_uniq_count_bg": "#fffacd",
     "sa_enable_dropdown_flag_icons": true,
+    "sa_enable_uvd_title_subtitle": true,
+    "sa_enable_uvd_title_series": true,
+    "sa_enable_uvd_title_format": true,
+    "sa_enable_uvd_title_style_issues": true,
+    "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work",
+    "sa_enable_uvd_live_titles": true,
+    "sa_enable_live_title_error_flag": true,
+    "sa_enable_live_title_separator_flag": true,
     "sa_enable_length_deviation_section": true,
     "sa_enable_pending_edits_section": true,
     "sa_uniq_dropdown_visible_rows": 30,
@@ -403,6 +411,7 @@
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_video_medium_flag": true,
+    "sa_enable_release_tracks_no_work_flag": true,
     "sa_release_tracks_length_mismatch_threshold_ms": 1000,
     "sa_release_tracks_length_mismatch_severe_factor": 3,
     "sa_release_tracks_length_mismatch_warn_bg": "#fff3cd",

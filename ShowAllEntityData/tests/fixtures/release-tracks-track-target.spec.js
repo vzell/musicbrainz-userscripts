@@ -62,7 +62,12 @@ const rows = (page) => page.evaluate(() => Array.from(document.querySelectorAll(
             id: tr.id,
             marked: tr.dataset.mbTrackTarget === '1',
             bgs: Array.from(tr.cells).filter((td) => td.offsetParent !== null)
-                .map((td) => ({ bg: getComputedStyle(td).backgroundColor, flagged: !!td.dataset.mbWorkFlag })),
+                // A cell carrying a warning keeps its own tint on the
+                // targeted row: the no-work flag, and every finding with a
+                // generic tint (on this fixture Nancy's Artist cell credits
+                // Frank Sinatra, who has pending edits — docs/claude/findings.md).
+                .map((td) => ({ bg: getComputedStyle(td).backgroundColor,
+                                flagged: !!td.dataset.mbWorkFlag || !!td.dataset.mbFinding })),
             inView: r.top >= 0 && r.bottom <= window.innerHeight,
         };
     }));
@@ -75,7 +80,9 @@ test.describe('release-tracks: /disc/<n>#<track> target highlight', () => {
         const marked = all.filter((r) => r.marked);
         expect(marked.map((r) => r.id)).toEqual([NANCY]);
         expect(marked[0].bgs.length).toBeGreaterThan(3);
-        expect(marked[0].bgs.every((c) => c.bg === TARGET_BG)).toBe(true);
+        expect(marked[0].bgs.filter((c) => !c.flagged).every((c) => c.bg === TARGET_BG)).toBe(true);
+        expect(marked[0].bgs.filter((c) => c.flagged).map((c) => c.bg), 'the pending-edits cell keeps its warning tint')
+            .toEqual([NO_WORK_BG]);
         // Nobody else is painted.
         expect(all.filter((r) => !r.marked).every((r) => r.bgs.every((c) => c.bg !== TARGET_BG))).toBe(true);
         // Scrolled into view.
@@ -85,7 +92,8 @@ test.describe('release-tracks: /disc/<n>#<track> target highlight', () => {
     test('the highlight survives a filter re-render', async ({ page }) => {
         await openDisc(page, NANCY);
         await page.fill('#mb-global-filter-input', 'Nancy');
-        await expect.poll(async () => (await rows(page)).map((r) => [r.id, r.marked, r.bgs.every((c) => c.bg === TARGET_BG)]),
+        await expect.poll(async () => (await rows(page)).map((r) => [r.id, r.marked,
+            r.bgs.filter((c) => !c.flagged).every((c) => c.bg === TARGET_BG)]),
             { timeout: 15000 }).toEqual([[NANCY, true, true]]);
     });
 

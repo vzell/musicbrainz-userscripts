@@ -24,6 +24,7 @@ will never need is folded into collapsible sections.
 - [The buttons](#the-buttons)
 - [Filtering](#filtering)
 - [The unique-values dropdown](#the-unique-values-dropdown)
+- [Warnings and errors](#warnings-and-errors)
 - [Sorting](#sorting)
 - [Columns](#columns)
 - [Collapsing and expanding](#collapsing-and-expanding)
@@ -105,10 +106,11 @@ the listing. Press the action button again to start over.
 ## The buttons
 
 The controls beside the page heading are two pull-down menus plus two pinned
-buttons:
+buttons, and — once a page has warnings or errors to show — two more menus
+after a divider:
 
 ```
-🧮¹ …  |  📦 Data ▾   🛠 View ▾   [ ⚙️ | ❓ ]
+🧮¹ …  |  📦 Data ▾   🛠 View ▾   [ ⚙️ | ❓ ]  |  ⚠️ WARNING (12) ▾   ❌ ERROR (3) ▾
 ```
 
 | Menu          | Rows                                                                                                                                  |
@@ -116,6 +118,7 @@ buttons:
 | **📦 Data ▾** | 💾 Save to Disk · 📂 Load from Disk · 💾 Export                                                                                       |
 | **🛠 View ▾**  | 📏 Density · 📊 Statistics · 🎹 Keyboard Shortcuts                                                                                    |
 | **⚙️ ❓**      | Settings Manager and this help page — pinned side by side as one control, never in a menu. Shift-click ❓ reads the help in the page. |
+| **⚠️ WARNING ▾ / ❌ ERROR ▾** | One row per kind of problem found on the page, with how many rows have it. See [Warnings and errors](#warnings-and-errors). |
 
 Each row shows its own keyboard shortcut on the right. Open a menu with the
 mouse or with that shortcut — pressing `Ctrl+D` opens **🛠 View** and then the
@@ -246,7 +249,10 @@ open edits on MusicBrainz. It filters to those rows and rings each pending
 marker — a ring rather than a fill, because the thing being marked is already
 MusicBrainz's own orange marker and painting over it would erase the signal you
 pressed the button to find. On multi-table pages each sub-section gets its own
-button and the one in the filter bar becomes a three-state master.
+button and the one in the filter bar becomes a three-state master. (The
+**Pending edits** row of the ⚠️ WARNING menu is a separate filter: it narrows
+every sub-section, including those with no pending edits, which then show
+nothing.)
 
 **Both filter fields are resizable** via the ⋮ handle to their right.
 
@@ -418,6 +424,70 @@ whether the panel flips upward.
 
 ---
 
+## Warnings and errors
+
+Cells with a data problem are tinted: **light yellow with ⚠️** for a warning,
+**light red with ❌** for an error. Hover the cell for what is wrong.
+
+Two menus beside the page heading, after ❓ and a divider, list every kind of
+problem the page has, with how many rows have it:
+
+```
+⚠️ WARNING (12) ▾
+   ⏱️ Track and recording length differ          3
+   🚫 Recording has no associated work           2
+   🔠 Title in ALL UPPERCASE                     1
+   ⏳ Pending edits                              6
+   ✗ Clear warning filters
+```
+
+**Click a row to show only the rows with that problem**, in every table and
+every sub-table at once. Click it again to show everything. A ticked row is
+bold with a ✓. Rows combine with each other and with any other filter you set:
+two problems in the same column show rows with *either*, two in different
+columns show rows with *both*. **✗ Clear warning filters** (or **✗ Clear error
+filters**) removes only what that menu set. A menu is not shown at all while
+the page has nothing of its kind, and the counts always describe the whole
+page, not just the rows a filter leaves on screen.
+
+Most rows work by ticking the matching entry in the column's 📊 dropdown — the
+**Findings - Warning** / **Findings - Error** section — so you see it in that
+column's filter box, and every way of clearing a column filter clears it too.
+Problems that can sit in several different columns of one row (pending edits,
+live credit dates) filter by row instead, and show a chip beside the global
+filter with a ✕ to remove it.
+
+<details>
+<summary>What is checked</summary>
+
+| Level | Problem | Where |
+|-------|---------|-------|
+| ⚠️ | Track and recording length differ by more than the threshold | Release tracklist: Length, Recording length |
+| ⚠️ | Recording has no associated work | Release tracklist: Title |
+| ⚠️ | Live title date uses a plain "-" instead of "‐" (U+2010) | Release and release group titles |
+| ⚠️ | Title in ALL UPPERCASE | Title columns |
+| ⚠️ | Title truncated with "…" | Title columns |
+| ⚠️ | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title |
+| ⚠️ | 🟠 Release has low data quality | Release / Title columns |
+| ⚠️ | Invalid ISRC / ISWC / barcode format | ISRCs, ISWC, Barcode |
+| ⚠️ | Pending edits | any column |
+| ⚠️ | Live credit without a date | Release tracklist: credit columns |
+| ❌ | Track and recording length far apart | Release tracklist: Length, Recording length |
+| ❌ | Video on a medium that cannot carry video | Release tracklist: Video |
+| ❌ | Live title with an impossible date | Release and release group titles |
+| ❌ | Title starts with a date but is not a live title | Release and release group titles |
+| ❌ | Live credit date differs from the recording date | Release tracklist: credit columns |
+
+The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
+⚠️ Findings; turning one off keeps the problem in the menu. The menus
+themselves can be switched off there too. Length, video, no-work and live-title
+flags keep their existing switches in 💿 Release tracklist and the live title
+settings.
+
+</details>
+
+---
+
 ## Sorting
 
 Click a column header to sort ascending, again for descending, a third time to
@@ -584,8 +654,8 @@ free on the next.
 
 A release tracklist also gets a **Recording length** column whenever some track's
 recording length disagrees with its track length, and flags the disagreements
-with ⚠️ or ❌ past a configurable threshold, with **(N) LENGTH ⚠️** buttons in
-the filter bar to isolate them. Its own 📊 dropdown offers the same "Length
+with ⚠️ or ❌ past a configurable threshold; the ⚠️ WARNING and ❌ ERROR menus
+isolate them (see [Warnings and errors](#warnings-and-errors)). Its own 📊 dropdown offers the same "Length
 info" sections as **Length** (see above), computed from its own values, and
 both columns' dropdowns add **Track vs recording** to pick the ❌ or the ⚠️
 tracks.
@@ -766,6 +836,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                      |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                               |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                 |
+| ⚠️ Findings                                     | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates) |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                         |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                            |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                |

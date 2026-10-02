@@ -1,7 +1,7 @@
 [
   {
     "name": "the per-table count is read from the live table only",
-    "why": "THE trap org/503-handling.org names for this design. runFilter() REMOVES non-matching rows, so a live-DOM tally collapses toward zero as rows are filtered out — and a control that hides itself at zero then vanishes exactly when a filter excludes the rows it is the only way back to. CLAUDE.md records the identical bug for _updateLengthMismatchButtons() and _updateLiveDateFlagButtons().",
+    "why": "THE trap org/503-handling.org names for this design. runFilter() REMOVES non-matching rows, so a live-DOM tally collapses toward zero as rows are filtered out — and a control that hides itself at zero then vanishes exactly when a filter excludes the rows it is the only way back to. CLAUDE.md records the identical bug for the old LENGTH and live-date summary buttons (since replaced by the ⚠️/❌ findings menus).",
     "edits": [
       { "find": "            pick(table, paths);\n            rows.forEach(r => pick(r, paths));", "replace": "            pick(table, paths);" }
     ],

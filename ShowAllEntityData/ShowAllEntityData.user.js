@@ -1989,6 +1989,105 @@
         },
 
         // ============================================================
+        // FINDINGS SECTION
+        // The ⚠️ WARNING / ❌ ERROR h1 menus and the generic cell tint for
+        // every data-quality finding in the FINDINGS registry
+        // (org/generalize-error-warning.org, docs/claude/findings.md).
+        // Findings that already had their own tint keep their own settings
+        // (💿 RELEASE TRACKLIST, the live-title flags above); these tint
+        // settings cover only the findings that had none.
+        // ============================================================
+        divider_findings: {
+            type: 'divider',
+            label: '⚠️ FINDINGS'
+        },
+
+        sa_enable_findings_menus: {
+            label: 'Enable the ⚠️ WARNING / ❌ ERROR menus',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds two pull-down menus to the page heading, after ❓ Help: ⚠️ WARNING and ' +
+                         '❌ ERROR. Each lists the data-quality findings present on the page (length ' +
+                         'mismatches, live-title dates, pending edits, ALL UPPERCASE titles, invalid ISRCs, …) ' +
+                         'with how many rows carry them. Clicking one filters every table and sub-table to ' +
+                         'those rows; clicking it again removes that filter. A menu is hidden while the page ' +
+                         'has nothing of its kind.'
+        },
+
+        sa_findings_tint_allcaps: {
+            label: 'Highlight ALL UPPERCASE titles as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a title cell light yellow with a ⚠️ when the title is written in ALL UPPERCASE ' +
+                         '(at least four letters), which the MusicBrainz style guide disallows.'
+        },
+
+        sa_findings_tint_truncated: {
+            label: 'Highlight truncated titles as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a title cell light yellow with a ⚠️ when the title ends in "…", the mark of a ' +
+                         'title cut off at the 1,024-character limit or copied from a cut-off source.'
+        },
+
+        sa_findings_tint_title_mismatch: {
+            label: 'Highlight track ≠ recording names as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist Title cell light yellow with a ⚠️ when the track title and its ' +
+                         'recording title differ (the "≠" marker of jesus2099\'s "mb. SUPER MIND CONTROL Ⅱ X TURBO").'
+        },
+
+        sa_findings_tint_low_quality: {
+            label: 'Highlight 🟠 low data quality releases as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release cell light yellow with a ⚠️ when MusicBrainz marks the release as low ' +
+                         'data quality.'
+        },
+
+        sa_findings_tint_pending: {
+            label: 'Highlight cells with pending edits as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a cell light yellow with a ⚠️ when it credits an entity that has open edits on ' +
+                         'musicbrainz.org (MusicBrainz\'s own orange marker stays as it is).'
+        },
+
+        sa_findings_tint_isrc: {
+            label: 'Highlight invalid ISRCs as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint an ISRCs cell light yellow when one of its ISRCs is not in CC-XXX-YY-NNNNN form. ' +
+                         'The ⚠️ after the ISRC itself is shown either way.'
+        },
+
+        sa_findings_tint_iswc: {
+            label: 'Highlight invalid ISWCs as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint an ISWC cell light yellow when one of its ISWCs does not match ISO 15707 (T-NNNNNNNNN-C) or ' +
+                         'has a wrong check digit. The ⚠️ after the ISWC itself is shown either way.'
+        },
+
+        sa_findings_tint_barcode: {
+            label: 'Highlight invalid barcodes as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a Barcode cell light yellow when its barcode is not a valid EAN-8, UPC-A, EAN-13 or GTIN-14. The ⚠️ ' +
+                         'after the barcode itself is shown either way.'
+        },
+
+        sa_findings_tint_live_credit: {
+            label: 'Highlight live-recording credit dates as WARNING/ERROR',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a release tracklist credit cell light yellow when a live recording\'s credit has no ' +
+                         'date, and light red when its date differs from the recording date. The ⚠️/❌ after the ' +
+                         'credit itself is shown either way.'
+        },
+
+        // ============================================================
         // RELEASE TRACKLIST SECTION
         // Consolidates the native per-medium tracklist(s) on a release page
         // (musicbrainz.org/release/<mbid>) into the standard SA multi-table
@@ -12496,10 +12595,6 @@
      */
     function _appendLiveDateFlag(container, result) {
         if (!result) return;
-        // The one authoritative "this page HAS flags" signal — see
-        // `_liveDateFlagsPresent`. It must come from building one, never from
-        // querying the live DOM, which a filter can empty.
-        _liveDateFlagsPresent = true;
         const _flag = document.createElement('span');
         _flag.className = 'mb-live-date-flag';
         _flag.textContent = ' ' + result.icon;
@@ -24290,6 +24385,453 @@
         });
     }
 
+    // ── Findings: one registry for every WARNING / ERROR a cell can carry ──────
+    //
+    // org/generalize-error-warning.org, docs/claude/findings.md. Each entry is one
+    // data-quality finding the ⚠️ WARNING / ❌ ERROR h1 menus offer, the 📊
+    // "Findings - Warning/Error" sections list (mode `finding-<id>`) and the
+    // generic cell tint paints. Rules every entry follows:
+    //
+    //   • `test()` reads SOURCE-row data, never post-render decoration.
+    //     `stampFindings()` stamps master rows too, and a master row never saw
+    //     the render tail (`initIsrcFormatting()` & co. run on the live clones),
+    //     so ISRC validity comes from `_findCellIsrcParts()`, not from
+    //     `a[data-mb-isrc-invalid]`.
+    //   • `cols(name, plan)` decides which columns are tested at all — the same
+    //     column gates `openUniqDrop()` uses for the finding's own 📊 entries.
+    //     `'*'` means every cell of a row that passes `rowGate()`.
+    //   • `tint(cell)` says whether this finding paints the cell. Findings that
+    //     already had their own CSS (length, video, no-work, live titles) return
+    //     false: their own attribute keeps painting them, and the generic rule
+    //     would only fight it. The rest read their `sa_findings_tint_*` setting.
+    //   • `scope: 'row'` findings can sit in several unrelated columns of one
+    //     row, so the menu filters them with `_findingRowFilter` (any cell),
+    //     never with 📊 ticks — those AND across columns.
+
+    /**
+     * Whether a `sa_findings_tint_*` setting is on (they default to true).
+     *
+     * @param {string} key
+     * @returns {function(): boolean}
+     */
+    const _findingTintSetting = key => () => Lib.settings[key] !== false;
+
+    /**
+     * Whether a cell holds a live-recording credit-date flag of one kind
+     * (`_appendLiveDateFlag()`'s real-text ⚠️/❌ span).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {string} glyph - '⚠️' or '❌'.
+     * @returns {boolean}
+     */
+    const _cellHasLiveDateFlag = (cell, glyph) =>
+        Array.from(cell.querySelectorAll('.mb-live-date-flag')).some(s => s.textContent.includes(glyph));
+
+    /**
+     * The finding registry, WARNINGs first, each level in menu order. See the
+     * block comment above for the contract of every field.
+     *
+     * @type {Array<{id: string, level: ('warn'|'error'), glyph: string, label: string, tip: string,
+     *               scope: ('cell'|'row'), coFlagged?: boolean, inlineGlyph?: boolean,
+     *               enabled?: function(): boolean, rowGate?: function(HTMLTableRowElement): boolean,
+     *               cols: (function(string, object): boolean|'*'),
+     *               test: function(HTMLTableCellElement, HTMLTableRowElement, object): boolean,
+     *               tint: function(HTMLTableCellElement): boolean}>}
+     */
+    const FINDINGS = [
+        {
+            id: 'len-warn', level: 'warn', glyph: '⏱️', scope: 'cell', coFlagged: true,
+            label: 'Track and recording length differ',
+            tip: 'The track length and its recording length differ by more than the threshold (⚙️ Settings → 💿 RELEASE TRACKLIST). Both duration cells carry the flag.',
+            cols: name => name === 'Length' || name === 'Recording length',
+            test: cell => _findCellLenFlag(cell) === 'warn',
+            tint: () => false,
+        },
+        {
+            id: 'no-work', level: 'warn', glyph: '🚫', scope: 'cell',
+            label: 'Recording has no associated work',
+            tip: 'The track\'s recording links no work in "Recording of work".',
+            cols: (name, plan) => name === 'Title' && plan.recOfIdx >= 0,
+            test: (cell, row, plan) => _rowHasRecordingOfWork(row, plan.recOfIdx) === false,
+            tint: () => false,
+        },
+        {
+            id: 'live-sep', level: 'warn', glyph: '➖', scope: 'cell',
+            label: 'Live title date uses "-" instead of "‐"',
+            tip: 'A live release / release group title whose date separates its parts with a plain "-" instead of "‐" (U+2010), the hyphen MusicBrainz normalizes titles to.',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => {
+                const live = _findCellLiveTitle(cell);
+                return !!live && (live.sep === 'ascii' || live.sep === 'mixed') &&
+                    live.kind !== 'invalid' && live.kind !== 'nearmiss';
+            },
+            tint: () => false,
+        },
+        {
+            id: 'allcaps', level: 'warn', glyph: '🔠', scope: 'cell',
+            label: 'Title in ALL UPPERCASE',
+            tip: 'A title of at least four letters, all upper case, which the style guide\'s capitalization rules disallow (https://musicbrainz.org/doc/Style/Titles).',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.allCaps; },
+            tint: _findingTintSetting('sa_findings_tint_allcaps'),
+        },
+        {
+            id: 'truncated', level: 'warn', glyph: '✂️', scope: 'cell',
+            label: 'Title truncated with "…"',
+            tip: 'A title ending in "…", usually cut off at the 1,024-character limit or copied from a cut-off source.',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.truncated; },
+            tint: _findingTintSetting('sa_findings_tint_truncated'),
+        },
+        {
+            id: 'title-mismatch', level: 'warn', glyph: '≠', scope: 'cell',
+            label: 'Track name differs from recording name',
+            tip: 'The track title and its recording title differ (the "≠" marker of jesus2099\'s "mb. SUPER MIND CONTROL Ⅱ X TURBO").',
+            cols: name => name === 'Title',
+            test: cell => _titleHasRecNameMismatch(cell),
+            tint: _findingTintSetting('sa_findings_tint_title_mismatch'),
+        },
+        {
+            id: 'low-quality', level: 'warn', glyph: '🟠', scope: 'cell',
+            label: 'Release has low data quality',
+            tip: 'MusicBrainz marks the release as low data quality.',
+            cols: name => name === 'Release' || name === 'Title',
+            test: (cell, row, plan) =>
+                (plan.nameOf(cell.cellIndex) === 'Release' || !!cell.querySelector('span.releaselink')) &&
+                _findCellReleaseDataQuality(cell) === 'low',
+            tint: _findingTintSetting('sa_findings_tint_low_quality'),
+        },
+        {
+            id: 'isrc-invalid', level: 'warn', glyph: '🔢', scope: 'cell', inlineGlyph: true,
+            label: 'Invalid ISRC format',
+            tip: 'An ISRC that is not in CC-XXX-YY-NNNNN form.',
+            cols: name => name === 'ISRCs',
+            test: cell => _findCellIsrcParts(cell).some(p => !p.valid),
+            tint: _findingTintSetting('sa_findings_tint_isrc'),
+        },
+        {
+            id: 'iswc-invalid', level: 'warn', glyph: '🔢', scope: 'cell', inlineGlyph: true,
+            label: 'Invalid ISWC format',
+            tip: 'An ISWC that does not match ISO 15707 (T-NNNNNNNNN-C) or has a wrong check digit.',
+            cols: name => name === 'ISWC',
+            test: cell => _findCellIswcParts(cell).some(p => !p.valid),
+            tint: _findingTintSetting('sa_findings_tint_iswc'),
+        },
+        {
+            id: 'barcode-invalid', level: 'warn', glyph: '▥', scope: 'cell', inlineGlyph: true,
+            label: 'Invalid barcode format',
+            tip: 'A barcode that is not a valid EAN-8, UPC-A, EAN-13 or GTIN-14.',
+            enabled: () => !!Lib.settings.sa_enable_barcode_validation,
+            cols: name => name === 'Barcode',
+            test: cell => { const p = _findCellBarcodeParts(cell)[0]; return !!p && !p.valid; },
+            tint: _findingTintSetting('sa_findings_tint_barcode'),
+        },
+        {
+            id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
+            label: 'Pending edits',
+            tip: 'A credited entity has open edits on musicbrainz.org (MusicBrainz\'s orange marker). Can sit in any column, so this filters by row.',
+            enabled: () => !!Lib.settings.sa_enable_pending_edits_section,
+            rowGate: row => _rowHasPendingEdits(row),
+            cols: () => '*',
+            test: cell => !!cell.querySelector('span.mp'),
+            tint: _findingTintSetting('sa_findings_tint_pending'),
+        },
+        {
+            id: 'live-credit-nodate', level: 'warn', glyph: '📅', scope: 'row', inlineGlyph: true,
+            label: 'Live credit without a date',
+            tip: 'A live recording\'s credit (vocals, instruments, engineer, event, place) carries no date attribute. Can sit in several credit columns, so this filters by row.',
+            rowGate: row => !!row.querySelector('.mb-live-date-flag'),
+            cols: () => '*',
+            test: cell => _cellHasLiveDateFlag(cell, '⚠️'),
+            tint: _findingTintSetting('sa_findings_tint_live_credit'),
+        },
+        {
+            id: 'len-severe', level: 'error', glyph: '⏱️', scope: 'cell', coFlagged: true,
+            label: 'Track and recording length far apart',
+            tip: 'The track length and its recording length differ by more than the "far over" level (threshold × factor, ⚙️ Settings → 💿 RELEASE TRACKLIST). Both duration cells carry the flag.',
+            cols: name => name === 'Length' || name === 'Recording length',
+            test: cell => _findCellLenFlag(cell) === 'severe',
+            tint: () => false,
+        },
+        {
+            id: 'video-mismatch', level: 'error', glyph: '🎞️', scope: 'cell',
+            label: 'Video on a medium that cannot carry video',
+            tip: 'A video recording on a medium whose format cannot carry video.',
+            cols: name => name === 'Video',
+            test: cell => _findCellVideoMediumFlag(cell) === 'mismatch',
+            tint: () => false,
+        },
+        {
+            id: 'live-invalid', level: 'error', glyph: '📆', scope: 'cell',
+            label: 'Live title with an impossible date',
+            tip: 'A live release / release group title whose date cannot exist (month 13, day 42, 29 February in a non-leap year).',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => { const live = _findCellLiveTitle(cell); return !!live && live.kind === 'invalid'; },
+            tint: () => false,
+        },
+        {
+            id: 'live-nearmiss', level: 'error', glyph: '❗', scope: 'cell',
+            label: 'Title starts with a date but is not a live title',
+            tip: 'A release / release group title that starts with a date but does not follow "YYYY-MM-DD: Venue, City, …" (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs).',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => { const live = _findCellLiveTitle(cell); return !!live && live.kind === 'nearmiss'; },
+            tint: () => false,
+        },
+        {
+            id: 'live-credit-date', level: 'error', glyph: '📅', scope: 'row', inlineGlyph: true,
+            label: 'Live credit date differs from the recording date',
+            tip: 'A live recording\'s credit carries a date that differs from the recording date. Can sit in several credit columns, so this filters by row.',
+            rowGate: row => !!row.querySelector('.mb-live-date-flag'),
+            cols: () => '*',
+            test: cell => _cellHasLiveDateFlag(cell, '❌'),
+            tint: _findingTintSetting('sa_findings_tint_live_credit'),
+        },
+    ];
+
+    /** @type {Map<string, object>} `FINDINGS` by id. */
+    const _FINDING_BY_ID = new Map(FINDINGS.map(f => [f.id, f]));
+
+    /**
+     * Bumped by every `stampFindings()` pass. `_findingRowTally()` memoizes per
+     * source-row array and checks this, because the stamp writes into rows
+     * that are ALREADY captured — the one thing `_sourceRowTally()`'s
+     * array-plus-length key cannot see (see its JSDoc).
+     */
+    let _findingStampGen = 0;
+
+    /**
+     * How many rows `_findingRowTally()` has walked since the page loaded.
+     * Read by `__saTest.findingTallyRowScans()`: "walked every row and counted
+     * nothing" and "did not walk" leave identical DOM behind.
+     */
+    let _findingTallyRowScans = 0;
+
+    /**
+     * Ids of the `scope: 'row'` findings (and of cell findings that fell back,
+     * see `_toggleFinding()`) the ⚠️/❌ menus are filtering by. A row passes
+     * when, for EACH id, some cell of it carries that finding. Read by
+     * `testRowMatch()`, keyed into `_buildFilterKey()`/`_buildIncrPartialKey()`,
+     * emptied by `clearAllFilters()`. Page-wide, like the old length-mismatch
+     * kind it replaces: a row's own cells answer it, whichever table it is in.
+     *
+     * @type {Set<string>}
+     */
+    const _findingRowFilter = new Set();
+
+    /**
+     * The findings a page can have at all — the registry minus those whose
+     * own feature setting is off.
+     *
+     * @returns {object[]}
+     */
+    function _activeFindings() {
+        return FINDINGS.filter(f => !f.enabled || f.enabled());
+    }
+
+    /**
+     * Resolves, for one table, which findings test which columns.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {{byCol: Map<number, object[]>, rowWide: object[], recOfIdx: number,
+     *            titleInfo: function(string): boolean, nameOf: function(number): string}}
+     */
+    function _findingPlanForTable(table) {
+        const count = table.querySelectorAll('thead tr:first-child th').length;
+        const names = [];
+        for (let i = 0; i < count; i++) names.push(_resolveColHeaderName(table, i));
+        const titleCols = _uvdTitleInfoColumns();
+        const plan = {
+            byCol: new Map(),
+            rowWide: [],
+            recOfIdx: _findRecOfWorkColIdx(table),
+            titleInfo: name => name === 'Title' || titleCols.has(name),
+            nameOf: i => names[i] || '',
+        };
+        _activeFindings().forEach(f => {
+            names.forEach((name, i) => {
+                const hit = f.cols(name, plan);
+                if (hit === '*') return;
+                if (hit) {
+                    if (!plan.byCol.has(i)) plan.byCol.set(i, []);
+                    plan.byCol.get(i).push(f);
+                }
+            });
+            if (f.cols('', plan) === '*') plan.rowWide.push(f);
+        });
+        return plan;
+    }
+
+    /**
+     * Writes one cell's finding attributes, or removes them when `ids` is
+     * empty:
+     *   - `data-mb-findings`: every finding the cell carries, space-separated
+     *     (read by the 📊 matcher, the row filter and the menu tally);
+     *   - `data-mb-finding`: the worst level among the findings that TINT
+     *     (`warn`/`error`), driving the generic tint and ⚠️/❌ glyph;
+     *   - `data-mb-finding-inline`: the cell already shows its own glyph at
+     *     that level (ISRC, ISWC, barcode, live credit), so CSS adds none;
+     *   - `title`: the findings' labels, only on a cell with no tooltip of
+     *     its own and no family flag (`data-mb-finding-tip` marks one this
+     *     function wrote).
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {string[]} ids
+     */
+    function _writeFindingAttrs(td, ids) {
+        if (!ids.length) {
+            if (td.dataset.mbFindings === undefined) return;
+            delete td.dataset.mbFindings;
+            delete td.dataset.mbFinding;
+            delete td.dataset.mbFindingInline;
+            if (td.dataset.mbFindingTip) { td.removeAttribute('title'); delete td.dataset.mbFindingTip; }
+            return;
+        }
+        td.dataset.mbFindings = ids.join(' ');
+        // A cell one of the four per-family rules already paints keeps that
+        // paint alone — see the generic rule's CSS comment for why both
+        // cannot apply.
+        const familyPainted = !!(td.dataset.mbLenFlag || td.dataset.mbVideoFlag === 'mismatch' ||
+                                 td.dataset.mbWorkFlag || td.dataset.mbLiveFlag);
+        const tinted = familyPainted ? [] : ids.map(id => _FINDING_BY_ID.get(id)).filter(f => f.tint(td));
+        const level = tinted.some(f => f.level === 'error') ? 'error' : tinted.length ? 'warn' : null;
+        if (level) td.dataset.mbFinding = level; else delete td.dataset.mbFinding;
+        if (level && tinted.some(f => f.level === level && f.inlineGlyph)) td.dataset.mbFindingInline = '1';
+        else delete td.dataset.mbFindingInline;
+        // A family-painted cell owns its tooltip too (its flag writes one,
+        // or deliberately none — a disk record whose tooltip was not a string).
+        if (!familyPainted && (!td.hasAttribute('title') || td.dataset.mbFindingTip)) {
+            td.title = ids.map(id => {
+                const f = _FINDING_BY_ID.get(id);
+                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+            }).join('\n');
+            td.dataset.mbFindingTip = '1';
+        }
+    }
+
+    /**
+     * Stamps one row's cells per `plan`.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {ReturnType<typeof _findingPlanForTable>} plan
+     */
+    function _stampFindingRow(row, plan) {
+        const rowWide = plan.rowWide.filter(f => !f.rowGate || f.rowGate(row));
+        Array.from(row.cells).forEach((td, i) => {
+            const ids = [];
+            (plan.byCol.get(i) || []).forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            _writeFindingAttrs(td, ids);
+        });
+    }
+
+    /**
+     * Marks every finding on the page (see `FINDINGS`). Same shape and same
+     * reasons as `stampLiveTitleFlags()`: ONCE per fetch or disk load, at the
+     * render tail, never on a filter or sort re-render — the attributes ride
+     * every `cloneNode(true)` — and onto the SOURCE rows as well as the live
+     * ones, including the rows the active filter left out of the live tbody,
+     * since `renderGroupedTable()` always renders clones.
+     *
+     * Attributes only, no cell text, so none of the four "writing cell text
+     * after the render" duties apply (docs/claude/filter-and-cache-invariants.md)
+     * — except the 📊 cache: its `findingCounts` are read from these
+     * attributes, so every table it touched is invalidated. And the menu tally,
+     * which `_findingStampGen` invalidates.
+     */
+    function stampFindings() {
+        _findingStampGen++;
+        const master = _buildMasterRowIndex();
+        const done = new Set();
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const tbody = table.tBodies[0];
+            if (!tbody) return;
+            const plan = _findingPlanForTable(table);
+            if (!plan.byCol.size && !plan.rowWide.length) return;
+            const owners = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                _stampFindingRow(row, plan);
+                const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
+                if (!m) return;
+                if (m.row !== row) _stampFindingRow(m.row, plan);
+                done.add(m.row);
+                owners.add(m.owner);
+            });
+            owners.forEach(owner => owner.forEach(r => {
+                if (done.has(r)) return;
+                _stampFindingRow(r, plan);
+                done.add(r);
+            }));
+            _invalidateUniqDropDataCacheForTable(table);
+        });
+        Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${done.size} source row(s) stamped.`);
+        if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
+    }
+
+    /**
+     * Per-ARRAY memo of `_findingRowTally()`.
+     *
+     * @type {WeakMap<HTMLTableRowElement[], {gen: number, length: number, counts: Map<string, number>}>}
+     */
+    const _findingTallyMemo = new WeakMap();
+
+    /**
+     * How many ROWS of one source-row array carry each finding — rows, not
+     * cells, because the menu filters rows and a length mismatch marks two
+     * cells of one track.
+     *
+     * Memoized like `_sourceRowTally()` (keyed by the array, validated by its
+     * length), plus `_findingStampGen`: the stamp runs AFTER capture, writing
+     * into rows the memo has already counted.
+     *
+     * @param {HTMLTableRowElement[]} rows
+     * @returns {Map<string, number>} Shared with the memo — read, never mutate.
+     */
+    function _findingRowTally(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) return new Map();
+        const hit = _findingTallyMemo.get(rows);
+        if (hit && hit.gen === _findingStampGen && hit.length === rows.length) return hit.counts;
+        const counts = new Map();
+        rows.forEach(row => {
+            _findingTallyRowScans++;
+            const ids = new Set();
+            row.querySelectorAll('td[data-mb-findings]').forEach(td =>
+                td.dataset.mbFindings.split(' ').forEach(id => ids.add(id)));
+            ids.forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+        });
+        _findingTallyMemo.set(rows, { gen: _findingStampGen, length: rows.length, counts });
+        return counts;
+    }
+
+    /**
+     * Each rendered table paired with its captured source rows, the same
+     * pairing `runFilter()` uses: `groupedRows[i]` ↔ the i-th `table.tbl`
+     * carrying a column-filter row, or `allRows` ↔ the first one.
+     *
+     * @returns {Array<{table: HTMLTableElement, rows: HTMLTableRowElement[]}>}
+     */
+    function _findingTablePairs() {
+        const tables = Array.from(document.querySelectorAll('table.tbl'))
+            .filter(t => t.querySelector('.mb-col-filter-row'));
+        const grouped = (typeof groupedRows !== 'undefined' && Array.isArray(groupedRows)) ? groupedRows : [];
+        if (grouped.length) {
+            return grouped.map((g, i) => ({ table: tables[i], rows: g.rows })).filter(p => p.table);
+        }
+        const all = (typeof allRows !== 'undefined' && Array.isArray(allRows)) ? allRows : [];
+        return all.length && tables[0] ? [{ table: tables[0], rows: all }] : [];
+    }
+
+    /**
+     * Page-wide row counts per finding, summed over every source-row array.
+     *
+     * @returns {Map<string, number>}
+     */
+    function _countFindingRows() {
+        const total = new Map();
+        _findingTablePairs().forEach(p => _findingRowTally(p.rows)
+            .forEach((n, id) => total.set(id, (total.get(id) || 0) + n)));
+        return total;
+    }
+
     /**
      * Index of the "Recording of work" column in `table`, or -1. Feeds the
      * "Title info - Work" section, which is offered only where that column
@@ -26264,6 +26806,11 @@
             // _findCellLengthMsState()'s own classification.
             return !!cell && _findCellLengthMsState(cell) === mode.slice(10);
         }
+        if (mode.startsWith('finding-')) {
+            // "Findings - Warning/Error" — the data-mb-findings attribute
+            // stampFindings() writes, so it reads the same on a detached clone.
+            return !!cell && !!cell.dataset.mbFindings && cell.dataset.mbFindings.split(' ').includes(mode.slice(8));
+        }
         if (mode === 'lenflag-severe' || mode === 'lenflag-warn') {
             // Fixed flags — a duration cell's track-vs-recording mismatch
             // level, from _findCellLenFlag() (the data-mb-len-flag attribute).
@@ -26844,7 +27391,7 @@
     }
 
     // Descriptor per toolbar pull-down menu, keyed by its short name
-    // ('data'|'view'|'disc'). Declared HERE rather than beside
+    // ('data'|'view'|'disc'|'findings-warn'|'findings-error'). Declared HERE rather than beside
     // `createToolbarMenu()` several thousand lines below, because
     // `_orderToolbar()` reads it and a module-level `const` is in the temporal
     // dead zone until its own declaration is evaluated — the same trap
@@ -26866,6 +27413,12 @@
         'mb-view-menu-btn',
         'mb-settings-btn',
         'mb-app-help-btn',
+        // The ⚠️ WARNING / ❌ ERROR findings menus sit after ❓, behind their
+        // own divider (org/generalize-error-warning.org). Both menus are
+        // absent on a page with no findings, and the divider is hidden then.
+        'mb-button-divider-findings',
+        'mb-findings-warn-menu-btn',
+        'mb-findings-error-menu-btn',
         'mb-fetch-progress-wrap',
     ];
 
@@ -29577,9 +30130,9 @@ ${sections.join('\n')}
             _resetColFilterModes(input);
         });
 
-        // The length-mismatch summary filter is structural, not a query, so
-        // clearing the inputs above would otherwise leave it silently engaged.
-        _lenMismatchFilterKind = null;
+        // The findings-menu row filter is structural, not a query, so clearing
+        // the inputs above would otherwise leave it silently engaged.
+        _findingRowFilter.clear();
 
         // Same for the ⏳ pending-edits toggles. On multi-table pages the state
         // lives on each sub-table's own button, so every one of them has to be
@@ -37912,6 +38465,16 @@ a { color: #1565c0; }`;
     initialDivider.style.cssText = uiButtonDividerCSS();
     controlsContainer.appendChild(initialDivider);
 
+    // Divider between ❓ Help and the ⚠️ WARNING / ❌ ERROR findings menus.
+    // Its position comes from _TOOLBAR_TAIL_ORDER; it stays hidden until
+    // _updateFindingMenus() has attached at least one of the two menus.
+    const findingsDivider = document.createElement('span');
+    findingsDivider.id = 'mb-button-divider-findings';
+    findingsDivider.textContent = ' | ';
+    findingsDivider.className = 'mb-button-divider-findings';
+    findingsDivider.style.cssText = `${uiButtonDividerCSS()} display:none;`;
+    controlsContainer.appendChild(findingsDivider);
+
     // Add Save to Disk button
     const saveToDiskBtn = document.createElement('button');
     saveToDiskBtn.id = 'mb-save-to-disk-btn';
@@ -38251,8 +38814,8 @@ a { color: #1565c0; }`;
     // add DOM structure while changing layout by exactly nothing:
     //   - Every child of the summary group, and every child of the actions
     //     group, starts `display:none` (revealed later by
-    //     _updateLiveDateFlagButtons()/_updateLengthMismatchButtons()/
-    //     updateFilterButtonsVisibility()). A `display:none` CHILD generates no
+    //     _updateFindingChips()/updateFilterButtonsVisibility()). A
+    //     `display:none` CHILD generates no
     //     flex gap; an `inline-flex` WRAPPER whose children are all hidden is
     //     itself still a zero-width flex item that DOES generate this
     //     container's `gap:5px` on both sides — so wrapping them in a rendered
@@ -38475,54 +39038,17 @@ a { color: #1565c0; }`;
     // Enter-to-save-LRU.  We only need to hook up the ✕ clear-button sync here.
     filterInput.addEventListener('input', _syncGfClearBtn);
 
-    // ── release-tracks-only WARNING/ERROR summary buttons ─────────────────
-    // Self-scoped to release-tracks: .mb-live-date-flag spans (see
-    // _appendLiveDateFlag) are only ever created by applyExtractTrackTitleData(),
-    // so these stay hidden (display:none, toggled by _updateLiveDateFlagButtons())
-    // on every other page type without needing an explicit page-type check.
-    // Positioned as the first two children of filterContainer, right before
-    // filterWrapper (#mb-global-filter-wrapper) — filterContainer has no
-    // children yet at this point, so plain sequential appendChild is enough
-    // to land them first.
-    const warningFlagBtn = document.createElement('button');
-    warningFlagBtn.id = 'mb-live-date-warning-btn';
-    warningFlagBtn.type = 'button';
-    warningFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
-    warningFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('⚠️'));
-    summaryGroup.appendChild(warningFlagBtn);
-
-    const errorFlagBtn = document.createElement('button');
-    errorFlagBtn.id = 'mb-live-date-error-btn';
-    errorFlagBtn.type = 'button';
-    errorFlagBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
-    errorFlagBtn.addEventListener('click', () => _applyLiveDateFlagFilter('❌'));
-    summaryGroup.appendChild(errorFlagBtn);
-
-    // ── release-tracks-only length-mismatch summary buttons ────────────────
-    // Same idea and same self-scoping as the two above — `[data-mb-len-flag]`
-    // cells are only ever produced by `_applyLengthMismatchFlag()` — but a
-    // different filtering mechanism, and deliberately so. The live-date
-    // buttons work by typing their own glyph into the GLOBAL filter, which
-    // only works because `.mb-live-date-flag`'s ⚠️/❌ is real cell text. A
-    // length mismatch is marked purely by an attribute (a glyph in a duration
-    // cell's text would break that column's sorting — see
-    // `_applyLengthMismatchFlag()`), so there is no text to type. These
-    // instead TOGGLE a structural predicate that `testRowMatch()` consults,
-    // and show a pressed state while active so a filter that no typed query
-    // explains can never be left on invisibly.
-    const lenWarnBtn = document.createElement('button');
-    lenWarnBtn.id = 'mb-len-mismatch-warn-btn';
-    lenWarnBtn.type = 'button';
-    lenWarnBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#8a6d00; border-color:#e0c14a;`;
-    lenWarnBtn.addEventListener('click', () => _applyLengthMismatchFilter('warn'));
-    summaryGroup.appendChild(lenWarnBtn);
-
-    const lenSevereBtn = document.createElement('button');
-    lenSevereBtn.id = 'mb-len-mismatch-severe-btn';
-    lenSevereBtn.type = 'button';
-    lenSevereBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none; color:#a33; border-color:#e08a8a;`;
-    lenSevereBtn.addEventListener('click', () => _applyLengthMismatchFilter('severe'));
-    summaryGroup.appendChild(lenSevereBtn);
+    // ── Findings row-filter chips ────────────────────────────────────────────
+    // One chip per finding the ⚠️/❌ h1 menus are filtering by ROW
+    // (`_findingRowFilter`, see _toggleFinding()) — the only visible trace of
+    // a filter no input holds, with a ✕ to drop it. Cell-scope findings need
+    // none: their state is a 📊 tick, shown in the column filter box. This
+    // slot used to hold the live-date WARNING/ERROR and LENGTH ⚠️/❌ summary
+    // buttons the menus replaced. Built by _updateFindingChips().
+    const findingChips = document.createElement('span');
+    findingChips.id = 'mb-findings-chips';
+    findingChips.style.cssText = 'display:none; gap:4px; align-items:center;';
+    summaryGroup.appendChild(findingChips);
 
     filterGroup.appendChild(filterWrapper);
     filterGroup.appendChild(gfHistAnchor);
@@ -38728,204 +39254,37 @@ a { color: #1565c0; }`;
     actionsGroup.appendChild(clearAllFiltersBtn);
 
     /**
-     * Whether this page carries any `.mb-live-date-flag` at all: `true` once
-     * one has been built or found, `false` once a tally over the CAPTURED rows
-     * came back empty, `null` while still unknown.
-     *
-     * `_countLiveDateFlags()` runs on every filter pass, and the flags exist
-     * only on `release-tracks` — every other pageType paid a full row walk to
-     * be told "none", 87 700 failing subtree scans per pass on the 4174-row
-     * `artist-events` fixture (PERFORMANCE.org Step 25).
-     *
-     * **It must not be derived from the live DOM.** `runFilter()` REMOVES
-     * non-matching rows, so `document.querySelector('.mb-live-date-flag')`
-     * answers "no" as soon as a filter excludes the flagged rows — which is
-     * AUDIT.md §3.6's vanishing-button bug re-entered through the gate. The
-     * only inputs are `_appendLiveDateFlag()` building one, and a tally over
-     * the captured source rows finding none.
-     *
-     * A `false` is cached ONLY from the captured-rows branch. The fallback
-     * branch runs before the fetch has captured anything, so a `false` there
-     * would mean "no rows yet", not "no flags", and would stick.
-     */
-    let _liveDateFlagsPresent = null;
-
-    /**
-     * How many rows `_countLiveDateFlags()` has scanned since the page loaded.
-     * Read by `__saTest.liveDateFlagRowScans()`; see its JSDoc for why this
-     * needs an explicit counter rather than a DOM assertion.
-     */
-    let _liveDateFlagRowScans = 0;
-
-    /**
-     * Scans every rendered `table.tbl` for `.mb-live-date-flag` spans (added
-     * by the live-recording date check — see `_appendLiveDateFlag`) and
-     * tallies them by icon kind and by column. Counts EVERY flag instance
-     * (not deduped per row), and counts regardless of current row
-     * `display:none` state, so the totals stay a stable page-wide summary
-     * independent of whatever filter happens to be active when this runs.
-     *
-     * @returns {{warning: {total: number, byColumn: Map<string, number>},
-     *            error:   {total: number, byColumn: Map<string, number>}}}
-     */
-    function _countLiveDateFlags() {
-        const result = {
-            warning: { total: 0, byColumn: new Map() },
-            error:   { total: 0, byColumn: new Map() }
-        };
-        // Step 25's cost half. This runs on every filter pass, and the flags
-        // exist only on `release-tracks`; once a tally over the captured rows
-        // has come back empty, every later pass is this one comparison instead
-        // of a walk of every row. `_appendLiveDateFlag()` is what can make it
-        // true again, so a later fetch that builds flags is not locked out.
-        if (_liveDateFlagsPresent === false) return result;
-        // Counts the CAPTURED SOURCE rows, not the rendered ones: `runFilter()`
-        // REMOVES non-matching rows, and `_updateLiveDateFlagButtons()` hides a
-        // button whose count is 0 — so a live-DOM tally made the ⚠️/❌ buttons
-        // disappear as soon as a filter excluded their rows, taking away the
-        // only way back to them (AUDIT.md §3.6). `_countLengthMismatchRows()`
-        // walks `_msSourceRows()` for exactly this reason; this one did not.
-        //
-        // Headers still come from the RENDERED table, since a source row has no
-        // header of its own: `groupedRows[i]` is rendered as `tables[i]` (the
-        // same pairing `_artSyncSearchTextToSourceRow()` relies on), and a
-        // single-table page's `allRows` belong to the one table.
-        const tables = Array.from(document.querySelectorAll('table.tbl'));
-        const headersOf = (table) => (table
-            ? Array.from(table.querySelectorAll('thead tr:first-child th'))
-                .map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim())
-            : []);
-        const tally = (rows, table) => {
-            const headers = headersOf(table);
-            rows.forEach(row => {
-                _liveDateFlagRowScans++;
-                // ONE subtree scan per ROW, not one per cell. The column comes
-                // from the flag's own `<td>` instead of from the loop index,
-                // which is the same answer — `cellIndex` IS the position in
-                // `row.cells` — for a 21st of the queries on a wide table.
-                row.querySelectorAll('.mb-live-date-flag').forEach(flag => {
-                    const bucket = flag.textContent.includes('⚠️') ? result.warning
-                        : flag.textContent.includes('❌') ? result.error : null;
-                    if (!bucket) return;
-                    bucket.total++;
-                    const cell = flag.closest('td, th');
-                    const colIdx = cell ? cell.cellIndex : -1;
-                    const colName = headers[colIdx] || `Col ${colIdx}`;
-                    bucket.byColumn.set(colName, (bucket.byColumn.get(colName) || 0) + 1);
-                });
-            });
-        };
-        const _grouped = (typeof groupedRows !== 'undefined' && groupedRows.length) ? groupedRows : [];
-        const _all     = (typeof allRows !== 'undefined' && allRows.length) ? allRows : [];
-        if (_grouped.length || _all.length) {
-            _grouped.forEach((g, i) => tally(g.rows, tables[i]));
-            if (_all.length) tally(_all, tables[0]);
-            // Authoritative: these are ALL the rows, filtered or not, so an
-            // empty tally really does mean the page has no flags. The fallback
-            // branch below cannot conclude that — "nothing captured yet" is not
-            // "nothing to find", and caching false there would stick.
-            _liveDateFlagsPresent = (result.warning.total + result.error.total) > 0;
-        } else {
-            // Nothing captured yet (called before the fetch, or on a page the
-            // script only decorated): the rendered rows are all there is.
-            tables.forEach(table => tally(Array.from(table.querySelectorAll('tbody tr')), table));
-        }
-        Lib.debug('filter', `_countLiveDateFlags(): ${result.warning.total} warning(s), ${result.error.total} error(s) — ` +
-            `warning by column: ${JSON.stringify(Array.from(result.warning.byColumn.entries()))}, ` +
-            `error by column: ${JSON.stringify(Array.from(result.error.byColumn.entries()))}.`);
-        return result;
-    }
-
-    /**
-     * Shows/hides and relabels the WARNING/ERROR summary buttons
-     * (`#mb-live-date-warning-btn`/`#mb-live-date-error-btn`) based on
-     * `_countLiveDateFlags()`'s current tally. Called from
-     * `updateFilterButtonsVisibility()` so it stays in sync with every
-     * existing render/filter-completion hook that function already covers —
-     * no new call sites needed elsewhere.
-     */
-    function _updateLiveDateFlagButtons() {
-        const warningBtn = document.getElementById('mb-live-date-warning-btn');
-        const errorBtn = document.getElementById('mb-live-date-error-btn');
-        if (!warningBtn || !errorBtn) {
-            Lib.debug('filter', '_updateLiveDateFlagButtons(): buttons not found in DOM yet, skipping.');
-            return;
-        }
-        const counts = _countLiveDateFlags();
-        const _fmt = (kind, icon, bucket, btn) => {
-            if (bucket.total === 0) {
-                btn.style.display = 'none';
-                Lib.debug('filter', `_updateLiveDateFlagButtons(): no ${kind} flags, hiding #${btn.id}.`);
-                return;
-            }
-            btn.textContent = `(${bucket.total}) ${kind} ${icon}`;
-            const breakdown = Array.from(bucket.byColumn.entries())
-                .map(([col, n]) => `${col} (${n})`).join(', ');
-            btn.title = `${bucket.total} ${icon} ${kind} icon${bucket.total === 1 ? '' : 's'}: ${breakdown}. Click to show only rows with a ${icon} ${kind} icon.`;
-            btn.style.display = 'inline-block';
-            Lib.debug('filter', `_updateLiveDateFlagButtons(): showing #${btn.id} — "${btn.textContent}".`);
-        };
-        _fmt('WARNING', '⚠️', counts.warning, warningBtn);
-        _fmt('ERROR', '❌', counts.error, errorBtn);
-    }
-
-    /**
-     * Applies a one-off "show only rows containing this icon" filter: clears
-     * every column/sub-table filter and resets the case/regexp/exclude
-     * modifiers (so a stale "Exclude Matches" checkbox can't invert the
-     * result), sets the global filter input to the bare icon glyph, and runs
-     * the existing filter engine. `.mb-live-date-flag` is not in
-     * `_CLEAN_STRIP_SEL`, so its `⚠️`/`❌` text is already included in
-     * `testRowMatch()`'s whole-row global-query match — no changes to the
-     * filter engine itself are needed. Mirrors the exact setQuery/onApply
-     * plumbing `createFilterHistoryWidget` already uses above.
-     *
-     * @param {string} icon - `'⚠️'` or `'❌'`.
-     */
-    /**
-     * Which length-mismatch severity, if any, is currently being filtered to.
-     *
-     * Module state rather than part of the filter `ctx` bag because it is not a
-     * query: no input holds it, nothing the user types sets or clears it, and
-     * it must survive every re-render until the button that set it is pressed
-     * again (or `clearAllFilters()` runs). `testRowMatch()` reads it directly,
-     * the same way it already reads `activeDefinition`.
-     *
-     * @type {?('warn'|'severe')}
-     */
-    let _lenMismatchFilterKind = null;
-
-    /**
-     * Per-ARRAY memo of the two source-row tallies every filter pass asks for,
-     * keyed by the `allRows` / `groupedRows[i].rows` array itself.
+     * Per-ARRAY memo of the pending-edits source-row tally every filter pass
+     * asks for, keyed by the `allRows` / `groupedRows[i].rows` array itself.
      * PERFORMANCE.org Step 26 — see `_sourceRowTally()`.
      *
-     * @type {WeakMap<HTMLTableRowElement[], {length: number, lenWarn: number, lenSevere: number, pending: number}>}
+     * @type {WeakMap<HTMLTableRowElement[], {length: number, pending: number}>}
      */
     const _srcRowTallyMemo = new WeakMap();
 
     /**
      * How many rows `_sourceRowTally()` has walked since the page loaded.
-     * Read by `__saTest.sourceRowTallyScans()`, for the reason
-     * `_liveDateFlagRowScans` exists: "walked every row and counted nothing"
-     * and "did not walk" leave byte-identical DOM behind.
+     * Read by `__saTest.sourceRowTallyScans()`: "walked every row and counted
+     * nothing" and "did not walk" leave byte-identical DOM behind.
      */
     let _srcRowTallyRowScans = 0;
 
     /**
      * Counts, over ONE array of captured source rows, the rows carrying a
-     * length-mismatch flag (by severity) and the rows carrying a pending-edits
-     * marker — the inputs of the ⏳ and LENGTH ⚠️/❌ summary buttons.
+     * pending-edits marker — the input of the ⏳ toggles.
+     *
+     * It also counted length-mismatch rows for the LENGTH ⚠️/❌ summary
+     * buttons until the ⚠️/❌ findings menus replaced them; those counts now
+     * come from `_findingRowTally()`, which has to be invalidated by a stamp
+     * generation because `stampFindings()` writes after capture. This one
+     * does not: its one marker is fixed before capture.
      *
      * Memoized, because `updateFilterButtonsVisibility()` asks on EVERY filter
      * pass and the answer cannot change between passes: these are SOURCE rows,
-     * which a filter never mutates, and both markers are fixed before capture —
-     * `data-mb-len-flag` is stamped by `_applyLengthMismatchFlag()` during
-     * pre-processing, and `span.mp` is MusicBrainz's own markup, which this
-     * script never creates (the ⏳ highlight only wraps text INSIDE one, on
-     * clones). Unmemoized, that was one `querySelector` per row per counter
-     * per pass — 2N a keystroke on a single-table page, 3N on a multi-table
-     * one — flat at the full row count however narrow the filter was
+     * which a filter never mutates, and `span.mp` is MusicBrainz's own markup,
+     * which this script never creates (the ⏳ highlight only wraps text INSIDE
+     * one, on clones). Unmemoized, that was one `querySelector` per row per
+     * pass, flat at the full row count however narrow the filter was
      * (PERFORMANCE.org Step 26).
      *
      * **Keyed by the array, and validated by its length — no invalidation
@@ -38934,147 +39293,31 @@ a { color: #1565c0; }`;
      * hydrate, a sort's `allRows = sortedData` / `targetGroup.rows =
      * sortedData`) or GROWS one (the fetch loop's and a resume's `push`).
      * Nothing splices, assigns by index or truncates. So a stale entry can only
-     * be reached by a writer that puts `data-mb-len-flag` or `span.mp` into a
-     * row that is ALREADY captured — none exists; one that ever does must
-     * replace the array, or the buttons keep the old count. The two guards
-     * cover for each other in every path a fixture reaches, which
+     * be reached by a writer that puts a `span.mp` into a row that is ALREADY
+     * captured — none exists; one that ever does must replace the array, or
+     * the ⏳ buttons keep the old count. The two guards cover for each other in
+     * every path a fixture reaches, which
      * `scripts/mutations/source-row-tally-memo.json` records honestly.
      *
      * The returned object is shared with the memo: read it, never mutate it.
      *
      * @param   {HTMLTableRowElement[]} rows - One source-row array.
-     * @returns {{length: number, lenWarn: number, lenSevere: number, pending: number}}
+     * @returns {{length: number, pending: number}}
      */
     function _sourceRowTally(rows) {
         if (!Array.isArray(rows) || rows.length === 0) {
-            return { length: 0, lenWarn: 0, lenSevere: 0, pending: 0 };
+            return { length: 0, pending: 0 };
         }
         const hit = _srcRowTallyMemo.get(rows);
         if (hit && hit.length === rows.length) return hit;
-        const tally = { length: rows.length, lenWarn: 0, lenSevere: 0, pending: 0 };
+        const tally = { length: rows.length, pending: 0 };
         rows.forEach(row => {
             _srcRowTallyRowScans++;
-            // Severity is per-row, and both of a row's cells always carry the
-            // same kind, so the first flagged cell settles it.
-            const flagged = row.querySelector('td[data-mb-len-flag]');
-            if (flagged) {
-                const kind = flagged.dataset.mbLenFlag;
-                if (kind === 'severe') tally.lenSevere++;
-                else if (kind === 'warn') tally.lenWarn++;
-            }
             if (_rowHasPendingEdits(row)) tally.pending++;
         });
         _srcRowTallyMemo.set(rows, tally);
-        Lib.debug('filter', `_sourceRowTally(): walked ${rows.length} source row(s) — `
-                          + `${tally.lenWarn} warn, ${tally.lenSevere} severe, ${tally.pending} pending.`);
+        Lib.debug('filter', `_sourceRowTally(): walked ${rows.length} source row(s) — ${tally.pending} pending.`);
         return tally;
-    }
-
-    /**
-     * Tallies rows carrying a length-mismatch flag, by severity.
-     *
-     * Counts ROWS, not cells: `_applyLengthMismatchFlag()` marks BOTH duration
-     * cells of a flagged track, so a per-cell tally (which is what
-     * `_countLiveDateFlags()` does, correctly, for its own one-cell-per-credit
-     * flags) would report exactly double here and read as twice as many
-     * problems as the release has.
-     *
-     * Counts the CAPTURED SOURCE rows (`_msSourceRows()`), not the live tbody.
-     * That is not a detail: on a multi-table page `runFilter()` re-renders each
-     * tbody with only the matching rows — filtered-out rows are removed from
-     * the DOM, not merely hidden — so a live-DOM tally would report whatever
-     * the current filter left behind. It showed up immediately: filtering to
-     * ⚠️ made the ❌ button disappear, because no ❌ row was still rendered.
-     * A summary button has to state a stable fact about the release, and be
-     * reachable while the other severity is engaged.
-     *
-     * The source rows carry the flags because `_applyLengthMismatchFlag()`
-     * stamps them during pre-processing, before row extraction — the same
-     * ride-along the millisecond stamps rely on.
-     *
-     * Sums `_sourceRowTally()` over the same arrays `_msSourceRows()` flattens
-     * (every `groupedRows[i].rows`, then `allRows`), so the rows counted are
-     * unchanged — only the per-pass walk and the per-pass flattening are gone.
-     *
-     * @returns {{warn: number, severe: number}}
-     */
-    function _countLengthMismatchRows() {
-        const counts = { warn: 0, severe: 0 };
-        const add = (rows) => {
-            const t = _sourceRowTally(rows);
-            counts.warn   += t.lenWarn;
-            counts.severe += t.lenSevere;
-        };
-        if (typeof groupedRows !== 'undefined') groupedRows.forEach(g => add(g.rows));
-        if (typeof allRows !== 'undefined') add(allRows);
-        return counts;
-    }
-
-    /**
-     * Shows/hides and relabels the length-mismatch summary buttons from
-     * `_countLengthMismatchRows()`. Called from
-     * `updateFilterButtonsVisibility()` alongside `_updateLiveDateFlagButtons()`,
-     * so it inherits every render/filter-completion hook that function already
-     * has — no new call sites.
-     *
-     * Also paints the pressed state, since these buttons toggle a filter rather
-     * than typing one into a visible input.
-     *
-     * @returns {void}
-     */
-    function _updateLengthMismatchButtons() {
-        const warnBtn   = document.getElementById('mb-len-mismatch-warn-btn');
-        const severeBtn = document.getElementById('mb-len-mismatch-severe-btn');
-        if (!warnBtn || !severeBtn) return;
-
-        const counts = _countLengthMismatchRows();
-        const _fmt = (kind, icon, n, btn) => {
-            if (n === 0) {
-                btn.style.display = 'none';
-                return;
-            }
-            const active = _lenMismatchFilterKind === kind;
-            btn.textContent = `(${n}) LENGTH ${icon}`;
-            btn.title = `${n} track${n === 1 ? '' : 's'} whose recording length differs from its `
-                      + `track length by more than the ${kind === 'severe' ? '"far over" level' : 'threshold'}`
-                      + ` (⚙️ Settings → 💿 RELEASE TRACKLIST). Click to show only ${n === 1 ? 'that row' : 'those rows'}`
-                      + `${active ? ' — click again to show all rows.' : '.'}`;
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-            btn.style.fontWeight = active ? 'bold' : '';
-            btn.style.backgroundColor = active
-                ? (kind === 'severe'
-                    ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da')
-                    : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'))
-                : '';
-            btn.style.display = 'inline-block';
-        };
-        _fmt('warn',   '⚠️', counts.warn,   warnBtn);
-        _fmt('severe', '❌', counts.severe, severeBtn);
-        Lib.debug('filter', `_updateLengthMismatchButtons(): ${counts.warn} warn row(s), `
-                          + `${counts.severe} severe row(s), active filter = ${_lenMismatchFilterKind}`);
-    }
-
-    /**
-     * Toggles the "show only length-mismatch rows" filter.
-     *
-     * Structural rather than text-based (see the button-creation comment):
-     * `testRowMatch()` reads `_lenMismatchFilterKind` directly, so this only has
-     * to set it and re-run the existing filter engine. Pressing the active
-     * severity again clears it, which is the only way back — nothing the user
-     * can type will, since no query string is involved.
-     *
-     * Unlike `_applyLiveDateFlagFilter()`, this deliberately does NOT clear the
-     * other filters: it composes with them, so you can flag-filter and then
-     * narrow further by typing. The pressed button is what keeps that
-     * combination legible.
-     *
-     * @param {('warn'|'severe')} kind
-     * @returns {void}
-     */
-    function _applyLengthMismatchFilter(kind) {
-        _lenMismatchFilterKind = _lenMismatchFilterKind === kind ? null : kind;
-        Lib.debug('filter', `_applyLengthMismatchFilter(): now ${_lenMismatchFilterKind || '(off)'}`);
-        runFilter();
     }
 
     // ── ⏳ "pending edits" pre-filter ─────────────────────────────────────────
@@ -39139,10 +39382,9 @@ a { color: #1565c0; }`;
      * than hiding them, so a live-DOM tally would report only what the current
      * filter happened to leave behind — filtering to pending edits would make
      * the very counts that describe the filter shrink to match it. This is the
-     * same trap `_countLengthMismatchRows()` documents, and the reason it reads
-     * `_msSourceRows()`; that helper flattens every group into one array and so
-     * cannot answer a per-group question, which is why this walks `groupedRows`
-     * itself.
+     * same trap the ⚠️/❌ findings menus' `_countFindingRows()` avoids by
+     * reading source rows too; this one needs a per-group answer, which is
+     * why it walks `groupedRows` itself.
      *
      * Table↔group binding is by INDEX, exactly as `runFilter()`'s own
      * multi-table loop does it (`tables[groupIdx]`), over the same
@@ -39273,11 +39515,11 @@ a { color: #1565c0; }`;
     /**
      * Creates (once) and repaints the global and per-sub-table ⏳ toggles.
      *
-     * Called only from `updateFilterButtonsVisibility()`, alongside
-     * `_updateLiveDateFlagButtons()`/`_updateLengthMismatchButtons()`, so it
-     * inherits every render- and filter-completion hook those already have —
-     * deliberately no call sites of its own, which is what keeps the three
-     * summary-button families impossible to get out of step with each other.
+     * Called only from `updateFilterButtonsVisibility()`, just before
+     * `_updateFindingMenus()`, so it inherits every render- and
+     * filter-completion hook that function has — deliberately no call sites
+     * of its own, which is what keeps the ⏳ toggles and the findings menu's
+     * "Pending edits" row (whose checked state reads them) in step.
      *
      * Self-scoping: a button is hidden outright wherever its scope has no
      * pending rows, so nothing appears on the overwhelming majority of pages
@@ -39370,23 +39612,355 @@ a { color: #1565c0; }`;
                           + (isMulti ? `, ${on}/${eligible} sub-table(s) on` : ''));
     }
 
-    function _applyLiveDateFlagFilter(icon) {
-        Lib.debug('filter', `_applyLiveDateFlagFilter(): applying one-off filter for icon "${icon}".`);
-        document.querySelectorAll('.mb-col-filter-input').forEach(input => {
-            input.value = '';
-            input.style.backgroundColor = '';
-            _clearColFilterValueSet(input);
-            _resetColFilterModes(input);
+    // ── ⚠️ WARNING / ❌ ERROR findings menus ──────────────────────────────────
+    // org/generalize-error-warning.org, docs/claude/findings.md. Two h1 toolbar
+    // pull-downs, one row per FINDINGS entry present on the page. A row
+    // TOGGLES a page-wide filter, by one of three routes:
+    //
+    //   • cell scope — tick the finding's 📊 entry (`finding-<id>`) in the one
+    //     column that holds it, in EVERY table, exactly as if the user had
+    //     ticked it by hand: the column filter box shows it, the 📊 panel shows
+    //     it ticked, every clear path unticks it. A co-flagged finding (length:
+    //     both duration cells) ticks the first of its columns.
+    //   • row scope, and the fallback for a cell finding that sits in two
+    //     unrelated columns of one table or meets a column in Exclude mode —
+    //     `_findingRowFilter`, "some cell of the row has it". 📊 ticks AND
+    //     across columns, which would keep only rows flagged in ALL of them.
+    //
+    // Pending edits is a row finding like any other, and deliberately does
+    // NOT drive the ⏳ toggles: the global ⏳ filters only the sub-tables that
+    // HAVE pending edits and leaves the others showing every row, so "only
+    // these rows, page-wide" — what every other menu row means — was not
+    // something it could say. The two now filter side by side (AND).
+    //
+    // A row's checked state is DERIVED from those places on every refresh,
+    // never stored, so any other way of clearing a filter (✕ in a column box,
+    // Clear ALL COLUMN filters, Shift+Esc, unticking in 📊) leaves the menu
+    // honest with no hook of its own.
+
+    /**
+     * The 📊 value a cell-scope finding ticks.
+     *
+     * @param {string} id
+     * @returns {string}
+     */
+    function _findingModeValue(id) {
+        return MB_UNIQ_STRUCTURE_MODE_PREFIX + 'finding-' + id;
+    }
+
+    /**
+     * A column filter input's checked 📊 values.
+     *
+     * @param {?HTMLInputElement} input
+     * @returns {string[]}
+     */
+    function _findingInputValues(input) {
+        if (!input || !input.dataset.mbUniqValues) return [];
+        try { return JSON.parse(input.dataset.mbUniqValues) || []; } catch (e) { return []; }
+    }
+
+    /**
+     * Where a cell-scope finding would be ticked: in EVERY table, the column
+     * of the name that holds it. Found on the SOURCE rows, since a filter
+     * removes rows from the live tbody. A table with none of these findings
+     * is ticked too — that is what empties it, the way "show only these rows"
+     * has to on a page where the finding sits in one sub-table only.
+     *
+     * `fallback` is true when the 📊 route cannot express "rows with this
+     * finding" for some table: two unrelated columns (ticks there AND), the
+     * findings in differently-named columns in different tables, a table
+     * without that column, or a target column in Exclude mode (a tick would
+     * invert).
+     *
+     * @param {object} f - A FINDINGS entry.
+     * @returns {{targets: Array<{table: HTMLTableElement, idx: number}>, fallback: boolean}}
+     */
+    function _findingTickTargets(f) {
+        const pairs = _findingTablePairs();
+        const names = new Set();
+        let fallback = false;
+        pairs.forEach(({ table, rows }) => {
+            const cols = new Set();
+            rows.forEach(r => r.querySelectorAll(`td[data-mb-findings~="${f.id}"]`)
+                .forEach(td => cols.add(td.cellIndex)));
+            if (!cols.size) return;
+            if (cols.size > 1 && !f.coFlagged) fallback = true;
+            names.add(_resolveColHeaderName(table, Math.min(...cols)));
         });
-        _getAllStfInputs().forEach(input => {
-            if (input.value) { input.value = ''; _dispatchInternalInputEvent(input, { bubbles: false }); }
+        if (names.size !== 1) return { targets: [], fallback: true };
+        const name = names.values().next().value;
+        const targets = [];
+        pairs.forEach(({ table }) => {
+            const count = table.querySelectorAll('thead tr:first-child th').length;
+            let idx = -1;
+            for (let i = 0; i < count && idx < 0; i++) {
+                if (_resolveColHeaderName(table, i) === name) idx = i;
+            }
+            const input = idx >= 0
+                ? table.querySelector(`thead tr.mb-col-filter-row .mb-col-filter-input[data-col-idx="${idx}"]`)
+                : null;
+            if (!input || _colFilterFlags(input, table).isExclude) { fallback = true; return; }
+            targets.push({ table, idx });
         });
-        caseCheckbox.checked = false;
-        regexpCheckbox.checked = false;
-        excludeCheckbox.checked = false;
-        const pfx = getFilterFocusPrefix();
-        filterInput.value = pfx + icon;
+        return { targets, fallback };
+    }
+
+    /**
+     * A finding's current filter state, derived from the 📊 ticks or the row
+     * filter.
+     *
+     * @param {object} f - A FINDINGS entry.
+     * @returns {('on'|'off')}
+     */
+    function _findingState(f) {
+        if (_findingRowFilter.has(f.id)) return 'on';
+        const value = _findingModeValue(f.id);
+        const ticked = Array.from(document.querySelectorAll('.mb-col-filter-input'))
+            .some(inp => _findingInputValues(inp).includes(value));
+        return ticked ? 'on' : 'off';
+    }
+
+    /**
+     * Engages or releases one finding's filter WITHOUT running the filter, so
+     * a caller changing several (the "Clear" row) runs it once.
+     *
+     * @param {object}  f  - A FINDINGS entry.
+     * @param {boolean} on
+     */
+    function _setFinding(f, on) {
+        const value = _findingModeValue(f.id);
+        if (!on) {
+            _findingRowFilter.delete(f.id);
+            document.querySelectorAll('table.tbl').forEach(table => {
+                table.querySelectorAll('thead tr.mb-col-filter-row .mb-col-filter-input').forEach(inp => {
+                    const values = _findingInputValues(inp);
+                    if (!values.includes(value)) return;
+                    _writeUniqValueSet(values.filter(v => v !== value), table, Number(inp.dataset.colIdx));
+                });
+            });
+            return;
+        }
+        if (f.scope === 'row') { _findingRowFilter.add(f.id); return; }
+        const { targets, fallback } = _findingTickTargets(f);
+        if (fallback) {
+            Lib.debug('filter', `_setFinding(): "${f.id}" falls back to the row filter (two columns, or an Exclude-mode column).`);
+            _findingRowFilter.add(f.id);
+            return;
+        }
+        targets.forEach(({ table, idx }) => {
+            const inp = table.querySelector(`thead tr.mb-col-filter-row .mb-col-filter-input[data-col-idx="${idx}"]`);
+            const values = _findingInputValues(inp);
+            if (!values.includes(value)) _writeUniqValueSet([...values, value], table, idx);
+        });
+    }
+
+    /**
+     * Toggles one finding's page-wide filter — the click handler of a
+     * findings-menu row and of a row-filter chip's ✕.
+     *
+     * Composes with every other filter (AND), like ticking a 📊 entry by hand.
+     *
+     * @param {string} id - A FINDINGS id.
+     */
+    function _toggleFinding(id) {
+        const f = _FINDING_BY_ID.get(id);
+        if (!f) return;
+        const turnOn = _findingState(f) !== 'on';
+        _setFinding(f, turnOn);
+        Lib.debug('filter', `_toggleFinding(): "${id}" now ${turnOn ? 'on' : 'off'}.`);
         runFilter();
+    }
+
+    /**
+     * Releases every finding of one level — the menu's trailing "Clear" row.
+     * Leaves every filter the menu did not set alone.
+     *
+     * @param {('warn'|'error')} level
+     */
+    function _clearFindingLevel(level) {
+        FINDINGS.filter(f => f.level === level && _findingState(f) !== 'off')
+            .forEach(f => _setFinding(f, false));
+        runFilter();
+    }
+
+    /**
+     * Creates (once) one findings menu and paints its button in the level's
+     * colours: the warn/severe tint settings the cells use, with the summary
+     * buttons' old text and border colours.
+     *
+     * @param {('warn'|'error')} level
+     * @returns {object} The `createToolbarMenu()` descriptor.
+     */
+    function _ensureFindingMenu(level) {
+        const isErr = level === 'error';
+        const menu = createToolbarMenu({
+            key:   isErr ? 'findings-error' : 'findings-warn',
+            id:    isErr ? 'mb-findings-error-menu-btn' : 'mb-findings-warn-menu-btn',
+            label: isErr ? '❌ ERROR' : '⚠️ WARNING',
+            title: '',
+        });
+        const btn = menu.btn;
+        if (!btn.dataset.mbFindingsStyled) {
+            btn.dataset.mbFindingsStyled = '1';
+            btn.classList.add('mb-findings-menu-btn');
+            const bg = isErr
+                ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da')
+                : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd');
+            btn.style.backgroundColor = bg;
+            btn.style.color = isErr ? '#a33' : '#8a6d00';
+            btn.style.border = `1px solid ${isErr ? '#e08a8a' : '#e0c14a'}`;
+            btn.style.fontWeight = 'bold';
+            btn.onmouseover = () => { btn.style.filter = 'brightness(0.94)'; };
+            btn.onmouseout  = () => { btn.style.filter = ''; };
+        }
+        return menu;
+    }
+
+    /**
+     * Rebuilds one menu's rows: one `menuitemcheckbox` per finding of this
+     * level present on the page, then a "Clear" row.
+     *
+     * @param {object} menu - From `_ensureFindingMenu()`.
+     * @param {('warn'|'error')} level
+     * @param {Array<{f: object, n: number, state: string}>} list
+     */
+    function _buildFindingMenuRows(menu, level, list) {
+        menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
+        list.forEach(({ f, n, state }) => {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'mb-findings-menu-item';
+            row.dataset.mbFindingId = f.id;
+            const g = document.createElement('span');
+            g.className = 'mb-findings-item-glyph';
+            g.textContent = f.glyph;
+            const label = document.createElement('span');
+            label.className = 'mb-findings-item-label';
+            label.textContent = f.label;
+            const count = document.createElement('span');
+            count.className = 'mb-findings-item-count';
+            count.textContent = String(n);
+            row.append(g, label, count);
+            const how = f.scope === 'row'
+                ? 'Filters by row: a row stays when any of its cells has it.'
+                : `Ticks 📊 "${_structureModeLabel(`finding-${f.id}`)}" (Findings - ${level === 'error' ? 'Error' : 'Warning'}) in the column that holds it, in every table.`;
+            row.title = `${n} row${n === 1 ? '' : 's'}. ${f.tip}\n${how}\n`
+                      + (state === 'on' ? 'Click to remove this filter.' : 'Click to show only these rows.');
+            menu.adopt(row);
+            row.setAttribute('role', 'menuitemcheckbox');
+            row.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
+            row.addEventListener('click', () => _toggleFinding(f.id));
+        });
+        const anyOn = list.some(x => x.state !== 'off');
+        const clear = document.createElement('button');
+        clear.type = 'button';
+        clear.className = 'mb-findings-menu-item mb-findings-clear-item';
+        clear.textContent = `✗ Clear ${level === 'error' ? 'error' : 'warning'} filters`;
+        clear.title = `Remove every ${level === 'error' ? 'error' : 'warning'} filter this menu set; your own filters stay.`;
+        clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
+        menu.adopt(clear);
+        clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
+    }
+
+    /**
+     * One chip per finding the row filter holds (see `findingChips`), each
+     * with a ✕ that releases it.
+     */
+    function _updateFindingChips() {
+        const host = document.getElementById('mb-findings-chips');
+        if (!host) return;
+        const sig = Array.from(_findingRowFilter).sort().join(' ');
+        if (host.dataset.mbSig === sig) return;
+        host.dataset.mbSig = sig;
+        host.textContent = '';
+        Array.from(_findingRowFilter).forEach(id => {
+            const f = _FINDING_BY_ID.get(id);
+            if (!f) return;
+            const isErr = f.level === 'error';
+            const chip = document.createElement('span');
+            chip.className = 'mb-findings-chip';
+            chip.dataset.mbFindingId = id;
+            chip.title = `Row filter set from the ${isErr ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has "${f.label}".`;
+            chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; border-radius:10px; padding:1px 3px 1px 8px; font-size:0.85em; font-weight:normal; '
+                + `background:${isErr ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da') : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd')}; `
+                + `color:${isErr ? '#a33' : '#8a6d00'}; border:1px solid ${isErr ? '#e08a8a' : '#e0c14a'};`;
+            chip.appendChild(document.createTextNode(`${isErr ? '❌' : '⚠️'} ${f.label}`));
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.className = 'mb-findings-chip-remove';
+            x.textContent = '✕';
+            x.title = 'Remove this row filter';
+            x.setAttribute('aria-label', `Remove the row filter "${f.label}"`);
+            x.style.cssText = 'border:none; background:none; cursor:pointer; font-weight:bold; color:inherit; padding:0 4px;';
+            x.addEventListener('click', () => _toggleFinding(id));
+            chip.appendChild(x);
+            host.appendChild(chip);
+        });
+        host.style.display = _findingRowFilter.size ? 'inline-flex' : 'none';
+    }
+
+    /**
+     * Brings both findings menus, their divider and the row-filter chips in
+     * line with the page. Called from `updateFilterButtonsVisibility()` — so
+     * it inherits every render- and filter-completion hook that function
+     * has, as the summary buttons it replaces did — and from the tail of
+     * `stampFindings()`.
+     *
+     * Counts are ROWS from `_countFindingRows()` (memoized source-row tallies),
+     * so a filter that hides a finding's rows never hides its menu row: that
+     * would take away the only way back to them (AUDIT.md §3.6). Rows are
+     * rebuilt only when a count or a checked state changed.
+     */
+    function _updateFindingMenus() {
+        const enabled = Lib.settings.sa_enable_findings_menus !== false;
+        const counts = enabled ? _countFindingRows() : new Map();
+        let changed = false;
+        ['warn', 'error'].forEach(level => {
+            const key = level === 'error' ? 'findings-error' : 'findings-warn';
+            const list = enabled
+                ? _activeFindings()
+                    .filter(f => f.level === level && (counts.get(f.id) || 0) > 0)
+                    .map(f => ({ f, n: counts.get(f.id), state: _findingState(f) }))
+                : [];
+            let menu = _toolbarMenus.get(key);
+            if (!list.length && !menu) return;
+            menu = menu || _ensureFindingMenu(level);
+            const sig = list.map(x => `${x.f.id}:${x.n}:${x.state}`).join('|');
+            if (menu.panel.dataset.mbSig === sig) return;
+            menu.panel.dataset.mbSig = sig;
+            changed = true;
+            if (list.length) _buildFindingMenuRows(menu, level, list);
+            else menu.panel.querySelectorAll('.mb-toolbar-menu-item').forEach(el => el.remove());
+            const total = list.reduce((s, x) => s + x.n, 0);
+            const word = level === 'error' ? 'ERROR' : 'WARNING';
+            menu.setLabel(level === 'error' ? `❌ ${word} (${total})` : `⚠️ ${word} (${total})`);
+            menu.btn.title = `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
+                + list.map(x => `${x.f.label} (${x.n})`).join(', ')
+                + '. Pick one to show only those rows in every table.';
+            const anyOn = list.some(x => x.state !== 'off');
+            menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
+            menu.btn.style.boxShadow = anyOn ? 'inset 0 0 0 2px currentColor' : '';
+        });
+        const container = document.getElementById('mb-show-all-controls-container');
+        // A menu with rows whose button is not in the bar yet (the bar was
+        // still detached on the pass that built its rows) needs one more
+        // ordering pass; anything else unchanged costs nothing here.
+        const detached = ['findings-warn', 'findings-error'].some(k => {
+            const m = _toolbarMenus.get(k);
+            return m && container && !m.isEmpty() && m.btn.parentNode !== container;
+        });
+        if (changed || detached) {
+            _orderToolbar();
+            const divider = document.getElementById('mb-button-divider-findings');
+            if (divider) {
+                const attached = ['findings-warn', 'findings-error'].some(k => {
+                    const m = _toolbarMenus.get(k);
+                    return m && container && m.btn.parentNode === container;
+                });
+                divider.style.display = attached ? '' : 'none';
+            }
+        }
+        _updateFindingChips();
     }
 
     /**
@@ -39439,16 +40013,16 @@ a { color: #1565c0; }`;
         // filter is active.  Column-only active is already covered by
         // clearColumnFiltersBtn; this button is not needed in that case.
         //
-        // The length-mismatch summary filter counts too, and has to: it is the
-        // one active filter with NO input holding it (see
-        // _applyLengthMismatchFilter), so without this the rows would be
+        // The findings-menu row filter counts too, and has to: no input holds
+        // it (see _toggleFinding()), so without this the rows would be
         // narrowed while every "clear" affordance stayed hidden — leaving the
-        // pressed summary button as the only way out, which is exactly the
-        // dead end a user would not think to look for.
-        // The ⏳ pending-edits toggles count for exactly the same reason as the
-        // length-mismatch filter above — no input holds them either.
+        // findings menu as the only way out, which is exactly the dead end a
+        // user would not think to look for. Its chip in the filter bar is the
+        // other one.
+        // The ⏳ pending-edits toggles count for exactly the same reason — no
+        // input holds them either.
         clearAllFiltersBtn.style.display =
-            (globalFilterActive || stfFiltersActive || _lenMismatchFilterKind || _pendingEditsAnyActive())
+            (globalFilterActive || stfFiltersActive || _findingRowFilter.size > 0 || _pendingEditsAnyActive())
                 ? 'inline-block' : 'none';
 
         // Update visibility, labels, and in-panel clear button for per-subtable controls.
@@ -39518,12 +40092,11 @@ a { color: #1565c0; }`;
             }
         });
 
-        // Keep the release-tracks-only WARNING/ERROR summary buttons in sync
-        // too — piggybacks on every existing call site of this function
-        // rather than needing its own.
-        _updateLiveDateFlagButtons();
-        _updateLengthMismatchButtons();
+        // Keep the ⏳ toggles and the ⚠️/❌ findings menus in sync too —
+        // piggybacks on every existing call site of this function rather than
+        // needing its own.
         _updatePendingEditsButtons();
+        _updateFindingMenus();
     }
 
     // Make this function globally accessible so runFilter can call it
@@ -40169,6 +40742,37 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_annotation_h2_bg || '#e3f2fd'};
             color: ${Lib.settings.sa_annotation_h2_color || '#1565c0'};
         }
+        /* Generic finding tint (see FINDINGS / stampFindings()): yellow + a
+           warning sign for data-mb-finding="warn", red + a cross for "error".
+           Never on a cell a per-family rule below already paints (an ALL
+           UPPERCASE title with an impossible live date stays red):
+           _writeFindingAttrs() leaves the attribute off there, because this
+           rule's :not() makes its glyph out-rank the family's. Same idiom and
+           same !important reasons as those rules (zebra striping, the sticky
+           Title cell's inline background); a sticky cell's inline
+           position:sticky keeps winning over position:relative.
+           data-mb-finding-inline marks a cell that already shows its own glyph
+           (an invalid ISRC, ISWC or barcode, a live credit date), which gets
+           the tint only. */
+        td[data-mb-finding] { position: relative; }
+        td[data-mb-finding]:not([data-mb-finding-inline]) { padding-right: 1.6em; }
+        td[data-mb-finding="warn"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'} !important;
+        }
+        td[data-mb-finding="error"] {
+            background-color: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'} !important;
+        }
+        td[data-mb-finding]:not([data-mb-finding-inline])::after {
+            position: absolute;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.8em;
+            line-height: 1;
+            pointer-events: none;
+        }
+        td[data-mb-finding="warn"]:not([data-mb-finding-inline])::after  { content: '⚠️'; }
+        td[data-mb-finding="error"]:not([data-mb-finding-inline])::after { content: '❌'; }
         /* Track-vs-recording length mismatch (release-tracks only, see
            _applyLengthMismatchFlag()). Driven ENTIRELY off the td's own
            data-mb-len-flag attribute — no marker element exists in the cell at
@@ -40237,7 +40841,7 @@ a { color: #1565c0; }`;
            and the sticky Title cell's inline background. The cells that carry
            a warning flag keep their own tint — a flag is the more urgent
            message, and the rest of the row still shows the target. */
-        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]) {
+        tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]):not([data-mb-finding]) {
             background-color: #f2f2b2 !important;
         }
         /* A release/release group title that breaks the live bootleg
@@ -41664,6 +42268,58 @@ a { color: #1565c0; }`;
         .mb-toolbar-menu-panel > .mb-toolbar-menu-item-focus {
             filter: brightness(0.94);
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+        }
+
+        /* The findings menus build their own rows (_buildFindingMenuRows)
+           instead of adopting an existing toolbar button, so the look an
+           adopted button brings from its own creator is given here: glyph,
+           label, then the row count pushed to the right edge. A checked row
+           (its finding is filtering) is bold with a green bar and a tick. */
+        .mb-findings-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            color: #222;
+            border: none;
+            font: inherit;
+            font-size: 0.95em;
+            cursor: pointer;
+        }
+        .mb-findings-item-glyph { width: 1.4em; text-align: center; flex-shrink: 0; }
+        .mb-findings-item-count {
+            margin-left: auto;
+            padding: 0 7px;
+            border-radius: 9px;
+            font-size: 0.85em;
+            font-variant-numeric: tabular-nums;
+            background: #eceff1;
+        }
+        #mb-findings-warn-menu-btn-panel .mb-findings-item-count {
+            background: ${Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd'};
+            color: #8a6d00;
+        }
+        #mb-findings-error-menu-btn-panel .mb-findings-item-count {
+            background: ${Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da'};
+            color: #a33;
+        }
+        .mb-findings-menu-item[aria-checked="true"] {
+            font-weight: bold;
+            box-shadow: inset 3px 0 0 #2e8b3a;
+        }
+        .mb-findings-menu-item[aria-checked="true"] .mb-findings-item-glyph::after {
+            content: '✓';
+            color: #2e8b3a;
+            font-weight: bold;
+            margin-left: 1px;
+        }
+        .mb-findings-clear-item {
+            color: #a33;
+            border-top: 1px solid #ddd !important;
+        }
+        .mb-findings-clear-item[aria-disabled="true"] {
+            opacity: 0.45;
+            cursor: default;
         }
 
         /* ── Fallback: browsers that don't support :focus-visible still see
@@ -47415,6 +48071,13 @@ a { color: #1565c0; }`;
         liveSepUnicode:  { label: 'Live title info - Separator ‐ only',      glyph: '‐' },
         liveSepAscii:    { label: 'Live title info - Separator - only',      glyph: '⚠️' },
         liveSepMixed:    { label: 'Live title info - Separator mixed',       glyph: '⚠️' },
+        // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
+        // in the open column (mode `finding-<id>`, read off the
+        // data-mb-findings attribute stampFindings() writes). The entries the
+        // ⚠️ WARNING / ❌ ERROR h1 menus tick; the finer per-family sections
+        // above (Length info, Live title info, …) stay as they are.
+        findingsWarn:  { label: 'Findings - Warning', glyph: '⚠️' },
+        findingsError: { label: 'Findings - Error',   glyph: '❌' },
         // "Rating info - Presence" — a "Rating" cell with or without a
         // rating (`_findCellRatingPresence()`).
         ratingPresence: { label: 'Rating info - Presence', glyph: '🌟' },
@@ -47657,6 +48320,10 @@ a { color: #1565c0; }`;
     _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet => {
         MB_UNIQ_MODE_TO_SECTION[`live-sep-${sep}-${facet}`] = `liveSep${sep[0].toUpperCase()}${sep.slice(1)}`;
     }));
+    // "Findings - Warning/Error": one `finding-<id>` mode per FINDINGS entry.
+    FINDINGS.forEach(f => {
+        MB_UNIQ_MODE_TO_SECTION[`finding-${f.id}`] = f.level === 'error' ? 'findingsError' : 'findingsWarn';
+    });
 
     /**
      * Maps a `makeValueSynItem()` kind string to the `SYN_SECTION_META` key
@@ -50600,16 +51267,14 @@ a { color: #1565c0; }`;
                 .forEach(a => a.classList.remove('mb-rel-icon-match'));
         }
 
-        // A length-mismatch summary button is engaged: rows without a flag of
-        // that severity are out regardless of what any query says. Placed after
-        // the highlight reset above (so a row leaving the set does not keep
-        // stale marks) and before every query test below, since no query can
-        // bring such a row back — see _applyLengthMismatchFilter().
-        if (_lenMismatchFilterKind) {
-            const _sel = _lenMismatchFilterKind === 'severe'
-                ? 'td[data-mb-len-flag="severe"]'
-                : 'td[data-mb-len-flag="warn"]';
-            if (!row.querySelector(_sel)) return false;
+        // A ⚠️/❌ findings-menu row filter is engaged: for each such finding,
+        // a row with no cell carrying it is out regardless of what any query
+        // says. Placed after the highlight reset above (so a row leaving the
+        // set does not keep stale marks) and before every query test below,
+        // since no query can bring such a row back — see _toggleFinding().
+        // Ids are registry tokens ([a-z-]), safe inside the selector.
+        for (const _fid of _findingRowFilter) {
+            if (!row.querySelector(`td[data-mb-findings~="${_fid}"]`)) return false;
         }
 
         // The ⏳ pending-edits toggle is engaged for THIS table. Same placement
@@ -51262,13 +51927,14 @@ a { color: #1565c0; }`;
             c: matchCtx.isCaseSensitive,
             r: matchCtx.isRegExp,
             x: matchCtx.isExclude,
-            // The length-mismatch summary filter is structural, not a query, so
-            // it appears NOWHERE else in this key — and leaving it out made the
+            // The findings-menu row filter is structural, not a query, so it
+            // appears NOWHERE else in this key — and leaving it out makes the
             // cache return the previous pass's rows when the only thing that
-            // changed was this. Symptom: pressing the button filtered
-            // correctly, pressing it again to clear did nothing at all, because
-            // "no query, no column filters" hashed identically in both states.
-            m: _lenMismatchFilterKind,
+            // changed is this. Learned on the length-mismatch button it
+            // replaces: pressing it filtered correctly, pressing it again to
+            // clear did nothing at all, because "no query, no column filters"
+            // hashed identically in both states.
+            m: Array.from(_findingRowFilter).sort(),
             // Same reasoning, same bug if omitted — and this one is per-group
             // rather than page-wide, so it has to come off matchCtx (which
             // runFilter() rebuilds per group) rather than a module variable.
@@ -51324,11 +51990,12 @@ a { color: #1565c0; }`;
             // keystroke would narrow the previous match set under the wrong
             // flag — silently, and only on single-table pages.
             //
-            // (`_lenMismatchFilterKind` is absent here for a weaker reason: it
-            // only ever runs on release-tracks, which is multi-table, so it
-            // never reaches this single-table path at all. Pending edits
-            // applies to every page type, so it does.)
             p: !!matchCtx.pendingEditsOnly,
+            // The findings-menu row filter, for the same contract. Unlike the
+            // release-tracks-only length filter it replaces, it reaches
+            // single-table pages (pending edits, low data quality, ISRCs, …),
+            // and toggling it may well be followed by an extending keystroke.
+            m: Array.from(_findingRowFilter).sort(),
             f: matchCtx.colFilters.map(f => f.isMultiValueFilter
                 ? { i: f.idx, u: Array.from(f.valueSet).sort(),
                     sm: Array.from(f.structureModes || []).sort(),
@@ -51532,7 +52199,7 @@ a { color: #1565c0; }`;
                 matchCtx.table = _subTable;
                 // Resolve this sub-table's own ⏳ toggle ONCE per group. It has
                 // to live on matchCtx (not a module variable like
-                // _lenMismatchFilterKind) precisely because it differs per
+                // _findingRowFilter) precisely because it differs per
                 // group, and it has to be resolved here rather than inside
                 // testRowMatch() so the answer costs one DOM lookup per group
                 // instead of one per row.
@@ -53268,10 +53935,6 @@ a { color: #1565c0; }`;
      */
     async function startFetchingProcess(e, buttonConfig, baseDef, resumeFrom = null) {
         const _isResume = !!resumeFrom;
-        // A new fetch replaces the row set, so last time's "this page has no
-        // live-date flags" is no longer an answer about these rows. Cheap to
-        // re-determine: one walk, on the first filter pass after the render.
-        _liveDateFlagsPresent = null;
         // MERGE LOGIC: Combine base definition with button-specific overrides.
         // For page types that carry an `entityFeatures` map (e.g.
         // 'series-releases', 'collections-releases'), resolve the per-entity
@@ -56216,6 +56879,10 @@ a { color: #1565c0; }`;
             // Live-title flags — once per fetch, onto the source rows too
             // (see stampLiveTitleFlags()), so re-renders need no call.
             stampLiveTitleFlags();
+            // Every ⚠️/❌ finding, same once-per-fetch contract. After the
+            // live-title stamp (and the ISRC/ISWC/barcode passes), whose
+            // attributes the findings' tint() reads.
+            stampFindings();
 
             // Re-align the filter row after Picard injection.
             // initPicardTaggerColumn appends a <th class="mb-picard-th"> to the first
@@ -62597,8 +63264,8 @@ a { color: #1565c0; }`;
         // row), so a signature/count built from `tbody.rows` silently loses
         // every row a different filter currently excludes — the identical
         // bug this file's own "A summary COUNT owes the same 'read the
-        // source rows' rule" section documents for
-        // `_updateLengthMismatchButtons()`/`_updateLiveDateFlagButtons()`.
+        // source rows' rule" section documents for the summary counts (today
+        // the ⚠️/❌ findings menus' `_countFindingRows()`).
         // `_tableSourceRows()` is the established table -> source-rows
         // binding (`groupedRows[i]`/`allRows`) that survives it.
         const entry = _tableSourceRows().find(e => e.table === table);
@@ -63163,6 +63830,10 @@ a { color: #1565c0; }`;
         };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
+        // "Findings - Warning/Error" — cells per FINDINGS id, read off the
+        // data-mb-findings attribute stampFindings() writes. Not column-gated:
+        // the stamp already applied each finding's own column gate.
+        const findingCounts = (_uniqCacheHit && _uniqCacheHit.findingCounts) || new Map();
         let lengthDeviationWithin10Count      = _uniqCacheHit ? _uniqCacheHit.lengthDeviationWithin10Count      : 0;
         let lengthDeviationShorter10to25Count = _uniqCacheHit ? _uniqCacheHit.lengthDeviationShorter10to25Count : 0;
         let lengthDeviationLonger10to25Count  = _uniqCacheHit ? _uniqCacheHit.lengthDeviationLonger10to25Count  : 0;
@@ -63728,6 +64399,9 @@ a { color: #1565c0; }`;
                 const _lenFlag = _findCellLenFlag(cell);
                 if (_lenFlag === 'severe')    lenFlagSevereCount++;
                 else if (_lenFlag === 'warn') lenFlagWarnCount++;
+                if (cell.dataset.mbFindings) {
+                    cell.dataset.mbFindings.split(' ').forEach(id => findingCounts.set(id, (findingCounts.get(id) || 0) + 1));
+                }
                 const _videoMediumFlag = _findCellVideoMediumFlag(cell);
                 if (_videoMediumFlag === 'mismatch') videoMediumMismatchCount++;
                 else if (_videoMediumFlag === 'ok')  videoMediumOkCount++;
@@ -65107,7 +65781,7 @@ a { color: #1565c0; }`;
                 reportTrendUpCount, reportTrendDownCount, reportTrendFlatCount,
                 lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
                 lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
-                titleAnatomyCounts: _ta, liveTitleCounts: _tl, ratingHasCount, ratingNoneCount,
+                titleAnatomyCounts: _ta, liveTitleCounts: _tl, ratingHasCount, ratingNoneCount, findingCounts,
                 lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
                 lengthDeviationShorter25to50Count, lengthDeviationLonger25to50Count,
                 lengthDeviationShorter50plusCount, lengthDeviationLonger50plusCount,
@@ -65141,7 +65815,7 @@ a { color: #1565c0; }`;
             lengthMsPreciseCount, lengthMsWholeCount, lengthMsNoneCount,
             lenFlagSevereCount, lenFlagWarnCount, videoMediumMismatchCount, videoMediumOkCount,
             _ta.medley, _ta.multi, _ta.eti, _ta.subtitle, _ta.series, _ta.truncated, _ta.ocRemix, _ta.allCaps,
-            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount,
+            _ta.noWork, _ta.hasWork, ratingHasCount, ratingNoneCount, ...findingCounts.values(),
             ..._ta.count.values(), ..._ta.part.values(), ..._ta.etiValue.values(),
             ..._ta.seriesNum.values(), ..._ta.format.values(),
             lengthDeviationWithin10Count, lengthDeviationShorter10to25Count, lengthDeviationLonger10to25Count,
@@ -66137,6 +66811,10 @@ a { color: #1565c0; }`;
         const _titleRatingItems = [];
         const _pushSyn = (mode, label, count) => { if (count > 0) _titleRatingItems.push(() => makeSynItem(mode, label, count)); };
         const _pushVals = (kind, map, keys) => keys.forEach(v => _titleRatingItems.push(() => makeValueSynItem(kind, v, map.get(v))));
+        // "Findings - Warning/Error" first, in registry order (warnings, then
+        // errors), riding _titleRatingItems so both render blocks and both
+        // render gates cover them with no extra counter in either.
+        FINDINGS.forEach(f => _pushSyn(`finding-${f.id}`, _structureModeLabel(`finding-${f.id}`), findingCounts.get(f.id) || 0));
         _pushSyn('title-medley', '🎶 medley', _ta.medley);
         _pushSyn('title-multi', '➗ multiple titles (" / ")', _ta.multi);
         _pushVals('titlecount', _ta.count, Array.from(_ta.count.keys()).sort((a, b) => parseInt(a, 10) - parseInt(b, 10)));
@@ -67081,6 +67759,10 @@ a { color: #1565c0; }`;
      * @returns {string}
      */
     function _structureModeLabel(mode) {
+        if (mode.startsWith('finding-')) {
+            const f = _FINDING_BY_ID.get(mode.slice(8));
+            return f ? `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}` : mode;
+        }
         if (mode === 'empty')          return '○ empty cells';
         if (mode === 'collapsed')      return '▶ multi-row: collapsed';
         if (mode === 'expanded')       return '◀ multi-row: expanded';
@@ -67258,6 +67940,10 @@ a { color: #1565c0; }`;
      * @returns {string}
      */
     function _structureModeTooltip(mode, colName = 'Length') {
+        if (mode.startsWith('finding-')) {
+            const f = _FINDING_BY_ID.get(mode.slice(8));
+            return f ? `${f.level === 'error' ? 'ERROR' : 'WARNING'}: ${f.tip}` : '';
+        }
         if (mode === 'empty')          return 'Cells with no content (or, for CAA/EAA columns, no artwork found).';
         if (mode === 'single')         return 'Cells with exactly one item — no expand/collapse toggle shown.';
         if (mode === 'collapsed')      return '▶ = a multi-item cell currently showing only its first item.';
@@ -67449,12 +68135,32 @@ a { color: #1565c0; }`;
      * @param {number}           colIndex       - Zero-based column index.
      */
     function applyUniqValueSet(selectedValues, table, colIndex) {
+        if (!_writeUniqValueSet(selectedValues, table, colIndex)) return;
+        // Direct call, not a synthetic 'input' event — see comment above.
+        if (typeof runFilter === 'function') {
+            runFilter();
+        }
+    }
+
+    /**
+     * `applyUniqValueSet()` minus the `runFilter()` call: writes one column's
+     * checked-value state (and its summary label and active styling) into its
+     * filter `<input>`. Split out so a caller setting state in MANY columns at
+     * once — the ⚠️/❌ findings menus tick one entry in every sub-table — can
+     * run the filter once at the end instead of once per column.
+     *
+     * @param {string[]}         selectedValues - Currently-checked raw values.
+     * @param {HTMLTableElement} table          - The table owning the column.
+     * @param {number}           colIndex       - Zero-based column index.
+     * @returns {boolean} `false` when the table has no such filter input.
+     */
+    function _writeUniqValueSet(selectedValues, table, colIndex) {
         const filterRow = table.querySelector('thead tr.mb-col-filter-row');
-        if (!filterRow) return;
+        if (!filterRow) return false;
         const input = filterRow.querySelector(
             `.mb-col-filter-input[data-col-idx="${colIndex}"]`
         );
-        if (!input) return;
+        if (!input) return false;
 
         const values = Array.from(new Set(selectedValues || []));
 
@@ -67476,12 +68182,9 @@ a { color: #1565c0; }`;
             }
             input.style.borderColor     = '';
             input.style.borderWidth     = '';
-            if (typeof runFilter === 'function') {
-                runFilter();
-            }
             Lib.debug('filter', `Uniq-drop: value-set cleared on col ${colIndex}`
                               + (_restored ? `, typed filter "${_restored}" restored` : ''));
-            return;
+            return true;
         }
 
         // Stash the typed text ONCE, on the transition into value-set mode.
@@ -67535,12 +68238,8 @@ a { color: #1565c0; }`;
         input.style.borderColor     = '';
         input.style.borderWidth     = '';
 
-        // Direct call, not a synthetic 'input' event — see comment above.
-        if (typeof runFilter === 'function') {
-            runFilter();
-        }
-
         Lib.debug('filter', `Uniq-drop: value-set [${values.join(', ')}] applied to col ${colIndex}`);
+        return true;
     }
 
     // =========================================================================
@@ -71101,9 +71800,9 @@ a { color: #1565c0; }`;
             }
         }
 
-        // Sync filter-bar button visibility (including the release-tracks-only
-        // WARNING/ERROR summary buttons, see _updateLiveDateFlagButtons) now
-        // that the initial render is fully complete. Every other call site of
+        // Sync filter-bar button visibility (including the ⚠️/❌ findings
+        // menus, see _updateFindingMenus) now that the initial render is
+        // fully complete. Every other call site of
         // updateFilterButtonsVisibility() is interaction-driven (runFilter(),
         // a sub-table filter edit, "Load from Disk") — none of them fire on
         // a plain first load with no user interaction, which left these
@@ -77758,9 +78457,10 @@ a { color: #1565c0; }`;
      * them, so a tally taken from the live tbody drops to zero exactly when a
      * filter excludes the rows that failed — and a control driven by it then
      * disappears, or dims into uselessness, at the moment it is most needed.
-     * CLAUDE.md records the identical bug for `_updateLengthMismatchButtons()`
-     * and `_countLiveDateFlags()`; `_countLengthMismatchRows()` walking
-     * `_msSourceRows()` is the fix being copied here.
+     * CLAUDE.md records the identical bug for the old LENGTH and live-date
+     * summary buttons (since replaced by the ⚠️/❌ findings menus, which read
+     * source rows through `_countFindingRows()`); reading the source rows is
+     * the fix being copied here.
      *
      * An MBID done ANYWHERE is excluded even if another of its cells still
      * carries `data-rel-error`: the same entity can appear in several rows,
@@ -77795,8 +78495,8 @@ a { color: #1565c0; }`;
      * count taken from the live DOM collapses to zero exactly when a filter
      * excludes the rows it describes — and a control that hides itself at zero
      * then vanishes at the moment it is most needed. CLAUDE.md records the
-     * identical bug for `_updateLengthMismatchButtons()` /
-     * `_updateLiveDateFlagButtons()`.
+     * identical bug for the old LENGTH / live-date summary buttons, which the
+     * ⚠️/❌ findings menus replaced.
      *
      * Single-table pages keep their rows in `allRows` with `groupedRows` empty,
      * which is why the two are handled separately rather than through
@@ -78548,11 +79248,6 @@ a { color: #1565c0; }`;
      *   used in place of opts.file.name when opts.file is null.
      */
     async function _hydrateAndRenderFromSnapshotData(data, opts = {}) {
-        // Hydrated rows can carry `.mb-live-date-flag` in their stored HTML
-        // without `_appendLiveDateFlag()` ever running in this session, so the
-        // flag state has to be re-determined rather than assumed — otherwise a
-        // restored release tracklist shows no ⚠️/❌ buttons at all.
-        _liveDateFlagsPresent = null;
         const {
             file = null,
             filterQueryRaw = '',
@@ -79607,6 +80302,7 @@ a { color: #1565c0; }`;
             initIswcValidation();
             initBarcodeValidation();
             stampLiveTitleFlags();
+            stampFindings();
 
             // Re-align the filter row after Picard injection (stale-detection no-op
             // when counts already match; self-heals on mismatch — see addColumnFilterRow).
@@ -91481,31 +92177,31 @@ a { color: #1565c0; }`;
             },
 
             /**
-             * How many rows `_countLiveDateFlags()` has walked since the page
+             * How many rows `_findingRowTally()` has walked since the page
              * loaded.
              *
-             * Exposed for the same reason as `picardEntityScans()` above. That
-             * function runs on every filter pass via
-             * `updateFilterButtonsVisibility()`, and on every pageType except
-             * `release-tracks` there is nothing for it to find — but "found
-             * nothing after walking 4174 rows" and "did not walk" produce
-             * byte-identical DOM: two hidden buttons either way. A test types
-             * a filter keystroke and asserts this did not move.
+             * Exposed for the same reason as `picardEntityScans()` above. The
+             * ⚠️/❌ findings menus are refreshed on every filter pass via
+             * `updateFilterButtonsVisibility()`, and "re-walked every source
+             * row" and "served the memo" produce byte-identical DOM. A test
+             * types a filter keystroke and asserts this did not move — the
+             * guarantee PERFORMANCE.org Step 25 bought for the live-date
+             * buttons the menus replaced.
              *
              * @returns {number}
              */
-            liveDateFlagRowScans() {
-                return _liveDateFlagRowScans;
+            findingTallyRowScans() {
+                return _findingTallyRowScans;
             },
 
             /**
              * How many source rows `_sourceRowTally()` has walked since the
              * page loaded.
              *
-             * Exposed for the same reason as `liveDateFlagRowScans()` above:
-             * the ⏳ and LENGTH ⚠️/❌ counts it feeds read identically whether
-             * a pass re-walked every source row or served the memo. A test
-             * types a filter keystroke and asserts this did not move
+             * Exposed for the same reason as `findingTallyRowScans()` above:
+             * the ⏳ counts it feeds read identically whether a pass
+             * re-walked every source row or served the memo. A test types a
+             * filter keystroke and asserts this did not move
              * (PERFORMANCE.org Step 26).
              *
              * @returns {number}

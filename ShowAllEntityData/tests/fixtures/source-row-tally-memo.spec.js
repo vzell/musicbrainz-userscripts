@@ -1,9 +1,10 @@
 'use strict';
 
 // PERFORMANCE.org Step 26. `updateFilterButtonsVisibility()` runs on EVERY
-// filter pass, and its tail feeds two families of summary buttons from the
+// filter pass, and its tail feeds two families of summary controls from the
 // captured SOURCE rows — the ⏳ pending-edits toggles and the LENGTH ⚠️/❌
-// buttons. They count source rows on purpose (AUDIT.md §3.6: `runFilter()`
+// counts (today the ⚠️ WARNING / ❌ ERROR findings menus' length rows, fed by
+// `_findingRowTally()`). They count source rows on purpose (AUDIT.md §3.6: `runFilter()`
 // REMOVES non-matching rows, so a live-DOM tally makes a button vanish under
 // the very filter it describes), and that made them cost one `querySelector`
 // per source row per counter per pass — flat at the full row count however
@@ -39,6 +40,7 @@ const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled } = require('../support/filterSortAssertions');
 const { clickToolbarItem } = require('../support/toolbarMenu');
+const { findingRow } = require('../support/findingsMenu');
 
 // Multi-table: artist-releasegroups, three <h3> sub-tables — Album (2 of 3
 // rows pending), Single (1 of 2), Live (0 of 2). Same fixture as
@@ -80,7 +82,7 @@ const refreshButtons = (page) => page.evaluate(() => window.updateFilterButtonsV
  * which the counter would report as zero.
  */
 const tallyQueriesPerRefresh = (page) => page.evaluate(() => {
-    const WATCHED = new Set(['td span.mp', 'td[data-mb-len-flag]']);
+    const WATCHED = new Set(['td span.mp']);
     const orig = Element.prototype.querySelector;
     let n = 0;
     Element.prototype.querySelector = function (sel) {
@@ -232,28 +234,29 @@ test.describe('source-row tallies are memoized per row set (PERFORMANCE.org Step
             expect((await button(page, GLOBAL_BTN)).label, 'a sort keeps the count').toBe('(4) ⏳');
         });
 
-    test('release tracklist: the LENGTH ⚠️/❌ counts stay whole and stop re-walking', async ({ page }) => {
+    test('release tracklist: the findings menus\' length counts stay whole and stop re-walking', async ({ page }) => {
+        // The LENGTH ⚠️/❌ summary buttons this used to pin were replaced by
+        // the ⚠️ WARNING / ❌ ERROR findings menus, whose tally is
+        // `_findingRowTally()` — memoized the same way, plus a stamp
+        // generation (its rows are stamped after capture).
         await renderRelease(page);
+        const findingScans = () => page.evaluate(() => window.__saTest.findingTallyRowScans());
 
-        const warn = await button(page, '#mb-len-mismatch-warn-btn');
-        const severe = await button(page, '#mb-len-mismatch-severe-btn');
-        expect(warn.label, 'three tracks are over the 500 ms threshold').toBe('(3) LENGTH ⚠️');
-        expect(severe.label, 'and one is over ×3 of it').toBe('(1) LENGTH ❌');
+        expect((await findingRow(page, 'warn', 'len-warn'))?.count, 'three tracks are over the 500 ms threshold').toBe(3);
+        expect((await findingRow(page, 'error', 'len-severe'))?.count, 'and one is over ×3 of it').toBe(1);
 
-        const baseline = await countedBaseline(page);
+        await refreshButtons(page);
+        const baseline = await findingScans();
         expect(baseline, 'the first tally walked every track').toBeGreaterThanOrEqual(8);
 
         // "Thunder Road" (A1) carries neither flag.
         await filterTo(page, 'Thunder', 1);
         await filterTo(page, 'Thunder Road', 1);
 
-        expect(await tallyQueriesPerRefresh(page), 'a refresh makes no per-row tally query').toBe(0);
-        expect(await tallyScans(page), 'no pass after the first re-walked a track').toBe(baseline);
-        const warnAfter = await button(page, '#mb-len-mismatch-warn-btn');
-        const severeAfter = await button(page, '#mb-len-mismatch-severe-btn');
-        expect(warnAfter.visible && severeAfter.visible, 'both survive a filter excluding every flagged row').toBe(true);
-        expect(warnAfter.label).toBe('(3) LENGTH ⚠️');
-        expect(severeAfter.label).toBe('(1) LENGTH ❌');
+        await refreshButtons(page);
+        expect(await findingScans(), 'no pass after the first re-walked a track').toBe(baseline);
+        expect((await findingRow(page, 'warn', 'len-warn'))?.count, 'both survive a filter excluding every flagged row').toBe(3);
+        expect((await findingRow(page, 'error', 'len-severe'))?.count).toBe(1);
     });
 
     test('re-key: a new row set loaded into the same page is counted afresh', async ({ page }) => {
