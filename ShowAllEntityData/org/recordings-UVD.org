@@ -1,6 +1,65 @@
 ** TODO recordings
 
-Style guide at https://musicbrainz.org/doc/Style/Recording#Live_recordings
+Disambiguation comments
+
+#+begin_example
+<span class="comment"><bdi>(live, 2004‐10‐02: Gund Arena, Cleveland, OH, USA)</bdi></span>
+#+end_example
+
+in a "Name" column e.g. on PT 'artist-recordings' (or other named columns, probably "Recording", in other PTs with a
+recording "a href" anchor) see e.g.
+
+#+begin_example
+@debug/Recording-Bruce-initial.html - artist Bruce Springsteen recordings raw HTML
+#+end_example
+
+should get the same treatment as what we implemented for events (and release groups/releases) just now, except that the
+comment has additionally prepended before the date expression either of the following event types
+
+#+begin_example
+live, 
+soundcheck,
+etc. see the EVENT_TYPE_KEYWORDS in the code
+#+end_example
+
+1.)
+
+My own convention for disambiguation comments is that they should follow the naming conventions from the style guide at
+https://musicbrainz.org/doc/Style/Recording#Live_recordings - Specific types of recording: Live recordings
+
+#+begin_example
+For live recordings, enter the recording title as described in the recording title guideline, and use "live" as the recording disambiguation comment. If the date and/or location is known, this should also be added to the disambiguation comment following the same format as used on live bootlegs.
+
+Examples
+Train in Vain (live, 1998-12-14: Telewest Arena, Newcastle, England, UK)
+Wake Up (live, Los Angeles, CA, USA)
+The Dance (live, 2002)
+Candle in the Wind (single edit) (live)
+#+end_example
+
+But personally, at least for artist Bruce Springsteen, I use unicode "‐" between all date components but plain "-" or a
+mixture of both are allowed (the latter are flagged as warnings)
+
+Additionally I allow also "; <event additional info>" at the end of the disambiguation, so basically
+
+#+begin_example
+<event type>, YYYY-MM-DD[, early show]: Venue, City, State, Country[; <event additional info>]
+#+end_example
+
+2.)
+
+Add the equivalent UVD sections in recording columns like what we have for event/release group/release columns but the section
+namings should be adopted.
+
+3.)
+
+The current 'eventParts' extractor already extracts all relevant parts of the disambiguation. Maybe this information can
+be used for new UVD sections too. Make some suggestions
+
+
+
+
+
 
 
 

@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the hand-made deletion fires no input event",
+    "why": "A bare .value write is invisible to the filter: the box empties and the table stays filtered on the old text (the source-row-tally-memo flake).",
+    "edits": [
+      {
+        "find": "                        _dispatchInternalInputEvent(input, { bubbles: true });\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-prefix-guard-delete.spec.js",
+    "grep": "still covering the prefix",
+    "expect": "fail"
+  },
+  {
+    "name": "a selection past the prefix is blocked like a caret",
+    "why": "The pre-2026-10-02 Backspace rule: any Backspace starting at or before the boundary was blocked, so Ctrl+A then Backspace did nothing.",
+    "edits": [
+      {
+        "find": "                if (selEnd > pfxLen && selEnd > selStart) {",
+        "replace": "                if (e.key === 'Delete' && selEnd > pfxLen && selEnd > selStart) {"
+      }
+    ],
+    "spec": "tests/fixtures/filter-prefix-guard-delete.spec.js",
+    "grep": "Ctrl\\+A then Backspace",
+    "expect": "fail"
+  }
+]

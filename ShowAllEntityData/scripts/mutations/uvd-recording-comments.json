@@ -1,0 +1,123 @@
+[
+  {
+    "name": "the shared verdict helper drops locParts",
+    "why": "_liveVerdictFromMatch() is the one place live titles, event names and recording comments get their verdict; losing locParts empties every Location completeness section at once.",
+    "edits": [
+      {
+        "find": "            locParts: locStr ? locStr.split(', ').length : null,",
+        "replace": "            locParts: null,"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "parser: forms, types",
+    "expect": "fail"
+  },
+  {
+    "name": "the rc prefix is not stripped before the live matcher",
+    "why": "rclive… modes reuse _liveTitleMatchesMode(); handed the prefixed mode, a ticked Validity/Date/Separator entry matches nothing.",
+    "edits": [
+      {
+        "find": "        if (mode.startsWith('rclive'))   return !!rc.live && rc.form !== 'nearmiss' && _liveTitleMatchesMode(rc.live, mode.slice(2));",
+        "replace": "        if (mode.startsWith('rclive'))   return !!rc.live && rc.form !== 'nearmiss' && _liveTitleMatchesMode(rc.live, mode);"
+      },
+      {
+        "find": "        if (mode.startsWith('rcliveloc:')) return !!rc.locParts && _liveLocLabel(rc.locParts) === mode.slice(10);",
+        "replace": "        if (mode.startsWith('rcliveloc:')) return false;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "ticking entries filters",
+    "expect": "fail"
+  },
+  {
+    "name": "event types are matched shortest first",
+    "why": "\"live rehearsal\" must not be read as \"live\" followed by \" rehearsal\" (which would then be a near miss).",
+    "edits": [
+      {
+        "find": "    const EVENT_TYPE_KEYWORDS = ['live rehearsal', 'soundcheck', 'rehearsal', 'interview', 'audition', 'studio', 'live'];",
+        "replace": "    const EVENT_TYPE_KEYWORDS = ['live', 'live rehearsal', 'soundcheck', 'rehearsal', 'interview', 'audition', 'studio'];"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "parser: forms, types",
+    "expect": "fail"
+  },
+  {
+    "name": "rehearsal is not an event type",
+    "why": "org/recordings-UVD.org: Bruce Springsteen's \"rehearsal, 1978‐05‐19: …\" comments must be recognised by both the parser and eventParts.",
+    "edits": [
+      {
+        "find": "    const EVENT_TYPE_KEYWORDS = ['live rehearsal', 'soundcheck', 'rehearsal', 'interview', 'audition', 'studio', 'live'];",
+        "replace": "    const EVENT_TYPE_KEYWORDS = ['live rehearsal', 'soundcheck', 'interview', 'audition', 'studio', 'live'];"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "rehearsal is an event type",
+    "expect": "fail"
+  },
+  {
+    "name": "the plain comment column is read as a link column",
+    "why": "release-tracks moves the comment out of Title into a plain \"Disambiguation\" column; reading that cell for a recording link finds none, so the whole column counts nothing.",
+    "edits": [
+      {
+        "find": "        if (_uvdRecCommentPlainColumns().has(name)) return 'plain';",
+        "replace": "        if (_uvdRecCommentPlainColumns().has(name)) return 'link';"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "release-tracks Disambiguation",
+    "expect": "fail"
+  },
+  {
+    "name": "imprecise dates count as mismatches",
+    "why": "2004-10 vs 2004-10-02 agree as far as they go: a warning, not an error.",
+    "edits": [
+      {
+        "find": "        return long.startsWith(short + '-') ? 'imprecise' : 'mismatch';",
+        "replace": "        return 'mismatch';"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "release-tracks Disambiguation",
+    "expect": "fail"
+  },
+  {
+    "name": "the state check accepts any non-empty state",
+    "why": "eventParts fills Event-State for USA/Canada whenever the location has two parts, so an emptiness check never fires on \"The Roxy, West Hollywood, USA\".",
+    "edits": [
+      {
+        "find": "                return (country === 'USA' || country === 'Canada') && !!state && !/^[A-Z]{2}$/.test(state.textContent.trim());",
+        "replace": "                return (country === 'USA' || country === 'Canada') && !!state && !state.textContent.trim();"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "recording comment and state findings",
+    "expect": "fail"
+  },
+  {
+    "name": "presence counts rows without an event type",
+    "why": "A non-live comment (\"alternate take\") has an empty Event-Detail by construction; counting it as \"no detail\" inflates the entry.",
+    "edits": [
+      {
+        "find": "                if ((isEventDetailCol || isEventAddInfoCol) && _eventTypeColIdx >= 0 &&\n                        row.cells[_eventTypeColIdx] && getCleanColumnText(row.cells[_eventTypeColIdx])) {",
+        "replace": "                if ((isEventDetailCol || isEventAddInfoCol)) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "eventParts sections",
+    "expect": "fail"
+  },
+  {
+    "name": "the recording-comment tint is not stamped",
+    "why": "_stampLiveTitleRow() must judge a recording comment column by its comment; without it the Name and Disambiguation cells stay untinted.",
+    "edits": [
+      {
+        "find": "            const flag = (rec && _recCommentFlag(_findCellRecordingComment(td, rec === 'plain'))) ||",
+        "replace": "            const flag = (rec && null) ||"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-recording-comments.spec.js",
+    "grep": "Name cells: red",
+    "expect": "fail"
+  }
+]

@@ -427,6 +427,51 @@ themselves:
   plain `-` in the date (same two switches as live titles), and **light
   yellow with ⚠️** for a style guide near miss ("Highlight event names that
   almost follow the style guide as WARNING" in ⚙️ Settings → ⚠️ Findings).
+- **🏷️ Recording comment info** — a recording's disambiguation comment, on
+  the columns that show it: a recording's **Name**/**Recording** cell (the
+  Title-info columns above) and a release tracklist's **Disambiguation**
+  column. The synthetic **Comment** column is left alone, so the counts appear
+  once. A comment counts when it starts with an event type (`live`,
+  `soundcheck`, `rehearsal`, `live rehearsal`, `interview`, `audition`,
+  `studio`), in one of the forms of the
+  [recording style guide](https://musicbrainz.org/doc/Style/Recording#Live_recordings),
+  with an optional `; …` at the end:
+  `live`, `live, 2002`, `live, Los Angeles, CA, USA`, or
+  `live, 2004‐10‐02[, early show]: Gund Arena, Cleveland, OH, USA[; intro]`.
+  An uncertain day may be written `2001‐12‐22/23`. Switch the sections off
+  with "Unique-Values Dropdown: Recording Comment Info"; name more plain comment
+  columns in "… Columns Holding A Recording Comment As Text".
+  - **Form** and **Event type** — which of the forms above, and which type.
+  - **❗ Near miss** — one entry per reason: a date not written YYYY-MM-DD, no
+    `, ` after the type (`live 2004‐10‐02: …`), no `: ` before the location
+    (`live, 2004‐10‐02, Gund Arena, …`), a type in capitals (`Live, …`), or a
+    live date with no type in front.
+  - **Validity, date completeness, additional date info, location
+    completeness and the three Separator sections** — as in **Live title
+    info**; location completeness also counts `live, City, State, Country`.
+  - **❔ Uncertain day** and **📝 Additional info** (the `; …` text).
+
+  The cells are marked like live titles (same two switches): **light red with
+  ❌** for an impossible date or a near miss, **light yellow with ⚠️** for a
+  plain `-` in the date. On a release tracklist the **Recording date** cell is
+  compared with the comment's date: **light red with ❌** when they are
+  different dates, **light yellow with ⚠️** when one is less precise
+  (`2004-10` vs `2004-10-02`) or only one of them has a date ("Highlight
+  recording dates that disagree with the comment" in ⚙️ Settings → ⚠️
+  Findings).
+- **🎤 Event info** — on the **Event-*** columns split from a recording comment
+  (Event-Type, Event-Country, …): **Type** and **Country** list their values;
+  **🔤 Country form** tells abbreviations (`USA`, `UK`) from full names
+  (`United States`, `Denmark`), so mixed spellings stand out; **Detail** (the
+  text between the date and the colon, e.g. `early show`) and **Additional
+  info** (the `; …` text) show has / none — counting only comments with an
+  event type — and one entry per value. An **Event-Country** of USA or Canada
+  whose state is not a two-letter code is tinted **light yellow with ⚠️**
+  ("Highlight a missing state for USA/Canada as WARNING"): the state is
+  missing (`The Roxy, West Hollywood, USA` puts the city in its place) or
+  written out. Note: the colon-less style guide form `live, Los Angeles, CA,
+  USA` is not split into City/State/Country by these columns; it lands in
+  Event-Detail.
 - **🌟 Rating info - Presence** — on every **Rating** column: `🌟 has a rating`
   and `☆ no rating`.
 - **🌅 Time info** — a "Time" column's start time as a part of the day: morning
@@ -505,6 +550,9 @@ filter with a ✕ to remove it.
 | ⚠️     | Live title date uses a plain "-" instead of "‐" (U+2010)        | Release and release group titles            |
 | ⚠️     | Event name date uses a plain "-" instead of "‐" (U+2010)        | Event columns                               |
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
+| ⚠️     | Recording comment date uses a plain "-" instead of "‐"          | Name / Recording / Disambiguation           |
+| ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
+| ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
@@ -518,6 +566,9 @@ filter with a ✕ to remove it.
 | ❌    | Title starts with a date but is not a live title                | Release and release group titles            |
 | ❌    | Event name with an impossible date                              | Event columns                               |
 | ❌    | Event name starts with a date but is not in the live form       | Event columns                               |
+| ❌    | Recording comment with an impossible date                       | Name / Recording / Disambiguation           |
+| ❌    | Recording comment almost in the live form                       | Name / Recording / Disambiguation           |
+| ❌    | Recording date differs from the comment date                    | Release tracklist: Recording date           |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
