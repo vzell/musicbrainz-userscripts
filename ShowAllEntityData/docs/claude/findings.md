@@ -40,6 +40,15 @@ decorate the live clones. So ISRC validity comes from `_findCellIsrcParts()`,
 not from `a[data-mb-isrc-invalid]`. Reuse the 📊 readers (`_findCell*`), which
 were written for detached clones already.
 
+**Column gates on `plan`.** `_findingPlanForTable()` hands every `cols()`
+two name predicates: `plan.titleInfo(name)` (Title + `sa_uvd_title_info_columns`)
+and `plan.eventName(name)` (Event + `sa_uvd_event_name_columns`). The
+release/RG live-title findings (`live-*`) and the event-name ones
+(`event-live-sep`, `event-style-nearmiss`, `event-live-invalid`,
+`event-live-nearmiss`) are separate entries on purpose: different columns,
+different readers (`_findCellLiveTitle()` vs `_findCellEventName()`), so
+neither family ever counts the other's cells.
+
 ## The stamp: `stampFindings()`
 
 Same shape and same reasons as `stampLiveTitleFlags()`, and called right after

@@ -176,7 +176,7 @@ test.describe('📊 Live title info', () => {
         const p = (t) => page.evaluate((x) => window.__saTest.parseLiveTitle(x), t);
 
         expect(await p('2008-12-07: Rose Garden, Portland, OR, USA')).toEqual({
-            kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'ascii', extra: null, problems: [],
+            kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'ascii', extra: null, locParts: 4, problems: [],
         });
         expect(await p('2008‐12‐17, early show: Mellon Arena, Pittsburgh, PA, USA')).toMatchObject({
             kind: 'valid', sep: 'unicode', extra: 'early show',
@@ -220,6 +220,11 @@ test.describe('📊 Live title info', () => {
                 '» date: MM-DD': 1, '» date: YYYY': 1, '» date: YYYY-MM': 1, '» date: YYYY-MM-DD': 9,
             },
             'Live title info - Additional date info': { '🕗 has additional date information': 1, '» info: early show': 1 },
+            // The two "Leap Arena, Utrecht, Netherlands" titles have no state.
+            'Live title info - Location completeness': {
+                '» location: 3 parts (Venue, City, Country)': 2,
+                '» location: 4 parts (Venue, City, State, Country)': 10,
+            },
             // "2008: …" has no separator, so it is in none of the three.
             'Live title info - Separator ‐ only': {
                 '∑ live titles': 7, '✅ valid': 4, '❌ impossible date': 3, '◐ incomplete date': 2, '🕗 additional date information': 1,
@@ -235,6 +240,7 @@ test.describe('📊 Live title info', () => {
         expect(s).toEqual({
             'Live title info - Validity': { '✅ follows the live title convention (Official)': 1 },
             'Live title info - Date completeness': { '📅 complete date (YYYY-MM-DD)': 1, '» date: YYYY-MM-DD': 1 },
+            'Live title info - Location completeness': { '» location: 4 parts (Venue, City, State, Country)': 1 },
             'Live title info - Separator ‐ only': { '∑ live titles': 1, '✅ valid': 1 },
         });
     });
@@ -247,6 +253,17 @@ test.describe('📊 Live title info', () => {
         expect((await visibleRows(page, 'Release', bootleg)).map((r) => r.title).sort()).toEqual([
             '05.02.1975: The Main Point, Bryn Mawr, PA, USA',
             '1975‐02‐05 The Main Point, Bryn Mawr',
+        ]);
+    });
+
+    test('ticking a location-completeness entry filters to exactly its rows', async ({ page }) => {
+        await openRg(page);
+        const bootleg = await tableIndexOf(page, 'Bootleg release');
+        await sectionsOf(page, 'Release', bootleg);
+        await tick(page, 'Live title info - Location completeness', '3 parts');
+        expect((await visibleRows(page, 'Release', bootleg)).map((r) => r.title).sort()).toEqual([
+            '1999‐02‐29: Leap Arena, Utrecht, Netherlands',
+            '2000-02-29: Leap Arena, Utrecht, Netherlands',
         ]);
     });
 

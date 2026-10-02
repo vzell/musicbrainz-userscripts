@@ -1,0 +1,28 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Event names: every \"Event\" column (artist, place and area events, …) gets new 📊 \"Event name info\" sections. Form: which naming form each name follows — the live bootleg form \"YYYY-MM-DD[, early show]: Venue, City, State, Country\" or one of the title forms of https://musicbrainz.org/doc/Style/Event: \"[artist] at [venue]\", \"[festival] [N/YYYY]\" (\"Hellfest 2023, Day 1: Mainstage 01\"), \"[tour]: [city]\", or free form. Style guide near miss: names that almost follow a form, with one entry per reason (\"@\" or \"AT\" for \"at\", \" - \" for \": \", a colon without one space after it, \"'23\" or a year glued to the name). Festival edition: year or running number. For names in the live form, the same sections as \"Live title info\": validity, near miss, date completeness, additional date info, location completeness and the three separator sections. Every entry filters the table. Behind the new settings \"Unique-Values Dropdown: Event Name Info\" (on by default) and \"Unique-Values Dropdown: Event Name Info On These Columns Too\" (empty: Event columns only).",
+          "Event names are tinted like live release titles: light red with ❌ for an impossible date or a live-form near miss, light yellow with ⚠️ for a plain \"-\" in the date (same two live-title settings), and light yellow with ⚠️ for a style guide near miss (new setting \"Highlight event names that almost follow the style guide as WARNING\", ⚙️ Settings → ⚠️ FINDINGS, on by default). The ⚠️ WARNING / ❌ ERROR menus get four new rows for them.",
+          "Live bootleg titles: new 📊 section \"Live title info - Location completeness\" on release and release group titles (and on event names): how many \", \"-separated parts the location has — 2 (Venue, City), 3 (Venue, City, Country), 4 (Venue, City, State, Country) or 5+. Which part a short location lacks cannot be told, so only the count is shown."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Source comments only: the description of the jesus2099 clean-up function sat above the wrong function (the millisecond-length adopter, which already had its own). It now sits above the function it describes. No change in behaviour."
+        ]
+      }
+    ]
+  }
+]

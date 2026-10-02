@@ -1,0 +1,66 @@
+{
+  "pageType": "artist-events",
+  "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+  "tableMode": "single",
+  "subTableIndex": null,
+  "totalRows": 4174,
+  "picardArm": null,
+  "relArm": null,
+  "relSeedPath": null,
+  "relIconsRendered": null,
+  "relSettleMs": null,
+  "seedGmValues": {
+    "sa_enable_caa_pics": false
+  },
+  "branch": "feature/uvd-event-names",
+  "gitBranch": "feature/uvd-event-names",
+  "capturedAt": "2026-10-02",
+  "startedAt": "2026-10-02T11:58:16.038Z",
+  "finishedAt": "2026-10-02T12:10:37.428Z",
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.33.2-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 415.3,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 39.2
+    },
+    "claudeSinceBoot": true
+  },
+  "scriptVersion": "9.99.1187+2026-10-02",
+  "interactions": {
+    "globalFilter": {
+      "medianMs": 2202,
+      "samples": 5
+    },
+    "columnFilter": {
+      "medianMs": 2738,
+      "samples": 5
+    },
+    "sort": {
+      "medianMs": 3643,
+      "samples": 5
+    },
+    "uniqDropCold": {
+      "medianMs": 23918,
+      "samples": 5
+    },
+    "uniqDropWarm": {
+      "medianMs": 1130,
+      "samples": 5
+    },
+    "headerCountsInitial": {
+      "medianMs": 6041,
+      "samples": 5
+    },
+    "headerCountsRestore": {
+      "medianMs": 6605,
+      "samples": 5
+    }
+  }
+}

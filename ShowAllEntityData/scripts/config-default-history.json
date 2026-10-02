@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "408ce0b27bc3e89c79fcd5a5335297e9172fe710",
-    "revisions_walked": 660
+    "head": "0614b9a33a75036a3808be093624c454bd743c49",
+    "revisions_walked": 663
   },
   "changes": [
     {
@@ -406,6 +406,16 @@
     "sa_dialog_save_export_autoclose_ms": 1800,
     "sa_ld_auto_resize_after_load": false,
     "sa_enable_show_single_table_btn": true,
+    "sa_enable_findings_menus": true,
+    "sa_findings_tint_allcaps": true,
+    "sa_findings_tint_truncated": true,
+    "sa_findings_tint_title_mismatch": true,
+    "sa_findings_tint_low_quality": true,
+    "sa_findings_tint_pending": true,
+    "sa_findings_tint_isrc": true,
+    "sa_findings_tint_iswc": true,
+    "sa_findings_tint_barcode": true,
+    "sa_findings_tint_live_credit": true,
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
     "sa_enable_release_tracks_isrc_column": false,

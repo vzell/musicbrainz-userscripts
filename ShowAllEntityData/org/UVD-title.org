@@ -159,11 +159,11 @@ The Age of Love (Watch Out for Stella club mix)
 
 On e.g https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - "Title Info - Subtitle", Subtitle not highlighted and not filterable by value, same as Title itself
 
-** TODO Events in the "Event" column should also get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
-
-Events in the "Event" column should als get a UVD section if they use the "<date>:" format or NOT (free format), or the
-guidline specific event name format
-
 ** TODO Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
+
+** TODO recordings
+
+https://musicbrainz.org/doc/Style/Recording#Live_recordings
+
 
 

@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1187+2026-10-02",
-    "schema_entries": 304,
+    "schema_entries": 307,
     "sections": 40,
-    "settings": 264,
-    "settings_with_default": 259,
+    "settings": 267,
+    "settings_with_default": 262,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,13 +15,13 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 114,
+      "checkbox": 116,
       "color_picker": 62,
       "divider": 40,
       "number": 39,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
-      "text": 6,
+      "text": 7,
       "table": 5,
       "function": 1
     }
@@ -306,6 +306,7 @@
     "sa_enable_sticky_headers": "Enable Sticky Headers",
     "sa_enable_tooltip_debug": "Enable tooltip debug logging",
     "sa_enable_uniq_drop_context_debug": "Enable unique-values dropdown debug logging",
+    "sa_enable_uvd_event_names": "Unique-Values Dropdown: Event Name Info",
     "sa_enable_uvd_live_titles": "Unique-Values Dropdown: Live Title Info",
     "sa_enable_uvd_title_format": "Unique-Values Dropdown: Title Format Designations",
     "sa_enable_uvd_title_series": "Unique-Values Dropdown: Title Series Numbering",
@@ -325,6 +326,7 @@
     "sa_filter_focus_prefix": "Filter Focus Prefix",
     "sa_findings_tint_allcaps": "Highlight ALL UPPERCASE titles as WARNING",
     "sa_findings_tint_barcode": "Highlight invalid barcodes as WARNING",
+    "sa_findings_tint_event_style": "Highlight event names that almost follow the style guide as WARNING",
     "sa_findings_tint_isrc": "Highlight invalid ISRCs as WARNING",
     "sa_findings_tint_iswc": "Highlight invalid ISWCs as WARNING",
     "sa_findings_tint_live_credit": "Highlight live-recording credit dates as WARNING/ERROR",
@@ -452,6 +454,7 @@
     "sa_uniq_dropdown_visible_rows": "Unique-Values Dropdown Visible Rows",
     "sa_uniq_quickfilter_highlight_bg": "Unique-Values Quickfilter Highlight Background",
     "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color",
+    "sa_uvd_event_name_columns": "Unique-Values Dropdown: Event Name Info On These Columns Too",
     "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too"
   },
   "defaults": {
@@ -571,6 +574,7 @@
     "sa_enable_sticky_headers": true,
     "sa_enable_tooltip_debug": false,
     "sa_enable_uniq_drop_context_debug": false,
+    "sa_enable_uvd_event_names": true,
     "sa_enable_uvd_live_titles": true,
     "sa_enable_uvd_title_format": true,
     "sa_enable_uvd_title_series": true,
@@ -590,6 +594,7 @@
     "sa_filter_focus_prefix": "🔍 ",
     "sa_findings_tint_allcaps": true,
     "sa_findings_tint_barcode": true,
+    "sa_findings_tint_event_style": true,
     "sa_findings_tint_isrc": true,
     "sa_findings_tint_iswc": true,
     "sa_findings_tint_live_credit": true,
@@ -713,6 +718,7 @@
     "sa_uniq_dropdown_visible_rows": 30,
     "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
     "sa_uniq_quickfilter_highlight_color": "#c0392b",
+    "sa_uvd_event_name_columns": "",
     "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work"
   },
   "tables": {

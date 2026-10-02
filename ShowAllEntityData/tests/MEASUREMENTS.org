@@ -3003,3 +3003,33 @@ the live row would roughly halve the 24 ms. Not done, pending a decision.
 The 📊 open cost on Title-info columns (one extra regex per date-led title)
 was not measured. The comparable =_parseTitleAnatomy()= pass in the entry
 above stayed inside cold-open noise.
+
+* 2026-10-02 — 📊 "Event name info", main vs feature/uvd-event-names, interaction perf (petri)
+
+*Probing*: the Event-column 📊 open, which now runs one =_parseEventName()=
+per cell when counting (cold) and renders about 30 more entries (warm and
+cold). =capture-interaction-perf.js --pageType=artist-events= (5 samples,
+medians), =main= from a detached git worktree WITH the auth file copied in
+(the trap recorded in the entry above). A first round without it (UTC
+11:20–11:45) was thrown away. Branch work was uncommitted. Files:
+=tests/snapshots/artist-events/interaction-perf-{main,feature-uvd-event-names}-9.99.1187-2026-10-02-petri.json=.
+
+** =artist-events=, single-table, 4174 rows (Bruce Springsteen =/artist/70248960-…/events=, "Event" column)
+
+| Metric (median ms)  | =main= (11:46–11:58) | branch (11:58–12:10) | ratio |
+|---------------------+----------------------+----------------------+-------|
+| globalFilter        |                 2236 |                 2202 |  0.98 |
+| columnFilter        |                 2726 |                 2738 |  1.00 |
+| sort                |                 3633 |                 3643 |  1.00 |
+| uniqDropCold        |                26586 |                23918 |  0.90 |
+| uniqDropWarm        |                 1054 |                 1130 |  1.07 |
+| headerCountsInitial |                 5767 |                 6041 |  1.05 |
+| headerCountsRestore |                 6462 |                 6605 |  1.02 |
+
+*Read as: filter and sort unchanged; the warm 📊 open on the Event column
+costs about +76 ms (1.07x).* The discarded round showed the same direction
+(+122 ms, 1.13x), so the extra sections' render is probably real, not noise.
+The cold open came out 10 % FASTER in both rounds, which this change cannot
+cause; the branch arm always ran second, so treat cold as unchanged within
+order/noise. Header counts are not touched by this change and moved within
+the usual spread.

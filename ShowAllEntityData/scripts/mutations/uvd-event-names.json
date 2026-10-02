@@ -1,0 +1,119 @@
+[
+  {
+    "name": "the tour form is tried before the festival form",
+    "why": "\"Hellfest 2023, Day 1: Mainstage 01\" is a festival edition with a day and stage after it, not a tour stop; the festival check must run first.",
+    "edits": [
+      {
+        "find": "        const fm = _EVENT_FESTIVAL_RE.exec(full);\n",
+        "replace": "        if (_EVENT_TOUR_RE.test(full)) return out('tour');\n        const fm = _EVENT_FESTIVAL_RE.exec(full);\n"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "parser: forms, precedence",
+    "expect": "fail"
+  },
+  {
+    "name": "a week number counts as a festival edition",
+    "why": "\"The KISS Kruise XI, Week 2\" is free form; without the day/week guard every \"Day 1\" or \"Week 2\" name reads as a festival.",
+    "edits": [
+      {
+        "find": "        if (fm && !_EVENT_NOT_EDITION_RE.test(fm[1])) {",
+        "replace": "        if (fm) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "parser: forms, precedence",
+    "expect": "fail"
+  },
+  {
+    "name": "the ev prefix is not stripped before the live matcher",
+    "why": "The evlive… modes reuse _liveTitleMatchesMode(); handed the prefixed mode it matches nothing, so ticking a live-form entry on the Event column empties the table.",
+    "edits": [
+      {
+        "find": "        if (mode.startsWith('evlive'))      return !!ev.live && _liveTitleMatchesMode(ev.live, mode.slice(2));",
+        "replace": "        if (mode.startsWith('evlive'))      return !!ev.live && _liveTitleMatchesMode(ev.live, mode);"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "ev-prefixed live entry",
+    "expect": "fail"
+  },
+  {
+    "name": "location parts are counted off by one",
+    "why": "The Location completeness entries must name the real number of \", \"-separated parts.",
+    "edits": [
+      {
+        "find": "            locParts: m[10].split(', ').length,",
+        "replace": "            locParts: m[10].split(', ').length - 1,"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "Bootleg sub-table: every section",
+    "expect": "fail"
+  },
+  {
+    "name": "the location matcher is missing",
+    "why": "Without the liveloc: branch a ticked Location completeness entry matches no row.",
+    "edits": [
+      {
+        "find": "        if (mode.startsWith('liveloc:'))   return _liveLocLabel(live.locParts) === mode.slice(8);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "location-completeness entry",
+    "expect": "fail"
+  },
+  {
+    "name": "event columns are not stamped with the live flag",
+    "why": "The red/yellow live-form tint reaches event names only because _liveTitleColIdxs() includes the event-name columns.",
+    "edits": [
+      {
+        "find": "            if (name === 'Title' || names.has(name) || eventNames.has(name)) out.push(i);",
+        "replace": "            if (name === 'Title' || names.has(name)) out.push(i);"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "cells: live-form red/yellow",
+    "expect": "fail"
+  },
+  {
+    "name": "the event findings never test the Event column",
+    "why": "Every event FINDINGS entry gates its columns through plan.eventName(); a gate that says no leaves the menus without the event rows and style near misses untinted.",
+    "edits": [
+      {
+        "find": "            eventName: name => eventCols.has(name),",
+        "replace": "            eventName: name => false,"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "four event findings",
+    "expect": "fail"
+  },
+  {
+    "name": "the rendering is not gated by the event-name column set",
+    "why": "Recorded as a pass on purpose: the counting loop is gated by isEventNameCol too, so on any other column every counter is zero and _pushSyn()/_pushVals() push nothing. The render gate is a second guard the spec cannot see while the count gate covers for it.",
+    "edits": [
+      {
+        "find": "        if (isEventNameCol && Lib.settings.sa_enable_uvd_event_names !== false) {",
+        "replace": "        if (Lib.settings.sa_enable_uvd_event_names !== false) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "only the Event column",
+    "expect": "pass"
+  },
+  {
+    "name": "the setting does not hide the sections",
+    "why": "sa_enable_uvd_event_names must gate the rendering.",
+    "edits": [
+      {
+        "find": "        if (isEventNameCol && Lib.settings.sa_enable_uvd_event_names !== false) {",
+        "replace": "        if (isEventNameCol) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-event-names.spec.js",
+    "grep": "settings off",
+    "expect": "fail"
+  }
+]

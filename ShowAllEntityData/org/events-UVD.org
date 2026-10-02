@@ -1,0 +1,61 @@
+* TODO Events in the "Event" column should also get a UVD section if they use the "<date>:" format or NOT (free format), or the guideline specific event name format
+
+1.)
+
+The "function _adoptJesus2099MsLength(td) {" has two JSDoc comments after each other, please fix
+
+2.)
+
+Event names in an "Event" column e.g. on PT 'artist-events' see e.g.
+
+#+begin_example
+Bruce Springsteen - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events
+KISS - https://musicbrainz.org/artist/e1f1e33e-2e4c-4d43-b91b-7064068d3283/events
+#+end_example
+
+should get the same treatment as what we implemented for release group and release names in userscript version "9.99.1186" regarding.
+
+1.)
+
+My own convention for event names is that they should follow the naming of live bootleg releases (https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs)
+
+#+begin_example
+YYYY-MM-DD[, early show]: Venue, City, State, Country
+#+end_example
+
+See artist Bruce Springsteen above - raw HTML at @debug/Event-Bruce-initial.html
+
+Personally, at least for artist Bruce Springsteen, I use unicode "‐" between all date components but plain "-" or a
+mixture of both are allowed (the latter are flagged as warnings)
+
+Add the equivalent UVD sections in "Event" columns like what we have for release group/release columns but the section
+namings should be adopted.
+
+2.)
+
+Additionally the official style guide at https://musicbrainz.org/doc/Style/Event - "Title" section, should be checked
+against too.
+
+Artist KISS above typically follows this convention - raw HTML at @debug/Event-KISS-initial.html
+
+Add a UVD section which shows for example unique counts following the following conventions
+
+#+begin_example
+For one-off events, the generic title should generally be of the style "[main artist(s)] at [venue]".
+For concerts that are part of a tour, it is also acceptable to use "[tour name]: [city]" if that seems more appropriate to the way the events in that specific tour are advertised; either way, aim for consistency for the whole tour.
+For festivals, append the edition number or year to the festival name, such as "[festival] [123/YYYY]".
+#+end_example
+
+3.)
+
+a.)
+
+For 1) and 2) also show a section with near misses, where for example, the ":" is missing in 
+
+#+begin_example
+YYYY-MM-DD[, early show]: Venue, City, State, Country
+#+end_example
+
+b.)
+
+entries where the different date parts, or venues, city, state and country are missing
