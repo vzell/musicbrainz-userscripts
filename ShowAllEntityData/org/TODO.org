@@ -1,3 +1,35 @@
+* DONE Add abbrev section to CLAUDE.md
+** DONE i
+
+Add the following abbreviation section to CLAUDE.md, so whenever I use an abbreviation in my prompt it's recognized with
+full meaning/context
+
+| Abbreviation | Meaning                                        | Context                                                                        | Example translation                                                        |
+|--------------+------------------------------------------------+--------------------------------------------------------------------------------+----------------------------------------------------------------------------|
+| UVD          | column specific unique value drop-down menu    | typically used in the context of the "uniq-dropdown-section" skill             |                                                                            |
+| A            | MusicBrainz "Artist" entity                    | https://musicbrainz.org/doc/MusicBrainz_Entity                                 | The A RG => The artist release group                                       |
+| RG           | MusicBrainz "Release Group" entity             | "                                                                              |                                                                            |
+| R            | MusicBrainz "Release" entity                   | "                                                                              |                                                                            |
+| REC          | MusicBrainz "Recording" entity                 | "                                                                              |                                                                            |
+| W            | MusicBrainz "Work" entity                      | "                                                                              |                                                                            |
+| L            | MusicBrainz "Label" entity                     | "                                                                              |                                                                            |
+| E            | MusicBrainz "Event" entity                     | "                                                                              |                                                                            |
+| S            | MusicBrainz "Series" entity                    | "                                                                              |                                                                            |
+| ARE          | MusicBrainz "Area" entity                      | "                                                                              |                                                                            |
+| P            | MusicBrainz "Place" entity                     | "                                                                              |                                                                            |
+| I            | MusicBrainz "Instrument" entity                | "                                                                              |                                                                            |
+| PT           | pageType(s)                                    | const pageDefinitions                                                          |                                                                            |
+| GF           | global filter for single/multi-table pageTypes | <span id="mb-global-filter-wrapper"                                            |                                                                            |
+| STF          | sub-table filter on multi-table pageTypes      | <span class="mb-subtable-filter-wrapper">                                      |                                                                            |
+| CF           | column specific filter                         | <span class="mb-col-filter-wrapper mb-col-modes">                              |                                                                            |
+| T            | table                                          |                                                                                |                                                                            |
+| ST           | sub-table                                      |                                                                                |                                                                            |
+| C            | column                                         |                                                                                | In the "Title" C of ST "1-CD" => In the "title" column of sub-table "1-CD" |
+| AR           | advanced relationship                          | the release-tracks AR columns, _findAllArDts(), the split-ar-peer-column skill |                                                                            |
+
+
+
+
 * DONE data quality is missing
 ** i
 
@@ -477,148 +509,6 @@ combine the outcome of the two caa branches and create a summary org file like w
 everything and merge to main so I can start over on another machine
 
 
-
-* TODO 503
-** CAA/EAA and Relationships multi section button
-
-Before I leave this session, adjust the @org/503-handling.org for the following ideas:
-
-1.)
-
-Currently we have the following two buttons regarding CAA/EAA handling on tables/sub-tables:
-
-#+begin_example
-<button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" data-art-render-gen="3"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">36</span></button>
-<button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button>
-#+end_example
-
-2.)
-
-Mayb we can combine these into one button with different clickable areas on the table/sub-table level during these current 503 implementations
-
-- the CAA/EAA toggle icon thumb
-- the CAA/EAA count
-- a reload ALL section
-- a "just what failed" section
-
-3.)
-
-The situation for the "Relationships" column looks like this:
-
-#+begin_example
-<button id="mb-rel-retry-0" type="button" title="Retry loading Relationship icons for this table (network reload, clears IDB cache)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button>
-#+end_example
-
-Maybe we can also extend the above ideas to that button
-
-3.)
-
-show me a mock of the buttons if that's a workable solution
-
-4.)
-
-tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
-
-** DONE sa_art_idb_metadata_ttl_days
-
-Work on @org/503-handling.org
-
-1.)
-
-Change the "sa_art_idb_metadata_ttl_days" to 30 days
-
-2.)
-
-Is the following a good idea ?
-
-a.)
-
-work generically in a 503 branch
-
-b.)
-
-for each sub-step create a worktree and implemente/test there. let the end-user do a live test (if possible) before
-offering to merge back to the "503" branch
-
-c.)
-
-if a feature is worth implementing right away as kind of a "quick fix"/win, after an end-user live test (if possible)
-merge the worktree to main directly and afterwards right back to the "503" branch
-
-*** Answer (2026-09-19)
-
-1.) Done on =fix/caa-metadata-transient=, *together with the F5 fix, not alone*.
-The TTL could not be raised on its own: a 503 from coverartarchive.org was being
-persisted as "this release has no artwork", so 7 → 30 would have quadrupled how
-long one transient failure hid real artwork. Fixing F5 is what makes 30 safe.
-
-2.) *No umbrella =503= branch.* =main= is the trunk; one short-lived branch per
-sub-step, off =main=, live-tested, merged back. Reasons, in order of weight:
-
-- The eight items in =org/503-handling.org= are independently shippable. The one
-  real dependency (item 1, the shared transient classifier, feeding items 3-4 and
-  6) is a *sequence on main*, not a batch that must integrate first.
-- Two levels break the WIP-changelog rule: =scripts/fold-wip-changelog.py= is
-  one-level (branch → =main=) and deletes the WIP file when it folds, so entries
-  would pile up on =503= until one final fold — the whole batch shipping as a
-  single version block, which is the opposite of (c).
-- (c) is the tell: if most sub-steps go straight to =main= anyway, =503= spends
-  its life being back-merged, conflicting every time in =// @version=,
-  =ShowAllEntityData_CHANGELOG.json= and =org/503-handling.org=.
-
-*Worktrees: not per sub-step.* The script is re-imported into Tampermonkey by
-hand, so a branch switch in the main checkout costs the same and skips
-=npm install= plus a fresh =npm run auth:login= (=playwright/.auth/= is
-gitignored, so a new worktree runs live specs *logged out*, silently). Keep a
-worktree for the one case the project's rules demand it: a perf A/B, where
-=main= and the branch must be measured in one session on one host.
-
-Tracking lives in =org/503-handling.org='s Status section, on =main=.
-
-** DONE in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
-
-in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
-days change
-
-** DONE How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
-
-❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
-     `_ws2GetJson()` (so Relationships + ⏱ batch get 429/502/504 + Retry-After). F1-F3 (fetchHtml) and F4 (release
-     events) stay for their own branches, as the org sequences them. One logical change, small live-test surface.
-  2. Also refactor the CAA art path onto the helper Additionally rewrite `_artEnrichIcon()`/`_artGmFetchBlob()`'s status
-     tests in terms of the new helper. Risk: `_ART_MISS_STATUSES` (404/410, "definitive miss") is NOT the complement of
-     transient — a 403 is neither — so this would be a behaviour change on the path 9.99.1117 just touched, not a
-     refactor.
-  3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
-     `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
-     go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
-
-** DONE PERFORMANCE.org
-
-Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
-
-** DONE skip tests
-
-- Is it possible to skip the tests belonging to item 7 and 5 when doing the standard testing after new implementation as
-they are very long and probaly not worth it now that I've checked in a live browser
-- Do we really need them after evey new implementation
-- Is it possible to run them only on demand
-
-** DONE pick up the segmented retry pill
-** TODO Two things this batch surfaced that aren't tracked anywhere yet
-
-if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
-off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
-on unmodified code, different spec each time.
-
-** TODO pick up the heading pre-processing defect
-
-Two honest gaps, both recorded rather than buried:
-- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on
-  that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
-  assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
-- Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
-
 * DONE analyze the save/load settings regarding end-user handling/versioning
 
 Analysed 2026-09-20 — see [[file:config-handling.org][org/config-handling.org]].
@@ -829,107 +719,151 @@ Also create a new section in the unique value drop-down menu of the "Video" colu
 Also create a new section in the unique value drop-down menu of the "Length"/"Recording length" columns when their cell data are flagged with ❌
 
 
+* TODO 503
+** CAA/EAA and Relationships multi section button
+
+Before I leave this session, adjust the @org/503-handling.org for the following ideas:
+
+1.)
+
+Currently we have the following two buttons regarding CAA/EAA handling on tables/sub-tables:
+
+#+begin_example
+<button id="mb-caa-toggle-btn-0" type="button" class="mb-caa-art-toggle-btn" style="cursor: pointer; padding: 1px 5px 1px 3px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 5px; display: inline-flex; align-items: center; gap: 6px; line-height: 1; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;" title="Show CAA cover art image stripe for this section — keyboard: Ctrl+M then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for Ctrl+A)" data-art-render-gen="3"><img class="mb-caa-toggle-thumb" src="//coverartarchive.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a/front-250" style="height: 18px; width: 18px; object-fit: cover; border-radius: 2px; vertical-align: middle; display: block;"><span class="mb-caa-toggle-count">36</span></button>
+<button id="mb-caa-toggle-btn-retry-0" type="button" title="Retry loading all CAA cover art images for this table (forces network reload)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">⟳</button>
+#+end_example
+
+2.)
+
+Mayb we can combine these into one button with different clickable areas on the table/sub-table level during these current 503 implementations
+
+- the CAA/EAA toggle icon thumb
+- the CAA/EAA count
+- a reload ALL section
+- a "just what failed" section
+
+3.)
+
+The situation for the "Relationships" column looks like this:
+
+#+begin_example
+<button id="mb-rel-retry-0" type="button" title="Retry loading Relationship icons for this table (network reload, clears IDB cache)" style="cursor: pointer; padding: 1px 4px; border: 1px solid rgb(170, 170, 170); border-radius: 3px; background: rgb(245, 245, 245); vertical-align: middle; font-size: 0.8em; margin-left: 3px; line-height: 1; display: inline-flex; align-items: center; box-sizing: border-box; transition: transform 0.1s, box-shadow 0.1s;">🔗⟳</button>
+#+end_example
+
+Maybe we can also extend the above ideas to that button
+
+3.)
+
+show me a mock of the buttons if that's a workable solution
+
+4.)
+
+tell me the exact prompt for you, to go on in our current implementation strategy if anything has changed after 1.)-3.)
+
+** DONE sa_art_idb_metadata_ttl_days
+
+Work on @org/503-handling.org
+
+1.)
+
+Change the "sa_art_idb_metadata_ttl_days" to 30 days
+
+2.)
+
+Is the following a good idea ?
+
+a.)
+
+work generically in a 503 branch
+
+b.)
+
+for each sub-step create a worktree and implemente/test there. let the end-user do a live test (if possible) before
+offering to merge back to the "503" branch
+
+c.)
+
+if a feature is worth implementing right away as kind of a "quick fix"/win, after an end-user live test (if possible)
+merge the worktree to main directly and afterwards right back to the "503" branch
+
+*** Answer (2026-09-19)
+
+1.) Done on =fix/caa-metadata-transient=, *together with the F5 fix, not alone*.
+The TTL could not be raised on its own: a 503 from coverartarchive.org was being
+persisted as "this release has no artwork", so 7 → 30 would have quadrupled how
+long one transient failure hid real artwork. Fixing F5 is what makes 30 safe.
+
+2.) *No umbrella =503= branch.* =main= is the trunk; one short-lived branch per
+sub-step, off =main=, live-tested, merged back. Reasons, in order of weight:
+
+- The eight items in =org/503-handling.org= are independently shippable. The one
+  real dependency (item 1, the shared transient classifier, feeding items 3-4 and
+  6) is a *sequence on main*, not a batch that must integrate first.
+- Two levels break the WIP-changelog rule: =scripts/fold-wip-changelog.py= is
+  one-level (branch → =main=) and deletes the WIP file when it folds, so entries
+  would pile up on =503= until one final fold — the whole batch shipping as a
+  single version block, which is the opposite of (c).
+- (c) is the tell: if most sub-steps go straight to =main= anyway, =503= spends
+  its life being back-merged, conflicting every time in =// @version=,
+  =ShowAllEntityData_CHANGELOG.json= and =org/503-handling.org=.
+
+*Worktrees: not per sub-step.* The script is re-imported into Tampermonkey by
+hand, so a branch switch in the main checkout costs the same and skips
+=npm install= plus a fresh =npm run auth:login= (=playwright/.auth/= is
+gitignored, so a new worktree runs live specs *logged out*, silently). Keep a
+worktree for the one case the project's rules demand it: a perf A/B, where
+=main= and the branch must be measured in one session on one host.
+
+Tracking lives in =org/503-handling.org='s Status section, on =main=.
+
+** DONE in the upcoming forum artice when releaseing new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30 days change
+
+in the upcoming forum artice when releasing a new userscript version mention the "sa_art_idb_metadata_ttl_days" to 30
+days change
+
+** DONE How wide should this branch's blast radius be? The org scopes item 1 as "landing with `_ws2GetJson()` as its first consumer".
+
+❯ 1. `_ws2GetJson()` only (Recommended) Add `_isTransientHttp()` + `_parseRetryAfterMs()` as shared helpers, wire only
+     `_ws2GetJson()` (so Relationships + ⏱ batch get 429/502/504 + Retry-After). F1-F3 (fetchHtml) and F4 (release
+     events) stay for their own branches, as the org sequences them. One logical change, small live-test surface.
+  2. Also refactor the CAA art path onto the helper Additionally rewrite `_artEnrichIcon()`/`_artGmFetchBlob()`'s status
+     tests in terms of the new helper. Risk: `_ART_MISS_STATUSES` (404/410, "definitive miss") is NOT the complement of
+     transient — a 403 is neither — so this would be a behaviour change on the path 9.99.1117 just touched, not a
+     refactor.
+  3. Also route release-events (F4) through `_ws2GetJson()` Fold org item 6 into this branch:
+     `initReleaseEventsColumn()`'s bare `fetch()` becomes a `_ws2GetJson()` call, gaining retry + classification in one
+     go. Larger diff, and F4 also wants a visible column failure state that this branch would not deliver.
+
+** DONE PERFORMANCE.org
+
+Fix the 79 ~:NNNNN~ line references in PERFORMANCE.org
+
+** DONE skip tests
+
+- Is it possible to skip the tests belonging to item 7 and 5 when doing the standard testing after new implementation as
+they are very long and probaly not worth it now that I've checked in a live browser
+- Do we really need them after evey new implementation
+- Is it possible to run them only on demand
+
+** DONE pick up the segmented retry pill
+** TODO Two things this batch surfaced that aren't tracked anywhere yet
+
+if you want them written down: initRelationshipsColumn()'s candidate scan being live-DOM-only (the "not re-fetched while
+off screen" gap), and the full fixture suite producing an occasional load-dependent failure on this machine — reproduced
+on unmodified code, different spec each time.
+
+** TODO pick up the heading pre-processing defect
+
+Two honest gaps, both recorded rather than buried:
+- The Relationships half is only indirectly covered. My spec disables the rel column (its ws/2 traffic is unrouted on
+  that fixture), so _relRefreshPerTableFailedButtons() is exercised by the suite's other rel specs calling it, not by an
+  assertion on its counts. Worth a look in the browser on a multi-table page with real relationship failures.
+- Path dedup within a table isn't pinned — it needs a fixture with a sticky column over an artwork column.
+
+
 * TODO What's left from the parking lot in AUDIT.org
 
 - that icon-mirror half
-
-* TODO _adoptJesus2099MsLength()
-
-#+begin_example
-    /**
-     * Removes every jesus2099 artifact from one of THIS script's rendered
-     * tables (or from one captured source `<tr>`), so the consolidated table
-     * we render carries no third-party leftovers.
-     *
-     * Scope is deliberately limited to what is handed in — always a
-     * `table.tbl` we built, or a captured row destined for one. Everything
-     * jesus2099 puts OUTSIDE our tables (its sidebar/sub-header search links,
-     * the pending-edit toggles, its own toolbar) is left untouched: those are
-     * live features of the surrounding page, which must keep working exactly
-     * as before. The audit behind that boundary (scripts/scope-jesus2099-
-     * leaks.py against debug/work-rec.html and debug/therising.html) found
-     * 108–123 `jesus2099_all-links_*` and `jesus2099PendingEdits*` markers
-     * outside our tables versus only `treleases` and the
-     * `jesus2099userjs81127*` tracklist family inside them.
-     *
-     * Three dispositions, in priority order:
-     *   1. Cover-art icon family (`_j2IsArtworkFamily`) → skipped entirely;
-     *      already owned, with a load-bearing gate, elsewhere.
-     *   2. Pure decoration (`_J2_DECORATION_SUFFIXES`) → element removed.
-     *   3. Anything else → marker class token(s) removed, element kept.
-     *      Additionally, on a `<th>`/`<td>` only: the plugin `title` (which
-     *      jesus2099 sets to its own script name — e.g.
-     *      `"SUPER MIND CONTROL Ⅱ X TURBO"`, note the
-     *      NON-BREAKING spaces) and its `text-shadow` are dropped too —
-     *      except a `title` of our own, marked `data-mb-col-tip` (see
-     *      `_isOwnColumnTooltip()`). Both
-     *      are restricted to marker-carrying cells on purpose: native
-     *      MusicBrainz puts meaningful `title`s on `<a>`/`<abbr>` elements
-     *      (artist sort names, country abbreviations), and a `text-shadow`
-     *      with no jesus2099 marker belongs to some other third-party script
-     *      (30 unrelated `<span style="color:red; …text-shadow:yellow…">`
-     *      elements in debug/therising.html alone — verified via
-     *      scripts/check-text-shadow-owner.py), so neither may be stripped
-     *      blind.
-     *
-     * Idempotent: a second call finds nothing and is a no-op. Safe on a
-     * detached node, which is what the captured-source-row pass relies on.
-     *
-     * @param   {?(Element)} root  A `table.tbl`, or one captured `<tr>`.
-     * @returns {{removed: number, stripped: number}} Per-call counts, for logging.
-     */
-    /**
-     * Adopts a jesus2099-leaked millisecond-precision Length value into
-     * ShowAllEntityData's OWN ms-toggle tracking (`data-mb-ms`/
-     * `data-mb-sec-text` — the exact shape `_msStampSourceRowsFromMap()`/
-     * `_msStampReleaseTrackLengths()` use) instead of either destroying it
-     * (an earlier version of this fix just regex-stripped the ".mmm" suffix)
-     * or leaving it as unmarked, un-toggleable text (the ORIGINAL behaviour
-     * — see `tests/fixtures/jesus2099-artifact-purge.spec.js`'s now-
-     * superseded "the purge touches decoration, never the duration text"
-     * assertion).
-     *
-     * jesus2099's own `RECORDING_LENGTH_COLUMN` fetches this value from the
-     * EXACT SAME MusicBrainz Web Service data ShowAllEntityData's own
-     * `ws2`/`batch` ms-source paths would otherwise request — adopting it
-     * is not a guess, it is reusing data that already cost a real network
-     * request, and it means our own lazy fetch never re-requests this
-     * recording once adopted (see the `needFetch` change in
-     * `_msToggleLengthPrecision()`).
-     *
-     * Resets the cell's DISPLAYED text back to plain seconds
-     * (`data-mb-sec-text`, MusicBrainz's own rounding) rather than leaving
-     * the millisecond text visible — millisecond display is transient
-     * DISPLAY state (the same principle `_msResetCarriedOverPrecision()`
-     * applies to cross-tab-hydrated cells, for a different reason: there it
-     * DISCARDS the value entirely, because a hydrated cell carries no
-     * independently-fetched `ms` to safely re-derive `data-mb-sec-text`
-     * from; here jesus2099's own text IS that source, parsed once via
-     * `_parseDurationToMs()`). This matters most on a page mixing
-     * jesus2099-touched rows (a real navigation) with rows ShowAllEntityData
-     * pulled in via its own internal pagination fetch — which jesus2099
-     * never runs against, since Tampermonkey only injects on real page
-     * loads matching its own `@match` (confirmed via
-     * `debug/place-perf-single-tabbed-final.html`: some rows arrived
-     * decorated, others plain, in the SAME final table): every row starts
-     * from the SAME collapsed state instead of a confusing per-row mix.
-     *
-     * @param   {HTMLTableCellElement} td  A Length `<td>` whose current text
-     *   may be jesus2099's own `M:SS[.mmm]` format.
-     * @returns {boolean} Whether a value was adopted.
-     */
-    function _adoptJesus2099MsLength(td) {
-        if (td.dataset.mbMs) return false;              // idempotent
-        const text = td.textContent.trim();
-        if (!_MS_RENDERED_DURATION_RE.test(text)) return false;
-        const ms = _parseDurationToMs(text);
-        if (ms === null) return false;
-        td.dataset.mbMs = String(ms);
-        td.dataset.mbSecText = _msFormatSeconds(ms);
-        _msWriteDurationText(td, td.dataset.mbSecText);
-        return true;
-    }
-#+end_example
 
 * TODO The two recorded (unfixed) harness weaknesses:
 
@@ -941,8 +875,6 @@ Also create a new section in the unique value drop-down menu of the "Length"/"Re
   actually asserts (the WS/2 request count, or the row set), not on a text transition, and that choice belongs to whoever owns the test's intent.
 
 The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
-
-
 
 * TODO add acoustid support
 
@@ -976,6 +908,7 @@ The CDN one wants vendoring, the status-text one wants a decision about what tha
 // ==/UserScript==
 #+end_example
 
+
 * TODO "Description" column in "search" pages could have multiple lines
 
 "Description" column in "search" pages could have multiple lines
@@ -985,34 +918,8 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 <td data-mb-rest-bg="rgb(242, 242, 242)" style="background: rgb(242, 242, 242);">Not to be confused with zummara or other double clarinets with similar names.<br> For the multiple bore free reed created in 1880, see Martinshorn.<br> For the similarly named single-reed woodwind, see <a href="/instrument/e3511ed1-3d73-4340-880f-c8ccc8eda11c">chalumeau</a>.<br> For the Japanese descendant named from Portuguese, see <a href="/instrument/07b91470-b63e-41e4-88e6-11c4acac064f">charumera</a>.<br> For the Catalan shawm, see <a href="/instrument/dffe56f5-cd75-4392-ad31-1c3abf2b8e37"> tible</a>.<br> For the Italian ciaramella, see <a href="/instrument/814816db-3368-4889-a8cd-aa34bd1043f0">piffero</a>.<br> For the bagpipe, see <a href="/instrument/21d5d4ec-f8ef-44dc-b02f-e564de057dcc"> xeremies</a>.<br> European medieval and Renaissance conical bore double-reed woodwind, two types evolved; one from Middle-Eastern instruments and one from bagpipe chanters. A combination of both were used to develop the modern oboe.</td>
 #+end_example
 
-* DONE Add abbrev section to CLAUDE.md
-** DONE i
 
-Add the following abbreviation section to CLAUDE.md, so whenever I use an abbreviation in my prompt it's recognized with
-full meaning/context
+* TODO _adoptJesus2099MsLength() - two JSDOC comments after each other
 
-| Abbreviation | Meaning                                        | Context                                                                        | Example translation                                                        |
-|--------------+------------------------------------------------+--------------------------------------------------------------------------------+----------------------------------------------------------------------------|
-| UVD          | column specific unique value drop-down menu    | typically used in the context of the "uniq-dropdown-section" skill             |                                                                            |
-| A            | MusicBrainz "Artist" entity                    | https://musicbrainz.org/doc/MusicBrainz_Entity                                 | The A RG => The artist release group                                       |
-| RG           | MusicBrainz "Release Group" entity             | "                                                                              |                                                                            |
-| R            | MusicBrainz "Release" entity                   | "                                                                              |                                                                            |
-| REC          | MusicBrainz "Recording" entity                 | "                                                                              |                                                                            |
-| W            | MusicBrainz "Work" entity                      | "                                                                              |                                                                            |
-| L            | MusicBrainz "Label" entity                     | "                                                                              |                                                                            |
-| E            | MusicBrainz "Event" entity                     | "                                                                              |                                                                            |
-| S            | MusicBrainz "Series" entity                    | "                                                                              |                                                                            |
-| ARE          | MusicBrainz "Area" entity                      | "                                                                              |                                                                            |
-| P            | MusicBrainz "Place" entity                     | "                                                                              |                                                                            |
-| I            | MusicBrainz "Instrument" entity                | "                                                                              |                                                                            |
-| PT           | pageType(s)                                    | const pageDefinitions                                                          |                                                                            |
-| GF           | global filter for single/multi-table pageTypes | <span id="mb-global-filter-wrapper"                                            |                                                                            |
-| STF          | sub-table filter on multi-table pageTypes      | <span class="mb-subtable-filter-wrapper">                                      |                                                                            |
-| CF           | column specific filter                         | <span class="mb-col-filter-wrapper mb-col-modes">                              |                                                                            |
-| T            | table                                          |                                                                                |                                                                            |
-| ST           | sub-table                                      |                                                                                |                                                                            |
-| C            | column                                         |                                                                                | In the "Title" C of ST "1-CD" => In the "title" column of sub-table "1-CD" |
-| AR           | advanced relationship                          | the release-tracks AR columns, _findAllArDts(), the split-ar-peer-column skill |                                                                            |
-
-
+The "function _adoptJesus2099MsLength(td) {" has two JSDoc comment after each other, please fix
 

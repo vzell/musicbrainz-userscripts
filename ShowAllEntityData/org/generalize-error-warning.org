@@ -51,3 +51,10 @@ The text of each line in the new WARNING/ERROR button menu drop-down should be d
 also generate a nice web based mockup
 
 ** DONE Create a new skill for handling our new "findings" functionality
+
+** TODO Not yet done
+
+- Mutation checks: of 13, 12 are caught. One guard can't be reached by any fixture and is recorded as a known gap: a
+  cell with both an existing flag and a new one, e.g. an ALL UPPERCASE live title with an impossible date.
+- Not done: the main-vs-branch performance measurement in the plan. The extra work runs once per load, not per keystroke.
+
