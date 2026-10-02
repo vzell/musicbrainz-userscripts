@@ -17166,3 +17166,57 @@ ABBA with matched auth state: sort 1.11x (+~360 ms), initial header-count
 settle 1.07x, cold 📊 open probably 1.06x; filter unchanged. Cause not
 isolated (the refresh pass after every sort re-render vs. the layout cost of
 fit-content `<body>` + sticky bars). Open, pending a decision.
+
+## 2026-10-03 — Sticky Page Headers: the "sort regression", the menu that would not close, the focused-filter raise (branch feature/sticky-areas)
+
+**Perf, "sort 1.11x–1.18x slower" (tests/MEASUREMENTS.org, 2026-10-02/03):**
+that was a measurement artefact. `capture-interaction-perf.js` clicks the sort
+right after `waitForRenderComplete()`, while the feature is still engaging, so
+the one-time engagement work landed inside the sort timing. Settled first, sorting is not slower. The real
+cost is ~1.1 s of main-thread work once after each render of the 4174-row
+artist-events page. Fixed along the way:
+- `_sphOnResize()`: only WIDTH changes schedule a pass. A sort's re-render
+  changes heights only, and used to cost 4–7 passes, each forcing a full-table
+  layout.
+- `scheduleStickyPageHeadersRefresh()`: the pass runs in
+  `requestAnimationFrame` after the 60 ms debounce. Idle time was tried
+  first, but its timeout fires mid-sort (a chunked sort leaves no idle time),
+  and a pass forced mid-render cost 131 ms against 11–15 ms in a frame.
+- `@property … inherits: false` for `--mb-sph-body-native-minw`,
+  `--mb-sph-left`, `--mb-sph-maxw`, with the floor written on `<body>`, not
+  `<html>`. An inherited custom property on the root cost a 249 ms
+  full-document style recalc (trace: `UpdateLayoutTree` ← `_sphContentExtent`).
+- Tried and REVERTED: rounding the bars' right gutter to 64 px steps. On
+  artist-events `#page` is fit-content (`mb-full-width-stretching`), so a
+  bar's parent grows with the table, there is no overhang, and the passes
+  were writing nothing. No measurable benefit, so it did not ship.
+
+**Still open:** with the feature on, the layout + pre-paint frames that the
+header-count scan triggers cost about 2x (88–109 / 98–105 ms vs 41–47 ms), and
+the page keeps re-rendering about 1 s longer. Freezing the refresh passes
+leaves 700–860 ms; dropping `<body>` widening, sticky bars, the `:has()` rules
+or the sidebar rule one at a time does not remove it. Next step, if wanted:
+bisect per declaration (`left`, `max-width`, `position` on bars, each `<body>`
+declaration), or a DevTools "Layout/PrePaint" breakdown on a real page.
+
+**Menu stays open after a cancelled leave-page confirm:** found with an
+init-script wrapper around `Event.prototype.stopPropagation`/`stopImmediatePropagation`
+(stack captured per click). The leave-page guard (Guard 1, capture-phase
+click on `document`) calls `stopImmediatePropagation()` on a cancelled
+confirm, so the toolbar menus' bubbling outside-click listener never runs.
+Fix: the menus also dismiss on a capture-phase `mousedown` (`closeIfOutside`),
+the pattern the other in-place popups already use. The click listener stays,
+for keyboard activation. Test: `toolbar-menus.spec.js` "a link click whose
+leave-page confirm is cancelled still closes the menu". Not changed:
+`addDensityControl()`'s pull-down and the other click-dismissed menus have the
+same exposure.
+
+**Focused global filter raising the data h2:** the `:focus-within` raise now
+skips focus resting in a text field. The filter-history dropdown, which moves
+focus into its own text field, is raised by the open-popup rule. Tests: the
+two "stacking while the global filter has focus" tests, one of them a hit test
+against a vertically sticky header.
+
+**Mutation checks:** `scripts/mutations/sticky-page-headers.json` (16 entries:
+15 caught, 1 recorded live-only blind spot) and two `toolbar-menus.json`
+entries, all scoring as expected.

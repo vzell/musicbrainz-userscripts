@@ -395,6 +395,34 @@ test.describe('sticky page headers — single-table page', () => {
             .toBeGreaterThan(before);
     });
 
+    test('the feature\'s custom properties stay on the element they are written to', async ({ page }) => {
+        // Performance guarantee. An unregistered custom property INHERITS, so
+        // one written on <html> changed the computed style of every element
+        // and made the next measurement pay for a full-document style recalc
+        // (traced at 249 ms on 4174 rows). They are registered with
+        // `@property … inherits: false` now; a table cell must not see them.
+        await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
+        await waitEngaged(page);
+        const props = await page.evaluate(() => {
+            const read = (el) => {
+                const cs = getComputedStyle(el);
+                return ['--mb-sph-body-native-minw', '--mb-sph-left', '--mb-sph-maxw']
+                    .map((n) => cs.getPropertyValue(n).trim());
+            };
+            const bar = document.querySelector('#content h2.mb-sph-target');
+            return {
+                body: read(document.body)[0],
+                bar: read(bar).slice(1),
+                barChild: read(bar.firstElementChild || bar.firstChild.parentElement),
+                cell: read(document.querySelector('table.tbl tbody td')),
+            };
+        });
+        expect(props.body, 'premise: <body> carries its floor').not.toBe('');
+        expect(props.bar.every((v) => v !== ''), 'premise: a bar carries its offsets').toBe(true);
+        expect(props.cell, 'a table cell inherits nothing').toEqual(['', '', '']);
+        expect(props.barChild.slice(1), 'a bar\'s own child inherits nothing').toEqual(['', '']);
+    });
+
     test('disengages once the overflow is gone, and re-engages when it returns (no ratchet)', async ({ page }) => {
         await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
         await waitEngaged(page);

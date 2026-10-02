@@ -253,6 +253,29 @@ test.describe('the h1 toolbar menus', () => {
         await expect(panel).toBeHidden();
     });
 
+    test('a link click whose leave-page confirm is cancelled still closes the menu', async ({ page }) => {
+        // The leave-page navigation guard is a capture-phase click listener
+        // on document. When its "You are about to leave this page" confirm is
+        // cancelled, it calls stopImmediatePropagation(), so a bubbling
+        // outside-click listener never hears that click and the menu used to
+        // stay open over the page the user chose to stay on. The menus now
+        // also dismiss on the capture-phase mousedown, which comes first.
+        await loadAndRender(page);
+        const dialogs = [];
+        page.on('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
+
+        const panel = page.locator('#mb-data-menu-btn-panel');
+        await page.locator('#mb-data-menu-btn').click();
+        await expect(panel).toBeVisible();
+
+        const urlBefore = page.url();
+        await page.locator('table.tbl tbody td.mb-sticky-col a[href]').nth(5).click();
+        expect(dialogs.length, 'premise: the leave-page guard asked').toBe(1);
+        expect(dialogs[0]).toContain('leave this page');
+        expect(page.url(), 'premise: cancelling kept the page').toBe(urlBefore);
+        await expect(panel).toBeHidden();
+    });
+
     test('opening one menu closes the other', async ({ page }) => {
         await loadAndRender(page);
 

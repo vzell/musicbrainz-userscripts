@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Sticky Page Headers does less work on big tables. It now re-checks the page only when something actually gets wider or narrower; a sort, which only changes heights, used to trigger 4-7 checks, each forcing a layout of the whole table. Its checks now run just before the browser draws the next frame, where they cost 11-36 ms instead of up to 131 ms. Its internal style values no longer spread to every element on the page, which removes a one-time 250 ms restyle of the whole document after each render (measured on a 4174-row artist events table)."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.5",
+    "date": "2026-10-02",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 📦 Data and View toolbar menus now close when you click a link on the page and then cancel the 'You are about to leave this page' question. The cancelled click was swallowed by the leave-page guard before the menu could see it, so the menu stayed open. The menus now also close as soon as the mouse button goes down outside them, like the script's other pop-ups."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-02",
     "sections": [

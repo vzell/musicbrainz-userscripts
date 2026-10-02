@@ -3102,3 +3102,73 @@ layout plus rect/style reads, landing inside the sort-settle window), and the
 layout cost of =<body>= =fit-content= + sticky bars around a 4174-row table.
 An ablation arm (no =table.tbl= observation) would tell them apart. Flagged to
 the user before merge, per the performance gate.
+*SUPERSEDED by the next entry*: the sort bracket caught the one-time
+engagement work; settled, the sort is not slower.
+
+A third ABBA round (UTC 20:35–21:22) with the width-only gate and the
+animation-frame scheduling in place (branch arms run from a detached worktree
+holding a frozen copy of the userscript) gave the same picture: sort
+=main= 3064 / 3142 vs branch 3630 / 3669 ms (1.18x), headerCountsInitial 5099 /
+5221 vs 5418 / 5485 ms (1.06x). Removing the passes did not move it, which is
+what pointed at the one-time engagement work. Files:
+=interaction-perf-{main,feature-sticky-areas}-gate{1,2}-9.99.1193-2026-10-02-NB-3641.json=.
+
+* 2026-10-02/03 — Sticky Page Headers: where the "sort" cost really is (NB-3641)
+
+*Correction to the entry above.* The 1.11x / 1.18x "sort" ratios were measured
+right after render, and =capture-interaction-perf.js= clicks the sort before the
+feature has finished engaging (=engaged=false= at click time in the first
+ablation round). The one-time engagement work (a relayout of the whole wide
+page, plus refresh passes) therefore landed inside the sort bracket. *Settled
+first (2 s after render), sorting is not slower:* see the table below.
+
+Scratch harnesses (not committed): one Chromium, fresh page per sample, the
+committed =artist-events.json.gz= disk fixture, arms round-robin, order
+reversed every round. "long tasks" = sum of =longtask= entries in the 2 s after
+=waitForRenderComplete()=. A scratch-instrumented build exposed a freeze switch
+(userscript restored and hash-verified after each run).
+
+** =artist-events=, single-table, 4174 rows — settled sort vs post-render long tasks (median of 7, ms; UTC 21:26–21:35)
+
+| Arm                              | sort (settled) | long tasks in 2 s after render |
+|----------------------------------+----------------+--------------------------------|
+| feature on                       |           3262 |                           1284 |
+| feature off                      |           3763 |                            148 |
+| on, =<body>= not widened         |           3456 |                           1305 |
+| on, bars not sticky              |           3282 |                           1179 |
+
+*Read as: the sort itself is unchanged (on is not slower than off; the spread
+of off is wide). The feature costs about 1.1 s of main-thread work ONCE after
+each render of this page, and neither the =<body>= widening nor the sticky
+bars alone carry it.*
+
+** What the trace attributed (Chrome trace, =devtools.timeline=)
+
+  - a 249 ms full-document style recalc (=UpdateLayoutTree= from
+    =_sphContentExtent()= in the first refresh pass), caused by the inherited
+    custom property =--mb-sph-body-native-minw= written on =<html>=. FIXED:
+    the three custom properties are registered =inherits: false= and the
+    floor lives on =<body>=; the event disappears from the trace.
+  - refresh passes during a sort: 4–7 per sort before the width-only gate,
+    one landing mid-render at 131 ms. FIXED: height-only notifications are
+    ignored, passes run in =requestAnimationFrame=; measured 0 passes on a
+    repeat sort, and 3–4 passes of 11–36 ms after a render.
+  - what REMAINS: with the feature on, the layout and pre-paint frames that
+    the header-count scan triggers anyway cost about twice as much (Layout
+    88–109 ms and PrePaint 98–105 ms vs 41–47 ms off), and the page keeps
+    re-rendering for about a second longer. Freezing the refresh passes right
+    after engaging leaves 702–862 ms, and deleting the =:has()= rules or the
+    collapsed-sidebar rule in that frozen state changes nothing (932 / 767 ms
+    vs 862 ms, same round). Not isolated further.
+
+| Arm (median of 5, ms; UTC 21:44–22:02) | long tasks in 2 s after render |
+|----------------------------------------+--------------------------------|
+| on (=@property= fix in)                |                           1186 |
+| frozen after engaging                  |                     702 / 779 / 862 |
+| frozen, =<body>= not widened           |                            764 |
+| frozen, bars not sticky                |                            816 |
+| frozen, =:has()= rules deleted         |                            932 |
+| frozen, sidebar rule deleted           |                            767 |
+| off                                    |                    147 / 95 / 157 |
+
+(the frozen and off rows ran in three rounds; one value per round)

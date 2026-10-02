@@ -341,7 +341,7 @@ baseline whose table is wider than the capture viewport (Playwright's default
 (=sa_enable_sticky_page_headers=) and engages only while the page overflows
 horizontally. Then:
 
-  - =<html>= gains the class =mb-sph-on= and an inline
+  - =<html>= gains the class =mb-sph-on=, and =<body>= an inline
     =--mb-sph-body-native-minw= custom property (written even while
     disengaged, so it can appear on a narrow baseline too);
   - every pinned element gains =mb-sph-target= (body-level chrome without

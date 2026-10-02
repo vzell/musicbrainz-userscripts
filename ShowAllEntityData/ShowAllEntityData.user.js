@@ -21773,6 +21773,16 @@
      * sticking vertically. See the section comment above for the `<body>`,
      * collapsed-sidebar and z-index rules.
      *
+     * The three custom properties are registered NON-inherited
+     * (`@property … inherits: false`). An unregistered custom property
+     * inherits, so a write on one element changes the computed style of its
+     * whole subtree. The `<body>` floor used to be written on `<html>`, and
+     * that single write made the next measurement pay for a style recalc of
+     * the entire document: traced at 249 ms on artist-events (4174 rows,
+     * 2026-10-02), the only expensive event the feature added after a render.
+     * `syntax: '*'` keeps the `var(…, fallback)` forms working, since a
+     * universal-syntax property has no initial value.
+     *
      * Uses GM_addStyle so the rules are exempt from page CSP style-src
      * restrictions, like every other stylesheet of this script.
      *
@@ -21781,6 +21791,10 @@
     function _sphEnsureStyle() {
         if (document.getElementById('mb-sticky-page-headers-style')) return;
         const style = GM_addStyle(`
+            /* Non-inherited, so writing one restyles only its own element. */
+            @property --mb-sph-body-native-minw { syntax: '*'; inherits: false; }
+            @property --mb-sph-left { syntax: '*'; inherits: false; }
+            @property --mb-sph-maxw { syntax: '*'; inherits: false; }
             /* Widen <body> to the scrolled content so its direct children
                (MB header, banners, footer) have room to stay pinned. Margins
                and box model are pinned down so the widening cannot feed back
@@ -22152,8 +22166,10 @@
             const engage = extent > vw + 1 && !_sphSidebarBlocksWidening();
 
             if (!_sph.active) {
+                // On <body> itself, which is where the rule reads it; the
+                // property is non-inherited (see _sphEnsureStyle()).
                 const nativeMinW = getComputedStyle(body).minWidth;
-                _sphSetVar(docEl, '--mb-sph-body-native-minw', /px$/.test(nativeMinW) ? nativeMinW : '0px');
+                _sphSetVar(body, '--mb-sph-body-native-minw', /px$/.test(nativeMinW) ? nativeMinW : '0px');
             }
 
             if (!engage) {
@@ -31959,11 +31975,30 @@ ${sections.join('\n')}
 
         // Outside-click and Escape — the same pair addDensityControl() has used
         // since it was written.
-        document.addEventListener('click', (e) => {
+        /**
+         * Closes the panel when a pointer press or click lands outside it and
+         * outside its button.
+         *
+         * @param {MouseEvent} e - The `mousedown` or `click` event.
+         * @returns {void}
+         */
+        const closeIfOutside = (e) => {
             if (!isOpen()) return;
             if (panel.contains(e.target) || btn.contains(e.target) || e.target === btn) return;
             close();
-        });
+        };
+        // The press, in the CAPTURE phase, comes first. A click can be
+        // swallowed before it reaches a bubbling listener: the leave-page
+        // navigation guard (a capture listener on document) answers a
+        // cancelled "You are about to leave this page" with
+        // stopImmediatePropagation(), so clicking any link with a menu open
+        // and cancelling left the menu open. Nothing cancels a mousedown
+        // that way, and the other in-place popups of this script already
+        // dismiss on mousedown.
+        document.addEventListener('mousedown', closeIfOutside, true);
+        // The click stays: keyboard activation of another control (Enter or
+        // Space on a focused button) produces a click with no mousedown.
+        document.addEventListener('click', closeIfOutside);
         document.addEventListener('keydown', (e) => {
             if (!isOpen()) return;
             switch (e.key) {

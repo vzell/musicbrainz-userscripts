@@ -158,5 +158,57 @@
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "a sort triggers no refresh pass",
     "expect": "fail"
+  },
+  {
+    "name": "focus anywhere in a bar raises it again",
+    "why": "The ported rule before WIP.4: plain :focus-within. The global filter is focused after every render, so the data h2 sat at z-index 107 and painted over a vertically sticky MB header.",
+    "edits": [
+      {
+        "find": "html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
+        "replace": "html.mb-sph-on .mb-sph-target:focus-within {"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "stacking while the global filter has focus",
+    "expect": "fail"
+  },
+  {
+    "name": "focus never raises a bar",
+    "why": "Over-correction guard: dropping the focus raise altogether would pass the text-field half; the focused-button positive control must catch it.",
+    "edits": [
+      {
+        "find": "html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
+        "replace": "html.mb-sph-on .mb-sph-target:not(*) {"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "focus resting in the global filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the open-popup raise rule is dropped",
+    "why": "With focus inside the history dropdown's own text field, only this rule raises the bar; without it the dropdown is trapped under the next bar.",
+    "edits": [
+      {
+        "find": "            html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"]) {\n                z-index: ${SPH_Z_RAISED};\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "an open history dropdown do",
+    "expect": "fail"
+  },
+  {
+    "name": "the custom properties are no longer registered non-inherited",
+    "why": "Unregistered custom properties inherit: one write on <body> or a bar restyles its whole subtree (the original write on <html> cost a 249 ms full-document recalc on 4174 rows).",
+    "edits": [
+      {
+        "find": "            @property --mb-sph-body-native-minw { syntax: '*'; inherits: false; }\n            @property --mb-sph-left { syntax: '*'; inherits: false; }\n            @property --mb-sph-maxw { syntax: '*'; inherits: false; }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "custom properties stay on the element",
+    "expect": "fail"
   }
 ]
