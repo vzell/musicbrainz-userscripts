@@ -4,6 +4,8 @@ const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForSortSettled, waitForFilterSettled } = require('../support/filterSortAssertions');
+const { waitForRenderComplete } = require('../support/browser');
+const { findingRow, clickFinding } = require('../support/findingsMenu');
 
 // The "Recording length" column on release-tracks: the length MusicBrainz
 // stores on the RECORDING each track links to, read from the release payload
@@ -387,89 +389,107 @@ test.describe('release-tracks: length-mismatch flagging', () => {
     });
 });
 
-// ── Length-mismatch summary buttons ──────────────────────────────────────────
+// ── Length-mismatch rows of the ⚠️/❌ findings menus ──────────────────────────
+// These used to be the filter bar's "(N) LENGTH ⚠️/❌" summary buttons; the
+// ⚠️ WARNING / ❌ ERROR h1 menus replaced them (org/generalize-error-warning.org).
+// A length row ticks 📊 "Findings - …" in the Length column of every table.
 
-const warnBtn = (page) => page.locator('#mb-len-mismatch-warn-btn');
-const severeBtn = (page) => page.locator('#mb-len-mismatch-severe-btn');
 const visibleRows = (page) => page.locator('table.tbl tbody tr:visible').count();
 
-test.describe('release-tracks: length-mismatch summary buttons', () => {
+/**
+ * Waits for a findings row's checked state and for the render to settle.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'warn'|'error'} level
+ * @param {string} id
+ * @param {string} checked
+ */
+async function settled(page, level, id, checked) {
+    await expect.poll(async () => (await findingRow(page, level, id))?.checked,
+        { timeout: 15000 }).toBe(checked);
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+}
+
+test.describe('release-tracks: length-mismatch rows of the findings menus', () => {
     test('count ROWS (not cells) and filter to them, toggling off again', async ({ page }) => {
         await openDifferingFixture(page);
 
         // One flagged row, whose TWO duration cells are both marked — a
-        // per-cell tally would say "(2)" and read as twice the problem.
-        await expect(warnBtn(page)).toBeVisible();
-        await expect(warnBtn(page)).toHaveText('(1) LENGTH ⚠️');
-        await expect(severeBtn(page)).toBeHidden();
+        // per-cell tally would say "2" and read as twice the problem.
+        expect((await findingRow(page, 'warn', 'len-warn'))?.count).toBe(1);
+        expect(await findingRow(page, 'error', 'len-severe')).toBeUndefined();
 
         expect(await visibleRows(page)).toBe(8);
-        await warnBtn(page).click();
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'true');
         expect(await visibleRows(page)).toBe(1);
         expect(await columnValues(page, 'Recording length')).toEqual(['3:16']);
-        await expect(warnBtn(page)).toHaveAttribute('aria-pressed', 'true');
 
-        // Pressing again is the only way back — nothing typed can clear it.
-        await warnBtn(page).click();
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'false');
         expect(await visibleRows(page)).toBe(8);
-        await expect(warnBtn(page)).toHaveAttribute('aria-pressed', 'false');
     });
 
-    test('the two severities filter independently', async ({ page }) => {
+    test('the two severities partition the flagged set, and OR when both are ticked', async ({ page }) => {
         // threshold 500, factor 2 → 3 warn rows, 1 severe row.
         await openDifferingFixture(page, {
             sa_release_tracks_length_mismatch_threshold_ms: 500,
             sa_release_tracks_length_mismatch_severe_factor: 2,
         });
 
-        await expect(warnBtn(page)).toHaveText('(3) LENGTH ⚠️');
-        await expect(severeBtn(page)).toHaveText('(1) LENGTH ❌');
+        expect((await findingRow(page, 'warn', 'len-warn'))?.count).toBe(3);
+        expect((await findingRow(page, 'error', 'len-severe'))?.count).toBe(1);
 
         // ⚠️ shows only the warn rows — the severe row is NOT included, so the
-        // two buttons partition the flagged set rather than nesting.
-        await warnBtn(page).click();
+        // two rows partition the flagged set rather than nesting.
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'true');
         expect(await visibleRows(page)).toBe(3);
         expect(await columnValues(page, 'Recording length')).toEqual(['3:11', '3:01', '4:30']);
 
-        // Picking the other severity switches rather than accumulating.
-        await severeBtn(page).click();
+        // Both tick the same Length column, so — like two 📊 ticks there —
+        // they OR: every flagged row.
+        await clickFinding(page, 'len-severe');
+        await settled(page, 'error', 'len-severe', 'true');
+        expect(await visibleRows(page)).toBe(4);
+
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'false');
         expect(await visibleRows(page)).toBe(1);
         expect(await columnValues(page, 'Recording length')).toEqual(['3:16']);
-        await expect(warnBtn(page)).toHaveAttribute('aria-pressed', 'false');
-        await expect(severeBtn(page)).toHaveAttribute('aria-pressed', 'true');
     });
 
-    test('the structural filter composes with a typed query', async ({ page }) => {
+    test('the finding filter composes with a typed query', async ({ page }) => {
         await openDifferingFixture(page, { sa_release_tracks_length_mismatch_threshold_ms: 500 });
 
         // Default factor 3 → severe above 1500 ms, so B3's 3000 ms is ❌ and
         // only the three sub-1500 ms rows are ⚠️.
-        await warnBtn(page).click();
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'true');
         expect(await visibleRows(page)).toBe(3);
 
-        // Narrowing further by typing keeps the flag filter engaged, and the
-        // pressed button is what makes that combination legible.
         const globalInput = page.locator('#mb-global-filter-input');
         await globalInput.click();
         await waitForFilterSettled(page, () => globalInput.pressSequentially('Night'));
         expect(await visibleRows(page)).toBe(1);
-        await expect(warnBtn(page)).toHaveAttribute('aria-pressed', 'true');
+        expect((await findingRow(page, 'warn', 'len-warn'))?.checked, 'still engaged').toBe('true');
     });
 
-    test('"Clear all filters" releases it — it is not a query, so nothing else would', async ({ page }) => {
+    test('"Clear ALL COLUMN filters" releases it — it is a 📊 tick now, not a hidden filter', async ({ page }) => {
         await openDifferingFixture(page);
 
-        await warnBtn(page).click();
+        await clickFinding(page, 'len-warn');
+        await settled(page, 'warn', 'len-warn', 'true');
         expect(await visibleRows(page)).toBe(1);
 
-        await page.locator('#mb-clear-all-filters-btn').click();
+        await page.locator('#mb-clear-column-filters-btn').click();
+        await settled(page, 'warn', 'len-warn', 'false');
         expect(await visibleRows(page)).toBe(8);
-        await expect(warnBtn(page)).toHaveAttribute('aria-pressed', 'false');
     });
 
-    test('both buttons stay hidden when nothing is flagged', async ({ page }) => {
+    test('no length row when nothing is flagged', async ({ page }) => {
         await openDifferingFixture(page, { sa_release_tracks_length_mismatch_threshold_ms: 5000 });
-        await expect(warnBtn(page)).toBeHidden();
-        await expect(severeBtn(page)).toBeHidden();
+        expect(await findingRow(page, 'warn', 'len-warn')).toBeUndefined();
+        expect(await findingRow(page, 'error', 'len-severe')).toBeUndefined();
     });
 });

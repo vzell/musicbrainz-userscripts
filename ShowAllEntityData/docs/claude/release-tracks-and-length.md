@@ -311,35 +311,38 @@ Any other `<td>`-level state a feature needs after a reload has the same
 problem, and the rel cell's `mbid`/`relDone` is the older precedent for the
 same fix.
 
-**The `(N) LENGTH ⚠️`/`(N) LENGTH ❌` summary buttons filter STRUCTURALLY**,
-not by typing a glyph into the global filter the way the live-date
-WARNING/ERROR buttons do (they can, because `.mb-live-date-flag`'s glyph is
-real cell text; this one has no text at all). `testRowMatch()` reads the
-module-level `_lenMismatchFilterKind` directly. Three things must stay in
-sync with it, each of which broke in testing:
-- **`_buildFilterKey()` must include it.** It appears nowhere else in the
-  key, so "no query, no column filters" hashed identically whether the flag
-  filter was on or off — `_filterResultCache` returned the previous pass's
-  rows and pressing the button a second time did nothing at all.
-- **`_countLengthMismatchRows()` must count the SOURCE rows (the arrays
-  `_msSourceRows()` flattens), not the live tbody.** `runFilter()` REMOVES
+**Filtering to the flagged tracks goes through the ⚠️ WARNING / ❌ ERROR
+findings menus** (docs/claude/findings.md), which replaced the filter bar's
+`(N) LENGTH ⚠️`/`(N) LENGTH ❌` summary buttons. The `len-warn`/`len-severe`
+findings read this same `data-mb-len-flag`; being `coFlagged`, a menu row ticks
+its 📊 "Findings - …" entry in the **Length** column of every table only —
+both duration cells carry the same kind, so one column suffices, and ticking
+"Recording length" too would only AND the same rows. The two severities
+partition the flagged set; ticked together they OR, like two 📊 ticks in one
+column. Three lessons the buttons taught still hold, now for the findings
+menus' own row filter (`_findingRowFilter`):
+- **`_buildFilterKey()` must include a structural filter.** A filter no input
+  holds appears nowhere else in the key, so "no query, no column filters"
+  hashed identically whether it was on or off — `_filterResultCache` returned
+  the previous pass's rows and pressing the button a second time did nothing
+  at all.
+- **Counts read the SOURCE rows, not the live tbody.** `runFilter()` REMOVES
   non-matching rows from a multi-table tbody rather than hiding them, so a
   live-DOM tally reports only what the current filter left — filtering to ⚠️
   made the ❌ button vanish.
-- **`updateFilterButtonsVisibility()` must count it as an active filter**, or
-  the rows narrow while every "clear" affordance stays hidden. It is the one
-  active filter with no input holding it, so `clearAllFilters()` resets it
-  explicitly too.
-- **Its count and the ⏳ pending-edits counts are memoized per source-row
-  ARRAY** (`_sourceRowTally()`, PERFORMANCE.org Step 26), validated by the
-  array's length, with no invalidation hook: every way the row set changes —
-  fetch, hydrate, sort, resume — replaces or grows an array. The one thing
-  that would go stale is a write of `data-mb-len-flag` or `span.mp` into a row
-  that is ALREADY captured; no such writer exists, and one that ever does must
-  replace the array. Don't "simplify" the key to the length alone: two
-  same-sized sub-tables would then share one answer, and
-  `source-row-tally-memo.spec.js`'s multi-table fixture is built to catch it.
-It counts TRACKS, not cells — each flagged track marks two.
+- **A filter no input holds must count as active** in
+  `updateFilterButtonsVisibility()`, or the rows narrow while every "clear"
+  affordance stays hidden; `clearAllFilters()` resets it explicitly too.
+- **The ⏳ pending-edits counts are memoized per source-row ARRAY**
+  (`_sourceRowTally()`, PERFORMANCE.org Step 26), validated by the array's
+  length, with no invalidation hook: every way the row set changes — fetch,
+  hydrate, sort, resume — replaces or grows an array, and `span.mp` exists
+  before capture. Don't "simplify" the key to the length alone: two same-sized
+  sub-tables would then share one answer, and `source-row-tally-memo.spec.js`'s
+  multi-table fixture is built to catch it. The findings menus' tally
+  (`_findingRowTally()`) needs one more input, a stamp generation, because
+  `stampFindings()` writes into rows that are already captured.
+The menu counts TRACKS, not cells — each flagged track marks two.
 
 **Millisecond precision** is opt-in per page via the `▶⏱`/`▼⏱`
 `.mb-ms-col-hdr-btn` prepended to the Length header's `.mb-col-hdr-flex`

@@ -16862,3 +16862,65 @@ release/RG link restriction dropped, the " release" strip removed, and a
 per-separator facet ignoring the separator. The error-vs-warn one needed a
 fixture row that is both impossible and written with "-" ("1975-13-05: …").
 Without that row the priority was untested.
+
+## 2026-10-02 — ⚠️ WARNING / ❌ ERROR findings menus (branch feature/findings-menus)
+
+**Request:** `org/generalize-error-warning.org`. Generalize the yellow ⚠️ /
+red ❌ cell flags and their 📊 filtering into two h1 menus after ❓, each row a
+finding that filters every table at once by "emulating a click in the 📊 of
+each column". Decisions taken with the user (mockup:
+https://claude.ai/artifact/4awm6tqQRZJDexWZBTWhBZ): hybrid mechanism, rows
+toggle and AND, remove the live-date and LENGTH summary buttons but keep ⏳,
+tint every newly classified finding behind its own setting. Design and rules:
+`docs/claude/findings.md`.
+
+**Why "a click in each column" could not be literal.** 📊 ticks OR within a
+column and AND across columns (`testRowMatch()` breaks on the first column
+miss). A finding that can sit in several unrelated columns of one row — pending
+edits in any column, a live credit date in five credit columns — would then
+keep only the rows flagged in ALL of them. Those findings got a row filter
+(`_findingRowFilter`, any cell) instead; everything that lives in one column
+per table really is a 📊 tick (`finding-<id>`), written by
+`_writeUniqValueSet()`, the `applyUniqValueSet()` body split off its
+`runFilter()`.
+
+**Found by the probe, not by reading:** the first version ticked only the
+tables that HAD the finding, so a sub-table without it kept every row — "show
+only these rows" narrowed one section of the page. Every table is ticked now,
+in the column of the same name, and a table without that column falls back to
+the row filter. Pinned by "one tick per table, including a table without the
+finding".
+
+**Found by the spec: the ⏳ toggles cannot express the menu's promise.** The
+plan said the "Pending edits" row would drive ⏳. On `pending-edits-multi.html`
+that left 5 rows visible for 3 pending ones: the global ⏳ filters only the
+sub-tables that HAVE pending edits, and leaves the "Live" sub-table showing
+both its rows. Pending edits became an ordinary row finding; ⏳ is untouched and
+filters side by side. A deviation from the approved plan, reported to the user.
+
+**The memo trap, as predicted.** `_sourceRowTally()` needs no invalidation
+because its markers exist before capture. The findings tally reads a stamp
+written at the render TAIL, after `updateFilterButtonsVisibility()` may have
+tallied the same arrays during the render. Without `_findingStampGen` the menus
+never appear (mutation "the tally memo ignores the stamp generation" — the
+placement test fails).
+
+**Specificity, not order.** The generic `td[data-mb-finding="warn"]:not([data-mb-finding-inline])::after`
+out-ranks a family's `td[data-mb-live-flag="error"]::after`, so putting the
+generic rules first was not enough: a red live-title cell would have shown ⚠️.
+`_writeFindingAttrs()` writes no `data-mb-finding` on a cell a family rule
+paints. No fixture has a cell carrying both (an ALL UPPERCASE live title with
+an impossible date), so that guard is recorded `expect: "pass"`.
+
+**Migrated, not deleted:** the eight specs that drove the removed buttons now
+pin the same guarantees on the menu rows (`live-date-flag-button-counts`,
+`live-date-flag-scan-gate`, `live-date-flags-survive-disk-roundtrip`,
+`len-flag-disk-roundtrip`, `uniq-drop-length-mismatch-section`,
+`source-row-tally-memo`, `release-tracks-recording-length`,
+`filter-bar-containers`), plus `toolbar-menus` for the new tail. Two behaviour
+changes they record: the two length severities now OR when both are ticked
+(same column) instead of switching, and releasing a length filter is "Clear
+ALL COLUMN filters" (it is a 📊 tick now), not "Clear ALL filters".
+
+**Mutation check:** `scripts/mutations/findings-menus.json`, 13 entries, 12
+caught, 1 known gap (`expect: "pass"`, above).

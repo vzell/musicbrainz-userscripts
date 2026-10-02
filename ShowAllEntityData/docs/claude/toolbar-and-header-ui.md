@@ -145,6 +145,9 @@ controls, nine of them labelled. It is now:
 | 6     | `#mb-view-menu-btn` `🛠 View ▾`         | from the initial render (🎹 seeds it)                                                 |
 | 7     | `#mb-settings-btn` `⚙️`                 | always, pinned — left half of the ⚙️❓ pill                                            |
 | 8     | `#mb-app-help-btn` `❓`                | always, pinned — right half of the ⚙️❓ pill                                           |
+| 8a    | `#mb-button-divider-findings`          | always in the DOM; shown only while a findings menu is attached                       |
+| 8b    | `#mb-findings-warn-menu-btn` `⚠️ WARNING (N) ▾` | post-render, only when the page has a warning (docs/claude/findings.md)        |
+| 8c    | `#mb-findings-error-menu-btn` `❌ ERROR (N) ▾`  | post-render, only when the page has an error                                   |
 | 9     | `#mb-fetch-progress-wrap`              | always (hidden outside a fetch) — trails everything, `org/action-button-redesign.org` |
 
 `_TOOLBAR_TAIL_ORDER` declares 3-9 and `_orderToolbar()` asserts it; anything
@@ -166,8 +169,11 @@ so read that section's rules first. Three things are specific to this one:
 - **A class, never a wrapper element.** They must stay DIRECT children of
   `#mb-show-all-controls-container`: `_TOOLBAR_TAIL_ORDER` re-appends them
   there, and `toolbar-menus.spec.js` reads the container's own children to
-  assert they are the last two BUTTONS — `#mb-fetch-progress-wrap` (present
-  but `display:none` outside a fetch) is the true last child, per row 9 above.
+  assert that only the findings divider and menus (rows 8a-8c) follow them —
+  `#mb-fetch-progress-wrap` (present but `display:none` outside a fetch) is the
+  true last child, per row 9 above. The findings menus are NOT part of the
+  pill: they carry no `.mb-toolbar-pinned-btn`, and the divider keeps them
+  visibly apart from ❓.
 - **It cancels the flex gap, and the margin sits on the LEFT half.** The bar is
   `display:inline-flex` with a gap between every pair of children, and a flex
   gap cannot be suppressed for one pair — so one segment pulls back by exactly
@@ -192,7 +198,12 @@ sites, and no longer does anything else. Two of the three old divider spans
 (`.mb-button-divider-after-load`, `.mb-button-divider-before-shortcuts`) are
 gone — they separated groups that no longer exist.
 
-**The menus ADOPT the existing buttons; they do not replace them.** A menu row
+**The menus ADOPT the existing buttons; they do not replace them.** (One
+exception, by necessity: the ⚠️ WARNING / ❌ ERROR findings menus have no
+existing buttons to adopt — each row is a finding with a live count — so
+`_buildFindingMenuRows()` builds `menuitemcheckbox` rows and still passes each
+through `adopt()` for the keyboard, close and focus behaviour. Their look lives
+in `.mb-findings-menu-item` CSS; see docs/claude/findings.md.) A menu row
 IS the button that used to sit in the bar — same id, same `title`, same
 `onclick`, same colour setting, same `ctrlMFunctionMap` entry — moved into a
 panel by `adopt()` and restyled as a full-width row. That is the rule to carry

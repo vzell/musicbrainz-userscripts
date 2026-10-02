@@ -40,21 +40,23 @@ const FIXTURE = path.join(__dirname, '..', 'tests', 'fixtures', 'release-tracks-
 const SETTINGS = { sa_enable_release_tracks: true, sa_release_tracks_length_mismatch_threshold_ms: 500 };
 
 /**
- * In the page: the two LENGTH buttons, the ⏳ button, and the markers behind them.
+ * In the page: the length rows of the ⚠️ WARNING / ❌ ERROR findings menus
+ * (which replaced the two LENGTH buttons) and the markers behind them.
  *
  * @returns {Object}
  */
 function readState() {
-    const btn = (id) => {
-        const b = document.getElementById(id);
-        return b ? { label: b.textContent, visible: b.style.display !== 'none' } : null;
+    const row = (id) => {
+        const r = document.querySelector(`.mb-findings-menu-item[data-mb-finding-id="${id}"]`);
+        const n = r && r.querySelector('.mb-findings-item-count');
+        return r ? { count: n ? Number(n.textContent) : null, checked: r.getAttribute('aria-checked') } : null;
     };
     return {
         rows: Array.from(document.querySelectorAll('table.tbl tbody tr'))
             .filter((r) => !r.classList.contains('mb-col-filter-row')).length,
         flaggedCells: document.querySelectorAll('table.tbl td[data-mb-len-flag]').length,
-        warn: btn('mb-len-mismatch-warn-btn'),
-        severe: btn('mb-len-mismatch-severe-btn'),
+        warn: row('len-warn'),
+        severe: row('len-severe'),
     };
 }
 

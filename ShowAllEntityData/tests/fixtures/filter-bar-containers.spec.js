@@ -4,15 +4,16 @@ const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
+const { clickFinding } = require('../support/findingsMenu');
 
-// Two fixtures, deliberately: the artist-recordings one has EVERY summary and
-// action button hidden (the case that would grow dead space if the grouping
-// spans were ever given a rendered box), the release-tracks one has a visible
-// summary button (proving the summary group is wired up at all).
+// One fixture, two states: at rest it has EVERY summary and action control
+// hidden (the case that would grow dead space if the grouping spans were ever
+// given a rendered box); with the findings menu's "Pending edits" row filter
+// engaged, its chip is a visible summary element (proving the summary group
+// is wired up at all). Until the findings menus replaced them, the second
+// state came from a release tracklist's LENGTH ⚠️ button.
 const RECORDINGS_URL = 'https://musicbrainz.org/artist/89729b97-90a3-4f84-9e88-e16f96cab350/recordings';
 const RECORDINGS_FIXTURE = path.join(__dirname, 'uniq-drop-pending-edits.html');
-const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
-const RELEASE_FIXTURE = path.join(__dirname, 'release-tracks-ms-length.html');
 
 const BAR_GAP_PX = 5;   // #mb-filter-container's own `gap:5px`
 
@@ -48,10 +49,10 @@ test.describe('global filter bar: semantic containers', () => {
             'mb-global-status-container',
         ]);
 
-        expect(groups[0].children).toEqual([
-            'mb-live-date-warning-btn', 'mb-live-date-error-btn',
-            'mb-len-mismatch-warn-btn', 'mb-len-mismatch-severe-btn',
-        ]);
+        // The summary group now holds only the findings menus' row-filter
+        // chips; the live-date and LENGTH summary buttons it used to hold were
+        // replaced by the ⚠️ WARNING / ❌ ERROR h1 menus.
+        expect(groups[0].children).toEqual(['mb-findings-chips']);
         expect(groups[1].children).toEqual([
             'mb-global-filter-wrapper', 'span(anon)',
             'mb-global-filter-case-label', 'mb-global-filter-rx-label', 'mb-global-filter-exclude-label',
@@ -127,19 +128,18 @@ test.describe('global filter bar: semantic containers', () => {
         }
     });
 
-    test('a visible summary button still renders flush in the bar', async ({ page }) => {
-        await loadUserscriptPage(page, {
-            url: RELEASE_URL, fixtureFile: RELEASE_FIXTURE, testMode: true,
-            settingsOverride: { sa_enable_release_tracks: true },
-        });
-        await page.click('button[data-label="Show all Tracks for Release"]');
-        await page.waitForSelector('#mb-filter-container');
-        await waitForRenderComplete(page, { waitForAutoResize: false });
+    test('a visible summary element still renders flush in the bar', async ({ page }) => {
+        // A findings row filter is the summary group's one visible occupant:
+        // the "Pending edits" row of the ⚠️ WARNING menu engages it, and its
+        // chip appears.
+        await renderRecordings(page);
+        await clickFinding(page, 'pending');
+        await page.locator('#mb-findings-chips .mb-findings-chip').waitFor({ state: 'visible' });
 
-        // The ⚠️ length-mismatch button lives in the summary group and is the
-        // bar's first visible box; the filter input must follow one gap later.
+        // The chip box lives in the summary group and is the bar's first
+        // visible box; the filter input must follow one gap later.
         const geom = await page.evaluate(() => {
-            const warn = document.getElementById('mb-len-mismatch-warn-btn');
+            const warn = document.getElementById('mb-findings-chips');
             const wrap = document.getElementById('mb-global-filter-wrapper');
             const bar = document.getElementById('mb-filter-container');
             return {

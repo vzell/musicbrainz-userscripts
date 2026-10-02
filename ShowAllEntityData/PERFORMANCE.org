@@ -2541,6 +2541,17 @@ the same time — one excluding BOTH flagged tracks, one excluding just one — 
 the button kept its count in both. It remains uncovered by automation, which is
 what the ~expect: "pass"~ entries say; this records that it is not unverified.
 
+*Superseded on branch ~feature/findings-menus~ (2026-10-02).* ~_countLiveDateFlags()~,
+~_liveDateFlagsPresent~ and the WARNING/ERROR buttons are gone: the ⚠️ WARNING /
+❌ ERROR h1 findings menus replaced them (~docs/claude/findings.md~). Their
+counts come from ~_findingRowTally()~, memoized per source-row array and per
+~stampFindings()~ generation, so a filter pass walks no rows at all — on every
+pageType, flags or not — and the gate and its three resets have nothing left to
+guard. ~live-date-flag-scan-gate.spec.js~ and ~live-date-flag-button-counts.spec.js~
+now pin the same two halves (the counter stops; the count is the data's) on the
+menu row, and the disk round trip that was "confirmed by hand" above is
+automated by ~live-date-flags-survive-disk-roundtrip.spec.js~ flow B.
+
 *** DONE Step 26: Memoize ~updateFilterButtonsVisibility~'s source-row tallies
 
 *Landed on* ~main~ *in 9.99.1144* (2026-09-24, merge ~5425c76~, branch
@@ -2594,6 +2605,14 @@ harmlessly, since the counts do not depend on order.
 wraps text INSIDE one, on clones. The one obligation this leaves is written on
 both sources' JSDoc and in CLAUDE.md: a future writer that puts either marker
 into a row that is ALREADY captured must replace the array.
+
+*Changed on branch ~feature/findings-menus~ (2026-10-02).* The length-mismatch
+half left this memo with the LENGTH buttons it fed: ~_sourceRowTally()~ now
+counts pending edits only, and ~_countLengthMismatchRows()~ is gone. The ⚠️/❌
+findings menus that replaced the buttons count through ~_findingRowTally()~,
+which IS such a "writer into captured rows" case — ~stampFindings()~ stamps at
+the render tail — and so carries the invalidation this one never needed: a
+stamp generation (~_findingStampGen~) beside the array and its length.
 
 *The step's "~8 300" was exact, and multi-table pages paid more than it said.*
 On a multi-table page ~_pendingEditsGroups()~ ran TWICE per pass — the second

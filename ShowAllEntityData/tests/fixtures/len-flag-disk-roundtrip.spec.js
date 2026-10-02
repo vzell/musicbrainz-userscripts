@@ -11,13 +11,15 @@
 // came back with every flag gone: no tint, no glyph, and — since both summary
 // buttons hide at a count of 0 — no LENGTH buttons either. Measured before the
 // fix (DEBUG-NOTES.md, the Step 26 entry): 8 flagged cells before the save, 0
-// after the load.
+// after the load. The ⚠️ WARNING / ❌ ERROR findings menus have since replaced
+// those buttons (org/generalize-error-warning.org); their length rows read the
+// same attribute, so they are what this spec now counts and filters with.
 //
 // The fix carries the flag, and the tooltip explaining it, as two optional
 // fields of the cell record. What each test pins:
 //
 //   - the round trip restores the SAME marking — kind and tooltip, per cell —
-//     and the buttons count and filter it;
+//     and the findings menus count and filter it;
 //   - a restored page saved again keeps it (so the reader re-marks the tooltip
 //     as the script's own, which is what lets the writer take it again);
 //   - switching flagging off before the load wins over a saved flag;
@@ -38,6 +40,7 @@ const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');
 const { waitForRenderComplete } = require('../support/browser');
 const { clickToolbarItem } = require('../support/toolbarMenu');
+const { findingRow, clickFinding } = require('../support/findingsMenu');
 
 // "Born to Run", 8 tracks, one medium. At a 500 ms threshold and the default
 // ×3 "far over" factor, A2/A3/B2 are ⚠️ and B3 (3 s) is ❌ — four flagged
@@ -50,8 +53,8 @@ const SETTINGS = {
     sa_release_tracks_length_mismatch_threshold_ms: 500,
 };
 const FLAGGED_CELLS = 8;
-const WARN_LABEL = '(3) LENGTH ⚠️';
-const SEVERE_LABEL = '(1) LENGTH ❌';
+const WARN_ROWS = 3;
+const SEVERE_ROWS = 1;
 
 // Serving a saved page: MusicBrainz's own supported-browser-check.js throws,
 // and a versioned bundle it references answers with an HTML error page.
@@ -64,11 +67,13 @@ const flaggedCells = (page) => page.evaluate(() =>
         .map((td) => ({ kind: td.dataset.mbLenFlag, title: td.title, ownTip: td.dataset.mbColTip === '1' }))
         .sort((a, b) => (a.kind + a.title).localeCompare(b.kind + b.title)));
 
-/** A button's label and visibility, or null when it is not in the DOM. */
-const button = (page, id) => page.evaluate((i) => {
-    const b = document.getElementById(i);
-    return b ? { label: b.textContent, visible: b.style.display !== 'none' } : null;
-}, id);
+/** A length level's findings-menu row count, or null when the menu has no such row. */
+const menuCount = async (page, level, id) => {
+    const row = await findingRow(page, level, id);
+    return row ? row.count : null;
+};
+const warnCount = (page) => menuCount(page, 'warn', 'len-warn');
+const severeCount = (page) => menuCount(page, 'error', 'len-severe');
 
 /** Rows currently rendered, excluding the column-filter row. */
 const visibleRows = (page) => page.evaluate(() =>
@@ -144,8 +149,8 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
         // so a restored page with nothing on it cannot pass by agreeing with
         // an empty source.
         expect(before, 'the source tracklist carries its flags').toHaveLength(FLAGGED_CELLS);
-        expect((await button(source, 'mb-len-mismatch-warn-btn')).label).toBe(WARN_LABEL);
-        expect((await button(source, 'mb-len-mismatch-severe-btn')).label).toBe(SEVERE_LABEL);
+        expect(await warnCount(source)).toBe(WARN_ROWS);
+        expect(await severeCount(source)).toBe(SEVERE_ROWS);
 
         saved = await saveToDisk(source, tmpDir, 'born-to-run.json.gz');
         await source.close();
@@ -162,16 +167,13 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
 
         expect(await flaggedCells(page), 'every cell comes back with its own kind and tooltip').toEqual(before);
 
-        const warn = await button(page, 'mb-len-mismatch-warn-btn');
-        const severe = await button(page, 'mb-len-mismatch-severe-btn');
-        expect(warn.visible && severe.visible, 'both summary buttons are offered again').toBe(true);
-        expect(warn.label).toBe(WARN_LABEL);
-        expect(severe.label).toBe(SEVERE_LABEL);
+        expect(await warnCount(page), 'both length rows are offered again').toBe(WARN_ROWS);
+        expect(await severeCount(page)).toBe(SEVERE_ROWS);
 
-        // The structural filter reads the same attribute off the source rows,
-        // so restoring the tint without the data would pass the lines above
-        // and still leave this button filtering to nothing.
-        await page.click('#mb-len-mismatch-warn-btn');
+        // The menu filter reads the stamp made from the same attribute off
+        // the source rows, so restoring the tint without the data would pass
+        // the lines above and still leave this row filtering to nothing.
+        await clickFinding(page, 'len-warn');
         await page.waitForFunction(() => Array.from(document.querySelectorAll('table.tbl tbody tr'))
             .filter((r) => r.style.display !== 'none' && !r.classList.contains('mb-col-filter-row'))
             .length === 3, null, { timeout: 15000 });
@@ -195,8 +197,7 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
         await loadFromDisk(page, saved);
 
         expect(await flaggedCells(page), 'no cell is marked').toEqual([]);
-        const warn = await button(page, 'mb-len-mismatch-warn-btn');
-        expect(warn === null || !warn.visible, 'and no LENGTH button is offered').toBe(true);
+        expect(await warnCount(page), 'and no length row is offered').toBeNull();
     });
 
     test('only a known flag and a string tooltip are applied; a file without flags loads as before',
@@ -228,9 +229,7 @@ test.describe('LENGTH mismatch flags survive Save to Disk → Load from Disk', (
             expect(await flaggedCells(page),
                 'only the valid kind is applied, and without the non-string tooltip')
                 .toEqual([{ kind: 'warn', title: '', ownTip: false }]);
-            expect((await button(page, 'mb-len-mismatch-warn-btn')).label,
-                'the button counts what was restored and nothing else').toBe('(1) LENGTH ⚠️');
-            const severe = await button(page, 'mb-len-mismatch-severe-btn');
-            expect(severe === null || !severe.visible, 'no ❌ was restored').toBe(true);
+            expect(await warnCount(page), 'the menu counts what was restored and nothing else').toBe(1);
+            expect(await severeCount(page), 'no ❌ was restored').toBeNull();
         });
 });

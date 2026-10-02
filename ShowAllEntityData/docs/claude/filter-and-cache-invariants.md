@@ -35,13 +35,27 @@ writers now go through `_applyExpandedCellState()`, which owes items 1, 2 and 4
 above (item 3 does not apply — those modes read the map, not the row's text).
 
 **A summary COUNT owes the same "read the source rows" rule**, for the same
-reason and with a nastier symptom: `_updateLengthMismatchButtons()` and
-`_updateLiveDateFlagButtons()` hide a button whose count is 0, so a tally taken
-from the live DOM makes the button disappear exactly when a filter excludes its
-rows — removing the only way back to them. `_countLengthMismatchRows()` walks
-`_msSourceRows()`; `_countLiveDateFlags()` did not until AUDIT.md §3.6, and it
-resolves column names from the RENDERED table because a source row has no header
-of its own (`groupedRows[i]` ↔ `tables[i]`).
+reason and with a nastier symptom: a control that hides itself at a count of 0,
+fed by a tally of the live DOM, disappears exactly when a filter excludes its
+rows — removing the only way back to them. The LENGTH and live-date summary
+buttons both shipped that way once (AUDIT.md §3.6). Their successors, the
+⚠️ WARNING / ❌ ERROR findings menus, count through `_countFindingRows()` over
+`groupedRows[i]` ↔ `tables[i]` / `allRows` (docs/claude/findings.md), and the
+⏳ toggles through `_sourceRowTally()`.
+
+**A structural filter — one no input holds — owes three more things**: a field
+in `_buildFilterKey()` AND `_buildIncrPartialKey()` (or the cache replays the
+pre-toggle rows), a reset in `clearAllFilters()`, and a place in
+`updateFilterButtonsVisibility()`'s "is a filter active" test. Today there are
+two: the ⏳ toggles (`matchCtx.pendingEditsOnly`, per group) and the findings
+menus' row filter (`_findingRowFilter`, page-wide). The findings menus' CELL
+findings are not structural at all — they are ordinary 📊 ticks
+(`finding-<id>`), so every clear path already handles them.
+
+**The findings stamp is attribute-only**, written once per fetch onto live and
+source rows (`stampFindings()`), so it owes none of the four items above
+except the uniq-dropdown cache, which reads it — and a memo of a source-row
+tally taken BEFORE it ran must be invalidated (`_findingStampGen`).
 
 And one that is not a cache at all: **write to the rows the matcher reads.**
 `runFilter()` REMOVES non-matching rows, so a pass that collects its targets

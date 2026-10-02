@@ -39,19 +39,6 @@
     "expect": "fail"
   },
   {
-    "name": "the tally walks the rows but never counts a length flag",
-    "why": "The LENGTH half of the entry above: the walk and both probes are intact, the ⚠️/❌ counts are gone. Only the release-tracklist test's labels can see it.",
-    "edits": [
-      {
-        "find": "                if (kind === 'severe') tally.lenSevere++;\n                else if (kind === 'warn') tally.lenWarn++;",
-        "replace": ""
-      }
-    ],
-    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
-    "grep": "release tracklist",
-    "expect": "fail"
-  },
-  {
     "name": "one global answer: identity AND length both ignored",
     "why": "Keys the memo on a constant and drops the length check, i.e. a memo that is never invalidated. A new row set loaded into the same page then shows the replaced page's count — (4) where the hydrated rows have (3). Must fail on the re-key test, which is the one arrangement where a stale memo shows a wrong number.",
     "edits": [
@@ -122,19 +109,6 @@
     ],
     "spec": "tests/fixtures/source-row-tally-memo.spec.js",
     "grep": "single-table",
-    "expect": "fail"
-  },
-  {
-    "name": "_countLengthMismatchRows() walks its rows again",
-    "why": "Reverts the LENGTH count to a per-pass walk of _msSourceRows(). Invisible to the scan counter; must fail on the release-tracklist test through the query probe.",
-    "edits": [
-      {
-        "find": "        const add = (rows) => {\n            const t = _sourceRowTally(rows);",
-        "replace": "        const add = (rows) => {\n            (rows || []).forEach(r => r.querySelector('td[data-mb-len-flag]'));\n            const t = _sourceRowTally(rows);"
-      }
-    ],
-    "spec": "tests/fixtures/source-row-tally-memo.spec.js",
-    "grep": "release tracklist",
     "expect": "fail"
   }
 ]

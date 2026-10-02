@@ -33,13 +33,15 @@ const TOOLBAR_MENU_BUTTON = {
     data: '#mb-data-menu-btn',
     view: '#mb-view-menu-btn',
     disc: '#mb-disc-menu-btn',
+    'findings-warn': '#mb-findings-warn-menu-btn',
+    'findings-error': '#mb-findings-error-menu-btn',
 };
 
 /**
  * Opens one toolbar menu by name, if it is not already open.
  *
  * @param {import('@playwright/test').Page} page
- * @param {'data'|'view'|'disc'} which
+ * @param {'data'|'view'|'disc'|'findings-warn'|'findings-error'} which
  * @returns {Promise<boolean>} False when that menu does not exist on this page
  *   — every row it would hold is gated off, so `_orderToolbar()` never attached
  *   its button. Callers that need the menu should assert on this.

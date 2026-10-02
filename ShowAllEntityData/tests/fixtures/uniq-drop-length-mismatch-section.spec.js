@@ -3,13 +3,14 @@
 const { test, expect } = require('../support/test');
 const path = require('path');
 const { loadUserscriptPage } = require('../support/loadPage');
+const { findingRow } = require('../support/findingsMenu');
 
 // 📊 "Length info - Track vs recording": on release-tracks, the "Length" and
 // "Recording length" columns' dropdowns count the cells _applyLengthMismatchFlag()
 // marked — ❌ (far over: threshold × multiple) and ⚠️ (over the threshold) —
 // and checking an entry filters to exactly those tracks. The entries read the
-// same `data-mb-len-flag` attribute the tint, the glyph and the LENGTH summary
-// buttons read, so the counts must agree with those buttons.
+// same `data-mb-len-flag` attribute the tint, the glyph and the ⚠️/❌ findings
+// menus read, so the counts must agree with those menus' length rows.
 //
 // Fixture: the real "Born to Run" page (see release-tracks-recording-length.spec.js).
 // Its track-vs-recording gaps are A1 0.160 s, A2 0.666 s, A3 0.800 s, A4 0,
@@ -39,16 +40,15 @@ const openFixture = async (page) => {
 };
 
 /**
- * Reads the count shown on a LENGTH summary button, "(N) LENGTH …".
+ * Reads the row count the ⚠️ WARNING / ❌ ERROR findings menu shows for one
+ * length level (they replaced the "(N) LENGTH …" summary buttons).
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} id
+ * @param {'warn'|'error'} level
+ * @param {string} id - 'len-warn' | 'len-severe'
  * @returns {Promise<number>}
  */
-const buttonCount = (page, id) => page.evaluate((btnId) => {
-    const m = (document.getElementById(btnId)?.textContent || '').match(/\((\d+)\)/);
-    return m ? Number(m[1]) : 0;
-}, id);
+const menuCount = async (page, level, id) => ((await findingRow(page, level, id)) || {}).count || 0;
 
 /** Visible rows' "#" text, in order. */
 const visiblePositions = (page) => page.evaluate(() => {
@@ -65,10 +65,10 @@ const visiblePositions = (page) => page.evaluate(() => {
 
 test.describe('unique-values dropdown: "Length info - Track vs recording"', () => {
     for (const col of ['Length', 'Recording length']) {
-        test(`"${col}": ❌/⚠️ counts match the LENGTH summary buttons`, async ({ page }) => {
+        test(`"${col}": ❌/⚠️ counts match the findings menus`, async ({ page }) => {
             await openFixture(page);
-            const severeBtn = await buttonCount(page, 'mb-len-mismatch-severe-btn');
-            const warnBtn = await buttonCount(page, 'mb-len-mismatch-warn-btn');
+            const severeBtn = await menuCount(page, 'error', 'len-severe');
+            const warnBtn = await menuCount(page, 'warn', 'len-warn');
             expect(severeBtn).toBe(1);
             expect(warnBtn).toBe(3);
 

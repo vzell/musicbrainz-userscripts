@@ -1,0 +1,171 @@
+[
+  {
+    "name": "the menu tally reads the live rows",
+    "why": "runFilter() REMOVES non-matching rows, so a tally of the live tbody shrinks to whatever the current filter left, and a menu row whose count reaches 0 disappears with the only way back to its rows (AUDIT.md §3.6). Must fail on 'counts describe the data, not the view'.",
+    "edits": [
+      {
+        "find": "        _findingTablePairs().forEach(p => _findingRowTally(p.rows)",
+        "replace": "        _findingTablePairs().forEach(p => _findingRowTally(Array.from(p.table.tBodies[0].rows))"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "counts describe the data",
+    "expect": "fail"
+  },
+  {
+    "name": "the tally memo ignores the stamp generation",
+    "why": "stampFindings() writes into rows that are already captured, after updateFilterButtonsVisibility() may already have tallied them during the render. Without the generation the memo keeps that pre-stamp answer (nothing), and the menus never appear. Must fail on the placement test.",
+    "edits": [
+      {
+        "find": "        if (hit && hit.gen === _findingStampGen && hit.length === rows.length) return hit.counts;",
+        "replace": "        if (hit && hit.length === rows.length) return hit.counts;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "the menus sit after",
+    "expect": "fail"
+  },
+  {
+    "name": "the tally memo is never consulted",
+    "why": "Every filter pass re-walks every source row again — the per-keystroke cost PERFORMANCE.org Step 25 removed from the live-date button these menus replaced. Must fail on the memo test.",
+    "edits": [
+      {
+        "find": "        if (hit && hit.gen === _findingStampGen && hit.length === rows.length) return hit.counts;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "does not re-walk",
+    "expect": "fail"
+  },
+  {
+    "name": "a cell finding is ticked only in the tables that hold it",
+    "why": "The other sub-tables then keep showing every row, so 'show only these rows' narrows one section of the page. Must fail on the every-table test, which counts one tick per table.",
+    "edits": [
+      {
+        "find": "        pairs.forEach(({ table }) => {\n            const count = table.querySelectorAll('thead tr:first-child th').length;",
+        "replace": "        pairs.forEach(({ table, rows }) => {\n            if (!rows.some(r => r.querySelector(`td[data-mb-findings~=\"${f.id}\"]`))) return;\n            const count = table.querySelectorAll('thead tr:first-child th').length;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "ticks its 📊 entry in EVERY table",
+    "expect": "fail"
+  },
+  {
+    "name": "the row filter is ignored by testRowMatch()",
+    "why": "A row finding (live credit, pending edits) then filters nothing. Must fail on the row-finding test.",
+    "edits": [
+      {
+        "find": "            if (!row.querySelector(`td[data-mb-findings~=\"${_fid}\"]`)) return false;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "a row finding uses the row filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the row filter is missing from the filter cache key",
+    "why": "The row filter is no query, so with it absent from _buildFilterKey() the cache replays the previous pass's rows when only the row filter changed — the bug the LENGTH button had once. Must fail on the row-finding test (releasing it via the chip leaves the rows narrowed).",
+    "edits": [
+      {
+        "find": "            m: Array.from(_findingRowFilter).sort(),\n            // Same reasoning",
+        "replace": "            // Same reasoning"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "a row finding uses the row filter",
+    "expect": "fail"
+  },
+  {
+    "name": "clearAllFilters() leaves the row filter engaged",
+    "why": "No input holds it, so emptying the inputs alone leaves the rows narrowed with nothing on screen but the chip to explain why. Must fail on the Clear ALL filters test.",
+    "edits": [
+      {
+        "find": "        _findingRowFilter.clear();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "Clear ALL filters\" releases a row filter",
+    "expect": "fail"
+  },
+  {
+    "name": "a co-flagged length finding is read as two columns",
+    "why": "Both duration cells carry a length flag. Read as two differently named columns, the finding falls back to the row filter and no 📊 tick is written. Must fail on the co-flagged test.",
+    "edits": [
+      {
+        "find": "            names.add(_resolveColHeaderName(table, Math.min(...cols)));",
+        "replace": "            cols.forEach(c => names.add(_resolveColHeaderName(table, c)));"
+      }
+    ],
+    "spec": "tests/fixtures/findings-menus.spec.js",
+    "grep": "co-flagged length mismatch",
+    "expect": "fail"
+  },
+  {
+    "name": "the stamp skips the master rows",
+    "why": "renderGroupedTable() always renders clones of the source rows, so a stamp on the live rows alone vanishes on the next filter pass. Must fail on 'the stamp survives a filter re-render'.",
+    "edits": [
+      {
+        "find": "                if (m.row !== row) _stampFindingRow(m.row, plan);\n                done.add(m.row);\n                owners.add(m.owner);",
+        "replace": "                done.add(m.row);"
+      }
+    ],
+    "spec": "tests/fixtures/findings-stamp.spec.js",
+    "grep": "survives a filter re-render",
+    "expect": "fail"
+  },
+  {
+    "name": "a cell with its own glyph gets the generic one too",
+    "why": "An invalid ISRC/ISWC/barcode or a live credit already shows its own ⚠️/❌; without the inline marker the generic right-edge glyph replaces the barcode's own inline one. Must fail on the barcode tint test.",
+    "edits": [
+      {
+        "find": "        if (level && tinted.some(f => f.level === level && f.inlineGlyph)) td.dataset.mbFindingInline = '1';",
+        "replace": "        if (false) td.dataset.mbFindingInline = '1';"
+      }
+    ],
+    "spec": "tests/fixtures/findings-stamp.spec.js",
+    "grep": "an invalid barcode is tinted",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-finding tint settings are ignored",
+    "why": "Every sa_findings_tint_* setting reads as on. Must fail on the tint-setting test.",
+    "edits": [
+      {
+        "find": "    const _findingTintSetting = key => () => Lib.settings[key] !== false;",
+        "replace": "    const _findingTintSetting = key => () => true;"
+      }
+    ],
+    "spec": "tests/fixtures/findings-stamp.spec.js",
+    "grep": "the tint setting turns the paint off",
+    "expect": "fail"
+  },
+  {
+    "name": "the family-painted guard is dropped",
+    "why": "KNOWN GAP, recorded rather than hidden. The guard matters only on a cell carrying BOTH a family flag (length, video, no-work, live title) and a generic finding (ALL UPPERCASE, pending edits, …), where the generic ::after would out-rank the family's glyph. No fixture has such a cell: the live-title fixture's error titles are none of them ALL UPPERCASE or pending, so the family test passes without the guard (its findings' tint() is false on its own). Covering it needs a live bootleg title in ALL UPPERCASE with an impossible date.",
+    "edits": [
+      {
+        "find": "        const tinted = familyPainted ? [] : ids.map(id => _FINDING_BY_ID.get(id)).filter(f => f.tint(td));",
+        "replace": "        const tinted = ids.map(id => _FINDING_BY_ID.get(id)).filter(f => f.tint(td));"
+      }
+    ],
+    "spec": "tests/fixtures/findings-stamp.spec.js",
+    "grep": "a cell its family rule paints",
+    "expect": "pass"
+  },
+  {
+    "name": "the 📊 Findings entries are not counted",
+    "why": "The section then never appears, though the menus still tick its (now invisible) entries. Must fail on the 📊 section test.",
+    "edits": [
+      {
+        "find": "                    cell.dataset.mbFindings.split(' ').forEach(id => findingCounts.set(id, (findingCounts.get(id) || 0) + 1));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-stamp.spec.js",
+    "grep": "Findings - Warning\" section counts",
+    "expect": "fail"
+  }
+]
