@@ -922,9 +922,11 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
 #+end_example
 
 
-* todo
+* TODO todo
 
-3. Event-name follow-ups
+1. Event-name follow-ups
      E.g. cross-check the date in the event name against the row's Date column, or cut the +76 ms warm 📊 open cost on Event columns.
-4. Halve the live-title stamp
+2. Halve the live-title stamp
     MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
+
+

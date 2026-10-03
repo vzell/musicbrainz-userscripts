@@ -1,4 +1,4 @@
-* TODO UVD redesign
+* DONE UVD redesign
 
 I want a UVD redesign. Currently a typical UVD contents looks like [Image #1]
 
