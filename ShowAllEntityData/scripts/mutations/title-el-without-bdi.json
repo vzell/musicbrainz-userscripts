@@ -1,0 +1,41 @@
+[
+  {
+    "name": "a link without <bdi> is never the title element (the pre-fix behaviour)",
+    "why": "The INLINE STUFF track/recording-name rewrite leaves the release tracklist's title link without a <bdi>, and every Title-info feature goes blind on that cell: no ETI, no green italics, no title finding. Must fail on the detection test.",
+    "edits": [
+      {
+        "find": "            if (_TITLE_ENTITY_ROOT_HREF_RE.test(a.getAttribute('href')) && a.textContent.trim()) return a;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/title-el-without-bdi.spec.js",
+    "grep": "both groups are ETI",
+    "expect": "fail"
+  },
+  {
+    "name": "a bdi-less sub-path link (/recording/<mbid>/open_edits) counts as the title",
+    "why": "A tool link such as INLINE STUFF's \"Open\"/\"edits\" would be read as the title. No fixture has such a link ahead of the title link in a title cell, so the suite cannot see this guard; a fixture with INLINE STUFF's toolzone links in front of the track link would cover it.",
+    "edits": [
+      {
+        "find": "            if (_TITLE_ENTITY_ROOT_HREF_RE.test(a.getAttribute('href')) && a.textContent.trim()) return a;",
+        "replace": "            if (_TITLE_ENTITY_HREF_RE.test(a.getAttribute('href')) && a.textContent.trim()) return a;"
+      }
+    ],
+    "spec": "tests/fixtures/title-el-without-bdi.spec.js",
+    "grep": "both groups are ETI|keeps only its row",
+    "expect": "pass"
+  },
+  {
+    "name": "a text-less link (an image link) counts as the title",
+    "why": "An entity link holding only an image would become the title element and parse as an empty title, hiding the real title behind it. No fixture has a text-less entity link ahead of a title link; an inline-artwork title cell with a thumbnail link in front would cover it.",
+    "edits": [
+      {
+        "find": "            if (_TITLE_ENTITY_ROOT_HREF_RE.test(a.getAttribute('href')) && a.textContent.trim()) return a;",
+        "replace": "            if (_TITLE_ENTITY_ROOT_HREF_RE.test(a.getAttribute('href'))) return a;"
+      }
+    ],
+    "spec": "tests/fixtures/title-el-without-bdi.spec.js",
+    "grep": "both groups are ETI|keeps only its row",
+    "expect": "pass"
+  }
+]

@@ -25188,6 +25188,9 @@
     // — the only ones the 📊 "Title info - …" sections read. Matches a
     // relative or an absolute musicbrainz.org href.
     const _TITLE_ENTITY_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/(?:recording|release|release-group|work|track)\/[0-9a-f-]{36}(?:[/?#]|$)/;
+    // The same entities' own page only — no "/edits", "/open_edits", … sub-path.
+    // Gates _findCellTitleEl()'s link-without-<bdi> case.
+    const _TITLE_ENTITY_ROOT_HREF_RE = /^(?:https?:\/\/[^/]*musicbrainz\.org)?\/(?:recording|release|release-group|work|track)\/[0-9a-f-]{36}\/?(?:[?#]|$)/;
 
     /**
      * Finds a title cell's own title element: the `<bdi>` of its first
@@ -25201,14 +25204,26 @@
      * later in document order). Highlighters scope to this element, so a
      * title match never marks a credit below it.
      *
+     * A link with NO `<bdi>` is the title element itself when it links an
+     * entity's own page (`_TITLE_ENTITY_ROOT_HREF_RE`, no sub-path) and has
+     * text. That is the third-party "mb. INLINE STUFF" shape: on a track whose
+     * name differs from its recording's, it replaces the link's `<bdi>` with
+     * "Track name<br>Recording name" text (`markTrackRecNameDiff`), and
+     * `applyExtractTrackTitleData()` drops the second line — so the release
+     * tracklist cell holds `<a href="/recording/…">The Rising (live 2002 MTV
+     * VMA performance)</a>`. Any other link without a `<bdi>` (an image link,
+     * a "/recording/<mbid>/open_edits" tool link) is skipped, as before.
+     *
      * @param {?HTMLTableCellElement} cell
      * @returns {?Element}
      */
     function _findCellTitleEl(cell) {
         if (!cell) return null;
-        for (const bdi of cell.querySelectorAll('a[href] bdi')) {
-            if (bdi.closest('.comment')) continue;
-            return _TITLE_ENTITY_HREF_RE.test(bdi.closest('a[href]').getAttribute('href')) ? bdi : null;
+        for (const a of cell.querySelectorAll('a[href]')) {
+            if (a.closest('.comment')) continue;
+            const bdi = a.querySelector('bdi');
+            if (bdi) return _TITLE_ENTITY_HREF_RE.test(a.getAttribute('href')) ? bdi : null;
+            if (_TITLE_ENTITY_ROOT_HREF_RE.test(a.getAttribute('href')) && a.textContent.trim()) return a;
         }
         return null;
     }
