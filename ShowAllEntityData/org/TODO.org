@@ -1034,7 +1034,8 @@ I get
 
 * fix bug in jesus2099 userscript
 
-I copied the third-party userscript from aerozol(https://github.com/Aerozol/metabrainz-userscripts) to @tests/fixtures/live-userscripts/MusicBrainz Nuclear Tags.user.js
+I copied the third-party userscript from aerozol(https://github.com/Aerozol/metabrainz-userscripts) to
+@tests/fixtures/live-userscripts/MusicBrainz Nuclear Tags.user.js
 
 1.)
 
@@ -1044,7 +1045,7 @@ register it, see @tests/fixtures/live-userscripts/README.md
 
 When just the "mb. INLINE STUFF" userscript from jesus2099 is active, the "Acoust-IDs" and "ISRC" info is correctly
 rendered under the "Title" column, but as soon as the "MusicBrainz Nuclear Tags" from aerozol is additionally active,
-that data is incorrectly rendered under the "checkbis" column, see also
+that data is incorrectly rendered under the "checkbis" column, see e.g the following URL https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
 
 #+begin_example
 @debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099 - 
@@ -1053,9 +1054,5 @@ that data is incorrectly rendered under the "checkbis" column, see also
 
 3.)
 
-Check which userscript needs to be fixed and create a fixed version to test in the @debug folder plus a patch file to
-send to the original author
-
-
-
-
+Check which userscript needs to be fixed and create a fixed version to test in the @debug folder plus a patch file in
+the same folder to send to the original author
