@@ -1197,6 +1197,10 @@ differently from a desktop, on purpose:
   could close them again, so they would stay over the page. That covers the
   rich tooltip on the action buttons, the artwork preview and its type tooltip,
   and the Relationships tooltips. The buttons themselves work as usual.
+- **The keyboard appears only when you tap a filter.** On a desktop the
+  global filter is focused after the table renders, so you can type right
+  away, and a filter's ✕ puts the cursor back into it. On a phone that would
+  raise the keyboard over the page, so it does not happen there.
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.

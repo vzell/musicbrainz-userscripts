@@ -21781,6 +21781,25 @@
         return performance.now() - _touchInput.lastAt < TOUCH_COMPAT_WINDOW_MS;
     }
 
+    /**
+     * Focuses a text input on the script's own initiative, except on a
+     * touch-primary device (`_isTouchPrimaryDevice()`). There, focusing an
+     * input raises the on-screen keyboard, which then covers half the page.
+     * The keyboard should appear only when the user taps an input themselves.
+     * Used where the script moves focus without the user having tapped that
+     * input: the global filter after a render, a filter's own ✕ (clear)
+     * button, and the sub-table filter's 🔍 reveal. On a desktop it is a
+     * plain `focus()`, so nothing changes there.
+     *
+     * @param {HTMLElement} input - The input to focus.
+     * @returns {boolean} `true` when it was focused, `false` on a touch device.
+     */
+    function _autoFocusInput(input) {
+        if (_isTouchPrimaryDevice()) return false;
+        input.focus();
+        return true;
+    }
+
     // ============================================================================
     // STICKY PAGE HEADERS (horizontal pinning of the page chrome)
     // ============================================================================
@@ -48839,7 +48858,7 @@ a { color: #1565c0; }`;
      *      generally not considered login-field candidates. Also more
      *      semantically correct for a filter/search box regardless.
      *   2. `readonly` until the field is actually, genuinely interacted
-     *      with (a real `mousedown` or `focus`, gated on `event.isTrusted`
+     *      with (a real `pointerdown`, `mousedown` or `focus`, gated on `event.isTrusted`
      *      so OUR OWN programmatic focus calls — e.g. the global filter's
      *      auto-focus-after-render — don't prematurely lift it) — Chrome
      *      generally will not attempt to autofill a `readonly` field.
@@ -48878,6 +48897,12 @@ a { color: #1565c0; }`;
         };
         input.addEventListener('mousedown', _clearReadOnlyIfGenuine);
         input.addEventListener('focus', _clearReadOnlyIfGenuine);
+        // A finger: pointerdown is the first trusted event of a tap. On a
+        // touch device the field now gets its FIRST focus from the user's
+        // own tap (no auto-focus after render, see _autoFocusInput()), and
+        // a field still readonly at that moment would get focus without the
+        // on-screen keyboard.
+        input.addEventListener('pointerdown', _clearReadOnlyIfGenuine);
     }
 
     /**
@@ -49350,7 +49375,9 @@ a { color: #1565c0; }`;
                 input.value = '';
                 // Clearing a column clears its Cc/Rx/Ex switches with it.
                 _resetColFilterModes(input);
-                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg
+                // → applyFilterFocusStyle adds prefix + focus bg (desktop only;
+                // on touch it would raise the keyboard, see _autoFocusInput())
+                _autoFocusInput(input);
                 runFilter();
             };
 
@@ -58821,7 +58848,10 @@ a { color: #1565c0; }`;
             isLoaded = true;
             // Focus the global filter input after rendering so users can start
             // typing a filter query immediately without a manual click.
+            // Not on a phone/tablet: the focus would raise the on-screen
+            // keyboard over the freshly rendered page (_autoFocusInput()).
             setTimeout(() => {
+                if (_isTouchPrimaryDevice()) return;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
                              document.querySelector('.mb-global-filter input');
                 if (_gfi) {
@@ -60839,7 +60869,7 @@ a { color: #1565c0; }`;
             // after clearing a "jp" filter).  clearSubFilter() explicitly syncs
             // the bigbox at the end, which is the correct and complete clear path.
             clearSubFilter();
-            filterInput.focus();
+            _autoFocusInput(filterInput);
         });
 
         // ── Container ─────────────────────────────────────────────────────────
@@ -61331,7 +61361,7 @@ a { color: #1565c0; }`;
             } else {
                 container.classList.add('visible');
                 toggleIcon.classList.add('active');
-                setTimeout(() => filterInput.focus(), 50);
+                setTimeout(() => _autoFocusInput(filterInput), 50);
                 Lib.debug('filter', `Sub-table filter shown for "${categoryName}"`);
             }
         });

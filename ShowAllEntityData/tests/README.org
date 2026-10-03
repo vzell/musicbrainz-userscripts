@@ -55,7 +55,7 @@ The harness is split into three Playwright projects, by directory and file name.
 | Project             | Directory                         | Tests            | Network     | Per-test timeout |
 |---------------------+-----------------------------------+------------------+-------------+------------------|
 | =chromium-fixtures= | =tests/fixtures/=                 | 490 in 117 files | none        | 30 s (default)   |
-| =chromium-mobile=   | =tests/fixtures/*.mobile.spec.js= | 4 in 2 files     | none        | 90 s             |
+| =chromium-mobile=   | =tests/fixtures/*.mobile.spec.js= | 8 in 3 files     | none        | 90 s             |
 | =chromium-live=     | =tests/live/=                     | 77 in 38 files   | real MB.org | 120 s            |
 
 *Mobile* specs are fixture specs that need a phone: the project runs them under

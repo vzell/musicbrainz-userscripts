@@ -17574,3 +17574,37 @@ Coverage: `tests/fixtures/touch-tooltip.mobile.spec.js`,
 (6 OK as fail, 1 recorded pass). `mutation-check.py` gained an optional
 `project` key. Not pinned by a tap spec: the Relationships, bigbox-wrapper and
 inline-thumbnail guards.
+
+### 2026-10-03 (follow-up) — phone: keyboard pops up after every render (branch mobile-basics)
+
+Phone report after testing `7c10d3e`: the tooltip and default-off sticky fixes
+work. Opting in to Sticky Page Headers on touch changes nothing visible on
+Firefox Android (bars still scroll away). Not diagnosed; emulation pins them
+(`innerWidth`-sized bars), so the device differs. Real-device numbers via
+`about:debugging` are the next step if it matters.
+
+New: the on-screen keyboard appears right after every render. Cause: the
+post-render `setTimeout(…, 150)` focuses `#mb-global-filter-input`, and on a
+phone a focus raises the keyboard. The same holds for the column-filter ✕ and
+the sub-table-filter ✕ and 🔍 reveal, which all re-focus their input. Fix:
+`_autoFocusInput()` (TOUCH INPUT section) is a plain `focus()` on a desktop
+and a no-op on a touch-primary device. The post-render block returns early on
+touch, so `readOnly` stays until the user's own tap. That made a latent order
+question matter: the autofill hardening lifted `readonly` on a trusted
+`mousedown`/`focus`, and if a browser focused before its compatibility
+`mousedown`, the first tap would focus a readonly field without the keyboard.
+A trusted `pointerdown` now lifts it too. Chromium can't show that order
+(mutation recorded `expect: pass`).
+
+Fixture traps while writing the specs (`filter-autofocus*.spec.js`):
+- At 412 px, the series-releases shell's unstyled MB header covers the global
+  filter, so the tap times out. Use user-ratings-multigroup for the global and
+  sub-table filters.
+- In the series table's narrow `#` column, the ✕ covers the input's middle and
+  the Aa mode button covers its left. user-ratings-multigroup shows no visible
+  column filter at all. The column-filter tests therefore fill and press ✕
+  from script. The ✕ handler's decision depends on the device, not the event,
+  so that runs the code under test.
+
+Mutations (`scripts/mutations/mobile-basics.json`, now 12): all OK, two
+recorded passes.

@@ -575,3 +575,19 @@ pins "a tap never SHOWS it" with a `MutationObserver` that keeps
 the touch point, so "hidden afterwards" passed with the guard removed. The
 Relationships, bigbox-wrapper and inline-thumbnail guards have no tap spec of
 their own yet.
+
+**The sibling rule for focus: the script never focuses a text input on its
+own initiative on a touch-primary device; go through `_autoFocusInput()`.**
+On a phone a focus raises the on-screen keyboard over the page. Covered call
+sites: the post-render global-filter focus (its own `_isTouchPrimaryDevice()`
+early return, since it also clears `readOnly`), the column-filter ✕, the
+sub-table-filter ✕ and its 🔍 reveal. Left as plain `focus()` on purpose:
+restoring focus to an input the user was already typing in (the keyboard is up
+anyway), dialogs the user opened to type into (Save/Load filename, quick
+filters), and keyboard-shortcut paths (no keyboard, no shortcut). Because the
+global filter now gets its FIRST focus from the user's own tap on touch,
+`_hardenFilterInputAgainstAutofill()` also lifts its `readonly` on a trusted
+`pointerdown`. A field still readonly when it takes focus would take it
+without the keyboard. Specs: `filter-autofocus.spec.js` (desktop: focus IS
+moved) and `filter-autofocus.mobile.spec.js` (touch: it is not), sharing their
+scenarios through `tests/support/filterAutofocus.js`.

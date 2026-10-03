@@ -95,5 +95,73 @@
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "pins header, entity header, tabs, h2 bars and footer",
     "expect": "pass"
+  },
+  {
+    "name": "the global filter is auto-focused after the render on a touch device again",
+    "why": "Removes the touch early-return from the post-render setTimeout: the keyboard pops up over the freshly rendered page (org/mobile.org follow-up 2).",
+    "edits": [
+      {
+        "find": "                if (_isTouchPrimaryDevice()) return;\n                const _gfi = document.getElementById('mb-global-filter-input') ||",
+        "replace": "                const _gfi = document.getElementById('mb-global-filter-input') ||"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "_autoFocusInput() focuses on a touch device too",
+    "why": "Makes the helper a plain focus(): the column ✕, the sub-table 🔍 reveal and the sub-table ✕ raise the keyboard again.",
+    "edits": [
+      {
+        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
+        "replace": "        input.focus();\n        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "without focusing it again|does not focus it",
+    "expect": "fail"
+  },
+  {
+    "name": "_autoFocusInput() never focuses, on a desktop either",
+    "why": "The desktop half: with a mouse the three call sites must still move focus into the filter.",
+    "edits": [
+      {
+        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
+        "replace": "        return false;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "focuses it",
+    "expect": "fail"
+  },
+  {
+    "name": "the desktop post-render auto-focus is gone",
+    "why": "Drops the focus call itself: the desktop spec must notice, which also proves the mobile negative is not vacuous.",
+    "edits": [
+      {
+        "find": "                    _gfi.readOnly = false;\n                    _gfi.focus();",
+        "replace": "                    _gfi.readOnly = false;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "a touch pointerdown no longer lifts the readonly guard",
+    "why": "KNOWN OVERLAP, hence expect pass: in Chromium a tap's trusted compatibility mousedown arrives before focus and lifts readonly by itself. The pointerdown listener is belt-and-braces for a browser that focuses before its compatibility mousedown. No emulation here reproduces that order.",
+    "edits": [
+      {
+        "find": "        input.addEventListener('pointerdown', _clearReadOnlyIfGenuine);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "after the render",
+    "expect": "pass"
   }
 ]
