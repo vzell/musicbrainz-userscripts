@@ -117,46 +117,6 @@ additionally, when exporting/importing the settings, these values should also su
 
 ** DONE Implement https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
 
-** TODO Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
-
-1.)
-
-Warn on ETI inside "()" (light yellow background highlighning+warning glyph) which starts with an uppercase letter like
-"(Version 1)" instead of "(version 1)" for specific keywords. Make the keywords end-user configurable, starting with
-
-#+begin_example
-version
-single
-soundtrack
-live
-rehearsal
-studio
-etc.
-#+end_example
-
-2.)
-
-a.)
-
-On URL https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149, @debug/release-tracks-remix-ETI.html
-the "Moonitor remix" also qualifies as ETI in
-
-#+begin_example
-<bdi>Situations Like These (Moonitor remix)</bdi>
-#+end_example
-
-See also other examples of these guidelines (https://musicbrainz.org/doc/Style/Titles) in:
-
-b.)
-
-On URL https://musicbrainz.org/release/5cf63c93-e27e-4d98-81bc-9aba8b6861a7
-in "I Do What I Do (Theme for 9 1/2 Weeks) (7” version)" the "7” version" would also qualify as ETI
-
-#+begin_example
-Never Ending Story (power club vocal mix)
-The Age of Love (Watch Out for Stella club mix)
-#+end_example
-
 ** TODO https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - "Title Info - Subtitle" Subtitle not highlighted and not filterable by value, same as title itself
 
 On e.g https://musicbrainz.org/release-group/f83d2211-dd81-4b1e-9a02-e89733891e1c - "Title Info - Subtitle", Subtitle not highlighted and not filterable by value, same as Title itself

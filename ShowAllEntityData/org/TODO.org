@@ -1092,9 +1092,15 @@ the same folder to send to the original author
 
 ** a
 
-The script that needs fixing is jesus2099's mb. INLINE STUFF. Nuclear Tags is fine as it is. A fixed copy and a patch for jesus2099 are in debug/, and Nuclear Tags is registered in the manifest. I haven't tested the fix in a real browser yet; that's step 1 below.
+The script that needs fixing is jesus2099's mb. INLINE STUFF. Nuclear Tags is fine as it is. A fixed copy and a patch
+for jesus2099 are in debug/, and Nuclear Tags is registered in the manifest. I haven't tested the fix in a real browser
+yet; that's step 1 below.
 
-Why it breaks: Nuclear Tags adds a checkbox cell (td.elephant-tag-col) at the start of every track row. INLINE STUFF looks for the title cell as "the first cell that isn't the track number or video column", which is now the checkbox cell. Your bug snapshot shows it: the AcoustIDs sit in 31 checkbox cells. The recording link is still found correctly; only the cell the ISRC/AcoustID blocks go into is wrong. Adding a leading column is legitimate, so the fragile part is INLINE STUFF's assumption.
+Why it breaks: Nuclear Tags adds a checkbox cell (td.elephant-tag-col) at the start of every track row. INLINE STUFF
+looks for the title cell as "the first cell that isn't the track number or video column", which is now the checkbox
+cell. Your bug snapshot shows it: the AcoustIDs sit in 31 checkbox cells. The recording link is still found correctly;
+only the cell the ISRC/AcoustID blocks go into is wrong. Adding a leading column is legitimate, so the fragile part is
+INLINE STUFF's assumption.
 
 What I did (on branch register-nuclear-tags):
 

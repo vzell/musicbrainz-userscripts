@@ -1,0 +1,59 @@
+* TODO Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
+** DONE i
+
+On PTs which have "release group"/"release" columns:
+
+1.)
+
+Warn on ETI inside "()" (light yellow background highlightning+warning glyph) which starts with an uppercase letter like
+"(Version 1)" instead of "(version 1)" for specific keywords. Make the keywords end-user configurable, starting with
+
+#+begin_example
+version
+single
+album
+soundtrack
+live
+rehearsal
+studio
+radio
+etc.
+#+end_example
+
+2.)
+
+a.)
+
+On URL https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149, @debug/release-tracks-remix-ETI.html
+the "Moonitor remix"/"Psyche remix" also qualifie as ETI in
+
+#+begin_example
+<bdi>Situations Like These (Moonitor remix)</bdi>
+<bdi>Everlasting (Psyche remix)</bdi>
+#+end_example
+
+See also other examples of these guidelines (https://musicbrainz.org/doc/Style/Titles) in:
+
+#+begin_example
+Never Ending Story (power club vocal mix)
+The Age of Love (Watch Out for Stella club mix)
+#+end_example
+
+b.)
+
+On URL https://musicbrainz.org/release/5cf63c93-e27e-4d98-81bc-9aba8b6861a7
+in "I Do What I Do (Theme for 9 1/2 Weeks) (7” version)" the "7” version" would also qualify as ETI
+
+** DONE Render the ETI information in the data cells in green, like what we do in the "Vocals" column with e.g. "background
+
+it works.
+
+Render the ETI information in the data cells in green, like what we do in the "Vocals" column with e.g. "background"
+
+** TODO check live stuff, specificall when EIT is exactly the live bootleg spec
+
+check live stuff, specificall when EIT is exactly the live bootleg spec
+
+#+begin_example
+The Rising: Tour Edition With Bonus DVD - https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+#+end_example
