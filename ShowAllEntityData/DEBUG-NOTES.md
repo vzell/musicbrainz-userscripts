@@ -17844,3 +17844,15 @@ prefix mode, an unmodified Escape enters the single-character branch first,
 which returns because `'Escape'` is not in `validCharacters`. The Escape branch
 after it is unreachable, so the overlay stays until its 5 s auto-exit. Pinned
 as `test.fail()` in `rich-tooltips.spec.js`.
+
+### 2026-10-04 (follow-up) — Ctrl+M overlay: Escape fixed (branch fix/rg-bigbox-tooltip)
+
+The keydown handler's Escape branch now comes BEFORE the single-character
+branch, so it is reachable. It also calls `stopImmediatePropagation()`. Without
+that, the same Escape went on to the plain-Escape filter handler, and closing
+the overlay from a focused global filter cleared its text. The handler is
+document capture-phase, like the prefix key itself. `rich-tooltips.spec.js`
+drops its `test.fail()` and gains a "focused global filter keeps its text" test,
+with a control that the next plain Escape still clears it. Mutations:
+`scripts/mutations/ctrl-m-escape.json`, 2/2 OK. HELP's prefix-key section now
+says how to cancel.

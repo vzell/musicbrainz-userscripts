@@ -11,7 +11,8 @@ const { waitForRenderComplete } = require('../support/browser');
 //   #mb-stat-tooltip      h2/h3 row-count stat ([data-mbtt]) — here.
 //                         h1 action buttons — action-button-shortlabel-and-rich-tooltip.
 //   #mb-rel-tooltip       Relationships cell, only while a filter matches it — here.
-//   #mb-ctrl-m-tooltip    Ctrl+M prefix-mode overlay (keyboard, not hover) — here.
+//   #mb-ctrl-m-tooltip    Ctrl+M prefix-mode overlay (keyboard, not hover) — here,
+//                         including Escape closing it.
 //   #mb-art-bigbox-tooltip  strip: bigbox-tooltip; per-image <li> and
 //                         #mb-art-hover-preview: caa-col-hdr-deferred-visibility;
 //                         inline thumbnail: user-ratings-multigroup.
@@ -160,13 +161,11 @@ test.describe('rich tooltips: health check', () => {
         expect(errors).toEqual([]);
     });
 
-    // KNOWN BUG (found by this health check, 2026-10-04, not fixed yet): in
-    // prefix mode an unmodified Escape enters the "single character key"
-    // branch first, which returns because 'Escape' is not in
-    // validCharacters, so the Escape branch below it is unreachable. The
-    // overlay stays until its 5 s auto-exit. Remove test.fail() with the fix.
+    // Was unreachable until 2026-10-04: in prefix mode an unmodified Escape
+    // entered the "single character key" branch first, which returned
+    // because 'Escape' is not in validCharacters, so the overlay stayed up
+    // until its 5 s auto-exit.
     test('Ctrl+M overlay: Escape closes it at once', async ({ page }) => {
-        test.fail();
         await loadRg(page);
         await page.locator(`button[data-label="${RG_BUTTON}"]`).waitFor();
 
@@ -176,5 +175,26 @@ test.describe('rich tooltips: health check', () => {
         await page.keyboard.press('Escape');
         // Well inside the 5 s auto-exit, so only Escape can have closed it.
         await expect(tip).toHaveCount(0, { timeout: 1500 });
+    });
+
+    test('Ctrl+M overlay: the Escape that closes it does not also clear the focused global filter', async ({ page }) => {
+        await loadRg(page);
+        await page.click(`button[data-label="${RG_BUTTON}"]`);
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        const gf = page.locator('#mb-global-filter-input');
+        await gf.click();
+        await gf.pressSequentially('Studio');
+        await page.keyboard.press('Control+m');
+        await expect(page.locator('#mb-ctrl-m-tooltip')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#mb-ctrl-m-tooltip')).toHaveCount(0, { timeout: 1500 });
+        // A plain Escape in the global filter clears it (first press); this
+        // one belonged to prefix mode, so the text stays.
+        await expect(gf).toHaveValue(/Studio/);
+
+        // Control: the next plain Escape does reach the filter.
+        await page.keyboard.press('Escape');
+        await expect(gf).not.toHaveValue(/Studio/);
     });
 });

@@ -18569,6 +18569,27 @@
             return;
         }
 
+        // Escape key exits prefix mode without selecting. It must come BEFORE
+        // the single-character branch below: an unmodified Escape matches
+        // that branch's condition too, and it returns early because 'Escape'
+        // is not in validCharacters, so an Escape check placed after it was
+        // unreachable and the overlay stayed up until the 5 s auto-exit.
+        // stopImmediatePropagation(): the Escape belongs to prefix mode, so it
+        // must not also clear a focused filter or close a dialog underneath.
+        if (e.key === 'Escape' && ctrlMModeActive) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ctrlMModeActive = false;
+            clearTimeout(ctrlMModeTimeout);
+            hideCtrlMTooltip();
+            if (typeof Lib !== 'undefined' && Lib.debug) {
+                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);
+            } else {
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Exited ${getPrefixDisplay()} mode`);
+            }
+            return;
+        }
+
         // If in prefix mode and a single character key is pressed (no modifiers)
         if (ctrlMModeActive && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
             const key = e.key.toLowerCase();
@@ -18640,20 +18661,6 @@
             ctrlMModeActive = false;
             clearTimeout(ctrlMModeTimeout);
             hideCtrlMTooltip();
-            return;
-        }
-
-        // Escape key exits prefix mode without selecting
-        if (e.key === 'Escape' && ctrlMModeActive) {
-            e.preventDefault();
-            ctrlMModeActive = false;
-            clearTimeout(ctrlMModeTimeout);
-            hideCtrlMTooltip();
-            if (typeof Lib !== 'undefined' && Lib.debug) {
-                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);
-            } else {
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Exited ${getPrefixDisplay()} mode`);
-            }
             return;
         }
 
