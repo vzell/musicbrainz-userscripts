@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a release tracklist with the \"mb. INLINE STUFF\" userscript installed, a track whose name differs from its recording's name (e.g. \"The Rising (live 2002 MTV VMA performance)\", \"Lonesome Day (music video)\") was invisible to everything that reads titles: its extra title information was not recognized or shown in green italics, it got no title warning, and the 📊 \"Title info\" sections skipped it. INLINE STUFF rewrites such a track link without MusicBrainz's inner name element, and ShowAllEntityData only looked for that element."
+        ]
+      }
+    ]
+  }
+]

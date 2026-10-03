@@ -17683,3 +17683,53 @@ Fixture traps while writing the specs (`filter-autofocus*.spec.js`):
 
 Mutations (`scripts/mutations/mobile-basics.json`, now 12): all OK, two
 recorded passes.
+
+## 2026-10-03 — Title info blind on INLINE STUFF's rewritten track links (branch fix/title-el-without-bdi)
+
+Report: on release 6d19588c-… ("The Rising: Tour Edition With Bonus DVD"),
+the following were neither ETI nor green:
+- "The Rising (live 2002 MTV VMA performance)"
+- "Lonesome Day (music video)"
+
+Snapshot: `debug/release-tracks-DVD-ETI-bug.html` (final rendered page).
+Both Title cells read
+`<span class="name-variation"><a href="/recording/…" title="track name: …≠rec. name: …" jesus2099userjs81127recname="…">The Rising (live 2002 MTV VMA performance)</a> </span>`,
+with no `<bdi>`.
+
+Root cause, confirmed against `tests/fixtures/live-userscripts/mb_INLINE-STUFF.user.js:176-201`:
+- When a track name differs from its recording's, INLINE STUFF does
+  `aRec.replaceChild(fragment, aRec.firstChild)` with its default
+  `markTrackRecNameDiff = "%track-name%%br%%recording-name%"`.
+- That replaces MusicBrainz's `<bdi>` with "Track<br>Recording" text.
+- `applyExtractTrackTitleData()` drops the line after the `<br>`.
+- `_findCellTitleEl()` only accepted `a[href] bdi`, so it returned `null`.
+  It is the single reader behind ETI, the ETI styling, the title findings,
+  live titles and every 📊 "Title info" entry, so all of them skipped the
+  cell.
+- The `title-mismatch` finding still worked: it reads the anchor's `≠`
+  tooltip, not the title element.
+
+Fix: `_findCellTitleEl()` walks the links in document order.
+- A link with a `<bdi>` is handled as before.
+- A link WITHOUT one is the title element itself when it links an entity's
+  own page (`_TITLE_ENTITY_ROOT_HREF_RE`, no sub-path) and has text.
+- Every other bdi-less link (image link, `/open_edits`) is skipped, as
+  before.
+
+Fixture trap: a fixture with INLINE STUFF's rewrite baked into the HTML
+does NOT reproduce it.
+- `scripts/fetch-release-fixture.js` keeps the page's scripts, so the
+  fixture loads MusicBrainz's real `static.metabrainz.org/MB/release/index-….js`.
+- Its React hydration re-renders the tracklist from the JSON payload and
+  puts the `<bdi>` back before the userscript reads it (the same rebuild as
+  the Nuclear Tags entry above).
+- The live INLINE STUFF runs after hydration. The spec therefore applies the
+  rewrite AFTER load with the new simulator
+  `tests/fixtures/thirdPartyScripts/inline-stuff-recname.js`, on the
+  committed `release-tracks-video-on-dvd.html`, and asserts the
+  precondition (both links bdi-less) before "Show all".
+
+Spec: `tests/fixtures/title-el-without-bdi.spec.js`. Mutation list:
+`scripts/mutations/title-el-without-bdi.json`. The pre-fix behaviour fails
+it; the sub-path and text guards are recorded `pass`, since no fixture has
+such a link ahead of the title.
