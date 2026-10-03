@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "e91740dad0e32fb3a738f5a9182061c3b8ebf4db",
-    "revisions_walked": 681
+    "head": "24c06c41d76c556590d163c0cc2db3d5febb7505",
+    "revisions_walked": 682
   },
   "changes": [
     {
@@ -416,6 +416,9 @@
     "sa_enable_findings_menus": true,
     "sa_findings_tint_allcaps": true,
     "sa_findings_tint_truncated": true,
+    "sa_findings_eti_keywords": "version, single, album, soundtrack, live, rehearsal, studio, radio, remix, mix, edit, demo, instrumental, acoustic, extended, original, remaster, remastered, take, dub, reprise, mono, stereo, bonus, karaoke",
+    "sa_enable_title_eti_style": true,
+    "sa_findings_tint_eti_case": true,
     "sa_findings_tint_event_style": true,
     "sa_findings_tint_rec_date": true,
     "sa_findings_tint_event_state": true,
