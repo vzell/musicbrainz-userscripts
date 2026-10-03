@@ -1170,3 +1170,6 @@ To try it yourself, install both fixed copies from `debug/` in Tampermonkey and 
 I also corrected the manifest entry and added a follow-up to the `DEBUG-NOTES.md` entry. On `register-nuclear-tags`, the
 files to commit are `manifest.json`, `DEBUG-NOTES.md` and the new probe script; `org/TODO.org` is your earlier edit and
 I'd leave it out. Nothing is committed yet. Should I commit them?
+
+
+** TODO add support for fixed with row statistics

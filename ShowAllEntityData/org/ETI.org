@@ -1,4 +1,4 @@
-* TODO Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
+* DONE Warn on ETI inside "()" which starts with an uppercase letter like "(Version 1)" instead of "(version 1)" for specific keywords
 ** DONE i
 
 On PTs which have "release group"/"release" columns:
@@ -50,10 +50,21 @@ it works.
 
 Render the ETI information in the data cells in green, like what we do in the "Vocals" column with e.g. "background"
 
-** TODO check live stuff, specificall when EIT is exactly the live bootleg spec
+** DONE check live stuff, specifically when EIT is exactly the live bootleg spec
 
 check live stuff, specificall when EIT is exactly the live bootleg spec
 
+1.)
+
+Why on
+
 #+begin_example
-The Rising: Tour Edition With Bonus DVD - https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd
+release-tracks-DVD-ETI-bug.html - The Rising: Tour Edition With Bonus DVD - https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd - raw HTML on final rendered page
+#+end_example
+
+is "music video" and "live 2002 MTV VMA performance" not recognized as ETI and in italic/green on the following data cells
+
+#+begin_example
+<span class="name-variation"><a href="/recording/273164fe-13ea-4239-b3e6-8d86a5ff2eeb" title="track name: The Rising (live 2002 MTV VMA performance)≠rec. name: The Rising" jesus2099userjs81127recname="The Rising (live 2002 MTV VMA performance)">The Rising (live 2002 MTV VMA performance)</a> </span>
+<span class="name-variation"><a href="/recording/7bdb11d8-4ef9-4476-abc0-141fe07d8d00" title="track name: Lonesome Day (music video)≠rec. name: Lonesome Day (video)" jesus2099userjs81127recname="Lonesome Day (music video)">Lonesome Day (music video)</a> </span>
 #+end_example
