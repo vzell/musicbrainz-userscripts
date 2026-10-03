@@ -65,12 +65,37 @@
                 "Non-visual: loads an external add-to-calendar-button@2 script from a CDN (cdn.jsdelivr.net).",
                 "Non-visual: @grant none — its fetch() calls go straight to the network, not through GM_xmlhttpRequest/gmStubs.js."
             ]
+        },
+        {
+            "id": "aerozol-nuclear-tags",
+            "file": "MusicBrainz Nuclear Tags.user.js",
+            "author": "ChatGPT",
+            "version": "1.6",
+            "when": "now",
+            "touches": [
+                "Header @author is literally 'ChatGPT'; the script is aerozol's (namespace github.com/Aerozol/metabrainz-userscripts). No @run-at, so Tampermonkey's default document-idle — hence 'now'.",
+                "Everything below hangs off addTaggingUI(), which returns at once unless the sidebar '#tag-form' (with 'input.tag-input' + 'button.styled-button') exists — i.e. on an entity page while logged in. Logged out, the script does nothing visible.",
+                "Sidebar tag form: appends a 'div.elephant-tags-wrapper' holding 'div.tag-shortcuts' (🧠 brain button, repeat-last-tag button, one 'button.tag-shortcut-btn' per remembered tag) and, when a bulk context is detected, a collapsible 'div.nuclear-bulk-wrapper' ('Nuclear Options (Bulk Actions) ▼/▲') with cascade toggles and a progress line.",
+                "Release page (pageContext 'release', needs 'table.tbl.medium'): addRecordingCheckboxes() PREPENDS a '<th class=\"elephant-tag-col\">' (master checkbox, name 'elephant-tag-master') to each medium's 'tr.subh' and a '<td class=\"elephant-tag-col\">' (checkbox, name 'elephant-tag-checkbox') to every 'tbody > tr' that has a 'td.pos' — so the native tracklist gains a NEW FIRST COLUMN and every cell index shifts by one.",
+                "Consequence of the leading cell: any other script that locates the title cell by position or by exclusion now hits the checkbox cell instead. Confirmed with jesus2099-inline-stuff: its 'td:not(.pos):not(.video)' title-cell lookup lands its AcoustID/ISRC blocks in 'td.elephant-tag-col' (debug/ISRC-OK.html vs debug/ISRC-bug.html; fix in debug/mb_INLINE-STUFF.user.js + debug/mb_INLINE-STUFF-title-cell.patch).",
+                "Series page (pageContext 'series_<type>', type sniffed from the first row's links): addSeriesCheckboxes() prepends the same 'th/td.elephant-tag-col' column to the FIRST 'table.tbl' on the page (header 'thead tr', every row with a 'td' and no 'th').",
+                "Artist / label / release-group pages: adds NO column — it reuses MusicBrainz's own 'input[name=\"add-to-merge\"]' checkboxes (artist page: 'table.release-group-list'; release-group: 'table.tbl:not(.medium)').",
+                "One-shot per tag form, not per render: a WeakSet plus a '.elephant-tags-wrapper' presence check stop re-injection, and each table is skipped once its head row has 'th.elephant-tag-col'. ShowAllEntityData's re-rendered tables therefore do NOT get checkbox cells — only the native table present when the form was first processed.",
+                "Hydration race (intermittent): if addRecordingCheckboxes() runs BEFORE MusicBrainz's React hydrates the tracklist (a DOMContentLoaded handler calling flushSync), the extra cells cause React error #418; React empties 'div.tracklist-and-credits' and renders it again, and the one-shot guard never re-adds the column. Whether it hits depends on load timing (other installed scripts, ShowAllEntityData included, shift it). ShowAllEntityData and INLINE STUFF are NOT the remover — scripts/probe-nuclear-tags-column-loss.js logs React's stack. Under the harness ('init' = DOMContentLoaded) it hits on every run. Fix: debug/MusicBrainz Nuclear Tags.user.js + debug/MusicBrainz-Nuclear-Tags-restore-checkbox-column.patch (run the probe with --fixed-nuclear).",
+                "Global CSS via GM_addStyle: '.elephant-tags-wrapper', '.tag-shortcuts', '.nuclear-*' button/toggle/progress/status rules and '.elephant-tag-col { width: 20px; }'. None of it targets 'table.tbl' itself.",
+                "Re-runs continuously: a MutationObserver on document.body ({childList, subtree}) calls addTaggingUI() on EVERY body mutation — including every ShowAllEntityData re-render — but the guards above make that a cheap early return; a second observer on '#tag-form' re-renders the shortcut buttons if MusicBrainz's React re-renders the form.",
+                "Non-visual: GM_getValue/GM_setValue keys 'mbz_tag_shortcuts', 'mbz_last_submitted_tag', 'mbz_elephant_tags_bulk_expanded'; localStorage 'nuclear_tags_chunk_size' / 'nuclear_tags_benchmark'.",
+                "Non-visual: only on a user's bulk-tag click — fetch() to /ws/2/release-group|release?inc=…&fmt=json (fetchWithRetry, 1 s spacing) and POST /ws/2/tag?client=MusicBrainzNuclearTags-1.6 in chunks (1.1 s spacing, backoff on failure). Plain fetch(), not GM_xmlhttpRequest, so gmStubs.js does not intercept it.",
+                "Harness-compatible: classic GM_* only (GM_addStyle/GM_getValue/GM_setValue, all stubbed by gmStubs.js), no top-level await."
+            ]
         }
     ],
     "combinations": {
         "jesus2099-only": ["jesus2099-inline-stuff", "jesus2099-supermind"],
         "right-side-flags-only": ["right-side-flags-everywhere"],
         "sanojjonas-only": ["sanojjonas-visualise"],
-        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise"]
+        "nuclear-tags-only": ["aerozol-nuclear-tags"],
+        "inline-stuff-plus-nuclear-tags": ["jesus2099-inline-stuff", "aerozol-nuclear-tags"],
+        "kitchen-sink": ["jesus2099-supermind", "jesus2099-inline-stuff", "right-side-flags-everywhere", "sanojjonas-visualise", "aerozol-nuclear-tags"]
     }
 }
