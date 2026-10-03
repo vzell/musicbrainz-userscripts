@@ -1,0 +1,41 @@
+[
+  {
+    "name": "count span is a plain inline box again",
+    "why": "Without the inline grid the ::after sizer is just trailing invisible text that ADDS width instead of setting a minimum, so the span still grows with its text and the controls after it shift.",
+    "edits": [
+      {
+        "find": ".mb-row-count-stat { font-weight: bold; margin-left: 8px; display: inline-grid; font-variant-numeric: tabular-nums; white-space: nowrap; }",
+        "replace": ".mb-row-count-stat { font-weight: bold; margin-left: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }"
+      }
+    ],
+    "spec": "tests/fixtures/row-count-stat-fixed-width.spec.js",
+    "grep": "stay put",
+    "expect": "fail"
+  },
+  {
+    "name": "the helper never writes the sizer",
+    "why": "attr() of a missing attribute is the empty string, so the slot collapses to the visible text: today's shifting behaviour, with the CSS still in place.",
+    "edits": [
+      {
+        "find": "        span.dataset.mbSizer = threeTier ? `(${n} of ${n})/${n}` : `(${n} of ${n})`;",
+        "replace": "        void n;"
+      }
+    ],
+    "spec": "tests/fixtures/row-count-stat-fixed-width.spec.js",
+    "grep": "stay put",
+    "expect": "fail"
+  },
+  {
+    "name": "the multi-table h2 reserves only the 2-tier slot",
+    "why": "The h2 of a multi-table page shows (F of T)/A under a global filter. A (8 of 8) sizer is wide enough for every h3 and for a single-table h2, so only the multi-table h2 notices; the /A tail pushes the master toggle right.",
+    "edits": [
+      {
+        "find": "            _setCountStatText(span, countText, activeDefinition?.tableMode === 'multi');",
+        "replace": "            _setCountStatText(span, countText);"
+      }
+    ],
+    "spec": "tests/fixtures/row-count-stat-fixed-width.spec.js",
+    "grep": "multi-table: h2 master toggle",
+    "expect": "fail"
+  }
+]

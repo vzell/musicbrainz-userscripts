@@ -17746,3 +17746,51 @@ quick filter" case failed until `openSeries()` waited the render focus out.
 Diagnosed by logging focusin/focusout: `in qf`, `out qf`, `in` the global
 filter, panel `display: none`. Mutations: `scripts/mutations/uvd-no-autofocus-touch.json`,
 4/4 OK.
+
+## 2026-10-04 — Row-count stat shifts every control after it on filter (branch fixed-width-row-stats)
+
+Request: `org/fixed-width-row-stats.org`. Snapshots:
+`debug/row-stats-{filtered,unfiltered}.html` (release 6d19588c…). They show
+`.mb-row-count-stat` directly followed by `button.mb-master-toggle` in the h2
+and by `#mb-stf-*-resize-btn` in each h3. The span was a plain inline box.
+- In the h2, `(20)` → `(3 of 3)/20` pushed the master toggle and everything
+  after it right on every filter.
+- In the h3s, `(15)` → `(2 of 15)` did the same to the resize button.
+
+Fix: CSS only, with no layout reads.
+- The span is `display: inline-grid`.
+- An invisible, zero-height `::after` renders `data-mb-sizer`. A one-column
+  grid is as wide as its widest item, so the slot is the width of the widest
+  text the span can show.
+- `_setCountStatText(span, text, threeTier)` writes the text AND the sizer.
+  The sizer is `(8…8 of 8…8)`, plus `/8…8` for the h2 of a multi-table page,
+  with as many digits as the largest number in the text.
+- `tabular-nums` makes every digit the same width.
+- All nine count writers go through the helper:
+  - `updateH2Count()`;
+  - the main-h2 section total;
+  - h3 creation in `renderGroupedTable()`;
+  - the two `_realCount` writes;
+  - `runFilter()`'s multi branch;
+  - `_updateSubTableH3Tooltip()`;
+  - the two collapse/reload restores.
+- `textContent` is unchanged, which matters because `parseRowCountText()` and
+  `liveAssertions.js` read it.
+
+Why `::after` and not `::before`: the grid baseline comes from the first row,
+which must be the real text, or the heading's vertical alignment changes.
+
+Test trap: on the release-group fixture, typing in the global filter scrolls
+the whole page sideways by 8 px. The toggle icon and every h2 child move
+together. A viewport-relative measurement failed with the span's width
+unchanged (91 px in all three states). The spec therefore measures each
+control's left edge relative to its heading.
+
+Not touched: `_updateSubTableH3Tooltip()`'s "split-span" branch
+(`_children.length === 2`) is dead. It runs right after a `textContent`
+write, which removes all child spans. Under `inline-grid` such children would
+stack as grid rows, so anyone reviving that branch must change this CSS too.
+
+Spec: `tests/fixtures/row-count-stat-fixed-width.spec.js`. Mutations:
+`scripts/mutations/row-count-stat-fixed-width.json`, 3/3 OK (no inline grid,
+no sizer write, 2-tier slot on the multi-table h2).

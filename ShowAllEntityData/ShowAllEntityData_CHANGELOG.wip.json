@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The row counts next to the page heading and each sub-table heading now keep a fixed width. Typing or clearing a filter changes \"(20)\" to \"(3 of 3)/20\" and back, but the buttons after the count (Show/Hide all, the ↔️ resize button, the artwork and relationship buttons, …) stay where they are. The width fits the largest text that count can show, so a short count leaves only a small gap."
+        ]
+      }
+    ]
+  }
+]

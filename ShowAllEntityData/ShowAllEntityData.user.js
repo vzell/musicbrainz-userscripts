@@ -42610,7 +42610,15 @@ a { color: #1565c0; }`;
         .mb-mscol-hdr-5 { background-color: rgba(100, 230, 210, 0.60) !important; }
         .mb-mscol-hdr-6 { background-color: rgba(180, 160, 255, 0.60) !important; }
         .mb-mscol-hdr-7 { background-color: rgba(255, 220, 180, 0.60) !important; }
-        .mb-row-count-stat { font-weight: bold; margin-left: 8px; }
+        /* Fixed-width row count: the span is a one-column inline grid whose
+           invisible, zero-height ::after renders data-mb-sizer, the widest
+           text this span can show for its totals (set by _setCountStatText).
+           The column takes the wider of the two, so "(20)" and "(3 of 3)/20"
+           occupy the same slot and the controls after the count never shift.
+           ::after, not ::before: the grid baseline comes from the first row,
+           which must be the real text. */
+        .mb-row-count-stat { font-weight: bold; margin-left: 8px; display: inline-grid; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .mb-row-count-stat::after { content: attr(data-mb-sizer); height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
         ${Lib.settings.sa_enable_count_stat_tooltip ? '.mb-row-count-stat { cursor: help; }' : ''}
         #mb-stat-tooltip {
             position: fixed;
@@ -47887,6 +47895,40 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Writes a `.mb-row-count-stat` span's visible count text AND its
+     * `data-mb-sizer` attribute — the widest text that span can show for its
+     * current totals, which the `.mb-row-count-stat::after` rule renders
+     * invisibly so the span keeps one width across `(N)`, `(F of T)` and
+     * `(F of T)/A`. Without that, every control after the count (master
+     * toggle, sub-table resize button, artwork/Relationships runs) shifts right
+     * on every filter and back when it is cleared.
+     *
+     * **Every write of a count span's text goes through here.** A writer that
+     * sets `textContent` directly leaves the previous sizer in place (or none),
+     * which is harmless until the total changes digit count, and then the
+     * shift is back.
+     *
+     * The largest number in `text` is the span's absolute total in all three
+     * formats, so the sizer is derived from it: `(8…8 of 8…8)`, plus `/8…8`
+     * when `threeTier` is set. `8` because `tabular-nums` makes every digit
+     * the same width. `threeTier` is passed rather than read from the DOM
+     * because `updateH2Count()` writes the text before inserting the span.
+     *
+     * @param {HTMLElement|null} span       The `.mb-row-count-stat` element.
+     * @param {string}           text       Visible count text, e.g. `(2 of 15)`.
+     * @param {boolean}          [threeTier=false]  Reserve room for the 3-tier
+     *                                      `(F of T)/A` form — the h2 on a
+     *                                      multi-table page.
+     */
+    function _setCountStatText(span, text, threeTier = false) {
+        if (!span) return;
+        span.textContent = text;
+        const nums = (text.match(/\d+/g) || []).map(Number);
+        const n = '8'.repeat(String(Math.max(0, ...nums)).length);
+        span.dataset.mbSizer = threeTier ? `(${n} of ${n})/${n}` : `(${n} of ${n})`;
+    }
+
+    /**
      * Updates the `.mb-row-count-stat` span in the page's main h2 header
      * (or equivalent target element) to reflect the current filtered/total row
      * counts, and re-anchors all direct-child art toggle/retry buttons so they
@@ -48022,7 +48064,7 @@ a { color: #1565c0; }`;
             } else {
                 countText = (filteredCount === totalCount) ? `(${totalCount})` : `(${filteredCount} of ${totalCount})`;
             }
-            span.textContent = countText;
+            _setCountStatText(span, countText, activeDefinition?.tableMode === 'multi');
 
             // Store rich HTML tooltip in data-mbtt (picked up by the custom
             // #mb-stat-tooltip hover system); do NOT use span.title (plain text only).
@@ -61733,9 +61775,9 @@ a { color: #1565c0; }`;
         // _visible is the count after ALL active filters (global + column + STF).
         // _total  is the unfiltered row count for this sub-table.
         // The text is "(N)" when all rows are visible, "(N of M)" otherwise.
-        _countStat.textContent = (_visible === _total)
+        _setCountStatText(_countStat, (_visible === _total)
             ? `(${_total})`
-            : `(${_visible} of ${_total})`;
+            : `(${_visible} of ${_total})`);
 
         // Store rich tooltip in data-mbtt; remove any stale native title
         // so browsers don't show both tooltips simultaneously.
@@ -62614,7 +62656,8 @@ a { color: #1565c0; }`;
                     }
                 }
 
-                h3.innerHTML = `<span class="mb-toggle-icon">${shouldStayOpen ? '▼' : '▲'}</span>${h3DisplayName} <span class="mb-row-count-stat">(${group.rows.length})</span>`;
+                h3.innerHTML = `<span class="mb-toggle-icon">${shouldStayOpen ? '▼' : '▲'}</span>${h3DisplayName} <span class="mb-row-count-stat"></span>`;
+                _setCountStatText(h3.querySelector('.mb-row-count-stat'), `(${group.rows.length})`);
                 // Store the unfiltered total row count for this subtable so that
                 // updateSubTableRowCount() can reference it after global/subtable filtering.
                 table.dataset.mbTotalRows = group.rows.length;
@@ -62771,7 +62814,7 @@ a { color: #1565c0; }`;
                         table.dataset.mbTotalRows = String(_realCount);
                         const _statSpan = h3.querySelector('.mb-row-count-stat');
                         if (_statSpan) {
-                            _statSpan.textContent = `(${_realCount})`;
+                            _setCountStatText(_statSpan, `(${_realCount})`);
                             _statSpan.removeAttribute('data-mbtt'); // clear stale tooltip
                         }
 
@@ -62876,7 +62919,7 @@ a { color: #1565c0; }`;
                         table.dataset.mbTotalRows = String(_realCount);
                         const _statSpan = h3.querySelector('.mb-row-count-stat');
                         if (_statSpan) {
-                            _statSpan.textContent = `(${_realCount})`;
+                            _setCountStatText(_statSpan, `(${_realCount})`);
                             _statSpan.removeAttribute('data-mbtt');
                         }
 
@@ -63135,9 +63178,9 @@ a { color: #1565c0; }`;
                 if (countStat) {
                     const _allTbodyRows = Array.from(table.querySelectorAll('tbody tr'));
                     const _visibleCount = _allTbodyRows.filter(r => r.style.display !== 'none').length;
-                    countStat.textContent = (_visibleCount === totalInGroup)
+                    _setCountStatText(countStat, (_visibleCount === totalInGroup)
                         ? `(${totalInGroup})`
-                        : `(${_visibleCount} of ${totalInGroup})`;
+                        : `(${_visibleCount} of ${totalInGroup})`);
                 }
                 // Refresh h3 tooltip to reflect current filter state
                 _updateSubTableH3Tooltip(table);
@@ -64138,7 +64181,7 @@ a { color: #1565c0; }`;
                     delete _walkerR.dataset.mbMergedTbody;
                     // Restore h3 count stat to the group's own row count
                     const _cStat = _h3.querySelector('.mb-row-count-stat');
-                    if (_cStat) _cStat.textContent = `(${groupedRows[_idx].rows.length})`;
+                    _setCountStatText(_cStat, `(${groupedRows[_idx].rows.length})`);
                     // Queue the CAA/EAA bigbox rebuild — deferred until all h3
                     // visibility flags are settled (see _tablesToRebuild above).
                     _tablesToRebuild.push(_walkerR);
@@ -64306,7 +64349,7 @@ a { color: #1565c0; }`;
 
                     // Update the h3 count stat to show the combined row count
                     const _countStat = _h3.querySelector('.mb-row-count-stat');
-                    if (_countStat) _countStat.textContent = `(${_srcRows.length})`;
+                    _setCountStatText(_countStat, `(${_srcRows.length})`);
 
                     // Queue the CAA/EAA bigbox rebuild — deferred until all h3
                     // visibility flags are settled (see _tablesToRebuild above).
@@ -64432,7 +64475,7 @@ a { color: #1565c0; }`;
             // Row-count stat: always show the section's own total.
             const _statSpan = _mainH2.querySelector('.mb-row-count-stat');
             if (_statSpan) {
-                _statSpan.textContent = `(${_sectionRowTotal})`;
+                _setCountStatText(_statSpan, `(${_sectionRowTotal})`, activeDefinition?.tableMode === 'multi');
             }
         }
 
