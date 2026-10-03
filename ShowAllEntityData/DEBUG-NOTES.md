@@ -17418,3 +17418,93 @@ content's font matches the bar's 1.5em here, which the test measures (±1px)
 rather than assumes. Test: `section-sub-headings.spec.js › the content under
 an Annotation bar starts at the bar's left edge…`, failing before the fix
 (off by 18px); one more mutation in `scripts/mutations/section-sub-headings.json`.
+
+## 2026-10-03 — Third-party clash: INLINE STUFF ISRC/AcoustID land in Nuclear Tags' checkbox column (branch register-nuclear-tags)
+
+Not a ShowAllEntityData bug: two third-party scripts collide on the NATIVE
+release page before any "Show all" press.
+`/release/230fd31d-f63f-4c01-8f10-432d36a1cb86`.
+
+Snapshots (both raw, native page, no ShowAllEntityData render):
+- `debug/ISRC-OK.html`: only jesus2099 "mb. INLINE STUFF" (2026.4.9) is
+  active. `td.title` carries `jesus2099userjs81127acoustids-handled` and holds
+  the `div.ars.AcoustID81127` / ISRC blocks before the native ARs.
+- `debug/ISRC-bug.html`: aerozol's "MusicBrainz Nuclear Tags" (1.6) is also
+  active. 31 `<td class="elephant-tag-col jesus2099userjs81127acoustids-handled">`
+  cells hold the AcoustID/ISRC blocks; `td.title` holds only the ARs.
+
+Cause: Nuclear Tags' `addRecordingCheckboxes()` PREPENDS
+`td.elephant-tag-col` to every `table.tbl.medium` row that has a `td.pos`.
+INLINE STUFF finds the title cell with
+`tr.querySelector("td:not(.pos):not(.video)")` (ISRC at its line 172,
+AcoustID at 215), which now matches the checkbox cell. Its `css_recording`
+selector still finds the right `<a href="/recording/…">`, so only the target
+cell is wrong. Load order doesn't save it: INLINE STUFF inserts from a 1 s
+`setInterval` after its own `/ws/2` fetch, long after Nuclear Tags has added
+its column at document-idle.
+
+INLINE STUFF is the one to fix. Adding a leading column is legitimate; picking
+"the first cell that isn't X" as the title cell is the fragile part. Fix:
+`aRec.closest("td")`, plus `recLink` in the AcoustID loop so the anchor is not
+overwritten by the MBID. Fixed copy is `debug/mb_INLINE-STUFF.user.js`, built
+from upstream master, which is byte-identical to the local copy apart from a
+BOM Tampermonkey added. The patch for the author is
+`debug/mb_INLINE-STUFF-title-cell.patch`; `git apply` of it onto upstream
+reproduces the fixed copy exactly.
+
+Nuclear Tags is now registered in
+`tests/fixtures/live-userscripts/manifest.json` (`aerozol-nuclear-tags`,
+combos `nuclear-tags-only` and `inline-stuff-plus-nuclear-tags`). Not checked
+yet: whether its leading cell disturbs ShowAllEntityData's own
+`release-tracks` render. It is one-shot per tag form, so only the native table
+it saw at injection gets the column.
+
+### Follow-up, same day — the checkbox column sometimes vanishes
+
+`debug/just-nuclear-tags.html` (Nuclear Tags + ShowAllEntityData, 45
+`elephant-tag-col` cells) vs `debug/both-active.html` (plus INLINE STUFF, 0
+cells, but the tag-form wrapper and "Nuclear Options" panel present, so
+`addRecordingCheckboxes()` did run). Both are native pages; neither carries
+any ShowAllEntityData render marker. Disabling ShowAllEntityData brought the
+column back, and a later reload with all three scripts active also had it.
+The bug is intermittent.
+
+The user first suspected ShowAllEntityData, but it is not the remover.
+`scripts/probe-nuclear-tags-column-loss.js` (live, logged in) hooks every DOM
+removal path and logs the stack when a removed subtree holds
+`.elephant-tag-col`:
+- No userscript: React hydrates with no error.
+- Nuclear Tags injected at DOMContentLoaded: cells added at about 290 ms.
+  At about 460 ms React throws #418 (hydration text mismatch) and clears
+  `div.tracklist-and-credits` via `textContent =` from `flushSync` in
+  MusicBrainz's own DOMContentLoaded handler (`common-chunks-*.js`), then
+  re-renders it. Count goes to 0.
+- The same happens with INLINE STUFF and/or ShowAllEntityData added. Neither
+  is on the stack.
+
+It is a race. Nuclear Tags loses when it runs before MusicBrainz's hydration
+handler, and Tampermonkey's injection timing relative to that handler shifts
+with what else is installed and how fast the page loads. The harness's
+'init' (DOMContentLoaded listener registered before the page's own) always
+loses. Nuclear Tags never recovers because `addTaggingUI()` returns early
+once the form has its wrapper, although its body observer fires on React's
+re-render.
+
+Fix in Nuclear Tags: `debug/MusicBrainz Nuclear Tags.user.js` and
+`debug/MusicBrainz-Nuclear-Tags-restore-checkbox-column.patch`, built from
+upstream 1.6 (identical to the local copy apart from a BOM).
+`addRecordingCheckboxes()` is now idempotent per header and per row, and the
+observer calls `restoreRecordingCheckboxes()` on release pages. With
+`--fixed-nuclear`, every probe arm ends with 43 cells and 2 header cells,
+restored about 1 ms after React's clear. React still logs #418, because the
+fix restores the column rather than preventing React's rebuild. The same
+probe, now that both scripts' cells coexist, also confirms the INLINE STUFF
+fix:
+- Fixed INLINE STUFF: 55 ISRC/AcoustID blocks in `td.title`, 0 in the
+  checkbox column.
+- Original INLINE STUFF (`--orig-inline`): 0 in `td.title`, 55 in the
+  checkbox column.
+
+The restore cannot reach ShowAllEntityData's tables:
+`applyNormalizeMediumTracklists()` drops the `medium` class, and rendered
+tables are plain `table.tbl`.
