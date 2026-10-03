@@ -1032,7 +1032,9 @@ I get
 
 * TODO integrate springsteenlyrics.com
 
-* fix bug in jesus2099 userscript
+
+* DONE fix bug in jesus2099 userscript
+** i
 
 I copied the third-party userscript from aerozol(https://github.com/Aerozol/metabrainz-userscripts) to
 @tests/fixtures/live-userscripts/MusicBrainz Nuclear Tags.user.js
@@ -1057,3 +1059,108 @@ https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
 
 Check which userscript needs to be fixed and create a fixed version to test in the @debug folder plus a patch file in
 the same folder to send to the original author
+
+** fix - Context
+
+ With both jesus2099's mb. INLINE STUFF and aerozol's MusicBrainz Nuclear Tags
+ active on a release page (e.g. /release/230fd31d-…), the AcoustID and ISRC
+ blocks show up in Nuclear Tags' new checkbox column instead of under the track
+ title.
+
+ Root cause (confirmed from code and debug/ISRC-bug.html):
+
+ - Nuclear Tags addRecordingCheckboxes() (MusicBrainz Nuclear Tags.user.js:881)
+   prepends a <td class="elephant-tag-col"> to every track row of
+   table.tbl.medium.
+ - INLINE STUFF finds the "title cell" by excluding cells instead of naming one:
+   tracksHtml[i].querySelector("td:not(.pos):not(.video)"), for ISRC
+   (mb_INLINE-STUFF.user.js:172) and for AcoustID (:215). Its rule is "the
+   first <td> that is not .pos or .video", and that now matches the
+   checkbox cell.
+ - Evidence: in ISRC-bug.html, 31 <td class="elephant-tag-col jesus2099userjs81127acoustids-handled"> cells hold
+   <div class="ars AcoustID81127">. In ISRC-OK.html, the same class sits on
+   td.title.
+ - The recording link itself is still found correctly: css_recording
+   requires td:not(.pos):not(.video) > a[href^='/recording/'], and the
+   checkbox cell contains no such link. So aRec is right and only the target
+   cell is wrong.
+
+ The script to fix is INLINE STUFF. Adding a leading column to a native table
+ is allowed. Treating "the first cell that isn't X" as the title cell is the
+ fragile assumption, and any other script that adds a leading column (selection
+ checkboxes, etc.) would break it the same way. Nuclear Tags needs no change.
+
+** a
+
+The script that needs fixing is jesus2099's mb. INLINE STUFF. Nuclear Tags is fine as it is. A fixed copy and a patch for jesus2099 are in debug/, and Nuclear Tags is registered in the manifest. I haven't tested the fix in a real browser yet; that's step 1 below.
+
+Why it breaks: Nuclear Tags adds a checkbox cell (td.elephant-tag-col) at the start of every track row. INLINE STUFF looks for the title cell as "the first cell that isn't the track number or video column", which is now the checkbox cell. Your bug snapshot shows it: the AcoustIDs sit in 31 checkbox cells. The recording link is still found correctly; only the cell the ISRC/AcoustID blocks go into is wrong. Adding a leading column is legitimate, so the fragile part is INLINE STUFF's assumption.
+
+What I did (on branch register-nuclear-tags):
+
+1. Registration: added aerozol-nuclear-tags to tests/fixtures/live-userscripts/manifest.json, with when: "now" (it has no @run-at) and a list of what it changes on the page. I also added the combinations nuclear-tags-only and inline-stuff-plus-nuclear-tags, and appended it to kitchen-sink. A check script confirmed the manifest parses and every combination resolves.
+2. Fixed copy: debug/mb_INLINE-STUFF.user.js. I built it from upstream master, which is the same version (2026.4.9) as your copy; the only difference is a byte-order mark Tampermonkey added to yours. Both lookups (ISRC and AcoustID) now take the cell that contains the recording link (aRec.closest("td")), so the number of columns before the title no longer matters. I kept the author's tab style and left @version for them to bump. It passes a syntax check.
+3. Patch for the author: debug/mb_INLINE-STUFF-title-cell.patch. It explains the problem, gives the repro URL, and says why the new lookup is safer. Applying it to a clean upstream copy with git apply gives exactly the fixed file.
+4. Notes: added a dated entry to DEBUG-NOTES.md.
+
+What you need to check:
+1. In Tampermonkey, replace INLINE STUFF with the fixed copy. Keep Nuclear Tags on and log in, because Nuclear Tags only adds the checkbox column when you're logged in. Then open https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86. AcoustIDs and ISRCs should be back under the title, with only checkboxes in the first column.
+2. If you want to see the clash in the test harness (this hits live musicbrainz.org): npm run live-interop -- --url=<release-url> --combo=inline-stuff-plus-nuclear-tags
+
+Not looked at: whether the extra column also affects ShowAllEntityData's own release-tracks view. I've noted it as a follow-up in DEBUG-NOTES.md.
+
+The commit would contain only manifest.json and DEBUG-NOTES.md; the debug/ files and .user.js copies are gitignored. ShowAllEntityData itself isn't touched, so there's no version bump or changelog entry. org/TODO.org was already modified before I started, so I'd leave it out. Nothing is committed yet. Should I commit these two files?
+
+** bug
+
+New bug:
+
+#+begin_example
+just-nuclear-tags.html - [Image #7] - Just "MusicBrainz Nuclear Tags" from aerozol active ==> "checkbox" column present
+both-active.html - [Image #8] - both scripts active  ==> "checkbox" column GONE
+#+end_example
+
+** summary
+
+ShowAllEntityData is not what removes the column. MusicBrainz's own React code does, so how it turns out depends on timing. That's why your re-check with SAED active worked.
+
+**What happens:** the tracklist arrives as server-rendered HTML, and React then "hydrates" it (attaches to the existing markup) in a `DOMContentLoaded` handler.
+- **Nuclear Tags runs after hydration:** its checkbox column stays.
+- **Nuclear Tags runs before hydration:** the extra cells no longer match what React expects. React throws error #418,
+  empties `div.tracklist-and-credits`, and renders the tracklist again without the column. Nuclear Tags' observer does
+  fire on that re-render, but its "already injected" check only looks at the sidebar form, so it never adds the column
+  back.
+
+**Why it came and went for you:** when Tampermonkey runs Nuclear Tags relative to that handler varies from load to
+load. It depends on cache state, network speed, and how many other scripts Tampermonkey has to inject; SAED alone is
+about 85k lines. Disabling SAED changed the timing, so it looked like SAED was the cause. Your later reload with all
+three active happened to land on the good side of the race.
+
+**Evidence:** a new probe, `scripts/probe-nuclear-tags-column-loss.js`, loads the release page live and logged in, and logs the stack trace of anything that removes a checkbox cell.
+- With no userscripts, React hydrates without any error.
+- With Nuclear Tags, the 43 cells are added at about 290 ms. At about 460 ms React throws #418 and clears the tracklist, and the stack points into MusicBrainz's own scripts.
+- The same happens with INLINE STUFF and/or SAED added, and neither appears in the trace.
+- The test harness injects scripts earlier than Tampermonkey does, so there the column is lost on every run.
+
+So my earlier "Nuclear Tags needs no change" was right for the ISRC bug but wrong for this one. There are now two separate fixes:
+
+| Bug                                       | Script to fix | Files in `debug/`                                                                            |
+| ----------------------------------------- | ------------- | -------------------------------------------------------------------------------------------- |
+| ISRC/AcoustID land in the checkbox column | INLINE STUFF  | `mb_INLINE-STUFF.user.js`, `mb_INLINE-STUFF-title-cell.patch`                                |
+| Checkbox column vanishes                  | Nuclear Tags  | `MusicBrainz Nuclear Tags.user.js`, `MusicBrainz-Nuclear-Tags-restore-checkbox-column.patch` |
+
+The Nuclear Tags fix makes the column-adding function safe to run repeatedly: it only adds missing cells. The script's
+existing observer now calls it again on release pages, so the column comes back if React removes it. It can't touch
+SAED's own tables, because SAED removes the `medium` class from them. React still logs #418, because the fix restores
+the column instead of preventing React's rebuild; there's no reliable "hydration finished" signal to wait for.
+
+**Checked (live, logged in, all six setups including both SAED ones):**
+- The column comes back about 1 ms after React clears it: 43 checkbox cells plus 2 header cells, one per medium.
+- With the fixed INLINE STUFF, all 55 ISRC/AcoustID blocks sit under the title. With the original, all 55 land in the checkbox column. So the first fix is confirmed too.
+- Both patches apply cleanly to the authors' current upstream files (`git apply`) and produce exactly the fixed copies.
+
+To try it yourself, install both fixed copies from `debug/` in Tampermonkey and reload the release page a few times.
+
+I also corrected the manifest entry and added a follow-up to the `DEBUG-NOTES.md` entry. On `register-nuclear-tags`, the
+files to commit are `manifest.json`, `DEBUG-NOTES.md` and the new probe script; `org/TODO.org` is your earlier edit and
+I'd leave it out. Nothing is committed yet. Should I commit them?
