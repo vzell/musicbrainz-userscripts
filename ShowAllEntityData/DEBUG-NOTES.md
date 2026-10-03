@@ -17583,3 +17583,103 @@ Save to Disk stores `innerHTML`, so spans come back on load.
 
 Six more mutants in `scripts/mutations/eti-keywords.json`, all failing as
 intended.
+
+## 2026-10-03 — Mobile: stuck hover tooltip after a tap; Sticky Page Headers squeezes every bar (branch mobile-basics)
+
+Reported in `org/mobile.org` from Firefox Android + Tampermonkey, with
+screenshots, with and without "Desktop site".
+
+**Bug 1, the rich `#mb-stat-tooltip` stays after tapping an action button.**
+`_initStatTooltip()` shows on `mouseover` and hides on `mouseout`. A tap fires
+compatibility mouse events (`mouseover`, …, `click`) and, on the reporting
+device, no `mouseout`. "Desktop site" does not change the input, so it made no
+difference. Fix: `_isTouchCompatMouseEvent(e)` (Chromium's
+`sourceCapabilities.firesTouchEvents`, otherwise a touch contact within
+`TOUCH_COMPAT_WINDOW_MS` = 800 ms, recorded by `_installTouchInputTracker()`).
+It guards every handler that SHOWS a floating tooltip: `[data-mbtt]`,
+Relationships, `_showArtHoverPreview()`, `_showLiTooltip()`, bigbox wrapper,
+inline thumbnail.
+
+Two traps on the way:
+- **TDZ.** The tracker's `const`s were first declared next to
+  `_initStatTooltip()`. That function is called from the IIFE's top level
+  ~3000 lines EARLIER, so the first read threw
+  `Cannot access '_touchInput' before initialization` and nothing after it ran:
+  no action buttons at all, on desktop too. The new mobile spec caught it before
+  anything else did. The helpers now live in a `TOUCH INPUT` section placed
+  before the sticky-page-headers code.
+- **Chromium's emulation sends `mouseleave` after a tap on an artwork
+  thumbnail** (pointerdown, pointerup, mouseover, mouseenter, click, mouseout,
+  mouseleave; still so with the click blocked). The popup probably opens under
+  the touch point. So "hidden after the tap" passed with the art guards
+  planted out (mutation-check: UNEXPECTED pass). The spec now pins "never
+  shown", with a `MutationObserver` keeping `attributeOldValue`
+  (`watchShown()` in `touch-tooltip.mobile.spec.js`).
+
+**Bug 2, Sticky Page Headers squeezes the h1 block, tabs and h2/h3 bars into a
+narrow column.** Hypothesis before measuring: the gutter term in
+`_sphRefresh()` blowing up when `#content` is narrower than the content.
+Wrong. Measured with `tests/support/probe-mobile-sph.js` (live release
+`1d404e1d-…`, MB stylesheet present, Playwright `devices['Pixel 7']`):
+
+| arm                     | clientWidth | innerWidth | bar max-width |
+|-------------------------+-------------+------------+---------------|
+| desktop 1280 (control)  | 1280        | 1280       | ~1094–1248    |
+| Pixel 7, auto-resize on | 412         | 1648       | ~226–264      |
+| Pixel 7, auto-resize off| 412         | 1648       | ~226–264      |
+
+MB pages carry no viewport meta (checked with curl), so the phone lays the
+page out narrow and then zooms out to fit the ~9000 px table. `clientWidth`
+stays at the unzoomed width, and `_sphRefresh()` clamped every bar to it. The
+gutter is fine (`#content` is as wide as the tables in both arms). Fix:
+`_sphViewportWidth()` uses `max(clientWidth, innerWidth)` on a touch-primary
+device and plain `clientWidth` on a desktop (innerWidth would add a classic
+scrollbar). Plus a gate, `_stickyPageHeadersWanted()`: off on touch unless
+`sa_sticky_page_headers_on_touch`. Pinch-zoom pans the visual viewport
+independently of the layout viewport sticky pins against, so the feature
+cannot keep its promise there.
+
+Not verified: Firefox Android's own numbers (emulation is Chromium). The
+desktop-uses-innerWidth mutation is recorded `expect: pass` because headless
+Chromium has overlay scrollbars (innerWidth == clientWidth, 1280/1280).
+
+Coverage: `tests/fixtures/touch-tooltip.mobile.spec.js`,
+`tests/fixtures/sticky-page-headers.mobile.spec.js` in the new
+`chromium-mobile` project. Mutations: `scripts/mutations/mobile-basics.json`
+(6 OK as fail, 1 recorded pass). `mutation-check.py` gained an optional
+`project` key. Not pinned by a tap spec: the Relationships, bigbox-wrapper and
+inline-thumbnail guards.
+
+### 2026-10-03 (follow-up) — phone: keyboard pops up after every render (branch mobile-basics)
+
+Phone report after testing `7c10d3e`: the tooltip and default-off sticky fixes
+work. Opting in to Sticky Page Headers on touch changes nothing visible on
+Firefox Android (bars still scroll away). Not diagnosed; emulation pins them
+(`innerWidth`-sized bars), so the device differs. Real-device numbers via
+`about:debugging` are the next step if it matters.
+
+New: the on-screen keyboard appears right after every render. Cause: the
+post-render `setTimeout(…, 150)` focuses `#mb-global-filter-input`, and on a
+phone a focus raises the keyboard. The same holds for the column-filter ✕ and
+the sub-table-filter ✕ and 🔍 reveal, which all re-focus their input. Fix:
+`_autoFocusInput()` (TOUCH INPUT section) is a plain `focus()` on a desktop
+and a no-op on a touch-primary device. The post-render block returns early on
+touch, so `readOnly` stays until the user's own tap. That made a latent order
+question matter: the autofill hardening lifted `readonly` on a trusted
+`mousedown`/`focus`, and if a browser focused before its compatibility
+`mousedown`, the first tap would focus a readonly field without the keyboard.
+A trusted `pointerdown` now lifts it too. Chromium can't show that order
+(mutation recorded `expect: pass`).
+
+Fixture traps while writing the specs (`filter-autofocus*.spec.js`):
+- At 412 px, the series-releases shell's unstyled MB header covers the global
+  filter, so the tap times out. Use user-ratings-multigroup for the global and
+  sub-table filters.
+- In the series table's narrow `#` column, the ✕ covers the input's middle and
+  the Aa mode button covers its left. user-ratings-multigroup shows no visible
+  column filter at all. The column-filter tests therefore fill and press ✕
+  from script. The ✕ handler's decision depends on the device, not the event,
+  so that runs the code under test.
+
+Mutations (`scripts/mutations/mobile-basics.json`, now 12): all OK, two
+recorded passes.

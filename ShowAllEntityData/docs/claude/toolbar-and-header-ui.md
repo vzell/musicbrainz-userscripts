@@ -540,3 +540,54 @@ the two largest late-injected controls. The first attempt to reproduce this bug
 reported **0 of 21** affected columns for exactly that reason, against **20 of
 21** on the real page. A "cannot reproduce" here means nothing until that
 override has been switched back on.
+
+## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
+
+On a touch device a tap fires *compatibility* mouse events: `mouseover`,
+`mouseenter`, …, `click`. Firefox Android sends no `mouseout`/`mouseleave`
+until something else is tapped. A floating tooltip shown on hover therefore
+stays on screen after a tap. That was org/mobile.org bug 1: the h1 action
+button's rich `#mb-stat-tooltip` hung over the rendered page.
+
+**Rule: any handler that SHOWS a floating tooltip or popup on hover returns
+early when `_isTouchCompatMouseEvent(e)` is true.** Pass the event when you
+have it, since Chromium's `sourceCapabilities.firesTouchEvents` decides it
+directly. Without one (e.g. `_showArtHoverPreview()`, called from several
+`mouseenter` closures), it falls back to "a touch contact within
+`TOUCH_COMPAT_WINDOW_MS`", which `_installTouchInputTracker()` records from
+capture-phase `pointerdown`/`touchstart`. Guarded today: `_initStatTooltip()`
+(every `[data-mbtt]`), the Relationships tooltips (`_initRelTooltipListeners()`),
+`_showArtHoverPreview()`, the per-image `_showLiTooltip()`, the bigbox
+wrapper tooltip and the inline-thumbnail tooltip. Hover *styling* (background
+tints, `mouseenter` focus moves) needs no guard: the next tap moves it.
+
+The tracker and its constants live in the `TOUCH INPUT` section, ABOVE the
+sticky-page-headers code. `_initStatTooltip()` installs the tracker from the
+IIFE's top level at page init, and a `const` read before its declaration line
+throws (TDZ). Every top-level statement after that point would then never
+run, on a desktop too. Declaring it next to `_initStatTooltip()` did exactly
+that during development: no action buttons at all.
+
+`tests/fixtures/touch-tooltip.mobile.spec.js` (project `chromium-mobile`)
+pins "a tap never SHOWS it" with a `MutationObserver` that keeps
+`attributeOldValue`, not "hidden afterwards". Chromium's emulation does send a
+`mouseleave` after a tap on an artwork thumbnail, because the popup opens under
+the touch point, so "hidden afterwards" passed with the guard removed. The
+Relationships, bigbox-wrapper and inline-thumbnail guards have no tap spec of
+their own yet.
+
+**The sibling rule for focus: the script never focuses a text input on its
+own initiative on a touch-primary device; go through `_autoFocusInput()`.**
+On a phone a focus raises the on-screen keyboard over the page. Covered call
+sites: the post-render global-filter focus (its own `_isTouchPrimaryDevice()`
+early return, since it also clears `readOnly`), the column-filter ✕, the
+sub-table-filter ✕ and its 🔍 reveal. Left as plain `focus()` on purpose:
+restoring focus to an input the user was already typing in (the keyboard is up
+anyway), dialogs the user opened to type into (Save/Load filename, quick
+filters), and keyboard-shortcut paths (no keyboard, no shortcut). Because the
+global filter now gets its FIRST focus from the user's own tap on touch,
+`_hardenFilterInputAgainstAutofill()` also lifts its `readonly` on a trusted
+`pointerdown`. A field still readonly when it takes focus would take it
+without the keyboard. Specs: `filter-autofocus.spec.js` (desktop: focus IS
+moved) and `filter-autofocus.mobile.spec.js` (touch: it is not), sharing their
+scenarios through `tests/support/filterAutofocus.js`.

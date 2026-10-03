@@ -1,0 +1,216 @@
+* Our userscript on mobile
+** i
+
+Currently when running our userscript on a mobile with a browser which supports Tampermonkey, e.g. Firefox
+
+1.)
+
+even when switching on "Desktop site" in the Firefox preferences, after rendering a final page of one of our supported
+PTs, I still get the rich HTML tooltip from the action button as can be seen in [Image #10]
+
+This is with our userscript configuration option
+
+#+begin_example
+sa_enable_sticky_page_headers: false
+#+end_example
+
+2.)
+
+with
+
+#+begin_example
+sa_enable_sticky_page_headers: true
+#+end_example
+
+see [Image #11], only the tables/sub-tables render correctly, everything else which should be sticky is completely
+garbage
+
+3.)
+
+How in general are userscripts written with mobile support ? Are they be expected to run in "Desktop site" browser mode ?
+
+4.)
+
+How does debugging with playwright works for mobile apps
+
+5.)
+
+Can I emulate mobile access from within a desktop browser like Chrome/Firefox/Vivaldi etc.
+
+6.)
+
+Is it feasible, without breaking ANYthing which works right now in a real dekstop browser, to add proper mobile support
+for my userscript.
+
+It should work in "Desktop site" browser mode but also, if not to complicated to implement, in mobile browser native
+mode
+
+** q
+
+Could you collect a few numbers from the real phone? This means Firefox desktop on Windows → about:debugging → USB, with
+'Remote debugging via USB' turned on in Firefox Android, then running one snippet in the console.
+
+** q
+
+1.)
+
+1. works
+2. "Enable Sticky Page Headers: on" ==> the header, tabs and section bars are full-width and simply scroll with the page
+3. "Sticky Page Headers on touch devices: on" ===> same behaviour as 2.
+
+2.)
+
+There is another annoyance on mobile. On the final rendered page, because the global filter is focused, the mobil
+keyboard always appears right away.
+
+I only want it to appear when explicitely focusing myslef an input field
+
+
+
+* Answers to the follow-up (2026-10-03)
+
+- 1.1 / 1.2 confirmed on the phone.
+- 1.3: with =sa_sticky_page_headers_on_touch= ticked, Firefox Android shows
+  the same as with it off: nothing stays pinned. Not diagnosed (no
+  real-device numbers yet). The default-off gate stands. The opt-in is
+  currently a no-op on that browser, so the next step, if wanted, is the
+  =about:debugging= measurement described under 4. below.
+- 2. (keyboard pops up after every render) — FIXED: =_autoFocusInput()=. On
+  a touch-primary device the script no longer focuses a filter on its own: not
+  the global filter after the render, not a column/sub-table filter after its
+  ✕, not a sub-table filter revealed by 🔍. The keyboard appears only when you
+  tap a filter. Desktop unchanged. Specs: =filter-autofocus.spec.js= /
+  =filter-autofocus.mobile.spec.js=.
+
+* Answers (2026-10-03, branch =mobile-basics=)
+** 1.) The rich tooltip that stays after a tap — FIXED
+
+Root cause (read from the code, then reproduced under emulation): every hover
+tooltip opens on =mouseover=/=mouseenter= and closes on =mouseout=/=mouseleave=.
+A tap fires /compatibility/ mouse events (=mouseover=, =mouseenter=, …,
+=click=), but Firefox Android sends no =mouseout= until you tap somewhere else.
+The tooltip opened on the tap that started the fetch and was never closed.
+"Desktop site" changes the user agent and the viewport handling, NOT the
+input, which is still touch. That is why it made no difference.
+
+Fix: =_isTouchCompatMouseEvent()= (=TOUCH INPUT= section of the userscript).
+Every handler that shows a floating tooltip returns early for a tap: the
+=[data-mbtt]= rich tooltip, the Relationships tooltips, the artwork hover
+preview and its type tooltip, the bigbox and inline-thumbnail tooltips. A real
+mouse is unaffected. Spec: =tests/fixtures/touch-tooltip.mobile.spec.js=.
+
+** 2.) Sticky page headers are garbage on the phone — FIXED (off by default on touch)
+
+Root cause, measured (=tests/support/probe-mobile-sph.js=, live release page,
+Playwright Pixel 7 emulation): MusicBrainz has no =<meta name="viewport">=. A
+phone therefore lays the page out at a fixed width and then ZOOMS OUT to fit
+the very wide table. =document.documentElement.clientWidth= still reports the
+unzoomed width (412 px) while the visible area is far wider (=innerWidth=
+1648 px). The feature clamps every pinned bar to "the viewport width", so it
+squeezed the h1 block, the tabs and every h2/h3 bar into a ~264 px column.
+That column is the narrow strip in Image #11.
+
+Fix, two parts:
+- On a touch-primary device (=(hover: none) and (pointer: coarse)=, still true
+  in "Desktop site" mode) the feature is OFF unless the new setting
+  =sa_sticky_page_headers_on_touch= (📌 Table stickiness) is ticked. Pinch-zoom
+  pans the visible area independently of the layout viewport that
+  =position: sticky= pins against, so even with correct widths the bars cannot
+  reliably stay in view on a phone.
+- Opted in, the bars are now sized against =innerWidth= (the zoomed-out
+  area) instead of =clientWidth=. Desktop still uses =clientWidth=, unchanged.
+
+Spec: =tests/fixtures/sticky-page-headers.mobile.spec.js=. Caveat: Firefox
+Android's own viewport numbers were not measured (emulation only). If the
+opt-in still looks wrong on the phone, the probe's numbers from the real
+device are the next step (see 4.).
+
+** 3.) How are userscripts written for mobile? Should they run in "Desktop site" mode?
+
+Most userscripts are written for desktop and simply happen to run on mobile
+browsers that support an extension (Firefox Android + Tampermonkey/Violentmonkey,
+Chromium forks that allow extensions such as Lemur or Quetta, Safari + the
+"Userscripts" app on iOS). There is
+no separate "mobile userscript" API. The ones that work well on mobile follow
+the same rules as any responsive web code:
+- never rely on hover alone. A tap fires compatibility mouse events but no
+  "leave" event (see 1.). Use Pointer Events and check =e.pointerType=, or
+  =matchMedia('(hover: none)')=;
+- never rely on keyboard shortcuts or right-click alone;
+- give touch targets about 44 px. Use =touch-action= and Pointer Events for
+  drags (=mousedown=/=mousemove= drags do not work with a finger);
+- respect the difference between the /layout/ viewport (=clientWidth=,
+  =position: fixed/sticky=) and the /visual/ viewport (=window.visualViewport=,
+  what pinch-zoom shows).
+
+"Desktop site" mode is NOT required, and for MusicBrainz it changes little:
+MB has no viewport meta, so even in "native" mobile mode the browser lays the
+page out as a desktop page (about 980 px) and zooms out. "Desktop site" mainly
+changes the user agent string, plus how Firefox treats the (absent) viewport
+meta. This script does not look at the user agent, so both modes behave the
+same. It decides by input capability (hover/pointer media queries), which is
+the robust test.
+
+** 4.) Debugging with Playwright for mobile
+
+- Playwright cannot drive Firefox for Android. Its Android support
+  (=_android=, experimental) talks to Chrome/WebView over adb only, and Chrome
+  for Android cannot run Tampermonkey. So Playwright cannot run the real
+  "Firefox Android + Tampermonkey" combination.
+- What Playwright CAN do is emulate a phone in desktop Chromium:
+  =devices['Pixel 7']= gives a mobile viewport with zoom-out handling
+  (=isMobile=), touch (=hasTouch=, =locator.tap()=), a coarse pointer without
+  hover, and a mobile UA. That is the new =chromium-mobile= project
+  (=npm run test:mobile=; files named =*.mobile.spec.js=). It reproduced both
+  bugs.
+- For the real phone use Firefox's remote debugging. On the phone: Firefox →
+  Settings → "Remote debugging via USB" on, plus Android developer options →
+  USB debugging. On the desktop: Firefox (on Windows, since USB does not reach
+  WSL2 without usbipd) → =about:debugging= → "Setup" → enable USB → connect →
+  inspect the tab. You get the full DevTools console and inspector for the page
+  on the phone, including Tampermonkey's injected script. Running
+  =tests/support/probe-mobile-sph.js='s =collect()= body in that console gives
+  the real-device numbers.
+
+** 5.) Emulating mobile in a desktop browser
+
+Yes:
+- Chrome / Vivaldi / Edge: DevTools → device toolbar (Ctrl+Shift+M). Pick a
+  device or set a custom size. Touch emulation, DPR and a mobile UA are
+  included. Reload after switching so the page sees the mobile viewport.
+- Firefox: Responsive Design Mode (Ctrl+Shift+M), with "touch simulation" on
+  (the hand icon). This is Gecko, so it is closer to Firefox Android than
+  Chrome's emulation, but it is still a desktop engine with desktop viewport
+  handling.
+- Tampermonkey keeps running in both, so the script can be checked
+  interactively there.
+Caveat for all of them: they emulate input and size, not Firefox Android's
+exact viewport/zoom behaviour. A final check on the phone is still needed for
+anything viewport-related.
+
+** 6.) Proper mobile support without breaking desktop — feasible?
+
+Yes, incrementally, under one rule: every mobile change is either gated on
+touch capability (=_isTouchPrimaryDevice()=) or only reacts to events a desktop
+never produces (a touch contact). Both fixes above follow it. The full
+desktop suite (=npm run test:full=) passes unchanged, and the new
+=chromium-mobile= project pins the mobile side.
+
+"Desktop site" mode and native mode need no separate work for MusicBrainz
+(see 3.). A truly mobile-native layout (reflowing toolbars, a narrow-screen
+table view, injecting a viewport meta) would be a large redesign and is not
+recommended. The desktop-style page zoomed out is usable.
+
+Backlog of desktop-only interactions still left (none breaks anything; each
+is "does not work by finger"):
+- column resize drag (=mousedown=/=mousemove= on the header grip): port to
+  Pointer Events with =touch-action: none= on the grip;
+- settings dialog drag/resize: same;
+- Ctrl-M prefix shortcuts and other keyboard shortcuts: no keyboard. Every
+  action is also reachable from a button/menu, so low priority;
+- information that exists ONLY in a hover tooltip (the action buttons' full
+  label, the Relationships filter-match panel, artwork metadata): no way to
+  reach it on touch now. A long-press or a tap-to-toggle info affordance would
+  restore it;
+- tap-spec coverage for the Relationships, bigbox-wrapper and inline-thumbnail
+  tooltip guards (guarded, but not pinned by a spec of their own yet).

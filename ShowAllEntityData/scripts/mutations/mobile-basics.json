@@ -1,0 +1,167 @@
+[
+  {
+    "name": "the rich tooltip shows on a tap again",
+    "why": "Removes the touch guard from _initStatTooltip()'s mouseover: a tap's compatibility mouseover shows #mb-stat-tooltip and no mouseout ever hides it (org/mobile.org bug 1).",
+    "edits": [
+      {
+        "find": "            // A tap: no mouseout would ever hide it again.\n            if (_isTouchCompatMouseEvent(e)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/touch-tooltip.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "h1 action button",
+    "expect": "fail"
+  },
+  {
+    "name": "the touch guard answers false for every event",
+    "why": "Keeps every call site but makes the predicate inert, so a guard that is wired yet never true is caught too. The mouse-hover controls must still pass on their own; the tap assertions must fail.",
+    "edits": [
+      {
+        "find": "    function _isTouchCompatMouseEvent(e) {\n",
+        "replace": "    function _isTouchCompatMouseEvent(e) {\n        return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/touch-tooltip.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "hover tooltips on a touch device",
+    "expect": "fail"
+  },
+  {
+    "name": "the art hover preview shows on a tap again",
+    "why": "Removes the guard from _showArtHoverPreview() only. The per-image type tooltip keeps its own guard, so the spec must notice the preview popup by itself.",
+    "edits": [
+      {
+        "find": "        // Called from mouseenter handlers: a tap would leave it up for good.\n        if (_isTouchCompatMouseEvent()) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/touch-tooltip.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "per-image artwork thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "the per-image type tooltip shows on a tap again",
+    "why": "Removes the guard from _showLiTooltip() only; the preview popup keeps its own.",
+    "edits": [
+      {
+        "find": "            if (_isTouchCompatMouseEvent()) return; // a tap: never hidden again\n            const _tip = _ensureArtBigboxTooltip();\n            if (!_tip) return;\n            _tip.innerHTML = '';\n\n            // Row 1: type pill labels (bold).",
+        "replace": "            const _tip = _ensureArtBigboxTooltip();\n            if (!_tip) return;\n            _tip.innerHTML = '';\n\n            // Row 1: type pill labels (bold)."
+      }
+    ],
+    "spec": "tests/fixtures/touch-tooltip.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "per-image artwork thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "sticky page headers start on a touch device again",
+    "why": "Drops the touch gate from _stickyPageHeadersWanted(): the feature initialises on a phone without the opt-in.",
+    "edits": [
+      {
+        "find": "        return !_isTouchPrimaryDevice() || Lib.settings.sa_sticky_page_headers_on_touch === true;",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "stays off by default",
+    "expect": "fail"
+  },
+  {
+    "name": "bars are clamped to clientWidth on a touch device again",
+    "why": "The pre-fix width: _sphViewportWidth() returns clientWidth everywhere, so on a zoomed-out phone every bar is squeezed (org/mobile.org bug 2, Image #11).",
+    "edits": [
+      {
+        "find": "        return _isTouchPrimaryDevice() ? Math.max(cw, window.innerWidth || 0) : cw;",
+        "replace": "        return cw;"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "opted in, it engages",
+    "expect": "fail"
+  },
+  {
+    "name": "the desktop viewport width uses innerWidth too",
+    "why": "Desktop must stay on clientWidth: with a classic scrollbar innerWidth includes it, so bars would end under it. KNOWN BLIND SPOT, hence expect pass: headless Chromium has overlay scrollbars, so innerWidth == clientWidth there (probe-mobile-sph.js desktop arm, 2026-10-03: 1280 / 1280) and the desktop spec's overhang assertion cannot see the difference. Only a headed browser with a classic scrollbar could.",
+    "edits": [
+      {
+        "find": "        return _isTouchPrimaryDevice() ? Math.max(cw, window.innerWidth || 0) : cw;",
+        "replace": "        return Math.max(cw, window.innerWidth || 0);"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "pass"
+  },
+  {
+    "name": "the global filter is auto-focused after the render on a touch device again",
+    "why": "Removes the touch early-return from the post-render setTimeout: the keyboard pops up over the freshly rendered page (org/mobile.org follow-up 2).",
+    "edits": [
+      {
+        "find": "                if (_isTouchPrimaryDevice()) return;\n                const _gfi = document.getElementById('mb-global-filter-input') ||",
+        "replace": "                const _gfi = document.getElementById('mb-global-filter-input') ||"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "_autoFocusInput() focuses on a touch device too",
+    "why": "Makes the helper a plain focus(): the column ✕, the sub-table 🔍 reveal and the sub-table ✕ raise the keyboard again.",
+    "edits": [
+      {
+        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
+        "replace": "        input.focus();\n        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "without focusing it again|does not focus it",
+    "expect": "fail"
+  },
+  {
+    "name": "_autoFocusInput() never focuses, on a desktop either",
+    "why": "The desktop half: with a mouse the three call sites must still move focus into the filter.",
+    "edits": [
+      {
+        "find": "        if (_isTouchPrimaryDevice()) return false;\n        input.focus();\n        return true;",
+        "replace": "        return false;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "focuses it",
+    "expect": "fail"
+  },
+  {
+    "name": "the desktop post-render auto-focus is gone",
+    "why": "Drops the focus call itself: the desktop spec must notice, which also proves the mobile negative is not vacuous.",
+    "edits": [
+      {
+        "find": "                    _gfi.readOnly = false;\n                    _gfi.focus();",
+        "replace": "                    _gfi.readOnly = false;"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "after the render",
+    "expect": "fail"
+  },
+  {
+    "name": "a touch pointerdown no longer lifts the readonly guard",
+    "why": "KNOWN OVERLAP, hence expect pass: in Chromium a tap's trusted compatibility mousedown arrives before focus and lifts readonly by itself. The pointerdown listener is belt-and-braces for a browser that focuses before its compatibility mousedown. No emulation here reproduces that order.",
+    "edits": [
+      {
+        "find": "        input.addEventListener('pointerdown', _clearReadOnlyIfGenuine);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "after the render",
+    "expect": "pass"
+  }
+]

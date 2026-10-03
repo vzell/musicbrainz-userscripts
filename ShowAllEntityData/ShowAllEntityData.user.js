@@ -1267,6 +1267,20 @@
                          'auto-resized (the native sidebar would otherwise be pushed off-screen).'
         },
 
+        sa_sticky_page_headers_on_touch: {
+            label: 'Sticky Page Headers on touch devices',
+            type: 'checkbox',
+            default: false,
+            description: 'Also enable \'Enable Sticky Page Headers\' on a touch-primary device ' +
+                         '(a phone or tablet: no hover, coarse pointer — Firefox Android with ' +
+                         'Tampermonkey, including its "Desktop site" mode). Off by default: ' +
+                         'MusicBrainz has no mobile layout, so a phone shows a wide table ' +
+                         'zoomed out, and pinch-zooming moves the visible area independently ' +
+                         'of the layout viewport that position:sticky pins against — the bars ' +
+                         'cannot reliably stay in view there. Has no effect on a desktop ' +
+                         'browser, or while \'Enable Sticky Page Headers\' is off.'
+        },
+
         // ============================================================
         // UI APPEARANCE SECTION
         // Condensed pipe-separated config strings for every interactive
@@ -21718,6 +21732,108 @@
     }
 
     // ============================================================================
+    // TOUCH INPUT (phones / tablets — org/mobile.org)
+    // ============================================================================
+    //
+    // Declared this early on purpose: _initStatTooltip() installs the tracker
+    // at page init, from the top level of the IIFE, and a `const` read before
+    // its declaration line throws (TDZ). Everything below that line would
+    // then never run — on a desktop too.
+
+    /**
+     * Tells whether the device's PRIMARY input is touch: no hover and a
+     * coarse pointer — a phone or a tablet. Firefox Android keeps reporting
+     * this in its "Desktop site" mode, which changes the user agent and the
+     * viewport handling but not the input. A touchscreen laptop with a mouse
+     * reports its mouse (`hover: hover`, `pointer: fine`) and stays a desktop.
+     *
+     * @returns {boolean} `true` on a touch-primary device.
+     */
+    function _isTouchPrimaryDevice() {
+        return typeof window.matchMedia === 'function' &&
+            window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    }
+
+    /**
+     * How long (ms) after a touch the mouse events a browser synthesises for
+     * that tap ("compatibility mouse events": mouseover, mouseenter,
+     * mousemove, mousedown, mouseup, click) are still attributed to it. They
+     * follow the touch within one task in practice. The margin covers a slow
+     * main thread on a phone, and is short enough that a real mouse on a
+     * touchscreen laptop is ignored at most for that long after a touch.
+     */
+    const TOUCH_COMPAT_WINDOW_MS = 800;
+
+    /**
+     * Touch-input tracker state: `lastAt` is the `performance.now()` of the
+     * latest touch contact (-Infinity until there is one); `installed` is set
+     * once `_installTouchInputTracker()` has run.
+     *
+     * @type {{lastAt: number, installed: boolean}}
+     */
+    const _touchInput = { lastAt: -Infinity, installed: false };
+
+    /**
+     * Records every touch contact, so hover tooltips can tell a tap's
+     * compatibility mouse events from a real mouse (`_isTouchCompatMouseEvent()`).
+     * Capture phase and passive: it observes only, and runs before any
+     * handler could stop the event. Idempotent. Must be installed before the
+     * first tap: the `pointerdown` it records precedes that tap's
+     * `mouseover`, so it is called from `_initStatTooltip()` at page init.
+     *
+     * @returns {void}
+     */
+    function _installTouchInputTracker() {
+        if (_touchInput.installed) return;
+        _touchInput.installed = true;
+        const mark = () => { _touchInput.lastAt = performance.now(); };
+        document.addEventListener('pointerdown', (e) => {
+            if (e.pointerType === 'touch') mark();
+        }, { capture: true, passive: true });
+        document.addEventListener('touchstart', mark, { capture: true, passive: true });
+    }
+
+    /**
+     * Tells whether a mouse event (or, called without one, the current
+     * moment) belongs to a touch tap rather than to a real mouse.
+     *
+     * On a touch device a tap fires compatibility mouse events (`mouseover`,
+     * then `click`) but no `mouseout` until something else is tapped. A
+     * tooltip shown on hover therefore stays on screen after the tap (the h1
+     * action button's rich tooltip on Firefox Android, org/mobile.org bug 1).
+     * Hover handlers that show a floating tooltip return early when this
+     * answers `true`. The mouse path is unchanged: a desktop without touch
+     * never records a contact, and `sourceCapabilities` (Chromium only) says
+     * `firesTouchEvents: false` for a real mouse.
+     *
+     * @param {MouseEvent} [e] - The hover event, if the handler has one.
+     * @returns {boolean} `true` when the event (or now) follows a touch.
+     */
+    function _isTouchCompatMouseEvent(e) {
+        if (e && e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return true;
+        return performance.now() - _touchInput.lastAt < TOUCH_COMPAT_WINDOW_MS;
+    }
+
+    /**
+     * Focuses a text input on the script's own initiative, except on a
+     * touch-primary device (`_isTouchPrimaryDevice()`). There, focusing an
+     * input raises the on-screen keyboard, which then covers half the page.
+     * The keyboard should appear only when the user taps an input themselves.
+     * Used where the script moves focus without the user having tapped that
+     * input: the global filter after a render, a filter's own ✕ (clear)
+     * button, and the sub-table filter's 🔍 reveal. On a desktop it is a
+     * plain `focus()`, so nothing changes there.
+     *
+     * @param {HTMLElement} input - The input to focus.
+     * @returns {boolean} `true` when it was focused, `false` on a touch device.
+     */
+    function _autoFocusInput(input) {
+        if (_isTouchPrimaryDevice()) return false;
+        input.focus();
+        return true;
+    }
+
+    // ============================================================================
     // STICKY PAGE HEADERS (horizontal pinning of the page chrome)
     // ============================================================================
     //
@@ -21777,6 +21893,29 @@
     // non-positioned, z-index:auto body-level element (the plain MB header)
     // gets SPH_Z_CHROME, so the page (#page is position:relative) does not
     // paint over its menus when they are opened without hover or focus.
+
+    /**
+     * Tells whether the sticky-page-headers feature should be initialised:
+     * `sa_enable_sticky_page_headers` is on, and the device is either not
+     * touch-primary or `sa_sticky_page_headers_on_touch` opts in.
+     *
+     * Off on touch by default because MusicBrainz has no mobile layout: a
+     * phone shows a wide consolidated table ZOOMED OUT, so the visible area is
+     * far wider than `documentElement.clientWidth`, and every pinned bar was
+     * clamped to that narrow width — measured under Playwright's Pixel 7
+     * emulation on a release page (2026-10-03): clientWidth 412, innerWidth
+     * 1648, each bar capped at ~264 px (org/mobile.org, bug 2;
+     * tests/support/probe-mobile-sph.js). `_sphViewportWidth()` fixes that
+     * width, but pinch-zoom still pans the visual viewport independently of
+     * the layout viewport that `position: sticky` pins against, so the
+     * feature cannot keep its promise there and stays opt-in.
+     *
+     * @returns {boolean} `true` when `initStickyPageHeaders()` should run.
+     */
+    function _stickyPageHeadersWanted() {
+        if (Lib.settings.sa_enable_sticky_page_headers === false) return false;
+        return !_isTouchPrimaryDevice() || Lib.settings.sa_sticky_page_headers_on_touch === true;
+    }
 
     /** z-index of pinned body-level chrome that had no stacking of its own (plain MB header, footer, banners). */
     const SPH_Z_CHROME = 106;
@@ -22227,6 +22366,26 @@
     }
 
     /**
+     * Width (CSS px) of the area the pinned bars must fit into.
+     *
+     * On a desktop this is `documentElement.clientWidth`, the viewport minus
+     * its scrollbar, unchanged from before. On a touch-primary device
+     * (`_isTouchPrimaryDevice()`) a page without a mobile viewport is shown
+     * zoomed out to fit the wide table, and `clientWidth` then reports only the
+     * unzoomed initial containing block: 412 px against an `innerWidth` of
+     * 1648 px under Pixel 7 emulation (see `_stickyPageHeadersWanted()`).
+     * Clamping to it squeezed every bar into a narrow column. There the wider
+     * `innerWidth` is used. It is never consulted on a desktop, where it would
+     * add the scrollbar's width.
+     *
+     * @returns {number} Viewport width in CSS px.
+     */
+    function _sphViewportWidth() {
+        const cw = document.documentElement.clientWidth;
+        return _isTouchPrimaryDevice() ? Math.max(cw, window.innerWidth || 0) : cw;
+    }
+
+    /**
      * One refresh pass: decides whether the feature must be engaged, and if
      * so (re)collects the targets and (re)computes their offsets.
      *
@@ -22275,7 +22434,7 @@
         try {
             _sphSyncObserved();
 
-            const vw = docEl.clientWidth;
+            const vw = _sphViewportWidth();
             const extent = _sphContentExtent();
             const engage = extent > vw + 1 && !_sphSidebarBlocksWidening();
 
@@ -47587,9 +47746,12 @@ a { color: #1565c0; }`;
      * Initialise the singleton custom tooltip, delegated on any `[data-mbtt]`
      * element — originally just `.mb-row-count-stat` spans, now also the h1
      * action buttons (see the button-generation loop). Safe to call multiple
-     * times — creates the div only once.
+     * times — creates the div only once. Also installs the touch-input
+     * tracker, since this runs at page init, before any tap: a tap shows no
+     * tooltip (`_isTouchCompatMouseEvent()`).
      */
     function _initStatTooltip() {
+        _installTouchInputTracker();
         if (document.getElementById('mb-stat-tooltip')) return;
         const _tip = document.createElement('div');
         _tip.id = 'mb-stat-tooltip';
@@ -47601,6 +47763,8 @@ a { color: #1565c0; }`;
         document.addEventListener('mouseover', (e) => {
             const el = e.target.closest('[data-mbtt]');
             if (!el || !el.dataset.mbtt) return;
+            // A tap: no mouseout would ever hide it again.
+            if (_isTouchCompatMouseEvent(e)) return;
             _target = el;
             _tip.innerHTML = el.dataset.mbtt;
             _tip.style.display = 'block';
@@ -48935,7 +49099,7 @@ a { color: #1565c0; }`;
      *      generally not considered login-field candidates. Also more
      *      semantically correct for a filter/search box regardless.
      *   2. `readonly` until the field is actually, genuinely interacted
-     *      with (a real `mousedown` or `focus`, gated on `event.isTrusted`
+     *      with (a real `pointerdown`, `mousedown` or `focus`, gated on `event.isTrusted`
      *      so OUR OWN programmatic focus calls — e.g. the global filter's
      *      auto-focus-after-render — don't prematurely lift it) — Chrome
      *      generally will not attempt to autofill a `readonly` field.
@@ -48974,6 +49138,12 @@ a { color: #1565c0; }`;
         };
         input.addEventListener('mousedown', _clearReadOnlyIfGenuine);
         input.addEventListener('focus', _clearReadOnlyIfGenuine);
+        // A finger: pointerdown is the first trusted event of a tap. On a
+        // touch device the field now gets its FIRST focus from the user's
+        // own tap (no auto-focus after render, see _autoFocusInput()), and
+        // a field still readonly at that moment would get focus without the
+        // on-screen keyboard.
+        input.addEventListener('pointerdown', _clearReadOnlyIfGenuine);
     }
 
     /**
@@ -49446,7 +49616,9 @@ a { color: #1565c0; }`;
                 input.value = '';
                 // Clearing a column clears its Cc/Rx/Ex switches with it.
                 _resetColFilterModes(input);
-                input.focus(); // → applyFilterFocusStyle adds prefix + focus bg
+                // → applyFilterFocusStyle adds prefix + focus bg (desktop only;
+                // on touch it would raise the keyboard, see _autoFocusInput())
+                _autoFocusInput(input);
                 runFilter();
             };
 
@@ -58833,8 +59005,8 @@ a { color: #1565c0; }`;
             }
 
             // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
-            // while a wide table is scrolled horizontally.
-            if (Lib.settings.sa_enable_sticky_page_headers !== false) {
+            // while a wide table is scrolled horizontally (opt-in on touch).
+            if (_stickyPageHeadersWanted()) {
                 initStickyPageHeaders();
             }
 
@@ -58917,7 +59089,10 @@ a { color: #1565c0; }`;
             isLoaded = true;
             // Focus the global filter input after rendering so users can start
             // typing a filter query immediately without a manual click.
+            // Not on a phone/tablet: the focus would raise the on-screen
+            // keyboard over the freshly rendered page (_autoFocusInput()).
             setTimeout(() => {
+                if (_isTouchPrimaryDevice()) return;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
                              document.querySelector('.mb-global-filter input');
                 if (_gfi) {
@@ -60937,7 +61112,7 @@ a { color: #1565c0; }`;
             // after clearing a "jp" filter).  clearSubFilter() explicitly syncs
             // the bigbox at the end, which is the correct and complete clear path.
             clearSubFilter();
-            filterInput.focus();
+            _autoFocusInput(filterInput);
         });
 
         // ── Container ─────────────────────────────────────────────────────────
@@ -61429,7 +61604,7 @@ a { color: #1565c0; }`;
             } else {
                 container.classList.add('visible');
                 toggleIcon.classList.add('active');
-                setTimeout(() => filterInput.focus(), 50);
+                setTimeout(() => _autoFocusInput(filterInput), 50);
                 Lib.debug('filter', `Sub-table filter shown for "${categoryName}"`);
             }
         });
@@ -79327,6 +79502,8 @@ a { color: #1565c0; }`;
         document.body.addEventListener('mouseenter', (e) => {
             const _a = e.target.closest('td.mb-rel-cell a');
             if (!_a) return;
+            // A tap: no mouseleave would hide the panels again.
+            if (_isTouchCompatMouseEvent(e)) return;
 
             const _cell = _a.closest('td.mb-rel-cell');
             if (!_cell) return;
@@ -83047,8 +83224,8 @@ a { color: #1565c0; }`;
             }
 
             // Keep the page chrome (MB header, h1 block, tabs, h2/h3 bars) pinned
-            // while a wide table is scrolled horizontally.
-            if (Lib.settings.sa_enable_sticky_page_headers !== false) {
+            // while a wide table is scrolled horizontally (opt-in on touch).
+            if (_stickyPageHeadersWanted()) {
                 initStickyPageHeaders();
             }
 
@@ -86251,6 +86428,8 @@ a { color: #1565c0; }`;
      */
     function _showArtHoverPreview(imgUrl, triggerEl) {
         if (!Lib.settings.sa_caa_hover_preview) return;
+        // Called from mouseenter handlers: a tap would leave it up for good.
+        if (_isTouchCompatMouseEvent()) return;
         const div = _ensureArtHoverPreviewDiv();
         _positionArtHoverPreview(div, triggerEl);
         div.style.display = 'block';
@@ -87164,6 +87343,7 @@ a { color: #1565c0; }`;
          * @param {HTMLElement} anchorEl  Element whose right/top edge is the anchor.
          */
         const _showLiTooltip = (anchorEl) => {
+            if (_isTouchCompatMouseEvent()) return; // a tap: never hidden again
             const _tip = _ensureArtBigboxTooltip();
             if (!_tip) return;
             _tip.innerHTML = '';
@@ -89643,6 +89823,7 @@ a { color: #1565c0; }`;
                     //           /  Format (Tracks)  /  Country/Date  /  Label – Cat#  /  Barcode
                     if (wrapper.dataset.artTooltipName) {
                         wrapper.addEventListener('mouseenter', function(ev) {
+                            if (_isTouchCompatMouseEvent(ev)) return; // a tap: never hidden again
                             const _tip = _ensureArtBigboxTooltip();
                             if (!_tip) return;
                             _tip.innerHTML = '';
@@ -92123,7 +92304,8 @@ a { color: #1565c0; }`;
         })();
         const _ttMain = _table ? (_table.dataset.mbEntityExtractMainColumn || null) : null;
 
-        ph.addEventListener('mouseenter', function() {
+        ph.addEventListener('mouseenter', function(ev) {
+            if (_isTouchCompatMouseEvent(ev)) return; // a tap: never hidden again
             const _tip = _ensureArtBigboxTooltip();
             if (!_tip) return;
             _tip.innerHTML = '';

@@ -4,9 +4,10 @@
     "private": true,
     "description": "Playwright test harness for the ShowAllEntityData userscript",
     "scripts": {
-        "test": "playwright test --project=chromium-fixtures --grep-invert @slow",
+        "test": "playwright test --project=chromium-fixtures --project=chromium-mobile --grep-invert @slow",
         "test:slow": "playwright test --project=chromium-fixtures --grep @slow",
-        "test:full": "playwright test --project=chromium-fixtures",
+        "test:full": "playwright test --project=chromium-fixtures --project=chromium-mobile",
+        "test:mobile": "playwright test --project=chromium-mobile",
         "test:live": "playwright test --project=chromium-live --grep @core",
         "test:live:extended": "playwright test --project=chromium-live --grep \"@core|@extended\"",
         "test:live:perf": "playwright test --project=chromium-live --grep @perf",

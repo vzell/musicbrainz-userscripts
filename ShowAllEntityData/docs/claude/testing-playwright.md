@@ -5,7 +5,8 @@
 ## Testing (Playwright)
 
 A full Playwright harness lives under `tests/` (`ShowAllEntityData/
-package.json`, `playwright.config.js`). Two projects, split by directory:
+package.json`, `playwright.config.js`). Three projects, split by directory
+and file name:
 
 - **`chromium-fixtures`** (`tests/fixtures/*.spec.js`) — local HTML
   fixtures via `page.route()`, no network. Two selections, and the difference
@@ -26,6 +27,18 @@ package.json`, `playwright.config.js`). Two projects, split by directory:
   plainly: a `@slow` spec can now rot for a whole working session. That is
   bounded by the merge gate, not eliminated — so if you change the merge
   workflow, keep it on `test:full`.
+- **`chromium-mobile`** (`tests/fixtures/*.mobile.spec.js`, which
+  `chromium-fixtures` ignores) — the same local fixtures under Playwright's
+  `Pixel 7` descriptor: touch (`locator.tap()` fires compatibility mouse
+  events), no hover, coarse pointer, and mobile viewport handling (a page
+  without a viewport meta is laid out wide and zoomed out). `npm run
+  test:mobile`; also part of `npm test` and `test:full`. It is Chromium
+  emulation, NOT Firefox Android (which Playwright cannot drive), and the two
+  differ: Chromium sends a `mouseleave` after a tap on an artwork thumbnail,
+  Firefox did not on the reported device. So pin "a tap never SHOWS it", not
+  "hidden afterwards" (see the touch-guard section of
+  `toolbar-and-header-ui.md`). Mutation entries need `"project":
+  "chromium-mobile"`.
 - **`chromium-live`** (`tests/live/*.spec.js`) — real musicbrainz.org
   pages. Every spec carries exactly one tag:
   - `@core` — shared-mechanism sanity net (filter/sort/fetch/pagination

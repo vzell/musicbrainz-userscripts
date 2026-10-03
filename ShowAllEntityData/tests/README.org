@@ -48,14 +48,25 @@ entry point should resolve =node= via an explicit =PATH=/absolute path
 rather than relying on whatever an inherited shell environment happens to
 put first.
 
-* The two suites
+* The suites
 
-The harness is split into two Playwright projects, by directory.
+The harness is split into three Playwright projects, by directory and file name.
 
-| Project             | Directory         | Tests            | Network     | Per-test timeout |
-|---------------------+-------------------+------------------+-------------+------------------|
-| =chromium-fixtures= | =tests/fixtures/= | 490 in 117 files | none        | 30 s (default)   |
-| =chromium-live=     | =tests/live/=     | 77 in 38 files   | real MB.org | 120 s            |
+| Project             | Directory                         | Tests            | Network     | Per-test timeout |
+|---------------------+-----------------------------------+------------------+-------------+------------------|
+| =chromium-fixtures= | =tests/fixtures/=                 | 490 in 117 files | none        | 30 s (default)   |
+| =chromium-mobile=   | =tests/fixtures/*.mobile.spec.js= | 8 in 3 files     | none        | 90 s             |
+| =chromium-live=     | =tests/live/=                     | 77 in 38 files   | real MB.org | 120 s            |
+
+*Mobile* specs are fixture specs that need a phone: the project runs them under
+Playwright's =Pixel 7= descriptor (=isMobile=, =hasTouch=, no hover, coarse
+pointer), so =locator.tap()= fires a real touch sequence with its compatibility
+mouse events, and a page without a viewport meta (every MusicBrainz page) is
+laid out wide and shown zoomed out. Name a spec =*.mobile.spec.js= and it moves
+from =chromium-fixtures= (which ignores the pattern) to =chromium-mobile=. This
+is Chromium's emulation, not Firefox Android, which Playwright cannot drive: see
+=org/mobile.org= for what it does and does not cover. A mutation entry for such
+a spec needs ="project": "chromium-mobile"= (=scripts/mutation-check.py=).
 
 *Fixtures* serve a saved local HTML file at a real musicbrainz.org-shaped URL
 via Playwright's =page.route()=, so the userscript believes it is on the real
@@ -151,24 +162,25 @@ bounded by the merge gate, not removed.
 
 * Every npm script
 
-| Command                                          | Runs                                          |
-|--------------------------------------------------+-----------------------------------------------|
-| =npm test=                                       | Fixtures only, minus =@slow=. The default.    |
-| =npm run test:slow=                              | Fixtures, only =@slow= (14 tests, 2 files)    |
-| =npm run test:full=                              | Every fixture test. *The merge gate.*         |
-| =npm run test:live=                              | Live =@core= only                             |
-| =npm run test:live:extended=                     | Live =@core= + =@extended= (68 tests)         |
-| =npm run test:live:perf=                         | Live =@perf= only                             |
-| =npm run test:all=                               | Literally everything, fixtures and live       |
-| =npm run test:ui=                                | Playwright's interactive UI mode              |
-| =npm run test:headed=                            | Same tests, visible browser                   |
-| =npm run test:live:save-html=                    | Live suite, saving rendered HTML per test     |
-| =npm run test:live:report:artist-releases=       | One spec + generates an =.org=/=.html= report |
-| =npm run test:live:artist-releases:full=         | Same, with both opt-in test groups enabled    |
-| =npm run test:live:report:releasegroup-releases= | Multi-table sibling of the above              |
-| =npm run report=                                 | Open the last HTML report                     |
-| =npm run auth:login=                             | One-time interactive MusicBrainz login        |
-| =npm run live-interop=                           | Debugging aid, not a test — see below         |
+| Command                                          | Runs                                           |
+|--------------------------------------------------+------------------------------------------------|
+| =npm test=                                       | Fixtures + mobile, minus =@slow=. The default. |
+| =npm run test:slow=                              | Fixtures, only =@slow= (14 tests, 2 files)     |
+| =npm run test:full=                              | Every fixture + mobile test. *The merge gate.* |
+| =npm run test:mobile=                            | Mobile fixture specs only (=chromium-mobile=)  |
+| =npm run test:live=                              | Live =@core= only                              |
+| =npm run test:live:extended=                     | Live =@core= + =@extended= (68 tests)          |
+| =npm run test:live:perf=                         | Live =@perf= only                              |
+| =npm run test:all=                               | Literally everything, fixtures and live        |
+| =npm run test:ui=                                | Playwright's interactive UI mode               |
+| =npm run test:headed=                            | Same tests, visible browser                    |
+| =npm run test:live:save-html=                    | Live suite, saving rendered HTML per test      |
+| =npm run test:live:report:artist-releases=       | One spec + generates an =.org=/=.html= report  |
+| =npm run test:live:artist-releases:full=         | Same, with both opt-in test groups enabled     |
+| =npm run test:live:report:releasegroup-releases= | Multi-table sibling of the above               |
+| =npm run report=                                 | Open the last HTML report                      |
+| =npm run auth:login=                             | One-time interactive MusicBrainz login         |
+| =npm run live-interop=                           | Debugging aid, not a test — see below          |
 
 To run a single spec directly:
 

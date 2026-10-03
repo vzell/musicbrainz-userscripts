@@ -1,0 +1,50 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Phones and tablets: the on-screen keyboard no longer pops up by itself. The global filter is no longer focused after the table renders, and a column or sub-table filter is no longer re-focused after its ✕ or when 🔍 reveals it. The keyboard now appears only when you tap a filter yourself. On a desktop the filter is still focused as before, so you can start typing right away."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Phones and tablets: Sticky Page Headers no longer squeezes the MusicBrainz header, the entity header with its buttons, the tabs and every section bar into a narrow column. A phone shows the wide table zoomed out, and the bars were sized to the unzoomed screen width. On a touch device the feature is now off by default. Opted in, the bars are sized to the zoomed-out view. Desktop browsers are unchanged."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New setting \"Sticky Page Headers on touch devices\" (📌 Table stickiness), off by default. It turns Sticky Page Headers on for a phone or tablet. Pinch-zoom moves the visible area independently of what the browser pins, so the bars cannot reliably stay in view there."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Help: new section \"On a phone or tablet\"."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Phones and tablets: tapping an action button no longer leaves its rich tooltip stuck on the page after the table has rendered. A tap now opens no hover tooltip at all: not the action buttons' tooltip, the artwork preview and its type tooltip, the big-image tooltips or the Relationships tooltips. Nothing could close them again until something else was tapped. Mouse hover is unchanged."
+        ]
+      }
+    ]
+  }
+]
