@@ -1,0 +1,52 @@
+[
+  {
+    "name": "the row-count stat tooltip renders empty",
+    "why": "_initStatTooltip() shows #mb-stat-tooltip but without the data-mbtt content: visible, yet no filter-expression chip.",
+    "edits": [
+      { "find": "            _tip.innerHTML = el.dataset.mbtt;\n", "replace": "            _tip.innerHTML = '';\n" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "row-count stat",
+    "expect": "fail"
+  },
+  {
+    "name": "the heading title is not given back after the stat tooltip",
+    "why": "Drops the h2/h3 title restore in _initStatTooltip()'s mouseout: the heading keeps an empty title for good.",
+    "edits": [
+      { "find": "                _hParent.title = _hParent.dataset.mbttSavedTitleParent;\n", "replace": "" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "row-count stat",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships rich panel renders empty",
+    "why": "_initRelTooltipListeners() shows #mb-rel-tooltip without its content.",
+    "edits": [
+      { "find": "                _relTooltipEl.innerHTML = _relBuildTooltipHTML(_cell);\n", "replace": "                _relTooltipEl.innerHTML = '';\n" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "with a filter matching its URL",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships panel ignores its filter gate",
+    "why": "Removes the active-filter/match gate, so the rich panel replaces the native title on every hover.",
+    "edits": [
+      { "find": "                if (!_relHasAnyActiveFilter(_cell) || !_relQueryMatchesCell(_cell)) return;\n", "replace": "" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "without a filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the strip tooltip is never displayed",
+    "why": "The strip wrapper's mouseenter in _artInitBigPics() builds the content but never shows it — the user-visible symptom of the 2026-10-04 release-group report, on both table modes.",
+    "edits": [
+      { "find": "                            _tip.style.display = 'block';\n                            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;\n", "replace": "                            const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;\n" }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "hovering a strip image",
+    "expect": "fail"
+  }
+]

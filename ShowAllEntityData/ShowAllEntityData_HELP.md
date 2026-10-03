@@ -889,6 +889,9 @@ Press the prefix (default `Ctrl+M`), release it, then press a letter:
 `o`, `q` and `a` act on the column filter that was last focused, so they still
 work after the prefix key has taken focus away.
 
+Press `Escape` instead of a letter to cancel; the overlay closes at once and a
+focused filter keeps its text. Prefix mode also ends by itself after 5 seconds.
+
 ### Direct shortcuts
 
 | Keys                       | Action                                                          |

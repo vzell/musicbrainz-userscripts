@@ -17794,3 +17794,65 @@ stack as grid rows, so anyone reviving that branch must change this CSS too.
 Spec: `tests/fixtures/row-count-stat-fixed-width.spec.js`. Mutations:
 `scripts/mutations/row-count-stat-fixed-width.json`, 3/3 OK (no inline grid,
 no sizer write, 2-tier slot on the multi-table h2).
+
+## 2026-10-04 — Big-picture strip tooltip gone on release-group pages (branch fix/rg-bigbox-tooltip)
+
+**Report:** hovering a CAA strip image on `release-group/f83d2211-…` shows no
+rich tooltip any more; the EAA strip on `artist/70248960-…/events` still does.
+
+**Ruled out first.** A fixture spec (`tests/fixtures/bigbox-tooltip.spec.js`)
+showed the tooltip on both arms, and so did a live run of both pages with
+default settings and no other userscripts
+(`tests/support/probe-bigbox-tooltip.js`). So it was neither the table mode,
+nor Sticky Page Headers, nor lost listeners. The live run with every registered
+third-party script (`SCRIPTS=…` on the probe) reproduced it. Bisecting the
+script list gave one culprit: **"Right Side Flags Everywhere"**. Every hover
+logged `Failed to execute 'insertBefore' on 'Node': The node before which the
+new node is to be inserted is not a child of this node`. The tooltip text
+stopped after the Format line.
+
+**Root cause:** `_artTooltipCountryDate()` cloned the country `span.flag` and
+unwrapped its anchor with `flagClone.insertBefore(a.firstChild, a)`. That
+assumes the anchor is a DIRECT child. Right Side Flags wraps a linked flag's
+anchor in its own `span.mfe-flag-wrapper`, so the call threw. The throw came
+before the mouseenter handler's `_tip.style.display = 'block'`. artist-events
+has no Country/Date. Its Location line goes through `_artTooltipLocation()`,
+which uses `a.replaceWith(…)` and never hit this. Any pageType whose
+`tooltipColumns` lists Country/Date was affected, through both the strip and the
+inline thumbnail (`_wireInlineThumbnailBigboxTooltip()` shares the renderer).
+
+**Fix:** `a.replaceWith(...a.childNodes)`. The clone's style is now set by
+property, where `cssText` used to be overwritten. Right Side Flags hides the
+sprite with an inline `background-image: none !important`, and wiping it drew
+the MusicBrainz sprite beside that script's own `<img>`.
+
+**Spec:** `bigbox-tooltip.spec.js`, three tests (events, release-group, and
+release-group with the `rsfe-flags` simulation). The third failed before the fix
+with the live error. Mutations: `scripts/mutations/rg-bigbox-tooltip.json`
+(both halves, 2/2 OK).
+
+**Health check of the other rich tooltips** (`tests/fixtures/rich-tooltips.spec.js`,
+mutations `scripts/mutations/rich-tooltips.json`, 5/5 OK):
+- the row-count stat `#mb-stat-tooltip`: works
+- Relationships `#mb-rel-tooltip` (with and without a matching filter): works
+- Ctrl+M `#mb-ctrl-m-tooltip` content: works
+- the existing specs for the action buttons, the per-image `<li>` and preview,
+  the inline thumbnail and the touch guard: pass
+
+**One real bug, not yet fixed:** Escape does not close the Ctrl+M overlay. In
+prefix mode, an unmodified Escape enters the single-character branch first,
+which returns because `'Escape'` is not in `validCharacters`. The Escape branch
+after it is unreachable, so the overlay stays until its 5 s auto-exit. Pinned
+as `test.fail()` in `rich-tooltips.spec.js`.
+
+### 2026-10-04 (follow-up) — Ctrl+M overlay: Escape fixed (branch fix/rg-bigbox-tooltip)
+
+The keydown handler's Escape branch now comes BEFORE the single-character
+branch, so it is reachable. It also calls `stopImmediatePropagation()`. Without
+that, the same Escape went on to the plain-Escape filter handler, and closing
+the overlay from a focused global filter cleared its text. The handler is
+document capture-phase, like the prefix key itself. `rich-tooltips.spec.js`
+drops its `test.fail()` and gains a "focused global filter keeps its text" test,
+with a control that the next plain Escape still clears it. Mutations:
+`scripts/mutations/ctrl-m-escape.json`, 2/2 OK. HELP's prefix-key section now
+says how to cancel.

@@ -18569,6 +18569,27 @@
             return;
         }
 
+        // Escape key exits prefix mode without selecting. It must come BEFORE
+        // the single-character branch below: an unmodified Escape matches
+        // that branch's condition too, and it returns early because 'Escape'
+        // is not in validCharacters, so an Escape check placed after it was
+        // unreachable and the overlay stayed up until the 5 s auto-exit.
+        // stopImmediatePropagation(): the Escape belongs to prefix mode, so it
+        // must not also clear a focused filter or close a dialog underneath.
+        if (e.key === 'Escape' && ctrlMModeActive) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ctrlMModeActive = false;
+            clearTimeout(ctrlMModeTimeout);
+            hideCtrlMTooltip();
+            if (typeof Lib !== 'undefined' && Lib.debug) {
+                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);
+            } else {
+                console.log(`[VZ-${SCRIPT_BASE_NAME}] Exited ${getPrefixDisplay()} mode`);
+            }
+            return;
+        }
+
         // If in prefix mode and a single character key is pressed (no modifiers)
         if (ctrlMModeActive && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
             const key = e.key.toLowerCase();
@@ -18640,20 +18661,6 @@
             ctrlMModeActive = false;
             clearTimeout(ctrlMModeTimeout);
             hideCtrlMTooltip();
-            return;
-        }
-
-        // Escape key exits prefix mode without selecting
-        if (e.key === 'Escape' && ctrlMModeActive) {
-            e.preventDefault();
-            ctrlMModeActive = false;
-            clearTimeout(ctrlMModeTimeout);
-            hideCtrlMTooltip();
-            if (typeof Lib !== 'undefined' && Lib.debug) {
-                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);
-            } else {
-                console.log(`[VZ-${SCRIPT_BASE_NAME}] Exited ${getPrefixDisplay()} mode`);
-            }
             return;
         }
 
@@ -87003,13 +87010,21 @@ a { color: #1565c0; }`;
             const flagSpan = ev.querySelector('span[class*="flag-"]');
             if (flagSpan) {
                 const flagClone = flagSpan.cloneNode(true);
-                // Remove the anchor wrapper to keep it non-interactive
+                // Remove the anchor wrapper to keep it non-interactive.
+                // replaceWith() and not flagClone.insertBefore(…, a): the
+                // anchor need not be a DIRECT child. "Right Side Flags
+                // Everywhere" wraps it in its own span.mfe-flag-wrapper, and
+                // insertBefore then threw ("not a child of this node") before
+                // the caller reached display:block — no tooltip at all on any
+                // page whose tooltipColumns include Country/Date.
                 const a = flagClone.querySelector('a');
-                if (a) {
-                    while (a.firstChild) flagClone.insertBefore(a.firstChild, a);
-                    a.remove();
-                }
-                flagClone.style.cssText = 'display:inline-block; vertical-align:middle;';
+                if (a) a.replaceWith(...a.childNodes);
+                // Set properties, do not overwrite cssText: that same script
+                // hides the CSS sprite with an inline !important
+                // background-image:none and draws its own <img> instead.
+                // Wiping the inline style brought the sprite back beside it.
+                flagClone.style.display = 'inline-block';
+                flagClone.style.verticalAlign = 'middle';
                 line.appendChild(flagClone);
             }
 

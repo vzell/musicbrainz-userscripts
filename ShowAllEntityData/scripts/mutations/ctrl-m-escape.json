@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Escape is unreachable in Ctrl+M prefix mode again",
+    "why": "Makes the Escape branch dead, as it was when it sat after the single-character branch: the overlay stays until its 5 s auto-exit.",
+    "edits": [
+      { "find": "        if (e.key === 'Escape' && ctrlMModeActive) {\n            e.preventDefault();\n            e.stopImmediatePropagation();\n", "replace": "        if (false && e.key === 'Escape' && ctrlMModeActive) {\n            e.preventDefault();\n            e.stopImmediatePropagation();\n" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "Escape closes it at once",
+    "expect": "fail"
+  },
+  {
+    "name": "the prefix-mode Escape leaks through to the focused filter",
+    "why": "Drops stopImmediatePropagation(): the Escape that closes the overlay also clears the global filter's text.",
+    "edits": [
+      { "find": "            e.preventDefault();\n            e.stopImmediatePropagation();\n            ctrlMModeActive = false;\n            clearTimeout(ctrlMModeTimeout);\n            hideCtrlMTooltip();\n            if (typeof Lib !== 'undefined' && Lib.debug) {\n                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);", "replace": "            e.preventDefault();\n            ctrlMModeActive = false;\n            clearTimeout(ctrlMModeTimeout);\n            hideCtrlMTooltip();\n            if (typeof Lib !== 'undefined' && Lib.debug) {\n                Lib.debug('shortcuts', `Exited ${getPrefixDisplay()} mode (Escape pressed)`);" }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "does not also clear the focused global filter",
+    "expect": "fail"
+  }
+]
