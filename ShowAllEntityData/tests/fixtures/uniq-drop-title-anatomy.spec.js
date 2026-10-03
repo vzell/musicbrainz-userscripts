@@ -37,7 +37,11 @@ async function openRelease(page, url, fixtureFile, settingsOverride = {}) {
         url,
         fixtureFile,
         testMode: true,
-        settingsOverride: { sa_enable_release_tracks: true, ...settingsOverride },
+        // Auto-collapse off: the medley release's "Title info - Title" holds
+        // more than the default 15 entries and would open collapsed, and these
+        // tests tick entries in it. Collapsing is uvd-grouped-sections.spec.js'
+        // business, not this file's.
+        settingsOverride: { sa_enable_release_tracks: true, sa_uvd_autocollapse_threshold: 0, ...settingsOverride },
     });
     await page.click('button[data-label="Show all Tracks for Release"]');
     await waitForRenderComplete(page, { waitForAutoResize: false });

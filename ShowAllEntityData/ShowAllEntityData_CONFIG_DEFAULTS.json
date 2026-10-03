@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1200+2026-10-03",
-    "schema_entries": 312,
+    "schema_entries": 314,
     "sections": 40,
-    "settings": 272,
-    "settings_with_default": 267,
+    "settings": 274,
+    "settings_with_default": 269,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 120,
+      "checkbox": 121,
       "color_picker": 62,
       "divider": 40,
-      "number": 39,
+      "number": 40,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
       "text": 8,
@@ -458,7 +458,9 @@
     "sa_uniq_dropdown_visible_rows": "Unique-Values Dropdown Visible Rows",
     "sa_uniq_quickfilter_highlight_bg": "Unique-Values Quickfilter Highlight Background",
     "sa_uniq_quickfilter_highlight_color": "Unique-Values Quickfilter Highlight Color",
+    "sa_uvd_autocollapse_threshold": "Unique-Values Dropdown: Auto-Collapse Sub-Sections Above",
     "sa_uvd_event_name_columns": "Unique-Values Dropdown: Event Name Info On These Columns Too",
+    "sa_uvd_grouped_sections": "Unique-Values Dropdown: Group Sections By Topic",
     "sa_uvd_recording_comment_columns": "Unique-Values Dropdown: Columns Holding A Recording Comment As Text",
     "sa_uvd_title_info_columns": "Unique-Values Dropdown: Title Info On These Columns Too"
   },
@@ -727,7 +729,9 @@
     "sa_uniq_dropdown_visible_rows": 30,
     "sa_uniq_quickfilter_highlight_bg": "#ffeaa7",
     "sa_uniq_quickfilter_highlight_color": "#c0392b",
+    "sa_uvd_autocollapse_threshold": 15,
     "sa_uvd_event_name_columns": "",
+    "sa_uvd_grouped_sections": true,
     "sa_uvd_recording_comment_columns": "Disambiguation",
     "sa_uvd_title_info_columns": "Name, Recording, Release, Release group, Release groups, Work"
   },

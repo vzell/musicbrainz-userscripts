@@ -281,12 +281,33 @@ tracklist's *Title* column can be wide while its *Length* column stays narrow.
 Double-click the grip to go back to the automatic size. Remembered sizes travel
 with the 💾/📂 configuration file.
 
+**Sections are grouped by topic.** Each topic (*Entity info*, *Date info*,
+*Title info*, …) has one main header, and its sections sit under it as italic
+sub-headings such as *» Artist name:*. Entries show only their value
+(*Bruce Springsteen*, not *» artist name: Bruce Springsteen* on every line).
+The quick filter still searches the full text, so typing `artist name` finds
+those entries. A topic with only one section gets a single header line,
+e.g. *Video info › Medium format*. Hover over a header for a description.
+
+- **Click** a main header or a sub-heading to collapse or expand it.
+- **Ctrl+Click** a main header to do the same to every main header.
+- **Ctrl+Click** a sub-heading to do the same to every sub-section of its topic.
+
+A sub-section with more entries than ⚙️ Settings → "Auto-Collapse Sub-Sections
+Above" (default **15**, `0` turns it off) opens collapsed, with its entry count
+on the heading. If you expand such a sub-section yourself, it stays expanded the
+next time. A Ctrl+Click "expand all" is not remembered, so long lists collapse
+again on the next open. Your collapse choices travel with the 💾/📂
+configuration file. To get the previous flat list of "Topic - Section" headers
+back, turn off ⚙️ Settings → "Group Sections By Topic".
+
 <details>
 <summary>What else is in that panel</summary>
 
 **A quick-filter bar** at the top filters the list as you type, highlighting
-matches. A collapsed section auto-expands when it contains a match and returns
-to its own state when you clear the filter.
+matches. A collapsed section or topic auto-expands when it contains a match, a
+topic without any match is hidden, and everything returns to its own state when
+you clear the filter.
 
 **Collapsible sections beyond the plain values**, generated from the cells
 themselves:

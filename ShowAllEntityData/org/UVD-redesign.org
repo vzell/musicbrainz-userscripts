@@ -1,0 +1,41 @@
+* TODO UVD redesign
+
+I want a UVD redesign. Currently a typical UVD contents looks like [Image #1]
+
+1.)
+
+Show me some suggestions for a redesign of the current UVD (nice HTML based real mockup to be used)
+
+2.)
+
+Currently for multiple entries per a specific section we repeatedly render e.g. "» artist name:", e.g
+
+#+begin_example
+<span class="mb-uniq-syn-label-text">» artist name: Bruce Springsteen</span>
+etc
+#+end_example
+
+a.)
+
+maybe we can have some main header line per main section (with a descriptive tooltip) and use sub headings (+ tooltip)
+like "» Artist Name:" (leave the » in + the italic design, as it looks cool I think, but of course I'm open to NEW
+ideas)
+
+b.)
+
+main and subsections should be collapsable (single click + CTRL-click)
+
+c.)
+
+maybe collapse subsections (configurable) by default if too many entries
+
+** Decisions (2026-10-03)
+
+Mockups: https://claude.ai/artifact/Cqp57dsx2R4L7bvVFB5xV6 (Today / Tree / Cards + pills / Sticky outline)
+
+- Variant: *Option 1, Tree* — main header per topic, italic "» Sub-section:" headings, entries show the value only.
+- Remembered expand beats auto-collapse: YES for a section expanded on its own (plain click);
+  a Ctrl+Click "expand all" does NOT count (not persisted), so auto-collapse keeps working.
+- Italic: headings only; entries upright in the grouped layout.
+- A topic with one present sub-section: merged into one header line "Topic › Sub".
+- Branch: feature/uvd-grouped-sections
