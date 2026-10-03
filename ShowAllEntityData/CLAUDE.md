@@ -72,6 +72,7 @@ until you open it.
 | `settings-and-config.md`                   | `configSchema`, `default:` changes, settings dialog, config export/import                              | See the digest below; full text has the migration and workspace-export rules                                                                                                      |
 | `testing-playwright.md`                    | Writing/running specs, fixtures, live specs, harness helpers                                           | See the digest below; full text has the CAA/EAA and threshold-dialog traps                                                                                                        |
 | `performance-rules.md`                     | Anything on the filter/sort/render/artwork hot path, measurements                                      | See the digest below; full text has the baselines                                                                                                                                 |
+| `springsteenlyrics.md`                     | springsteenlyrics.com: `_isSlHost`, the `sl-*` pageTypes, `applySlCardsToTable()`, `_ensureSlStyle()`  | The opt-in gate exits before anything visible; the converter runs in THREE places (live, fetched, disk load); scope every lookup to `.project-detail`                             |
 
 **Big files — grep, never read whole** (a whole read costs 10–250k tokens):
 `DEBUG-NOTES.md` (dated root-cause log, ~1 MB), `PERFORMANCE.org`,

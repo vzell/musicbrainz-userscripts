@@ -1,0 +1,149 @@
+[
+  {
+    "name": "the opt-in gate never stops the script",
+    "why": "springsteenlyrics.com support is opt-in (sa_enable_springsteenlyrics, default off). Without the gate a published MusicBrainz script would rewrite another site's page for every user who has it installed.",
+    "edits": [
+      {
+        "find": "if (_isSlHost && Lib.settings.sa_enable_springsteenlyrics !== true) {",
+        "replace": "if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-host.spec.js",
+    "grep": "with the setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "no <h1> is injected for the toolbar",
+    "why": "The SL list pages have no <h1>/<h2>; without the injected anchor init stops at its required-elements check and no button is offered at all.",
+    "edits": [
+      {
+        "find": "        headerContainer = _slPrepareLivePage();",
+        "replace": "        headerContainer = null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-host.spec.js",
+    "grep": "with the setting on",
+    "expect": "fail"
+  },
+  {
+    "name": "fetched pages are not converted",
+    "why": "Page 1 is the live document, converted at click time; page 2 arrives as raw cards. Skipping the conversion there drops every fetched page's rows, and the row count is what notices.",
+    "edits": [
+      {
+        "find": "if (doc !== document && activeDefinition.features?.slCardsToTable) {",
+        "replace": "if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection.spec.js",
+    "grep": "both pages become one table",
+    "expect": "fail"
+  },
+  {
+    "name": "Load from Disk does not convert the fresh page's cards",
+    "why": "After a reload the live page holds cards again. Without the disk-path conversion the headers block fabricates a bare table shell at the end of <body>, outside the site's content block.",
+    "edits": [
+      {
+        "find": "            if (activeDefinition.features?.slCardsToTable) {\n                applySlCardsToTable(activeDefinition);",
+        "replace": "            if (false) {\n                applySlCardsToTable(activeDefinition);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-host.spec.js",
+    "grep": "a reopened list renders in place",
+    "expect": "fail"
+  },
+  {
+    "name": "the navigation guard compares the path only",
+    "why": "Every SL page is one PHP script told apart by its query string, so a path-only comparison calls collection.php?item=… the same page as the list and lets an item link discard the loaded table without asking.",
+    "edits": [
+      {
+        "find": "const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');",
+        "replace": "const currentBase = window.location.origin + window.location.pathname;"
+      },
+      {
+        "find": "const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');",
+        "replace": "const targetBase  = targetUrl.origin  + targetUrl.pathname;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-host.spec.js",
+    "grep": "following an item link from the table asks first",
+    "expect": "fail"
+  },
+  {
+    "name": "Duration is not declared a ':'-aligned integer column",
+    "why": "The integerColumns align ':' entry is what makes _sortColumnKind() sort Duration as a duration. As text, the 73-minute \"1:13:36\" sorts before \"31:09.55\" and the unknown \"?:??\" is not pinned last.",
+    "edits": [
+      {
+        "find": "integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]",
+        "replace": "integerColumns: []"
+      }
+    ],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Duration sorts as a duration",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's \"–\" duration is kept verbatim",
+    "why": "The ':'-aligned column split-aligns every cell, and a colon-less \"–\" renders as \":–\". The converter writes MusicBrainz's \"?:??\" placeholder instead.",
+    "edits": [
+      {
+        "find": "textCell(/^\\d+(?::\\d{2}){1,2}(?:\\.\\d+)?$/.test(duration) ? duration : '?:??');",
+        "replace": "textCell(duration);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "card fields and flags are parsed",
+    "expect": "fail"
+  },
+  {
+    "name": "a card without a copies line is not counted as one copy",
+    "why": "\"I have N copies\" only appears for N >= 2; the site's own \"Nb. of copies = 1\" filter shows that no line means one copy. A blank cell would also sort and filter apart from the 1s.",
+    "edits": [
+      {
+        "find": "textCell(copies ? copies[1] : '1');",
+        "replace": "textCell(copies ? copies[1] : '');"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection.spec.js",
+    "grep": "card fields are parsed into their own columns",
+    "expect": "fail"
+  },
+  {
+    "name": "the trailing-parenthesis split takes the FIRST group",
+    "why": "\"Label (Cat #)\" and \"Release date (Original year)\" end in one parenthesised group, but a label may carry its own parentheses; only the LAST group is the catalogue number or year.",
+    "edits": [
+      {
+        "find": "const m = String(value || '').match(/^(.*)\\s*\\(([^()]*)\\)\\s*$/);",
+        "replace": "const m = String(value || '').match(/^(.*?)\\s*\\((.*)\\)\\s*$/);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "_slSplitTrailingParen takes the LAST",
+    "expect": "fail"
+  },
+  {
+    "name": "First date ignores a day range",
+    "why": "\"16-17 Sep 1967\" must start on the 16th; without the range group the regex anchors on \"17 Sep\".",
+    "edits": [
+      {
+        "find": "const re = /(?:\\b(\\d{1,2})(?:\\s*[-–]\\s*\\d{1,2})?\\s+)?\\b([A-Za-z]{3,9})\\b\\.?/g;",
+        "replace": "const re = /(?:\\b(\\d{1,2})\\s+)?\\b([A-Za-z]{3,9})\\b\\.?/g;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "_slFirstIsoDate handles every date shape",
+    "expect": "fail"
+  },
+  {
+    "name": "the detection loop ignores the host",
+    "why": "Recorded honestly as a guard no spec can see today: no MusicBrainz matcher claims /collection.php or /bootlegs.php, and no MusicBrainz URL reaches the SL matchers, so detection gives the same answer without it. It exists for the NEXT broad MusicBrainz matcher (several are bare path.includes() checks).",
+    "edits": [
+      {
+        "find": "        if (Boolean(def.host) !== _isSlHost) continue;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection.spec.js",
+    "grep": "both pages become one table",
+    "expect": "pass"
+  }
+]

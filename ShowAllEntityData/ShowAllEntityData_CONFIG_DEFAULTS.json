@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1211+2026-10-04",
-    "schema_entries": 318,
-    "sections": 40,
-    "settings": 278,
-    "settings_with_default": 273,
+    "schema_entries": 320,
+    "sections": 41,
+    "settings": 279,
+    "settings_with_default": 274,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,9 +15,9 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 124,
+      "checkbox": 125,
       "color_picker": 62,
-      "divider": 40,
+      "divider": 41,
       "number": 40,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
@@ -186,6 +186,10 @@
     {
       "key": "divider_edits_colors",
       "label": "🎨 EDITS PAGE"
+    },
+    {
+      "key": "divider_springsteenlyrics",
+      "label": "🎸 SPRINGSTEENLYRICS.COM"
     }
   ],
   "labels": {
@@ -301,6 +305,7 @@
     "sa_enable_release_tracks_work_ar_columns": "Add columns for the recorded WORK's own relationships",
     "sa_enable_save_load": "Enable Save/Load to Disk",
     "sa_enable_show_single_table_btn": "Enable \"Show single-table\" button",
+    "sa_enable_springsteenlyrics": "Enable on springsteenlyrics.com collection and bootleg lists",
     "sa_enable_stats_panel": "Enable Quick Stats Panel",
     "sa_enable_sticky_columns": "Enable Sticky Columns",
     "sa_enable_sticky_headers": "Enable Sticky Headers",
@@ -580,6 +585,7 @@
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_save_load": true,
     "sa_enable_show_single_table_btn": true,
+    "sa_enable_springsteenlyrics": false,
     "sa_enable_stats_panel": true,
     "sa_enable_sticky_columns": true,
     "sa_enable_sticky_headers": true,

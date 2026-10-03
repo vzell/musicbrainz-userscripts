@@ -5,13 +5,17 @@
 
 * Overview
 
-This file enumerates every one of the 86 routable page types (plus one
-auxiliary =subType= companion, 87 array entries total) recognised by
+This file enumerates 88 of the 89 routable page types (plus one
+auxiliary =subType= companion, 90 array entries total) recognised by
 =ShowAllEntityData.user.js=, as declared in the =pageDefinitions= array
 (=ShowAllEntityData.user.js:12073-14907= as of this sync — re-grep
 =const pageDefinitions = [= rather than trust this range, it drifts
-as the script grows) and gated by the four
-=// @include= regexes in the userscript header. For each page type it gives
+as the script grows) and gated by the
+=// @include= regexes in the userscript header (five for MusicBrainz, one
+for springsteenlyrics.com). The one routable type without a row here is
+=iswc= — pre-existing drift, noticed on 2026-10-04 while adding the two
+springsteenlyrics.com types (#87/#88), which are the only ones not on
+MusicBrainz at all (see docs/claude/springsteenlyrics.md). For each page type it gives
 a real, clickable MusicBrainz URL (using live MBIDs looked up via the
 MusicBrainz web service), the script's =tableMode=, the button(s) that
 trigger it, and a plain-language summary of which script features actually
@@ -62,7 +66,7 @@ All URLs below use ~https://musicbrainz.org~ as the base.
 
 * Coverage clusters & representatives
 
-Most of the 86 page types above are structural near-duplicates of a
+Most of the page types above are structural near-duplicates of a
 smaller number of shapes (same =tableMode=/feature pipeline, different
 entity kind or column names). This section names those clusters, picks
 1-2 representatives per cluster for the =tests/snapshots/= regression
@@ -129,6 +133,7 @@ skill for turning a =planned= row into a =captured= one.
 | recording-fingerprints                       | captured | Trivial passthrough (no extra column pipeline). 3 rows (REC_BTR).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | release-discids                              | captured | Trivial passthrough. =REL_BTR= (Born to Run, 12" Vinyl) has NO disc IDs at all — native page reads "This release has no mediums that can have disc IDs," so the button never produces a table and the capture timed out. Fixed by switching to =REL_DARK= (Darkness on the Edge of Town, CD, real disc ID/CD TOC) — 1 row.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | artist-events                                | captured | Deliberate large/paginated perf-comparison target (42 pages, 4174 rows) — see PERFORMANCE.org.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| sl-collection / sl-bootlegs                  | fixtures | Not MusicBrainz (springsteenlyrics.com, opt-in): own =slCardsToTable= card converter, injected =<h1>=, own CSS. The snapshot harness is MusicBrainz-shaped, so coverage is four fixture specs built from =debug/sl-*-initial.html= by =scripts/build-sl-fixtures.py=, plus the =@extended= live spec =tests/live/sl-lists.spec.js=. See docs/claude/springsteenlyrics.md.                                                                                                                                                                                                                                                                                                                                                              |
 
 * Quick reference table
 
@@ -220,6 +225,8 @@ skill for turning a =planned= row into a =captured= one.
 | 84 | recording-fingerprints        | single       | /recording/REC_BTR/fingerprints               | no extra column pipeline                                                                                                   |
 | 85 | recording-releases            | multi        | /recording/REC_BTR                            | non-paginated, country/date split, injected Relationships                                                                  |
 | 86 | artist-events                 | single       | /artist/ARTIST/events                         | cancelled-event flag, EAA, location split, sticky Event                                                                    |
+| 87 | sl-collection                 | single       | springsteenlyrics.com /collection.php?cmd=list | NOT MusicBrainz, opt-in; cards → table (slCardsToTable), Label/Cat. no. + date/year splits, Copies                         |
+| 88 | sl-bootlegs                   | single       | springsteenlyrics.com /bootlegs.php?cmd=list   | NOT MusicBrainz, opt-in; cards → table, ISO First date, Duration sorted as a duration, Lossy/Artwork/Info file flags       |
 
 * Page type details
 ** 1. taglookup
@@ -769,6 +776,24 @@ lists converted into sortable tables), tableMode =multi=.
 - Button: "Show all Events for Artist"
 - tableMode: single
 - Features exercised: cancelled-event flag + EAA on Event; Location split; Date → numeric D/M/Y; collapsible Location/EAA/Place/Locality/Region/Country; tooltips; sticky/main Event
+
+** 87. sl-collection
+- URL: [[https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i][springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i]] (539 items, 6 pages on 2026-10-04)
+- Match: ~path === '/collection.php' && params.get('cmd') === 'list'~, host =springsteenlyrics.com= only (=host:= key, see the detection loop)
+- Button: "Show all items of this collection list" (short label "Items")
+- tableMode: single
+- Not MusicBrainz, and opt-in: =sa_enable_springsteenlyrics= (default off). Every category and every =f_*= filter of the collection list.
+- Features exercised: =slCardsToTable: 'collection'= (100 =div.blog-post= cards per page → =table.tbl=, on the live page, every fetched page and Load from Disk); injected =<h1>= toolbar anchor; Label/Cat. no. and Release date/Original year split at the last parenthesised group; Copies (no line ⇒ 1); integerColumns Original year/Copies; lazy Cover thumbnails
+- Coverage: =tests/fixtures/sl-collection.spec.js=, =sl-host.spec.js=, =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=). No snapshot baseline (the snapshot harness is MusicBrainz-shaped).
+
+** 88. sl-bootlegs
+- URL: [[https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967][springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967]] (273 items, 3 pages on 2026-10-04)
+- Match: ~path === '/bootlegs.php' && params.get('cmd') === 'list'~, host =springsteenlyrics.com= only
+- Button: "Show all bootlegs of this list" (short label "Bootlegs")
+- tableMode: single
+- Not MusicBrainz, and opt-in (same setting as #87). Every category and every =f_*= filter of the bootleg list.
+- Features exercised: =slCardsToTable: 'bootlegs'=; Label from the card's sub-title; Date verbatim plus ISO "First date" (=_slFirstIsoDate()=); Duration as integerColumns =align: ':'= (sorted as a duration; the site's "–" written as =?:??=); Lossy/Artwork/Info file flags
+- Coverage: =tests/fixtures/sl-bootlegs.spec.js=, =sl-host.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=).
 
 * Not independently routable
 

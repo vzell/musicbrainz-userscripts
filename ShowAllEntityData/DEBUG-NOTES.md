@@ -17746,3 +17746,71 @@ quick filter" case failed until `openSeries()` waited the render focus out.
 Diagnosed by logging focusin/focusout: `in qf`, `out qf`, `in` the global
 filter, panel `display: none`. Mutations: `scripts/mutations/uvd-no-autofocus-touch.json`,
 4/4 OK.
+
+## 2026-10-04 — springsteenlyrics.com collection and bootleg lists (branch sl-support)
+
+`org/springsteenlyrics.org` asked whether the script could also consolidate
+springsteenlyrics.com's list pages. It can, as the opt-in pageTypes
+`sl-collection` / `sl-bootlegs` (`sa_enable_springsteenlyrics`, default off).
+Design and rules: `docs/claude/springsteenlyrics.md`.
+
+**Snapshots.** `debug/sl-collections-initial.html`
+(`collection.php?cmd=list&category=album&f_format=12i`, 539 items) and
+`debug/sl-bootlegs-initial.html`
+(`bootlegs.php?cmd=list&category=aud_live1967`, 273 items), both the
+logged-out rendering, both saved without a doctype. Shape: Bootstrap 3, no
+`<h1>`/`<h2>`/`div#content`/`table.tbl`; 100 `div.blog-post` cards per page,
+all siblings under one parent inside `.project-detail`, preceded by the list's
+single `h3.heading` (ten `h3.heading`s on the page, seven in the nav
+mega-menu); each card is a thumbnail link plus
+`<span class="text-primary"><em>Label:</em></span> value<br>` lines. Field
+variance measured on the snapshots: 7/100 collection and 16/100 bootleg cards
+have no sub-title line; every "Label (Cat #)" value is `name (numbers)`;
+"Release date (Original year)" is `– (YYYY)` or `YYYY (YYYY)`; bootleg dates
+come as `16 Sep 1967`, `16-17 Sep 1967`, comma lists, ` - ` ranges,
+`Sep 1967` (after a comma) and `20 Sep 1969 (early show)`; durations as
+`31:09.55`, `129:33.23`, `45:12`, `1:13:36` and `–`.
+(`debug/bootleg-collection.html` / `debug/bootleg-release.html` are single
+cards, not detail pages.)
+
+**Live checks, 2026-10-04.** Four categories fetched with curl: the card markup
+and labels are identical, each page has one list heading, and the windowed
+`ul.pagination` always ends in a `»` pointing at the LAST page (album/12i → 6,
+single → 14, aud_comp → 6; page 4 of album/12i shows 1-6 with `«`), while a
+99-item category has no widget. So `determineMaxPageFromDOM()`'s no-"Next"
+branch (highest `page=`) is right without a hook. Then the working-copy
+script, injected by Playwright (headless Chromium, which passed the site's
+CloudFlare front): album/12i → `Loaded 6 pages (539 rows)`, fetch 4.1 s,
+render 0.15 s; aud_live1967 → `Loaded 3 pages (273 rows)`. No page errors. The
+sticky `<thead>` lands under the site's `jquery.sticky` navbar via the measured
+`--mb-sl-navbar-h`. That run is now `tests/live/sl-lists.spec.js` (`@extended`).
+
+**What blocked it, and the fixes.** (1) The `@include`s were
+musicbrainz-only → one new regex, list pages only (`cmd=list` anywhere in the
+query; the site's filter forms submit `?f_date=…&cmd=list`). (2) Init returned
+at `!headerContainer` → `_slPrepareLivePage()` injects an `<h1>`. (3) No
+`table.tbl` → `applySlCardsToTable()`, called at the three converter sites
+(pre-processing, fetched pages, Load from Disk). Host-gated off on SL:
+`performClutterCleanup()`, `initStickyPageHeaders()` (pins every `<body>` child
+when there is no `#page`), and the navigation guard's same-page test (SL tells
+pages apart by query string, so it compares the query there too).
+
+**Latent shared quirk, left alone.** `_buildSplitAlignWrap()` emits the
+separator span even for a value that has none ("A value with no separator at
+all is treated as a pure right part" — but the separator still renders). So a
+`':'`-aligned cell holding `–` reads `:–`. MusicBrainz never shows it, because
+its unknown length is `?:??`; the SL converter writes `?:??` for the site's
+`–` rather than change shared rendering in this branch. Any future
+split-aligned column whose values can lack the separator will hit it.
+
+**Column-name trap.** `_sortColumnKind()`'s legacy name heuristic sorts any
+undeclared column whose name contains `#` (or Track/Releases/Year/Length) as a
+number; the site's "Cat #" would sort catalogue numbers by their digits alone,
+so the column is "Cat. no.", and `sl-collection.spec.js` checks the text order
+against the numeric one it must differ from.
+
+Specs: `tests/fixtures/sl-collection.spec.js`, `sl-bootlegs.spec.js`,
+`sl-host.spec.js`, `sl-include-regex.spec.js` (fixtures from
+`scripts/build-sl-fixtures.py`, served by `tests/support/slFixture.js`).
+Mutations: `scripts/mutations/sl-support.json`, 11/11 OK — 10 caught, and the
+detection loop's `host` filter recorded `pass` (no current URL can show it).

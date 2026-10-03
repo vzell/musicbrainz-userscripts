@@ -992,6 +992,7 @@ you automatically.
 | 📅 Release events column                        | Enable the asynchronous release-events column                                                                                                                                                              |
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                  |
+| 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                 |
 
 </details>
 
@@ -1047,6 +1048,9 @@ an import brings your deletions back.
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
+- **Not MusicBrainz:** the **springsteenlyrics.com** collection and bootleg
+  lists — off until you switch them on, see
+  [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
 
@@ -1191,6 +1195,41 @@ there, but the buttons are only built when you press **▶♪** in the header.
 Host and port are configurable (`127.0.0.1`, ports 8000–8010 by default). A
 release's own tracklist does not get this column: its rows link recordings, not
 releases.
+
+</details>
+
+<details>
+<summary>springsteenlyrics.com collection and bootleg lists</summary>
+
+Not a MusicBrainz page at all, and **off until you switch it on**: ⚙️ Settings →
+*🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
+bootleg lists*. Settings are shared, so you can switch it on from a MusicBrainz
+page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
+off, the script leaves that site's pages untouched.
+
+Once on, every **collection list** (`collection.php?cmd=list…`) and every
+**bootleg list** (`bootlegs.php?cmd=list…`) — any category, and any format,
+country, date, title or other filter you picked on the site — gets a heading
+with the usual toolbar and one action button: **Items** on a collection list,
+**Bootlegs** on a bootleg list. Pressing it fetches every page of that list
+(100 items each), turns the item cards into one table, and gives you the usual
+filters, sorting, column controls, export and Save/Load.
+
+The columns come from what each card shows — no item page is opened:
+
+- **Collection:** Cover, Title, Version, Label, Cat. no., Format, Country,
+  Release date, Original year, Copies. The site's *Label (Cat #)* and *Release
+  date (Original year)* are split in two. *Copies* is 1 unless the card says
+  "I have N copies".
+- **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
+  Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
+  1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those
+  dates as `1967-09-16`, so sorting it is chronological. *Duration* sorts as a
+  time, and an unknown one (the site's "–") shows as `?:??` and stays last.
+  *Lossy*, *Artwork* and *Info file* read "yes" when the card carries that note.
+
+Cover and Title link to the item's own page on springsteenlyrics.com;
+following one asks first, as leaving any consolidated table does.
 
 </details>
 
