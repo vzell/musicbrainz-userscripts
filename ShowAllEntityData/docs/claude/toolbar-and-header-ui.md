@@ -274,6 +274,16 @@ when there is no h2-hosted filter bar, in which case both callers keep their old
 `controlsContainer.appendChild()`. They keep their ids; only their content
 became glyph-only.
 
+- **The count stat has a fixed-width slot; keep it that way.** Every write of
+  a `.mb-row-count-stat` text, h2 or h3, goes through `_setCountStatText()`.
+  That function also writes `data-mb-sizer`, the widest text the span can show
+  for its total. An invisible `::after` in an `inline-grid` renders it, so
+  `(20)` and `(3 of 3)/20` take the same width and nothing after the count
+  moves when a filter is typed or cleared. A new writer that sets
+  `textContent` directly keeps a stale sizer, which is fine until the total
+  gains a digit; then the shift is back. Pass `threeTier` for the h2 of a
+  multi-table page, the only place `(F of T)/A` appears. See DEBUG-NOTES.md
+  2026-10-04, and `tests/fixtures/row-count-stat-fixed-width.spec.js`.
 - **One WRAPPER (`span.mb-h2-table-controls`), not two loose buttons.**
   `updateH2Count()` REPLACES `.mb-row-count-stat` on every filter change and
   re-anchors a fixed selector list of direct h2 children after the new span;

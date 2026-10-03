@@ -1,0 +1,39 @@
+* DONE add support for fixed with row statistics
+
+I want the global and sub-table row statistics rendered in a container of fixed width (it should be wide enough to
+"account for"/hold the different formats like single number "(20)" or something like "(3 of 3)/20") e.g.
+
+Unfiltered - global:
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;20&lt;/span&gt; rows total unfiltered in ALL sub-tables">(20)</span>
+#+end_example
+
+Unfiltered - sub-table:
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;15&lt;/span&gt; rows total unfiltered in this sub-table">(15)</span>
+#+end_example
+
+Filtered - global:
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;3&lt;/span&gt; rows visible; &lt;span class=&quot;mb-mbtt-count&quot;&gt;3&lt;/span&gt; after &lt;span class=&quot;mb-mbtt-gf&quot;&gt;global&lt;/span&gt; filter &lt;span class=&quot;mbtt-gf&quot;&gt;on a&lt;/span&gt;; &lt;span class=&quot;mb-mbtt-count&quot;&gt;20&lt;/span&gt; total unfiltered">(3 of 3)/20</span>
+#+end_example
+
+Filtered - sub-table:
+#+begin_example
+<span class="mb-row-count-stat" data-mbtt="There are &lt;span class=&quot;mb-mbtt-count&quot;&gt;2&lt;/span&gt; rows filtered from the full &lt;span class=&quot;mb-mbtt-count&quot;&gt;15&lt;/span&gt; rows in this sub-table by the &lt;span class=&quot;mb-mbtt-gf&quot;&gt;global&lt;/span&gt; filter &lt;span class=&quot;mbtt-gf&quot;&gt;on a&lt;/span&gt;">(2 of 15)</span>
+#+end_example
+
+so that the following elements like
+
+#+begin_example
+<button class="mb-master-toggle"
+<button id="mb-resize-btn"
+etc.
+#+end_example
+
+do NOT shift to the right when filtering and back again when filter are cleared
+
+#+begin_example
+row-stats-filtered.html - https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd - raw HTML
+row-stats-unfiltered.html - https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd - raw HTML
+#+end_example
