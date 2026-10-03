@@ -1,0 +1,34 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Headings inside an Annotation (wiki \"== … ==\") are now sub-section bars like Credits' \"Release\": same colour and indent, collapsible on a click, expanded by default. They are no longer treated as page-level sections (h2 colour, page-wide Ctrl+Click, Ctrl+2).",
+          "Ctrl+Click on a Credits or Annotation sub-heading toggles every sub-heading of that section, and only that section.",
+          "MusicBrainz's native \"Show less...\" link under an expanded Annotation is removed from the rendered page; the Annotation heading already collapses the section. While the annotation is still clipped (auto-expand off), its \"Show more...\" link is kept."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "An expanded Annotation that contains a heading now stays in view as a whole when a wide table is scrolled sideways. Before, the text slid away and only \"Show less…\" and the \"last modified\" line stayed put: a section body holding an h2 was never pinned, and the heading pinned on its own could not leave it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The \"Release\" / \"Release group\" sub-headings inside an expanded Credits section are now indented under their h2, the same way the data sub-table headings (e.g. \"1 - CD\") are under the Tracklist h2. Their style was copied from the sub-table headings without the left margin."
+        ]
+      }
+    ]
+  }
+]

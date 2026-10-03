@@ -1,0 +1,131 @@
+[
+  {
+    "name": "the Credits h3 indent is dropped",
+    "why": "The Credits Release / Release group bars must be indented under their h2 like the data sub-table bars; without the margin they sit flush with Credits.",
+    "edits": [
+      {
+        "find": "        .mb-annotation-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em;",
+        "replace": "        .mb-annotation-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0;"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "indented like the data sub-table h3",
+    "expect": "fail"
+  },
+  {
+    "name": "the Annotation wiki headings are not demoted",
+    "why": "Without the call the wiki heading stays an h2: h2 colour, page-wide Ctrl+Click, and a body _sphSectionBodies() refuses to pin.",
+    "edits": [
+      {
+        "find": "        // neither sees them as h2 sections — see the function's JSDoc.\n        _makeAnnotationH3sCollapsible();\n",
+        "replace": "        // neither sees them as h2 sections — see the function's JSDoc.\n"
+      },
+      {
+        "find": "            // finalCleanup() (idempotent; normally already done there).\n            _makeAnnotationH3sCollapsible();\n",
+        "replace": "            // finalCleanup() (idempotent; normally already done there).\n"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "becomes an h3 bar styled",
+    "expect": "fail"
+  },
+  {
+    "name": "the Annotation body is not pinned without the demotion",
+    "why": "Same planted defect, seen by the sticky spec: the body holds an h2, so it is never a pin target and its text scrolls away.",
+    "edits": [
+      {
+        "find": "        // neither sees them as h2 sections — see the function's JSDoc.\n        _makeAnnotationH3sCollapsible();\n",
+        "replace": "        // neither sees them as h2 sections — see the function's JSDoc.\n"
+      },
+      {
+        "find": "            // finalCleanup() (idempotent; normally already done there).\n            _makeAnnotationH3sCollapsible();\n",
+        "replace": "            // finalCleanup() (idempotent; normally already done there).\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins its whole text",
+    "expect": "fail"
+  },
+  {
+    "name": "the Annotation bar loses the h3 look",
+    "why": "Removing the class from the shared rule leaves the demoted heading with no h3 background and no indent.",
+    "edits": [
+      {
+        "find": "        .mb-credits-toggle-h3,\n        .mb-annotation-toggle-h3 { cursor: pointer;",
+        "replace": "        .mb-credits-toggle-h3 { cursor: pointer;"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "becomes an h3 bar styled",
+    "expect": "fail"
+  },
+  {
+    "name": "an Annotation bar owns nothing",
+    "why": "Without the sibling walk a click flips the icon but hides no content.",
+    "edits": [
+      {
+        "find": "                let _cur = _h3.nextSibling;\n                while (_cur) {\n                    const _nxt = _cur.nextSibling; // save before any DOM mutation\n                    if (_cur.nodeType === Node.ELEMENT_NODE && _bars.includes(_cur)) break;",
+        "replace": "                let _cur = null;\n                while (_cur) {\n                    const _nxt = _cur.nextSibling; // save before any DOM mutation\n                    if (_cur.nodeType === Node.ELEMENT_NODE && _bars.includes(_cur)) break;"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "collapses only the content under it",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click toggles one bar only",
+    "why": "Dropping the ctrlKey branch makes Ctrl+Click behave like a plain click, so the peer bar of the section stays as it was.",
+    "edits": [
+      {
+        "find": "            if (e.ctrlKey) {\n                peerScope.querySelectorAll(",
+        "replace": "            if (false) {\n                peerScope.querySelectorAll("
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "toggles every sub-heading of its own section",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click reaches other sections",
+    "why": "Peers must be the bars of the clicked bar's own h2 section; a page-wide lookup also flips the Annotation bar from a Credits Ctrl+Click.",
+    "edits": [
+      {
+        "find": "                peerScope.querySelectorAll('h3.mb-credits-toggle-h3, h3.mb-annotation-toggle-h3')",
+        "replace": "                document.querySelectorAll('h3.mb-credits-toggle-h3, h3.mb-annotation-toggle-h3')"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "toggles every sub-heading of its own section",
+    "expect": "fail"
+  },
+  {
+    "name": "the Show less toggle is not removed",
+    "why": "Without the calls the native \"Show less...\" paragraph stays on the rendered page of an expanded annotation.",
+    "edits": [
+      {
+        "find": "        _makeAnnotationH3sCollapsible();\n        _removeAnnotationShowLessToggle();\n",
+        "replace": "        _makeAnnotationH3sCollapsible();\n"
+      },
+      {
+        "find": "            _makeAnnotationH3sCollapsible();\n            _removeAnnotationShowLessToggle();\n",
+        "replace": "            _makeAnnotationH3sCollapsible();\n"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "is removed once the annotation is expanded",
+    "expect": "fail"
+  },
+  {
+    "name": "Show more is removed from a collapsed annotation",
+    "why": "With auto-expand off the body stays clipped, and \"Show more...\" is the only way to read the rest; dropping the guard removes it anyway.",
+    "edits": [
+      {
+        "find": "            if (!_body || _body.classList.contains('annotation-collapsed')) return;",
+        "replace": "            if (!_body) return;"
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "is kept while the annotation is still collapsed",
+    "expect": "fail"
+  }
+]
