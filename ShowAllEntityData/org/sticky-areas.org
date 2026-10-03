@@ -20,7 +20,7 @@ Apply the patch to the userscript on the "feature/sticky-areas" branch
 I want to continue work on the stickyness features of my userscript. Currently the version has some implementations, but
 it was taken from the then current version "9.99.1167"
 
-** TODO findings
+** DONE findings
 
 I found the cause, and sorting is not actually slower: the regression I reported yesterday was a measuring mistake. Both issues are fixed. The fixes are committed as 6375998 and pushed to feature/sticky-areas; nothing is merged to main. The full fixture suite passes (864/864), and every planted defect in the two mutation lists is caught except the one known blind spot that only a live test can see.
 
@@ -91,7 +91,7 @@ except, if the contents itself happens to have h3 lines in its very body like e.
 
 THESE h3 lines should also be STICKY
 
-** TODO solution
+** DONE solution
 
 Expanded sections now stay in view while you scroll right, not just their header bars. Commit 285c58f is pushed on
 feature/sticky-section-bodies, not merged; the full fixture suite passes (867/867).
@@ -126,9 +126,11 @@ why my whitespace check skips it.
 
 To try it live: re-import into Tampermonkey, open release 5cf63c93-…, expand Credits and scroll right. Tell me when to merge.
 
-** TODO Scope choice
+** DONE Scope choice
 
 This pins the content of every section other than the one holding the data tables. You asked for the sections above the
 global filter. On release pages that's the same set, because Credits is moved above Tracklist and the later sections
 live in the sidebar, which is never pinned. If you've turned off the setting that moves trailing sections above the
 table, sections left below it would be pinned too. Say if you want that narrowed.
+
+** TODO go after the remaining ~0.7 s

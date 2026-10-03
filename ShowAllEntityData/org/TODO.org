@@ -930,3 +930,116 @@ e.g. https://musicbrainz.org/search?query=Born+to&type=instrument&limit=25&metho
     MEASUREMENTS.org 2026-10-01: on multi-table pages each row is parsed twice (live clone + master); parse once and copy the attribute (~24 ms → ~12 ms)
 
 
+* DONE indent h3 headers under h2 section before the h2 headerline with the global filter
+** DONE i
+
+Currently when an h2 headerline like "Credits" is uncollapsed and happens to have h3 headerline(s) under its section
+like e.g. "Release", see
+
+#+begin_example
+@debug/release-tracks-h2-with-h3-unindented.html - raw HTML of final rendered page with all h2 headers uncollapsed - [Image #10]
+#+end_example
+
+1.)
+
+Indent the h3 header(s) under all h2 sections before the h2 headerline with the global filter like can be seen in the
+screenshot for the "1 - CD " h3 medium header line
+
+** DONE add
+
+1.)
+
+h3 header indenting works OK.
+
+2.)
+
+When specifically the "Annotation" h2 section contains h3 sub-headers like e.g. "Barcode and other identifiers", see
+
+#+begin_example
+release-tracks-annotations-with-h3.html - raw HTML of final rendered page with all h2 headers uncollapsed - [Image #12]
+release-tracks-annotations-with-h3.html - raw HTML of final rendered page with all h2 headers uncollapsed and scrolled to the right - [Image #13]
+#+end_example
+
+a.)
+
+the h3 sub-header lines should also be sticky, together with their sub-sections
+
+b)
+
+currently, ONLY the following containers
+
+#+begin_example
+<p style="--mb-sph-left: 20px; --mb-sph-maxw: 1881.2px;" class="mb-sph-target"><a class="annotation-toggle" href="#">Show less...</a></p>
+#+end_example
+
+and
+
+#+begin_example
+<div class="annotation-details mb-sph-target" style="--mb-sph-left: 20px; --mb-sph-maxw: 1881.2px;">Annotation last modified by <a href="/user/vzell"><img alt="" class="avatar no-avatar" height="15" src="https://static.metabrainz.org/MB/editor-b055e61.svg" width="15"><bdi>vzell</bdi></a> on 2021-12-27 17:34 GMT+1.<!-- --> <a href="/release/230fd31d-f63f-4c01-8f10-432d36a1cb86/edit_annotation">Edit annotation</a></div>
+#+end_example
+
+stay sticky, the rest of the text not as can be seen in [Image #13]
+
+3.)
+
+"Annotation" section based h3 lines should get the same background color as other h3 lines e.g. like "Release" in the "Credits" section
+
+4.)
+
+Ctrl-clicking on an h3 line e.g. the
+
+#+begin_example
+<h3 class="mb-credits-h3-processed mb-credits-toggle-h3" title="Click to collapse this section"><span class="mb-toggle-icon">▼</span>Release</h3>
+#+end_example
+
+should toggle the collapse/uncollapse state of ALL h3 lines in that specific h2 section
+
+** DONE bug
+
+It works OK.
+
+Additionally remove the
+
+#+begin_example
+<p style="--mb-sph-left: 20px; --mb-sph-maxw: 1881.2px;" class="mb-sph-target"><a class="annotation-toggle" href="#">Show less...</a></p>
+#+end_example
+
+from the final rendered page
+
+** DONE Is it possible to align the contents of the h3 sub-sections under h2 "Annotation" section
+
+Is it possible to align the contents of the h3 sub-sections under the h2 "Annotation" section, see [Image #16] like in
+the screenshot
+
+
+* bug report for "Credited as" field
+
+#+begin_example
+
+As soon as I type "U", for "UK" in the "Credited as" field
+
+<img width="1070" height="708" alt="Image" src="https://github.com/user-attachments/assets/11c8c89e-5987-4f16-ad96-b79e72ebcf46" />
+
+I get
+
+<img width="936" height="381" alt="Image" src="https://github.com/user-attachments/assets/502669d8-28b9-437e-ae67-49c268228403" />
+#+end_example
+
+
+* TODO tooltip redesign to rich HTML
+
+* TODO make userscript mobile firendly
+
+* TODO integrate springsteenlyrics.com
+
+* fix bug in jesus2099 userscript
+
+
+#+begin_example
+@debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099
+@debug/ISRC-bug.html - initial raw page with both the "mb. INLINE STUFF" and the "MusicBrainz Nuclear Tags" from aerozol
+#+end_example
+
+
+
+
