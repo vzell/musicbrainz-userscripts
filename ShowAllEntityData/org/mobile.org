@@ -1,4 +1,4 @@
-* Our userscript on mobile
+* DONE Our userscript on mobile
 ** i
 
 Currently when running our userscript on a mobile with a browser which supports Tampermonkey, e.g. Firefox
