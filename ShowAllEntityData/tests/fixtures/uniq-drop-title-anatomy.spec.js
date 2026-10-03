@@ -23,6 +23,19 @@ const MEDLEY_URL = 'https://musicbrainz.org/release/a9a3b139-cf22-4d28-801e-3f3d
 const MEDLEY_FIXTURE = path.join(__dirname, 'release-tracks-medley.html');
 const ETI_URL = 'https://musicbrainz.org/release/ef7147b8-19ac-4c2c-a9e1-a1136a6ffce4';
 const ETI_FIXTURE = path.join(__dirname, 'release-tracks-eti.html');
+// org/ETI.org item 2 — groups that do not start lowercase but END in a
+// lowercase sa_findings_eti_keywords word are ETI too:
+//   - "Seren E.P." — "Situations Like These (Moonitor remix)", "Everlasting
+//     (Psyche remix)" beside plain lowercase "(album version)", "(edit)",
+//     "(single version)".
+//   - "NOW Yearbook: The Vault 1986" (debug/ETI.html) — "(U.S. remix)", and
+//     "I Do What I Do (Theme for 9 1/2 Weeks) (7” version)", whose "(7”
+//     version)" is ETI while "(Theme for 9 1/2 Weeks)" before it stays an
+//     alternative title.
+const REMIX_URL = 'https://musicbrainz.org/release/f6215982-62e1-4b81-b88f-754dca0da149';
+const REMIX_FIXTURE = path.join(__dirname, 'release-tracks-remix-eti.html');
+const NOW86_URL = 'https://musicbrainz.org/release/5cf63c93-e27e-4d98-81bc-9aba8b6861a7';
+const NOW86_FIXTURE = path.join(__dirname, 'release-tracks-eti-keywords.html');
 
 /**
  * Loads a release fixture and runs "Show all Tracks".
@@ -195,6 +208,40 @@ test.describe('📊 Title info sections', () => {
         expect(await visibleTitles(page)).toEqual([
             { title: 'I Believe in Your Sweet Love (single version)', marks: ['single version'] },
         ]);
+    });
+
+    test('ETI keywords: a group ENDING in a lowercase keyword is ETI ("Moonitor remix")', async ({ page }) => {
+        await openRelease(page, REMIX_URL, REMIX_FIXTURE);
+        const s = await sectionsOf(page, 'Title');
+        expect(s['Title info - Extra title information']).toEqual({
+            '➕ has extra title information': 5,
+            '» ETI: album version': 1, '» ETI: edit': 1, '» ETI: single version': 1,
+            '» ETI: Moonitor remix': 1, '» ETI: Psyche remix': 1,
+        });
+        await tick(page, '» ETI: Moonitor remix');
+        expect(await visibleTitles(page)).toEqual([
+            { title: 'Situations Like These (Moonitor remix)', marks: ['Moonitor remix'] },
+        ]);
+    });
+
+    test('ETI keywords: "(U.S. remix)" and "(7” version)" are ETI, the alternative title before one is not', async ({ page }) => {
+        await openRelease(page, NOW86_URL, NOW86_FIXTURE);
+        const s = await sectionsOf(page, 'Title');
+        expect(s['Title info - Extra title information']).toEqual({
+            '➕ has extra title information': 5,
+            '» ETI: 7” version': 2, '» ETI: single version': 2, '» ETI: U.S. remix': 1,
+        });
+        // No capitalized keyword group on this release under the default list.
+        expect(s['Findings - Warning']).toBeUndefined();
+    });
+
+    test('ETI keywords: an empty keyword list falls back to lowercase-only ETI', async ({ page }) => {
+        await openRelease(page, REMIX_URL, REMIX_FIXTURE, { sa_findings_eti_keywords: '' });
+        const s = await sectionsOf(page, 'Title');
+        expect(s['Title info - Extra title information']).toEqual({
+            '➕ has extra title information': 3,
+            '» ETI: album version': 1, '» ETI: edit': 1, '» ETI: single version': 1,
+        });
     });
 });
 
