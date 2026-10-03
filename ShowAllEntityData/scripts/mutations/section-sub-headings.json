@@ -60,6 +60,19 @@
     "expect": "fail"
   },
   {
+    "name": "the content under an Annotation bar is not indented",
+    "why": "Without the marker class the paragraphs under a bar stay flush with the h2, 1.5em left of the bar they belong to.",
+    "edits": [
+      {
+        "find": "                _contentNodes.forEach(node => node.classList.add('mb-annotation-sub-content'));\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/section-sub-headings.spec.js",
+    "grep": "starts at the bar's left edge",
+    "expect": "fail"
+  },
+  {
     "name": "an Annotation bar owns nothing",
     "why": "Without the sibling walk a click flips the icon but hides no content.",
     "edits": [

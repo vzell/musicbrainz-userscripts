@@ -95,6 +95,28 @@ test.describe('section sub-headings (Credits / Annotation h3 bars)', () => {
             'indented under its h2 by the same amount as the Credits bar').toBeLessThanOrEqual(1);
     });
 
+    test('the content under an Annotation bar starts at the bar\'s left edge; text before the first bar does not move', async ({ page }) => {
+        const probe = await page.evaluate((annSel) => {
+            const left = (el) => el.getBoundingClientRect().left;
+            const h2 = document.querySelector('h2.annotation');
+            const bar = document.querySelector(annSel);
+            const first = document.querySelector('div.annotation-body > p:first-child');
+            const under = bar ? bar.nextElementSibling : null;
+            return {
+                bar: bar ? left(bar) - left(h2) : null,
+                first: first ? left(first) - left(h2) : null,
+                under: under ? left(under) - left(h2) : null,
+                underTag: under ? under.tagName : null,
+            };
+        }, ANN_H3);
+        expect(probe.underTag, 'premise: a paragraph follows the bar').toBe('P');
+        expect(probe.bar, 'premise: the bar is indented').toBeGreaterThan(0);
+        expect(Math.abs(probe.first), 'text before the first bar stays flush with the h2')
+            .toBeLessThanOrEqual(1);
+        expect(Math.abs(probe.under - probe.bar), 'its content is aligned with the bar')
+            .toBeLessThanOrEqual(1);
+    });
+
     test('clicking the Annotation bar collapses only the content under it', async ({ page }) => {
         const before = 'div.annotation-body > p:first-child';
         const after = `${ANN_H3} + p`;

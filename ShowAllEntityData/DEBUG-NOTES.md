@@ -17401,3 +17401,20 @@ that component once its own toggle is gone. Tests: two in
 two more mutations, 9/9 caught. **Never run `mutation-check.py` while
 `npm run test:full` is running**: it rewrites the userscript under the
 running suite. A full run that overlapped one was discarded.
+
+## 2026-10-03 — Annotation sub-section content not aligned with its bar (branch fix/annotation-subsection-indent)
+
+After 9.99.1203 the Annotation's wiki headings are `h3.mb-annotation-toggle-h3`
+bars indented 1.5em, but the paragraphs under them stayed flush with the h2.
+A screenshot from before the change showed them indented. That indent did NOT
+come from MusicBrainz's CSS: `common-aaaf2ca.css` has no annotation or
+`h2 ~`/`h2 +` rule that indents, and neither does the script. It came from
+another stylesheet active in that profile (the bars there were differently
+coloured), most likely one keyed on the wiki `h2`, which the demotion stopped
+matching. Fix: `_makeAnnotationH3sCollapsible()` marks every node a bar owns
+with `.mb-annotation-sub-content` (`margin-left: 1.5em`; a wrapped bare text
+node, a span, is made `display: block` so every line indents). 1.5em of the
+content's font matches the bar's 1.5em here, which the test measures (±1px)
+rather than assumes. Test: `section-sub-headings.spec.js › the content under
+an Annotation bar starts at the bar's left edge…`, failing before the fix
+(off by 18px); one more mutation in `scripts/mutations/section-sub-headings.json`.

@@ -42301,6 +42301,11 @@ a { color: #1565c0; }`;
            h2. */
         .mb-credits-toggle-h3,
         .mb-annotation-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
+        /* The nodes an Annotation sub-heading owns (_makeAnnotationH3sCollapsible())
+           start at the bar's left edge. A wrapped bare text node is a span,
+           made a block so the indent applies to every line of it. */
+        .mb-annotation-sub-content { margin-left: 1.5em; }
+        span.mb-annotation-sub-content { display: block; }
         .mb-subtable-controls { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; vertical-align: middle; }
         .mb-subtable-clear-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-subtable-clear-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
@@ -73790,7 +73795,10 @@ a { color: #1565c0; }`;
      * same walk as `makeH2sCollapsible()`); text before the first heading
      * belongs to none. Native wiki `<h3>`s (`=== … ===`) are left as they are
      * and simply belong to the bar above them. Starts expanded, like the
-     * Credits bars; the Annotation h2 itself still starts collapsed.
+     * Credits bars; the Annotation h2 itself still starts collapsed. Each
+     * owned node gets `.mb-annotation-sub-content`, which indents it by the
+     * bar's own `margin-left` so the content starts at the bar's left edge;
+     * text before the first heading stays flush with the h2.
      *
      * Annotation CELLS inside `table.tbl` are not touched — their nested h2s
      * are `_rewireNestedTableH2Toggles()`'s.
@@ -73840,6 +73848,9 @@ a { color: #1565c0; }`;
                     }
                     _cur = _nxt;
                 }
+                // Indents the bar's content to the bar's own left edge (see
+                // the .mb-annotation-sub-content CSS rule).
+                _contentNodes.forEach(node => node.classList.add('mb-annotation-sub-content'));
                 _h3.classList.add('mb-annotation-h3-processed');
                 _wireSectionSubH3(_h3, _contentNodes, _body);
                 Lib.debug('render', `_makeAnnotationH3sCollapsible: wired toggle for "${_h3.textContent.trim()}".`);
