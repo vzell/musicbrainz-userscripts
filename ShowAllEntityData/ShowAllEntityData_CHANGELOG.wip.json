@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The hover tooltip on the big cover-art picture strip works again on release group pages, and on every other page whose tooltip shows a Country/Date line, when the \"Right Side Flags Everywhere\" userscript is installed. That script wraps the country link in an extra element, and the tooltip code stopped with an error when copying the flag, so no tooltip appeared at all. The same fix applies to the tooltip on inline cover thumbnails, which uses the same code. The flag in the tooltip is now the other script's flag only, not the MusicBrainz flag drawn beside it."
+        ]
+      }
+    ]
+  }
+]

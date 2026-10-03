@@ -1,0 +1,28 @@
+[
+  {
+    "name": "the flag anchor is unwrapped with insertBefore again",
+    "why": "Restores flagClone.insertBefore(a.firstChild, a) in _artTooltipCountryDate(). With Right Side Flags Everywhere's span.mfe-flag-wrapper around the anchor, it throws and the release-group strip shows no tooltip (2026-10-04).",
+    "edits": [
+      {
+        "find": "                if (a) a.replaceWith(...a.childNodes);\n",
+        "replace": "                if (a) {\n                    while (a.firstChild) flagClone.insertBefore(a.firstChild, a);\n                    a.remove();\n                }\n"
+      }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "Right Side Flags Everywhere",
+    "expect": "fail"
+  },
+  {
+    "name": "the flag clone's inline style is overwritten again",
+    "why": "Restores flagClone.style.cssText = ... which wipes Right Side Flags Everywhere's inline background-image:none !important, so the CSS sprite is drawn beside the script's own flag image.",
+    "edits": [
+      {
+        "find": "                flagClone.style.display = 'inline-block';\n                flagClone.style.verticalAlign = 'middle';\n",
+        "replace": "                flagClone.style.cssText = 'display:inline-block; vertical-align:middle;';\n"
+      }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "Right Side Flags Everywhere",
+    "expect": "fail"
+  }
+]
