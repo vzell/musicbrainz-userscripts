@@ -1045,11 +1045,12 @@ register it, see @tests/fixtures/live-userscripts/README.md
 
 When just the "mb. INLINE STUFF" userscript from jesus2099 is active, the "Acoust-IDs" and "ISRC" info is correctly
 rendered under the "Title" column, but as soon as the "MusicBrainz Nuclear Tags" from aerozol is additionally active,
-that data is incorrectly rendered under the "checkbis" column, see e.g the following URL https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
+that data is incorrectly rendered under the 'class="elephant-tag-col' checkbox column, see e.g the following URL
+https://musicbrainz.org/release/230fd31d-f63f-4c01-8f10-432d36a1cb86
 
 #+begin_example
-@debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099 - 
-@debug/ISRC-bug.html - initial raw page with both the "mb. INLINE STUFF" and the "MusicBrainz Nuclear Tags" from aerozol - 
+@debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099 - [Image #4]
+@debug/ISRC-bug.html - initial raw page with both the "mb. INLINE STUFF" and the "MusicBrainz Nuclear Tags" from aerozol - [Image #5]
 #+end_example
 
 3.)
