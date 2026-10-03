@@ -17508,3 +17508,78 @@ fix:
 The restore cannot reach ShowAllEntityData's tables:
 `applyNormalizeMediumTracklists()` drops the `medium` class, and rendered
 tables are plain `table.tbl`.
+
+## 2026-10-03 — ETI keywords: capitalized ETI warning and wider ETI recognition (branch eti-keywords)
+
+Request: `org/ETI.org`. Snapshots: `debug/ETI.html` (release
+5cf63c93-…, "NOW Yearbook: The Vault 1986") and
+`debug/release-tracks-remix-ETI.html` (release f6215982-…, "Seren E.P.").
+Both were re-saved as fixtures with `scripts/fetch-release-fixture.js`
+(`tests/fixtures/release-tracks-eti-keywords.html`,
+`tests/fixtures/release-tracks-remix-eti.html`).
+
+Before: `_TITLE_ETI_RE` accepted only a group starting `[a-z]`. That is the
+style guide's lowercase rule, but it missed "(Moonitor remix)",
+"(U.S. remix)" and "(7” version)", which start with a name, an abbreviation
+or a digit.
+
+Now `_parseTitleAnatomy()` matches any trailing group and asks
+`_classifyEtiGroup()`, using the keyword list `sa_findings_eti_keywords`
+(memoized per raw string in `_etiKeywords()`):
+1. Lowercase start, not a minor word → ETI (unchanged).
+2. Last word, as written, is a lowercase keyword → ETI.
+3. Uppercase start and the first word is a keyword → ETI, plus `etiCase`.
+   This feeds the new `eti-case` FINDINGS entry (warn, generic tint,
+   `sa_findings_tint_eti_case`).
+
+Decisions (asked 2026-10-03):
+- A capitalized group is ETI and also warns.
+- Only the first word is checked, so "(Moonitor Remix)" is neither ETI nor
+  flagged; an alternative title ending in "Radio" would otherwise warn.
+- One shared list drives both rules.
+- The finding covers all title columns (`plan.titleInfo`).
+
+Neither real release has a capitalized keyword under the default list. The
+positive half of `tests/fixtures/findings-eti-case.spec.js` therefore adds
+"theme" to the list, which flags "(Theme for 9 1/2 Weeks)". In
+"I Do What I Do (Theme for 9 1/2 Weeks) (7” version)", the ETI loop
+removes "7” version" and stops at the alternative title under the defaults.
+
+Mutation list: `scripts/mutations/eti-keywords.json`, 5 mutants. The
+memo-refresh guard is recorded `pass`: no spec changes the setting within
+one page load.
+
+## 2026-10-03 — ETI rendered in green italics (branch eti-keywords, WIP.2)
+
+Request: render ETI text in title cells the way the Vocals column draws
+"background" (`.mb-credit-attr`: `sa_credit_attr_color`, italic).
+
+- `_parseTitleAnatomy()` also returns `etiRanges`: the `[start, end)`
+  offset of each ETI group's text in the trimmed title. A part is only cut
+  from its end, so `em.index` stays relative to the part's offset.
+- `_styleTitleEtiEl()` wraps exactly those ranges in
+  `span.mb-title-eti`, across any number of text nodes.
+- `styleTitleEti()` runs once per fetch and disk load, right after
+  `stampFindings()`, over live, master and owner rows (the same walk).
+- The CSS extends the `.mb-credit-attr` rule's selector list. It does not
+  reuse that class: `.mb-credit-attr` is a sentinel the 📊 attribute
+  counters scan.
+
+Why the span is invisible to filtering: the brackets stay OUTSIDE it, so
+the neighbouring text nodes end in "(" and start with ")".
+- `getCleanColumnText()` joins them as "( text )", and
+  `normalizeExtractedText()` strips those spaces again.
+- `highlightCrossTag()` adds no virtual gap next to "(" / ")" / "[" / "]".
+
+So cached texts, filter results and 📊 values are unchanged, and none of the
+post-render cell-write duties apply. Pinned by `title-eti-style.spec.js`: a
+global filter "These (Moonitor remix)" spans the span boundary, matches,
+and is highlighted in full.
+
+Save to Disk stores `innerHTML`, so spans come back on load.
+- `_styleTitleEtiEl()` is idempotent, so they are never wrapped twice.
+- The CSS selector is dropped while `sa_enable_title_eti_style` is off, so
+  restored spans render plain.
+
+Six more mutants in `scripts/mutations/eti-keywords.json`, all failing as
+intended.

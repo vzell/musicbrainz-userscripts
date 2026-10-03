@@ -368,7 +368,17 @@ themselves:
     You're Out)`, is an alternative title and does not count. Neither does a
     group starting with a lowercase article, conjunction or preposition, like
     `Nancy (with the Laughing Face)`, because title case keeps those words
-    lowercase inside a title.
+    lowercase inside a title. Two exceptions come from the keyword list in
+    ⚙️ Settings → ⚠️ Findings (version, single, album, live, remix, mix, edit,
+    …): a group that **ends** in a keyword written lowercase is ETI whatever it
+    starts with (`(Moonitor remix)`, `(U.S. remix)`, `(7” version)`), and a
+    group that **starts** with a keyword written capitalized (`(Version 1)`,
+    `(Live)`) is ETI too, and is also flagged as a warning (see
+    [Warnings and errors](#warnings-and-errors)), because the style guide
+    writes ETI in lower case. In the cells themselves, the text of every
+    group that counts as ETI is shown in green italics, like a credit
+    attribute such as "background" in the Vocals column (switch: ⚙️ Settings
+    → ⚠️ Findings → "Show extra title information in green italics").
   - Four more, each with its own switch in ⚙️ Settings: **🪧 Subtitle**
     (`Biography: The Greatest Hits`), **🔂 Series numbering** (`, Volume 1`,
     `, vol. 2`, `, Part 3`, `, Parts I–V`, `, Pt. II`, with one entry per
@@ -577,6 +587,7 @@ filter with a ✕ to remove it.
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
+| ⚠️     | Extra title information starts uppercase, e.g. "(Version 1)"    | Title columns                               |
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISWC, Barcode                        |
@@ -966,7 +977,7 @@ you automatically.
 | 🔍 Expand release and release groups            | Inline ▶/▼ expanders                                                                                                                                                                                       |
 | ▶️ Expand truncated cells                        | Whether a clipped cell offers an expander, and how it looks                                                                                                                                                |
 | 📑 Show single-table                            | The client-side sub-table snapshot button and its colours                                                                                                                                                  |
-| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates)  |
+| ⚠️ Findings                                      | The ⚠️ WARNING / ❌ ERROR menus on or off; one switch per newly highlighted finding (ALL UPPERCASE, truncated, track ≠ recording name, low quality, pending edits, ISRC, ISWC, barcode, live credit dates, capitalized ETI); the extra title information keyword list  |
 | 💿 Release tracklist                            | Every tracklist column family, credit colours, live-date flagging, the ARs column                                                                                                                          |
 | 🔖 Barcode highlight                            | Identical-barcode highlighting                                                                                                                                                                             |
 | 🔖 Barcode validation                           | GS1 format/check-digit validation, the 📊 Validity/Format/Same As sections                                                                                                                                 |

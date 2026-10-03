@@ -1,0 +1,145 @@
+[
+  {
+    "name": "the eti-case detector never matches",
+    "why": "The finding then never stamps a cell: no menu row, no tint, no 📊 Findings entry. Must fail on the positive count test.",
+    "edits": [
+      {
+        "find": "            test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.etiCase.length > 0; },",
+        "replace": "            test: cell => false,"
+      }
+    ],
+    "spec": "tests/fixtures/findings-eti-case.spec.js",
+    "grep": "counted by row",
+    "expect": "fail"
+  },
+  {
+    "name": "the eti-case tint setting is ignored",
+    "why": "sa_findings_tint_eti_case would then not turn the paint off. Must fail on the tint-setting test.",
+    "edits": [
+      {
+        "find": "            tint: _findingTintSetting('sa_findings_tint_eti_case'),",
+        "replace": "            tint: () => true,"
+      }
+    ],
+    "spec": "tests/fixtures/findings-eti-case.spec.js",
+    "grep": "tint setting turns",
+    "expect": "fail"
+  },
+  {
+    "name": "rule 2 (last word a lowercase keyword) is gone",
+    "why": "\"(Moonitor remix)\", \"(U.S. remix)\" and \"(7” version)\" fall back to alternative titles, which is the pre-ETI.org behaviour. Must fail on the remix release's ETI section.",
+    "edits": [
+      {
+        "find": "        if (last === last.toLowerCase() && kw.has(last)) return 'eti';",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uniq-drop-title-anatomy.spec.js",
+    "grep": "ENDING in a lowercase keyword",
+    "expect": "fail"
+  },
+  {
+    "name": "rule 3 (first word a capitalized keyword) is gone",
+    "why": "\"(Version 1)\" is then neither ETI nor flagged. Must fail on the positive count test.",
+    "edits": [
+      {
+        "find": "        if (/^\\p{Lu}/u.test(g) && kw.has(words[0].toLowerCase())) return 'eti-case';",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/findings-eti-case.spec.js",
+    "grep": "counted by row",
+    "expect": "fail"
+  },
+  {
+    "name": "the keyword memo is never refreshed",
+    "why": "A keyword list edited in ⚙️ Settings would not take effect until a reload. No fixture changes the setting within one page load (every spec seeds it before load), so this is invisible to the suite; a spec that edits sa_findings_eti_keywords through the settings dialog and re-renders would cover it.",
+    "edits": [
+      {
+        "find": "        if (!_etiKeywordsMemo || _etiKeywordsMemo.raw !== raw) {",
+        "replace": "        if (!_etiKeywordsMemo) {"
+      }
+    ],
+    "spec": "tests/fixtures/findings-eti-case.spec.js",
+    "grep": "first word capitalized|empty keyword list",
+    "expect": "pass"
+  },
+  {
+    "name": "styleTitleEti() is not called after a fetch",
+    "why": "No title is styled after Show all. Must fail on the placement test.",
+    "edits": [
+      {
+        "find": "            // Green italic extra title information — same contract.\n            styleTitleEti();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "brackets outside, green",
+    "expect": "fail"
+  },
+  {
+    "name": "the ETI span takes the brackets in",
+    "why": "\"(single version)\" would be green including its brackets, unlike .mb-credit-attr. Must fail on the placement test, which reads the characters around each span.",
+    "edits": [
+      {
+        "find": "                etiRanges.push([start, start + inner.length]);",
+        "replace": "                etiRanges.push([start - 1, start + inner.length + 1]);"
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "brackets outside, green",
+    "expect": "fail"
+  },
+  {
+    "name": "master rows are not styled",
+    "why": "renderGroupedTable() re-renders clones of the master rows, so on a multi-table page every span vanishes on the first filter. Must fail on the re-render test.",
+    "edits": [
+      {
+        "find": "                if (m.row !== row) styleRow(m.row, idxs);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "multi-table re-render keeps it",
+    "expect": "fail"
+  },
+  {
+    "name": "_styleTitleEtiEl() is not idempotent",
+    "why": "A page saved with spans would get a second span inside the first on Load from Disk. Must fail on the round-trip test.",
+    "edits": [
+      {
+        "find": "        if (el.querySelector('.mb-title-eti')) return false;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "reopened tracklist",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting does not stop the styling pass",
+    "why": "sa_enable_title_eti_style off would still write spans (and the CSS gate alone would hide them, so check the DOM). Must fail on the switched-off test.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_enable_title_eti_style === false) return;\n        const titleCols = _uvdTitleInfoColumns();\n        const master",
+        "replace": "        const titleCols = _uvdTitleInfoColumns();\n        const master"
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "switched off: no span",
+    "expect": "fail"
+  },
+  {
+    "name": "the CSS rule ignores the setting",
+    "why": "Spans restored from a page saved with the setting on would stay green after it was switched off. Must fail on the round-trip test's plain half.",
+    "edits": [
+      {
+        "find": "${Lib.settings.sa_enable_title_eti_style === false ? '' : ', .mb-title-eti'}",
+        "replace": ", .mb-title-eti"
+      }
+    ],
+    "spec": "tests/fixtures/title-eti-style.spec.js",
+    "grep": "reopened tracklist",
+    "expect": "fail"
+  }
+]

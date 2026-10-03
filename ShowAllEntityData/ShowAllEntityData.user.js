@@ -2112,6 +2112,39 @@
                          'title cut off at the 1,024-character limit or copied from a cut-off source.'
         },
 
+        sa_findings_eti_keywords: {
+            label: 'Extra title information keywords',
+            type: 'text',
+            default: 'version, single, album, soundtrack, live, rehearsal, studio, radio, remix, mix, edit, demo, ' +
+                     'instrumental, acoustic, extended, original, remaster, remastered, take, dub, reprise, mono, ' +
+                     'stereo, bonus, karaoke',
+            description: 'Comma-separated single words, matched case-insensitively, that mark a trailing "(…)" or ' +
+                         '"[…]" of a title as extra title information (ETI) even when it does not start lowercase. ' +
+                         'A group whose LAST word is one of them in lower case is ETI ("(Moonitor remix)", ' +
+                         '"(7” version)"). A group whose FIRST word is one of them written capitalized is ETI too, ' +
+                         'and is flagged as a WARNING, because the style guide writes ETI in lower case ' +
+                         '("(Version 1)" instead of "(version 1)"). Leave empty for lowercase-only ETI and no warning.'
+        },
+
+        sa_enable_title_eti_style: {
+            label: 'Show extra title information in green italics',
+            type: 'checkbox',
+            default: true,
+            description: 'Render the extra title information of a title — the text inside "(single version)", ' +
+                         '"(Moonitor remix)", … — in green italics, the way credit attributes such as "background" ' +
+                         'show in the Vocals column (same colour: ⚙️ Settings → 💿 RELEASE TRACKLIST → Credit ' +
+                         'attribute color). Applies to Title columns and the columns listed in "Title Info On These ' +
+                         'Columns Too". Takes effect on the next load.'
+        },
+
+        sa_findings_tint_eti_case: {
+            label: 'Highlight capitalized extra title information as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint a title cell light yellow with a ⚠️ when its extra title information starts with ' +
+                         'one of the keywords above written capitalized, e.g. "(Version 1)" or "(Live)".'
+        },
+
         sa_findings_tint_event_style: {
             label: 'Highlight event names that almost follow the style guide as WARNING',
             type: 'checkbox',
@@ -24837,16 +24870,79 @@
     //     an article, conjunction or preposition (_TITLE_ETI_MINOR_RE): English
     //     title case keeps those lowercase INSIDE a title, so "Nancy (with the
     //     Laughing Face)" is part of the song's name, not ETI.
+    //     Two more rules read the `sa_findings_eti_keywords` list (org/ETI.org,
+    //     _classifyEtiGroup()): a group whose LAST word is a keyword in lower
+    //     case is ETI whatever it starts with ("Moonitor remix", "U.S. remix",
+    //     "7” version"); a group whose FIRST word is a keyword written
+    //     capitalized ("Version 1", "Live") is ETI too, and is the `eti-case`
+    //     finding.
     //   - Series numbering: ", Volume 1" / ", vol. 2" / ", Part 3" /
     //     ", Parts I–V" / ", Pt. II".
     //   - OC ReMix: 'Game "Title" OC ReMix' (the guide's one named exception).
     const _TITLE_MEDLEY_RE   = /^(Medley(?:\s+(\d+))?)\s*[:;]\s*/i;
-    const _TITLE_ETI_RE      = /\s[(\[]([a-z][^()\[\]]*)[)\]]$/;
+    const _TITLE_ETI_RE      = /\s[(\[]([^()\[\]]+)[)\]]$/;
     const _TITLE_ETI_MINOR_RE = /^(?:a|an|the|and|or|but|nor|with|of|in|on|at|to|by|for|as|into|onto|upon)\b/;
     const _TITLE_SERIES_RE   = /,\s(?:Vol(?:ume)?\.?|Parts?|Pt\.)\s*([IVXLC\d]+(?:\s*[–-]\s*[IVXLC\d]+)?)\b/i;
     const _TITLE_FORMAT_RE   = /\b(EP|LP|CD|Single)\b/g;
     const _TITLE_OCREMIX_RE  = /"[^"]+" OC ReMix$/;
     const _TITLE_SUBTITLE_RE = /\S: \S/;
+
+    /** @type {?{raw: string, set: Set<string>}} `_etiKeywords()`' memo. */
+    let _etiKeywordsMemo = null;
+
+    /**
+     * The `sa_findings_eti_keywords` list as a lowercase Set, memoized on the
+     * raw setting string so `_parseTitleAnatomy()` pays one comparison per
+     * call, not a re-parse. An empty setting yields an empty Set, which turns
+     * the two keyword rules of `_classifyEtiGroup()` off.
+     *
+     * @returns {Set<string>}
+     */
+    function _etiKeywords() {
+        const raw = String(Lib.settings.sa_findings_eti_keywords ?? 'version, single, album, soundtrack, live, rehearsal, studio, radio, remix, mix, edit, demo, instrumental, acoustic, extended, original, remaster, remastered, take, dub, reprise, mono, stereo, bonus, karaoke');
+        if (!_etiKeywordsMemo || _etiKeywordsMemo.raw !== raw) {
+            _etiKeywordsMemo = {
+                raw,
+                set: new Set(raw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)),
+            };
+        }
+        return _etiKeywordsMemo.set;
+    }
+
+    /**
+     * One word of an ETI group without the punctuation around it, so
+     * `version,` and `"remix"` still match a keyword.
+     *
+     * @param {string} word
+     * @returns {string}
+     */
+    const _etiBareWord = word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+
+    /**
+     * Classifies the text inside one trailing "(…)"/"[…]" of a title:
+     *   1. starts lowercase and not with a minor word (_TITLE_ETI_MINOR_RE)
+     *      → `'eti'` (the style guide's own rule);
+     *   2. its LAST word, as written, is a lowercase keyword → `'eti'`
+     *      ("Moonitor remix", "U.S. remix", "7” version");
+     *   3. starts uppercase and its FIRST word is a keyword → `'eti-case'`:
+     *      ETI written capitalized ("Version 1", "Single Version", "LIVE");
+     *   4. anything else → `null`, an alternative title or part of the name.
+     * Rules 2 and 3 read `_etiKeywords()`.
+     *
+     * @param {string} g - The group's text, without its brackets.
+     * @returns {?('eti'|'eti-case')}
+     */
+    function _classifyEtiGroup(g) {
+        if (/^[a-z]/.test(g) && !_TITLE_ETI_MINOR_RE.test(g)) return 'eti';
+        const kw = _etiKeywords();
+        if (!kw.size) return null;
+        const words = g.trim().split(/\s+/).map(_etiBareWord).filter(Boolean);
+        if (!words.length) return null;
+        const last = words[words.length - 1];
+        if (last === last.toLowerCase() && kw.has(last)) return 'eti';
+        if (/^\p{Lu}/u.test(g) && kw.has(words[0].toLowerCase())) return 'eti-case';
+        return null;
+    }
 
     /**
      * Breaks a title string down along the sections of MusicBrainz's title
@@ -24858,14 +24954,21 @@
      * never read as a subtitle and "Medley 1" is never a title of its own;
      * then the text is split on the SPACED slash " / " only (a bare "/", as
      * in "AC/DC", is part of a name); then each part loses its trailing
-     * lowercase ETI groups, repeatedly, so "(live) (remastered)" yields two.
+     * ETI groups (`_classifyEtiGroup()`), repeatedly, so "(live)
+     * (remastered)" yields two, and "(Theme for 9 1/2 Weeks) (7” version)"
+     * yields one before it stops at the alternative title.
      *
      * @param {?string} text - The displayed title.
      * @returns {?{medley: ?{label: string, num: ?string}, parts: string[],
-     *   eti: string[], subtitle: boolean, seriesNum: ?string,
-     *   formats: string[], truncated: boolean, ocRemix: boolean,
-     *   allCaps: boolean}} `null` for an empty title. `parts` always holds
-     *   at least one entry; two or more means a multi-title recording.
+     *   eti: string[], etiCase: string[], etiRanges: Array<[number, number]>,
+     *   subtitle: boolean, seriesNum: ?string, formats: string[],
+     *   truncated: boolean, ocRemix: boolean, allCaps: boolean}} `null` for
+     *   an empty title. `parts` always holds at least one entry; two or more
+     *   means a multi-title recording. `etiCase` is the subset of `eti`
+     *   written capitalized (the `eti-case` finding). `etiRanges` holds every
+     *   ETI group's text (brackets excluded) as `[start, end)` offsets into
+     *   the TRIMMED title, in document order — one per occurrence, so a text
+     *   `eti` lists once may have several.
      */
     function _parseTitleAnatomy(text) {
         if (!text) return null;
@@ -24879,11 +24982,24 @@
             body = body.slice(mm[0].length);
         }
         const eti = [];
+        const etiCase = [];
+        const etiRanges = [];
+        // Offset of the current " / " part in `full`, so each ETI group's
+        // text can be located for _styleTitleEtiEl(). A part is only ever
+        // cut from its END, so `em.index` stays relative to `partOff`.
+        let pos = mm ? mm[0].length : 0;
         const parts = body.split(' / ').map(p => {
+            const partOff = pos + (p.length - p.trimStart().length);
+            pos += p.length + 3;
             let part = p.trim();
-            let em;
-            while ((em = _TITLE_ETI_RE.exec(part)) && !_TITLE_ETI_MINOR_RE.test(em[1])) {
-                eti.unshift(em[1].trim());
+            let em, kind;
+            while ((em = _TITLE_ETI_RE.exec(part)) && (kind = _classifyEtiGroup(em[1]))) {
+                const inner = em[1].trim();
+                eti.unshift(inner);
+                if (kind === 'eti-case') etiCase.unshift(inner);
+                // em[0] is "<space><bracket>text<bracket>".
+                const start = partOff + em.index + 2 + (em[1].length - em[1].trimStart().length);
+                etiRanges.push([start, start + inner.length]);
                 part = part.slice(0, em.index).trim();
             }
             return part;
@@ -24898,6 +25014,8 @@
             medley,
             parts: parts.length ? parts : [body],
             eti: Array.from(new Set(eti)),
+            etiCase: Array.from(new Set(etiCase)),
+            etiRanges: etiRanges.sort((x, y) => x[0] - y[0]),
             subtitle: _TITLE_SUBTITLE_RE.test(body),
             seriesNum: sm ? sm[1].replace(/\s+/g, '') : null,
             formats,
@@ -24960,6 +25078,116 @@
     function _findCellTitleAnatomy(cell) {
         const el = _findCellTitleEl(cell);
         return el ? _parseTitleAnatomy(el.textContent) : null;
+    }
+
+    /**
+     * Wraps the text of every extra-title-information group of one title
+     * element in `<span class="mb-title-eti">` (green italics, the colour of
+     * the Vocals column's "background"-style credit attributes). The brackets
+     * stay OUTSIDE the span, as `.mb-credit-attr`'s do, so the text nodes
+     * around it always end in "("/"[" and start with ")"/"]":
+     * `getCleanColumnText()` joins them with a space that
+     * `normalizeExtractedText()` strips again, and `highlightCrossTag()` adds
+     * no virtual gap at a bracket — filter text and highlight offsets are the
+     * same as without the span.
+     *
+     * Positions come from `_parseTitleAnatomy()`'s `etiRanges`, so only the
+     * groups the parser calls ETI are wrapped, never an identical
+     * "(…)" earlier in the title. Works on any number of text nodes (a
+     * highlight span may already have split one). Idempotent: an element
+     * that already holds a wrapper is left alone, so a disk load of a saved
+     * page does not wrap twice.
+     *
+     * @param {Element} el - A title element from `_findCellTitleEl()`.
+     * @returns {boolean} Whether anything was wrapped.
+     */
+    function _styleTitleEtiEl(el) {
+        if (el.querySelector('.mb-title-eti')) return false;
+        const text = el.textContent;
+        const a = _parseTitleAnatomy(text);
+        if (!a || !a.etiRanges.length) return false;
+        const lead = text.length - text.trimStart().length;
+        const nodes = [];
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+        let off = 0;
+        let n;
+        while ((n = walker.nextNode())) {
+            nodes.push({ node: n, start: off, end: off + n.nodeValue.length });
+            off += n.nodeValue.length;
+        }
+        // Last range first, last node first: splitText() keeps the ORIGINAL
+        // node as the leading piece, so every earlier (node, offset) pair
+        // stays valid for the ranges still to come.
+        for (let r = a.etiRanges.length - 1; r >= 0; r--) {
+            const s = a.etiRanges[r][0] + lead;
+            const e = a.etiRanges[r][1] + lead;
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const { node, start, end } = nodes[i];
+                if (end <= s || start >= e) continue;
+                const from = Math.max(s, start) - start;
+                const to = Math.min(e, end) - start;
+                const mid = from > 0 ? node.splitText(from) : node;
+                if (to - from < mid.nodeValue.length) mid.splitText(to - from);
+                const span = document.createElement('span');
+                span.className = 'mb-title-eti';
+                mid.replaceWith(span);
+                span.appendChild(mid);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Renders the extra title information of every title cell in green
+     * italics (`_styleTitleEtiEl()`), on the "Title" column and every
+     * `sa_uvd_title_info_columns` column — the cells the 📊 "Title info"
+     * sections read. Off with `sa_enable_title_eti_style`.
+     *
+     * Same once-per-fetch contract as `stampFindings()`, beside which it is
+     * called: at the render tail, onto the live rows, their master rows and
+     * the owner arrays' rows the active filter left out, because
+     * `renderGroupedTable()` always renders clones and the span must ride
+     * every later `cloneNode(true)`. Wraps existing text without changing
+     * it, so none of the "writing cell text after the render" duties apply
+     * (docs/claude/filter-and-cache-invariants.md): every cached text,
+     * filter result and 📊 value stays what it was.
+     */
+    function styleTitleEti() {
+        if (Lib.settings.sa_enable_title_eti_style === false) return;
+        const titleCols = _uvdTitleInfoColumns();
+        const master = _buildMasterRowIndex();
+        const done = new Set();
+        let styled = 0;
+        const styleRow = (row, idxs) => idxs.forEach(i => {
+            const el = _findCellTitleEl(row.cells[i]);
+            if (el && _styleTitleEtiEl(el)) styled++;
+        });
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const tbody = table.tBodies[0];
+            if (!tbody) return;
+            const count = table.querySelectorAll('thead tr:first-child th').length;
+            const idxs = [];
+            for (let i = 0; i < count; i++) {
+                const name = _resolveColHeaderName(table, i);
+                if (name === 'Title' || titleCols.has(name)) idxs.push(i);
+            }
+            if (!idxs.length) return;
+            const owners = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                styleRow(row, idxs);
+                const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
+                if (!m) return;
+                if (m.row !== row) styleRow(m.row, idxs);
+                done.add(m.row);
+                owners.add(m.owner);
+            });
+            owners.forEach(owner => owner.forEach(r => {
+                if (done.has(r)) return;
+                styleRow(r, idxs);
+                done.add(r);
+            }));
+        });
+        Lib.debug('render', `styleTitleEti(): ${styled} title element(s) styled.`);
     }
 
     // Grammar of https://musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs
@@ -25929,6 +26157,14 @@
             cols: (name, plan) => plan.titleInfo(name),
             test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.truncated; },
             tint: _findingTintSetting('sa_findings_tint_truncated'),
+        },
+        {
+            id: 'eti-case', level: 'warn', glyph: '🔡', scope: 'cell',
+            label: 'Extra title information starts uppercase',
+            tip: 'A trailing "(…)" or "[…]" that starts with an extra title information keyword written capitalized, e.g. "(Version 1)" or "(Live)". The style guide writes ETI in lower case: "(version 1)", "(live)" (https://musicbrainz.org/doc/Style/Titles#Extra_title_information). Keywords: ⚙️ Settings → ⚠️ FINDINGS.',
+            cols: (name, plan) => plan.titleInfo(name),
+            test: cell => { const a = _findCellTitleAnatomy(cell); return !!a && a.etiCase.length > 0; },
+            tint: _findingTintSetting('sa_findings_tint_eti_case'),
         },
         {
             id: 'title-mismatch', level: 'warn', glyph: '≠', scope: 'cell',
@@ -42322,8 +42558,13 @@ a { color: #1565c0; }`;
            them, not just Vocals/Instruments. sa_credit_attr_color is the
            only configurable knob (per its own configSchema description);
            the italic on both has no separate setting, mirroring
-           .mb-credit-task's own fixed <i> styling. */
-        .mb-credit-attr { color: ${Lib.settings.sa_credit_attr_color || '#2e7d32'}; font-style: italic; }
+           .mb-credit-task's own fixed <i> styling. .mb-title-eti is the
+           extra title information of a title (styleTitleEti()), drawn the
+           same way; it is NOT a .mb-credit-attr, so no attribute counter
+           ever reads it. Its selector is dropped while
+           sa_enable_title_eti_style is off, so spans restored from a page
+           saved with it on render plain too. */
+        .mb-credit-attr${Lib.settings.sa_enable_title_eti_style === false ? '' : ', .mb-title-eti'} { color: ${Lib.settings.sa_credit_attr_color || '#2e7d32'}; font-style: italic; }
         .mb-credit-altname { font-style: italic; }
         .mb-toggle-h2 { cursor: pointer; user-select: none; background-color: ${Lib.settings.sa_ui_h2_bg || '#ffd787'}; }
         /* Wiki-rendered <h2> sub-headings nested inside table.tbl cells (e.g. an
@@ -58743,6 +58984,8 @@ a { color: #1565c0; }`;
             // live-title stamp (and the ISRC/ISWC/barcode passes), whose
             // attributes the findings' tint() reads.
             stampFindings();
+            // Green italic extra title information — same contract.
+            styleTitleEti();
 
             // Re-align the filter row after Picard injection.
             // initPicardTaggerColumn appends a <th class="mb-picard-th"> to the first
@@ -70449,7 +70692,7 @@ a { color: #1565c0; }`;
         if (mode === 'title-multi') return '➗ = the title joins several titles with a spaced slash " / ", MusicBrainz\'s style for multiple or split titles (https://musicbrainz.org/doc/Style/Titles).';
         if (mode === 'title-no-work') return '🚫 = this row\'s "Recording of work" cell links no work.';
         if (mode === 'title-has-work') return '🖋️ = this row\'s "Recording of work" cell links at least one work.';
-        if (mode === 'title-eti') return '➕ = the title ends in extra title information: a "(…)" or "[…]" whose text starts lowercase, e.g. "(single version)". A capitalized "(…)" is an alternative title, not ETI.';
+        if (mode === 'title-eti') return '➕ = the title ends in extra title information: a "(…)" or "[…]" whose text starts lowercase, e.g. "(single version)", or ends in a lowercase keyword of ⚙️ Settings → ⚠️ FINDINGS, e.g. "(Moonitor remix)". One starting with a keyword written capitalized, e.g. "(Version 1)", is ETI too and is flagged ⚠️. Any other capitalized "(…)" is an alternative title, not ETI.';
         if (mode === 'title-subtitle') return '🪧 = the title carries a colon-separated subtitle, e.g. "Biography: The Greatest Hits". A medley prefix never counts.';
         if (mode === 'title-series') return '🔂 = the title carries series numbering: ", Volume 1", ", vol. 2", ", Part 3", ", Parts I–V" or ", Pt. II".';
         if (mode === 'title-truncated') return '✂️ = the title ends in "…" — MusicBrainz truncates titles longer than 1,024 characters this way.';
@@ -82919,6 +83162,7 @@ a { color: #1565c0; }`;
             initBarcodeValidation();
             stampLiveTitleFlags();
             stampFindings();
+            styleTitleEti();
 
             // Re-align the filter row after Picard injection (stale-detection no-op
             // when counts already match; self-heals on mismatch — see addColumnFilterRow).
