@@ -17313,3 +17313,91 @@ Two test-side traps worth knowing: `innerText` of an element inside a
 a quick-filter non-match keeps its previous label (marks included) while
 hidden. Assert on visible marks or on structure, never on innerText inside a
 collapsed group.
+
+## 2026-10-03 — Credits "Release" / "Release group" h3 bars not indented (branch fix/credits-h3-indent)
+
+**Symptom** (`debug/release-tracks-h2-with-h3-unindented.html`): with Credits
+expanded on a `release-tracks` page, its `Release` h3 bar starts at the same
+left edge as the `Credits` h2. The data sub-table bar `1 - CD` is indented
+under `Tracklist` (`--mb-sph-left` 38px vs the h2's 20px).
+
+**Cause:** `_makeCreditsH3sCollapsible()` gives these native h3s their own
+class, `.mb-credits-toggle-h3` (deliberately NOT `.mb-toggle-h3`; see its
+JSDoc). That class's CSS rule says it "visually mirrors .mb-toggle-h3", but it
+was copied without `.mb-toggle-h3`'s `margin-left: 1.5em`.
+
+**Fix:** add the same `margin-left: 1.5em`. No effect on sticky headers: these
+bars are not separate pin targets, they ride along inside the pinned
+`#release-relationships` / `#release-group-relationships` bodies. The
+`dl.ars` content below each bar is laid out by MusicBrainz's own `dt` column
+and does not move.
+
+**Scope:** these are the only h3 bars the script creates in an h2 section
+above the data h2. Native h3s from wiki markup (e.g. inside an Annotation)
+are content, not section bars, and stay unindented.
+
+**Test:** `sticky-page-headers.spec.js › Credits Release / Release group h3
+bars are indented like the data sub-table h3`. It compares each Credits h3's
+offset from the Credits h2 with the first `.mb-toggle-h3`'s offset from the
+data h2 (±1px), so a mismatched indent fails too, not just a missing one.
+Verified failing before the fix (offset 0).
+
+### Same branch, follow-up — Annotation wiki headings: not sticky, h2-coloured, no per-section Ctrl+Click
+
+**Snapshot:** `debug/release-tracks-annotations-with-h3.html` (Devils & Dust,
+all h2s expanded, then scrolled to the far right). What looks like an h3,
+"Barcode and other identifiers", is an **`<h2>`**: MusicBrainz renders wiki
+`== … ==` that way, inside `div.annotation > div.annotation-body`.
+
+**Root cause of "only Show less… and the details line stay sticky":**
+`_sphSectionBodies()` skips a section body that contains an `<h2>` (meant for
+a wrapper around a later section). So `div.annotation-body` was never pinned.
+`_sphCollectTargets()` still pinned the nested h2 (every h2/h3) and the `<p>`
+after it (as that h2's own "body"). **A sticky box cannot leave its
+containing block**, though, so both slid away with the unpinned
+annotation-body, and the paragraphs before the heading were never collected.
+Only `p > a.annotation-toggle` and `div.annotation-details` stayed, because
+they are direct children of `div.annotation`, outside the body.
+
+**Fix:** `_makeAnnotationH3sCollapsible()` (called in `finalCleanup()` and on
+the disk-load path, BEFORE `_relocateTrailingH2Sections()` and
+`makeH2sCollapsible()`) demotes those h2s to
+`h3.mb-annotation-toggle-h3`. With no h2 left, `_sphSectionBodies()` pins the
+body as a whole, and the bar rides along by the nesting rule. The sticky code
+itself is unchanged. The bars share the `.mb-credits-toggle-h3` CSS rule
+(selector list extended, not copied) and a new toggle helper,
+`_wireSectionSubH3()`, that both Credits and Annotation now use. Ctrl+Click
+on a bar toggles every bar in its `peerScope` (`#bottom-credits`, or that
+`div.annotation-body`) and nothing else. Behaviour changes: these headings
+start expanded (as h2s they started collapsed), and they are out of the
+page-wide h2 Ctrl+Click / `Ctrl+2` set. Native wiki `=== … ===` h3s are left
+as they are. Annotation cells inside `table.tbl` are not touched.
+
+**Fixture trap:** `release-tracks-multirow-instruments.html` carries
+MusicBrainz's CSS but not its JS, so `.annotation-collapsed` stays on (on a
+live page `autoExpandNativeAnnotation()` clicks MB's toggle and React drops
+it). Its fade overlay is a pseudo-element of the body and swallows clicks on
+the bar ("div.annotation-body intercepts pointer events"). The spec removes the
+class, just as the native toggle would.
+
+**Tests:** `tests/fixtures/section-sub-headings.spec.js` (3 tests) plus
+`sticky-page-headers.spec.js › an Annotation with a wiki "== … ==" heading
+pins its whole text…`. All failed before the fix.
+`scripts/mutations/section-sub-headings.json`: 7 planted defects, all caught.
+Playwright's `-g` is a regex, so a grep containing "Ctrl+Click" selects
+nothing; grep on text without the `+`.
+
+**Same branch, later:** `_removeAnnotationShowLessToggle()` (called right
+after `_makeAnnotationH3sCollapsible()` at both sites, so before
+`makeH2sCollapsible()` captures the Annotation h2's content nodes) removes
+`div.annotation > p > a.annotation-toggle` once the body has lost
+`.annotation-collapsed`. While the body is still collapsed (auto-expand off),
+that link is "Show more…", the only way to read the rest, so it is kept.
+The check uses the class, never the localised link text. Note the classes:
+expanded is `annotation-collapse`, collapsed is `annotation-collapsed`.
+Removing a React-rendered node is safe here only because nothing re-renders
+that component once its own toggle is gone. Tests: two in
+`section-sub-headings.spec.js` (removed when expanded / kept when collapsed);
+two more mutations, 9/9 caught. **Never run `mutation-check.py` while
+`npm run test:full` is running**: it rewrites the userscript under the
+running suite. A full run that overlapped one was discarded.

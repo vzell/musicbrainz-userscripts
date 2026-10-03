@@ -42287,15 +42287,20 @@ a { color: #1565c0; }`;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         .mb-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
-        .mb-credits-toggle-h3:hover {
+        .mb-credits-toggle-h3:hover,
+        .mb-annotation-toggle-h3:hover {
             color: #222;
             background-color: ${Lib.settings.sa_ui_h3_hover_bg || '#eb7231'};
         }
         /* "Release"/"Release group" sub-headings inside the native Credits
            section (div#bottom-credits) — see _makeCreditsH3sCollapsible()'s
            JSDoc for why this is a separate class from .mb-toggle-h3 rather
-           than sharing it. Visually mirrors .mb-toggle-h3 for consistency. */
-        .mb-credits-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
+           than sharing it — and an Annotation's wiki headings, demoted to h3
+           by _makeAnnotationH3sCollapsible(). Visually mirrors .mb-toggle-h3
+           for consistency, including its margin-left indent under the owning
+           h2. */
+        .mb-credits-toggle-h3,
+        .mb-annotation-toggle-h3 { cursor: pointer; user-select: none; border-bottom: 1px solid #eee; padding: 4px 0; margin-left: 1.5em; background-color: ${Lib.settings.sa_ui_h3_bg || '#f7dfdf'}; }
         .mb-subtable-controls { display: inline-flex; align-items: baseline; gap: 8px; margin-left: 12px; vertical-align: middle; }
         .mb-subtable-clear-btn { font-size: ${uiSubtableBtnVals().fontSize}; padding: ${uiSubtableBtnVals().padding}; cursor: pointer; vertical-align: middle; border-radius: ${uiSubtableBtnVals().borderRadius}; background: ${uiSubtableBtnVals().bg}; border: ${uiSubtableBtnVals().border}; }
         .mb-subtable-clear-btn:hover { background: ${uiSubtableBtnVals().bgHover}; }
@@ -73741,6 +73746,10 @@ a { color: #1565c0; }`;
      * `#bottom-credits` into its final position — it only needs the subtree to
      * exist, not any particular position, but is kept adjacent to that call for
      * readability since both operate on the same native structure.
+     *
+     * The toggle itself is `_wireSectionSubH3()`, shared with the Annotation's
+     * sub-headings (`_makeAnnotationH3sCollapsible()`); Ctrl+Click on either
+     * bar toggles both bars of this Credits section.
      */
     function _makeCreditsH3sCollapsible() {
         const _bottomCredits = document.getElementById('bottom-credits');
@@ -73755,25 +73764,162 @@ a { color: #1565c0; }`;
             if (_contentNodes.length === 0) return; // nothing to collapse
 
             _h3.classList.add('mb-credits-h3-processed', 'mb-credits-toggle-h3');
-
-            const _icon = document.createElement('span');
-            _icon.className = 'mb-toggle-icon';
-            _h3.prepend(_icon);
-
-            const _setState = (expanded) => {
-                _contentNodes.forEach(node => node.style.display = expanded ? '' : 'none');
-                _icon.textContent = expanded ? '▼' : '▲';
-                _h3.title = expanded
-                    ? 'Click to collapse this section'
-                    : 'Click to expand this section';
-            };
-            _setState(true); // native page always shows these expanded
-
-            _h3.addEventListener('click', () => {
-                _setState(_icon.textContent === '▲');
-            });
+            _wireSectionSubH3(_h3, _contentNodes, _bottomCredits);
 
             Lib.debug('render', `_makeCreditsH3sCollapsible: wired toggle for "${_h3.textContent.trim()}".`);
+        });
+    }
+
+    /**
+     * Turns the wiki `== … ==` headings of a page-level Annotation into
+     * collapsible `<h3>` sub-section bars, styled and wired like the Credits
+     * bars (`_makeCreditsH3sCollapsible()`).
+     *
+     * MusicBrainz renders such a heading as an `<h2>` nested inside
+     * `div.annotation > div.annotation-body`. Left as an h2 it is mistaken for
+     * a page-level section everywhere h2s are walked: `makeH2sCollapsible()`
+     * gives it the h2 colour, the page-wide Ctrl+Click / `Ctrl+2` set and a
+     * collapsed default, and `_sphSectionBodies()` refuses to pin a body that
+     * contains an h2 — so the whole annotation text scrolled away sideways
+     * (the heading and its paragraph were pinned on their own, but a sticky
+     * box cannot leave its unpinned containing block). As an h3 the body is
+     * pinned as a whole and the bar rides along inside it.
+     *
+     * Each heading owns its following siblings up to the next heading or the
+     * end of the body (bare non-empty text nodes wrapped in a `<span>`, the
+     * same walk as `makeH2sCollapsible()`); text before the first heading
+     * belongs to none. Native wiki `<h3>`s (`=== … ===`) are left as they are
+     * and simply belong to the bar above them. Starts expanded, like the
+     * Credits bars; the Annotation h2 itself still starts collapsed.
+     *
+     * Annotation CELLS inside `table.tbl` are not touched — their nested h2s
+     * are `_rewireNestedTableH2Toggles()`'s.
+     *
+     * Must run BEFORE `_relocateTrailingH2Sections()` and
+     * `makeH2sCollapsible()`, so neither ever sees these headings as h2s.
+     * Idempotent: a demoted body has no `:scope > h2` left, and stale h2
+     * state (from a disk-load on an already-rendered page) is stripped.
+     */
+    function _makeAnnotationH3sCollapsible() {
+        const _sidebar = document.getElementById('sidebar');
+        document.querySelectorAll('div.annotation-body').forEach(_body => {
+            if (_body.closest('table') || (_sidebar && _sidebar.contains(_body))) return;
+
+            _body.querySelectorAll(':scope > h2').forEach(_h2 => {
+                const _oldIcon = _h2.querySelector(':scope > .mb-toggle-icon');
+                if (_oldIcon) _oldIcon.remove();
+                if (_h2._mbClickHandler) _h2.removeEventListener('click', _h2._mbClickHandler);
+                const _h3 = document.createElement('h3');
+                Array.from(_h2.attributes).forEach(a => _h3.setAttribute(a.name, a.value));
+                _h3.classList.remove('mb-h2-processed', 'mb-toggle-h2');
+                if (!_h3.classList.length) _h3.removeAttribute('class');
+                _h3.style.removeProperty('cursor');
+                _h3.style.removeProperty('user-select');
+                if (!_h3.getAttribute('style')) _h3.removeAttribute('style');
+                _h3.removeAttribute('title');
+                while (_h2.firstChild) _h3.appendChild(_h2.firstChild);
+                _h2.replaceWith(_h3);
+                _h3.classList.add('mb-annotation-toggle-h3');
+            });
+
+            const _bars = Array.from(_body.querySelectorAll(':scope > h3.mb-annotation-toggle-h3'));
+            _bars.forEach(_h3 => {
+                if (_h3.classList.contains('mb-annotation-h3-processed')) return;
+                const _contentNodes = [];
+                let _cur = _h3.nextSibling;
+                while (_cur) {
+                    const _nxt = _cur.nextSibling; // save before any DOM mutation
+                    if (_cur.nodeType === Node.ELEMENT_NODE && _bars.includes(_cur)) break;
+                    if (_cur.nodeType === Node.TEXT_NODE && _cur.textContent.trim()) {
+                        const _wrap = document.createElement('span');
+                        _cur.parentNode.insertBefore(_wrap, _cur);
+                        _wrap.appendChild(_cur);
+                        _contentNodes.push(_wrap);
+                    } else if (_cur.nodeType === Node.ELEMENT_NODE) {
+                        _contentNodes.push(_cur);
+                    }
+                    _cur = _nxt;
+                }
+                _h3.classList.add('mb-annotation-h3-processed');
+                _wireSectionSubH3(_h3, _contentNodes, _body);
+                Lib.debug('render', `_makeAnnotationH3sCollapsible: wired toggle for "${_h3.textContent.trim()}".`);
+            });
+        });
+    }
+
+    /**
+     * Removes MusicBrainz's native "Show less..." annotation toggle
+     * (`div.annotation > p > a.annotation-toggle`) from the rendered page once
+     * the annotation is fully shown — i.e. its `div.annotation-body` no
+     * longer carries `.annotation-collapsed` (normally because
+     * `autoExpandNativeAnnotation()` clicked "Show more..." on load). The
+     * Annotation h2 already collapses the whole section, so the link is just
+     * clutter there.
+     *
+     * Kept while the body is still collapsed (`sa_enable_annotation_auto_expand`
+     * off): "Show more..." is then the only way to read the rest. Keyed on the
+     * class, never on the link text, which MB localises.
+     *
+     * Must run BEFORE `makeH2sCollapsible()` captures the Annotation h2's
+     * content nodes, so the removed paragraph is not among them. Idempotent.
+     */
+    function _removeAnnotationShowLessToggle() {
+        document.querySelectorAll('div.annotation').forEach(_ann => {
+            if (_ann.closest('table')) return;
+            const _body = _ann.querySelector(':scope > div.annotation-body');
+            if (!_body || _body.classList.contains('annotation-collapsed')) return;
+            _ann.querySelectorAll(':scope > p').forEach(_p => {
+                if (!_p.querySelector('a.annotation-toggle')) return;
+                _p.remove();
+                Lib.debug('cleanup', '_removeAnnotationShowLessToggle: removed the native "Show less..." toggle.');
+            });
+        });
+    }
+
+    /**
+     * Wires one sub-section bar of a non-data h2 section (Credits'
+     * "Release"/"Release group", an Annotation's wiki headings): a
+     * `.mb-toggle-icon` prefix and a click that shows/hides `contentNodes`
+     * via `style.display`, starting expanded.
+     *
+     * Ctrl+Click applies the clicked bar's new state to every sub-section bar
+     * inside `peerScope` — the bar's own h2 section only, never the whole page
+     * (the same "toggle all peers" idea as `makeH2sCollapsible()`'s, at h3
+     * scope). Peers are found by class and must carry `_mbSubToggle`.
+     *
+     * A direct listener plus a JS property are fine here: these are native
+     * nodes outside `table.tbl`, never cloned by a re-render.
+     *
+     * @param {HTMLElement}   h3           - The bar to wire.
+     * @param {HTMLElement[]} contentNodes - The nodes it shows/hides.
+     * @param {HTMLElement}   peerScope    - Its h2 section's container.
+     * @returns {void}
+     */
+    function _wireSectionSubH3(h3, contentNodes, peerScope) {
+        const icon = document.createElement('span');
+        icon.className = 'mb-toggle-icon';
+        h3.prepend(icon);
+
+        h3._mbSubToggle = (expanded) => {
+            contentNodes.forEach(node => node.style.display = expanded ? '' : 'none');
+            icon.textContent = expanded ? '▼' : '▲';
+            h3.title = (expanded
+                ? 'Click to collapse this sub-section'
+                : 'Click to expand this sub-section') +
+                ' (Ctrl+Click to toggle ALL sub-sections of this section)';
+        };
+        h3._mbSubToggle(true);
+
+        h3.addEventListener('click', (e) => {
+            const expand = icon.textContent === '▲';
+            if (e.ctrlKey) {
+                peerScope.querySelectorAll('h3.mb-credits-toggle-h3, h3.mb-annotation-toggle-h3')
+                    .forEach(peer => {
+                        if (typeof peer._mbSubToggle === 'function') peer._mbSubToggle(expand);
+                    });
+            } else {
+                h3._mbSubToggle(expand);
+            }
         });
     }
 
@@ -74151,6 +74297,12 @@ a { color: #1565c0; }`;
                 Lib.debug('cleanup', 'Legal name relocation skipped:', _legalErr);
             }
         }
+
+        // ── Annotation wiki headings → h3 sub-section bars ───────────────────
+        // Must precede the relocation below and makeH2sCollapsible(), so
+        // neither sees them as h2 sections — see the function's JSDoc.
+        _makeAnnotationH3sCollapsible();
+        _removeAnnotationShowLessToggle();
 
         // ── Trailing h2 relocation ───────────────────────────────────────────
         // Delegated to _relocateTrailingH2Sections() which can be called
@@ -82546,6 +82698,10 @@ a { color: #1565c0; }`;
             // _relocateTrailingH2Sections() anchors on .mb-row-count-stat which
             // is inserted by updateH2Count().  finalCleanup() (called earlier)
             // already attempted this but found no stat and silently no-oped.
+            // _makeAnnotationH3sCollapsible() first, for the same reason as in
+            // finalCleanup() (idempotent; normally already done there).
+            _makeAnnotationH3sCollapsible();
+            _removeAnnotationShowLessToggle();
             _relocateTrailingH2Sections();
 
             // _makeCreditsH3sCollapsible() has no .mb-row-count-stat dependency

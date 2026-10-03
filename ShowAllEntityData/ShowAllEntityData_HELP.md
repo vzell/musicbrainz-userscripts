@@ -663,6 +663,12 @@ so a column of times reads as a column rather than as ragged text.
 
 - Click an **h2** heading to collapse its whole section; `Ctrl+2` toggles them
   all. `Ctrl+3` does the same for **h3** sub-section headings.
+- The sub-headings inside **Credits** (*Release*, *Release group*) and the
+  headings inside an **Annotation** collapse on a click too. `Ctrl+Click` one
+  of them to do the same to every sub-heading of that section; the other
+  sections are left alone. Once an Annotation is fully shown, MusicBrainz's
+  own *Show less…* link under it is removed: the Annotation heading already
+  collapses it.
 - A cell holding several items collapses to its first, with a **▶N▤** toggle
   showing how many are hidden. The column header carries a toggle that does the
   whole column.

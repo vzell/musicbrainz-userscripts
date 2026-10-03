@@ -704,6 +704,78 @@ test.describe('sticky page headers — expanded section bodies', () => {
         await expect.poll(() => isTarget(page, '#release-relationships')).toBe(false);
     });
 
+    test('Credits Release / Release group h3 bars are indented like the data sub-table h3', async ({ page }) => {
+        // Pins the INDENT relative to each bar's own h2, not merely that a
+        // margin exists: .mb-credits-toggle-h3 mirrors .mb-toggle-h3's look,
+        // and used to be copied without its margin-left, so "Release" sat
+        // flush with "Credits" while "1 - CD" sat indented under "Tracklist".
+        await openRelease(page);
+        await page.locator('#bottom-credits > h2').click();
+        await expect(page.locator('#bottom-credits h3.mb-credits-toggle-h3').first()).toBeVisible();
+
+        const probe = await page.evaluate(() => {
+            const left = (el) => el.getBoundingClientRect().left;
+            const creditsH2 = document.querySelector('#bottom-credits > h2');
+            const creditsH3s = Array.from(document.querySelectorAll('#bottom-credits h3.mb-credits-toggle-h3'));
+            const dataH2 = Array.from(document.querySelectorAll('h2'))
+                .find((h) => h.querySelector('.mb-row-count-stat'));
+            const dataH3 = document.querySelector('h3.mb-toggle-h3');
+            return {
+                creditsOffsets: creditsH3s.map((h) => left(h) - left(creditsH2)),
+                dataOffset: dataH2 && dataH3 ? left(dataH3) - left(dataH2) : null,
+            };
+        });
+
+        expect(probe.creditsOffsets, 'premise: the Release and Release group bars').toHaveLength(2);
+        expect(probe.dataOffset, 'premise: the data sub-table h3 is indented under its h2').toBeGreaterThan(0);
+        for (const off of probe.creditsOffsets) {
+            expect(off, 'a Credits h3 is indented under the Credits h2').toBeGreaterThan(0);
+            expect(Math.abs(off - probe.dataOffset), 'by the same amount as the data sub-table h3')
+                .toBeLessThanOrEqual(1);
+        }
+    });
+
+    test('an Annotation with a wiki "== … ==" heading pins its whole text, the heading bar riding along', async ({ page }) => {
+        // MusicBrainz renders the wiki heading as an <h2> inside
+        // div.annotation-body. _sphSectionBodies() skips a body that contains
+        // an h2, so the body was never pinned; its heading and the paragraph
+        // after it were pinned on their own, but a sticky box cannot leave
+        // its (unpinned) containing block, so they slid away with it, and the
+        // paragraphs before the heading were not collected at all. The
+        // heading is an h3 bar now, so the body is pinned as a whole.
+        const ANN_URL = 'https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd';
+        const ANN_SHELL = path.join(__dirname, 'release-tracks-multirow-instruments.html');
+        await page.setViewportSize(VIEWPORT);
+        await loadUserscriptPage(page, {
+            url: ANN_URL,
+            fixtureFile: ANN_SHELL,
+            testMode: true,
+            settingsOverride: { sa_enable_release_tracks: true },
+        });
+        await page.route(`${ANN_URL}?**`, (r) => r.fulfill({ path: ANN_SHELL, contentType: 'text/html' }));
+        await page.$eval('button[data-label="Show all Tracks for Release"]', (b) => b.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+
+        const sel = 'div.annotation-body';
+        expect(await isTarget(page, sel), 'premise: collapsed, not pinned').toBe(false);
+        await page.locator('h2.annotation').click();
+        await expect.poll(() => isTarget(page, sel),
+            { message: 'expanding Annotation must pin its body' }).toBe(true);
+
+        const inner = ['div.annotation-body h3', 'div.annotation-body > p'];
+        const before = await measure(page, [sel]);
+        const innerBefore = await measure(page, inner);
+        expect(before.items).toHaveLength(1);
+        expect(innerBefore.items.length,
+            'premise: the heading bar plus the paragraphs before and after it').toBeGreaterThanOrEqual(4);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, [sel]));
+        expectPinned(innerBefore, await measure(page, inner));
+        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+    });
+
     test('a section whose body is a bare table.details (series Relationships) pins that table', async ({ page }) => {
         await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
         await waitEngaged(page);
