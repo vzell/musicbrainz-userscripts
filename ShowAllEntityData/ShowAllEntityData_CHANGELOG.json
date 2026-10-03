@@ -1,5 +1,20 @@
 [
   {
+    "version": "9.99.1201",
+    "date": "2026-10-03",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "📊 Unique-values dropdown: sections are now grouped by topic. One main header per topic (\"Entity info\", \"Title info\", …) holds its sub-sections, each shown as an italic \"» Artist name:\" heading. Entries show only their value: \"Bruce Springsteen\" instead of \"» artist name: Bruce Springsteen\" repeated on every line. The quick filter still matches the full text, so typing \"artist name\" still finds them. A topic with only one sub-section gets a single header line, e.g. \"Video info › Medium format\". Both headers carry a tooltip.",
+          "📊 Unique-values dropdown: main headers and sub-headings both collapse. Click toggles one. Ctrl+Click on a main header applies to every main header. Ctrl+Click on a sub-heading applies to every sub-section of the same topic.",
+          "📊 Unique-values dropdown: a sub-section with more entries than the new setting \"Unique-Values Dropdown: Auto-Collapse Sub-Sections Above\" (default 15, 0 = off) opens collapsed and shows its entry count. A sub-section you expand yourself stays expanded on the next open. Ctrl+Click \"expand all\" does not count, so auto-collapse keeps working. Collapse states saved by earlier versions are kept, but their \"expanded\" marks are dropped once, because those versions had no auto-collapse.",
+          "New setting \"Unique-Values Dropdown: Group Sections By Topic\" (default on). Turn it off to get the previous flat layout back."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1200",
     "date": "2026-10-03",
     "sections": [
