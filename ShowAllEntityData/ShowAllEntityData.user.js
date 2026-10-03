@@ -1094,6 +1094,28 @@
                          "non-configurable height; raise it to see more entries at once without scrolling."
         },
 
+        sa_uvd_grouped_sections: {
+            label: "Unique-Values Dropdown: Group Sections By Topic",
+            type: "checkbox",
+            default: true,
+            description: "Group the 📊 dropdown's sections under one main header per topic (\"Entity info\", " +
+                         "\"Title info\", …) with italic \"» Sub-section:\" headings, and show each entry's value " +
+                         "without repeating its \"» artist name:\"-style prefix. Click a header to collapse it; " +
+                         "Ctrl+Click a main header for every main header, a sub-heading for every sub-section of " +
+                         "its topic. Off: the previous flat list of \"Topic - Sub-section\" headers."
+        },
+
+        sa_uvd_autocollapse_threshold: {
+            label: "Unique-Values Dropdown: Auto-Collapse Sub-Sections Above",
+            type: "number",
+            default: 15,
+            min: 0,
+            max: 1000,
+            description: "With grouped sections on, a 📊 dropdown sub-section holding more entries than this opens " +
+                         "collapsed (its header shows the entry count). A sub-section you expand or collapse yourself " +
+                         "keeps that state; a Ctrl+Click \"expand all\" is not remembered. 0 turns auto-collapse off."
+        },
+
         // ============================================================
         // THRESHOLD SECTION
         // ============================================================
@@ -43671,6 +43693,93 @@ a { color: #1565c0; }`;
         .mb-uniq-section-items.mb-uniq-section-collapsed {
             display: none;
         }
+        /* ---- Grouped layout (sa_uvd_grouped_sections): one main header per
+           topic, sections nested under it as italic sub-headings. The labels
+           keep their full text in the DOM; what is hidden or added here is
+           display only (see getOrCreateSynSection and _renderSynLabel). ---- */
+        .mb-uniq-grouped .mb-uniq-group + .mb-uniq-group {
+            border-top: 1px solid #d0d0d0;
+        }
+        .mb-uniq-group-hdr,
+        .mb-uniq-group-merged .mb-uniq-section-hdr {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8em;
+            font-weight: 700;
+            font-style: normal;
+            color: #24364d;
+            background: #e4eaf1;
+            padding: 4px 8px;
+            letter-spacing: 0.02em;
+            user-select: none;
+            cursor: pointer;
+        }
+        .mb-uniq-group-hdr:hover,
+        .mb-uniq-group-merged .mb-uniq-section-hdr:hover {
+            background: #d8e0ea;
+            color: #111;
+        }
+        .mb-uniq-group-hdr:focus-visible {
+            outline: 2px solid #4a90e2;
+            outline-offset: -2px;
+            border-radius: 3px;
+        }
+        .mb-uniq-group-label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .mb-uniq-group-count,
+        .mb-uniq-section-entry-count {
+            flex-shrink: 0;
+            font-weight: normal;
+            font-style: normal;
+            font-family: monospace;
+            opacity: 0.7;
+        }
+        .mb-uniq-group-body.mb-uniq-group-collapsed,
+        .mb-uniq-group-merged > .mb-uniq-group-hdr {
+            display: none;
+        }
+        /* Nested sub-heading: only the sub-section part shows, as
+           "» Artist name:" in italics. */
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-hdr {
+            padding-left: 18px;
+            font-style: italic;
+            color: #24364d;
+            letter-spacing: 0;
+        }
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-topic,
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-sep,
+        .mb-uniq-group-merged .mb-uniq-section-sep {
+            display: none;
+        }
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-sub::before {
+            content: "» ";
+        }
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-sub::after {
+            content: ":";
+        }
+        .mb-uniq-group-merged .mb-uniq-section-topic::after {
+            content: " › ";
+        }
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section + .mb-uniq-section {
+            border-top: 1px dashed #d8dee6;
+            margin-top: 0;
+        }
+        .mb-uniq-group:not(.mb-uniq-group-merged) .mb-uniq-section-items > .mb-col-uniq-item {
+            padding-left: 22px;
+        }
+        /* Entries: the hoisted prefix is hidden, and only headings are italic. */
+        .mb-uniq-grouped .mb-uniq-syn-prefix {
+            display: none;
+        }
+        .mb-uniq-grouped .mb-col-uniq-multirow-item {
+            font-style: normal;
+        }
         /* Relationship-icon rows (badge + favicon + label, flex-aligned) —
            a CSS class rather than inline style.display/style.alignItems so
            _applySynBoxQuickFilter()'s item.style.display = '' restore (on a
@@ -49258,6 +49367,99 @@ a { color: #1565c0; }`;
      * every column/page, not scoped per-column.
      */
     const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
+
+    /**
+     * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
+     * under its `__v` property. Version 2 (grouped sections) gave a stored
+     * `false` a meaning: "expanded on purpose, beats auto-collapse". Before
+     * it, `false` only ever meant "not collapsed" (and the old Ctrl+Click
+     * "expand all" wrote it for EVERY section), so `_uvdMigrateCollapseState()`
+     * drops those once rather than let them silently disable auto-collapse.
+     * Group states live in the same object as `"group:<topic>"` keys.
+     */
+    const MB_UNIQ_SECTION_COLLAPSE_VERSION = 2;
+
+    /**
+     * Brings a `MB_UNIQ_SECTION_COLLAPSE_KEY` object (mutated in place) to
+     * `MB_UNIQ_SECTION_COLLAPSE_VERSION`, persisting only when it changed.
+     * Version 1 → 2 drops every stored `false`: before grouping it meant only
+     * "not collapsed", and keeping it would read as "expanded on purpose" and
+     * disable auto-collapse for every section a Ctrl+Click once expanded.
+     * Stored `true`s (collapsed on purpose) are kept.
+     *
+     * @param {Object<string, *>} state
+     */
+    function _uvdMigrateCollapseState(state) {
+        if (state.__v === MB_UNIQ_SECTION_COLLAPSE_VERSION) return;
+        Object.keys(state).forEach(k => { if (state[k] === false) delete state[k]; });
+        state.__v = MB_UNIQ_SECTION_COLLAPSE_VERSION;
+        GM_setValue(MB_UNIQ_SECTION_COLLAPSE_KEY, state);
+    }
+
+    /**
+     * One-sentence description per 📊 dropdown TOPIC — the part of a
+     * `SYN_SECTION_META` label before its first `" - "` (see
+     * `_uvdSectionTopic()`). Shown as the group header's tooltip in the
+     * grouped layout (`sa_uvd_grouped_sections`). A topic missing here still
+     * gets a tooltip, listing its sub-sections, so a new section never needs
+     * an entry to work.
+     */
+    const UVD_TOPIC_TOOLTIPS = {
+        'Structure':              'How each cell is built: empty, one value, a collapsed or an expanded list.',
+        'Flags':                  'Cells marked by a third-party userscript or by this script\'s own checks.',
+        'Findings':               'Data-quality warnings and errors found in this column (the ⚠️ WARNING / ❌ ERROR menus).',
+        'Credit details':         'Parts of the credits in this column: attributes, tasks, dates, instruments, credited-as names.',
+        'Entity info':            'Names, comments, aliases and roles of the entities linked in this column, one sub-section per kind.',
+        'Relationships':          'Load state of the Relationships column.',
+        'Relationship icons':     'External links found in the Relationships column, one entry per site.',
+        'Relationship types':     'Relationship types credited in this column.',
+        'Join phrases':           'Words joining the names in an artist credit ("&", "feat.", …).',
+        'Name variations':        'Credits that differ from the entity\'s own name.',
+        'Format info':            'Medium formats: sizes, medium counts, combinations and types.',
+        'Release events':         'Release events: country, date and weekday.',
+        'Release info':           'Facts about the releases in this column.',
+        'Country details':        'Country names and codes.',
+        'Tracks info':            'Track counts per medium and in total.',
+        'Catalog info':           'Catalog numbers: present or not, and their prefixes.',
+        'Barcode':                'Barcodes: format, validity, and the same barcode written differently.',
+        'ISRC':                   'ISRCs split into country, registrant, year and designation.',
+        'ISWC':                   'ISWC validity.',
+        'Attributes':             'Recording and work attributes, and identifier types.',
+        'Length info':            'Durations: buckets, millisecond precision, track vs. recording length.',
+        'Time info':              'Times of day.',
+        'Date info':              'Dates split into decade, year, month and weekday.',
+        'Event info':             'Event dates, types, countries, details and cancellations.',
+        'Event name info':        'Event names checked against the MusicBrainz event style guide.',
+        'Title info':             'Titles checked against the MusicBrainz title style guide.',
+        'Live title info':        'Release and release group titles checked against the live bootleg convention.',
+        'Recording comment info': 'Recording comments checked against the live recording convention.',
+        'Part of series':         'Series membership: series name, date and number.',
+        'Instrument info':        'Instrument comments, descriptions and cross-references.',
+        'Editor info':            'Editor accounts: deleted editors, memberships, comments, activity.',
+        'Version history':        'Edit history of the entities in this column.',
+        'Locale info':            'Locales: language, and whether the alias is the primary one.',
+        'Pending edits':          'Entities with open edits.',
+        'Rating info':            'Whether a rating is present.',
+        'AcoustID info':          'Whether an AcoustID is linked.',
+        'CAA info':               'Cover Art Archive images: type and comment.',
+        'EAA info':               'Event Art Archive images: type and comment.',
+        'Video info':             'Video recordings vs. the medium format they are on.',
+        'Reports':                'Entities listed in MusicBrainz reports.',
+    };
+
+    /**
+     * Splits a `SYN_SECTION_META` label into its topic and sub-section, at
+     * the FIRST `" - "` — the naming convention docs/claude/uniq-dropdown.md
+     * fixes for every section ("Topic - Capitalized subtopic"). A label with
+     * no dash ("Structure", "Join phrases") is a topic with no sub-section.
+     *
+     * @param {string} label - e.g. `'Entity info - Artist name'`
+     * @returns {{topic: string, sub: ?string}}
+     */
+    function _uvdSectionTopic(label) {
+        const i = label.indexOf(' - ');
+        return i === -1 ? { topic: label, sub: null } : { topic: label.slice(0, i), sub: label.slice(i + 3) };
+    }
 
     /**
      * GM storage key for the user-resized size of the unique-values dropdown
@@ -66517,22 +66719,48 @@ a { color: #1565c0; }`;
          * @param {string} lf - Lower-cased filter substring to highlight.
          */
         function _appendAllMatchesHighlighted(parentEl, text, lf) {
-            if (!lf) { parentEl.appendChild(document.createTextNode(text)); return; }
-            const lt = text.toLowerCase();
-            let pos = 0, idx;
-            while ((idx = lt.indexOf(lf, pos)) !== -1) {
-                if (idx > pos) parentEl.appendChild(document.createTextNode(text.slice(pos, idx)));
-                const mark = document.createElement('mark');
-                mark.textContent = text.slice(idx, idx + lf.length);
-                mark.style.color           = hlColor;
-                mark.style.backgroundColor = hlBg;
-                mark.style.fontWeight      = 'bold';
-                mark.style.borderRadius    = '2px';
-                mark.style.padding         = '0 1px';
-                parentEl.appendChild(mark);
-                pos = idx + lf.length;
+            _appendHighlightedSlice(parentEl, text, lf, 0, text.length);
+        }
+
+        /**
+         * `_appendAllMatchesHighlighted()` for the slice `[from, to)` of
+         * `text` only, with the matches still found in the WHOLE text — so a
+         * match that straddles `from`/`to` is marked on both sides of the
+         * cut. The grouped layout needs this to render a synthetic entry's
+         * hidden prefix and its visible value as two pieces of one label
+         * (see `_renderSynLabel()`).
+         *
+         * @param {HTMLElement} parentEl - Element to append text/mark nodes to.
+         * @param {string} text - Original-case full text.
+         * @param {string} lf - Lower-cased filter substring (may be empty).
+         * @param {number} from - Slice start (inclusive).
+         * @param {number} to - Slice end (exclusive).
+         */
+        function _appendHighlightedSlice(parentEl, text, lf, from, to) {
+            if (to <= from) return;
+            let pos = from;
+            if (lf) {
+                const lt = text.toLowerCase();
+                let searchFrom = 0, idx;
+                while ((idx = lt.indexOf(lf, searchFrom)) !== -1 && idx < to) {
+                    const mStart = Math.max(idx, from);
+                    const mEnd   = Math.min(idx + lf.length, to);
+                    if (mEnd > mStart) {
+                        if (mStart > pos) parentEl.appendChild(document.createTextNode(text.slice(pos, mStart)));
+                        const mark = document.createElement('mark');
+                        mark.textContent = text.slice(mStart, mEnd);
+                        mark.style.color           = hlColor;
+                        mark.style.backgroundColor = hlBg;
+                        mark.style.fontWeight      = 'bold';
+                        mark.style.borderRadius    = '2px';
+                        mark.style.padding         = '0 1px';
+                        parentEl.appendChild(mark);
+                        pos = mEnd;
+                    }
+                    searchFrom = idx + lf.length;
+                }
             }
-            if (pos < text.length) parentEl.appendChild(document.createTextNode(text.slice(pos)));
+            if (pos < to) parentEl.appendChild(document.createTextNode(text.slice(pos, to)));
         }
 
         /**
@@ -67588,13 +67816,29 @@ a { color: #1565c0; }`;
         // key (shared across every column) — see MB_UNIQ_SECTION_COLLAPSE_KEY's
         // own JSDoc. `_synSections` itself is per-open, local state: `drop`'s
         // DOM is fully rebuilt (`drop.innerHTML = ''`, above) on every open.
+        //
+        // Grouped layout (sa_uvd_grouped_sections, default on): every section
+        // also belongs to a TOPIC group (`_uvdSectionTopic()` of its label),
+        // rendered as one main header with the sections as italic
+        // "» Sub-section:" headings under it — see getOrCreateSynGroup() and
+        // _uvdFinalizeSynGroups(). Off = the flat layout, byte for byte the
+        // behaviour before grouping existed (no auto-collapse, no hoisting).
+        const _uvdGrouped = Lib.settings.sa_uvd_grouped_sections !== false;
+        const _uvdThresholdRaw = Number(Lib.settings.sa_uvd_autocollapse_threshold ?? 15);
+        const _uvdAutoThreshold = (Number.isFinite(_uvdThresholdRaw) && _uvdThresholdRaw >= 0) ? _uvdThresholdRaw : 15;
+        if (_uvdGrouped) synBox.classList.add('mb-uniq-grouped');
         const _uniqSectionCollapseState = GM_getValue(MB_UNIQ_SECTION_COLLAPSE_KEY, {});
+        if (_uvdGrouped) _uvdMigrateCollapseState(_uniqSectionCollapseState);
+        // Sections a Ctrl+Click "expand all" opened in THIS open only. Not
+        // persisted on purpose (see MB_UNIQ_SECTION_COLLAPSE_VERSION): the
+        // next open auto-collapses them again when they are over threshold.
+        const _uvdSessionExpanded = new Set();
         /**
-         * Records one section's collapsed/expanded state into
-         * `_uniqSectionCollapseState` and persists the whole object via
-         * `GM_setValue` — shared globally across every column/page.
+         * Records one section's (or `"group:<topic>"`'s) collapsed/expanded
+         * state into `_uniqSectionCollapseState` and persists the whole
+         * object via `GM_setValue` — shared globally across every column/page.
          *
-         * @param {string} key - a `SYN_SECTION_META` key
+         * @param {string} key - a `SYN_SECTION_META` key, or `"group:<topic>"`
          * @param {boolean} collapsed
          */
         const _setUniqSectionCollapsed = (key, collapsed) => {
@@ -67602,39 +67846,241 @@ a { color: #1565c0; }`;
             GM_setValue(MB_UNIQ_SECTION_COLLAPSE_KEY, _uniqSectionCollapseState);
         };
         /**
-         * Builds a section header's tooltip text, reflecting the action a
-         * plain click would currently perform and mentioning the Ctrl+Click
-         * "apply to every section at once" shortcut.
+         * The state a section shows when no quick filter is active. Flat
+         * layout: collapsed only when stored so. Grouped layout: a stored
+         * state wins (the user chose it); then a Ctrl+Click "expand all" of
+         * this open; then auto-collapse — more entries than
+         * `sa_uvd_autocollapse_threshold` (0 = off). `entryCount` is only
+         * known once `_uvdFinalizeSynGroups()` has run; before that it is 0.
          *
-         * @param {string} label - `SYN_SECTION_META[key].label`
+         * @param {{key: string, entryCount: number}} section
+         * @returns {boolean} true = collapsed
+         */
+        const _uvdSectionCollapsed = (section) => {
+            const stored = _uniqSectionCollapseState[section.key];
+            if (!_uvdGrouped) return stored === true;
+            if (stored === true || stored === false) return stored;
+            if (_uvdSessionExpanded.has(section.key)) return false;
+            return _uvdAutoThreshold > 0 && section.entryCount > _uvdAutoThreshold;
+        };
+        /**
+         * Whether a topic group shows collapsed. Never auto-collapsed; a
+         * merged group (one sub-section, see `_uvdFinalizeSynGroups()`) has
+         * no header of its own and is therefore never collapsed either.
+         *
+         * @param {{topic: string, merged: boolean}} group
+         * @returns {boolean}
+         */
+        const _uvdGroupCollapsed = (group) =>
+            !group.merged && _uniqSectionCollapseState[`group:${group.topic}`] === true;
+        /**
+         * Builds a section header's tooltip text, reflecting the action a
+         * plain click would currently perform and what Ctrl+Click applies to
+         * — every section (flat layout), every sub-section of the same topic
+         * (grouped), or every main header (a merged, top-level section).
+         *
+         * @param {{key: string, group: ?Object, entryCount: number, hoistedPrefix: ?string}} section
          * @param {boolean} collapsed - the section's CURRENT (pre-click) state
          * @returns {string}
          */
-        const _uniqSectionTitle = (label, collapsed) => collapsed
-            ? `Expand "${label}" section (Ctrl+Click to expand ALL sections at once)`
-            : `Collapse "${label}" section (Ctrl+Click to collapse ALL sections at once)`;
+        const _uniqSectionTitle = (section, collapsed) => {
+            const label = SYN_SECTION_META[section.key].label;
+            if (!_uvdGrouped) {
+                return collapsed
+                    ? `Expand "${label}" section (Ctrl+Click to expand ALL sections at once)`
+                    : `Collapse "${label}" section (Ctrl+Click to collapse ALL sections at once)`;
+            }
+            const { topic, sub } = _uvdSectionTopic(label);
+            const verb = collapsed ? 'Expand' : 'Collapse';
+            const n = section.entryCount;
+            const lines = [`${sub ? `${topic} › ${sub}` : topic} — ${n} ${n === 1 ? 'entry' : 'entries'}`];
+            if (section.group && section.group.merged && UVD_TOPIC_TOOLTIPS[topic]) lines.push(UVD_TOPIC_TOOLTIPS[topic]);
+            if (section.hoistedPrefix) lines.push(`Each entry stands for "${section.hoistedPrefix}…".`);
+            lines.push('');
+            lines.push(section.group && section.group.merged
+                ? `Click: ${verb.toLowerCase()} this section. Ctrl+Click: ${verb.toLowerCase()} every main section.`
+                : `Click: ${verb.toLowerCase()} this sub-section. Ctrl+Click: ${verb.toLowerCase()} every sub-section of "${topic}".`);
+            return lines.join('\n');
+        };
         /**
-         * Applies one collapsed/expanded state to a single section's DOM
-         * (items box, toggle glyph, header tooltip) and persists it via
-         * `_setUniqSectionCollapsed()`. The single place both a plain click
-         * (one section) and a Ctrl+Click (every section in `_synSections`,
-         * see `getOrCreateSynSection()`'s `toggleSection`) go through, so
-         * the two never drift out of sync with each other.
+         * Paints one collapsed/expanded state onto a single section's DOM
+         * (items box, toggle glyph, header tooltip, aria-expanded). DOM only
+         * — persisting is the caller's business (`_uvdSetSection()`, or
+         * nothing at all for the quick filter's temporary forcing).
          *
-         * @param {HTMLElement} itemsBoxEl
-         * @param {HTMLElement} glyphEl
-         * @param {HTMLElement} headerEl
-         * @param {string} sectionKey
+         * @param {{itemsBox: HTMLElement, toggleGlyph: HTMLElement, header: HTMLElement}} section
          * @param {boolean} collapsed
          */
-        const _applyUniqSectionState = (itemsBoxEl, glyphEl, headerEl, sectionKey, collapsed) => {
-            itemsBoxEl.classList.toggle('mb-uniq-section-collapsed', collapsed);
-            glyphEl.textContent = collapsed ? '▶' : '▼';
-            headerEl.title = _uniqSectionTitle(SYN_SECTION_META[sectionKey].label, collapsed);
-            _setUniqSectionCollapsed(sectionKey, collapsed);
+        const _paintUniqSection = (section, collapsed) => {
+            section.itemsBox.classList.toggle('mb-uniq-section-collapsed', collapsed);
+            section.toggleGlyph.textContent = collapsed ? '▶' : '▼';
+            section.header.title = _uniqSectionTitle(section, collapsed);
+            section.header.setAttribute('aria-expanded', String(!collapsed));
         };
-        /** @type {Map<string, {wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}>} */
+        /**
+         * Sets AND remembers one section's state. A plain click (`viaCtrl`
+         * false) and any collapse are stored as given. A Ctrl+Click EXPAND is
+         * not: it opens the section for this open only and clears a stored
+         * "collapsed", so a big section auto-collapses again next time
+         * (the user's decision on 2026-10-03, org/UVD-redesign.org).
+         *
+         * @param {Object} section - a `_synSections` entry
+         * @param {boolean} collapsed
+         * @param {boolean} viaCtrl
+         */
+        const _uvdSetSection = (section, collapsed, viaCtrl) => {
+            if (collapsed || !viaCtrl || !_uvdGrouped) {
+                _setUniqSectionCollapsed(section.key, collapsed);
+                _uvdSessionExpanded.delete(section.key);
+            } else {
+                if (_uniqSectionCollapseState[section.key] === true) {
+                    delete _uniqSectionCollapseState[section.key];
+                    GM_setValue(MB_UNIQ_SECTION_COLLAPSE_KEY, _uniqSectionCollapseState);
+                }
+                _uvdSessionExpanded.add(section.key);
+            }
+            _paintUniqSection(section, collapsed);
+        };
+        /** @type {Map<string, {wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, entryCountSpan: ?HTMLElement, key: string, group: ?Object, entryCount: number, hoistedPrefix: ?string, matchCount: number}>} */
         const _synSections = new Map();
+        /** @type {Map<string, {topic: string, wrapper: HTMLElement, header: HTMLElement, body: HTMLElement, toggleGlyph: HTMLElement, countSpan: HTMLElement, matchCountSpan: HTMLElement, sections: Object[], merged: boolean}>} */
+        const _synGroups = new Map();
+
+        /**
+         * Builds a topic group header's tooltip: the topic's description
+         * (`UVD_TOPIC_TOOLTIPS`, else its sub-section list) plus what a click
+         * and a Ctrl+Click do.
+         *
+         * @param {Object} group - a `_synGroups` entry
+         * @param {boolean} collapsed - CURRENT (pre-click) state
+         * @returns {string}
+         */
+        const _uvdGroupTitle = (group, collapsed) => {
+            const subs = group.sections.map(s => _uvdSectionTopic(SYN_SECTION_META[s.key].label).sub || group.topic);
+            const verb = collapsed ? 'expand' : 'collapse';
+            return [
+                group.topic,
+                UVD_TOPIC_TOOLTIPS[group.topic] || '',
+                `Sub-sections: ${subs.join(', ')}.`,
+                '',
+                `Click: ${verb} "${group.topic}". Ctrl+Click: ${verb} every main section.`,
+            ].filter((l, i) => l !== '' || i === 3).join('\n');
+        };
+        /**
+         * Paints a topic group's collapsed/expanded state (body, glyph,
+         * tooltip, aria-expanded). DOM only, like `_paintUniqSection()`.
+         *
+         * @param {Object} group - a `_synGroups` entry
+         * @param {boolean} collapsed
+         */
+        const _paintUvdGroup = (group, collapsed) => {
+            group.body.classList.toggle('mb-uniq-group-collapsed', collapsed);
+            group.toggleGlyph.textContent = collapsed ? '▶' : '▼';
+            group.header.title = _uvdGroupTitle(group, collapsed);
+            group.header.setAttribute('aria-expanded', String(!collapsed));
+        };
+        /**
+         * Applies `collapsed` to every MAIN-level header: each group's own
+         * header, and each merged group's single section (which stands in
+         * for its group's header — see `_uvdFinalizeSynGroups()`). The
+         * Ctrl+Click scope of a main header.
+         *
+         * @param {boolean} collapsed
+         */
+        const _uvdSetAllTopLevel = (collapsed) => {
+            _synGroups.forEach(group => {
+                if (group.merged) {
+                    _uvdSetSection(group.sections[0], collapsed, true);
+                } else {
+                    _setUniqSectionCollapsed(`group:${group.topic}`, collapsed);
+                    _paintUvdGroup(group, collapsed);
+                }
+            });
+        };
+
+        /**
+         * Lazily creates (on first use) or returns the topic group a section
+         * of the grouped layout goes into. Groups render in `synBox` in the
+         * order their first section is requested, so a topic whose sections
+         * are requested apart from each other still ends up as one block.
+         *
+         * @param {string} topic - `_uvdSectionTopic(label).topic`
+         * @param {Object} meta - the requesting section's `SYN_SECTION_META`
+         *   entry; its glyph/markerClass becomes the group's icon
+         * @returns {Object} the `_synGroups` entry
+         */
+        const getOrCreateSynGroup = (topic, meta) => {
+            const existing = _synGroups.get(topic);
+            if (existing) return existing;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'mb-uniq-group';
+            wrapper.dataset.mbUniqTopic = topic;
+
+            const header = document.createElement('div');
+            header.className = 'mb-uniq-group-hdr';
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+
+            const toggleGlyph = document.createElement('span');
+            toggleGlyph.className = 'mb-uniq-section-toggle';
+            toggleGlyph.setAttribute('aria-hidden', 'true');
+            header.appendChild(toggleGlyph);
+
+            const iconGlyph = document.createElement('span');
+            iconGlyph.className = 'mb-uniq-section-glyph';
+            iconGlyph.setAttribute('aria-hidden', 'true');
+            if (meta.markerClass) {
+                // Same flex-item blockification fix as getOrCreateSynSection()'s.
+                iconGlyph.classList.add(meta.markerClass);
+                iconGlyph.style.height = '14px';
+                _guardGlyphAgainstEmptySelectorHiding(iconGlyph);
+            } else {
+                iconGlyph.textContent = meta.glyph;
+            }
+            header.appendChild(iconGlyph);
+
+            const labelSpan = document.createElement('span');
+            labelSpan.className = 'mb-uniq-group-label';
+            labelSpan.textContent = topic;
+            header.appendChild(labelSpan);
+
+            const countSpan = document.createElement('span');
+            countSpan.className = 'mb-uniq-group-count';
+            header.appendChild(countSpan);
+
+            const matchCountSpan = document.createElement('span');
+            matchCountSpan.className = 'mb-uniq-section-match-count';
+            matchCountSpan.style.display = 'none';
+            header.appendChild(matchCountSpan);
+
+            const body = document.createElement('div');
+            body.className = 'mb-uniq-group-body';
+            body.setAttribute('role', 'group');
+
+            const group = { topic, wrapper, header, body, toggleGlyph, countSpan, matchCountSpan, sections: [], merged: false };
+            const toggleGroup = (ev) => {
+                const nowCollapsed = !body.classList.contains('mb-uniq-group-collapsed');
+                if (ev && ev.ctrlKey) {
+                    _uvdSetAllTopLevel(nowCollapsed);
+                } else {
+                    _setUniqSectionCollapsed(`group:${topic}`, nowCollapsed);
+                    _paintUvdGroup(group, nowCollapsed);
+                }
+            };
+            header.addEventListener('mousedown', ev => ev.preventDefault());
+            header.addEventListener('click', toggleGroup);
+            header.addEventListener('keydown', ev => {
+                if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleGroup(ev); }
+            });
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(body);
+            synBox.appendChild(wrapper);
+            _paintUvdGroup(group, _uvdGroupCollapsed(group));
+            _synGroups.set(topic, group);
+            return group;
+        };
 
         /**
          * Lazily creates (on first use) or returns the existing collapsible
@@ -67656,8 +68102,15 @@ a { color: #1565c0; }`;
          * `meta.glyph` (a plain emoji character) — see `SYN_SECTION_META`'s
          * own JSDoc on the `entity_*` keys for why.
          *
+         * Grouped layout (`sa_uvd_grouped_sections`): the section goes into
+         * its topic's group (`getOrCreateSynGroup()`) instead of straight into
+         * `synBox`, its label is split into topic/sep/sub spans (same
+         * textContent), and its Ctrl+Click scope narrows to its own topic.
+         * Auto-collapse and prefix hoisting happen later, in
+         * `_uvdFinalizeSynGroups()`, once every entry exists.
+         *
          * @param {string} key - a `SYN_SECTION_META` key
-         * @returns {{wrapper: HTMLElement, header: HTMLElement, itemsBox: HTMLElement, toggleGlyph: HTMLElement, matchCountSpan: HTMLElement, key: string}}
+         * @returns {Object} the `_synSections` entry (see its typedef)
          */
         const getOrCreateSynSection = (key) => {
             const existing = _synSections.get(key);
@@ -67672,8 +68125,10 @@ a { color: #1565c0; }`;
             header.setAttribute('role', 'button');
             header.setAttribute('tabindex', '0');
 
+            // Stored state only — auto-collapse needs the entry count, so
+            // _uvdFinalizeSynGroups() repaints every section once all exist.
             const collapsed = _uniqSectionCollapseState[key] === true;
-            header.title = _uniqSectionTitle(meta.label, collapsed);
+            header.setAttribute('aria-expanded', String(!collapsed));
 
             const toggleGlyph = document.createElement('span');
             toggleGlyph.className = 'mb-uniq-section-toggle';
@@ -67709,8 +68164,40 @@ a { color: #1565c0; }`;
 
             const labelSpan = document.createElement('span');
             labelSpan.className = 'mb-uniq-section-label';
-            labelSpan.textContent = meta.label;
+            if (_uvdGrouped) {
+                // Three spans whose textContent is still exactly meta.label
+                // ("Entity info - Artist name"), so every spec and the test
+                // API that reads the label keep working. CSS decides what is
+                // seen: nested, only the sub-section, as "» Artist name:"
+                // (::before/::after, not text); merged, "Video info › Medium
+                // format" (the sep hidden, a " › " ::after on the topic).
+                const { topic, sub } = _uvdSectionTopic(meta.label);
+                const _part = (cls, text) => {
+                    const s = document.createElement('span');
+                    s.className = cls;
+                    s.textContent = text;
+                    labelSpan.appendChild(s);
+                };
+                if (sub === null) {
+                    _part('mb-uniq-section-sub', topic);
+                } else {
+                    _part('mb-uniq-section-topic', topic);
+                    _part('mb-uniq-section-sep', ' - ');
+                    _part('mb-uniq-section-sub', sub);
+                }
+            } else {
+                labelSpan.textContent = meta.label;
+            }
             header.appendChild(labelSpan);
+
+            // Entry count, grouped layout only (the flat layout never showed
+            // one) — hidden while the quick filter shows matchCountSpan.
+            let entryCountSpan = null;
+            if (_uvdGrouped) {
+                entryCountSpan = document.createElement('span');
+                entryCountSpan.className = 'mb-uniq-section-entry-count';
+                header.appendChild(entryCountSpan);
+            }
 
             const matchCountSpan = document.createElement('span');
             matchCountSpan.className = 'mb-uniq-section-match-count';
@@ -67722,19 +68209,30 @@ a { color: #1565c0; }`;
             itemsBox.setAttribute('role', 'group');
             if (collapsed) itemsBox.classList.add('mb-uniq-section-collapsed');
 
-            // Plain click toggles just this section; Ctrl+Click applies THIS
-            // section's own new state to every section currently in
-            // _synSections at once (mass collapse/expand) — mirrors the
+            const section = {
+                wrapper, header, itemsBox, toggleGlyph, matchCountSpan, entryCountSpan, key,
+                group: null, entryCount: 0, hoistedPrefix: null, matchCount: 0,
+            };
+            header.title = _uniqSectionTitle(section, collapsed);
+
+            // Plain click toggles just this section. Ctrl+Click applies THIS
+            // section's own new state to a whole scope at once — mirrors the
             // column-header collapse button's own Ctrl+Click convention
             // (_applyCollapseState's expandH2s param) of "this modifier
-            // means apply to everything, not just the one thing clicked".
+            // means apply to more than the one thing clicked". The scope:
+            // flat layout, every section; grouped, every sub-section of the
+            // same topic; a merged (top-level) section, every main header.
             const toggleSection = (ev) => {
                 const nowCollapsed = !itemsBox.classList.contains('mb-uniq-section-collapsed');
-                if (ev && ev.ctrlKey) {
-                    _synSections.forEach(sec =>
-                        _applyUniqSectionState(sec.itemsBox, sec.toggleGlyph, sec.header, sec.key, nowCollapsed));
+                const ctrl = !!(ev && ev.ctrlKey);
+                if (!ctrl) {
+                    _uvdSetSection(section, nowCollapsed, false);
+                } else if (!_uvdGrouped) {
+                    _synSections.forEach(sec => _uvdSetSection(sec, nowCollapsed, true));
+                } else if (section.group.merged) {
+                    _uvdSetAllTopLevel(nowCollapsed);
                 } else {
-                    _applyUniqSectionState(itemsBox, toggleGlyph, header, key, nowCollapsed);
+                    section.group.sections.forEach(sec => _uvdSetSection(sec, nowCollapsed, true));
                 }
             };
             header.addEventListener('mousedown', ev => ev.preventDefault());
@@ -67745,9 +68243,15 @@ a { color: #1565c0; }`;
 
             wrapper.appendChild(header);
             wrapper.appendChild(itemsBox);
-            synBox.appendChild(wrapper);
+            if (_uvdGrouped) {
+                const group = getOrCreateSynGroup(_uvdSectionTopic(meta.label).topic, meta);
+                section.group = group;
+                group.sections.push(section);
+                group.body.appendChild(wrapper);
+            } else {
+                synBox.appendChild(wrapper);
+            }
 
-            const section = { wrapper, header, itemsBox, toggleGlyph, matchCountSpan, key };
             _synSections.set(key, section);
             return section;
         };
@@ -67860,10 +68364,19 @@ a { color: #1565c0; }`;
          * @param {HTMLElement} labelSpan
          * @param {string} prefix - e.g. `'» image type: '`.
          * @param {string} value  - The type-badge text itself, e.g. `'Front'`.
+         * @param {number} [hoist=0] - How many leading characters of `prefix`
+         *   the grouped layout hides (`.mb-uniq-syn-prefix`, see
+         *   `_uvdFinalizeSynGroups()`); they stay in the textContent.
          */
-        const _buildArtTypePillLabel = (labelSpan, prefix, value) => {
+        const _buildArtTypePillLabel = (labelSpan, prefix, value, hoist = 0) => {
             labelSpan.innerHTML = '';
-            labelSpan.appendChild(document.createTextNode(prefix));
+            if (hoist > 0) {
+                const hidden = document.createElement('span');
+                hidden.className = 'mb-uniq-syn-prefix';
+                hidden.textContent = prefix.slice(0, hoist);
+                labelSpan.appendChild(hidden);
+            }
+            labelSpan.appendChild(document.createTextNode(prefix.slice(hoist)));
             const pill = document.createElement('span');
             pill.style.cssText =
                 'display:inline-block; background:#c8c8c8; color:#222;' +
@@ -68134,6 +68647,9 @@ a { color: #1565c0; }`;
                  : kind === 'dateweekday'        ? '» weekday: '
                  : kind === 'pendingedit'        ? '» pending edit: '
                  : '» ');
+            // The prefix as built, so _uvdFinalizeSynGroups() can hide exactly
+            // it (never a guessed "» …: " — a value may contain ": " itself).
+            item.dataset.mbUniqSynPrefix = _synLabelPrefix;
             // 'barcodesameas' is keyed by the CANONICAL value (needed
             // verbatim for _wireStructureCheckbox()'s own mode string,
             // below, and for item.title just above), but DISPLAYED as the
@@ -68315,6 +68831,94 @@ a { color: #1565c0; }`;
             divider.style.cssText = 'border-top:1px solid #d0d0d0; margin:4px 0;';
             divider.setAttribute('aria-hidden', 'true');
             synBox.appendChild(divider);
+        };
+
+        /**
+         * (Re-)renders one synthetic entry's `.mb-uniq-syn-label-text` from
+         * `dataset.mbUniqSynLabel`, with every match of `lf` marked. When the
+         * grouped layout hoisted a prefix (`dataset.mbUniqSynHoist` = its
+         * length), that part goes into a `.mb-uniq-syn-prefix` span which CSS
+         * hides — the label's textContent stays the full label, so the quick
+         * filter, the test API and every spec reading it see no change.
+         * Without a hoist and without `lf` this is exactly the old
+         * `labelSpan.textContent = label`.
+         *
+         * "» image type: …" entries rebuild their pill
+         * (`_buildArtTypePillLabel()`) whenever no filter is active, as the
+         * quick filter always did for them.
+         *
+         * @param {HTMLElement} item - a synBox entry row
+         * @param {string} lf - Lower-cased filter text, or '' for none.
+         */
+        const _renderSynLabel = (item, lf) => {
+            const labelSpan = item.querySelector('.mb-uniq-syn-label-text');
+            const label = item.dataset.mbUniqSynLabel;
+            if (!labelSpan || label === undefined) return;
+            const hoist = Number(item.dataset.mbUniqSynHoist) || 0;
+            if (!lf && item.dataset.mbUniqArtType === '1') {
+                const _value  = item.dataset.mbUniqArtTypeValue || '';
+                const _prefix = label.slice(0, label.length - _value.length);
+                _buildArtTypePillLabel(labelSpan, _prefix, _value, Math.min(hoist, _prefix.length));
+                return;
+            }
+            labelSpan.innerHTML = '';
+            if (hoist > 0) {
+                const hidden = document.createElement('span');
+                hidden.className = 'mb-uniq-syn-prefix';
+                _appendHighlightedSlice(hidden, label, lf, 0, hoist);
+                labelSpan.appendChild(hidden);
+            }
+            _appendHighlightedSlice(labelSpan, label, lf, hoist, label.length);
+        };
+
+        /**
+         * Grouped layout only: runs once every synBox section exists, because
+         * three things need ALL of a section's entries.
+         *
+         * 1. Merging — a topic group holding exactly one section is marked
+         *    `.mb-uniq-group-merged`: its own header is hidden and the section
+         *    header stands in for it, reading "Topic › Sub" (CSS).
+         * 2. Prefix hoisting — when every prefixed entry of a section was
+         *    built with the SAME "» …" prefix (`dataset.mbUniqSynPrefix`,
+         *    set by `makeValueSynItem()`), that prefix moves into the
+         *    sub-heading: the entry hides it (`dataset.mbUniqSynHoist`,
+         *    `_renderSynLabel()`). With two or more different prefixes in one
+         *    section only the leading "» " is hidden, because then the prefix
+         *    is what tells the entries apart. A prefix not starting "» "
+         *    (barcodesameas' "🔢 ") is left alone.
+         * 3. Counts and state — `entryCount`, the header counts, and the
+         *    state each section and group opens in (`_uvdSectionCollapsed()`,
+         *    which is where auto-collapse happens).
+         */
+        const _uvdFinalizeSynGroups = () => {
+            if (!_uvdGrouped) return;
+            _synGroups.forEach(group => {
+                group.merged = group.sections.length === 1;
+                group.wrapper.classList.toggle('mb-uniq-group-merged', group.merged);
+                let total = 0;
+                group.sections.forEach(section => {
+                    const entries = Array.from(section.itemsBox.children)
+                        .filter(it => it.classList.contains('mb-col-uniq-item'));
+                    section.entryCount = entries.length;
+                    total += entries.length;
+                    const labelled = entries.filter(it => it.dataset.mbUniqSynLabel !== undefined);
+                    const prefixes = new Set(labelled.map(it => it.dataset.mbUniqSynPrefix).filter(Boolean));
+                    const common = (prefixes.size === 1 && [...prefixes][0].startsWith('» ')) ? [...prefixes][0] : null;
+                    section.hoistedPrefix = (common && common !== '» ') ? common : null;
+                    labelled.forEach(it => {
+                        const label = it.dataset.mbUniqSynLabel;
+                        const n = (common && label.startsWith(common)) ? common.length
+                                : label.startsWith('» ') ? 2 : 0;
+                        if (!n) return;
+                        it.dataset.mbUniqSynHoist = String(n);
+                        _renderSynLabel(it, '');
+                    });
+                    if (section.entryCountSpan) section.entryCountSpan.textContent = String(section.entryCount);
+                    _paintUniqSection(section, _uvdSectionCollapsed(section));
+                });
+                group.countSpan.textContent = String(total);
+                _paintUvdGroup(group, _uvdGroupCollapsed(group));
+            });
         };
 
         /**
@@ -69118,6 +69722,8 @@ a { color: #1565c0; }`;
         // Single divider between every synthetic section above and the
         // regular value list below — appendSynDivider() itself no-ops when
         // synBox never received any section (nothing to separate from).
+        // Grouping is finalized first: it needs every section complete.
+        _uvdFinalizeSynGroups();
         appendSynDivider();
 
         if (combinedVals.length === 0) {
@@ -69182,45 +69788,48 @@ a { color: #1565c0; }`;
                     if (!matches) return;
                     matchCount++;
 
-                    if (!filter) {
-                        item.classList.remove('mb-uniq-qf-match');
-                        // "» image type: …" entries render their value as an
-                        // actual pill (_buildArtTypePillLabel) — restore that
-                        // structure instead of the generic plain-text
-                        // flatten below, or every quickfilter clear would
-                        // silently strip the pill styling right back off.
-                        if (item.dataset.mbUniqArtType === '1') {
-                            const _value  = item.dataset.mbUniqArtTypeValue || '';
-                            const _prefix = label.slice(0, label.length - _value.length);
-                            _buildArtTypePillLabel(labelSpan, _prefix, _value);
-                        } else {
-                            labelSpan.textContent = label;
-                        }
-                        return;
-                    }
-
-                    // Build highlighted content with a <mark> around every
-                    // occurrence of the match — same approach as
-                    // renderItems()'s own quickfilter marking.
-                    item.classList.add('mb-uniq-qf-match');
-                    labelSpan.innerHTML = '';
-                    _appendAllMatchesHighlighted(labelSpan, label, lf);
+                    // No filter: restore the label ("» image type: …" pill
+                    // included, see _renderSynLabel). Filter: a <mark> around
+                    // every occurrence of the match — same approach as
+                    // renderItems()'s own quickfilter marking. Either way a
+                    // hoisted prefix stays hidden, and the match is still
+                    // tested against the FULL label above, so typing
+                    // "artist name" finds entries that no longer show it.
+                    item.classList.toggle('mb-uniq-qf-match', !!filter);
+                    _renderSynLabel(item, filter ? lf : '');
                 });
+                section.matchCount = matchCount;
 
                 if (filter) {
                     section.wrapper.style.display = matchCount === 0 ? 'none' : '';
-                    section.itemsBox.classList.toggle('mb-uniq-section-collapsed', matchCount === 0);
-                    section.toggleGlyph.textContent = matchCount === 0 ? '▶' : '▼';
-                    section.header.title = _uniqSectionTitle(SYN_SECTION_META[section.key].label, matchCount === 0);
+                    _paintUniqSection(section, matchCount === 0);
                     section.matchCountSpan.textContent = `(${matchCount})`;
                     section.matchCountSpan.style.display = '';
+                    if (section.entryCountSpan) section.entryCountSpan.style.display = 'none';
                 } else {
-                    const persistedCollapsed = _uniqSectionCollapseState[section.key] === true;
                     section.wrapper.style.display = '';
-                    section.itemsBox.classList.toggle('mb-uniq-section-collapsed', persistedCollapsed);
-                    section.toggleGlyph.textContent = persistedCollapsed ? '▶' : '▼';
-                    section.header.title = _uniqSectionTitle(SYN_SECTION_META[section.key].label, persistedCollapsed);
+                    _paintUniqSection(section, _uvdSectionCollapsed(section));
                     section.matchCountSpan.style.display = 'none';
+                    if (section.entryCountSpan) section.entryCountSpan.style.display = '';
+                }
+            });
+
+            // Grouped layout: the same forcing one level up — a topic with a
+            // match is opened and shows its match total, one without is
+            // hidden; clearing restores each group's stored state.
+            _synGroups.forEach(group => {
+                const groupMatches = group.sections.reduce((n, s) => n + s.matchCount, 0);
+                if (filter) {
+                    group.wrapper.style.display = groupMatches === 0 ? 'none' : '';
+                    _paintUvdGroup(group, groupMatches === 0);
+                    group.matchCountSpan.textContent = `(${groupMatches})`;
+                    group.matchCountSpan.style.display = '';
+                    group.countSpan.style.display = 'none';
+                } else {
+                    group.wrapper.style.display = '';
+                    _paintUvdGroup(group, _uvdGroupCollapsed(group));
+                    group.matchCountSpan.style.display = 'none';
+                    group.countSpan.style.display = '';
                 }
             });
         }

@@ -82,6 +82,59 @@ below, which mixed unrelated topics under one header.
 | next (feature/findings-menus) | Addition: `findingsWarn`/`findingsError` ("Findings - Warning"/"Findings - Error"), one fixed entry per `FINDINGS` registry entry present in the open column, mode `finding-<id>`, routed by a loop over `FINDINGS` below `MB_UNIQ_MODE_TO_SECTION` and labelled/tooltipped from the registry. Read off the `data-mb-findings` attribute `stampFindings()` writes, so not column-gated here (the stamp applied each finding's own column gate) and never text-highlighted (the cell tint is the mark). Counted into `findingCounts` in the per-row loop, replayed through `_titleRatingItems` so both render blocks and both render gates cover it. These are the entries the ⚠️ WARNING / ❌ ERROR h1 menus tick (docs/claude/findings.md); the finer per-family sections (Length info, Live title info, ISRC/ISWC/Barcode - Validity, …) stay. |
 | next (feature/uvd-event-names) | Additions: `liveLoc` ("Live title info - Location completeness", kind `liveloc`, value = `_liveLocLabel()` of `_parseLiveTitle()`'s new `locParts`), and eleven "Event name info - …" sections on every column in `_uvdEventNameColumns()` ("Event" + `sa_uvd_event_name_columns`), counting only cells whose first non-comment `<bdi>` links `/event/<mbid>` (`_findCellEventName()`). One pure parser, `_parseEventName()`: the live form first (its `_parseLiveTitle()` verdict rides along as `live`), then the https://musicbrainz.org/doc/Style/Event forms in the order at → festival edition → tour, then the `_EVENT_STYLE_NEAR_MISSES` list, else free form. `evForm` (`evform-<form>`), `evStyleNearMiss` (`evform-nearmiss` + kind `evstylemiss`), `evFestEdition` (kind `evedition`), and `evLive*` — the live sections again: **their modes are the live modes with an `ev` prefix, and `_eventNameMatchesMode()` strips it and calls `_liveTitleMatchesMode()`**, so a new live facet reaches events by adding its `ev` row to the two lookup tables, never by copying matcher code. Counting shares `_countLiveVerdict()`/`_newLiveCounts()`, rendering `_pushLiveSections(prefix, counts, sfx)`. Behind `sa_enable_uvd_event_names`; never text-highlighted. Events reuse the `data-mb-live-flag` tint via `_findCellAnyLiveTitle()` in `_stampLiveTitleRow()` (`tests/fixtures/uvd-event-names.spec.js`, `scripts/mutations/uvd-event-names.json`). |
 | next (feature/uvd-recording-comments) | Additions: twelve "Recording comment info - …" sections (`rcForm`, `rcType`, `rcNearMiss`, `rcMultiDay`, `rcInfo`, and `rcLive*` = the live sections with an `rc` mode prefix, same rule as `ev`) on every column `_recCommentColumnKind()` names: `'link'` = Title + `_uvdTitleInfoColumns()` (reads the `.comment` of a `/recording/<mbid>` link), `'plain'` = `sa_uvd_recording_comment_columns` (default "Disambiguation", the cell text). The synthetic "Comment" column is deliberately neither. One pure parser, `_parseRecordingComment()`, built on `_liveVerdictFromMatch()` (split out of `_parseLiveTitle()`, no behaviour change) and `_LIVE_DATE_ONLY_RE`; `EVENT_TYPE_KEYWORDS` is now one module-level constant shared with `eventParts()`, longest first, with "rehearsal" added. Location completeness for the dateless `location` form is counted from the verdict's own `locParts`, outside `_countLiveVerdict()`, and matched by an `rcliveloc:` branch that does not need a live verdict. Also three eventParts sections: `eventPartsCountryForm` (`evcountry-abbr/full`), `eventPartsDetail`/`eventPartsAddInfo` (`evdetail-*`/`evaddinfo-*` presence counted only on rows with an Event-Type, plus kinds `eventdetail`/`eventaddinfo`). All ride `_titleRatingItems` (`tests/fixtures/uvd-recording-comments.spec.js`, `scripts/mutations/uvd-recording-comments.json`). |
+| next (feature/uvd-grouped-sections) | Not a split: a second level ABOVE the sections. Every section now sits in a topic group derived from its label (see "Grouped topics and prefix hoisting" below), and a one-section topic is merged into one header line. No `SYN_SECTION_META` key changed. |
+
+## Grouped topics and prefix hoisting
+
+Since `feature/uvd-grouped-sections` (`sa_uvd_grouped_sections`, default on)
+every section is rendered inside a TOPIC group. Mockups and the user's
+decisions: `org/UVD-redesign.org`.
+
+- **The topic comes from the label, not from new metadata.**
+  `_uvdSectionTopic()` splits a `SYN_SECTION_META` label at its first `" - "`.
+  That is why the naming convention above is now load-bearing: a new section
+  labelled "Foo details - Bar" lands in a topic called "Foo details", and a
+  typo in the topic part makes a second, separate group. `UVD_TOPIC_TOOLTIPS`
+  holds an optional one-sentence tooltip per topic. A missing one falls back
+  to the sub-section list.
+- **Labels keep their full textContent.** The section label is three spans
+  (`.mb-uniq-section-topic`/`-sep`/`-sub`) and the entry label puts the hidden
+  part in `.mb-uniq-syn-prefix`. What the user sees is decided by CSS
+  (`display:none`, `::before "» "`, `::after ":"`, `" › "`), and pseudo-element
+  content is not text. About 50 specs and `__saTest.getUniqDropSections()` read
+  `"Date info - Month"` and `"» month: February"`, and they keep passing for
+  that reason. Never "simplify" this into rewriting the text.
+- **Hoisting is data-driven and conservative.** `makeValueSynItem()` stores the
+  prefix it built in `dataset.mbUniqSynPrefix`. `_uvdFinalizeSynGroups()` hides
+  it only when every prefixed entry of the section shares the same `» …`
+  prefix. Otherwise it hides only the leading `» `, because then the prefix is
+  what tells the entries apart. It never guesses a prefix from the text: a
+  value may itself contain `": "`.
+- **Everything count-dependent waits for `_uvdFinalizeSynGroups()`**, called
+  right before `appendSynDivider()`: merging a one-section topic
+  (`.mb-uniq-group-merged`), hoisting, entry counts, and the state each
+  section opens in. `getOrCreateSynSection()` can only apply the stored state,
+  because the entry count is not known yet.
+- **Collapse state** stays in the one `MB_UNIQ_SECTION_COLLAPSE_KEY` object.
+  Section keys hold `true`/`false`, topic groups hold `"group:<topic>"`, and
+  `__v` is `MB_UNIQ_SECTION_COLLAPSE_VERSION` (2). A missing section key means
+  "auto": collapsed when it has more entries than
+  `sa_uvd_autocollapse_threshold`. A plain click stores its result. A Ctrl+Click
+  EXPAND does not: it removes a stored `true` and opens the section for this
+  open only (`_uvdSessionExpanded`). The v1→v2 migration drops every stored
+  `false`, because before grouping `false` meant only "not collapsed".
+- **Ctrl+Click scopes**: a main header, or a merged section standing in for one,
+  applies to every main header (`_uvdSetAllTopLevel()`). A nested sub-heading
+  applies to the sub-sections of its own topic. The flat layout keeps "every
+  section".
+- **The quick filter forces both levels.** A section or group with a match is
+  opened and shows `(N)`, and one without is hidden. Matching runs against the
+  FULL label, so a match can sit entirely in a hidden prefix ("month"). Clearing
+  repaints from `_uvdSectionCollapsed()`/`_uvdGroupCollapsed()`, not from the
+  raw stored value, or auto-collapse would be lost.
+
+Pinned by `tests/fixtures/uvd-grouped-sections.spec.js` and
+`scripts/mutations/uvd-grouped-sections.json`.
 
 ## Flags in the dropdown: two third-party shapes, and what "hollow" means
 

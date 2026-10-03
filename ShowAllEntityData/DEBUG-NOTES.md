@@ -17264,3 +17264,52 @@ release-tracks the last cell is a hidden column, which never moves. Three new
 mutation entries, all caught. One of them removes all three `table.tbl`
 guards together: they back each other up, so dropping a single one is
 invisible by design.
+
+## 2026-10-03 — 📊 dropdown: grouped topics, hoisted prefixes, auto-collapse (branch feature/uvd-grouped-sections)
+
+**Request:** `org/UVD-redesign.org`. Every synthetic section was a flat
+"Topic - Sub" header, and every entry repeated its prefix ("» artist name:"
+eight times in one panel). The user picked "Option 1, Tree" from four live
+mockups (https://claude.ai/artifact/Cqp57dsx2R4L7bvVFB5xV6). Decisions: an
+explicitly expanded section beats auto-collapse; a Ctrl+Click "expand all" is
+not remembered; only headings are italic; a one-section topic is merged into
+one header line.
+
+**Shape:** no new metadata. `_uvdSectionTopic()` splits the existing labels at
+the first " - ", which yields 40 topics. Groups are built lazily beside the
+sections (`getOrCreateSynGroup()`). Everything that needs a section's complete
+entry list runs in `_uvdFinalizeSynGroups()`, right before
+`appendSynDivider()`: merging, prefix hoisting, entry counts, and the opening
+state (auto-collapse). `getOrCreateSynSection()` cannot do this, because it
+runs before the section's first entry exists.
+
+**The compatibility constraint that shaped it:** about 50 specs and
+`__saTest.getUniqDropSections()` read "Date info - Month" and
+"» month: February" as text. Both labels keep that exact textContent. The
+section label is topic/sep/sub spans, the hoisted prefix is a
+`.mb-uniq-syn-prefix` span, and CSS decides visibility (`::before "» "`,
+`::after ":"`, `" › "`). Hoisting uses the prefix `makeValueSynItem()` actually
+built (`dataset.mbUniqSynPrefix`). It never guesses one from the text, because a
+value may contain ": ".
+
+**One existing spec changed:** `uniq-drop-title-anatomy.spec.js` ticks entries
+in the medley release's "Title info - Title", which has more than the default
+15 entries and now opens collapsed. Playwright refuses to click an invisible
+element. That spec tests title parsing, so it seeds
+`sa_uvd_autocollapse_threshold: 0`. Deliberately NOT added to
+`FIXTURE_SETTINGS_OVERRIDE`: the rest of the suite runs at the real default.
+
+**Migration:** the collapse object gets `__v: 2`. On first grouped open every
+stored `false` is dropped. Before grouping it meant only "not collapsed", and
+the old Ctrl+Click "expand all" wrote it for every section, which would have
+disabled auto-collapse wherever it was ever used.
+
+**Tests:** `tests/fixtures/uvd-grouped-sections.spec.js` (10 tests, annotations
+fixture "Active start date": Structure merged, Date info with 5 sub-sections,
+Month/Weekday 2 entries each, so threshold 1 collapses exactly those two).
+`scripts/mutations/uvd-grouped-sections.json`: 10 planted defects, all caught.
+Two test-side traps worth knowing: `innerText` of an element inside a
+`display:none` ancestor returns its textContent (hidden prefix included), and
+a quick-filter non-match keeps its previous label (marks included) while
+hidden. Assert on visible marks or on structure, never on innerText inside a
+collapsed group.

@@ -1,0 +1,132 @@
+[
+  {
+    "name": "the shared prefix is not hidden",
+    "why": "Without the hoist mark every entry still renders its full \"» month: February\", which is the repetition the grouped layout exists to remove.",
+    "edits": [
+      {
+        "find": "                        it.dataset.mbUniqSynHoist = String(n);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "groups by topic, merges a one-section topic",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-section topic is not merged",
+    "why": "Without merging, a topic with one sub-section shows two header rows for one list, and its header never reads \"Topic › Sub\".",
+    "edits": [
+      {
+        "find": "                group.merged = group.sections.length === 1;",
+        "replace": "                group.merged = false;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "merged topic reads",
+    "expect": "fail"
+  },
+  {
+    "name": "the auto-collapse threshold is ignored",
+    "why": "A sub-section over the threshold must open collapsed. Returning false makes the setting a no-op.",
+    "edits": [
+      {
+        "find": "            return _uvdAutoThreshold > 0 && section.entryCount > _uvdAutoThreshold;",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "auto-collapses a sub-section above the threshold",
+    "expect": "fail"
+  },
+  {
+    "name": "a stored expand does not beat auto-collapse",
+    "why": "The user decided that a section expanded on its own stays expanded. Honouring only a stored \"collapsed\" re-collapses it on every open.",
+    "edits": [
+      {
+        "find": "            if (stored === true || stored === false) return stored;",
+        "replace": "            if (stored === true) return true;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "plain-click expand is remembered",
+    "expect": "fail"
+  },
+  {
+    "name": "a Ctrl+Click expand-all is remembered",
+    "why": "If expand-all stores \"expanded\" for every section, auto-collapse never applies to them again.",
+    "edits": [
+      {
+        "find": "            if (collapsed || !viaCtrl || !_uvdGrouped) {",
+        "replace": "            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "Ctrl\\+Click on a sub-heading acts on that topic only",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click on a sub-heading reaches every section",
+    "why": "On a nested sub-heading Ctrl+Click is scoped to its own topic. The pre-grouping scope (every section) collapses unrelated topics too.",
+    "edits": [
+      {
+        "find": "                    section.group.sections.forEach(sec => _uvdSetSection(sec, nowCollapsed, true));",
+        "replace": "                    _synSections.forEach(sec => _uvdSetSection(sec, nowCollapsed, true));"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "Ctrl\\+Click on a sub-heading acts on that topic only",
+    "expect": "fail"
+  },
+  {
+    "name": "Ctrl+Click on a main header acts on its own group only",
+    "why": "Ctrl+Click on a main header applies to every main header, a merged section included.",
+    "edits": [
+      {
+        "find": "                if (ev && ev.ctrlKey) {\n                    _uvdSetAllTopLevel(nowCollapsed);\n                } else {",
+        "replace": "                if (false) {\n                    _uvdSetAllTopLevel(nowCollapsed);\n                } else {"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "a main header collapses its topic",
+    "expect": "fail"
+  },
+  {
+    "name": "the quick filter does not open a collapsed topic",
+    "why": "A collapsed group must never hide a live search result; without the forcing its matches stay inside a hidden body.",
+    "edits": [
+      {
+        "find": "                    _paintUvdGroup(group, groupMatches === 0);",
+        "replace": "                    _paintUvdGroup(group, _uvdGroupCollapsed(group));"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "quick filter matches the hidden prefix",
+    "expect": "fail"
+  },
+  {
+    "name": "old stored expanded marks are kept",
+    "why": "Before grouping, false only meant \"not collapsed\" and Ctrl+Click wrote it for every section. Kept, it would disable auto-collapse wherever it was ever written.",
+    "edits": [
+      {
+        "find": "        if (_uvdGrouped) _uvdMigrateCollapseState(_uniqSectionCollapseState);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "dropped once",
+    "expect": "fail"
+  },
+  {
+    "name": "the kill switch is ignored",
+    "why": "sa_uvd_grouped_sections off must give the flat layout back, for bisecting and for anyone who prefers it.",
+    "edits": [
+      {
+        "find": "        const _uvdGrouped = Lib.settings.sa_uvd_grouped_sections !== false;",
+        "replace": "        const _uvdGrouped = true;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-grouped-sections.spec.js",
+    "grep": "restores the flat layout exactly",
+    "expect": "fail"
+  }
+]
