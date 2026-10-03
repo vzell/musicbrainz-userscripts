@@ -1,0 +1,56 @@
+[
+  {
+    "name": "the 📊 quick filter is focused on open on a touch device again",
+    "why": "Reverts the open-time focus to a plain focus(): on a phone the keyboard pops up as soon as the dropdown opens (org/mobile.org follow-up 3).",
+    "edits": [
+      {
+        "find": "        requestAnimationFrame(() => _autoFocusInput(qfInput));",
+        "replace": "        requestAnimationFrame(() => qfInput.focus());"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "dropdown does not focus its quick filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 quick filter × re-focuses on a touch device again",
+    "why": "Reverts the × clear's re-focus to a plain focus().",
+    "edits": [
+      {
+        "find": "            _applySynBoxQuickFilter('');\n            _autoFocusInput(qfInput);",
+        "replace": "            _applySynBoxQuickFilter('');\n            qfInput.focus();"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "clears it without focusing it",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 quick filter is never focused on open, on a desktop either",
+    "why": "The desktop half, which is also the control that the mobile negative is not vacuous.",
+    "edits": [
+      {
+        "find": "        requestAnimationFrame(() => _autoFocusInput(qfInput));",
+        "replace": "        requestAnimationFrame(() => {});"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "dropdown focuses its quick filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the 📊 quick filter × never re-focuses, on a desktop either",
+    "why": "Desktop half of the × clear.",
+    "edits": [
+      {
+        "find": "            _applySynBoxQuickFilter('');\n            _autoFocusInput(qfInput);",
+        "replace": "            _applySynBoxQuickFilter('');"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "quick filter\\'s × clears it and focuses it again",
+    "expect": "fail"
+  }
+]

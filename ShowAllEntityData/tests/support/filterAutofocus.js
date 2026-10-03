@@ -2,7 +2,7 @@
 
 // Shared scenarios for filter-autofocus.spec.js (desktop, chromium-fixtures)
 // and filter-autofocus.mobile.spec.js (touch, chromium-mobile). Both specs run
-// the SAME four interactions. The desktop one pins that the script still moves
+// the SAME interactions. The desktop one pins that the script still moves
 // focus into the filter, the mobile one that it no longer does. Each is the
 // other's control: a scenario that never reached its focus call would leave
 // focus elsewhere on both devices, and the desktop spec would fail.
@@ -34,6 +34,11 @@ async function openSeries(page) {
     await loadUserscriptPage(page, { url: SERIES_URL, fixtureFile: SERIES_SHELL, testMode: true });
     await page.locator('button[data-label="Show all Releases for Series"]').evaluate((b) => b.click());
     await waitForRenderComplete(page);
+    // Let the post-render global-filter focus (150 ms, desktop only) land
+    // first. Arriving after the 📊 dropdown opened, it took focus from the
+    // quick filter and closed the panel, which no user can be fast enough
+    // to see.
+    await page.waitForTimeout(FOCUS_SETTLE_MS);
 }
 
 /**
@@ -138,6 +143,49 @@ async function fillAndClearColumnFilter(page, text) {
     return { before, after };
 }
 
+/**
+ * Opens the 📊 unique-values dropdown of the first rendered column that has
+ * one, from script (same geometry reasons as fillAndClearColumnFilter(); the
+ * panel's focus decision depends on the device, not on the click), and waits
+ * until it is shown and any focus has landed.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function openUvd(page) {
+    await page.evaluate(() => {
+        const wrap = Array.from(document.querySelectorAll('table.tbl thead th .mb-col-uniq-wrap'))
+            .find((el) => el.getClientRects().length > 0);
+        wrap.click();
+    });
+    await page.locator('#mb-col-uniq-dropdown .mb-uniq-qf-input').waitFor({ state: 'visible' });
+    await page.waitForTimeout(FOCUS_SETTLE_MS);
+}
+
+/**
+ * Types `text` into the open dropdown's quick filter (as an internal input
+ * event), takes focus away from it, then presses its × from script and waits
+ * for any focus to land. Returns the quick filter's value before and after.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} text
+ * @returns {Promise<{before: string, after: string}>}
+ */
+async function fillAndClearUvdQuickFilter(page, text) {
+    const before = await page.evaluate((t) => {
+        const qf = document.querySelector('#mb-col-uniq-dropdown .mb-uniq-qf-input');
+        qf.value = t;
+        qf.dispatchEvent(new Event('input', { bubbles: true }));
+        qf.blur();
+        return qf.value;
+    }, text);
+    await page.evaluate(() => document.querySelector('#mb-col-uniq-dropdown .mb-uniq-qf-clear').click());
+    await page.waitForTimeout(FOCUS_SETTLE_MS);
+    const after = await page.evaluate(() => document.querySelector('#mb-col-uniq-dropdown .mb-uniq-qf-input').value);
+    return { before, after };
+}
+
 module.exports = {
     FOCUS_SETTLE_MS, openSeries, openRatings, focused, activate, typeInto, fillAndClearColumnFilter,
+    openUvd, fillAndClearUvdQuickFilter,
 };

@@ -229,3 +229,17 @@ close handler: `preventDefault()` on `pointerdown`, pointer capture, and a
 one-shot capture-phase `click` swallower. All of this is pinned by
 `tests/fixtures/uniq-drop-resize.spec.js` and
 `scripts/mutations/uniq-drop-resize.json`.
+
+## The quick filter is focused on open, except on touch (`_autoFocusInput()`)
+
+`openUniqDrop()` focuses `.mb-uniq-qf-input` one animation frame after the
+panel is positioned, and the quick filter's × re-focuses it after clearing.
+Both go through `_autoFocusInput()`: a plain `focus()` with a mouse, nothing on
+a touch-primary device, where a focus raises the on-screen keyboard over the
+panel (org/mobile.org). Keyboard navigation of the list is wired to the quick
+filter's `keydown`. A touch device has no keyboard for it, so nothing is lost.
+Specs: the 📊 cases in `filter-autofocus.spec.js` /
+`filter-autofocus.mobile.spec.js`. A trap when testing it on a desktop: the
+post-render global-filter focus fires 150 ms after the render. Opening 📊
+before it lands lets it take focus from the quick filter, and that closes the
+panel. `openSeries()` waits it out.

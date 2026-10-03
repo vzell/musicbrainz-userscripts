@@ -581,7 +581,8 @@ own initiative on a touch-primary device; go through `_autoFocusInput()`.**
 On a phone a focus raises the on-screen keyboard over the page. Covered call
 sites: the post-render global-filter focus (its own `_isTouchPrimaryDevice()`
 early return, since it also clears `readOnly`), the column-filter ✕, the
-sub-table-filter ✕ and its 🔍 reveal. Left as plain `focus()` on purpose:
+sub-table-filter ✕ and its 🔍 reveal, and the 📊 dropdown's quick filter on
+open and after its × (see uniq-dropdown.md). Left as plain `focus()` on purpose:
 restoring focus to an input the user was already typing in (the keyboard is up
 anyway), dialogs the user opened to type into (Save/Load filename, quick
 filters), and keyboard-shortcut paths (no keyboard, no shortcut). Because the

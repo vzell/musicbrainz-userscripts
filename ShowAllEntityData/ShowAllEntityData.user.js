@@ -21821,7 +21821,8 @@
      * The keyboard should appear only when the user taps an input themselves.
      * Used where the script moves focus without the user having tapped that
      * input: the global filter after a render, a filter's own ✕ (clear)
-     * button, and the sub-table filter's 🔍 reveal. On a desktop it is a
+     * button, the sub-table filter's 🔍 reveal, and the 📊 dropdown's quick
+     * filter when the panel opens and after its × clear. On a desktop it is a
      * plain `focus()`, so nothing changes there.
      *
      * @param {HTMLElement} input - The input to focus.
@@ -70297,7 +70298,7 @@ a { color: #1565c0; }`;
             moveFocus(-1);
             renderItems('');
             _applySynBoxQuickFilter('');
-            qfInput.focus();
+            _autoFocusInput(qfInput);
         });
 
         // ---- Keyboard navigation ------------------------------------------
@@ -70554,7 +70555,9 @@ a { color: #1565c0; }`;
         _uniqDropOwnerOpenRect = { top: bRect.top, left: bRect.left };
 
         // Auto-focus the quickfilter input so the user can type immediately
-        requestAnimationFrame(() => qfInput.focus());
+        // (desktop only: on a phone it would raise the on-screen keyboard
+        // over the panel, see _autoFocusInput())
+        requestAnimationFrame(() => _autoFocusInput(qfInput));
     }
 
     /**
