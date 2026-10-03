@@ -38,6 +38,7 @@ will never need is folded into collapsible sections.
 - [Settings](#settings)
 - [Supported pages](#supported-pages)
 - [Page-specific behaviour](#page-specific-behaviour)
+- [On a phone or tablet](#on-a-phone-or-tablet)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -632,7 +633,9 @@ instead of scrolling off to the left, and so does the content of any section
 you have expanded above the table, such as Credits or the Annotation
 (*Enable Sticky Page Headers* in 📌 Table stickiness). This only engages while the page really is wider than the window.
 It stays off while the sidebar is expanded and columns are not auto-resized,
-because widening the page would push the sidebar off-screen.
+because widening the page would push the sidebar off-screen. On a phone or
+tablet it is off unless you also tick *Sticky Page Headers on touch devices*
+(see [On a phone or tablet](#on-a-phone-or-tablet)).
 
 <details>
 <summary>Extracted, derived and injected columns</summary>
@@ -1181,6 +1184,25 @@ releases.
 </details>
 
 ---
+
+## On a phone or tablet
+
+The script runs in any mobile browser that runs Tampermonkey (Firefox for
+Android, for example), with or without that browser's *Desktop site* mode.
+MusicBrainz itself has no mobile layout, so either way you get the desktop
+page, zoomed out to fit the table, and you pinch to zoom in. Two things behave
+differently from a desktop, on purpose:
+
+- **Hover tooltips do not open on a tap.** A tap would open them but nothing
+  could close them again, so they would stay over the page. That covers the
+  rich tooltip on the action buttons, the artwork preview and its type tooltip,
+  and the Relationships tooltips. The buttons themselves work as usual.
+- **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
+  of what the browser pins, so the bars cannot reliably stay in view. To try it
+  anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.
+
+Keyboard shortcuts need a keyboard, and dragging a column edge to resize it
+needs a mouse.
 
 ## Troubleshooting
 

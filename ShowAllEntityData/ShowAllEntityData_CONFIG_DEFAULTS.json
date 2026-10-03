@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1201+2026-10-03",
-    "schema_entries": 314,
+    "script_version": "9.99.1204+2026-10-03",
+    "schema_entries": 315,
     "sections": 40,
-    "settings": 274,
-    "settings_with_default": 269,
+    "settings": 275,
+    "settings_with_default": 270,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 121,
+      "checkbox": 122,
       "color_picker": 62,
       "divider": 40,
       "number": 40,
@@ -414,6 +414,7 @@
     "sa_sort_chunk_size": "Sort chunk size",
     "sa_stats_panel_max_height": "Statistics panel max height (vh)",
     "sa_stats_panel_width": "Statistics panel max width (px)",
+    "sa_sticky_page_headers_on_touch": "Sticky Page Headers on touch devices",
     "sa_subtable_filter_border_active": "Sub-table filter border — active (has filter text)",
     "sa_subtable_filter_border_idle": "Sub-table filter border — idle (empty)",
     "sa_subtable_filter_initial_width": "Sub-table filter initial width (px)",
@@ -686,6 +687,7 @@
     "sa_sort_chunk_size": 5000,
     "sa_stats_panel_max_height": 82,
     "sa_stats_panel_width": 860,
+    "sa_sticky_page_headers_on_touch": false,
     "sa_subtable_filter_border_active": "#008000",
     "sa_subtable_filter_border_idle": "#cccccc",
     "sa_subtable_filter_initial_width": 320,

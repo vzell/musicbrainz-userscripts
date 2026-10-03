@@ -14,12 +14,18 @@ A mutation file is JSON: a list of
       "file":   "../lib/VZ_MBLibrary.user.js",   // optional; see below
       "edits":  [{"find": "exact text", "replace": "exact text"}, ...],
       "spec":   "tests/fixtures/some.spec.js",
+      "project": "chromium-mobile",               // optional; see below
       "grep":   "substring of the test title (Playwright -g)",
       "expect": "fail" | "pass"
     }
 
 `expect: "pass"` is for recording a KNOWN overlap honestly — a guard whose
 removal the spec cannot see because another guard covers for it.
+
+`project` is the Playwright project the spec runs in; it defaults to
+`chromium-fixtures`. A `*.mobile.spec.js` needs `chromium-mobile`: the
+fixtures project ignores those files, so without it the grep selects no test
+and the entry is reported as ERROR.
 
 `file` targets something other than the userscript, relative to
 `ShowAllEntityData/`; it defaults to `ShowAllEntityData.user.js`. Two things
@@ -57,6 +63,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 USERSCRIPT = os.path.join(ROOT, 'ShowAllEntityData.user.js')
 DEFAULT_TARGET = 'ShowAllEntityData.user.js'
 BACKUP_SUFFIX = '.mutation-backup'
+DEFAULT_PROJECT = 'chromium-fixtures'
 
 
 def target_path(rel):
@@ -74,8 +81,8 @@ def sha256(path):
         return hashlib.sha256(fh.read()).hexdigest()
 
 
-def run_spec(spec, grep):
-    """Runs one spec filtered by title.
+def run_spec(spec, grep, project=DEFAULT_PROJECT):
+    """Runs one spec filtered by title, in Playwright project `project`.
 
     Returns `(passed, detail, selected)`. `selected` is False when Playwright
     matched NO test at all — which it reports by exiting non-zero, exactly as
@@ -85,7 +92,7 @@ def run_spec(spec, grep):
     entry whose test had been renamed reported OK with `Error: No tests found.`
     (see DEBUG-NOTES.md).
     """
-    cmd = ['npx', 'playwright', 'test', spec, '--project=chromium-fixtures',
+    cmd = ['npx', 'playwright', 'test', spec, f'--project={project}',
            '--reporter=line', '--workers=1', '-g', grep]
     proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
     out = (proc.stdout or '') + (proc.stderr or '')
@@ -149,7 +156,7 @@ def main():
             try:
                 with open(paths[rel], 'w', encoding='utf-8') as fh:
                     fh.write(text)
-                passed, detail, selected = run_spec(m['spec'], m['grep'])
+                passed, detail, selected = run_spec(m['spec'], m['grep'], m.get('project', DEFAULT_PROJECT))
             finally:
                 restore_all()
             if not selected:

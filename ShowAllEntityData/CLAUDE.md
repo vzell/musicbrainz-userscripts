@@ -453,6 +453,10 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   **`npm run test:full` is the merge gate**. The two `@slow` specs
   (`rel-auto-retry-failed` ~295 s, `resume-from-failed-page` ~84 s) spend
   their time in the rate gates and backoffs under test — do not shorten them.
+- **`chromium-mobile`** (`tests/fixtures/*.mobile.spec.js`, Pixel 7
+  emulation: touch, no hover, zoomed-out viewport): `npm run test:mobile`,
+  included in `npm test` and `test:full`. Chromium emulation, not Firefox
+  Android; mutation entries need `"project": "chromium-mobile"`.
 - **`chromium-live`** (`tests/live/*.spec.js`, real musicbrainz.org, one tag
   each): `@core` (`npm run test:live`), `@extended`, `@perf`;
   `npm run test:all` runs everything. `npm run auth:login` writes

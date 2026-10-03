@@ -17,9 +17,11 @@ const { authStorageState } = require('./tests/support/authState');
 /**
  * Playwright config for ShowAllEntityData.
  *
- * Two projects, split by test-file location:
+ * Three projects, split by test-file location:
  *  - chromium-fixtures: loads local tests/fixtures/*.html snapshots (served at a real
  *    musicbrainz.org-shaped URL via page.route()), no network dependency.
+ *  - chromium-mobile: the same kind of fixture specs, named *.mobile.spec.js, under
+ *    Pixel 7 emulation (touch, no hover, mobile viewport); `npm run test:mobile`.
  *  - chromium-live: navigates to real musicbrainz.org pages, run explicitly via `npm run test:live`.
  *
  * `npm test` only runs chromium-fixtures, so routine runs never touch the network.
@@ -43,6 +45,8 @@ module.exports = defineConfig({
         {
             name: 'chromium-fixtures',
             testMatch: 'fixtures/**/*.spec.js',
+            // *.mobile.spec.js need a touch device; they run in chromium-mobile.
+            testIgnore: 'fixtures/**/*.mobile.spec.js',
             // Network-free does NOT mean fast. These specs intercept every
             // request, but the userscript's own Relationships rate gate sleeps
             // ~1100 ms between WS/2 calls, so a 12-entity table legitimately
@@ -67,6 +71,19 @@ module.exports = defineConfig({
             // The cost accepted: a genuinely hung test takes 90 s to fail.
             timeout: 90000,
             use: { ...devices['Desktop Chrome'] },
+        },
+        {
+            // Fixture specs that need a phone: touch input (`hasTouch`, so
+            // page.tap() fires a real touch sequence with its compatibility
+            // mouse events), a coarse pointer without hover, and mobile
+            // viewport handling (`isMobile`: a page without a viewport meta,
+            // like every MusicBrainz page, is laid out wide and zoomed out).
+            // Chromium's emulation, not Firefox Android, which Playwright
+            // cannot drive: see org/mobile.org for what that does not cover.
+            name: 'chromium-mobile',
+            testMatch: 'fixtures/**/*.mobile.spec.js',
+            timeout: 90000,
+            use: { ...devices['Pixel 7'] },
         },
         {
             name: 'chromium-live',
