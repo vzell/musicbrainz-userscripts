@@ -1210,8 +1210,9 @@ differently from a desktop, on purpose:
   and the Relationships tooltips. The buttons themselves work as usual.
 - **The keyboard appears only when you tap a filter.** On a desktop the
   global filter is focused after the table renders, so you can type right
-  away, and a filter's ✕ puts the cursor back into it. On a phone that would
-  raise the keyboard over the page, so it does not happen there.
+  away; a filter's ✕ puts the cursor back into it; and a column's 📊 dropdown
+  opens with the cursor in its quick filter. On a phone each of these would
+  raise the keyboard over the page, so none of them happens there.
 - **Sticky Page Headers is off.** Pinch-zoom moves what you see independently
   of what the browser pins, so the bars cannot reliably stay in view. To try it
   anyway, tick *Sticky Page Headers on touch devices* in 📌 Table stickiness.

@@ -1,5 +1,5 @@
 * DONE Our userscript on mobile
-** i
+** DONE i
 
 Currently when running our userscript on a mobile with a browser which supports Tampermonkey, e.g. Firefox
 
@@ -45,12 +45,12 @@ for my userscript.
 It should work in "Desktop site" browser mode but also, if not to complicated to implement, in mobile browser native
 mode
 
-** q
+** DONE q
 
 Could you collect a few numbers from the real phone? This means Firefox desktop on Windows → about:debugging → USB, with
 'Remote debugging via USB' turned on in Firefox Android, then running one snippet in the console.
 
-** q
+** DONE q
 
 1.)
 
@@ -63,9 +63,23 @@ Could you collect a few numbers from the real phone? This means Firefox desktop 
 There is another annoyance on mobile. On the final rendered page, because the global filter is focused, the mobil
 keyboard always appears right away.
 
-I only want it to appear when explicitely focusing myslef an input field
+I only want it to appear when explicitely focusing myself an input field
+
+** bug
+
+There is another annoyance where the mobile keyboard automatically appears:
+
+When pressing the UVD the quick filter field automatically has focus too, so the keyboards appears. I ONLY want it to
+appear when I explicitely focus the quick filter field myself
 
 
+* Answer to "bug" (2026-10-03, branch =uvd-no-autofocus-touch=) — FIXED
+
+The 📊 dropdown focused its quick filter when it opened, and again after its ×
+clear. Both now go through =_autoFocusInput()=, like the filters before: no
+focus on a touch device, so the keyboard appears only when you tap the quick
+filter. Desktop unchanged. Specs: the 📊 cases in =filter-autofocus.spec.js= /
+=filter-autofocus.mobile.spec.js=.
 
 * Answers to the follow-up (2026-10-03)
 

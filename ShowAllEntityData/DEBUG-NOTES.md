@@ -17733,3 +17733,16 @@ Spec: `tests/fixtures/title-el-without-bdi.spec.js`. Mutation list:
 `scripts/mutations/title-el-without-bdi.json`. The pre-fix behaviour fails
 it; the sub-path and text guards are recorded `pass`, since no fixture has
 such a link ahead of the title.
+
+### 2026-10-03 (follow-up) — phone: 📊 dropdown raises the keyboard (branch uvd-no-autofocus-touch)
+
+`openUniqDrop()` focused the quick filter (`requestAnimationFrame(() =>
+qfInput.focus())`), and the quick filter's × re-focused it, so on a phone the
+keyboard opened with every 📊. Both now go through `_autoFocusInput()`
+(9.99.1209's helper). Test trap: on a desktop, opening 📊 within 150 ms of the
+render loses the race against the post-render global-filter focus. That focus
+takes it from the quick filter and closes the panel, so the "focuses its
+quick filter" case failed until `openSeries()` waited the render focus out.
+Diagnosed by logging focusin/focusout: `in qf`, `out qf`, `in` the global
+filter, panel `display: none`. Mutations: `scripts/mutations/uvd-no-autofocus-touch.json`,
+4/4 OK.

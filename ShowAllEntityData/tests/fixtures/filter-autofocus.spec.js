@@ -9,6 +9,7 @@
 const { test, expect } = require('../support/test');
 const {
     FOCUS_SETTLE_MS, openSeries, openRatings, focused, activate, typeInto, fillAndClearColumnFilter,
+    openUvd, fillAndClearUvdQuickFilter,
 } = require('../support/filterAutofocus');
 
 const TOUCH = false;
@@ -51,5 +52,20 @@ test.describe('filters with a mouse: the script still focuses them', () => {
         await page.waitForTimeout(FOCUS_SETTLE_MS);
         expect(await stf.inputValue()).toBe('');
         expect((await focused(page)).id).toBe(stfId);
+    });
+
+    test('opening a column\'s 📊 dropdown focuses its quick filter', async ({ page }) => {
+        await openSeries(page);
+        await openUvd(page);
+        expect((await focused(page)).cls).toContain('mb-uniq-qf-input');
+    });
+
+    test('the 📊 quick filter\'s × clears it and focuses it again', async ({ page }) => {
+        await openSeries(page);
+        await openUvd(page);
+        const { before, after } = await fillAndClearUvdQuickFilter(page, 'a');
+        expect(before, 'premise: the quick filter held text').toBe('a');
+        expect(after, 'premise: × cleared it').toBe('');
+        expect((await focused(page)).cls).toContain('mb-uniq-qf-input');
     });
 });
