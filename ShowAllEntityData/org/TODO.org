@@ -1034,11 +1034,27 @@ I get
 
 * fix bug in jesus2099 userscript
 
+I copied the third-party userscript from aerozol(https://github.com/Aerozol/metabrainz-userscripts) to @tests/fixtures/live-userscripts/MusicBrainz Nuclear Tags.user.js
+
+1.)
+
+register it, see @tests/fixtures/live-userscripts/README.md
+
+2.)
+
+When just the "mb. INLINE STUFF" userscript from jesus2099 is active, the "Acoust-IDs" and "ISRC" info is correctly
+rendered under the "Title" column, but as soon as the "MusicBrainz Nuclear Tags" from aerozol is additionally active,
+that data is incorrectly rendered under the "checkbis" column, see also
 
 #+begin_example
-@debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099
-@debug/ISRC-bug.html - initial raw page with both the "mb. INLINE STUFF" and the "MusicBrainz Nuclear Tags" from aerozol
+@debug/ISRC-OK.html - initial raw page just with the "mb. INLINE STUFF" userscript from jesus2099 - 
+@debug/ISRC-bug.html - initial raw page with both the "mb. INLINE STUFF" and the "MusicBrainz Nuclear Tags" from aerozol - 
 #+end_example
+
+3.)
+
+Check which userscript needs to be fixed and create a fixed version to test in the @debug folder plus a patch file to
+send to the original author
 
 
 
