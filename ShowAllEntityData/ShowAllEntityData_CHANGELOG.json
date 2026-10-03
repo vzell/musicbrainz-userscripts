@@ -1,5 +1,17 @@
 [
   {
+    "version": "9.99.1211",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Phones and tablets: opening a column's 📊 dropdown no longer brings up the on-screen keyboard. Its quick filter is no longer focused when the panel opens, nor after its × clear. The keyboard appears only when you tap the quick filter yourself. On a desktop the quick filter is still focused as before, so you can start typing right away."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1210",
     "date": "2026-10-03",
     "sections": [
