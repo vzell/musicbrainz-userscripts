@@ -150,6 +150,28 @@ test.describe('rich tooltips: Liner notes', () => {
         expect(await btn.getAttribute('title')).toBe('Relabelled while hovered');
     });
 
+    test('_setTip() on a hovered element with the pointer at rest exposes no native title', async ({ page }) => {
+        // org/live-bootleg.org 1: the ⚠⟳ retry controls re-tip themselves on
+        // every count refresh while artwork loads. With the pointer resting on
+        // one, no mousemove comes to re-stash the new title, so the browser
+        // drew its own box on top of the card "after a while". Pins that the
+        // title stays empty WITHOUT a move, that the card shows the new text,
+        // and that the new text — not the stale one — comes back on leaving.
+        await openRg(page);
+        const btn = ownButton(page);
+        await page.mouse.move(0, 0);
+        await btn.hover();
+        await expect(card(page)).toBeVisible();
+        await page.evaluate(() => window.__saTest.setTip(
+            document.getElementById('mb-settings-btn'), 'Re-tipped while hovered'));
+        await expect(btn, 'no native box while the card shows').toHaveAttribute('title', '');
+        await expect(card(page)).toContainText('Re-tipped while hovered');
+        await expect(btn).toHaveAttribute('aria-description', 'Re-tipped while hovered');
+        await page.mouse.move(0, 0);
+        await expect(card(page)).toBeHidden();
+        await expect(btn).toHaveAttribute('title', 'Re-tipped while hovered');
+    });
+
     test('a mousedown hides the card for the rest of the hover', async ({ page }) => {
         await openRg(page);
         const btn = page.locator('[data-mb-tip][title]:not(button)').first();

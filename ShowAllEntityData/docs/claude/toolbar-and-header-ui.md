@@ -583,6 +583,12 @@ How it behaves, and why:
 - **Live titles.** A title changed under the pointer (a button relabelling
   itself on click) is re-stashed and re-rendered on the next mousemove. A
   mousedown hides the card for the rest of that hover, like a native tooltip.
+- **`_setTip()` on a stashed element writes the stash, not `title`**, and
+  repaints the card if the element is hovered. A control re-tipped on a timer
+  (the ⚠⟳ counts during an artwork load) under a RESTING pointer gets no
+  mousemove, so a written `title` stayed exposed and the browser drew its own
+  box over the card (org/live-bootleg.org 1;
+  `rich-tooltips-liner.spec.js` "pointer at rest").
 - **It steps aside for the other rich tooltips.** No card opens while
   `#mb-art-bigbox-tooltip`, `#mb-art-hover-preview` or `#mb-rel-tooltip`
   shows (`_OTHER_RICH_TIPS`). The title stays stashed, so no grey box appears

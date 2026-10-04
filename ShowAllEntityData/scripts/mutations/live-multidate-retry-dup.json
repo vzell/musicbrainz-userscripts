@@ -1,0 +1,132 @@
+[
+  {
+    "name": "CAA: per-table ⚠⟳ built even when it shares table 0's slot",
+    "why": "Removes the single-table guard in _artRefreshPerTableFailedButtons(). On a single-table page the page-wide ⚠⟳ falls back to table 0's run and the per-table one joins it there: two identical controls (org/live-bootleg.org 1).",
+    "edits": [
+      {
+        "find": "        const entries = _failedRetrySharesTableSlot(ctx.btnPrefix + '-global-retry', all.length) ? [] : all;",
+        "replace": "        const entries = all;"
+      }
+    ],
+    "spec": "tests/fixtures/single-table-failed-retry.spec.js",
+    "grep": "CAA: the page-wide ⚠⟳ alone",
+    "expect": "fail"
+  },
+  {
+    "name": "Relationships: per-table ⚠⟳ built even when it shares table 0's slot",
+    "why": "Same guard in _relRefreshPerTableFailedButtons(); the series page is single-table, so the twin appears beside #mb-rel-retry-failed.",
+    "edits": [
+      {
+        "find": "        const _entries = _failedRetrySharesTableSlot('mb-rel-retry-global', _all.length) ? [] : _all;",
+        "replace": "        const _entries = _all;"
+      }
+    ],
+    "spec": "tests/fixtures/rel-retry-failed-only.spec.js",
+    "grep": "requests exactly the failed entities",
+    "expect": "fail"
+  },
+  {
+    "name": "the guard also fires on a multi-table page",
+    "why": "Over-correction: dropping the per-table controls everywhere. per-table-failed-retry.spec.js asserts the partition on the multi-table release group.",
+    "edits": [
+      {
+        "find": "        return tableCount <= 1 && !document.getElementById(globalRetryId);",
+        "replace": "        return true;"
+      }
+    ],
+    "spec": "tests/fixtures/per-table-failed-retry.spec.js",
+    "grep": "partitioned across per-table controls",
+    "expect": "fail"
+  },
+  {
+    "name": "_setTip() writes title while the engine has it stashed",
+    "why": "Removes the stash branch: a control re-tipped under a resting pointer exposes its title, and the browser draws a native box over the card.",
+    "edits": [
+      {
+        "find": "        if (el.dataset.mbTipSaved === undefined || el.title) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "pointer at rest exposes no native title",
+    "expect": "fail"
+  },
+  {
+    "name": "_setTip() stashes but leaves the visible card stale",
+    "why": "The card would keep the old count until the pointer moves.",
+    "edits": [
+      {
+        "find": "        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);",
+        "replace": "        if (false) card.innerHTML = _tipTextToHtml(text);"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "pointer at rest exposes no native title",
+    "expect": "fail"
+  },
+  {
+    "name": "multi-date titles never reach the multi-date parser",
+    "why": "Without the '/' branch every multi-date title is a near miss again, flagged red.",
+    "edits": [
+      {
+        "find": "            const multi = _parseMultiDateLiveTitle(full);",
+        "replace": "            const multi = null;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "a valid multi-date title is not flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "extra /DD days are not checked against the month",
+    "why": "\"1977‐04‐30/31\" would pass as valid: only the first day was validated.",
+    "edits": [
+      {
+        "find": "            if ((n < 1 || n > max) && !problems.includes(`day ${dd}`)) problems.push(`day ${dd}`);",
+        "replace": "            if (false) problems.push(`day ${dd}`);"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "a valid multi-date title is not flagged",
+    "expect": "fail"
+  },
+  {
+    "name": "the shared-location form is not tried",
+    "why": "\"1989‐07‐04 / 1990‐04‐22: Venue, …\" would fall through to the near miss.",
+    "edits": [
+      {
+        "find": "        if (head.includes(' / ')) {\n            const loc = full.slice(colon);",
+        "replace": "        if (false) {\n            const loc = full.slice(colon);"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "parser: several dates in one title",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Multiple dates\" entries never match a row",
+    "why": "Silently dead entries: counted and shown, but ticking one filters nothing in.",
+    "edits": [
+      {
+        "find": "        if (mode === 'live-multi-days')  return live.multi === 'days';",
+        "replace": "        if (mode === 'live-multi-days')  return false;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "ticking each \"Multiple dates\" entry",
+    "expect": "fail"
+  },
+  {
+    "name": "\"Multiple dates\" not counted",
+    "why": "The section would never appear.",
+    "edits": [
+      {
+        "find": "        if (live.multi === 'days') counts.multiDays++;",
+        "replace": "        if (false) counts.multiDays++;"
+      }
+    ],
+    "spec": "tests/fixtures/uvd-live-titles.spec.js",
+    "grep": "the \"Multiple dates\" counts",
+    "expect": "fail"
+  }
+]

@@ -409,8 +409,13 @@ themselves:
   don't start with a date are ignored, so a studio album or `1984 Revisited`
   never counts. A trailing date part may be missing (`2008‐12`, `2008`), the
   year may be missing in front (`12‐07`), and an unknown part may be written
-  `??`. Switch the sections off with "Unique-Values Dropdown: Live Title
-  Info" in ⚙️ Settings.
+  `??`. A title may also name several dates, and each date is checked on its
+  own: more days of one month (`1978‐08‐21/22/23: Madison Square Garden, …`),
+  separate dates each with its own location (`1978‐08‐21: … / 1979‐01‐01:
+  …`), or separate dates sharing one location (`1989‐07‐04 / 1990‐04‐22:
+  Park West, Chicago, IL, USA`). Such a title is valid unless one of its
+  dates is impossible. Switch the sections off with "Unique-Values Dropdown:
+  Live Title Info" in ⚙️ Settings.
   - **Validity** — `✅ follows the live title convention` and `❌ impossible
     date` (month 13, day 42, 29 February in a non-leap year). On a release
     group's status sub-tables the status is added, e.g. `✅ follows the live
@@ -423,6 +428,8 @@ themselves:
     unknown part).
   - **🕗 Additional date info** — one flag plus one entry per text before the
     colon (`early show`, `late show`, …).
+  - **🗓️ Multiple dates** — titles with several days of one month, and titles
+    with several separate dates.
   - **📍 Location completeness** — how many `, `-separated parts the location
     after the colon has: `2 parts (Venue, City)`, `3 parts (Venue, City,
     Country)`, `4 parts (Venue, City, State, Country)` or `5+ parts`. Only
@@ -778,7 +785,8 @@ back to one request per row elsewhere.
 
 **Two retry buttons, and they mean different things.** `🔗⟳` reloads
 everything, for when you believe the data is stale. `⚠⟳ N` recovers only what
-failed. There is one of each per table and one page-wide. The failed count is
+failed. There is one of each per table and one page-wide; a single-table page
+shows only the page-wide `⚠⟳`, since it covers the same rows. The failed count is
 computed from the captured rows, not from what is on screen, so a filter cannot
 hide failures from it.
 
