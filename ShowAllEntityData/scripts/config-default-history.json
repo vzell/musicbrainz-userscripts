@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f36b895c639c32193fd755405b039d586a9e84d3",
-    "revisions_walked": 744
+    "head": "6440ae00ba8a4a4ea99afd7b2241432cfcb9134a",
+    "revisions_walked": 745
   },
   "changes": [
     {
@@ -521,6 +521,7 @@
     "sa_findings_tint_event_style": true,
     "sa_findings_tint_rec_date": true,
     "sa_findings_tint_rec_event": true,
+    "sa_findings_tint_rg_title": true,
     "sa_findings_tint_event_state": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_low_quality": true,
@@ -545,6 +546,7 @@
     "sa_enable_release_tracks_credit_role_columns": true,
     "sa_enable_release_tracks_instrument_vocal_columns": true,
     "sa_enable_release_tracks_live_date_check": true,
+    "sa_release_rg_link": true,
     "sa_enable_release_tracks_dynamic_ar_columns": true,
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_ars_collapse": false,

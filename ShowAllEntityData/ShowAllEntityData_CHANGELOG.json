@@ -1,5 +1,42 @@
 [
   {
+    "version": "9.99.1228",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "On a release with a live release group title, tracks from the main event are checked against that title. A Disambiguation, \"Recorded at event\" or \"Recorded at place\" that names the event or venue differently gets a ⚠️ warning, with both names in the tooltip. The venue is the first part of the title's location. The warning is listed in the ⚠️ WARNING menu, and its tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1227",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists mark the tracks that are not from the main event. When the release group title is a live title (\"1996‐04‐19: ICC Berlin, Saal 1, …\"), its date names the main event. If the tracks come from two or more dates, the \"#\" cell of every track from another date turns light green.",
+          "When tracks carry live event data but the release group title is not a live title, a ⚠️ after the release group link says why: the title does not start with a date, is almost but not quite a live title, or has an impossible date. It also suggests a title built from the event with the most tracks. Tracks are then not marked green, because there is no main event to compare with."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1226",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "On a release page, the \"(see all versions of this release, 5 available)\" link now names the release group: \"(5 versions available in 1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany)\". The name is already in the page, so this costs no request. Hovering the link previews the release group: its cover, type and artist, and a table of its releases (format, date, country, label and catalog number), with this release marked. The table is loaded with one request on the first hover. If that request fails, the next hover tries again. A new setting in ⚙️ Settings → 💿 RELEASE TRACKLIST switches it off."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1225",
     "date": "2026-10-05",
     "sections": [
