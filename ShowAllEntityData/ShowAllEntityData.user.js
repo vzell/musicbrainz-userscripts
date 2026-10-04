@@ -30339,6 +30339,40 @@
         return map;
     }
 
+    /**
+     * The name the column-visibility menus saved a column under until they
+     * switched to `_cleanColHeaderText()`: the header's raw `textContent`
+     * minus a fixed glyph list.
+     * That kept the glyphs of any header button not on the list (the Barcode
+     * highlight toggle's "▌█" above all, so "▌█Barcode") and dropped every
+     * digit, including a real one in a column name.
+     *
+     * This exists only so a choice saved under the old key still applies;
+     * see `_colVisStateKey()`.
+     *
+     * @param {HTMLTableCellElement} th - Live header cell.
+     * @returns {string} The old key for this column.
+     */
+    function _colVisLegacyName(th) {
+        return th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+    }
+
+    /**
+     * Finds a column's entry in a saved column-visibility state: under its
+     * clean name (`data-column-name`) first, else under the name an older
+     * version saved it under (`data-legacy-column-name`, see
+     * `_colVisLegacyName()`). The next save writes the clean name only, since
+     * both menus rebuild the state from their checkboxes.
+     *
+     * @param {Object<string, boolean>} state - Parsed saved state.
+     * @param {HTMLInputElement} cb - The column's checkbox.
+     * @returns {?string} The key present in `state`, or null.
+     */
+    function _colVisStateKey(state, cb) {
+        return [cb.dataset.columnName, cb.dataset.legacyColumnName]
+            .find(n => n && Object.prototype.hasOwnProperty.call(state, n)) || null;
+    }
+
     // Tracks, per pageType, which column names the user has EXPLICITLY
     // toggled at least once — a genuine trusted click on that column's own
     // checkbox, or a deliberate bulk action (Select All / Deselect All /
@@ -30655,8 +30689,9 @@
 
         // Create checkbox for each column
         headers.forEach((th, index) => {
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+            const colName = _cleanColHeaderText(th);
             if (!colName) return; // Skip empty headers
+            const legacyName = _colVisLegacyName(th);
 
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'margin: 5px 0; white-space: nowrap; display: flex; align-items: center;';
@@ -30668,6 +30703,7 @@
             checkbox.style.cssText = 'margin-right: 8px; cursor: pointer;';
             checkbox.dataset.columnIndex = index;
             checkbox.dataset.columnName  = colName; // store for persistence lookup
+            if (legacyName && legacyName !== colName) checkbox.dataset.legacyColumnName = legacyName;
 
             const label = document.createElement('label');
             label.htmlFor = checkbox.id;
@@ -30708,8 +30744,9 @@
         if (savedState) {
             checkboxes.forEach(cb => {
                 const colName = cb.dataset.columnName;
-                if (colName && Object.prototype.hasOwnProperty.call(savedState, colName)) {
-                    const shouldBeVisible = !!savedState[colName];
+                const stateKey = _colVisStateKey(savedState, cb);
+                if (colName && stateKey) {
+                    const shouldBeVisible = !!savedState[stateKey];
                     if (cb.checked !== shouldBeVisible) {
                         cb.checked = shouldBeVisible;
                         // Fire the change event so toggleColumn() hides/shows the DOM cells
@@ -31026,8 +31063,9 @@
 
         if (headerRow) {
             Array.from(headerRow.cells).forEach((th, index) => {
-                const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+                const colName = _cleanColHeaderText(th);
                 if (!colName) return;
+                const legacyName = _colVisLegacyName(th);
 
                 const wrapper = document.createElement('div');
                 wrapper.style.cssText = 'margin:5px 0; white-space:nowrap; display:flex; align-items:center;';
@@ -31039,6 +31077,7 @@
                 cb.style.cssText = 'margin-right:8px; cursor:pointer;';
                 cb.dataset.columnIndex = index;
                 cb.dataset.columnName  = colName;
+                if (legacyName && legacyName !== colName) cb.dataset.legacyColumnName = legacyName;
 
                 const lbl = document.createElement('label');
                 lbl.htmlFor   = cb.id;
@@ -31075,8 +31114,9 @@
         if (savedState) {
             subCheckboxes.forEach(cb => {
                 const colName = cb.dataset.columnName;
-                if (colName && Object.prototype.hasOwnProperty.call(savedState, colName)) {
-                    const shouldBeVisible = !!savedState[colName];
+                const stateKey = _colVisStateKey(savedState, cb);
+                if (colName && stateKey) {
+                    const shouldBeVisible = !!savedState[stateKey];
                     if (cb.checked !== shouldBeVisible) {
                         cb.checked = shouldBeVisible;
                         cb.dispatchEvent(new Event('change'));

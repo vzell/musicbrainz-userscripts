@@ -18216,3 +18216,54 @@ guard).
 installed at 03:17, before fee0fd1 (05:13) added ESLint to the lockfile; `npm ci`
 fixed it. Anyone on an older checkout has to re-run it before
 `scripts/lint-summary.py` works ("sh: 1: eslint: not found").
+
+## 2026-10-04 — 👁️ menu says "▌█Barcode"; default-hidden Barcode never hides (branch fix/colvis-menu-clean-column-names)
+
+**Symptom.** Seen in a real browser while checking 9.99.1217: the page-wide
+👁️ column-visibility menu lists Barcode as "▌█Barcode".
+
+**Root cause.** `addColumnVisibilityToggle()` named each column
+`th.textContent` minus a glyph list (⇅▲▼📊▶◀▤, digits, superscripts). By the
+time it runs, the Barcode header also holds `.mb-barcode-col-hdr-btn`, whose
+text is "▶▌█"/"▼▌█" (`_barcodeUpdateColHdrBtn()`); only ▶/▼ were on the list.
+The same name is the key the choice is saved under and the name
+`applyGlobalConfig()` matches by, so three things were wrong:
+
+1. the label;
+2. `sa_default_hidden_columns`: `_seedDefaultHiddenColumnsForPageType()`
+   writes `state["Barcode"] = false`, and the menu looked up "▌█Barcode", so a
+   default-hidden Barcode never hid (no error, it just stayed visible);
+3. "Choose current configuration" on a multi-table page: the sub-table menus
+   say "Barcode", so the page-wide "▌█Barcode" never matched them.
+
+The digit strip had the same flaw for any real column name containing a digit.
+`createSubTableColumnVisibilityButton()` is built before the barcode button is
+added to the header, so its labels were already clean. That was confirmed by
+running its label test against the pre-fix userscript, where it passes.
+
+**Fix.** Both menus name columns with `_cleanColHeaderText(th)`
+(`dataset.colName`, the name `makeTableSortableUnified()` stamps; the Picard
+header has none and resolves through the helper's clone fallback). The old name
+(`_colVisLegacyName()`) goes on the checkbox as `data-legacy-column-name` when
+it differs, and `_colVisStateKey()` falls back to it on restore, so a column
+hidden before the fix stays hidden. The next save drops the old key, since both
+menus rebuild the state from their checkboxes.
+
+**Not migrated:** the "touched" set (`vz-mb-colvis-touched-<pt>`) can hold
+"▌█Barcode". It is only consulted for configured default-hidden columns, which
+never worked for Barcode before, so the only case it affects is a user who has
+Barcode in that setting AND had explicitly shown it. For them it re-hides once.
+
+**Tests.** `tests/fixtures/colvis-clean-column-names.spec.js`, 5 tests: labels
+equal `dataset.colName` (BoDeans), a default-hidden Barcode hides, a legacy
+"▌█Barcode" choice still applies, sub-table labels stay clean, and Choose
+current configuration reaches both sub-tables (release-group fixture). 4 of 5
+fail on the pre-fix code; the sub-table label test passes on both, as noted.
+`scripts/mutations/colvis-clean-column-names.json`: 6/6 as expected (5 caught,
+1 recorded `"expect": "pass"`, the sub-table naming overlap).
+
+**Test-harness note.** The page-wide menu's "Choose current configuration"
+button is below the fold of the fixed-position menu at the default viewport,
+and Playwright's click cannot scroll to it, so the spec calls its `onclick`
+via `evaluate`. `.first()` on the button text also matches a sub-table menu's
+hidden button; restrict it with `:visible`.
