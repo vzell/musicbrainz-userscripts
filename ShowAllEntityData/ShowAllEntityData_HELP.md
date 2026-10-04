@@ -156,6 +156,20 @@ before the global filter box:
 Multi-table pages have carried exactly this pair on every sub-heading for a long
 time. The page-level pair now reads identically.
 
+### Hover texts
+
+Every hover text the script adds shows as a small cream card, like the insert
+of a record sleeve, instead of the browser's plain grey box. That covers the
+buttons, filter boxes, column headers, collapse toggles, flagged cells and 📊
+dropdown entries. The first line is set as a bold title, and shortcuts appear
+as keycaps (<kbd>Ctrl</kbd>+<kbd>M</kbd>, then <kbd>R</kbd>). The card appears
+after a short pause, follows the pointer, and goes away when you click.
+
+MusicBrainz's own hover texts are left alone: an artist link's sort name, the
+rating stars, a country's full name. So are other userscripts' texts. The
+cover-art card, the Relationships panel and the prefix-key overlay use the same
+look. Turn the cards off, or change their delay, in ⚙️ Settings → 💬 TOOLTIPS.
+
 ---
 
 ## Filtering
@@ -960,7 +974,7 @@ you automatically.
 | 🛠️ Generic                                       | Debug logging; overflow tables in a new tab; artwork diagnostics                                                                                                                                           |
 | 🔬 Experimental                                 | Collapsible sidebar                                                                                                                                                                                        |
 | 🏷️ Page header and body                          | Relocating h1 alias blocks, legal names and trailing h2 sections                                                                                                                                           |
-| 💬 Tooltips                                     | Rich row-count tooltips and their colours                                                                                                                                                                  |
+| 💬 Tooltips                                     | "Liner notes" hover cards on/off and their delay; tooltip colours                                                                                                                                          |
 | 🔢 Numeric alignment                            | Digit and colon alignment on numeric and duration columns                                                                                                                                                  |
 | 🧮 Optional column removal                      | Drop the Tagger, Rating and checkbox columns                                                                                                                                                               |
 | 🎹 Keyboard shortcuts                           | The prefix key, the direct-shortcuts master switch, and 20+ individual bindings                                                                                                                            |
@@ -1210,7 +1224,8 @@ differently from a desktop, on purpose:
 - **Hover tooltips do not open on a tap.** A tap would open them but nothing
   could close them again, so they would stay over the page. That covers the
   rich tooltip on the action buttons, the artwork preview and its type tooltip,
-  and the Relationships tooltips. The buttons themselves work as usual.
+  the Relationships tooltips and every "Liner notes" hover card. The buttons
+  themselves work as usual.
 - **The keyboard appears only when you tap a filter.** On a desktop the
   global filter is focused after the table renders, so you can type right
   away; a filter's ✕ puts the cursor back into it; and a column's 📊 dropdown

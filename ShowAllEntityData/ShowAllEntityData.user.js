@@ -470,6 +470,29 @@
             label: '💬 TOOLTIPS'
         },
 
+        sa_rich_tooltips: {
+            label: 'Rich "Liner notes" tooltips for this script\'s own hover texts',
+            type: 'checkbox',
+            default: true,
+            description: 'When enabled, every hover text this script adds (toolbar and filter buttons, '
+                         + 'column headers, collapse toggles, cell flags, 📊 dropdown entries, …) shows as '
+                         + 'a cream "Liner notes" card with a bold title and keycaps for shortcuts, instead '
+                         + 'of the browser\'s plain grey tooltip. MusicBrainz\'s own hover texts (entity '
+                         + 'sort names, ratings, country names) and other userscripts\' stay plain. When '
+                         + 'disabled, the script\'s hover texts are plain browser tooltips again.'
+        },
+
+        sa_rich_tooltip_delay_ms: {
+            label: 'Rich tooltip delay (ms)',
+            type: 'number',
+            default: 400,
+            min: 0,
+            max: 3000,
+            description: 'How long the pointer must rest on an element before its "Liner notes" card '
+                         + 'appears. 0 shows it at once. Does not apply to the row-count and action-button '
+                         + 'tooltips, which always appear at once.'
+        },
+
         sa_enable_count_stat_tooltip: {
             label: 'Enable rich row-count tooltips on h2/h3 count spans',
             type: 'checkbox',
@@ -485,15 +508,17 @@
         sa_count_stat_tooltip_bg: {
             label: 'Row-count tooltip — background color',
             type: 'color_picker',
-            default: '#1e1e2e',
-            description: 'Background color of the rich row-count stat tooltip box. Default: dark navy (#1e1e2e).'
+            default: '#fbf8f1',
+            description: 'Background color of the rich tooltip box (row counts, action buttons and every '
+                         + '"Liner notes" card). Default: sleeve-insert cream (#fbf8f1).'
         },
 
         sa_count_stat_tooltip_color: {
             label: 'Row-count tooltip — foreground (text) color',
             type: 'color_picker',
-            default: '#cdd6f4',
-            description: 'Text color of the rich row-count stat tooltip box. Default: soft white (#cdd6f4).'
+            default: '#2b2622',
+            description: 'Text color of the rich tooltip box (row counts, action buttons and every '
+                         + '"Liner notes" card). Default: ink brown (#2b2622).'
         },
 
         sa_ui_row_count_color: {
@@ -1772,20 +1797,20 @@
         sa_rel_tooltip_bg: {
             label: 'Relationships rich tooltip: background color',
             type: 'color_picker',
-            default: '#ffffff',
+            default: '#fbf8f1',
             description: 'Background color of the rich HTML tooltip that appears when hovering '
                          + 'a Relationships column icon while a filter is active and matches. '
-                         + 'Default: white (#ffffff). Applies to both the rich URL-list panel '
+                         + 'Default: sleeve-insert cream (#fbf8f1). Applies to both the rich URL-list panel '
                          + 'and the plain-text anchor title panel shown to its right.'
         },
 
         sa_rel_tooltip_color: {
             label: 'Relationships rich tooltip: text color',
             type: 'color_picker',
-            default: '#000000',
+            default: '#2b2622',
             description: 'Text color of the rich HTML tooltip that appears when hovering '
                          + 'a Relationships column icon while a filter is active and matches. '
-                         + 'Default: black (#000000). Applies to both the rich URL-list panel '
+                         + 'Default: ink brown (#2b2622). Applies to both the rich URL-list panel '
                          + 'and the plain-text anchor title panel shown to its right.'
         },
 
@@ -2689,15 +2714,15 @@
         sa_ui_artist_role_main_performer_color: {
             label: 'Main performer role colour',
             type: 'color_picker',
-            default: '#57ff5a',
-            description: 'Colour used to highlight the "(main performer)" role label in the rich HTML tooltip of the Artists column on place-events pages. Default: bright green (#57ff5a).'
+            default: '#2e7d32',
+            description: 'Colour used to highlight the "(main performer)" role label in the rich HTML tooltip of the Artists column on place-events pages. Default: dark green (#2e7d32), readable on the cream tooltip.'
         },
 
         sa_ui_artist_role_guest_performer_color: {
             label: 'Guest performer role colour',
             type: 'color_picker',
-            default: '#e07000',
-            description: 'Colour used to highlight the "(guest performer)" role label in the rich HTML tooltip of the Artists column on place-events pages. Default: orange (#e07000).'
+            default: '#b35900',
+            description: 'Colour used to highlight the "(guest performer)" role label in the rich HTML tooltip of the Artists column on place-events pages. Default: dark orange (#b35900), readable on the cream tooltip.'
         },
 
         // CAA/EAA ILLUSTRATED DISCOGRAPHY SECTION
@@ -3708,11 +3733,17 @@
         { key: 'sa_art_idb_metadata_ttl_days',     was: [7] },
         { key: 'sa_auto_resize_columns',           was: [false] },
         { key: 'sa_auto_resize_columns_threshold', was: [2000] },
+        { key: 'sa_count_stat_tooltip_bg',         was: ['#1e1e2e'] },
+        { key: 'sa_count_stat_tooltip_color',      was: ['#cdd6f4'] },
         { key: 'sa_enable_annotation_auto_expand', was: [false] },
         { key: 'sa_enable_ars_collapse',           was: [true] },
         { key: 'sa_enable_dropdown_flag_icons',    was: [false] },
         { key: 'sa_enable_show_single_table_btn',  was: [false] },
+        { key: 'sa_rel_tooltip_bg',                was: ['#ffffff'] },
+        { key: 'sa_rel_tooltip_color',             was: ['#000000'] },
         { key: 'sa_sidebar_collapsed',             was: [false] },
+        { key: 'sa_ui_artist_role_guest_performer_color', was: ['#e07000'] },
+        { key: 'sa_ui_artist_role_main_performer_color',  was: ['#57ff5a'] },
         { key: 'sa_ui_help_btn_style',             was: ['#78909C|white|1px solid #607D8B'] },
         { key: 'sa_ui_row_hover_bg',               was: ['#e2e2e2'] },
         { key: 'sa_ui_settings_btn_style',         was: ['#607D8B|white|1px solid #546E7A'] },
@@ -4052,7 +4083,7 @@
         undo.type = 'button';
         undo.id = 'mb-smn-undo';
         undo.textContent = '↩︎ Undo and reload';
-        undo.title = 'Restore every value this step removed, and keep it that way.';
+        _setTip(undo, 'Restore every value this step removed, and keep it that way.');
         undo.addEventListener('click', () => {
             _undoSettingsMigration();
             location.reload();
@@ -4436,7 +4467,7 @@
         undo.type = 'button';
         undo.id = 'mb-tsn-undo';
         undo.textContent = '↩︎ Undo and reload';
-        undo.title = 'Remove the rows again, and do not offer them a second time.';
+        _setTip(undo, 'Remove the rows again, and do not offer them a second time.');
         undo.addEventListener('click', () => {
             _undoSeededTableRows();
             location.reload();
@@ -12789,7 +12820,7 @@
         const _flag = document.createElement('span');
         _flag.className = 'mb-live-date-flag';
         _flag.textContent = ' ' + result.icon;
-        _flag.title = result.tooltip;
+        _setTip(_flag, result.tooltip);
         container.appendChild(_flag);
     }
 
@@ -13838,7 +13869,7 @@
         const rebuildBtn = document.createElement('button');
         rebuildBtn.type = 'button';
         rebuildBtn.textContent = 'Rebuild table';
-        rebuildBtn.title = 'Re-run the fetch so the "Disambiguation" column is included.';
+        _setTip(rebuildBtn, 'Re-run the fetch so the "Disambiguation" column is included.');
         rebuildBtn.style.cssText = 'font-size:0.95em; padding:1px 6px; border-radius:4px; cursor:pointer;';
         rebuildBtn.addEventListener('click', () => {
             notice.remove();
@@ -13849,7 +13880,7 @@
         const dismissBtn = document.createElement('button');
         dismissBtn.type = 'button';
         dismissBtn.textContent = '✕';
-        dismissBtn.title = 'Dismiss';
+        _setTip(dismissBtn, 'Dismiss');
         dismissBtn.style.cssText = 'font-size:0.95em; padding:1px 5px; border-radius:4px; cursor:pointer;';
         dismissBtn.addEventListener('click', () => notice.remove());
         notice.appendChild(dismissBtn);
@@ -18388,17 +18419,14 @@
         // Create tooltip element
         ctrlMTooltipElement = document.createElement('div');
         ctrlMTooltipElement.id = 'mb-ctrl-m-tooltip';
+        // Look from the shared "Liner notes" class, a size smaller: it lists
+        // every shortcut at once.
+        ctrlMTooltipElement.className = 'mb-tt-liner';
         ctrlMTooltipElement.style.cssText = `
             position: fixed;
-            background-color: #f0f0f0;
-            border: 1px solid #999;
-            border-radius: 4px;
-            padding: 8px 12px;
-            font-size: 0.75em;
-            max-width: 250px;
-            z-index: 10000;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 12px;
             line-height: 1.4;
+            max-width: 280px;
         `;
 
         // Build tooltip content
@@ -19429,7 +19457,7 @@
     function _applyNoWorkFlag(titleTd) {
         if (!titleTd || Lib.settings.sa_enable_release_tracks_no_work_flag === false) return false;
         titleTd.dataset.mbWorkFlag = 'none';
-        titleTd.title = _NO_WORK_FLAG_TIP;
+        _setTip(titleTd, _NO_WORK_FLAG_TIP);
         titleTd.dataset.mbColTip = '1';
         return true;
     }
@@ -19479,7 +19507,7 @@
         [[trackTd, 'track'], [recTd, 'recording']].forEach(([td, which]) => {
             if (!td) return;
             td.dataset.mbLenFlag = flag.kind;
-            td.title              = _lengthMismatchTooltip(flag, which, trackMs, recMs);
+            _setTip(td, _lengthMismatchTooltip(flag, which, trackMs, recMs));
             td.dataset.mbColTip   = '1';
         });
         return flag.kind;
@@ -19750,7 +19778,7 @@
             return 'ok';
         }
         td.dataset.mbVideoFlag = 'mismatch';
-        td.title = _videoMediumTooltip(verdict);
+        _setTip(td, _videoMediumTooltip(verdict));
         td.dataset.mbColTip = '1';
         return 'mismatch';
     }
@@ -21208,9 +21236,9 @@
             // source passes nothing and keeps the plain glyph.
             btn.textContent = detail ? `⏳${detail}` : '⏳';
             btn.setAttribute('aria-busy', 'true');
-            btn.title = detail
+            _setTip(btn, detail
                 ? `Loading millisecond lengths from the MusicBrainz Web Service — batch ${detail}…`
-                : 'Loading millisecond lengths from the MusicBrainz Web Service…';
+                : 'Loading millisecond lengths from the MusicBrainz Web Service…');
             btn.setAttribute('aria-label', detail
                 ? `Loading millisecond lengths, batch ${detail}`
                 : 'Loading millisecond lengths');
@@ -21237,9 +21265,9 @@
             btn.removeAttribute('aria-disabled');
             btn.dataset.mbMsRetry = '1';
             const because = detail ? ` (${detail})` : '';
-            btn.title = `Could not load millisecond lengths${because} — the MusicBrainz Web Service `
+            _setTip(btn, `Could not load millisecond lengths${because} — the MusicBrainz Web Service `
                       + 'is temporarily unavailable, which happens when it is under heavy load. '
-                      + 'Click again to retry.';
+                      + 'Click again to retry.');
             btn.setAttribute('aria-label', 'Could not load millisecond lengths — click again to retry');
             return;
         }
@@ -21254,9 +21282,9 @@
             btn.removeAttribute('aria-disabled');
             btn.dataset.mbMsRetry = '1';
             const because = detail ? ` (${detail})` : '';
-            btn.title = `Some millisecond lengths could not be loaded${because} — the rows that did `
+            _setTip(btn, `Some millisecond lengths could not be loaded${because} — the rows that did `
                       + 'load are shown. The MusicBrainz Web Service is temporarily unavailable, '
-                      + 'which happens when it is under heavy load. Click twice to retry the rest.';
+                      + 'which happens when it is under heavy load. Click twice to retry the rest.');
             btn.setAttribute('aria-label',
                 'Some millisecond lengths could not be loaded — click again to retry the rest');
             return;
@@ -21264,8 +21292,8 @@
 
         if (state === 'unavailable') {
             btn.dataset.mbMsUnavailable = '1';
-            btn.title = 'Millisecond precision unavailable here — MusicBrainz has no sub-second '
-                      + 'length on record for these recordings';
+            _setTip(btn, 'Millisecond precision unavailable here — MusicBrainz has no sub-second '
+                      + 'length on record for these recordings');
             btn.setAttribute('aria-label', 'Millisecond precision unavailable for the Length column');
             btn.setAttribute('aria-disabled', 'true');
             return;
@@ -21292,9 +21320,9 @@
                 _fetchNote = ' — one MusicBrainz Web Service request, cached afterwards';
             }   // _n === 0: everything is already cached, so promise no request
         }
-        btn.title = showing
+        _setTip(btn, showing
             ? 'Hide millisecond precision — show "Length" as M:SS (MusicBrainz\'s own rounding)'
-            : `Show millisecond precision for "Length"${_fetchNote}`;
+            : `Show millisecond precision for "Length"${_fetchNote}`);
         btn.setAttribute('aria-label', showing
             ? 'Hide millisecond precision in the Length column'
             : 'Show millisecond precision in the Length column');
@@ -21545,7 +21573,7 @@
             table.querySelectorAll('thead th').forEach(th => {
                 const text = titles[th.dataset.colName || ''];
                 if (!text) return;
-                th.title = text;
+                _setTip(th, text);
                 // Claim the tooltip as ours. MusicBrainz natively marks a
                 // release tracklist's Length <th> with `class="treleases"`, and
                 // `_isJesus2099Treleases()` reads "a treleases cell with a
@@ -23629,7 +23657,7 @@
         const clearBtn = document.createElement('button');
         clearBtn.className = 'mb-subtable-clear-btn';
         clearBtn.type = 'button';
-        clearBtn.title = 'Clear all filters for this sub-table (the sub-table filter and all column filters)';
+        _setTip(clearBtn, 'Clear all filters for this sub-table (the sub-table filter and all column filters)');
         clearBtn.style.display = 'none'; // Initially hidden
 
         // Create red ✗ symbol
@@ -23677,7 +23705,7 @@
         const btn = document.createElement('button');
         btn.id = `mb-stf-${safeId}-toggle-filter-highlight-btn`;
         btn.type = 'button';
-        btn.title = 'Toggle filter string highlighting for this sub-table filter and ALL sub-table column filters)';
+        _setTip(btn, 'Toggle filter string highlighting for this sub-table filter and ALL sub-table column filters)');
         btn.textContent = '🎨 Toggle highlighting';
         // Initially hidden — shown by updateFilterButtonsVisibility() when active.
         btn.style.cssText = 'font-size:0.8em; padding:2px 6px; border-radius:4px; background:rgb(240,240,240); border:1px solid rgb(204,204,204); cursor:pointer; vertical-align:middle; transition:background-color 0.3s; display:none;';
@@ -23780,7 +23808,7 @@
         btn.type  = 'button';
         btn.className = 'mb-subtable-collapse-btn';
         btn.innerHTML = makeCollapseExpandBtnHTML(true);
-        btn.title = `Expand ALL collapsed multi-row cells in "${categoryName}" sub-section`;
+        _setTip(btn, `Expand ALL collapsed multi-row cells in "${categoryName}" sub-section`);
         btn.setAttribute('aria-label', `Expand all collapsed multi-row cells in: ${categoryName}`);
         // Same base style as createSubTableHighlightButton; hidden until
         // updateSubTableCollapseButton() determines multi-row cells exist.
@@ -23823,9 +23851,9 @@
             });
 
             btn.innerHTML = makeCollapseExpandBtnHTML(!targetExpand);
-            btn.title = targetExpand
+            _setTip(btn, targetExpand
                 ? `Collapse all expanded multi-row cells in "${categoryName}"`
-                : `Expand all collapsed multi-row cells in "${categoryName}"`;
+                : `Expand all collapsed multi-row cells in "${categoryName}"`);
             btn.setAttribute(
                 'aria-label',
                 targetExpand
@@ -26135,7 +26163,7 @@
                 (rec === 'plain' ? null : _liveTitleFlag(_findCellAnyLiveTitle(td)));
             if (flag) {
                 td.dataset.mbLiveFlag = flag.kind;
-                td.title = flag.tip;
+                _setTip(td, flag.tip);
                 td.dataset.mbColTip = '1';
             } else if (td.dataset.mbLiveFlag) {
                 delete td.dataset.mbLiveFlag;
@@ -26619,10 +26647,10 @@
         // A family-painted cell owns its tooltip too (its flag writes one,
         // or deliberately none — a disk record whose tooltip was not a string).
         if (!familyPainted && (!td.hasAttribute('title') || td.dataset.mbFindingTip)) {
-            td.title = ids.map(id => {
+            _setTip(td, ids.map(id => {
                 const f = _FINDING_BY_ID.get(id);
                 return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
-            }).join('\n');
+            }).join('\n'));
             td.dataset.mbFindingTip = '1';
         }
     }
@@ -30012,7 +30040,7 @@
         // also where `Ctrl+V` is announced.
         toggleBtn.innerHTML = '👁️';
         toggleBtn.className = 'mb-h2-ctl-btn';
-        toggleBtn.title = `Show/hide table columns (${buildShortcutHint('sa_shortcut_open_visible_columns', 'Ctrl+V', 'V')})`;
+        _setTip(toggleBtn, `Show/hide table columns (${buildShortcutHint('sa_shortcut_open_visible_columns', 'Ctrl+V', 'V')})`);
         toggleBtn.setAttribute('aria-label', 'Show/hide table columns');
         toggleBtn.style.cssText = uiHeadingGlyphBtnCSS();
         toggleBtn.type = 'button';
@@ -30434,7 +30462,7 @@
         btn.type      = 'button';
         btn.className = 'mb-subtable-vis-btn';
         btn.innerHTML = '👁️';
-        btn.title     = `Show/hide columns in sub-section "${categoryName}"`;
+        _setTip(btn, `Show/hide columns in sub-section "${categoryName}"`);
         btn.setAttribute('aria-label', `Column visibility for: ${categoryName}`);
         btn.style.cssText = [
             'font-size:0.85em; padding:1px 5px; border-radius:4px;',
@@ -30598,7 +30626,7 @@
         chooseBtn.innerHTML = makeButtonHTML('Choose current configuration', 'c');
         chooseBtn.style.cssText = btnRowCSS + 'width:100%; margin-top:5px;';
         chooseBtn.tabIndex  = 0;
-        chooseBtn.title     = `Save this column configuration for "${categoryName}" only`;
+        _setTip(chooseBtn, `Save this column configuration for "${categoryName}" only`);
         chooseBtn.addEventListener('mousedown',  () => { chooseBtn.style.cssText = btnRowCSS + btnRowActive + 'width:100%; margin-top:5px;'; });
         chooseBtn.addEventListener('mouseup',    () => { chooseBtn.style.cssText = btnRowCSS + 'width:100%; margin-top:5px;'; });
         chooseBtn.addEventListener('mouseleave', () => { chooseBtn.style.cssText = btnRowCSS + 'width:100%; margin-top:5px;'; });
@@ -31902,7 +31930,7 @@ ${sections.join('\n')}
         const exportBtn = document.createElement('button');
         exportBtn.id = 'mb-export-btn';
         exportBtn.innerHTML = makeButtonHTML('Export', 'E', '💾');
-        exportBtn.title = `Export visible rows and columns to various formats (${buildShortcutHint('sa_shortcut_open_export', 'Ctrl+E', 'E')})`;
+        _setTip(exportBtn, `Export visible rows and columns to various formats (${buildShortcutHint('sa_shortcut_open_export', 'Ctrl+E', 'E')})`);
         exportBtn.style.cssText = uiActionBtnBaseCSS();
         exportBtn.type = 'button';
 
@@ -32369,7 +32397,7 @@ ${sections.join('\n')}
         btn.id        = id;
         btn.type      = 'button';
         btn.className = 'mb-toolbar-menu-btn';
-        btn.title     = title;
+        _setTip(btn, title);
         btn.setAttribute('aria-haspopup', 'true');
         btn.setAttribute('aria-expanded', 'false');
         const _mStyle = uiToolbarMenuBtnCSS();
@@ -32838,9 +32866,9 @@ ${sections.join('\n')}
 
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
+            if (e.useCase)    parts.push('<span data-mb-tip title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span data-mb-tip title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span data-mb-tip title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -32863,7 +32891,7 @@ ${sections.join('\n')}
         // ── DOM: Pin button ───────────────────────────────────────────────────────
         const pinBtn = document.createElement('button');
         pinBtn.type = 'button';
-        pinBtn.title = 'Pin current filter to persistent list (saves query + checkbox states)';
+        _setTip(pinBtn, 'Pin current filter to persistent list (saves query + checkbox states)');
         pinBtn.textContent = '+';
         pinBtn.style.cssText = 'padding:0 8px; background:#e8f5e9; border:1px solid #a5d6a7; border-radius:6px; cursor:pointer; font-size:1.1em; font-weight:bold; color:#2e7d32; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; height:24px; box-sizing:border-box; flex-shrink:0;';
 
@@ -32874,7 +32902,7 @@ ${sections.join('\n')}
         // ── DOM: History toggle button ────────────────────────────────────────────
         const toggleBtn = document.createElement('button');
         toggleBtn.type = 'button';
-        toggleBtn.title = 'Show/hide filter history (Alt+H)';
+        _setTip(toggleBtn, 'Show/hide filter history (Alt+H)');
         toggleBtn.innerHTML = '&#128337; <u>H</u>istory &#9660;';
         toggleBtn.style.cssText = 'padding:0 8px; background:#f0f0f0; border:1px solid #ccc; border-radius:6px; cursor:pointer; font-size:0.85em; white-space:nowrap; transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s; height:24px; box-sizing:border-box;';
 
@@ -32894,7 +32922,7 @@ ${sections.join('\n')}
         const qfClearBtn = document.createElement('button');
         qfClearBtn.type = 'button';
         qfClearBtn.tabIndex = -1;
-        qfClearBtn.title = 'Clear quick filter';
+        _setTip(qfClearBtn, 'Clear quick filter');
         qfClearBtn.textContent = '✕';
         qfClearBtn.style.cssText = 'position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-size:0.95em; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none;';
         qfInner.appendChild(qfInput);
@@ -32909,7 +32937,7 @@ ${sections.join('\n')}
         pinHeaderLabel.innerHTML = '&#128204; Pinned';
         const pinHeaderEditBtn = document.createElement('button');
         pinHeaderEditBtn.type = 'button';
-        pinHeaderEditBtn.title = 'Edit the persistent pinned filter list (Alt+E)';
+        _setTip(pinHeaderEditBtn, 'Edit the persistent pinned filter list (Alt+E)');
         pinHeaderEditBtn.innerHTML = '&#9998; <u>E</u>dit Pinned Filter List';
         pinHeaderEditBtn.style.cssText = 'padding:2px 7px;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;cursor:pointer;font-size:0.76em;font-weight:600;color:#e65100;white-space:nowrap;transition:background-color 0.2s,transform 0.1s,box-shadow 0.1s;line-height:1.6;';
         pinHeader.appendChild(pinHeaderLabel);
@@ -33379,7 +33407,7 @@ ${sections.join('\n')}
 
         const clearBtn = document.createElement('button');
         clearBtn.textContent = '✕';
-        clearBtn.title = 'Clear filter';
+        _setTip(clearBtn, 'Clear filter');
         clearBtn.style.cssText =
             'position:absolute; right:4px; top:50%; transform:translateY(-50%);' +
             ' background:none; border:none; font-size:0.8em; cursor:pointer;' +
@@ -33655,7 +33683,7 @@ ${sections.join('\n')}
 
         const closeX = document.createElement('button');
         closeX.textContent = '✕';
-        closeX.title = 'Close (Escape)';
+        _setTip(closeX, 'Close (Escape)');
         closeX.style.cssText = `
             background: none; border: none; font-size: 1.2em; cursor: pointer;
             color: #666; padding: 0 4px; line-height: 1;
@@ -34521,7 +34549,7 @@ ${sections.join('\n')}
         // Build the Force-refresh link first so it can be injected as a titleBarExtra
         const refreshLink = document.createElement('a');
         refreshLink.textContent = '🔄 Force refresh';
-        refreshLink.title = 'Bypass cache and download the latest help text from GitHub';
+        _setTip(refreshLink, 'Bypass cache and download the latest help text from GitHub');
         refreshLink.style.cssText = `
             font-size: 0.82em; font-weight: 600; color: #0066cc;
             cursor: pointer; text-decoration: none;
@@ -34535,7 +34563,7 @@ ${sections.join('\n')}
         const githubLink = document.createElement('a');
         githubLink.id = 'mb-app-help-github-link';
         githubLink.textContent = '📖 Open on GitHub';
-        githubLink.title = 'Open the full help page on GitHub, with its table of contents and collapsible sections';
+        _setTip(githubLink, 'Open the full help page on GitHub, with its table of contents and collapsible sections');
         githubLink.href = HELP_GITHUB_URL;
         githubLink.target = '_blank';
         githubLink.rel = 'noopener noreferrer';
@@ -35415,7 +35443,7 @@ ${sections.join('\n')}
         // in the h1 bar beside ⚙️ and ❓, where width was the scarce thing; in a
         // menu an unlabelled row is just a mystery glyph.
         helpBtn.innerHTML = makeButtonHTML('Keyboard Shortcuts', 'K', '🎹');
-        helpBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
+        _setTip(helpBtn, `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`);
         helpBtn.style.cssText = uiActionBtnBaseCSS();
         helpBtn.type = 'button';
         helpBtn.onclick = showShortcutsHelp;
@@ -35688,7 +35716,7 @@ ${sections.join('\n')}
         const _filterFlagsHtml = (flags) => {
             if (!flags || (!flags.cc && !flags.rx && !flags.ex)) return '';
             const pill = (label, title) =>
-                `<span class="sa-stats-pill" title="${title}">${label}</span>`;
+                `<span class="sa-stats-pill" data-mb-tip title="${title}">${label}</span>`;
             let out = '';
             if (flags.cc) out += pill('Cc', 'Case-sensitive filter');
             if (flags.rx) out += pill('Rx', 'RegExp filter');
@@ -35949,7 +35977,7 @@ ${sections.join('\n')}
         // Clear-filter "✕" button inside the filter area
         const qfClearBtn = document.createElement('button');
         qfClearBtn.textContent = '✕';
-        qfClearBtn.title = 'Clear filter (first Escape also does this)';
+        _setTip(qfClearBtn, 'Clear filter (first Escape also does this)');
         qfClearBtn.style.cssText = `background:rgba(255,255,255,0.15);border:none;
             border-radius:4px;color:#fff;font-size:0.9em;cursor:pointer;
             padding:2px 6px;line-height:1;flex-shrink:0;`;
@@ -35959,7 +35987,7 @@ ${sections.join('\n')}
 
         const closeBtn = document.createElement('button');
         closeBtn.textContent = '✕';
-        closeBtn.title = 'Close panel (Escape when filter is empty)';
+        _setTip(closeBtn, 'Close panel (Escape when filter is empty)');
         closeBtn.style.cssText = `background:rgba(255,255,255,0.15);border:none;
             border-radius:4px;color:#fff;font-size:1.1em;cursor:pointer;
             padding:2px 7px;flex-shrink:0;line-height:1;font-weight:700;`;
@@ -35973,7 +36001,7 @@ ${sections.join('\n')}
 
         const statsExportBtn = document.createElement('button');
         statsExportBtn.textContent = '📤';
-        statsExportBtn.title = 'Export Statistics panel to HTML file';
+        _setTip(statsExportBtn, 'Export Statistics panel to HTML file');
         statsExportBtn.style.cssText = `background:rgba(255,255,255,0.15);border:none;
             border-radius:4px;color:#fff;font-size:1.0em;cursor:pointer;
             padding:2px 7px;flex-shrink:0;line-height:1;`;
@@ -36070,7 +36098,7 @@ ${sections.join('\n')}
 
         const fsResetBtn = document.createElement('button');
         fsResetBtn.textContent = 'Reset';
-        fsResetBtn.title       = 'Reset font size and panel size to defaults';
+        _setTip(fsResetBtn, 'Reset font size and panel size to defaults');
         fsResetBtn.style.cssText = `background:none;border:1px solid ${C.border};
             border-radius:3px;cursor:pointer;padding:1px 6px;font-size:0.9em;
             color:${C.green};line-height:1.4;`;
@@ -36097,7 +36125,7 @@ ${sections.join('\n')}
         fsSlider.max   = String(_FS_MAX);
         fsSlider.step  = '5';
         fsSlider.value = String(_curFs);
-        fsSlider.title = 'Adjust dialog font size';
+        _setTip(fsSlider, 'Adjust dialog font size');
         fsSlider.style.cssText = `width:90px;cursor:pointer;accent-color:${C.green};`;
         fsSlider.addEventListener('mousedown', e => e.stopPropagation());
         fsSlider.addEventListener('input', () => {
@@ -36493,7 +36521,7 @@ ${sections.join('\n')}
             // Toggle 1 (leftmost): collapse/expand ALL table-detail cards at once
             const _tdToggle = document.createElement('span');
             _tdToggle.textContent = '▼';
-            _tdToggle.title = 'Collapse/expand all table-detail cards';
+            _setTip(_tdToggle, 'Collapse/expand all table-detail cards');
             _tdToggle.style.cssText = `cursor:pointer;font-size:0.9em;color:${C.green};
                 flex-shrink:0;user-select:none;margin-right:2px;`;
             let _tdCollapsed = false;
@@ -36512,8 +36540,8 @@ ${sections.join('\n')}
             // State cycles: all-expanded → all-collapsed → all-expanded …
             const _subToggle = document.createElement('span');
             _subToggle.textContent = '▶';
-            _subToggle.title = 'Cycle all sub-table multi-row collapse buttons ' +
-                               '(expands all → collapses all → expands all…)';
+            _setTip(_subToggle, 'Cycle all sub-table multi-row collapse buttons ' +
+                               '(expands all → collapses all → expands all…)');
             _subToggle.style.cssText = `cursor:pointer;font-size:0.8em;` +
                 `transition:transform 0.15s;display:inline-block;color:${C.muted};` +
                 `flex-shrink:0;user-select:none;`;
@@ -36586,7 +36614,7 @@ ${sections.join('\n')}
                     ${opts.small  ? `font-size:0.84em;color:${C.muted};` : ''}
                     ${opts.right  ? 'text-align:right;' : ''}
                     ${opts.nowrap ? 'white-space:nowrap;' : ''}`;
-                if (opts.title) td2.title = opts.title;
+                if (opts.title) _setTip(td2, opts.title);
                 td2.innerHTML = txt;
                 return td2;
             };
@@ -36636,7 +36664,7 @@ ${sections.join('\n')}
             chRow.appendChild(_chTd(
                 td.caaCount > 0
                     ? `🖼️ <span class="sa-stats-accent-700">${td.caaCount.toLocaleString()}</span>`
-                    : '<span class="sa-stats-bbb-small" title="Loading artwork — count updates when image loading completes">—</span>',
+                    : '<span class="sa-stats-bbb-small" data-mb-tip title="Loading artwork — count updates when image loading completes">—</span>',
                 { right: true, nowrap: true }));
 
             // ── Row 2: "Table name" label | table name | column labels ─────────
@@ -37195,7 +37223,7 @@ a { color: #1565c0; }`;
         const statsBtn = document.createElement('button');
         statsBtn.id = 'mb-stats-btn';
         statsBtn.innerHTML = makeButtonHTML('Statistics', 'i', '📊');
-        statsBtn.title = `Show table statistics (${buildShortcutHint('sa_shortcut_open_statistics', 'Ctrl+I', 'I')})`;
+        _setTip(statsBtn, `Show table statistics (${buildShortcutHint('sa_shortcut_open_statistics', 'Ctrl+I', 'I')})`);
         statsBtn.style.cssText = uiActionBtnBaseCSS();
         statsBtn.type = 'button';
         statsBtn.onclick = showStatsPanel;
@@ -37246,9 +37274,9 @@ a { color: #1565c0; }`;
         if (!btn) return;
         btn.textContent = (active ? '▼' : '▶') + '▌█';
         btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-        btn.title = active
+        _setTip(btn, active
             ? `Toggle barcode highlightning off (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`
-            : `Toggle barcode highlightning on (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`;
+            : `Toggle barcode highlightning on (${buildShortcutHint('sa_toggle_barcode_highlighting', 'Ctrl+B', 'B')})`);
     }
 
     /**
@@ -37455,7 +37483,7 @@ a { color: #1565c0; }`;
         const densityBtn = document.createElement('button');
         densityBtn.id = 'mb-density-btn';
         densityBtn.innerHTML = makeButtonHTML('Density', 'D', '📏');
-        densityBtn.title = `Change table density (spacing) (${buildShortcutHint('sa_shortcut_open_density', 'Ctrl+D', 'D')})`;
+        _setTip(densityBtn, `Change table density (spacing) (${buildShortcutHint('sa_shortcut_open_density', 'Ctrl+D', 'D')})`);
         densityBtn.style.cssText = uiActionBtnBaseCSS();
         densityBtn.type = 'button';
 
@@ -37725,7 +37753,7 @@ a { color: #1565c0; }`;
         btn.style.background  = '#1b5e20';   // dark solid green
         btn.style.borderColor = '#0a3d12';
         btn.style.color       = '#ffffff';
-        btn.title = `Restore original column widths for "${categoryName}"`;
+        _setTip(btn, `Restore original column widths for "${categoryName}"`);
     }
 
     /**
@@ -37738,7 +37766,7 @@ a { color: #1565c0; }`;
         btn.style.background  = 'rgb(240,240,240)';
         btn.style.borderColor = 'rgb(204,204,204)';
         btn.style.color       = '';
-        btn.title = `Auto-resize columns in sub-section "${categoryName}"`;
+        _setTip(btn, `Auto-resize columns in sub-section "${categoryName}"`);
     }
 
     /**
@@ -38100,7 +38128,7 @@ a { color: #1565c0; }`;
         // with "Restore" to know the auto-resize-on-load pass has finished. Keep
         // that first word, and keep the glyph out of the title.
         if (isResized) {
-            resizeBtn.title = `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
+            _setTip(resizeBtn, `Restore original column widths (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);
             resizeBtn.style.background = '#e8f5e9';
             resizeBtn.style.borderColor = '#4CAF50';
         } else {
@@ -38108,11 +38136,11 @@ a { color: #1565c0; }`;
             // still resized and tint the button amber to hint at the partial state.
             const anySubResized = Array.from(subTableResizedStates.values()).some(Boolean);
             if (anySubResized) {
-                resizeBtn.title = `One or more sub-tables are auto-resized. Click to auto-resize all (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
+                _setTip(resizeBtn, `One or more sub-tables are auto-resized. Click to auto-resize all (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);
                 resizeBtn.style.background = '#fff3e0';
                 resizeBtn.style.borderColor = '#FF9800';
             } else {
-                resizeBtn.title = `Auto-resize columns to optimal width (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
+                _setTip(resizeBtn, `Auto-resize columns to optimal width (click to toggle / ${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);
                 // Restated, not cleared. The rest state used to be '' because
                 // uiActionBtnBaseCSS() set neither property and '' fell back to
                 // the UA button default; uiHeadingGlyphBtnCSS() DOES set both,
@@ -38165,7 +38193,7 @@ a { color: #1565c0; }`;
         btn.type      = 'button';
         btn.className = 'mb-subtable-resize-btn';
         btn.innerHTML = '↔️';
-        btn.title     = `Auto-resize columns in sub-section "${categoryName}"`;
+        _setTip(btn, `Auto-resize columns in sub-section "${categoryName}"`);
         btn.setAttribute('aria-label', `Auto-resize columns for: ${categoryName}`);
         btn.style.cssText = [
             'font-size:0.8em; padding:1px 5px; border-radius:4px;',
@@ -38362,7 +38390,7 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_release_tracks_video_medium_flag === false) return;
         td.dataset.mbVideoFlag = cellData.videoFlag;
         if (cellData.videoFlag === 'mismatch' && typeof cellData.videoTip === 'string' && cellData.videoTip) {
-            td.title = cellData.videoTip;
+            _setTip(td, cellData.videoTip);
             td.dataset.mbColTip = '1';
         }
     }
@@ -38399,7 +38427,7 @@ a { color: #1565c0; }`;
         if (Lib.settings.sa_enable_release_tracks_length_mismatch_flag === false) return;
         td.dataset.mbLenFlag = cellData.lenFlag;
         if (typeof cellData.lenTip === 'string' && cellData.lenTip) {
-            td.title = cellData.lenTip;
+            _setTip(td, cellData.lenTip);
             td.dataset.mbColTip = '1';
         }
     }
@@ -39673,7 +39701,7 @@ a { color: #1565c0; }`;
         // state this button shows and keeps the wording in the `title`.
         resizeBtn.innerHTML = '↔️';
         resizeBtn.className = 'mb-h2-ctl-btn';
-        resizeBtn.title = `Auto-resize columns to optimal width (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`;
+        _setTip(resizeBtn, `Auto-resize columns to optimal width (${buildShortcutHint('sa_shortcut_auto_resize', 'Ctrl+R', 'R')})`);
         resizeBtn.setAttribute('aria-label', 'Auto-resize columns');
         resizeBtn.style.cssText = uiHeadingGlyphBtnCSS();
         resizeBtn.type = 'button';
@@ -39827,7 +39855,7 @@ a { color: #1565c0; }`;
 
         const handle = document.createElement('div');
         handle.id = 'sidebar-toggle-handle';
-        handle.title = 'Toggle Full Width Sidebar';
+        _setTip(handle, 'Toggle Full Width Sidebar');
 
         /**
          * Dynamically position the sidebar toggle handle so that it always
@@ -40431,7 +40459,7 @@ a { color: #1565c0; }`;
             // which also meant the shortcut hint below never got appended either.
             _tooltipDesc = 'Fetch this table data from the MusicBrainz backend database';
         }
-        eb.title = _tooltipDesc;
+        _setTip(eb, _tooltipDesc);
 
         // Append Ctrl-M + N prefix-mode shortcut hint to tooltip (buttons 1–9 only)
         const _shortcutHint = superscript ? `${getPrefixDisplay()}, then ${btnIndex + 1}` : '';
@@ -40488,7 +40516,7 @@ a { color: #1565c0; }`;
     saveToDiskBtn.onmouseover = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.hoverBg; };
     saveToDiskBtn.onmouseout  = () => { saveToDiskBtn.style.backgroundColor = _saveStyle.normalBg; };
     saveToDiskBtn.type = 'button';
-    saveToDiskBtn.title = `Save current table data to disk in a serialized format as Gzipped JSON (${buildShortcutHint('sa_shortcut_save_to_disk', 'Ctrl+S', 'S')})`;
+    _setTip(saveToDiskBtn, `Save current table data to disk in a serialized format as Gzipped JSON (${buildShortcutHint('sa_shortcut_save_to_disk', 'Ctrl+S', 'S')})`);
     saveToDiskBtn.onclick = () => saveTableDataToDisk();
     saveToDiskBtn.style.display = 'none';
 
@@ -40506,7 +40534,7 @@ a { color: #1565c0; }`;
     loadFromDiskBtn.onmouseover = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.hoverBg; };
     loadFromDiskBtn.onmouseout  = () => { loadFromDiskBtn.style.backgroundColor = _loadStyle.normalBg; };
     loadFromDiskBtn.type = 'button';
-    loadFromDiskBtn.title = `Load table data from disk (serialized JSON file in Gzipped format) (${buildShortcutHint('sa_shortcut_load_from_disk', 'Ctrl+L', 'L')})`;
+    _setTip(loadFromDiskBtn, `Load table data from disk (serialized JSON file in Gzipped format) (${buildShortcutHint('sa_shortcut_load_from_disk', 'Ctrl+L', 'L')})`);
 
     const fileInput = document.createElement('input');
     fileInput.id = 'mb-file-input';
@@ -40544,7 +40572,7 @@ a { color: #1565c0; }`;
     settingsBtn.id = 'mb-settings-btn';
     settingsBtn.textContent = '⚙️';
     settingsBtn.type = 'button';
-    settingsBtn.title = `Open userscript settings manager to configure script behavior (${buildShortcutHint('sa_shortcut_open_settings', 'Ctrl+,', ',')})`;
+    _setTip(settingsBtn, `Open userscript settings manager to configure script behavior (${buildShortcutHint('sa_shortcut_open_settings', 'Ctrl+,', ',')})`);
     settingsBtn.onclick = () => {
         openSettingsWithConfigButtons();
     };
@@ -40557,7 +40585,7 @@ a { color: #1565c0; }`;
         // which builds the same button on the post-render path and must keep
         // saying the same thing.
         shortcutsBtn.innerHTML = makeButtonHTML('Keyboard Shortcuts', 'K', '🎹');
-        shortcutsBtn.title = `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`;
+        _setTip(shortcutsBtn, `Show keyboard shortcuts (or press ? / ${buildShortcutHint('sa_shortcut_show_shortcuts_help', 'Ctrl+K', 'K')})`);
         shortcutsBtn.style.cssText = uiActionBtnBaseCSS();
         shortcutsBtn.type = 'button';
         shortcutsBtn.onclick = showShortcutsHelp;
@@ -40588,7 +40616,7 @@ a { color: #1565c0; }`;
     const appHelpBtn = document.createElement('button');
     appHelpBtn.id = 'mb-app-help-btn';
     appHelpBtn.textContent = '❓';
-    appHelpBtn.title = `Open the help page on GitHub — Shift-click to read it here instead (${getPrefixDisplay()}, then H)`; // H has no direct Ctrl+H shortcut — prefix mode only
+    _setTip(appHelpBtn, `Open the help page on GitHub — Shift-click to read it here instead (${getPrefixDisplay()}, then H)`); // H has no direct Ctrl+H shortcut — prefix mode only
     appHelpBtn.classList.add('mb-toolbar-pinned-btn');   // right half of the ⚙️❓ pill
     appHelpBtn.style.cssText = uiHelpBtnCSS();
     appHelpBtn.type = 'button';
@@ -40679,7 +40707,7 @@ a { color: #1565c0; }`;
     preFilterInput.id = 'mb-prefilter-input';
     preFilterInput.type = 'text';
     preFilterInput.placeholder = 'Filter data load...';
-    preFilterInput.title = 'Filter rows while loading from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)';
+    _setTip(preFilterInput, 'Filter rows while loading from disk. Remember you must have at least saved a dataset before to the filesystem (with the "Save to Disk" button)');
     preFilterInput.style.cssText = uiPrefilterInputCSS();
 
     const preFilterCaseLabel = document.createElement('label');
@@ -40691,7 +40719,7 @@ a { color: #1565c0; }`;
     preFilterCaseCheckbox.style.cssText = uiCheckboxInputCSS();
     preFilterCaseLabel.appendChild(preFilterCaseCheckbox);
     preFilterCaseLabel.appendChild(document.createTextNode('Cc'));
-    preFilterCaseLabel.title = 'Case Sensitive (Load)';
+    _setTip(preFilterCaseLabel, 'Case Sensitive (Load)');
 
     const preFilterRxLabel = document.createElement('label');
     preFilterRxLabel.id = 'mb-prefilter-rx-label';
@@ -40702,7 +40730,7 @@ a { color: #1565c0; }`;
     preFilterRxCheckbox.style.cssText = uiCheckboxInputCSS();
     preFilterRxLabel.appendChild(preFilterRxCheckbox);
     preFilterRxLabel.appendChild(document.createTextNode('Rx'));
-    preFilterRxLabel.title = 'RegExp (Load)';
+    _setTip(preFilterRxLabel, 'RegExp (Load)');
 
     const preFilterExcludeLabel = document.createElement('label');
     preFilterExcludeLabel.id = 'mb-prefilter-exclude-label';
@@ -40713,7 +40741,7 @@ a { color: #1565c0; }`;
     preFilterExcludeCheckbox.style.cssText = uiCheckboxInputCSS();
     preFilterExcludeLabel.appendChild(preFilterExcludeCheckbox);
     preFilterExcludeLabel.appendChild(document.createTextNode('Ex'));
-    preFilterExcludeLabel.title = 'Exclude Matches (Load) — rows matching the filter expression are excluded instead of kept';
+    _setTip(preFilterExcludeLabel, 'Exclude Matches (Load) — rows matching the filter expression are excluded instead of kept');
 
     const preFilterMsg = document.createElement('span');
     preFilterMsg.id = 'mb-preload-filter-msg';
@@ -40724,7 +40752,7 @@ a { color: #1565c0; }`;
     stopBtn.innerHTML = makeButtonHTML('Stop', 'o');
     stopBtn.type = 'button';
     stopBtn.style.cssText = uiStopBtnCSS();
-    stopBtn.title = `Stop the current data fetching process from the MusicBrainz backend database (${getPrefixDisplay()}, then O)`;
+    _setTip(stopBtn, `Stop the current data fetching process from the MusicBrainz backend database (${getPrefixDisplay()}, then O)`);
 
     const globalStatusDisplay = document.createElement('span');
     globalStatusDisplay.id = 'mb-global-status-display';
@@ -40742,7 +40770,7 @@ a { color: #1565c0; }`;
         globalStatusDisplay.appendChild(sepEl);
         const segEl = document.createElement('span');
         segEl.textContent = text;
-        if (tip) segEl.title = tip;
+        if (tip) _setTip(segEl, tip);
         globalStatusDisplay.appendChild(segEl);
     }
 
@@ -40785,7 +40813,7 @@ a { color: #1565c0; }`;
             el.style.display = 'none';
         } else {
             el.textContent = text;
-            tip ? (el.title = tip) : el.removeAttribute('title');
+            tip ? (_setTip(el, tip)) : el.removeAttribute('title');
             el.style.display = 'inline-block';
         }
         // Show the divider only when at least one sub-span is visible.
@@ -40898,14 +40926,14 @@ a { color: #1565c0; }`;
     filterInput.placeholder = activeDefinition && activeDefinition.tableMode === 'multi'
         ? `Global Filter… works across all sub-tables`
         : `Global Filter…`;
-    filterInput.title = (() => {
+    _setTip(filterInput, (() => {
         const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
         const _gKey = getShortcutDisplay('sa_shortcut_focus_global_filter', 'Ctrl+G');
         const _focusHint = _directOn
             ? `focus with '${_gKey}'`
             : `focus with '${getPrefixDisplay()} then G' (or enable Direct Ctrl+Letter Shortcuts for '${_gKey}')`;
         return `Enter global filter string (${_focusHint}, use '${getShortcutDisplay('sa_shortcut_unicode_chars', 'Ctrl+U')}' for unicode character map)`;
-    })();
+    })());
     filterInput.style.cssText = uiGlobalFilterInputCSS();
 
     // ── Clear (✕) button — absolutely positioned inside the input ───────────
@@ -40914,7 +40942,7 @@ a { color: #1565c0; }`;
     filterClear.type = 'button';
     filterClear.tabIndex = -1;
     filterClear.textContent = '✕';
-    filterClear.title = 'Clear global filter';
+    _setTip(filterClear, 'Clear global filter');
     filterClear.style.cssText = 'position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-size:1em; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none;';
     filterClear.addEventListener('mouseenter', () => { filterClear.style.color = '#7b241c'; });
     filterClear.addEventListener('mouseleave', () => { filterClear.style.color = '#c0392b'; });
@@ -40925,7 +40953,7 @@ a { color: #1565c0; }`;
     // ── Resize drag handle — narrow strip to the right of the input wrap ─────
     const filterDragHandle = document.createElement('span');
     filterDragHandle.id = 'mb-global-filter-drag';
-    filterDragHandle.title = 'Drag to resize filter field';
+    _setTip(filterDragHandle, 'Drag to resize filter field');
     filterDragHandle.style.cssText = [
         'display:inline-flex; align-items:center; justify-content:center;',
         'width:10px; flex-shrink:0;',
@@ -40979,7 +41007,7 @@ a { color: #1565c0; }`;
     caseCheckbox.style.cssText = uiCheckboxInputCSS();
     caseLabel.appendChild(caseCheckbox);
     caseLabel.appendChild(document.createTextNode('Cc'));
-    caseLabel.title = _globalBoxTitle('Case Sensitive Filtering');
+    _setTip(caseLabel, _globalBoxTitle('Case Sensitive Filtering'));
 
     const regexpLabel = document.createElement('label');
     regexpLabel.id = 'mb-global-filter-rx-label';
@@ -40990,7 +41018,7 @@ a { color: #1565c0; }`;
     regexpCheckbox.style.cssText = uiCheckboxInputCSS();
     regexpLabel.appendChild(regexpCheckbox);
     regexpLabel.appendChild(document.createTextNode('Rx'));
-    regexpLabel.title = _globalBoxTitle('RegExp Filtering');
+    _setTip(regexpLabel, _globalBoxTitle('RegExp Filtering'));
 
     const excludeLabel = document.createElement('label');
     excludeLabel.id = 'mb-global-filter-exclude-label';
@@ -41001,7 +41029,7 @@ a { color: #1565c0; }`;
     excludeCheckbox.style.cssText = uiCheckboxInputCSS();
     excludeLabel.appendChild(excludeCheckbox);
     excludeLabel.appendChild(document.createTextNode('Ex'));
-    excludeLabel.title = _globalBoxTitle('Exclude Matches');
+    _setTip(excludeLabel, _globalBoxTitle('Exclude Matches'));
 
     // ── History widget (Pin + History toggle + dropdown) ──────────────────────
     // Outer anchor is position:relative so the dropdown can be positioned below it.
@@ -41066,7 +41094,7 @@ a { color: #1565c0; }`;
     prefilterToggleBtn.id = 'mb-toggle-prefilter-btn';
     prefilterToggleBtn.textContent = 'Prefilter'; // Will be updated dynamically
     prefilterToggleBtn.style.cssText = `${uiFilterBarBtnCSS()} transition:background-color 0.3s; display:none;`;
-    prefilterToggleBtn.title = 'Toggle prefilter highlighting';
+    _setTip(prefilterToggleBtn, 'Toggle prefilter highlighting');
 
     /**
      * Update the prefilter toggle button text and appearance
@@ -41086,7 +41114,7 @@ a { color: #1565c0; }`;
             const action = isExclude ? 'excluded' : 'prefiltered';
             prefilterToggleBtn.textContent = `🎨 ${count}${totalPart} ${rowWord} ${action}: "${query}"`;
             prefilterToggleBtn.style.display = 'inline-block';
-            prefilterToggleBtn.title = 'Toggle prefilter highlighting';
+            _setTip(prefilterToggleBtn, 'Toggle prefilter highlighting');
         } else {
             // Hide button when no prefilter
             prefilterToggleBtn.style.display = 'none';
@@ -41139,9 +41167,9 @@ a { color: #1565c0; }`;
     unhighlightAllBtn.id = 'mb-toggle-filter-highlight-btn';
     unhighlightAllBtn.textContent = '🎨 Toggle ALL highlighting';
     unhighlightAllBtn.style.cssText = `${uiFilterBarBtnCSS()} transition:background-color 0.3s; display:none;`;
-    unhighlightAllBtn.title = activeDefinition && activeDefinition.tableMode === 'multi'
+    _setTip(unhighlightAllBtn, activeDefinition && activeDefinition.tableMode === 'multi'
         ? 'Toggle filter string highlighting for the global filter, ALL sub-table filters and ALL sub-table column filters in ALL sub-tables (except the filter string when "Loading from Disk" was used)'
-        : 'Toggle filter string highlighting for the global filter and ALL column filters (except the filter string when "Loading from Disk" was used)';
+        : 'Toggle filter string highlighting for the global filter and ALL column filters (except the filter string when "Loading from Disk" was used)');
 
     /**
      * Update filter highlight button background color based on highlighting state
@@ -41195,8 +41223,7 @@ a { color: #1565c0; }`;
     globalCollapseBtn.id = 'mb-col-collapse-all-btn';
     globalCollapseBtn.innerHTML = makeCollapseExpandBtnHTML(true);
     globalCollapseBtn.style.cssText = `${uiFilterBarBtnCSS()} align-items:center; gap:4px; display:none;`;
-    globalCollapseBtn.title =
-        'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+    _setTip(globalCollapseBtn, 'Expand ALL collapsed multi-row cells in EVERY collapsable table column');
     actionsGroup.insertBefore(globalCollapseBtn, unhighlightAllBtn);
 
     const xSymbol = document.createElement('span');
@@ -41210,9 +41237,9 @@ a { color: #1565c0; }`;
     clearColumnFiltersBtn.appendChild(document.createTextNode('Clear ALL COLUMN filters'));
     clearColumnFiltersBtn.id = 'mb-clear-column-filters-btn';
     clearColumnFiltersBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none;`;
-    clearColumnFiltersBtn.title = activeDefinition && activeDefinition.tableMode === 'multi'
+    _setTip(clearColumnFiltersBtn, activeDefinition && activeDefinition.tableMode === 'multi'
         ? `Clear ALL column-specific filters in ALL sub-tables (triggered by 'Shift+Esc')`
-        : `Clear ALL column-specific filters (triggered by 'Shift+Esc')`;
+        : `Clear ALL column-specific filters (triggered by 'Shift+Esc')`);
     clearColumnFiltersBtn.onclick = () => {
         // Clear all column filters only
         document.querySelectorAll('.mb-col-filter-input').forEach(input => {
@@ -41237,9 +41264,9 @@ a { color: #1565c0; }`;
     clearAllFiltersBtn.appendChild(document.createTextNode('Clear ALL filters'));
     clearAllFiltersBtn.id = 'mb-clear-all-filters-btn';
     clearAllFiltersBtn.style.cssText = `${uiFilterBarBtnCSS()} display:none;`;
-    clearAllFiltersBtn.title = activeDefinition && activeDefinition.tableMode === 'multi'
+    _setTip(clearAllFiltersBtn, activeDefinition && activeDefinition.tableMode === 'multi'
         ? `Clear the global filter, ALL sub-table filters and ALL column filters in All sub-tables (triggered by '${getShortcutDisplay('sa_shortcut_clear_filters', 'Ctrl+Shift+G')}')`
-        : `Clear the global filter and ALL column filters (triggered by '${getShortcutDisplay('sa_shortcut_clear_filters', 'Ctrl+Shift+G')}')`;
+        : `Clear the global filter and ALL column filters (triggered by '${getShortcutDisplay('sa_shortcut_clear_filters', 'Ctrl+Shift+G')}')`);
     clearAllFiltersBtn.onclick = () => {
         // filterClear.click() resets the global filter to prefix-only and runs the filter.
         filterClear.click();
@@ -41576,10 +41603,10 @@ a { color: #1565c0; }`;
             const active = btn.dataset.mbPendingActive === '1';
             const name = (g.h3.querySelector('.mb-subtable-filter-container') || {}).dataset?.categoryName || '';
             btn.textContent = `(${g.count}) ⏳`;
-            btn.title = `${g.count} row${g.count === 1 ? '' : 's'} with pending edits`
+            _setTip(btn, `${g.count} row${g.count === 1 ? '' : 's'} with pending edits`
                       + `${name ? ` in "${name}"` : ' in this sub-section'}`
                       + `. Click to show only ${g.count === 1 ? 'that row' : 'those rows'}`
-                      + `${active ? ' — click again to show all rows.' : '.'}`;
+                      + `${active ? ' — click again to show all rows.' : '.'}`);
             btn.setAttribute('aria-pressed', active ? 'true' : 'false');
             btn.style.cssText = `${uiFilterBarBtnCSS()} margin-left:6px; color:#8a6d00; border-color:#e0c14a;`
                               + (active ? ' font-weight:bold; background:#fff3cd;' : '');
@@ -41593,7 +41620,7 @@ a { color: #1565c0; }`;
         const on = groups.filter(g => g.count > 0 && _pendingEditsScopeActive(g.h3)).length;
 
         globalBtn.textContent = `(${total}) ⏳`;
-        globalBtn.title = isMulti
+        _setTip(globalBtn, isMulti
             ? `${total} row${total === 1 ? '' : 's'} with pending edits across `
               + `${eligible} sub-section${eligible === 1 ? '' : 's'}. `
               + (state === 'all'
@@ -41604,7 +41631,7 @@ a { color: #1565c0; }`;
             : `${total} row${total === 1 ? '' : 's'} with pending edits. `
               + (state === 'all'
                   ? 'Click again to show all rows.'
-                  : `Click to show only ${total === 1 ? 'that row' : 'those rows'}.`);
+                  : `Click to show only ${total === 1 ? 'that row' : 'those rows'}.`));
         // `mixed` is the standard ARIA value for a tri-state toggle, so the
         // partial state is announced rather than merely looking different.
         globalBtn.setAttribute('aria-pressed', state === 'all' ? 'true' : state === 'partial' ? 'mixed' : 'false');
@@ -41848,8 +41875,8 @@ a { color: #1565c0; }`;
             const how = f.scope === 'row'
                 ? 'Filters by row: a row stays when any of its cells has it.'
                 : `Ticks 📊 "${_structureModeLabel(`finding-${f.id}`)}" (Findings - ${level === 'error' ? 'Error' : 'Warning'}) in the column that holds it, in every table.`;
-            row.title = `${n} row${n === 1 ? '' : 's'}. ${f.tip}\n${how}\n`
-                      + (state === 'on' ? 'Click to remove this filter.' : 'Click to show only these rows.');
+            _setTip(row, `${n} row${n === 1 ? '' : 's'}. ${f.tip}\n${how}\n`
+                      + (state === 'on' ? 'Click to remove this filter.' : 'Click to show only these rows.'));
             menu.adopt(row);
             row.setAttribute('role', 'menuitemcheckbox');
             row.setAttribute('aria-checked', state === 'on' ? 'true' : 'false');
@@ -41860,7 +41887,7 @@ a { color: #1565c0; }`;
         clear.type = 'button';
         clear.className = 'mb-findings-menu-item mb-findings-clear-item';
         clear.textContent = `✗ Clear ${level === 'error' ? 'error' : 'warning'} filters`;
-        clear.title = `Remove every ${level === 'error' ? 'error' : 'warning'} filter this menu set; your own filters stay.`;
+        _setTip(clear, `Remove every ${level === 'error' ? 'error' : 'warning'} filter this menu set; your own filters stay.`);
         clear.setAttribute('aria-disabled', anyOn ? 'false' : 'true');
         menu.adopt(clear);
         clear.addEventListener('click', () => { if (anyOn) _clearFindingLevel(level); });
@@ -41884,7 +41911,7 @@ a { color: #1565c0; }`;
             const chip = document.createElement('span');
             chip.className = 'mb-findings-chip';
             chip.dataset.mbFindingId = id;
-            chip.title = `Row filter set from the ${isErr ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has "${f.label}".`;
+            _setTip(chip, `Row filter set from the ${isErr ? '❌ ERROR' : '⚠️ WARNING'} menu: only rows where some cell has "${f.label}".`);
             chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; border-radius:10px; padding:1px 3px 1px 8px; font-size:0.85em; font-weight:normal; '
                 + `background:${isErr ? (Lib.settings.sa_release_tracks_length_mismatch_severe_bg || '#f8d7da') : (Lib.settings.sa_release_tracks_length_mismatch_warn_bg || '#fff3cd')}; `
                 + `color:${isErr ? '#a33' : '#8a6d00'}; border:1px solid ${isErr ? '#e08a8a' : '#e0c14a'};`;
@@ -41893,7 +41920,7 @@ a { color: #1565c0; }`;
             x.type = 'button';
             x.className = 'mb-findings-chip-remove';
             x.textContent = '✕';
-            x.title = 'Remove this row filter';
+            _setTip(x, 'Remove this row filter');
             x.setAttribute('aria-label', `Remove the row filter "${f.label}"`);
             x.style.cssText = 'border:none; background:none; cursor:pointer; font-weight:bold; color:inherit; padding:0 4px;';
             x.addEventListener('click', () => _toggleFinding(id));
@@ -41938,9 +41965,9 @@ a { color: #1565c0; }`;
             const total = list.reduce((s, x) => s + x.n, 0);
             const word = level === 'error' ? 'ERROR' : 'WARNING';
             menu.setLabel(level === 'error' ? `❌ ${word} (${total})` : `⚠️ ${word} (${total})`);
-            menu.btn.title = `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
+            _setTip(menu.btn, `${list.length} kind${list.length === 1 ? '' : 's'} of ${word.toLowerCase()} on this page: `
                 + list.map(x => `${x.f.label} (${x.n})`).join(', ')
-                + '. Pick one to show only those rows in every table.';
+                + '. Pick one to show only those rows in every table.');
             const anyOn = list.some(x => x.state !== 'off');
             menu.btn.setAttribute('aria-pressed', anyOn ? 'true' : 'false');
             menu.btn.style.boxShadow = anyOn ? 'inset 0 0 0 2px currentColor' : '';
@@ -42073,10 +42100,10 @@ a { color: #1565c0; }`;
             if (labelSpan) {
                 if (stfActive) {
                     labelSpan.textContent = 'Clear all filters';
-                    btn.title = 'Clear ALL filters for this sub-table (the sub-table filter and ALL column filters)';
+                    _setTip(btn, 'Clear ALL filters for this sub-table (the sub-table filter and ALL column filters)');
                 } else {
                     labelSpan.textContent = 'Clear all column filters';
-                    btn.title = 'Clear ALL COLUMN filters for this sub-table';
+                    _setTip(btn, 'Clear ALL COLUMN filters for this sub-table');
                 }
             }
 
@@ -42627,22 +42654,45 @@ a { color: #1565c0; }`;
         .mb-row-count-stat { font-weight: bold; margin-left: 8px; display: inline-grid; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .mb-row-count-stat::after { content: attr(data-mb-sizer); height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
         ${Lib.settings.sa_enable_count_stat_tooltip ? '.mb-row-count-stat { cursor: help; }' : ''}
+        /* "Liner notes": the one look of every floating tooltip the script
+           draws, like the insert of a record sleeve. Shared by
+           #mb-stat-tooltip (row counts, action buttons, every plain tooltip
+           set through _setTip), the cover-art card, the Relationships panels
+           and the prefix-key overlay. System serif stack on purpose: no web
+           font request, and MusicBrainz's content security policy stays
+           out of it. Settings may still recolour background and text. */
+        .mb-tt-liner {
+            /* The top layer: a tooltip must show over whatever panel the
+               pointer is in, and the 📊 dropdown alone sits at 999999. Only
+               the page-corner notice (2147483000) is close; a tooltip may
+               cover it. Set here once; the five tooltip elements carry no
+               z-index of their own. */
+            z-index: 2147483500;
+            background: #fbf8f1;
+            color: #2b2622;
+            border: 1px solid #d9cfbd;
+            border-radius: 3px;
+            padding: 8px 12px 9px;
+            font: 13px/1.5 Georgia, "Times New Roman", Times, serif;
+            box-shadow: 0 1px 0 #e9e1d1, 0 10px 24px -8px rgba(60,40,20,0.35);
+            word-break: break-word;
+            text-align: left;
+        }
+        .mb-tt-liner .mb-tt-title { font-weight: 700; font-size: 1.08em; line-height: 1.3; }
+        .mb-tt-liner .mb-tt-title + .mb-tt-body { margin-top: 3px; }
+        .mb-tt-liner .mb-tt-body + .mb-tt-body { margin-top: 4px; }
+        .mb-tt-liner .mb-tt-foot { margin-top: 6px; font-style: italic; font-size: 0.92em; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-comment { font-style: italic; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-dim { font-size: 0.9em; color: #7a6d5c; }
+        .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
+        .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
+        .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        .mb-tt-liner kbd { display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9; border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 ui-monospace, Consolas, "Courier New", monospace; }
         #mb-stat-tooltip {
             position: fixed;
-            z-index: 99999;
             max-width: 520px;
-            background: #1e1e2e;
-            color: #cdd6f4;
-            border: 1px solid #45475a;
-            border-radius: 6px;
-            padding: 7px 11px;
-            font-size: 0.82em;
-            font-family: sans-serif;
-            line-height: 1.5;
             pointer-events: none;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.45);
             white-space: pre-wrap;
-            word-break: break-word;
         }
         /* filter-expression highlight spans inside the tooltip */
         #mb-stat-tooltip .mbtt-gf  { background: var(--mbtt-gf-bg,  #FFD700); color: var(--mbtt-gf-col, red);  border-radius: 2px; padding: 0 3px; }
@@ -43004,8 +43054,8 @@ a { color: #1565c0; }`;
             --mbtt-stf-col: #000;
             --mbtt-cf-bg:  ${Lib.settings.sa_column_filter_highlight_bg  || '#add8e6'};
             --mbtt-cf-col: ${Lib.settings.sa_column_filter_highlight_color || 'red'};
-            background: ${Lib.settings.sa_count_stat_tooltip_bg    || '#1e1e2e'};
-            color:      ${Lib.settings.sa_count_stat_tooltip_color || '#cdd6f4'};
+            background: ${Lib.settings.sa_count_stat_tooltip_bg    || '#fbf8f1'};
+            color:      ${Lib.settings.sa_count_stat_tooltip_color || '#2b2622'};
         }
         .mb-pre-filter-highlight {
             color: ${Lib.settings.sa_pre_filter_highlight_color};
@@ -45662,7 +45712,7 @@ a { color: #1565c0; }`;
                 <div id="sa-epl-qf-inner">
                     <input id="sa-epl-qf" type="text" placeholder="&#128269; Quick filter list...">
                     <button id="sa-epl-qf-clear-btn" tabindex="-1"
-                        title="Clear quick filter">&#10005;</button>
+                        data-mb-tip title="Clear quick filter">&#10005;</button>
                 </div>
             </div>
             <!-- Entry table -->
@@ -45672,9 +45722,9 @@ a { color: #1565c0; }`;
                         <tr id="sa-epl-thead-row">
                             <th class="sa-epl-th-left">#</th>
                             <th class="sa-epl-th-left">Filter Expression</th>
-                            <th class="sa-epl-th-center" title="Case Sensitive">Cs</th>
-                            <th class="sa-epl-th-center" title="Regular Expression">Re</th>
-                            <th class="sa-epl-th-center" title="Exclude Matches">Ex</th>
+                            <th class="sa-epl-th-center" data-mb-tip title="Case Sensitive">Cs</th>
+                            <th class="sa-epl-th-center" data-mb-tip title="Regular Expression">Re</th>
+                            <th class="sa-epl-th-center" data-mb-tip title="Exclude Matches">Ex</th>
                         </tr>
                     </thead>
                     <tbody id="sa-epl-tbody"></tbody>
@@ -45705,20 +45755,20 @@ a { color: #1565c0; }`;
             <div id="sa-epl-status"></div>
             <!-- Action buttons row -->
             <div id="sa-epl-action-row">
-                <button id="sa-epl-add-btn" title="Add new entry (Alt+A)">
+                <button id="sa-epl-add-btn" data-mb-tip title="Add new entry (Alt+A)">
                     + <u>A</u>dd
                 </button>
-                <button id="sa-epl-edit-btn" title="Edit selected entry (Alt+E)" disabled>
+                <button id="sa-epl-edit-btn" data-mb-tip title="Edit selected entry (Alt+E)" disabled>
                     &#9998; <u>E</u>dit
                 </button>
-                <button id="sa-epl-remove-btn" title="Remove selected entry (Alt+R)" disabled>
+                <button id="sa-epl-remove-btn" data-mb-tip title="Remove selected entry (Alt+R)" disabled>
                     &#10005; <u>R</u>emove
                 </button>
                 <div class="sa-epl-spacer"></div>
-                <button id="sa-epl-save-btn" title="Save changes (Alt+S)">
+                <button id="sa-epl-save-btn" data-mb-tip title="Save changes (Alt+S)">
                     &#128190; <u>S</u>ave
                 </button>
-                <button id="sa-epl-cancel-btn" title="Cancel (Alt+C / Escape)">
+                <button id="sa-epl-cancel-btn" data-mb-tip title="Cancel (Alt+C / Escape)">
                     <u>C</u>ancel
                 </button>
             </div>
@@ -45829,14 +45879,14 @@ a { color: #1565c0; }`;
                 eplRemoveBtn.style.opacity = '';
                 eplRemoveBtn.innerHTML     =
                     `&#10005; <u>R</u>emove (${n} marked)`;
-                eplRemoveBtn.title = `Remove all ${n} marked entries (Alt+R)`;
+                _setTip(eplRemoveBtn, `Remove all ${n} marked entries (Alt+R)`);
             } else {
                 const hasSel               = selectedIdx >= 0;
                 eplRemoveBtn.disabled      = !hasSel;
                 eplRemoveBtn.style.opacity = hasSel ? '' : '0.4';
                 eplRemoveBtn.innerHTML     =
                     '&#10005; <u>R</u>emove';
-                eplRemoveBtn.title = 'Remove selected entry (Alt+R)';
+                _setTip(eplRemoveBtn, 'Remove selected entry (Alt+R)');
             }
         };
 
@@ -45868,7 +45918,7 @@ a { color: #1565c0; }`;
                 const isMrk    = markedSet.has(origIdx);
                 const isSel    = origIdx === selectedIdx;
                 const rowClass = isSel ? 'sa-epl-row-sel' : isMrk ? 'sa-epl-row-mrk' : '';
-                const markIcon = `<span class="sa-epl-mark-icon" title="Tab → mark/unmark for bulk removal">`
+                const markIcon = `<span class="sa-epl-mark-icon" data-mb-tip title="Tab → mark/unmark for bulk removal">`
                                + (isMrk ? '&#9745;' : '&#9744;') + `</span>`;
                 return `<tr data-orig-idx="${origIdx}" tabindex="0" `
                      + `class="sa-epl-row ${rowClass}">`
@@ -46311,12 +46361,12 @@ a { color: #1565c0; }`;
                             <input id="sa-load-filter-input" type="text"
                                 placeholder="Filter expression... evaluated for each column">
                             <button id="sa-filter-clear-btn" tabindex="-1"
-                                title="Clear filter expression">&#10005;</button>
+                                data-mb-tip title="Clear filter expression">&#10005;</button>
                         </div>
                         <button id="sa-hist-pin-btn"
-                            title="Pin current filter to persistent list (saves query + checkbox states)">+</button>
+                            data-mb-tip title="Pin current filter to persistent list (saves query + checkbox states)">+</button>
                         <button id="sa-load-history-toggle"
-                            title="Show/hide filter history (Alt+H)">
+                            data-mb-tip title="Show/hide filter history (Alt+H)">
                             &#128337; <u>H</u>istory &#9660;
                         </button>
                     </div>
@@ -46328,14 +46378,14 @@ a { color: #1565c0; }`;
                                 <input id="sa-hist-quick-filter" type="text"
                                     placeholder="&#128269; Quick filter both lists...">
                                 <button id="sa-hist-qf-clear-btn" tabindex="-1"
-                                    title="Clear quick filter">&#10005;</button>
+                                    data-mb-tip title="Clear quick filter">&#10005;</button>
                             </div>
                         </div>
                         <!-- Persistent pinned list -->
                         <div id="sa-ld-pin-header">
                             <span class="sa-ld-pin-label">&#128204; Pinned</span>
                             <button id="sa-hist-edit-btn"
-                                title="Edit the persistent pinned filter list (Alt+E)">
+                                data-mb-tip title="Edit the persistent pinned filter list (Alt+E)">
                                 &#9998; <u>E</u>dit Pinned Filter List
                             </button>
                         </div>
@@ -46358,13 +46408,13 @@ a { color: #1565c0; }`;
                 <!-- Checkbox row -->
                 <div id="sa-ld-checkbox-row">
                     <div id="sa-ld-checkbox-inner">
-                        <label class="sa-ld-checkbox-label" title="Match filter expression with exact case (uppercase/lowercase must match)">
+                        <label class="sa-ld-checkbox-label" data-mb-tip title="Match filter expression with exact case (uppercase/lowercase must match)">
                             <input type="checkbox" id="sa-load-case"> Case Sensitive
                         </label>
-                        <label class="sa-ld-checkbox-label" title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
+                        <label class="sa-ld-checkbox-label" data-mb-tip title="Interpret filter expression as a regular expression (JavaScript RegExp syntax)">
                             <input type="checkbox" id="sa-load-regex"> Regular Expression
                         </label>
-                        <label class="sa-ld-checkbox-label" title="Exclude rows that match the filter expression instead of keeping them">
+                        <label class="sa-ld-checkbox-label" data-mb-tip title="Exclude rows that match the filter expression instead of keeping them">
                             <input type="checkbox" id="sa-load-exclude"> Exclude Matches
                         </label>
                     </div>
@@ -46374,7 +46424,7 @@ a { color: #1565c0; }`;
                     <button id="sa-filter-confirm">
                         <span><u>F</u>ilter Data</span>
                     </button>
-                    <button id="sa-render-no-filter-confirm" title="Render all rows from the loaded file without applying any filter">
+                    <button id="sa-render-no-filter-confirm" data-mb-tip title="Render all rows from the loaded file without applying any filter">
                         <span>&#9654; <u>R</u>ender All Rows</span>
                     </button>
                 </div>
@@ -46895,9 +46945,9 @@ a { color: #1565c0; }`;
         // identical _histGlyphs, which this duplicates).
         const _histGlyphs = (e) => {
             const parts = [];
-            if (e.useCase)    parts.push('<span title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
-            if (e.useRegex)   parts.push('<span title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
-            if (e.useExclude) parts.push('<span title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
+            if (e.useCase)    parts.push('<span data-mb-tip title="Case Sensitive" class="mb-fhw-badge mb-fhw-badge-cs">Cs</span>');
+            if (e.useRegex)   parts.push('<span data-mb-tip title="Regular Expression" class="mb-fhw-badge mb-fhw-badge-re">Re</span>');
+            if (e.useExclude) parts.push('<span data-mb-tip title="Exclude Matches" class="mb-fhw-badge mb-fhw-badge-ex">Ex</span>');
             return parts.length ? '&nbsp;' + parts.join('&nbsp;') : '';
         };
 
@@ -47714,9 +47764,9 @@ a { color: #1565c0; }`;
             .mb-mbtt-gf { background:${gfBg}; color:${gfCol}; }
             .mb-mbtt-stf { background:#90ee90; color:#000; }
             .mb-mbtt-cf { background:${cfBg}; color:${cfCol}; }
-            .mb-mbtt-colname { color:${cfBg}; font-weight:bold; }
+            .mb-mbtt-colname { color:#1f4e79; font-weight:bold; border-bottom:2px solid ${cfBg}; }
             .mb-mbtt-count { background:${countBg}; color:${countCol}; border-radius:2px; padding:0 3px; font-weight:bold; }
-            .mb-mbtt-shortcut { display:inline-block; margin-top:4px; background:rgba(255,255,255,0.12); border-radius:3px; padding:1px 5px; font-family:monospace; font-size:0.85em; }
+            .mb-mbtt-shortcut { display:inline-block; margin-top:4px; background:#ffffff; color:#2b2622; border:1px solid #cbbfa9; box-shadow:0 1px 0 #cbbfa9; border-radius:3px; padding:0 5px; font-family:ui-monospace, Consolas, monospace; font-size:0.85em; }
         `);
         style.id = 'sa-mbtt-style';
     }
@@ -47738,10 +47788,12 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * _mbttColName — wraps a column name in the tooltip so its foreground color
-     * matches the background color of the corresponding column-filter expression
-     * pill (cf type).  This creates a visual connection between the column label
-     * and its filter value inside the rich hover tooltips.
+     * _mbttColName — wraps a column name in the tooltip, underlined in the
+     * background color of the corresponding column-filter expression pill (cf
+     * type). This creates a visual connection between the column label and
+     * its filter value inside the rich hover tooltips. (It used to be TEXT in
+     * that color, which read on the old dark panel but is light blue on the
+     * "Liner notes" cream.)
      *
      * @param {string} name  Column name text (will be HTML-escaped).
      * @returns {string} HTML span.
@@ -47774,51 +47826,148 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Initialise the singleton custom tooltip, delegated on any `[data-mbtt]`
-     * element — originally just `.mb-row-count-stat` spans, now also the h1
-     * action buttons (see the button-generation loop). Safe to call multiple
-     * times — creates the div only once. Also installs the touch-input
-     * tracker, since this runs at page init, before any tap: a tap shows no
-     * tooltip (`_isTouchCompatMouseEvent()`).
+     * Sets a tooltip that belongs to this script: assigns `el.title` and
+     * stamps `data-mb-tip`, the marker the rich-tooltip engine
+     * (`_initStatTooltip()`) looks for. Every tooltip the script sets goes
+     * through here (or carries `data-mb-tip` in its markup), so the engine
+     * can show it as a "Liner notes" card while MusicBrainz's own titles and
+     * other userscripts' stay native. The title itself is kept — it is the
+     * fallback when `sa_rich_tooltips` is off, and what code reading
+     * `el.title` back expects. The marker is an attribute, so it survives
+     * `cloneNode(true)`, and the engine is delegated, so clones need no
+     * re-wiring.
+     *
+     * @param {Element} el    - The element the tooltip belongs to.
+     * @param {string}  text  - Plain tooltip text; `\n` starts a new line.
+     * @returns {string} `text`, so a converted assignment used as a value
+     *   keeps its value.
+     */
+    function _setTip(el, text) {
+        el.title = text;
+        el.setAttribute('data-mb-tip', '');
+        return text;
+    }
+
+    /**
+     * Turns a plain tooltip text into the "Liner notes" card markup shown by
+     * `#mb-stat-tooltip`. The text is HTML-escaped first; structure is only
+     * inferred, never taken from the text:
+     *   - each non-empty line is a block; with two or more blocks the first is
+     *     the title, and a single short block is a title on its own;
+     *   - a block starting with "Configurable in" is a footnote;
+     *   - key combinations ("Ctrl+R", "Alt+Shift+H", the key after "then" in
+     *     a prefix hint, "Escape") become `<kbd>` keycaps.
+     *
+     * @param {string} text - The element's plain title text.
+     * @returns {string} HTML for the tooltip card.
+     */
+    function _tipTextToHtml(text) {
+        const MOD = '(?:Ctrl|Alt|Shift|Meta|Cmd)';
+        const KEY = '(?:F\\d{1,2}|Escape|Esc|Enter|Tab|Space|Click|[A-Za-z0-9,.\\/?;\\-=+])';
+        const comboRe = new RegExp(`(^|[\\s(/'])(${MOD}(?:\\+${MOD})*\\+${KEY})(?![A-Za-z0-9])`, 'g');
+        const kbd = (k) => `<kbd>${k}</kbd>`;
+        const keycaps = (s) => s
+            .replace(comboRe, (m, pre, combo) =>
+                pre + combo.split(/\+(?=.)/).map(kbd).join('+'))
+            .replace(/\bthen ([A-Za-z0-9,.\/?;\-=])(?![A-Za-z0-9])/g, (m, k) => `then ${kbd(k)}`)
+            .replace(/(^|[\s(])(Escape)\b(?![^<]*<\/kbd>)/g, (m, pre, k) => pre + kbd(k));
+
+        const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
+        if (!blocks.length) return '';
+        const html = blocks.map((b, i) => {
+            const body = keycaps(_mbttEscape(b));
+            if (i === 0 && (blocks.length > 1 || b.length <= 60)) {
+                return `<div class="mb-tt-title">${body}</div>`;
+            }
+            if (/^Configurable in\b/.test(b)) return `<div class="mb-tt-foot">${body}</div>`;
+            return `<div class="mb-tt-body">${body}</div>`;
+        });
+        return html.join('');
+    }
+
+    /**
+     * Initialise the singleton rich tooltip `#mb-stat-tooltip`, delegated on
+     * the document, for two kinds of element:
+     *   - `[data-mbtt]`: ready-made HTML (the h2/h3 row-count stat, the h1
+     *     action buttons). Shown at once, as it always was.
+     *   - `[data-mb-tip]` with a `title`: a plain tooltip this script set
+     *     (`_setTip()`), shown as a "Liner notes" card after
+     *     `sa_rich_tooltip_delay_ms`, unless `sa_rich_tooltips` is off.
+     *
+     * The element the browser would take a tooltip from is the NEAREST one
+     * with a title, so a native MusicBrainz link inside one of our headings
+     * keeps its own native tooltip rather than showing the heading's card.
+     * While a card shows, the element's `title` is stashed in
+     * `data-mb-tip-saved` (and offered as `aria-description`) so the browser
+     * does not draw its own box on top; it is put back on leave, unless code
+     * set a new title meanwhile. A title that changes under the pointer (a
+     * button that relabels itself on click) is picked up on the next
+     * mousemove. A mousedown hides the card for the rest of that hover, like
+     * a native tooltip.
+     *
+     * Safe to call more than once — creates the div only once. Also installs
+     * the touch-input tracker, since this runs at page init, before any tap: a
+     * tap shows no tooltip (`_isTouchCompatMouseEvent()`).
      */
     function _initStatTooltip() {
         _installTouchInputTracker();
         if (document.getElementById('mb-stat-tooltip')) return;
         const _tip = document.createElement('div');
         _tip.id = 'mb-stat-tooltip';
+        _tip.className = 'mb-tt-liner';
         _tip.style.display = 'none';
         document.body.appendChild(_tip);
 
-        let _target = null; // current hovered element
+        /** Rich tooltips that, while shown, rule out a card (see _showOwn). */
+        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip'];
 
-        document.addEventListener('mouseover', (e) => {
-            const el = e.target.closest('[data-mbtt]');
-            if (!el || !el.dataset.mbtt) return;
-            // A tap: no mouseout would ever hide it again.
-            if (_isTouchCompatMouseEvent(e)) return;
-            _target = el;
-            _tip.innerHTML = el.dataset.mbtt;
+        let _target = null;     // element whose card is shown or pending
+        let _own = false;       // _target is a data-mb-tip element (not data-mbtt)
+        let _dismissed = false; // a mousedown hid the card for this hover
+        let _showTimer = 0;
+        let _lastMove = null;   // latest mouse event, for positioning after the delay
+
+        /**
+         * Shows a stashed own tooltip's card.
+         * @param {string} text - The element's plain title.
+         */
+        const _showOwn = (text) => {
+            // Another rich tooltip of the script already describes what is
+            // under the pointer — the cover-art card and preview of a strip
+            // image or thumbnail, the Relationships panel. A card would be a
+            // third box over them (an inline CAA thumbnail's "8 images found
+            // …" landed on its own preview). The title stays stashed, so no
+            // native box appears either.
+            if (_OTHER_RICH_TIPS.some((id) => {
+                const o = document.getElementById(id);
+                return o && o.style.display !== 'none' && o.style.display !== '';
+            })) return;
+            _tip.innerHTML = _tipTextToHtml(text);
             _tip.style.display = 'block';
-            _positionTip(e);
-            // Suppress the element's own native title (action buttons) and any
-            // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
-            // so the browser doesn't overlay both tooltips simultaneously.
-            if (el.title) {
-                el.dataset.mbttSavedTitle = el.title;
-                el.title = '';
-            }
-            const _hParent = el.closest('h2, h3');
-            if (_hParent && _hParent !== el && _hParent.title) {
-                _hParent.dataset.mbttSavedTitleParent = _hParent.title;
-                _hParent.title = '';
-            }
-        }, true);
+            if (_lastMove) _positionTip(_lastMove);
+        };
 
-        document.addEventListener('mouseout', (e) => {
-            const el = e.target.closest('[data-mbtt]');
-            if (!el || el !== _target) return;
-            _target = null;
+        /**
+         * Moves an own element's title into `data-mb-tip-saved`.
+         * @param {HTMLElement} el
+         */
+        const _stashOwn = (el) => {
+            el.dataset.mbTipSaved = el.title;
+            if (!el.hasAttribute('aria-description')) {
+                el.setAttribute('aria-description', el.title);
+                el.dataset.mbTipAria = '';
+            }
+            el.title = '';
+        };
+
+        /** Hides the card and gives the current element its title back. */
+        const _hide = () => {
+            clearTimeout(_showTimer);
             _tip.style.display = 'none';
+            const el = _target;
+            _target = null;
+            _dismissed = false;
+            if (!el) return;
             // Restore the element's own native title, and any h2/h3 ancestor's.
             if (el.dataset.mbttSavedTitle !== undefined) {
                 el.title = el.dataset.mbttSavedTitle;
@@ -47829,13 +47978,103 @@ a { color: #1565c0; }`;
                 _hParent.title = _hParent.dataset.mbttSavedTitleParent;
                 delete _hParent.dataset.mbttSavedTitleParent;
             }
+            if (el.dataset.mbTipSaved !== undefined) {
+                if (!el.title) el.title = el.dataset.mbTipSaved;
+                delete el.dataset.mbTipSaved;
+                if (el.dataset.mbTipAria !== undefined) {
+                    el.removeAttribute('aria-description');
+                    delete el.dataset.mbTipAria;
+                }
+            }
+        };
+
+        document.addEventListener('mouseover', (e) => {
+            const el = e.target.closest('[data-mbtt], [title], [data-mb-tip-saved]');
+            if (el === _target && _own) return; // still inside the same element
+            // A tap: no mouseout would ever hide it again.
+            if (_isTouchCompatMouseEvent(e)) return;
+            if (el && el.dataset.mbtt) {
+                if (_target && _target !== el) _hide();
+                _target = el;
+                _own = false;
+                _tip.innerHTML = el.dataset.mbtt;
+                _tip.style.display = 'block';
+                _positionTip(e);
+                // Suppress the element's own native title (action buttons) and any
+                // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
+                // so the browser doesn't overlay both tooltips simultaneously.
+                if (el.title) {
+                    el.dataset.mbttSavedTitle = el.title;
+                    el.title = '';
+                }
+                const _hParent = el.closest('h2, h3');
+                if (_hParent && _hParent !== el && _hParent.title) {
+                    _hParent.dataset.mbttSavedTitleParent = _hParent.title;
+                    _hParent.title = '';
+                }
+                return;
+            }
+            if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;
+            // A Relationships icon whose cell a filter matches belongs to the
+            // Relationships tooltip (_initRelTooltipListeners()): its rich
+            // URL panel plus a plain panel with this very title. A card here
+            // would be a third box, and stashing the title first would leave
+            // that plain panel empty. Without a matching filter the
+            // Relationships tooltip shows nothing, and the card is the
+            // icon's tooltip.
+            const _relCell = el.closest('td.mb-rel-cell');
+            if (_relCell && _relHasAnyActiveFilter(_relCell) && _relQueryMatchesCell(_relCell)) return;
+            // A stash left behind on a node that was cloned mid-hover: the
+            // clone is a different element, so give it its title back first.
+            if (!el.title && el.dataset.mbTipSaved !== undefined) {
+                el.title = el.dataset.mbTipSaved;
+                delete el.dataset.mbTipSaved;
+            }
+            const text = el.title;
+            if (!text) return;
+            _hide();
+            _target = el;
+            _own = true;
+            _lastMove = e;
+            _stashOwn(el);
+            const _d = Lib.settings.sa_rich_tooltip_delay_ms;
+            _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);
+        }, true);
+
+        document.addEventListener('mouseout', (e) => {
+            if (!_target || !_target.contains(e.target)) return;
+            // Moving onto a child of the same element is not leaving it.
+            if (e.relatedTarget && _target.contains(e.relatedTarget)) return;
+            _hide();
+        }, true);
+
+        document.addEventListener('mousedown', () => {
+            if (!_target || !_own) return;
+            clearTimeout(_showTimer);
+            _tip.style.display = 'none';
+            _dismissed = true;
         }, true);
 
         document.addEventListener('mousemove', (e) => {
             if (!_target) return;
-            _positionTip(e);
+            _lastMove = e;
+            if (!_target.isConnected) { _hide(); return; }
+            // Code gave the hovered element a new title (a button relabelled
+            // on click): stash it again and, unless dismissed, show it.
+            if (_own && _target.title) {
+                const text = _target.title;
+                _target.dataset.mbTipSaved = text;
+                if (_target.dataset.mbTipAria !== undefined) _target.setAttribute('aria-description', text);
+                _target.title = '';
+                if (!_dismissed && _tip.style.display === 'block') _tip.innerHTML = _tipTextToHtml(text);
+            }
+            if (_tip.style.display === 'block') _positionTip(e);
         }, true);
 
+        /**
+         * Places the card next to the pointer, flipped to stay on screen.
+         * @param {MouseEvent} e
+         */
         function _positionTip(e) {
             const gap = 14;
             const vw = window.innerWidth, vh = window.innerHeight;
@@ -49645,21 +49884,21 @@ a { color: #1565c0; }`;
             // matching comment / _hardenFilterInputAgainstAutofill()'s JSDoc
             // / _isGenuineFilterInputEvent()'s JSDoc.
             _hardenFilterInputAgainstAutofill(input);
-            input.title = (() => {
+            _setTip(input, (() => {
                 const _directOn = typeof Lib !== 'undefined' && Lib.settings && Lib.settings.sa_enable_direct_ctrl_char_shortcuts;
                 const _cKey = getShortcutDisplay('sa_shortcut_focus_column_filter', 'Ctrl+C');
                 const _focusHint = _directOn
                     ? `first column in table focusable with '${_cKey}'`
                     : `first column in table focusable with '${getPrefixDisplay()} then C' (or enable Direct Ctrl+Letter Shortcuts for '${_cKey}')`;
                 return `Enter column filter string (${_focusHint}, use '${getShortcutDisplay('sa_shortcut_unicode_chars', 'Ctrl+U')}' for unicode character map)`;
-            })();
+            })());
             input.className = 'mb-col-filter-input';
             input.dataset.colIdx = idx;
 
             const clear = document.createElement('span');
             clear.className = 'mb-col-filter-clear';
             clear.textContent = '✕';
-            clear.title = 'Clear column filter';
+            _setTip(clear, 'Clear column filter');
             clear.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -51109,7 +51348,7 @@ a { color: #1565c0; }`;
             chip.dataset.mbMode = m.mode;
             chip.setAttribute('aria-pressed', 'false');
             chip.textContent = m.label;
-            chip.title = `${m.long} — the "${colName}" column filter only`;
+            _setTip(chip, `${m.long} — the "${colName}" column filter only`);
             chips.appendChild(chip);
         });
         const btn = document.createElement('button');
@@ -51119,7 +51358,7 @@ a { color: #1565c0; }`;
         btn.setAttribute('aria-haspopup', 'true');
         btn.setAttribute('aria-expanded', 'false');
         btn.textContent = 'Aa';
-        btn.title = `Filter modes for "${colName}": Cc case-sensitive, Rx regular expression, Ex exclude matches`;
+        _setTip(btn, `Filter modes for "${colName}": Cc case-sensitive, Rx regular expression, Ex exclude matches`);
         return { chips, btn };
     }
 
@@ -55571,7 +55810,7 @@ a { color: #1565c0; }`;
                     th.classList.add('mb-extracted-column');
                     th.style.backgroundColor = headerBgColor;
                     const tip = _synthColTooltip(entry.extractor, entry.sourceColumn, colName);
-                    if (tip) th.title = tip;
+                    if (tip) _setTip(th, tip);
                     Lib.debug('cleanup', `Injecting synthetic header: ${colName} (via extractor: ${entry.extractor})`);
                     theadRow.appendChild(th);
                 }
@@ -55625,7 +55864,7 @@ a { color: #1565c0; }`;
                     th.classList.add('mb-derived-extracted-column');
                     th.style.backgroundColor = headerDerivedBgColor;
                     const tip = _synthColTooltip(entry.extractor, entry.sourceColumn, colName);
-                    if (tip) th.title = tip;
+                    if (tip) _setTip(th, tip);
                     Lib.debug('cleanup', `Injecting synthetic header: ${colName} (via synthetic extractor: ${entry.extractor})`);
                     theadRow.appendChild(th);
                 }
@@ -55643,7 +55882,7 @@ a { color: #1565c0; }`;
                 thN.classList.add('mb-extracted-column');
                 thN.style.backgroundColor = headerBgColor;
                 const tipN = _synthColTooltip('extractMainColumn', String(mainColConfig), 'MB-Name');
-                if (tipN) thN.title = tipN;
+                if (tipN) _setTip(thN, tipN);
                 Lib.debug('cleanup', 'Injecting synthetic header: MB-Name');
                 theadRow.appendChild(thN);
             }
@@ -55654,7 +55893,7 @@ a { color: #1565c0; }`;
                 thC.classList.add('mb-extracted-column');
                 thC.style.backgroundColor = headerBgColor;
                 const tipC = _synthColTooltip('extractMainColumn', String(mainColConfig), 'Comment');
-                if (tipC) thC.title = tipC;
+                if (tipC) _setTip(thC, tipC);
                 Lib.debug('cleanup', 'Injecting synthetic header: Comment');
                 theadRow.appendChild(thC);
             }
@@ -55665,7 +55904,7 @@ a { color: #1565c0; }`;
                 thA.classList.add('mb-extracted-column');
                 thA.style.backgroundColor = headerBgColor;
                 const tipA = _synthColTooltip('extractMainColumn', String(mainColConfig), 'Primary alias');
-                if (tipA) thA.title = tipA;
+                if (tipA) _setTip(thA, tipA);
                 Lib.debug('cleanup', 'Injecting synthetic header: Primary alias');
                 theadRow.appendChild(thA);
             }
@@ -55686,8 +55925,8 @@ a { color: #1565c0; }`;
                 thRe.dataset.colName = entry.colName;
                 thRe.classList.add('mb-injected-column');
                 thRe.style.backgroundColor = _reBg;
-                thRe.title = 'Injected column — populated from the MusicBrainz Web Service '
-                           + '(release-events for each release).';
+                _setTip(thRe, 'Injected column — populated from the MusicBrainz Web Service '
+                           + '(release-events for each release).');
                 Lib.debug('cleanup', `Injecting release-events header: ${entry.colName}`);
                 theadRow.appendChild(thRe);
             });
@@ -55703,8 +55942,8 @@ a { color: #1565c0; }`;
                 thInj.dataset.colName = entry.colName;
                 thInj.classList.add('mb-injected-column');
                 thInj.style.backgroundColor = _injBg;
-                thInj.title = `Injected column — populated asynchronously from the MusicBrainz Web Service ` +
-                    `(${entry.entityType} url-rels). Icons appear after the table renders.`;
+                _setTip(thInj, `Injected column — populated asynchronously from the MusicBrainz Web Service ` +
+                    `(${entry.entityType} url-rels). Icons appear after the table renders.`);
                 Lib.debug('cleanup', `Injecting injected-column header: ${entry.colName} (${entry.entityType})`);
                 theadRow.appendChild(thInj);
             });
@@ -55726,7 +55965,7 @@ a { color: #1565c0; }`;
                     th.classList.add('mb-derived-extracted-column', 'mb-ice-th');
                     th.style.backgroundColor = _iceBg;
                     const tip = _synthColTooltip(entry.extractor, entry.sourceColumn, colName);
-                    if (tip) th.title = tip;
+                    if (tip) _setTip(th, tip);
                     Lib.debug('cleanup', `Injecting injected-column-extractor header: ${colName} (via extractor: ${entry.extractor}, source: ${entry.sourceColumn})`);
                     theadRow.appendChild(th);
                 });
@@ -58732,7 +58971,7 @@ a { color: #1565c0; }`;
                         globalStatusDisplay.textContent = `Fetched ${pagesProcessed} ${pageLabel} (${totalRows} rows) in ${fetchSeconds}s - Saved to disk without rendering`;
                         globalStatusDisplay.style.color = 'green';
                     }
-                    globalStatusDisplay.title = _saveIncomplete ? _saveIncomplete.tip : '';
+                    _setTip(globalStatusDisplay, _saveIncomplete ? _saveIncomplete.tip : '');
                     // This branch writes the status with `textContent`, which wipes
                     // any child it already had — so the offer has to be (re)built
                     // AFTER it, not once at the end of the function this exit
@@ -59345,9 +59584,9 @@ a { color: #1565c0; }`;
             } else {
                 _sdLoaded.textContent = `Loaded ${pagesProcessed} ${pageLabel} (${totalRows} rows)`;
             }
-            _sdLoaded.title = _incomplete
+            _setTip(_sdLoaded, _incomplete
                 ? _incomplete.tip
-                : 'Pages and rows loaded from the MusicBrainz database.';
+                : 'Pages and rows loaded from the MusicBrainz database.');
             globalStatusDisplay.appendChild(_sdLoaded);
             _sdAppend(`Fetching: ${fetchSeconds}s`, '; ',
                 'Time to fetch all pages from the MusicBrainz server.');
@@ -60993,7 +61232,7 @@ a { color: #1565c0; }`;
         const toggleIcon = document.createElement('span');
         toggleIcon.className = 'mb-subtable-filter-toggle-icon';
         toggleIcon.textContent = '🔍';
-        toggleIcon.title = `Toggle filter elements for sub-section "${categoryName}"`;
+        _setTip(toggleIcon, `Toggle filter elements for sub-section "${categoryName}"`);
         toggleIcon.setAttribute('role', 'button');
         toggleIcon.setAttribute('aria-label', `Toggle sub-table filter for "${categoryName}"`);
 
@@ -61013,7 +61252,7 @@ a { color: #1565c0; }`;
         // _isGenuineFilterInputEvent()'s JSDoc.
         _hardenFilterInputAgainstAutofill(filterInput);
         filterInput.placeholder = `Filter "${categoryName}"… just in this sub-category`;
-        filterInput.title = `Filter rows in the "${categoryName}" sub-table, use 'Ctrl+U' for unicode character map`;
+        _setTip(filterInput, `Filter rows in the "${categoryName}" sub-table, use 'Ctrl+U' for unicode character map`);
         const _stfW = (Lib.settings.sa_subtable_filter_initial_width ?? 320) + 'px';
         filterInput.style.cssText = `font-size:1em; padding:2px 28px 2px 6px; border:2px solid ${stfBorderIdle()}; border-right:none; border-radius:3px 0 0 3px; width:${_stfW}; height:24px; box-sizing:border-box; transition:box-shadow 0.2s; outline:none;`;
 
@@ -61022,7 +61261,7 @@ a { color: #1565c0; }`;
         clearBtn.id = `${pfx}-clear`;
         clearBtn.type = 'button';
         clearBtn.tabIndex = -1;
-        clearBtn.title = `Clear filter for "${categoryName}"`;
+        _setTip(clearBtn, `Clear filter for "${categoryName}"`);
         clearBtn.textContent = '✕';
         clearBtn.style.cssText = 'position:absolute; right:6px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c0392b; font-size:1em; font-weight:bold; line-height:1; padding:2px 3px; border-radius:3px; display:none;';
         clearBtn.addEventListener('mouseenter', () => { clearBtn.style.color = '#7b241c'; });
@@ -61034,7 +61273,7 @@ a { color: #1565c0; }`;
         // ── Resize drag handle ────────────────────────────────────────────────
         const stfDragHandle = document.createElement('span');
         stfDragHandle.className = 'mb-stf-drag-handle';
-        stfDragHandle.title = 'Drag to resize filter field';
+        _setTip(stfDragHandle, 'Drag to resize filter field');
         stfDragHandle.style.cssText = [
             'display:inline-flex; align-items:center; justify-content:center;',
             'width:10px; flex-shrink:0;',
@@ -61080,7 +61319,7 @@ a { color: #1565c0; }`;
         const caseLabel = document.createElement('label');
         caseLabel.id = `${pfx}-case-label`;
         caseLabel.htmlFor = caseCheckbox.id;
-        caseLabel.title = `Case Sensitive Filtering (${_stfScope})`;
+        _setTip(caseLabel, `Case Sensitive Filtering (${_stfScope})`);
         caseLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         caseLabel.appendChild(caseCheckbox);
         caseLabel.appendChild(document.createTextNode('Cc'));
@@ -61094,7 +61333,7 @@ a { color: #1565c0; }`;
         const rxLabel = document.createElement('label');
         rxLabel.id = `${pfx}-rx-label`;
         rxLabel.htmlFor = rxCheckbox.id;
-        rxLabel.title = `RegExp Filtering (${_stfScope})`;
+        _setTip(rxLabel, `RegExp Filtering (${_stfScope})`);
         rxLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         rxLabel.appendChild(rxCheckbox);
         rxLabel.appendChild(document.createTextNode('Rx'));
@@ -61108,7 +61347,7 @@ a { color: #1565c0; }`;
         const exLabel = document.createElement('label');
         exLabel.id = `${pfx}-ex-label`;
         exLabel.htmlFor = exCheckbox.id;
-        exLabel.title = `Exclude Matches (${_stfScope})`;
+        _setTip(exLabel, `Exclude Matches (${_stfScope})`);
         exLabel.style.cssText = 'font-size:0.8em; cursor:pointer; display:flex; align-items:center; margin:0; user-select:none; font-weight:normal; height:24px;';
         exLabel.appendChild(exCheckbox);
         exLabel.appendChild(document.createTextNode('Ex'));
@@ -61121,7 +61360,7 @@ a { color: #1565c0; }`;
         clearAllStfBtn.id = `${pfx}-clear-all-btn`;
         clearAllStfBtn.className = 'mb-stf-clear-col-btn';
         clearAllStfBtn.type = 'button';
-        clearAllStfBtn.title = 'Clear ALL column filters for this sub-table (the sub-table filter itself is kept)';
+        _setTip(clearAllStfBtn, 'Clear ALL column filters for this sub-table (the sub-table filter itself is kept)');
         // Create red ✗ symbol
         const _xSym = document.createElement('span');
         _xSym.textContent = '✗ ';
@@ -61135,7 +61374,7 @@ a { color: #1565c0; }`;
         const highlightBtn = document.createElement('button');
         highlightBtn.id = `${pfx}-toggle-filter-highlight-btn`;
         highlightBtn.type = 'button';
-        highlightBtn.title = 'Toggle filter string highlighting for the sub-table filter and ALL column filters in this sub-table (except the filter string when "Loading from Disk" was used)';
+        _setTip(highlightBtn, 'Toggle filter string highlighting for the sub-table filter and ALL column filters in this sub-table (except the filter string when "Loading from Disk" was used)');
         highlightBtn.textContent = '🎨 Toggle highlighting';
         // Initially hidden — shown by updateFilterButtonsVisibility() as soon as any
         // filter (subtable input or column filter) is active for this subtable.
@@ -62080,12 +62319,12 @@ a { color: #1565c0; }`;
                 masterToggle.type       = 'button';
                 masterToggle.dataset.state = 'collapsed'; // 'collapsed' → click shows; 'expanded' → click hides
                 masterToggle.textContent = 'Show all sub-sections';
-                masterToggle.title       = 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
+                _setTip(masterToggle, 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)');
 
                 const _updateMasterToggleState = (expanded) => {
                     masterToggle.dataset.state = expanded ? 'expanded' : 'collapsed';
                     masterToggle.textContent   = expanded ? 'Hide all sub-sections' : 'Show all sub-sections';
-                    masterToggle.title         = expanded ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)' : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
+                    _setTip(masterToggle, expanded ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)' : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)');
                 };
 
                 masterToggle.addEventListener('click', (e) => {
@@ -62264,7 +62503,7 @@ a { color: #1565c0; }`;
                 Lib.debug('render', `Creating new table and H3 for group "${categoryName}".`);
                 h3 = document.createElement('h3');
                 h3.className = 'mb-toggle-h3';
-                h3.title = 'Click to collapse/uncollapse sub-section (Ctrl+Click to toggle ALL sub-sections)';
+                _setTip(h3, 'Click to collapse/uncollapse sub-section (Ctrl+Click to toggle ALL sub-sections)');
                 h3.style.cursor = 'pointer';
                 h3.style.userSelect = 'none';
 
@@ -62751,9 +62990,8 @@ a { color: #1565c0; }`;
                         const _pageKindLabel = (pageType === 'artist-credit')
                             ? 'MusicBrainz Artist Credit overview pages show at most 10 rows per entity section'
                             : 'MusicBrainz Tag-Values pages have currently a limit of 10 rows rendered at most per entity type section';
-                        _seeAllBtn.title =
-                            `Click to show all ${_count} ${_entityLabel} in a new browser tab ` +
-                            `for this sub-section (${_pageKindLabel})`;
+                        _setTip(_seeAllBtn, `Click to show all ${_count} ${_entityLabel} in a new browser tab ` +
+                            `for this sub-section (${_pageKindLabel})`);
                         const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
                         const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
                         _seeAllBtn.style.background = _initBg;
@@ -62870,10 +63108,9 @@ a { color: #1565c0; }`;
                         _viewAllBtn.type      = 'button';
                         _viewAllBtn.className = 'mb-show-all-subtable-btn';
                         _viewAllBtn.textContent = 'View all ratings';
-                        _viewAllBtn.title =
-                            `Click to view all ratings in a new browser tab ` +
+                        _setTip(_viewAllBtn, `Click to view all ratings in a new browser tab ` +
                             `for this sub-section (MusicBrainz Ratings pages show only ` +
-                            `the top-rated items per entity type)`;
+                            `the top-rated items per entity type)`);
                         const _initBg    = Lib.settings.sa_ui_show_all_subtable_btn_bg         || '#FFE0B2';
                         const _clickedBg = Lib.settings.sa_ui_show_all_subtable_btn_bg_clicked || '#CCFFCC';
                         _viewAllBtn.style.background = _initBg;
@@ -63021,7 +63258,7 @@ a { color: #1565c0; }`;
                     // Use the stored seeAllCount to update button text
                     const countSuffix = group.seeAllCount ? ` ${group.seeAllCount}` : '';
                     showAllBtn.textContent = `Show all${countSuffix} rows`;
-                    showAllBtn.title = `Click to show all${countSuffix} rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)`;
+                    _setTip(showAllBtn, `Click to show all${countSuffix} rows in a new browser tab for this sub-section (MusicBrainz Artist-Relationships pages have currently a limit of 100 rows rendered at most per relationship type section)`);
                     showAllBtn.className = 'mb-show-all-subtable-btn';
                     showAllBtn.type = 'button';
                     // Apply configurable initial background color (overrides the CSS class default).
@@ -63075,10 +63312,10 @@ a { color: #1565c0; }`;
                     singleTableBtn.type = 'button';
                     singleTableBtn.className = 'mb-show-single-table-btn';
                     singleTableBtn.textContent = 'Show single-table';
-                    singleTableBtn.title = `Click to open the currently-rendered "${categoryName}" rows as a ` +
+                    _setTip(singleTableBtn, `Click to open the currently-rendered "${categoryName}" rows as a ` +
                         'standalone single-table view in a new browser tab (client-side snapshot — no re-fetch, ' +
                         'since every row for this category is already on screen; the new tab won’t reflect ' +
-                        'any changes made after clicking).';
+                        'any changes made after clicking).');
                     const _singleTableInitBg = Lib.settings.sa_ui_show_single_table_btn_bg || '#B3E5FC';
                     singleTableBtn.style.background = _singleTableInitBg;
                     singleTableBtn.onclick = (e) => {
@@ -63274,10 +63511,10 @@ a { color: #1565c0; }`;
                         subSingleTableBtn.type = 'button';
                         subSingleTableBtn.className = 'mb-show-single-table-btn';
                         subSingleTableBtn.textContent = 'Show single-table';
-                        subSingleTableBtn.title = `Click to open the currently-rendered "${categoryName}" rows as a ` +
+                        _setTip(subSingleTableBtn, `Click to open the currently-rendered "${categoryName}" rows as a ` +
                             'standalone single-table view in a new browser tab (client-side snapshot — no re-fetch, ' +
                             'since every row for this category is already on screen; the new tab won’t reflect ' +
-                            'any changes made after clicking).';
+                            'any changes made after clicking).');
                         subSingleTableBtn.style.background = Lib.settings.sa_ui_show_single_table_btn_bg || '#B3E5FC';
                         subSingleTableBtn.onclick = (e) => {
                             e.preventDefault();
@@ -63730,7 +63967,7 @@ a { color: #1565c0; }`;
             _btn.type  = 'button';
             _btn.textContent = label;
             _btn.style.cssText = uiActionBtnBaseCSS();
-            _btn.title = title;
+            _setTip(_btn, title);
             _btn.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -63848,9 +64085,9 @@ a { color: #1565c0; }`;
             .some(t => t.style.display !== 'none');
         _masterToggleEl.dataset.state = _anyTableVisible ? 'expanded' : 'collapsed';
         _masterToggleEl.textContent   = _anyTableVisible ? 'Hide all sub-sections' : 'Show all sub-sections';
-        _masterToggleEl.title         = _anyTableVisible
+        _setTip(_masterToggleEl, _anyTableVisible
             ? 'Click to collapse all sub-sections (Ctrl+Click to collapse ALL sub-sections)'
-            : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)';
+            : 'Click to uncollapse all sub-sections (Ctrl+Click to uncollapse ALL sub-sections)');
     }
 
     /**
@@ -64566,7 +64803,7 @@ a { color: #1565c0; }`;
         allH2s.forEach(h2 => {
             if (h2.classList.contains('mb-h2-processed')) return;
             h2.classList.add('mb-h2-processed', 'mb-toggle-h2');
-            h2.title = 'Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)';
+            _setTip(h2, 'Click to collapse/uncollapse section (Ctrl+Click to toggle ALL sections)');
             h2.style.cursor = 'pointer'; // Make entire H2 header indicate clickability
             h2.style.userSelect = 'none'; // Prevent text selection when clicking
 
@@ -64864,7 +65101,7 @@ a { color: #1565c0; }`;
             const isFreshH2 = !existingIcon;
 
             h2.classList.add('mb-h2-processed', 'mb-toggle-h2');
-            h2.title = 'Click to collapse/uncollapse this section';
+            _setTip(h2, 'Click to collapse/uncollapse this section');
             h2.style.cursor = 'pointer';
             h2.style.userSelect = 'none';
 
@@ -65130,7 +65367,7 @@ a { color: #1565c0; }`;
     function _wireUvdResizeGrip(drop, pt, col, reopen) {
         const grip = document.createElement('div');
         grip.className = 'mb-uniq-resize-grip';
-        grip.title = 'Drag to resize (remembered for this column) — double-click to reset';
+        _setTip(grip, 'Drag to resize (remembered for this column) — double-click to reset');
         grip.setAttribute('aria-hidden', 'true');
 
         grip.addEventListener('pointerdown', (ev) => {
@@ -67166,7 +67403,7 @@ a { color: #1565c0; }`;
         const qfClear = document.createElement('button');
         qfClear.className = 'mb-uniq-qf-clear';
         qfClear.textContent = '×';
-        qfClear.title = 'Clear filter (Escape)';
+        _setTip(qfClear, 'Clear filter (Escape)');
         qfClear.setAttribute('aria-label', 'Clear filter');
 
         qfBar.appendChild(qfInput);
@@ -67321,7 +67558,7 @@ a { color: #1565c0; }`;
                 if (hasFlagIcons && flagIconMap.get(v)) {
                     _glyphNotes.push('flag/area icon shown as it appears in the table');
                 }
-                item.title = _glyphNotes.length ? `${displayText} — ${_glyphNotes.join(' — ')}` : displayText;
+                _setTip(item, _glyphNotes.length ? `${displayText} — ${_glyphNotes.join(' — ')}` : displayText);
 
                 // ---- Checkbox glyph: ☑/☐, enables multi-select (OR'd within column) ----
                 // Not a native <input type="checkbox"> — the whole row is the click
@@ -68408,7 +68645,7 @@ a { color: #1565c0; }`;
         const _paintUniqSection = (section, collapsed) => {
             section.itemsBox.classList.toggle('mb-uniq-section-collapsed', collapsed);
             section.toggleGlyph.textContent = collapsed ? '▶' : '▼';
-            section.header.title = _uniqSectionTitle(section, collapsed);
+            _setTip(section.header, _uniqSectionTitle(section, collapsed));
             section.header.setAttribute('aria-expanded', String(!collapsed));
         };
         /**
@@ -68470,7 +68707,7 @@ a { color: #1565c0; }`;
         const _paintUvdGroup = (group, collapsed) => {
             group.body.classList.toggle('mb-uniq-group-collapsed', collapsed);
             group.toggleGlyph.textContent = collapsed ? '▶' : '▼';
-            group.header.title = _uvdGroupTitle(group, collapsed);
+            _setTip(group.header, _uvdGroupTitle(group, collapsed));
             group.header.setAttribute('aria-expanded', String(!collapsed));
         };
         /**
@@ -68707,7 +68944,7 @@ a { color: #1565c0; }`;
                 wrapper, header, itemsBox, toggleGlyph, matchCountSpan, entryCountSpan, key,
                 group: null, entryCount: 0, hoistedPrefix: null, matchCount: 0,
             };
-            header.title = _uniqSectionTitle(section, collapsed);
+            _setTip(header, _uniqSectionTitle(section, collapsed));
 
             // Plain click toggles just this section. Ctrl+Click applies THIS
             // section's own new state to a whole scope at once — mirrors the
@@ -68774,7 +69011,7 @@ a { color: #1565c0; }`;
         const _wireStructureCheckbox = (item, key) => {
             const mode = key.slice(MB_UNIQ_STRUCTURE_MODE_PREFIX.length);
             const _tip = _structureModeTooltip(mode, _colHeaderName);
-            if (_tip) item.title = `${item.title} — ${_tip}`;
+            if (_tip) _setTip(item, `${item.title} — ${_tip}`);
 
             const isChecked = checkedValues.has(key);
             item.classList.add('mb-col-uniq-item', 'mb-col-uniq-multirow-item');
@@ -68906,7 +69143,7 @@ a { color: #1565c0; }`;
         const makeSynItem = (mode, label, count, extraLabelClass) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
-            item.title = label;
+            _setTip(item, label);
             // Note: resting background and font-style are set via the
             // .mb-col-uniq-multirow-item CSS class so that :hover and
             // .mb-uniq-focused can override them (inline styles cannot be
@@ -69008,7 +69245,7 @@ a { color: #1565c0; }`;
             // appended after the value — see CATALOG_PREFIX_TOOLTIP's own
             // JSDoc for why this is one static string for every entry
             // rather than a per-prefix lookup.
-            item.title = (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}` : value;
+            _setTip(item, (kind === 'catalogprefix') ? `${value}\n\n${CATALOG_PREFIX_TOOLTIP}` : value);
 
             const badge = document.createElement('span');
             badge.className = 'mb-uniq-count-badge';
@@ -69432,7 +69669,7 @@ a { color: #1565c0; }`;
         const makeInlineArtItem = (hasArt, label, count) => {
             const item = document.createElement('div');
             item.setAttribute('role', 'option');
-            item.title = label;
+            _setTip(item, label);
 
             const badge = document.createElement('span');
             badge.className = 'mb-uniq-count-badge';
@@ -70085,10 +70322,10 @@ a { color: #1565c0; }`;
             _note.textContent = _p.done
                 ? `🔗 Collapsed — ${_p.done} of ${_p.total} loaded; press ▶🔗 in the column header to load the rest`
                 : '🔗 Collapsed — press ▶🔗 in the column header to load';
-            _note.title = 'This table’s Relationships column has not been fully fetched, because it '
+            _setTip(_note, 'This table’s Relationships column has not been fully fetched, because it '
                         + `would need ${_p.total} distinct Web Service `
                         + 'lookups (throttled to 1 per second). Only rows already loaded can be '
-                        + 'filtered until you load the rest. Threshold: sa_rel_collapse_threshold.';
+                        + 'filtered until you load the rest. Threshold: sa_rel_collapse_threshold.');
             getOrCreateSynSection('relationships').itemsBox.appendChild(_note);
         }
 
@@ -70131,7 +70368,7 @@ a { color: #1565c0; }`;
                 item.className = 'mb-col-uniq-item mb-col-uniq-multirow-item';
                 item.setAttribute('role', 'option');
                 // tooltip shows the base URL so the user sees the full origin on hover
-                item.title = baseUrl;
+                _setTip(item, baseUrl);
                 // Lets _applySynBoxQuickFilter() find/filter/highlight this
                 // entry exactly like every other synBox row — see
                 // _appendSynLabelText()'s own JSDoc for the two-piece
@@ -71300,7 +71537,7 @@ a { color: #1565c0; }`;
                 if (glyphEl) glyphEl.textContent = expand ? '▼' : '▶';
                 const labelEl = toggle.querySelector('.mb-cell-collapse-label');
                 if (labelEl) labelEl.textContent = expand ? 'less' : 'more';
-                toggle.title = _proseToggleTitle(expand, proseInner);
+                _setTip(toggle, _proseToggleTitle(expand, proseInner));
                 toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
                 toggle.setAttribute('aria-label',
                     expand ? 'Collapse: showing full text' : 'Expand: text is truncated');
@@ -71345,9 +71582,9 @@ a { color: #1565c0; }`;
         if (glyphEl) glyphEl.textContent = expand ? '▼' : '▶';
         else toggle.textContent = expand ? '▼' : '▶';
 
-        toggle.title = expand
+        _setTip(toggle, expand
             ? `Collapse multi-row cell back to display just the first item (${lis.length} total)`
-            : `Show all multi-row cell items (${lis.length})`;
+            : `Show all multi-row cell items (${lis.length})`);
         toggle.setAttribute('aria-expanded', expand ? 'true' : 'false');
         toggle.setAttribute('aria-label',
             expand ? `Collapse: showing all ${lis.length} items`
@@ -71416,7 +71653,7 @@ a { color: #1565c0; }`;
         // always reads "▶ Expand …" after a re-render.
         globalBtn.style.display = 'inline-flex';
         globalBtn.innerHTML     = makeCollapseExpandBtnHTML(true);
-        globalBtn.title         = 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+        _setTip(globalBtn, 'Expand ALL collapsed multi-row cells in EVERY collapsable table column');
 
         // Re-wire onclick with the freshly collected allHdrBtns array.
         globalBtn.onclick = (e) => {
@@ -71444,9 +71681,9 @@ a { color: #1565c0; }`;
             });
 
             globalBtn.innerHTML = makeCollapseExpandBtnHTML(!targetExpand);
-            globalBtn.title = targetExpand
+            _setTip(globalBtn, targetExpand
                 ? 'Collapse ALL expanded multi-row cells in EVERY collapsable table column'
-                : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+                : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column');
         };
 
         // Apply or clear the highlight tint based on the full document scan.
@@ -71507,9 +71744,9 @@ a { color: #1565c0; }`;
                 // which ctx closed over the listener when ensureCollapseDelegate ran.
                 const _isEaa    = !!td.querySelector('.mb-eaa-count-badge');
                 const _artLabel = _isEaa ? EAA_CTX.toggleLabel : CAA_CTX.toggleLabel;
-                caaBtn.title = nowExpanding
+                _setTip(caaBtn, nowExpanding
                     ? `Collapse all ${_artLabel} (${imageLis.length}) in this cell`
-                    : `Show all ${_artLabel} (${imageLis.length}) in this cell`;
+                    : `Show all ${_artLabel} (${imageLis.length}) in this cell`);
                 // ── Sync hidden-match indicator ───────────────────────────────
                 // When expanding: all image lis become visible — no hidden content
                 // → always clear the indicator.
@@ -71557,7 +71794,7 @@ a { color: #1565c0; }`;
                 if (_pGlyphEl) _pGlyphEl.textContent = proseExpanding ? '▼' : '▶';
                 const _pLabelEl = toggle.querySelector('.mb-cell-collapse-label');
                 if (_pLabelEl) _pLabelEl.textContent = proseExpanding ? 'less' : 'more';
-                toggle.title = _proseToggleTitle(proseExpanding, proseInner);
+                _setTip(toggle, _proseToggleTitle(proseExpanding, proseInner));
                 toggle.setAttribute('aria-expanded', proseExpanding ? 'true' : 'false');
                 toggle.setAttribute('aria-label',
                     proseExpanding ? 'Collapse: showing full text' : 'Expand: text is truncated'
@@ -71607,9 +71844,9 @@ a { color: #1565c0; }`;
             const _glyphEl = toggle.querySelector('.mb-cell-collapse-glyph');
             if (_glyphEl) _glyphEl.textContent = nowExpanding ? '▼' : '▶';
             else toggle.textContent = nowExpanding ? '▼' : '▶'; // fallback for legacy toggles
-            toggle.title = nowExpanding
+            _setTip(toggle, nowExpanding
                 ? `Collapse multi-row cell back to display just the first item (${lis.length} total)`
-                : `Show all multi-row cell items (${lis.length})`;
+                : `Show all multi-row cell items (${lis.length})`);
             toggle.setAttribute('aria-expanded', nowExpanding ? 'true' : 'false');
             toggle.setAttribute(
                 'aria-label',
@@ -72060,7 +72297,7 @@ a { color: #1565c0; }`;
                     const tip = (n > 0
                         ? `Show the ${n} different unique values in this column, with the ability to quick filter by either clicking or selecting with the keyboard and pressing "Enter" on an entry — ${_kbHint}`
                         : `Show unique values for this column — ${_kbHint}`) + _structHint;
-                    uniqWrap.title      = tip;
+                    _setTip(uniqWrap, tip);
                     uniqWrap.setAttribute('aria-label', tip);
                 }
             }
@@ -72456,9 +72693,9 @@ a { color: #1565c0; }`;
                 cellToggle.appendChild(_cg);
                 cellToggle.appendChild(_cc);
                 cellToggle.appendChild(_cr);
-                cellToggle.title = startExpanded
+                _setTip(cellToggle, startExpanded
                     ? `Collapse multi-row cell back to display just the first item (${lis.length} total)`
-                    : `Show all multi-row cell items (${lis.length})`;
+                    : `Show all multi-row cell items (${lis.length})`);
                 cellToggle.setAttribute('role', 'button');
                 cellToggle.setAttribute('aria-expanded', startExpanded ? 'true' : 'false');
                 cellToggle.setAttribute('aria-label',
@@ -72679,7 +72916,7 @@ a { color: #1565c0; }`;
                     _cl.textContent = startExpanded ? 'less' : 'more';
                     cellToggle.appendChild(_cg);
                     cellToggle.appendChild(_cl);
-                    cellToggle.title = _proseToggleTitle(startExpanded, inner);
+                    _setTip(cellToggle, _proseToggleTitle(startExpanded, inner));
                     cellToggle.setAttribute('role', 'button');
                     cellToggle.setAttribute('aria-expanded', startExpanded ? 'true' : 'false');
                     cellToggle.setAttribute('aria-label',
@@ -72774,9 +73011,9 @@ a { color: #1565c0; }`;
             // a fetch a column's cells are always uniformly all-expanded or
             // all-collapsed (nothing produces a genuine mixed state yet), so
             // "any" is an equally sufficient signal as "all" would be here.
-            collapseHdrBtn.title = _anyCellStartedExpanded
+            _setTip(collapseHdrBtn, _anyCellStartedExpanded
                 ? `Collapse ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`
-                : `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
+                : `Expand ALL multi-row "${colName}" cells (${collapsibleCount}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`);
             collapseHdrBtn.setAttribute('role', 'button');
             collapseHdrBtn.setAttribute('aria-expanded', _anyCellStartedExpanded ? 'true' : 'false');
             collapseHdrBtn.setAttribute('aria-label',
@@ -72821,9 +73058,9 @@ a { color: #1565c0; }`;
                 // Flip header button glyph (child span) and tooltip.
                 _glyphSpan.textContent = targetExpand ? '▼' : '▶';
                 const _count = _countSpan.textContent;
-                collapseHdrBtn.title = targetExpand
+                _setTip(collapseHdrBtn, targetExpand
                     ? `Collapse ALL multi-row ${colName} cells (${_count}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`
-                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`;
+                    : `Expand ALL multi-row ${colName} cells (${_count}) in this table column${_h2CtrlHint} — ${_collapseKbHint}`);
                 collapseHdrBtn.setAttribute('aria-expanded', targetExpand ? 'true' : 'false');
                 collapseHdrBtn.setAttribute(
                     'aria-label',
@@ -72888,9 +73125,9 @@ a { color: #1565c0; }`;
                     // (e.g. "Edit details"/"Edit notes" defaulting open; see
                     // anyCellInAnyColumnStartedExpanded above / DEBUG-NOTES.md).
                     globalBtn.innerHTML = makeCollapseExpandBtnHTML(!anyCellInAnyColumnStartedExpanded);
-                    globalBtn.title = anyCellInAnyColumnStartedExpanded
+                    _setTip(globalBtn, anyCellInAnyColumnStartedExpanded
                         ? 'Collapse ALL expanded multi-row cells in EVERY collapsable table column'
-                        : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+                        : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column');
 
                     // Re-wire onclick (safe for disk-load re-runs — re-wiring
                     // captures the fresh collapseHdrBtns array from this init).
@@ -72920,9 +73157,9 @@ a { color: #1565c0; }`;
                         });
 
                         globalBtn.innerHTML = makeCollapseExpandBtnHTML(!targetExpand);
-                        globalBtn.title = targetExpand
+                        _setTip(globalBtn, targetExpand
                             ? 'Collapse ALL expanded multi-row cells in EVERY collapsable table column'
-                            : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column';
+                            : 'Expand ALL collapsed multi-row cells in EVERY collapsable table column');
                     };
                 } else {
                     globalBtn.style.display = 'none';
@@ -73241,15 +73478,12 @@ a { color: #1565c0; }`;
                 span.className = 'sort-icon-btn';
 
                 // Tooltips reflect the Ctrl+Click multi-sort model and keyboard shortcuts
-                if (char === '⇅') span.title =
-                    'Restore original sort order (clears multi-sort columns)' +
-                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_unsort', 'Ctrl+#')} when a column filter is focused`;
-                else if (char === '▲') span.title =
-                    'Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
-                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_asc', 'Ctrl+↑')} when a column filter is focused`;
-                else if (char === '▼') span.title =
-                    'Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
-                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_desc', 'Ctrl+↓')} when a column filter is focused`;
+                if (char === '⇅') _setTip(span, 'Restore original sort order (clears multi-sort columns)' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_unsort', 'Ctrl+#')} when a column filter is focused`);
+                else if (char === '▲') _setTip(span, 'Sort ascending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_asc', 'Ctrl+↑')} when a column filter is focused`);
+                else if (char === '▼') _setTip(span, 'Sort descending — Ctrl+Click to add to multi-column sort / Alt+Click to sort by column length' +
+                    ` — keyboard: ${getShortcutDisplay('sa_shortcut_col_sort_desc', 'Ctrl+↓')} when a column filter is focused`);
 
                 // Restore active indicator for single-column state after re-render
                 // (multi-sort visuals are restored by the updateMultiSortVisuals call at the end)
@@ -74400,10 +74634,10 @@ a { color: #1565c0; }`;
         h3._mbSubToggle = (expanded) => {
             contentNodes.forEach(node => node.style.display = expanded ? '' : 'none');
             icon.textContent = expanded ? '▼' : '▲';
-            h3.title = (expanded
+            _setTip(h3, (expanded
                 ? 'Click to collapse this sub-section'
                 : 'Click to expand this sub-section') +
-                ' (Ctrl+Click to toggle ALL sub-sections of this section)';
+                ' (Ctrl+Click to toggle ALL sub-sections of this section)');
         };
         h3._mbSubToggle(true);
 
@@ -75071,7 +75305,7 @@ a { color: #1565c0; }`;
             const span = doc.createElement('span');
             span.className = `flag flag-${code} release-country`;
             const abbr = doc.createElement('abbr');
-            abbr.title = name || '';
+            _setTip(abbr, name || '');
             abbr.textContent = code;
             if (gid) {
                 const a = doc.createElement('a');
@@ -75105,7 +75339,7 @@ a { color: #1565c0; }`;
             // which is where the previous shape put it too.
             const span = doc.createElement('span');
             span.className = 'release-country no-country';
-            if (name) span.title = name;
+            if (name) _setTip(span, name);
             li.appendChild(span);
         }
 
@@ -75151,7 +75385,7 @@ a { color: #1565c0; }`;
                 const a   = doc.createElement('a');
                 const bdi = doc.createElement('bdi');
                 a.href          = `/artist/${gid}`;
-                a.title         = title;
+                _setTip(a, title);
                 bdi.textContent = displayName;
                 a.appendChild(bdi);
                 li.appendChild(a);
@@ -75178,7 +75412,7 @@ a { color: #1565c0; }`;
 
                     const a     = doc.createElement('a');
                     a.href      = `/artist/${gid}`;
-                    a.title     = title;
+                    _setTip(a, title);
                     a.textContent = nameEntry.name || '';
                     bdi.appendChild(a);
 
@@ -75552,12 +75786,12 @@ a { color: #1565c0; }`;
         _b.type = 'button';
         _b.textContent = '↻ Load remaining pages';
         _b.style.cssText = _REL_RETRY_BTN_CSS;
-        _b.title = st.maxPageKnown
+        _setTip(_b, st.maxPageKnown
             ? `Continue the interrupted load at page ${st.nextPage} of ${st.maxPage}. ` +
               `The ${st.pagesProcessed} page(s) already loaded are kept — nothing is re-fetched.`
             : `Continue the interrupted load at page ${st.nextPage}. The page count was ` +
               `never established, so this re-asks for that page and carries on from there. ` +
-              `The ${st.pagesProcessed} page(s) already loaded are kept.`;
+              `The ${st.pagesProcessed} page(s) already loaded are kept.`);
         _b.addEventListener('click', ev => {
             ev.stopPropagation();
             _resumeFetchFromFailedPage();
@@ -76171,9 +76405,9 @@ a { color: #1565c0; }`;
             const n     = ul ? ul.querySelectorAll(':scope > li.mb-caa-art-li-image, :scope > li.mb-eaa-art-li-image').length : 0;
             const isEaa = !!btn.closest('td')?.querySelector('.mb-eaa-count-badge');
             const label = isEaa ? EAA_CTX.toggleLabel : CAA_CTX.toggleLabel;
-            btn.title   = n > 0
+            _setTip(btn, n > 0
                 ? `Show all ${label} (${n}) in this cell`
-                : `Show all ${label} in this cell`;
+                : `Show all ${label} in this cell`);
         });
 
         // Also remove any stale mb-cell-collapse-toggle that may remain on art
@@ -76203,7 +76437,7 @@ a { color: #1565c0; }`;
                 const _stripTd = toggle.closest('td');
                 const n = _stripTd ? _findCellListItems(_stripTd).length : 0;
                 if (n > 0) {
-                    toggle.title = `Show all multi-row cell items (${n})`;
+                    _setTip(toggle, `Show all multi-row cell items (${n})`);
                     toggle.setAttribute('aria-label', `Expand: ${n} items are collapsed`);
                 }
             }
@@ -76367,7 +76601,7 @@ a { color: #1565c0; }`;
             const _artLabel = _isEaa ? EAA_CTX.toggleLabel : CAA_CTX.toggleLabel;
             const ul        = td.querySelector(':scope > ul.mb-caa-art-ul');
             const imageLis  = ul ? Array.from(ul.querySelectorAll(':scope > li.mb-caa-art-li-image, :scope > li.mb-eaa-art-li-image')) : [];
-            btn.title = `Collapse all ${_artLabel} (${imageLis.length}) in this cell`;
+            _setTip(btn, `Collapse all ${_artLabel} (${imageLis.length}) in this cell`);
             // Show the image li items so they are visible in the rendered clone
             imageLis.forEach(li => { li.style.display = ''; });
         });
@@ -77322,7 +77556,7 @@ a { color: #1565c0; }`;
             const exportBtn = document.createElement('button');
             exportBtn.type      = 'button';
             exportBtn.textContent = '💾 Save configuration';
-            exportBtn.title     = 'Export all current settings to a versioned JSON file';
+            _setTip(exportBtn, 'Export all current settings to a versioned JSON file');
             exportBtn.style.cssText =
                 BTN_BASE_CSS + ' background:#e8f5e9; color:#2e7d32;';
             exportBtn.addEventListener('mouseover', () => {
@@ -77342,7 +77576,7 @@ a { color: #1565c0; }`;
             const importBtn = document.createElement('button');
             importBtn.type      = 'button';
             importBtn.textContent = '📂 Load configuration';
-            importBtn.title     = 'Import settings from a previously exported JSON file';
+            _setTip(importBtn, 'Import settings from a previously exported JSON file');
             importBtn.style.cssText =
                 BTN_BASE_CSS + ' background:#e3f2fd; color:#1565c0;';
             importBtn.addEventListener('mouseover', () => {
@@ -77561,7 +77795,7 @@ a { color: #1565c0; }`;
         if (!iconUrl) return;
         const a = document.createElement('a');
         a.href = url;
-        a.title = tooltip || url;
+        _setTip(a, tooltip || url);
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
         if (ended) a.style.opacity = '0.25';
@@ -78218,7 +78452,7 @@ a { color: #1565c0; }`;
         } else {
             _title = 'Relationships not loaded yet — click to load this row only (one request)';
         }
-        if (td.title !== _title) td.title = _title;
+        if (td.title !== _title) _setTip(td, _title);
     }
 
     /**
@@ -78611,11 +78845,11 @@ a { color: #1565c0; }`;
             _btn.className = 'mb-re-col-hdr-btn';
             _btn.dataset.reState = _reFetchState.status;
             if (_reFetchState.status === 'loading') {
-                _btn.title = 'Release events: loading…';
+                _setTip(_btn, 'Release events: loading…');
                 _btn.setAttribute('aria-disabled', 'true');
             } else {
-                _btn.title = `Release events could not be loaded (${_reFetchState.detail}). `
-                           + 'MusicBrainz was asked three times. Click to try again.';
+                _setTip(_btn, `Release events could not be loaded (${_reFetchState.detail}). `
+                           + 'MusicBrainz was asked three times. Click to try again.');
                 _btn.addEventListener('click', (ev) => {
                     ev.preventDefault();
                     ev.stopPropagation();          // never reaches the sort handler
@@ -79299,14 +79533,12 @@ a { color: #1565c0; }`;
 
         tip = document.createElement('div');
         tip.id = 'mb-rel-tooltip';
+        // Look from the shared "Liner notes" class; colours from the
+        // sa_rel_tooltip_* settings are applied inline at show time.
+        tip.className = 'mb-tt-liner';
         tip.style.cssText =
-            'position:fixed; z-index:99999; pointer-events:none; display:none;' +
-            ' max-width:480px; padding:7px 11px;' +
-            ' background:#ffffff; color:#000000;' +
-            ' border:1px solid #cccccc; border-radius:6px;' +
-            ' font-size:0.82em; font-family:sans-serif; line-height:1.5;' +
-            ' box-shadow:0 4px 16px rgba(0,0,0,0.18);' +
-            ' word-break:break-all;';
+            'position:fixed; pointer-events:none; display:none;' +
+            ' max-width:480px; word-break:break-all;';
         document.body.appendChild(tip);
         return tip;
     }
@@ -79525,14 +79757,10 @@ a { color: #1565c0; }`;
 
         tip = document.createElement('div');
         tip.id = 'mb-rel-plain-tooltip';
+        tip.className = 'mb-tt-liner';
         tip.style.cssText =
-            'position:fixed; z-index:99999; pointer-events:none; display:none;' +
-            ' max-width:340px; padding:6px 10px;' +
-            ' background:#ffffff; color:#000000;' +
-            ' border:1px solid #cccccc; border-radius:6px;' +
-            ' font-size:0.82em; font-family:sans-serif; line-height:1.5;' +
-            ' box-shadow:0 4px 16px rgba(0,0,0,0.18);' +
-            ' word-break:break-all; white-space:pre-wrap;';
+            'position:fixed; pointer-events:none; display:none;' +
+            ' max-width:340px; word-break:break-all; white-space:pre-wrap;';
         document.body.appendChild(tip);
         return tip;
     }
@@ -79595,12 +79823,10 @@ a { color: #1565c0; }`;
                 }
 
                 // ── Read configurable colors from settings ────────────────────
-                const _bg    = Lib.settings.sa_rel_tooltip_bg    || '#ffffff';
-                const _color = Lib.settings.sa_rel_tooltip_color || '#000000';
-                // Derive a border color: darken bg slightly for the border.
-                // A simple heuristic: if bg is very light (> 0.8 perceived
-                // luminance) use a grey border, otherwise use a lighter shade.
-                const _border = '#cccccc';
+                const _bg    = Lib.settings.sa_rel_tooltip_bg    || '#fbf8f1';
+                const _color = Lib.settings.sa_rel_tooltip_color || '#2b2622';
+                // The "Liner notes" card border (.mb-tt-liner).
+                const _border = '#d9cfbd';
 
                 // Apply to both panels before measuring layout.
                 _relTooltipEl.style.background   = _bg;
@@ -79632,14 +79858,20 @@ a { color: #1565c0; }`;
                     const _plainMaxW = 340;
                     const _gap       = 8;
                     let   _plainL    = _richRect.right + _gap;
+                    let   _plainT    = _richRect.top;
                     if (_plainL + _plainMaxW > window.innerWidth - 10)
                         _plainL = _richRect.left - _plainMaxW - _gap;
-                    if (_plainL < 5) _plainL = 5;
+                    if (_plainL < 5) {
+                        // Fits on neither side: below the rich panel rather
+                        // than clamped to x=5, where it lay ON the rich one.
+                        _plainL = _richRect.left;
+                        _plainT = _richRect.bottom + _gap;
+                    }
 
                     _relPlainTooltipEl.textContent = _plainText;
                     _relPlainTooltipEl.style.display  = 'block';
                     _relPlainTooltipEl.style.left     = `${_plainL}px`;
-                    _relPlainTooltipEl.style.top      = `${_richRect.top}px`;
+                    _relPlainTooltipEl.style.top      = `${_plainT}px`;
                     _relPlainTooltipEl.style.maxWidth = `${_plainMaxW}px`;
                 } else {
                     _relPlainTooltipEl.style.display = 'none';
@@ -80012,20 +80244,20 @@ a { color: #1565c0; }`;
             ? ` — ${_p.failed} failed (click a ⚠ cell to retry)`
             : '';
         if (expanded) {
-            btn.title = 'Empty the Relationships column in this table '
+            _setTip(btn, 'Empty the Relationships column in this table '
                       + '(already-fetched data is kept, so re-loading is instant)'
                       + (_p.done < _p.total ? ` — ${_p.done} of ${_p.total} loaded` : '')
-                      + _failedNote;
+                      + _failedNote);
             btn.setAttribute('aria-label', 'Empty the Relationships column in this table');
             return;
         }
         const _n = _p.total - _p.done;
-        btn.title = 'Load the relationship icons for this table — '
+        _setTip(btn, 'Load the relationship icons for this table — '
                   + `${_n} distinct ${_n === 1 ? 'entity' : 'entities'} left to look up, `
                   + `about ${_relFormatEta(_n)} at the MusicBrainz rate limit of 1 request/second `
                   + '(anything already cached is instant)'
                   + (_p.done ? ` — ${_p.done} of ${_p.total} already loaded` : '')
-                  + _failedNote;
+                  + _failedNote);
         btn.setAttribute('aria-label',
             `Load the relationship icons for this table, ${_n} entities left to look up`);
     }
@@ -80325,7 +80557,7 @@ a { color: #1565c0; }`;
             if (!_input.dataset.mbRelCollapsed) return;
             delete _input.dataset.mbRelCollapsed;
             _input.placeholder = _input.dataset.mbRelPhSaved || '…';
-            _input.title       = _input.dataset.mbRelTitleSaved || '';
+            _setTip(_input, _input.dataset.mbRelTitleSaved || '');
             delete _input.dataset.mbRelPhSaved;
             delete _input.dataset.mbRelTitleSaved;
             return;
@@ -80336,9 +80568,9 @@ a { color: #1565c0; }`;
         _input.dataset.mbRelTitleSaved = _input.title;
         _input.dataset.mbRelCollapsed  = '1';
         _input.placeholder = 'collapsed — press ▶🔗';
-        _input.title = 'This table’s Relationships column is collapsed, so there is nothing '
+        _setTip(_input, 'This table’s Relationships column is collapsed, so there is nothing '
                      + 'to filter yet — press ▶🔗 in the column header to load it. '
-                     + 'Threshold: sa_rel_collapse_threshold.';
+                     + 'Threshold: sa_rel_collapse_threshold.');
     }
 
     /**
@@ -80436,11 +80668,11 @@ a { color: #1565c0; }`;
                 ? '▶🔗 Load all Relationships'
                 : '▼🔗 Empty all Relationships';
         }
-        _b.title = _anyCollapsed
+        _setTip(_b, _anyCollapsed
             ? 'Load the relationship icons in every sub-table section — one Web Service '
               + 'request per distinct entity, throttled to 1 per second'
             : 'Empty the Relationships column in every sub-table section '
-              + '(already-fetched data is kept)';
+              + '(already-fetched data is kept)');
         _b.style.display = 'inline-flex';
     }
 
@@ -81491,7 +81723,7 @@ a { color: #1565c0; }`;
         if (!Lib.settings.sa_enable_relationships_column) return;
         if (!_relPageHasColumn()) return;
         const C = _REL_RETRY_BTN_CSS;
-        function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';b.title=t;b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
+        function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';_setTip(b, t);b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
         // The global Relationships retry button is only meaningful on multi-table
         // pages where there are multiple sub-tables.  On single-table pages the
         // per-table button (mb-rel-retry-0) created by _artCreateOrUpdateRetryButton
@@ -81855,9 +82087,9 @@ a { color: #1565c0; }`;
                 });
             }
             btn.textContent = `⚠⟳ ${n}`;
-            btn.title = `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that `
+            _setTip(btn, `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that `
                       + 'failed in THIS table, instead of re-requesting every row. '
-                      + 'Rows a filter is hiding are included.';
+                      + 'Rows a filter is hiding are included.');
             if (!existing) {
                 const a = document.getElementById('mb-rel-retry-' + i);
                 if (!a) return;
@@ -81906,8 +82138,8 @@ a { color: #1565c0; }`;
             _btn.addEventListener('click', e => { e.stopPropagation(); _relRetryFailedAll(); });
         }
         _btn.textContent = `⚠⟳ ${n}`;
-        _btn.title = `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that failed, `
-                   + 'instead of re-requesting every row. Rows a filter is hiding are included.';
+        _setTip(_btn, `Retry ONLY the ${n} Relationship lookup${n === 1 ? '' : 's'} that failed, `
+                   + 'instead of re-requesting every row. Rows a filter is hiding are included.');
         if (!_existing) {
             const _a = document.getElementById('mb-rel-retry-global')
                     || document.getElementById('mb-rel-retry-0');
@@ -83068,10 +83300,10 @@ a { color: #1565c0; }`;
                     btn.style.color = '#888';
                     btn.style.cursor = 'not-allowed';
                     btn.style.opacity = '0.6';
-                    btn.title = 'Disabled on this "Show single-table" snapshot tab — it is a frozen, ' +
+                    _setTip(btn, 'Disabled on this "Show single-table" snapshot tab — it is a frozen, ' +
                         'client-side snapshot from the moment "Show single-table" was clicked and has no ' +
                         'way to re-fetch fresh data itself. To get a fresh version, refresh the ORIGINAL ' +
-                        'page and click "Show single-table" there again.';
+                        'page and click "Show single-table" there again.');
                 });
                 Lib.debug('cache', `Disabled ${allActionButtons.length} h1 action button(s) on cross-tab snapshot page.`);
             }
@@ -83519,12 +83751,11 @@ a { color: #1565c0; }`;
                     `⚠️ Loaded ${loadedRowCount} ${rowLabel} from ${_source} — INCOMPLETE`;
                 _sdLoadedFromDisk.style.color = '#b26a00';
                 _sdLoadedFromDisk.style.fontWeight = 'bold';
-                _sdLoadedFromDisk.title =
-                    'This file was saved from a fetch that did not finish, so it holds '
-                    + 'fewer rows than the listing does. Re-fetch the page for the rest.';
+                _setTip(_sdLoadedFromDisk, 'This file was saved from a fetch that did not finish, so it holds '
+                    + 'fewer rows than the listing does. Re-fetch the page for the rest.');
             } else {
                 _sdLoadedFromDisk.textContent = `Loaded ${loadedRowCount} ${rowLabel} from ${_source}`;
-                _sdLoadedFromDisk.title = 'Rows loaded from a saved snapshot file.';
+                _setTip(_sdLoadedFromDisk, 'Rows loaded from a saved snapshot file.');
             }
             globalStatusDisplay.appendChild(_sdLoadedFromDisk);
 
@@ -84215,7 +84446,7 @@ a { color: #1565c0; }`;
         for (const credit of artistCreditArray) {
             const { artist } = credit;
             const link       = ergCreateLink(`/artist/${artist.id}`, credit.name || artist.name);
-            link.title       = artist['sort-name'];
+            _setTip(link, artist['sort-name']);
             span.appendChild(link);
             if (credit.joinphrase) {
                 span.appendChild(document.createTextNode(credit.joinphrase));
@@ -84247,7 +84478,7 @@ a { color: #1565c0; }`;
         button.style.cursor      = 'pointer';
         button.style.marginRight = '4px';
         button.style.color       = '#777';
-        button.title             = 'Toggle display of underlying entity page';
+        _setTip(button, 'Toggle display of underlying entity page');
 
         // Toggle glyph and trigger dom_callback on every click.
         button.addEventListener('mousedown', () => {
@@ -84395,7 +84626,7 @@ a { color: #1565c0; }`;
                                 const hintSpan           = document.createElement('span');
                                 hintSpan.className       = 'mb-art-cache-hint-inline';
                                 hintSpan.textContent     = emoji;
-                                hintSpan.title           = hintLabel;
+                                _setTip(hintSpan, hintLabel);
                                 hintSpan.style.cssText   =
                                     'font-size:0.65em; line-height:1; position:absolute;' +
                                     ' top:0; left:0; user-select:none; cursor:default;' +
@@ -84438,7 +84669,7 @@ a { color: #1565c0; }`;
                                 const hintSpan           = document.createElement('span');
                                 hintSpan.className       = 'mb-art-cache-hint-inline';
                                 hintSpan.textContent     = emoji;
-                                hintSpan.title           = label;
+                                _setTip(hintSpan, label);
                                 hintSpan.style.cssText   =
                                     'font-size:0.65em; line-height:1; position:absolute;' +
                                     ' top:0; left:0; user-select:none; cursor:default;' +
@@ -86542,7 +86773,8 @@ a { color: #1565c0; }`;
      * text (inclusive of the opening '(' and closing ')' parens taken directly
      * from the DOM's `<span class="comment">`) in italic.
      *
-     * Styled to match the existing `#mb-stat-tooltip` dark-panel aesthetic.
+     * Styled by the shared "Liner notes" class `.mb-tt-liner`, like
+     * `#mb-stat-tooltip`.
      *
      * @returns {HTMLDivElement}
      */
@@ -86552,14 +86784,11 @@ a { color: #1565c0; }`;
 
         tip = document.createElement('div');
         tip.id = 'mb-art-bigbox-tooltip';
+        // Look from the shared "Liner notes" class; only placement is inline.
+        tip.className = 'mb-tt-liner';
         tip.style.cssText =
-            'position:fixed; z-index:99998; pointer-events:none; display:none;' +
-            ' max-width:380px; padding:7px 11px;' +
-            ' background:#1e1e2e; color:#cdd6f4;' +
-            ' border:1px solid #45475a; border-radius:6px;' +
-            ' font-size:0.82em; font-family:sans-serif; line-height:1.5;' +
-            ' box-shadow:0 4px 16px rgba(0,0,0,0.45);' +
-            ' word-break:break-word;';
+            'position:fixed; pointer-events:none; display:none;' +
+            ' max-width:380px;';
         document.body.appendChild(tip);
         return tip;
     }
@@ -86796,8 +87025,8 @@ a { color: #1565c0; }`;
         }
 
         // Configurable role colours (settings → palette → hard-coded defaults).
-        const _mainColor  = Lib.settings.sa_ui_artist_role_main_performer_color  || '#57ff5a';
-        const _guestColor = Lib.settings.sa_ui_artist_role_guest_performer_color || '#e07000';
+        const _mainColor  = Lib.settings.sa_ui_artist_role_main_performer_color  || '#2e7d32';
+        const _guestColor = Lib.settings.sa_ui_artist_role_guest_performer_color || '#b35900';
 
         /**
          * Returns a <span> coloured by role keyword, or a plain text node if
@@ -87065,7 +87294,7 @@ a { color: #1565c0; }`;
                     const dowText = dowSpan.textContent.trim();
                     if (dowText) {
                         const dow = document.createElement('span');
-                        dow.style.cssText = 'color:#a6adc8; font-size:0.9em;';
+                        dow.className = 'mb-tt-dim';
                         dow.textContent = dowText;
                         line.appendChild(dow);
                     }
@@ -87140,8 +87369,9 @@ a { color: #1565c0; }`;
          *
          * @param {string} text  Text content (skipped when empty).
          * @param {string} [css] Extra inline CSS appended to base style.
+         * @param {string} [cls] Class name, e.g. 'mb-tt-title' (see .mb-tt-liner).
          */
-        const _addRow = (text, css = '') => {
+        const _addRow = (text, css = '', cls = '') => {
             if (!text) {
                 if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_addRow] skipped (empty text)');
                 return;
@@ -87149,6 +87379,7 @@ a { color: #1565c0; }`;
             if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_addRow] "' + text.substring(0, 80) + '"');
             const d = document.createElement('div');
             d.style.cssText = 'margin-bottom:2px;' + (css ? ' ' + css : '');
+            if (cls) d.className = cls;
             d.textContent = text;
             tip.appendChild(d);
         };
@@ -87156,7 +87387,7 @@ a { color: #1565c0; }`;
         /** Appends a horizontal divider rule to tip. */
         const _addDivider = () => {
             const d = document.createElement('div');
-            d.style.cssText = 'border-top:1px solid #45475a; margin:4px 0;';
+            d.className = 'mb-tt-rule';
             tip.appendChild(d);
         };
 
@@ -87262,7 +87493,8 @@ a { color: #1565c0; }`;
                     const _val = _artTooltipCellText(row, ci);
                     if (_val) {
                         const d = document.createElement('div');
-                        d.style.cssText = 'font-style:italic; color:#cdd6f4; margin-bottom:2px;';
+                        d.className = 'mb-tt-comment';
+                        d.style.marginBottom = '2px';
                         d.textContent = '(' + _val + ')';
                         tip.appendChild(d);
                         if (Lib.settings.sa_enable_tooltip_debug) Lib.debug('tooltips', '[_addRow italic] "' + _val + '"');
@@ -87274,7 +87506,14 @@ a { color: #1565c0; }`;
                     // (using the dedicated synthetic Comment column), so extracting
                     // it inline would produce a duplicate italic row.
                     const { title } = _artTooltipSplitComment(row, ci);
-                    _addRow(title, 'font-weight:600;');
+                    _addRow(title, '', 'mb-tt-title');
+                } else if (_colName === 'MB-Name') {
+                    // The synthetic name column extractMainColumn splits out
+                    // (comment and alias go to their own columns): it is the
+                    // card's title, like the main column above. Matching on
+                    // the main column alone left it a plain row on every
+                    // pageType whose tooltipColumns start with 'MB-Name'.
+                    _addRow(_artTooltipCellText(row, ci), '', 'mb-tt-title');
                 } else if (_colName === 'Country/Date') {
                     // Rich HTML rendering: flag icon + country name + date + day-of-week
                     // extracted directly from the cell's DOM (release-events list).
@@ -87302,7 +87541,8 @@ a { color: #1565c0; }`;
                     const _cancelVal  = _cancelBdi ? _cancelBdi.textContent.replace(/\s+/g, ' ').trim() : '';
                     if (_cancelVal) {
                         const d = document.createElement('div');
-                        d.style.cssText = 'margin-bottom:2px; color:#c0392b; font-weight:600;';
+                        d.className = 'mb-tt-alert';
+                        d.style.marginBottom = '2px';
                         d.textContent = _cancelVal;
                         tip.appendChild(d);
                     }
@@ -87427,14 +87667,11 @@ a { color: #1565c0; }`;
             // Row 1: type pill labels (bold).
             if (typeText) {
                 const _typesLine = document.createElement('div');
-                _typesLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
+                _typesLine.style.marginBottom = '2px';
                 typeText.split(' / ').forEach((t, i) => {
                     if (i > 0) _typesLine.appendChild(document.createTextNode(' / '));
                     const _pill = document.createElement('span');
-                    _pill.style.cssText =
-                        'display:inline-block; background:#555; color:#cdd6f4;' +
-                        ' border-radius:3px; padding:0 4px; font-size:0.9em;' +
-                        ' font-weight:600; line-height:1.5; white-space:nowrap;';
+                    _pill.className = 'mb-tt-pill';
                     _pill.textContent = t;
                     _typesLine.appendChild(_pill);
                 });
@@ -87443,7 +87680,7 @@ a { color: #1565c0; }`;
             // Row 2: comment in italic (when present).
             if (commentText) {
                 const _commentLine = document.createElement('div');
-                _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4;';
+                _commentLine.className = 'mb-tt-comment';
                 _commentLine.textContent   = '(' + commentText + ')';
                 _tip.appendChild(_commentLine);
             }
@@ -87622,7 +87859,7 @@ a { color: #1565c0; }`;
             const pending       = document.createElement('span');
             pending.className   = 'mb-caa-art-pending';
             pending.textContent = '\u23F3'; // ⏳
-            pending.title       = 'Pending approval';
+            _setTip(pending, 'Pending approval');
             li.appendChild(pending);
         }
 
@@ -88469,11 +88706,11 @@ a { color: #1565c0; }`;
                 if (wasExpanded) {
                     expandBtn.dataset.caaExpandBtn = 'expanded';
                     expandBtn.innerHTML = '&#9660;'; // ▼
-                    expandBtn.title = `Collapse all ${ctx.toggleLabel} (${n}) in this cell`;
+                    _setTip(expandBtn, `Collapse all ${ctx.toggleLabel} (${n}) in this cell`);
                 } else {
                     expandBtn.dataset.caaExpandBtn = 'collapsed';
                     expandBtn.innerHTML = '&#9654;'; // ▶
-                    expandBtn.title = `Show all ${ctx.toggleLabel} (${n}) in this cell`;
+                    _setTip(expandBtn, `Show all ${ctx.toggleLabel} (${n}) in this cell`);
                 }
             }
 
@@ -88547,11 +88784,11 @@ a { color: #1565c0; }`;
             if (startExpanded) {
                 expandBtn.dataset.caaExpandBtn = 'expanded';
                 expandBtn.innerHTML = '&#9660;'; // ▼
-                expandBtn.title = `Collapse all ${ctx.toggleLabel} (${n}) in this cell`;
+                _setTip(expandBtn, `Collapse all ${ctx.toggleLabel} (${n}) in this cell`);
             } else {
                 expandBtn.dataset.caaExpandBtn = 'collapsed';
                 expandBtn.innerHTML = '&#9654;'; // ▶
-                expandBtn.title = `Show all ${ctx.toggleLabel} (${n}) in this cell`;
+                _setTip(expandBtn, `Show all ${ctx.toggleLabel} (${n}) in this cell`);
             }
             expandBtn.style.cssText =
                 'cursor:pointer; margin-right:4px; color:#777; user-select:none;';
@@ -88687,12 +88924,12 @@ a { color: #1565c0; }`;
                 const existingHint = wrap.querySelector('.mb-art-cache-hint-col');
                 if (existingHint) {
                     existingHint.textContent = emoji;
-                    existingHint.title        = hintLabel;
+                    _setTip(existingHint, hintLabel);
                 } else {
                     const hintSpan         = document.createElement('span');
                     hintSpan.className     = 'mb-art-cache-hint-col';
                     hintSpan.textContent   = emoji;
-                    hintSpan.title         = hintLabel;
+                    _setTip(hintSpan, hintLabel);
                     wrap.appendChild(hintSpan);
                 }
 
@@ -88777,7 +89014,7 @@ a { color: #1565c0; }`;
                 wrap.insertBefore(hintSpan, wrap.firstChild);
             }
             hintSpan.textContent  = '⚠⟳';
-            hintSpan.title        = 'Load failed – click to retry this icon';
+            _setTip(hintSpan, 'Load failed – click to retry this icon');
             hintSpan.style.cursor = 'pointer';
             artIcon.dataset.cacheHint = 'error';
 
@@ -88788,7 +89025,7 @@ a { color: #1565c0; }`;
                 e.stopPropagation();
                 hintSpan.removeEventListener('click', _retryIconHandler);
                 hintSpan.textContent  = '⟳';
-                hintSpan.title        = 'Retrying…';
+                _setTip(hintSpan, 'Retrying…');
                 hintSpan.style.cursor = 'default';
                 delete artIcon.dataset.cacheHint;
                 if (_caaQueue) {
@@ -88930,15 +89167,15 @@ a { color: #1565c0; }`;
                         if (count <= 0) { anchor.dataset[ctx.enrichedAttr] = '1'; return; }
                         // fall through to decoration
                         const tooltipI = ctx.tooltip(count);
-                        anchor.title = tooltipI;
+                        _setTip(anchor, tooltipI);
                         const iconSpanI = anchor.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon');
-                        if (iconSpanI) iconSpanI.title = tooltipI;
+                        if (iconSpanI) _setTip(iconSpanI, tooltipI);
                         const artCellI = anchor.closest('td');
                         if (artCellI && !artCellI.querySelector('.' + ctx.badgeClass)) {
                             const badge = document.createElement('span');
                             badge.className   = ctx.badgeClass;
                             badge.textContent = count;
-                            badge.title       = tooltipI;
+                            _setTip(badge, tooltipI);
                             anchor.after(badge);
                             const wrap = badge.nextElementSibling;
                             if (wrap && wrap.classList.contains('mb-art-cache-hint-col-wrap')) {
@@ -88951,7 +89188,7 @@ a { color: #1565c0; }`;
                             if (tr && table) {
                                 const colIdx = caaFindColumnByName(table, addColNameI);
                                 const titleCell = colIdx !== -1 ? tr.cells[colIdx] : null;
-                                if (titleCell) { const inlinePh = titleCell.querySelector('.' + ctx.inlinePh); if (inlinePh) inlinePh.title = tooltipI; }
+                                if (titleCell) { const inlinePh = titleCell.querySelector('.' + ctx.inlinePh); if (inlinePh) _setTip(inlinePh, tooltipI); }
                             }
                         }
                         if (artCellI) {
@@ -89077,11 +89314,11 @@ a { color: #1565c0; }`;
         const tooltip = ctx.tooltip(count);
 
         // ── 1. Tooltip on the art anchor and its icon span ───────────────────
-        anchor.title = tooltip;
+        _setTip(anchor, tooltip);
         const iconSpan = anchor.querySelector(
             'span.caa-icon, span.eaa-icon, span.artwork-icon'
         );
-        if (iconSpan) iconSpan.title = tooltip;
+        if (iconSpan) _setTip(iconSpan, tooltip);
 
         // ── 2. Count badge in the art cell ───────────────────────────────────
         const artCell = anchor.closest('td');
@@ -89089,7 +89326,7 @@ a { color: #1565c0; }`;
             const badge       = document.createElement('span');
             badge.className   = ctx.badgeClass;
             badge.textContent = count;
-            badge.title       = tooltip;
+            _setTip(badge, tooltip);
             anchor.after(badge);
 
             // ── Resource Timing wrapper adoption ─────────────────────────────
@@ -89131,7 +89368,7 @@ a { color: #1565c0; }`;
                 const titleCell = colIdx !== -1 ? tr.cells[colIdx] : null;
                 if (titleCell) {
                     const inlinePh = titleCell.querySelector('.' + ctx.inlinePh);
-                    if (inlinePh) inlinePh.title = tooltip;
+                    if (inlinePh) _setTip(inlinePh, tooltip);
                 }
             }
         }
@@ -89854,7 +90091,7 @@ a { color: #1565c0; }`;
                             const existingHint = wrapper.querySelector('.mb-art-cache-hint-big');
                             if (existingHint) {
                                 existingHint.textContent = emoji;
-                                existingHint.title        = hintLabel;
+                                _setTip(existingHint, hintLabel);
                             } else {
                                 // Make the wrapper a positioning context for the badge.
                                 // Its existing cssText uses display:inline-block which
@@ -89864,7 +90101,7 @@ a { color: #1565c0; }`;
                                 const hintBadge           = document.createElement('span');
                                 hintBadge.className       = 'mb-art-cache-hint-big';
                                 hintBadge.textContent     = emoji;
-                                hintBadge.title           = hintLabel;
+                                _setTip(hintBadge, hintLabel);
                                 hintBadge.style.cssText   =
                                     'position:absolute; top:2px; left:2px;' +
                                     ' font-size:0.8em; line-height:1;' +
@@ -89993,14 +90230,16 @@ a { color: #1565c0; }`;
                                 // Row 1: entity title (bold).
                                 if (_name) {
                                     const _nameLine = document.createElement('div');
-                                    _nameLine.style.cssText = 'font-weight:600; margin-bottom:2px;';
+                                    _nameLine.className = 'mb-tt-title';
+                                    _nameLine.style.marginBottom = '2px';
                                     _nameLine.textContent = _name;
                                     _tip.appendChild(_nameLine);
                                 }
                                 // Row 2: disambiguation comment in italic (when present).
                                 if (_comment) {
                                     const _commentLine = document.createElement('div');
-                                    _commentLine.style.cssText = 'font-style:italic; color:#cdd6f4; margin-bottom:2px;';
+                                    _commentLine.className = 'mb-tt-comment';
+                                    _commentLine.style.marginBottom = '2px';
                                     _commentLine.textContent = _comment;
                                     _tip.appendChild(_commentLine);
                                 }
@@ -90014,8 +90253,7 @@ a { color: #1565c0; }`;
                                 // Divider — only when at least one detail field follows.
                                 if (_format || _cd || _label || _catnum || _barcode) {
                                     const _div = document.createElement('div');
-                                    _div.style.cssText =
-                                        'border-top:1px solid #45475a; margin:4px 0;';
+                                    _div.className = 'mb-tt-rule';
                                     _tip.appendChild(_div);
                                 }
                                 // Row 4: Format (Tracks) — e.g. "12” Vinyl (9)".
@@ -90046,7 +90284,7 @@ a { color: #1565c0; }`;
                                 // Row 7: Barcode (when present).
                                 if (_barcode) {
                                     const _bcLine = document.createElement('div');
-                                    _bcLine.style.cssText = 'color:#a6adc8;';
+                                    _bcLine.className = 'mb-tt-dim';
                                     _bcLine.textContent   = _barcode;
                                     _tip.appendChild(_bcLine);
                                 }
@@ -90436,14 +90674,14 @@ a { color: #1565c0; }`;
                     '.' + ctx.btnClass + ':not(#' + globalBtnId + ')'
                 );
                 liveSubBtns.forEach(sb => {
-                    sb.title = (makeVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel +
+                    _setTip(sb, (makeVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel +
                         (activeDefinition && activeDefinition.tableMode === 'multi'
                             ? ' for this sub-section'
-                            : ' for this section');
+                            : ' for this section'));
                 });
 
                 // Update global button title.
-                btn.title = (makeVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + 's in ALL sections';
+                _setTip(btn, (makeVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + 's in ALL sections');
 
                 Lib.debug(ctx.key, `Global ${ctx.key} toggle: all boxes ${makeVisible ? 'shown' : 'hidden'}`);
             });
@@ -90470,7 +90708,7 @@ a { color: #1565c0; }`;
         const allBoxesForTitle = Array.from(document.querySelectorAll('.' + ctx.boxClass))
             .filter(box => !box.id.endsWith('-global'));
         const anyVisible = allBoxesForTitle.some(box => box.dataset[ctx.visAttr] !== 'false');
-        btn.title = (anyVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + 's in ALL sections';
+        _setTip(btn, (anyVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + 's in ALL sections');
 
         // ── Global retry button (idempotent — created once) ───────────────────
         // Placed immediately after the global toggle button.
@@ -90481,8 +90719,8 @@ a { color: #1565c0; }`;
             const retryBtn   = document.createElement('button');
             retryBtn.id      = globalRetryId;
             retryBtn.type    = 'button';
-            retryBtn.title   = 'Globally retry loading all ' + ctx.toggleLabel +
-                               ' for every sub-table (forces network reload)';
+            _setTip(retryBtn, 'Globally retry loading all ' + ctx.toggleLabel +
+                               ' for every sub-table (forces network reload)');
             retryBtn.textContent = '⟳';
             retryBtn.style.cssText =
                 'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
@@ -90509,8 +90747,8 @@ a { color: #1565c0; }`;
             const relRetryBtn   = document.createElement('button');
             relRetryBtn.id      = globalRelRetryId;
             relRetryBtn.type    = 'button';
-            relRetryBtn.title   = 'Globally retry loading all Relationship icons '
-                                + 'for every sub-table (forces network reload, clears IDB cache)';
+            _setTip(relRetryBtn, 'Globally retry loading all Relationship icons '
+                                + 'for every sub-table (forces network reload, clears IDB cache)');
             relRetryBtn.textContent = '🔗⟳';
             relRetryBtn.style.cssText =
                 'cursor:pointer; padding:1px 4px; border:1px solid #aaa;'
@@ -90928,8 +91166,8 @@ a { color: #1565c0; }`;
         btn.id = id;
         btn.type = 'button';
         btn.textContent = '📊';
-        btn.title = `What ${ctx.column} artwork this table has, what the archive says about it, `
-                  + 'and what could not be fetched. Reads current state — safe to open mid-load.';
+        _setTip(btn, `What ${ctx.column} artwork this table has, what the archive says about it, `
+                  + 'and what could not be fetched. Reads current state — safe to open mid-load.');
         btn.style.cssText =
             'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
             ' border-radius:3px; background:#f5f5f5; vertical-align:middle;' +
@@ -91128,9 +91366,9 @@ a { color: #1565c0; }`;
                 });
             }
             btn.textContent = `⚠⟳ ${n}`;
-            btn.title = `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the `
+            _setTip(btn, `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the `
                       + 'archive could not answer in THIS table, instead of reloading every '
-                      + 'image in it. Rows a filter is hiding are included.';
+                      + 'image in it. Rows a filter is hiding are included.');
             if (!existing) {
                 const a = document.getElementById(ctx.btnPrefix + '-retry-' + i);
                 if (!a) { live.delete(id); return; }
@@ -91219,9 +91457,9 @@ a { color: #1565c0; }`;
             btn.addEventListener('click', e => { e.stopPropagation(); _artRetryFailedAll(ctx); });
         }
         btn.textContent = `⚠⟳ ${n}`;
-        btn.title = `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the archive `
+        _setTip(btn, `Retry ONLY the ${n} ${ctx.column} lookup${n === 1 ? '' : 's'} the archive `
                   + 'could not answer, instead of reloading every image in the table. '
-                  + 'Rows a filter is hiding are included.';
+                  + 'Rows a filter is hiding are included.');
         if (!existing) {
             // Bail rather than leave an orphan: the per-table ⟳ this anchors on
             // is built later than the first failures arrive, and an element
@@ -91363,7 +91601,7 @@ a { color: #1565c0; }`;
         table.querySelectorAll('.mb-art-cache-hint-col').forEach(span => {
             if (span.textContent === '⚠⟳') {
                 span.textContent  = '⟳';
-                span.title        = 'Retrying…';
+                _setTip(span, 'Retrying…');
                 span.style.cursor = 'default';
             }
         });
@@ -91445,10 +91683,10 @@ a { color: #1565c0; }`;
         btn.type    = 'button';
         // Use "table" on single-table pages (there is only one table) and
         // "sub-table" on multi-table pages where several sibling tables coexist.
-        btn.title   = 'Retry loading all ' + ctx.toggleLabel +
+        _setTip(btn, 'Retry loading all ' + ctx.toggleLabel +
             ((!activeDefinition || activeDefinition.tableMode !== 'multi')
                 ? ' for this table (forces network reload)'
-                : ' for this sub-table (forces network reload)');
+                : ' for this sub-table (forces network reload)'));
         btn.textContent = '⟳';
         btn.style.cssText =
             'cursor:pointer; padding:1px 4px; border:1px solid #aaa;' +
@@ -91499,9 +91737,9 @@ a { color: #1565c0; }`;
             // "table" rather than "sub-table".  In multi-table mode "sub-table"
             // is correct because several sibling tables coexist on the page.
             const _relIsSingle = !activeDefinition || activeDefinition.tableMode !== 'multi';
-            relRetryBtn2.title   = _relIsSingle
+            _setTip(relRetryBtn2, _relIsSingle
                 ? 'Retry loading Relationship icons for this table (network reload, clears IDB cache)'
-                : 'Retry loading Relationship icons for this sub-table (forces network reload, clears IDB cache)';
+                : 'Retry loading Relationship icons for this sub-table (forces network reload, clears IDB cache)');
             relRetryBtn2.textContent = '🔗⟳';
             relRetryBtn2.style.cssText =
                 'cursor:pointer; padding:1px 4px; border:1px solid #aaa;'
@@ -91605,7 +91843,7 @@ a { color: #1565c0; }`;
                 const _caaKbHint = _caaDirectOn
                     ? `keyboard: ${_caaKey} or ${getPrefixDisplay()} then A when a column filter is focused`
                     : `keyboard: ${getPrefixDisplay()} then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_caaKey})`;
-                btn.title = (nowVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint;
+                _setTip(btn, (nowVisible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint);
                 Lib.debug(ctx.key, `${ctx.key} toggle btn ${btnId}: strip ${nowVisible ? 'shown' : 'hidden'}`);
             });
 
@@ -91657,7 +91895,7 @@ a { color: #1565c0; }`;
         const _caaKbHint = _caaDirectOn
             ? `keyboard: ${_caaKey} or ${getPrefixDisplay()} then A when a column filter is focused`
             : `keyboard: ${getPrefixDisplay()} then A when a column filter is focused (or enable Direct Ctrl+Letter Shortcuts for ${_caaKey})`;
-        btn.title = (visible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint;
+        _setTip(btn, (visible ? 'Hide ' : 'Show ') + ctx.stripeLabel + _caaSection + ' — ' + _caaKbHint);
 
         Lib.debug(ctx.key, `${ctx.key}CreateOrUpdateToggleButton: ${isNew ? 'created' : 'updated'} btn ${btnId} (${count} link(s))`);
         return btnId;
@@ -92136,9 +92374,9 @@ a { color: #1565c0; }`;
                     : `Collapse all ${archiveName} images`;
             }
 
-            b.title = anyCollapsed
+            _setTip(b, anyCollapsed
                 ? `Expand all ${archiveName} column thumbnails across every sub-table section`
-                : `Collapse all ${archiveName} column thumbnails across every sub-table section`;
+                : `Collapse all ${archiveName} column thumbnails across every sub-table section`);
             b.style.display = 'inline-flex';
         }
 
@@ -92209,9 +92447,9 @@ a { color: #1565c0; }`;
         btn.dataset.caaColHdrState = expanded ? 'expanded' : 'collapsed';
         const glyph = btn.querySelector('span');
         if (glyph) glyph.textContent = expanded ? '▼' : '▶';
-        btn.title = expanded
+        _setTip(btn, expanded
             ? `Collapse all ${archiveName} images in this column`
-            : `Show all ${archiveName} images in this column`;
+            : `Show all ${archiveName} images in this column`);
         btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         const img = btn.querySelector('img');
         if (img) {
@@ -92459,13 +92697,15 @@ a { color: #1565c0; }`;
 
                 if (_name) {
                     const _el = document.createElement('div');
-                    _el.style.cssText = 'font-weight:600; margin-bottom:2px;';
+                    _el.className = 'mb-tt-title';
+                    _el.style.marginBottom = '2px';
                     _el.textContent = _name;
                     _tip.appendChild(_el);
                 }
                 if (_comment) {
                     const _el = document.createElement('div');
-                    _el.style.cssText = 'font-style:italic; color:#cdd6f4; margin-bottom:2px;';
+                    _el.className = 'mb-tt-comment';
+                    _el.style.marginBottom = '2px';
                     _el.textContent = _comment;
                     _tip.appendChild(_el);
                 }
@@ -92477,7 +92717,7 @@ a { color: #1565c0; }`;
                 }
                 if (_format || _cd || _label || _catnum || _barcode) {
                     const _el = document.createElement('div');
-                    _el.style.cssText = 'border-top:1px solid #45475a; margin:4px 0;';
+                    _el.className = 'mb-tt-rule';
                     _tip.appendChild(_el);
                 }
                 if (_format) {
@@ -92502,7 +92742,7 @@ a { color: #1565c0; }`;
                 }
                 if (_barcode) {
                     const _el = document.createElement('div');
-                    _el.style.cssText = 'color:#a6adc8;';
+                    _el.className = 'mb-tt-dim';
                     _el.textContent = _barcode;
                     _tip.appendChild(_el);
                 }
@@ -92793,12 +93033,12 @@ a { color: #1565c0; }`;
                                     let existingHint = existingPh.querySelector('.mb-art-cache-hint-inline');
                                     if (existingHint) {
                                         existingHint.textContent = hintEmoji;
-                                        existingHint.title       = hintLabel;
+                                        _setTip(existingHint, hintLabel);
                                     } else {
                                         const hs           = document.createElement('span');
                                         hs.className       = 'mb-art-cache-hint-inline';
                                         hs.textContent     = hintEmoji;
-                                        hs.title           = hintLabel;
+                                        _setTip(hs, hintLabel);
                                         hs.style.cssText   =
                                             'font-size:0.65em; line-height:1; position:absolute;' +
                                             ' top:0; left:0; user-select:none; cursor:default;' +
@@ -92859,12 +93099,12 @@ a { color: #1565c0; }`;
                                                     let existingHint = existingPh.querySelector('.mb-art-cache-hint-inline');
                                                     if (existingHint) {
                                                         existingHint.textContent = hintEmoji;
-                                                        existingHint.title       = hintLabel;
+                                                        _setTip(existingHint, hintLabel);
                                                     } else {
                                                         const hs = document.createElement('span');
                                                         hs.className   = 'mb-art-cache-hint-inline';
                                                         hs.textContent = hintEmoji;
-                                                        hs.title       = hintLabel;
+                                                        _setTip(hs, hintLabel);
                                                         hs.style.cssText =
                                                             'font-size:0.65em; line-height:1; position:absolute;' +
                                                             ' top:0; left:0; user-select:none; cursor:default;' +
@@ -93045,12 +93285,12 @@ a { color: #1565c0; }`;
                                         const existingHint = ph.querySelector('.mb-art-cache-hint-inline');
                                         if (existingHint) {
                                             existingHint.textContent = emoji;
-                                            existingHint.title        = hintLabel;
+                                            _setTip(existingHint, hintLabel);
                                         } else {
                                             const hintSpan           = document.createElement('span');
                                             hintSpan.className       = 'mb-art-cache-hint-inline';
                                             hintSpan.textContent     = emoji;
-                                            hintSpan.title           = hintLabel;
+                                            _setTip(hintSpan, hintLabel);
                                             hintSpan.style.cssText   =
                                                 'font-size:0.65em; line-height:1; position:absolute;' +
                                                 ' top:0; left:0; user-select:none; cursor:default;' +
@@ -93128,12 +93368,12 @@ a { color: #1565c0; }`;
                                         const existingHint = ph.querySelector('.mb-art-cache-hint-inline');
                                         if (existingHint) {
                                             existingHint.textContent = emoji;
-                                            existingHint.title        = label;
+                                            _setTip(existingHint, label);
                                         } else {
                                             const hintSpan           = document.createElement('span');
                                             hintSpan.className       = 'mb-art-cache-hint-inline';
                                             hintSpan.textContent     = emoji;
-                                            hintSpan.title           = label;
+                                            _setTip(hintSpan, label);
                                             hintSpan.style.cssText   =
                                                 'font-size:0.65em; line-height:1; position:absolute;' +
                                                 ' top:0; left:0; user-select:none; cursor:default;' +
@@ -93846,7 +94086,7 @@ a { color: #1565c0; }`;
         const _btn = document.createElement('button');
         _btn.type       = 'button';
         _btn.className  = 'mb-picard-btn';
-        _btn.title      = `Send to Picard (${_label})`;
+        _setTip(_btn, `Send to Picard (${_label})`);
         _btn.style.cssText =
             'display:inline-flex; align-items:center; justify-content:center;' +
             ' width:18px; height:18px; cursor:pointer; background:none; border:none;' +
@@ -93865,7 +94105,7 @@ a { color: #1565c0; }`;
             const _port = await _picardGetPort();
             if (!_port) {
                 _img.src   = _PICARD_ICON_ERR;
-                _btn.title = 'Picard not found. Is it running with browser integration enabled?';
+                _setTip(_btn, 'Picard not found. Is it running with browser integration enabled?');
                 Lib.debug('picard', `Button clicked but Picard not detected (guid=${guid})`);
                 return;
             }
@@ -93875,16 +94115,16 @@ a { color: #1565c0; }`;
                 const r = await _picardRequest(_url, 3000);
                 if (r.status >= 200 && r.status < 400) {
                     _img.src   = _PICARD_ICON_OK;
-                    _btn.title = `Sent to Picard ✓ (${_label})`;
+                    _setTip(_btn, `Sent to Picard ✓ (${_label})`);
                     Lib.debug('picard', `Tagger request successful: ${r.responseText}`);
                 } else {
                     _img.src   = _PICARD_ICON_ERR;
-                    _btn.title = `Picard returned HTTP ${r.status}. Is browser integration active?`;
+                    _setTip(_btn, `Picard returned HTTP ${r.status}. Is browser integration active?`);
                     Lib.debug('picard', `Tagger request HTTP ${r.status}`);
                 }
             } catch (_e) {
                 _img.src   = _PICARD_ICON_ERR;
-                _btn.title = `Picard request failed: ${_e.message}`;
+                _setTip(_btn, `Picard request failed: ${_e.message}`);
                 Lib.debug('picard', `Tagger request error: ${_e.message}`);
             }
         });
@@ -94101,7 +94341,7 @@ a { color: #1565c0; }`;
         const parsed = _parseIsrcCode(raw);
         if (!parsed) {
             a.setAttribute('data-mb-isrc-invalid', '1');
-            a.title = `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`;
+            _setTip(a, `Does not match the ISRC format CC-XXX-YY-NNNNN: "${raw}"`);
             return;
         }
         a.removeAttribute('data-mb-isrc-invalid');
@@ -94148,9 +94388,9 @@ a { color: #1565c0; }`;
                 return;
             }
             a.setAttribute('data-mb-iswc-invalid', '1');
-            a.title = (reason === 'checkdigit')
+            _setTip(a, (reason === 'checkdigit')
                 ? `Check digit does not match the computed value for "${raw}"`
-                : `Does not match the ISWC format T-NNNNNNNNN-C: "${raw}"`;
+                : `Does not match the ISWC format T-NNNNNNNNN-C: "${raw}"`);
         });
     }
 
@@ -94192,9 +94432,9 @@ a { color: #1565c0; }`;
                 return;
             }
             td.setAttribute('data-mb-barcode-invalid', '1');
-            td.title = (reason === 'checkdigit')
+            _setTip(td, (reason === 'checkdigit')
                 ? `Check digit does not match the computed value for "${raw}" (${format})`
-                : `Does not match a known barcode format (UPC-A/EAN-13/EAN-8/GTIN-14): "${raw}"`;
+                : `Does not match a known barcode format (UPC-A/EAN-13/EAN-8/GTIN-14): "${raw}"`);
         });
     }
 
@@ -94473,11 +94713,11 @@ a { color: #1565c0; }`;
                     const _th = document.createElement('th');
                     _th.className   = 'mb-picard-th';
                     _th.textContent = 'Picard';
-                    _th.title = 'MusicBrainz Picard tagger integration.\n' +
+                    _setTip(_th, 'MusicBrainz Picard tagger integration.\n' +
                         'Click the ♪ icon in a row to load that release or release group\n' +
                         'into Picard. Requires Picard to be running locally with the\n' +
                         'browser integration plugin enabled\n' +
-                        '(Picard → Preferences → Plugins → Browser Integration).';
+                        '(Picard → Preferences → Plugins → Browser Integration).');
                     _th.style.cssText =
                         'text-align:center; white-space:nowrap; padding:2px 6px;' +
                         ' font-size:0.85em; color:#555; cursor:help;';
@@ -94664,9 +94904,9 @@ a { color: #1565c0; }`;
      */
     function _picardUpdateColHdrBtn(btn, expanded) {
         btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
-        btn.title = expanded
+        _setTip(btn, expanded
             ? 'Hide the ♪ Picard buttons in this table'
-            : 'Show the ♪ Picard buttons in this table';
+            : 'Show the ♪ Picard buttons in this table');
         btn.setAttribute('aria-label', expanded
             ? 'Hide the Picard buttons in this table'
             : 'Show the Picard buttons in this table');
@@ -94921,9 +95161,9 @@ a { color: #1565c0; }`;
                 ? '▶♪ Show all Picard'
                 : '▼♪ Hide all Picard';
         }
-        _b.title = _anyCollapsed
+        _setTip(_b, _anyCollapsed
             ? 'Build the ♪ Picard buttons in every sub-table section'
-            : 'Empty the Picard column in every sub-table section';
+            : 'Empty the Picard column in every sub-table section');
         _b.style.display = 'inline-flex';
     }
 
@@ -95147,6 +95387,17 @@ a { color: #1565c0; }`;
     // that is what keeps it honest.
     if (typeof window !== 'undefined' && window.__SA_TEST_MODE__) {
         window.__saTest = {
+            /**
+             * The "Liner notes" formatter (`_tipTextToHtml()`): a plain tooltip
+             * text in, the card's HTML out. Pure, so a spec can pin its title /
+             * body / footnote / keycap rules without hovering anything.
+             *
+             * @param {string} text
+             * @returns {string}
+             */
+            tipTextToHtml(text) {
+                return _tipTextToHtml(text);
+            },
             /**
              * Returns `MEDIUM_FORMAT_VIDEO_CAPABLE` as plain `[id, {name, video}]`
              * pairs, so a spec can check it against MusicBrainz's own format

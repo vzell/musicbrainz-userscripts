@@ -185,6 +185,62 @@ test.describe('hover tooltips on a touch device', () => {
         await expect(tip).toContainText('Works');
     });
 
+    test('tapping a button with its own "Liner notes" tooltip shows no card and keeps its title; a mouse hover still shows it', async ({ page }) => {
+        await loadUserscriptPage(page, {
+            url: ISWC_URL, fixtureFile: ISWC_FIXTURE, testMode: true,
+            settingsOverride: { sa_rich_tooltip_delay_ms: 0 },
+        });
+        await page.locator(ISWC_BUTTON).evaluate((b) => b.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+
+        const SETTINGS_BTN = '#mb-settings-btn[data-mb-tip]';
+        const btn = page.locator(SETTINGS_BTN);
+        const tip = page.locator('#mb-stat-tooltip');
+        await expect(btn).toBeVisible();
+        const title = await btn.getAttribute('title');
+        expect(title).toContain('settings manager');
+
+        // Keep the tap from opening the settings dialog over the page.
+        await page.evaluate((sel) => document.addEventListener('click', (e) => {
+            if (e.target instanceof Element && e.target.closest(sel)) {
+                e.stopPropagation();
+                e.preventDefault();
+                window.__tapClicked = true;
+            }
+        }, true), SETTINGS_BTN);
+        await recordEvents(page, SETTINGS_BTN, ['pointerdown', 'mouseover']);
+        await watchShown(page, ['mb-stat-tooltip']);
+        // Every change to the button's title. Chromium's emulation follows a
+        // tap with mouseout, which would hand a stashed title straight back
+        // and hide a card still waiting for its delay, so neither the end
+        // state nor the card can show an unguarded handler; the stash itself
+        // can. Firefox Android sends no such mouseout (org/mobile.org).
+        await page.evaluate((sel) => {
+            window.__titleChanges = [];
+            new MutationObserver((recs) => recs.forEach((r) => window.__titleChanges.push(r.oldValue)))
+                .observe(document.querySelector(sel), { attributes: true, attributeFilter: ['title'], attributeOldValue: true });
+        }, SETTINGS_BTN);
+
+        await btn.tap();
+        await expect.poll(() => page.evaluate(() => !!window.__tapClicked)).toBe(true);
+        const seen = await page.evaluate(() => window.__seen);
+        expect(seen.pointerdown, 'premise: the tap reached the button as a touch').toBe(true);
+        expect(seen.mouseover, 'premise: the tap fired a compatibility mouseover').toBe(true);
+
+        await page.waitForTimeout(300);
+        expect(await page.evaluate(() => window.__everShown), 'tooltips the tap showed').toEqual([]);
+        await expect(tip).toBeHidden();
+        // A tap never stashes the title: nothing would ever give it back.
+        expect(await page.evaluate(() => window.__titleChanges), 'title changes during the tap').toEqual([]);
+        expect(await btn.getAttribute('title')).toBe(title);
+
+        // Control: a real mouse in the same context still gets the card.
+        await page.waitForTimeout(PAST_TOUCH_WINDOW_MS);
+        await mouseHover(page, btn);
+        await expect(tip).toBeVisible();
+        await expect(tip).toContainText('settings manager');
+    });
+
     test('tapping a per-image artwork thumbnail opens neither the preview popup nor the type tooltip', async ({ page }) => {
         await loadUserscriptPage(page, {
             url: ARTIST_EVENTS_URL,

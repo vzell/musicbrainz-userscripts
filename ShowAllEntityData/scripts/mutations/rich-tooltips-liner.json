@@ -1,0 +1,211 @@
+[
+  {
+    "name": "_setTip() stops stamping the marker",
+    "why": "Without data-mb-tip the engine cannot tell the script's own titles from native ones, so none becomes a card.",
+    "edits": [
+      {
+        "find": "        el.title = text;\n        el.setAttribute('data-mb-tip', '');\n        return text;\n",
+        "replace": "        el.title = text;\n        return text;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "shows as a Liner notes card",
+    "expect": "fail"
+  },
+  {
+    "name": "native MusicBrainz titles become cards too",
+    "why": "Drops the data-mb-tip ownership check: an entity link's sort-name title is stashed and drawn as a card.",
+    "edits": [
+      {
+        "find": "            if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;\n",
+        "replace": "            if (!el || !Lib.settings.sa_rich_tooltips) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "native MusicBrainz title stays native",
+    "expect": "fail"
+  },
+  {
+    "name": "sa_rich_tooltips is ignored",
+    "why": "The setting no longer turns the cards off.",
+    "edits": [
+      {
+        "find": "            if (!el || !el.hasAttribute('data-mb-tip') || !Lib.settings.sa_rich_tooltips) return;\n",
+        "replace": "            if (!el || !el.hasAttribute('data-mb-tip')) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "sa_rich_tooltips off",
+    "expect": "fail"
+  },
+  {
+    "name": "the stashed title is never given back",
+    "why": "Leaving the element does not restore its title, so the native fallback and every later hover lose the text.",
+    "edits": [
+      {
+        "find": "                if (!el.title) el.title = el.dataset.mbTipSaved;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "shows as a Liner notes card",
+    "expect": "fail"
+  },
+  {
+    "name": "the delay setting is ignored",
+    "why": "The card shows at once whatever sa_rich_tooltip_delay_ms says.",
+    "edits": [
+      {
+        "find": "            _showTimer = setTimeout(() => _showOwn(text), (typeof _d === 'number' && _d >= 0) ? _d : 400);\n",
+        "replace": "            _showTimer = setTimeout(() => _showOwn(text), 0);\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "waits for sa_rich_tooltip_delay_ms",
+    "expect": "fail"
+  },
+  {
+    "name": "a title changed under the pointer is not picked up",
+    "why": "The mousemove no longer re-stashes a new title: the card keeps the old text and the browser can draw the new title on top.",
+    "edits": [
+      {
+        "find": "            if (_own && _target.title) {\n",
+        "replace": "            if (false && _own && _target.title) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "changed under the pointer",
+    "expect": "fail"
+  },
+  {
+    "name": "a mousedown no longer hides the card",
+    "why": "The card stays over the element after a click, unlike a native tooltip.",
+    "edits": [
+      {
+        "find": "            clearTimeout(_showTimer);\n            _tip.style.display = 'none';\n            _dismissed = true;\n",
+        "replace": "            _dismissed = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "mousedown hides the card",
+    "expect": "fail"
+  },
+  {
+    "name": "the formatter draws no keycaps",
+    "why": "Key combinations stay plain text.",
+    "edits": [
+      {
+        "find": "        const kbd = (k) => `<kbd>${k}</kbd>`;\n",
+        "replace": "        const kbd = (k) => k;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "the formatter",
+    "expect": "fail"
+  },
+  {
+    "name": "the cover-art card loses the Liner notes class",
+    "why": "_ensureArtBigboxTooltip() without .mb-tt-liner: an unstyled transparent box.",
+    "edits": [
+      {
+        "find": "        // Look from the shared \"Liner notes\" class; only placement is inline.\n        tip.className = 'mb-tt-liner';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "multi-table, CAA",
+    "expect": "fail"
+  },
+  {
+    "name": "MB-Name is a plain row again",
+    "why": "The card's title row loses .mb-tt-title on pageTypes whose tooltipColumns start with MB-Name (release-group, events).",
+    "edits": [
+      {
+        "find": "                    _addRow(_artTooltipCellText(row, ci), '', 'mb-tt-title');\n",
+        "replace": "                    _addRow(_artTooltipCellText(row, ci));\n"
+      }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "multi-table, CAA",
+    "expect": "fail"
+  },
+  {
+    "name": "the Ctrl+M overlay loses the Liner notes class",
+    "why": "The prefix-key overlay without .mb-tt-liner.",
+    "edits": [
+      {
+        "find": "        ctrlMTooltipElement.className = 'mb-tt-liner';\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "lists the page action button",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap shows a Liner notes card again",
+    "why": "Removes the touch guard from the shared mouseover: a tap's compatibility mouseover stashes the title and shows the card, and no mouseout ever undoes it.",
+    "edits": [
+      {
+        "find": "            // A tap: no mouseout would ever hide it again.\n            if (_isTouchCompatMouseEvent(e)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/touch-tooltip.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "Liner notes",
+    "expect": "fail"
+  },
+  {
+    "name": "the Liner notes layer drops below the 📊 dropdown again",
+    "why": "Removes the shared z-index from .mb-tt-liner: #mb-stat-tooltip falls back to auto and the dropdown (999999) covers the card of its own entries (reported 2026-10-04).",
+    "edits": [
+      {
+        "find": "            z-index: 2147483500;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips-liner.spec.js",
+    "grep": "dropdown",
+    "expect": "fail"
+  },
+  {
+    "name": "a card opens on a filter-matched Relationships icon again",
+    "why": "Removes the engine's step-aside for Relationships icons: the card stashes the title first, so the Relationships plain panel loses its text, and the URL shows as a third box (reported 2026-10-04).",
+    "edits": [
+      {
+        "find": "            if (_relCell && _relHasAnyActiveFilter(_relCell) && _relQueryMatchesCell(_relCell)) return;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "with a filter matching its URL",
+    "expect": "fail"
+  },
+  {
+    "name": "a card opens over the cover-art preview and card again",
+    "why": "Empties the list of rich tooltips that rule a card out: an inline CAA thumbnail's own title ('8 images found …') is drawn over its preview (reported 2026-10-04).",
+    "edits": [
+      {
+        "find": "        const _OTHER_RICH_TIPS = ['mb-art-bigbox-tooltip', 'mb-art-hover-preview', 'mb-rel-tooltip'];\n",
+        "replace": "        const _OTHER_RICH_TIPS = [];\n"
+      }
+    ],
+    "spec": "tests/fixtures/bigbox-tooltip.spec.js",
+    "grep": "inline CAA thumbnail",
+    "expect": "fail"
+  },
+  {
+    "name": "the Relationships plain panel is clamped onto the rich one again",
+    "why": "Restores the x=5 clamp when the plain panel fits on neither side: in a narrow window it lies on top of the rich panel.",
+    "edits": [
+      {
+        "find": "                    if (_plainL < 5) {\n                        // Fits on neither side: below the rich panel rather\n                        // than clamped to x=5, where it lay ON the rich one.\n                        _plainL = _richRect.left;\n                        _plainT = _richRect.bottom + _gap;\n                    }\n",
+        "replace": "                    if (_plainL < 5) _plainL = 5;\n"
+      }
+    ],
+    "spec": "tests/fixtures/rich-tooltips.spec.js",
+    "grep": "narrow window",
+    "expect": "fail"
+  }
+]

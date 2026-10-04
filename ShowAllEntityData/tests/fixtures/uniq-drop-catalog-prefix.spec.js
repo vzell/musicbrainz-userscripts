@@ -87,6 +87,9 @@ test('unique-values dropdown: "Catalog#" prefix section handles real-world separ
 
     // The generic explanatory tooltip is present on every prefix entry,
     // including a single-token one — never a per-prefix specific claim.
+    // Park the pointer first: the click above left it on the entry, whose
+    // title the "Liner notes" card stashes while it shows.
+    await page.mouse.move(0, 0);
     const tooltip = await sTokenCheckbox.getAttribute('title');
     expect(tooltip).toContain('never standardized across labels');
     expect(tooltip).toContain('not a universal standard');

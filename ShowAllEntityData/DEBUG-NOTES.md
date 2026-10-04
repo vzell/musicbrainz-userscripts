@@ -17856,3 +17856,93 @@ drops its `test.fail()` and gains a "focused global filter keeps its text" test,
 with a control that the next plain Escape still clears it. Mutations:
 `scripts/mutations/ctrl-m-escape.json`, 2/2 OK. HELP's prefix-key section now
 says how to cancel.
+
+## 2026-10-04 — "Liner notes" rich tooltips for the script's own hover texts (branch feature/rich-tooltips-liner)
+
+The user picked style 2, "Liner notes", from the mockup artifact
+(https://claude.ai/artifact/4yXH5Y1f2yAyHSihbh268L).
+
+**Ownership by marker, set by codemod.** Telling the script's titles from
+MusicBrainz's and third-party ones at hover time by heuristics (an `mb-*` class,
+inside our chrome) failed on the cases that matter. The script sets titles on
+NATIVE elements (`td` flags, ISRC/ISWC anchors, `th`, h2/h3), and creates
+elements without an `mb-` class. So every `X.title = …` became
+`_setTip(X, …)`, which keeps the title and stamps `data-mb-tip`. Inline
+`title="…"` in built markup gained `data-mb-tip`. 238 assignments and 27
+attributes in all. A regex could not do it: about 70 assignments span several
+lines, sit in a ternary, or are one-liners like `b.title=t`. So it is an acorn
+codemod, `scripts/mark-own-tooltips.js`, at the user's suggestion; acorn and
+acorn-walk are devDependencies only. It reported one false positive in its
+first dry run: a column description quoting `(<i title="Primary alias">)` as
+prose. It now skips a tag that opens right after "(".
+
+**Engine.** `_initStatTooltip()` now also serves `[data-mb-tip]`, with
+`sa_rich_tooltips` and `sa_rich_tooltip_delay_ms`. Nearest-title-wins
+(`closest('[data-mbtt], [title], [data-mb-tip-saved]')`), so a native link
+inside our heading keeps its native tooltip. The title is stashed while the card
+shows and given back on leave, or not if code set a new one meanwhile. A title
+changed under the pointer is re-rendered on mousemove, and a mousedown
+dismisses. `mouseout` now ignores a move into a child of the same element.
+
+**One look.** `.mb-tt-liner` (system serif stack, no web font) on all five
+floating tooltips. The cover-art renderers had dark-panel literals
+(`#cdd6f4` comment text, `#45475a` rules, `#a6adc8` dim text, `#555` type
+pills). On cream they would have been near-invisible, so they became classes
+(`.mb-tt-comment`, `-rule`, `-dim`, `-pill`, `-alert`, `-title`). Two
+row-count classes were rebuilt for the same reason: `.mb-mbtt-colname` was TEXT
+in the column-filter background colour (light blue), now underlined instead,
+and `.mb-mbtt-shortcut` was translucent white.
+
+**Found on the way:** the cover-art card's first row never got the title style
+on release-group or events pages. `_renderBigboxTooltipFromColumns()` only bolded
+the `extractMainColumn` name ('Release'/'Event'), but those tooltipColumns
+start with the synthetic 'MB-Name'. MB-Name is now the title too.
+
+**Defaults moved** (with `_SETTINGS_MIGRATIONS` entries):
+- `sa_count_stat_tooltip_bg/_color` and `sa_rel_tooltip_bg/_color` → the cream
+  palette (`#fbf8f1` / `#2b2622`)
+- `sa_ui_artist_role_main_performer_color` `#57ff5a` → `#2e7d32` (bright green
+  is unreadable on cream)
+- `sa_ui_artist_role_guest_performer_color` `#e07000` → `#b35900`
+
+**Test trap:** a spec that locates an element by `[title*=…]` must park the
+pointer first. After the master-toggle click, the pointer rested on
+`#mb-settings-btn`, its title was stashed, and the locator matched nothing until
+timeout.
+
+**Tap guard:** Chromium's emulation sends `mouseout` after a tap on a button
+too. The removed guard therefore left no visible trace: the stashed title came
+back before the delay timer fired (mutation first recorded an UNEXPECTED pass).
+The mobile spec now watches the title attribute and asserts a tap never changes
+it.
+
+Specs: `tests/fixtures/rich-tooltips-liner.spec.js` (8), Liner look assertions
+added to `bigbox-tooltip.spec.js` and `rich-tooltips.spec.js`, and a Liner case
+in `touch-tooltip.mobile.spec.js`. Mutations:
+`scripts/mutations/rich-tooltips-liner.json`, 12/12 OK.
+
+### 2026-10-04 (follow-up) — Liner notes: three overlaps found in the browser (branch feature/rich-tooltips-liner)
+
+The user's first browser pass, with screenshots:
+1. **The card of a 📊 entry drew UNDER the dropdown.** `#mb-col-uniq-dropdown`
+   is at z-index 999999 and the card was at 99999. Every tooltip element now
+   takes `z-index: 2147483500` from `.mb-tt-liner`, with no inline values.
+2. **A filter-matched Relationships icon showed its URL twice.** The icon's
+   title had become a `_setTip()` title, so the card stashed it at mouseover.
+   300 ms later the Relationships tooltip saved an empty title for its plain
+   panel, and the card showed the URL instead, beside the rich panel. The
+   engine now skips such an icon before stashing (`_relHasAnyActiveFilter()` &&
+   `_relQueryMatchesCell()`). Without a filter the card is the icon's tooltip.
+   - The same screenshot showed an older layout gap. When the plain panel fits on
+     neither side, it was clamped to x=5, on top of the rich panel. It now goes
+     below it.
+3. **An inline CAA thumbnail drew its own "8 images found …" card over its art
+   preview.** No card opens now while the cover-art card, the art preview or the
+   Relationships panel shows (`_OTHER_RICH_TIPS`, checked when the delay ends).
+
+None of these could fail a spec written beforehand: each needs two hover systems
+on one element, or two layers on one spot. Regression tests now pin each
+(`rich-tooltips-liner.spec.js`, `rich-tooltips.spec.js`,
+`bigbox-tooltip.spec.js`). Mutations: `rich-tooltips-liner.json`, now 16/16 OK.
+Test trap in the narrow-window test: at 520 px the sticky Title column covers
+the scrolled-in icon, so that test turns sticky columns off and centres the icon.
