@@ -1,12 +1,11 @@
 'use strict';
 
 const path = require('path');
+const { addRequiredLibs } = require('./loadPage');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
-const IRO_URL = 'https://cdn.jsdelivr.net/npm/@jaames/iro@5';
-const PAKO_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
 const MB_LIBRARY_PATH = path.join(REPO_ROOT, 'lib', 'VZ_MBLibrary.user.js');
 const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 
@@ -74,8 +73,7 @@ async function openSubtableTab(page, { categoryName, timeout = 30000 } = {}) {
     const snapshot = await readCapturedSnapshot(page);
 
     await tab.waitForLoadState('domcontentloaded');
-    await tab.addScriptTag({ url: IRO_URL });
-    await tab.addScriptTag({ url: PAKO_URL });
+    await addRequiredLibs(tab);
     await tab.addScriptTag({ path: MB_LIBRARY_PATH });
     await tab.addScriptTag({ path: USERSCRIPT_PATH });
 

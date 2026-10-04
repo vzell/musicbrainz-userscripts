@@ -1,0 +1,16 @@
+[
+  {
+    "name": "the harness loads iro and pako from their CDNs again",
+    "why": "Points addRequiredLibs() back at cdn.jsdelivr.net / cdnjs.cloudflare.com, as before 2026-10-04. With both hosts unreachable the page load fails in addScriptTag, which is what failed 72 tests of the 9.99.1215 merge gate.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "    await page.addScriptTag({ path: IRO_PATH });\n    await page.addScriptTag({ path: PAKO_PATH });\n",
+        "replace": "    await page.addScriptTag({ url: 'https://cdn.jsdelivr.net/npm/@jaames/iro@5' });\n    await page.addScriptTag({ url: 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js' });\n"
+      }
+    ],
+    "spec": "tests/fixtures/harness-required-libs.spec.js",
+    "grep": "both CDN hosts unreachable",
+    "expect": "fail"
+  }
+]

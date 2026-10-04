@@ -2,11 +2,8 @@
 
 const path = require('path');
 const { test, expect } = require('../support/test');
-const { loadUserscriptPage, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
+const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');
-
-const IRO_URL = 'https://cdn.jsdelivr.net/npm/@jaames/iro@5';
-const PAKO_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
 
 // Same label from the bug report: a small ("distributor for" relationship,
 // 68 rows) catalog that keeps this test fast, with a real mix of populated
@@ -67,8 +64,7 @@ test('"Show single-table" snapshot keeps Release events/Relationships columns al
     // need injecting explicitly here, same as loadUserscriptPage() does for
     // the original page.
     await popup.waitForLoadState('networkidle', { timeout: 30000 });
-    await popup.addScriptTag({ url: IRO_URL });
-    await popup.addScriptTag({ url: PAKO_URL });
+    await addRequiredLibs(popup);
     await popup.addScriptTag({ path: MB_LIBRARY_PATH });
     await popup.addScriptTag({ path: USERSCRIPT_PATH });
 
@@ -170,8 +166,7 @@ test('"Show single-table" snapshot never double-populates a Relationships cell',
     const popupErrors = collectPageErrors(popup);
 
     await popup.waitForLoadState('networkidle', { timeout: 30000 });
-    await popup.addScriptTag({ url: IRO_URL });
-    await popup.addScriptTag({ url: PAKO_URL });
+    await addRequiredLibs(popup);
     await popup.addScriptTag({ path: MB_LIBRARY_PATH });
     await popup.addScriptTag({ path: USERSCRIPT_PATH });
 

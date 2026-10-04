@@ -23,9 +23,11 @@
         "live-interop": "node tests/support/run-live-interop.js"
     },
     "devDependencies": {
+        "@jaames/iro": "5.5.2",
         "@playwright/test": "^1.62.1",
         "acorn": "^8.18.0",
         "acorn-walk": "^8.3.5",
+        "pako": "2.1.0",
         "playwright": "^1.62.1"
     },
     "main": "ShowAllEntityData.user.js",
