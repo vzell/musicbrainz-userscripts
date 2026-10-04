@@ -1,5 +1,19 @@
 [
   {
+    "version": "9.99.1219",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Cleared the rest of the first ESLint baseline's triage (org/eslint.org items 2 to 7); nothing changes for users. Removed: 15 initial values that were always overwritten before use, 4 unneeded escapes in regular expressions, and every unused variable and function ESLint found, including _formatIsrc() and _artRebuildBigPicsForTable(), which the merged discography view deliberately does not call. Also gone is a leftover plain-text tooltip builder that the rich artwork tooltip replaced, and the statistics panel no longer counts visible rows that it never showed. Three walker loops now use the file's explicit while ((…)) form, and a case block got its own braces. 30 functions gained JSDoc blocks, and one existing block was reattached to its function.",
+          "Test harness: an unawaited row-count assertion is now awaited, 9 unused declarations and 4 stale eslint-disable comments are removed, and ESLint is told which helpers assert and that a conditional test.skip() is intended.",
+          "Ships alongside VZ_MBLibrary 4.3.1, the same kind of cleanup with no behaviour change (the userscript works with 4.3.0 just as well). Lint baseline 339 → 237."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1218",
     "date": "2026-10-04",
     "sections": [
