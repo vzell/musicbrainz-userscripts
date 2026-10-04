@@ -1089,7 +1089,7 @@ Two honest gaps, both recorded rather than buried:
 
 - that icon-mirror half
 
-* TODO - The two recorded (unfixed) harness weaknesses:
+* DONE - The two recorded (unfixed) harness weaknesses:
 ** DONE i
 
 Fix the two recorded (unfixed) harness weaknesses below, especially 1.) as we just had an internet outage and you alos noticed the following
@@ -1133,13 +1133,14 @@ Both harness weaknesses are fixed. They are committed on harness/offline-libs-an
 
   Should I push the branch and merge it into main with /merge-push-remove? After that I can plan the ESLint setup on its own branch, and look at the two failing live specs if you want.
 
-** TODO Still open
+** DONE Still open
 
-  1. ESLint for the userscript and the test harness, on its own branch. The existing .eslintrc.json uses the old format, which current ESLint (v9) no longer reads, so it needs converting.
-  2. Two live specs that already fail on main:
-     - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
-     - caa-icon-survives-sort.spec.js: an hourglass appears after a re-render.
-  3. Republishing to vzell/mb-userscripts. It is still at 9.99.1167, so users don't have the Liner notes tooltips or the HELP updates yet.
+ESLint for the userscript and the test harness, on its own branch. The existing .eslintrc.json uses the old format, which current ESLint (v9) no longer reads, so it needs converting.
+
+
+* TODO Two live specs that already fail on main
+ - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
+ - caa-icon-survives-sort.spec.js: an hourglass appears after a re-render.
   
 * TODO add acoustid support
 
@@ -1215,4 +1216,32 @@ I get
 
 * TODO add more functionality to the SP parser
 
-* TODO redesign the CAA/EAA column and it's image display
+* TODO highlight rows in bootlegs recordings not belonging to the main event and create UVD entries
+
+highlight rows (maybe the "#" column) in bootlegs recordings not belonging to the main event (drive by the RG name) and create UVD entries
+show RG info/name on RT PTs (maybe rich HTML)
+
+* TODO fixes to live bootleg releases
+
+@debug/bs-bootleg.releases - raw HTML of - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+
+#+begin_example
+<button id="mb-caa-toggle-btn-retry-failed"
+<button id="mb-caa-toggle-btn-retry-failed-0"
+
+#+end_example
+
+the native tooltip overlapping the rich HTML one after a while
+
+UVD for multiple events per release
+UVD for multi day formats
+1978-10-11/12/13
+1978-10-11:... / 1978-10-12:...
+
+https://musicbrainz.org/release/d390b4ff-38ab-4783-99ef-2c4d338e016b
+
+
+* TODO indent tables to its heading even when srolled to the far right -the sticky column get smoved to the very left browser window
+
+indent tables to its heading even when srolled to the far right -the sticky column get smoved to the very left browser
+window
