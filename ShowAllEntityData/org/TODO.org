@@ -1089,7 +1089,15 @@ Two honest gaps, both recorded rather than buried:
 
 - that icon-mirror half
 
-* TODO The two recorded (unfixed) harness weaknesses:
+* TODO - The two recorded (unfixed) harness weaknesses:
+** DONE i
+
+Fix the two recorded (unfixed) harness weaknesses below, especially 1.) as we just had an internet outage and you alos noticed the following
+
+#+begin_example
+The merge gate failed 72 tests, but not because of the code. Every one of them broke while loading the iro colour-picker library from cdn.jsdelivr.net (page.addScriptTag: Failed to load script). The CDN dropped out near the end of the run, and none of those tests got as far as
+ an assertion. The CDN answers again (HTTP 200), so I'm re-running exactly those 72 tests with --last-failed, @slow ones included.
+#+end_example
 
   1. CDN dependency on every fixture load (DEBUG-NOTES, 2026-09-18). loadPage.js pulls iro and pako from cdn.jsdelivr.net / cdnjs on every fixture page load, so a network blip fails whichever spec happens to be loading at that moment — it hit tag-value-entity-column-leak, which
   then passed 8/8 standalone. Nothing to fix in the spec; the standing option is vendoring those two files, which loadPage.js's own comment already weighs and declines. The tell is the error naming a CDN URL rather than an assertion.
@@ -1100,6 +1108,39 @@ Two honest gaps, both recorded rather than buried:
 
 The CDN one wants vendoring, the status-text one wants a decision about what that test means to observe.
 
+** DONE summary
+
+Both harness weaknesses are fixed. They are committed on harness/offline-libs-and-settled-writes (d585e1d, cfcb548); not pushed or merged yet.
+
+  1. No more CDN dependency (d585e1d)
+  - iro 5.5.2 and pako 2.1.0 are now exact-pinned devDependencies. Their files in node_modules are byte-identical to what the CDNs serve, so the tests run the same code your users get.
+  - One helper, addRequiredLibs(), replaces the CDN loads in all four places that loaded them (loadPage.js, subtableTab.js, realNetworkGmXhr.js and one live spec).
+  - A new spec renders a page with both CDNs unreachable. With loading pointed back at the CDNs, it fails with exactly today's outage error. It also fails if a @require version in the userscript header moves without the pinned package following.
+  - PLAYWRIGHT_BLOCK_CDN=1 blocks both CDN hosts for a whole run. scripts/check-vendored-libs.py compares the local files with the CDN copies; run it by hand before a release.
+
+  2. Waits on a status line that prints the same text again (cfcb548)
+  - The shared wait helper behind the filter, sort and sub-table-filter waits (54 spec files use it) now also counts writes to the status element. A re-run that prints a byte-identical line therefore counts as finished.
+  - A trigger that writes nothing still times out, so a do-nothing action is never reported as done. A new spec pins both cases.
+
+  Tests
+  - Full merge-gate suite with both CDNs blocked: 949 of 949 passed.
+  - Planted-defect checks: 3 of 3 caught.
+  - Two real-network live specs loaded fine, but each fails one check. Both fail the same way on main, so they predate this branch. They're recorded in DEBUG-NOTES, not fixed:
+    - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
+    - caa-icon-survives-sort.spec.js: an hourglass shows after a re-render.
+
+  The userscript itself is unchanged, so there is no version bump or changelog entry. Your org/TODO.org and the repo-root README.org were left out of both commits.
+
+  Should I push the branch and merge it into main with /merge-push-remove? After that I can plan the ESLint setup on its own branch, and look at the two failing live specs if you want.
+
+** TODO Still open
+
+  1. ESLint for the userscript and the test harness, on its own branch. The existing .eslintrc.json uses the old format, which current ESLint (v9) no longer reads, so it needs converting.
+  2. Two live specs that already fail on main:
+     - releasegroup-releases-caa-type-comment-filter.spec.js: the CAA column header button is never found.
+     - caa-icon-survives-sort.spec.js: an hourglass appears after a re-render.
+  3. Republishing to vzell/mb-userscripts. It is still at 9.99.1167, so users don't have the Liner notes tooltips or the HELP updates yet.
+  
 * TODO add acoustid support
 
 #+begin_example
@@ -1167,3 +1208,15 @@ I get
 
 * DONE integrate springsteenlyrics.com
 
+* TODO add the eslint package inside our git repo (maybe others too which are needed for testing functionality)
+
+ESLint setup should be its own follow-up change after this branch merges—it needs decisions on config format (v8 vs v9),
+scope (userscript vs test harness), and whether it gates builds initially. I'll propose that separately later
+
+* TODO add cover art to the 'release-tracks' PT
+
+* TODO fix my release-tracks special script
+
+* TODO add more functionality to the SP parser
+
+* TODO redesign the CAA/EAA column and it's image display

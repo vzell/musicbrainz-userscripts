@@ -96842,9 +96842,6 @@ from disk instead of the network for testing in general. That way we never could
 users could have added data to Musicbrainz meanwhile after repeating test a couple of times.
 
 
-* TODO add the eslint package inside our git repo (maybo others too which are needed for testing functionality)
-
-
 * TODO add support for relocating "Previously known as:" right after '<p class="subheader">'
 
 1.)
@@ -96880,7 +96877,7 @@ Do just steps 1-4 but with the bug fix (b10c209) for a Step-1 regression, but do
 flickering when sorting/filtering on multi-table pageTypes IF CAA big-stripe is expanded (onyl present on petri, possible because of activated external userscript)
 
 
-* TODO Implement filter checkboxes per column, see my other userscript
+* DONE Implement filter checkboxes per column, see my other userscript
 
 Implement filter checkboxes per column, see my other userscript
 
@@ -96924,7 +96921,7 @@ The vestigial #mb-file-input also matches accept*="gz". Its accept list lacks .j
 corrected the original design's file-input selector (`accept*=\"json\"`, not `accept*=\"gz\"`, to disambiguate from the vestigial dead `#mb-file-input`)
 
 
-* TODO fix: One real finding: the Relationships column still re-fetches live from the WS/2 API after a disk-load (not baked into the saved snapshot, unlike CAA/EAA) — worth documenting.
+* DONE fix: One real finding: the Relationships column still re-fetches live from the WS/2 API after a disk-load (not baked into the saved snapshot, unlike CAA/EAA) — worth documenting.
 
 One real finding: the Relationships column still re-fetches live from the WS/2 API after a disk-load (not baked into the
 saved snapshot, unlike CAA/EAA) — worth documenting.
@@ -96962,14 +96959,12 @@ Add an on the fly option to toggle debug settings like with majkinetors userscri
 Show the output in a new popup frame
 
 
-* TODO Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
-
+* DONE Rework the current three buttons (keyboard, setting, help) into one, like majkinetors doing
 * DONE problem with "Eventdate" appearing before main column - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships ==> "Instruments release"
 
 https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/relationships?direction=1&link_type_id=44&page=1
-
 
 * DONE fix the sanojjonas artefacts on the final rendered page when on a new tab
 ** DONE i
@@ -97079,7 +97074,7 @@ name specific to the userscript for easy manipulation
 ** TODO add functionality to our userscript
 
 
-* TODO add "Data quality" support
+* DONE add "Data quality" support
 ** DONE as uvd entry
 
 "Add a unique-values dropdown section for the 'Release' column — one
@@ -97093,7 +97088,7 @@ https://musicbrainz.org/report/LowDataQualityReleases?filter=1 - report with low
 Usa a skill.
 This data quality attribute is probably present on all pageType where releases are involved
 
-** TODO as new column on the 'artist-releases' pageType
+** DONE as new column on the 'artist-releases' pageType
 
 
 * TODO add back the select checkboxes for specific pageTypse and rewire the action listeners for e.g. merging releases etc. (see 'annotations' button re-wiring)
@@ -97103,8 +97098,7 @@ This data quality attribute is probably present on all pageType where releases a
 Currently I used Claude Code to implement two different features at the same time on different machines, starting from
 the same version "9.99.926" How should I proceed to get these in sync again. On both machines nothing is commited/pushed yet
 
-
-* TODO question how can we test the influence of other userscripts normally available in a real browser environment
+* DONE question how can we test the influence of other userscripts normally available in a real browser environment
 
 question how can we test the influence of other userscripts normally available in a real browser environment and also
 our userscript uses these functionalities sometimes if available (other times we just want to see the side effects of
@@ -99718,9 +99712,7 @@ Are there probably any others, show me a summary not implementing yet
 
 * DONE No big image tooltip on https://musicbrainz.org/user/vzell/ratings
 
-
-
-* TODO Why is there no tooltip on the CAA images on the pageType https://musicbrainz.org/user/vzell/ratings
+* DONE Why is there no tooltip on the CAA images on the pageType https://musicbrainz.org/user/vzell/ratings
 ** DONE i
 
 Why is there no tooltip on the CAA images on the pageType https://musicbrainz.org/user/vzell/ratings
@@ -99787,7 +99779,7 @@ Also declared
 
 it's not visible @debug/user-rating-no-relationship.html
 
-** TODO bug - need redesign
+** DONE bug - need redesign
 
 ● I've root-caused this one. Here's what's actually going on:
 
@@ -99808,10 +99800,21 @@ it's not visible @debug/user-rating-no-relationship.html
   Given the setting's own description explicitly scopes this feature to those 4 pageTypes, and making it actually work correctly for user-ratings would mean redesigning _ensureRelCell to be per-table/per-entity-type-aware — a real feature addition, not a bug fix — I'd lean toward
   just removing the dead injectedColumns: ['Relationships'] line from both user-ratings/user-ratings-type 'Release groups' blocks, matching how the redundant artistCredit extractor was removed earlier this session.
 
-** TODO redesigning _ensureRelCell to be per-table/per-entity-type-aware
+** DONE redesigning _ensureRelCell to be per-table/per-entity-type-aware
   
+* DONE fix - sa_render_threshold: 0
 
-* UVD - "Catalog" column needs a overwhole, the prefix stuff is currently not completely OK
+**One trap when seeding: `sa_render_threshold: 0` does NOT disable that dialog**,
+despite the setting's own description saying "0 to disable". The code reads
+`Lib.settings.sa_render_threshold || 5000`, so `0` is falsy and becomes 5000 —
+seed a large number instead. `sa_render_warning_threshold` uses `?? 10000` and
+*does* honour `0`. `sa_chunked_render_threshold` has the same `|| 1000` defect.
+This is a real bug in the settings, filed but not yet fixed; don't write a test
+against the "0 to disable" premise.
+
+also adjust CLAUDE.md after the fix
+
+* DONE UVD - "Catalog" column needs a overwhole, the prefix stuff is currently not completely OK
 
 "Catalog" column needs a overwhole, the prefix stuff is currently not completely OK
 
@@ -99824,20 +99827,8 @@ On pageType https://musicbrainz.org/tag/rock/recording there is a rendering bug,
 recording name cells shifted without column header names
 
 
-* plan: work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/afer the fix
+* plan: work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/after the fix
 
-work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/afer the fix
+work on Step 3 in @PERFORMANCE.org and summarize performance statistics before/after the fix
 
-
-* TODO fix - sa_render_threshold: 0
-
-**One trap when seeding: `sa_render_threshold: 0` does NOT disable that dialog**,
-despite the setting's own description saying "0 to disable". The code reads
-`Lib.settings.sa_render_threshold || 5000`, so `0` is falsy and becomes 5000 —
-seed a large number instead. `sa_render_warning_threshold` uses `?? 10000` and
-*does* honour `0`. `sa_chunked_render_threshold` has the same `|| 1000` defect.
-This is a real bug in the settings, filed but not yet fixed; don't write a test
-against the "0 to disable" premise.
-
-also adjust CLAUDE.md after the fix
 
