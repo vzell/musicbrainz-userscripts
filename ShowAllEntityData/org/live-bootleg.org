@@ -1,0 +1,97 @@
+* TODO additions to live releases
+
+1.)
+
+On 'artist-releasegroups' PT e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+there is a bug with double rendered "mb-caa-toggle-btn-retry-failed"-buttons
+
+#+begin_example
+<button id="mb-caa-toggle-btn-retry-failed"
+<button id="mb-caa-toggle-btn-retry-failed-0"
+#+end_example
+
+#+begin_example
+@debug/bs-bootleg.releases - raw HTML of final rendered https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f taken on host "vzell-lap"
+#+end_example
+
+also sometimes the native tooltip overlapping the rich HTML one after a while.
+
+2.)
+
+On 'artist-releasegroups' PT e.g. https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f (but also on PTs
+which have releases instead of release groups) after clicking the "Show single table" button on the sub-table "Album +
+Live", see
+
+#+begin_example
+@debug/rg-r-multiple-dates.html - raw filtered HTML where the title is actual a valid multi-date expression taken on host "petri"
+#+end_example
+
+a.)
+
+titles with the following date-formats e.g
+
+#+begin_example
+1978-08-21/22/23: ...
+1976-11-02/03: ...
+etc.
+#+end_example
+
+or, if the title is from a multi-date release where the dates are not consecutive, e.g.
+
+#+begin_example
+1978-08-21: ... / 1979-01-01: ...
+et.c
+#+end_example
+
+should be on the VALID list and should NOT be flagged as errors, ONLY if date components or other componenets are invalid.
+
+b.)
+
+in both cases, the UVD should list the count of these kind of entities
+
+3.)
+
+On the PTs 'release-tracks' e.g.
+
+#+begin_example
+@debug/multiple-concerts-on-release.html - https://musicbrainz.org/release/d390b4ff-38ab-4783-99ef-2c4d338e016b 
+#+end_example
+
+the following checks should be made and flagged accordingly in the UVD and data cells of the relevant Cs
+
+#+begin_example
+when a medium (sub-table) on a release has rows from multiple events, derived from the Cs "Disambiguation", "Recording date", "Recorded at event" and "Recorded at place" - just counts, no warning/error indicators
+when a medium (sub-table) on a release has rows where the "Disambiguation" C doesn't agree with the "Recording date", "Recorded at event" (strict except the event type indicator like e.g. "live, ") and "Recorded at place" (only compare the string before the " in ...") - counts and error indicator
+when a medium (sub-table) on a release has rows where the "Recording date" doesn't match the date on the "Recorded at place" and the dates on the "Performer", "Vocals" and "Instruments" Cs - counts and error indicator (if present but do not match)/warning indicator if missing on the latter Cs
+#+end_example
+
+4.)
+
+When there are rows from multiple event dates present, background highlight the row "#" column (first C) in light green
+when the row doesn't belong to the main event.
+
+The main event can be found by checking the release group name of the release by following the link at e.g.
+
+#+begin_example
+<span class="small">(<a href="/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68"><bdi>see all versions of this release, 5 available</bdi></a>)</span>
+#+end_example
+
+a.)
+
+rewrite that span as
+
+#+begin_example
+<span class="small">(<a href="/release-group/fa9c43a7-2592-3336-a09b-1414b4b6ee68"><bdi>5 versions available in <release-group name fetched from href></bdi></a>)</span>
+#+end_example
+
+with a rich HTML tooltip showing a preview of the RG page (show me a nice HTML based mockup of this preview)
+
+b.)
+
+When the RG name follows our style of live release groups, check the rows with main event data for correctness by
+comparing the RG title with the corresponding C info in the main event rows.
+
+c.)
+
+If there are rows with event data but the RG title doesn't follow the live style guide, flag the RG name itself with a
+warning icon in the above "span" and tell with a rich HTML tooltip
