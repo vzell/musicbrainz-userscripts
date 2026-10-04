@@ -20,7 +20,7 @@ section "Lint". This is the triage of the error-level hits. Every fix here is
 a userscript change and needs a WIP changelog entry; lower the baseline with
 =--write= in the same commit. =--examples RULE= lists every location.
 
-1. *no-misleading-character-class (32 in the userscript, 25 in the harness).*
+1. DONE *no-misleading-character-class (32 in the userscript, 25 in the harness).*
    Astral emoji like 📊 inside =[...]= without the =u= flag. The class then
    matches each HALF of the surrogate pair, so it also strips the high half of
    any OTHER emoji that shares it. Checked with line 18888's class
@@ -29,8 +29,8 @@ a userscript change and needs a WIP changelog entry; lower the baseline with
    Fix: add =u= to each regex, after checking that the class has no escapes
    =u= rejects (=\-= outside a class, for example). The userscript lines start at
    18888, 22958, 23604, 30149, 30520, …
-   *Done* on =fix/lint-misleading-character-class= (WIP.1): 57 → 0, guarded by
-   =tests/fixtures/regex-unicode-flag-guard.spec.js=.
+   *Done*, shipped in 9.99.1217 (=fix/lint-misleading-character-class=): 57 → 0,
+   guarded by =tests/fixtures/regex-unicode-flag-guard.spec.js=.
 2. *playwright/missing-playwright-await (1).* =app-help-github-and-markdown.spec.js:252=
    has =expect(await table.locator('tbody tr')).toHaveCount(1)= without an
    =await= on the =expect=, so the assertion never runs. Fix it, then
