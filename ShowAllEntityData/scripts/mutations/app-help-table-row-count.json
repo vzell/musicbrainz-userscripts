@@ -1,0 +1,15 @@
+[
+  {
+    "name": "the Markdown table gains an empty body row",
+    "why": "An empty <tr> leaves every cell's text unchanged, so only the row count can see it. That assertion used to lack an await on expect() (eslint playwright/missing-playwright-await). Checked 2026-10-04: the unawaited form ALSO caught this, because the test awaits again on the next line and the rejection surfaces there. It only worked by that accident; the last assertion in a test, written that way, could resolve after the test ends.",
+    "edits": [
+      {
+        "find": "                const tbody = document.createElement('tbody');\n                i += 2;",
+        "replace": "                const tbody = document.createElement('tbody');\n                tbody.appendChild(document.createElement('tr'));\n                i += 2;"
+      }
+    ],
+    "spec": "tests/fixtures/app-help-github-and-markdown.spec.js",
+    "grep": "a pipe table becomes a real table with a header row",
+    "expect": "fail"
+  }
+]

@@ -195,10 +195,21 @@ module.exports = withRepoRoot([
         ...playwright.configs['flat/recommended'],
         rules: {
             ...playwright.configs['flat/recommended'].rules,
-            // Correctness, not taste: a missed await means the assertion never
-            // ran; a stray test.only silently shrinks the suite.
+            // Correctness, not taste: a missed await leaves the assertion to
+            // surface only if a later await happens to catch it; a stray
+            // test.only silently shrinks the suite.
             'playwright/missing-playwright-await': 'error',
             'playwright/no-focused-test': 'error',
+            // Shared helpers that assert on the test's behalf, so a test whose
+            // only check is one of these calls is not "a test with no
+            // assertion". Add a helper here only once it really calls expect().
+            'playwright/expect-expect': ['warn', {
+                assertFunctionNames: ['expectNoGrowth', 'assertGlyphThenTrailingIcon', 'settleRows'],
+            }],
+            // test.skip(condition, reason) is how the harness opts out when the
+            // case cannot arise (a fixture that never wraps, an env-gated
+            // section). An unconditional .skip() is still reported.
+            'playwright/no-skipped-test': ['warn', { allowConditional: true }],
             // "Settle, don't sleep" (docs/claude/testing-playwright.md).
             'playwright/no-wait-for-timeout': 'warn',
             // Advice, not defects: demoted to warnings.

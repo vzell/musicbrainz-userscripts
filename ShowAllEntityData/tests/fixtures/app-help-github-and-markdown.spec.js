@@ -249,7 +249,7 @@ test.describe('the help dialog renders Markdown as DOM', () => {
         const table = page.locator('#mb-app-help-body table.mb-md-table');
         await expect(table).toHaveCount(1);
         expect(await table.locator('thead th').allTextContents()).toEqual(['Col A', 'Col B']);
-        expect(await table.locator('tbody tr')).toHaveCount(1);
+        await expect(table.locator('tbody tr')).toHaveCount(1);
         expect(await table.locator('tbody td').allTextContents()).toEqual(['one', 'two']);
     });
 

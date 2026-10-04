@@ -62,7 +62,6 @@ const OVERLAY = `#${SID}-settings-overlay`;
 //   divider_             → "🛠️ GENERIC SETTINGS", holds sa_enable_debug_logging
 //   divider_thresholds   → holds sa_max_page, used as the "other section"
 const SECTION_A = 'divider_';
-const SECTION_B = 'divider_thresholds';
 
 // `loadPage.js`'s FIXTURE_SETTINGS_OVERRIDE forces `sa_enable_caa_pics` and
 // `sa_enable_relationships_column` OFF for every fixture, to keep the suite

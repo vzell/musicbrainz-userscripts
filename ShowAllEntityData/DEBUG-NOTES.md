@@ -18267,3 +18267,48 @@ button is below the fold of the fixed-position menu at the default viewport,
 and Playwright's click cannot scroll to it, so the spec calls its `onclick`
 via `evaluate`. `.first()` on the button text also matches a sub-table menu's
 hidden button; restrict it with `:visible`.
+
+## 2026-10-04 — ESLint baseline triage, items 2-7 (branch fix/lint-items-2-7)
+
+Follows `org/eslint.org`. No user-visible change was intended, and none was
+found. What was not mechanical:
+
+- **Item 2's premise was wrong.** `expect(await locator).toHaveCount(1)`
+  without an `await` on `expect` DID run: a planted empty `<tr>` fails the
+  unawaited form too, because the very next line awaits and the rejection
+  surfaces there. It is now awaited anyway. Mutation:
+  `scripts/mutations/app-help-table-row-count.json`.
+- **A cleanup of item 3 deleted a live variable.** Removing the dead
+  `_wrapperTitle` block took `const _td = a.closest('td');` with it, and `_td`
+  is still read by `_commentForTooltip` and `_rowCellText` further down. ESLint
+  reported 4 new `no-undef` before anything ran, and it was restored. The
+  awk check I had used to look for later uses had `\b` in it, which awk does
+  not support, so it matched nothing. Re-run the ratchet after every
+  deletion, not once at the end.
+- **`_artRebuildBigPicsForTable()` was dead by design**, not by accident:
+  `_applyDiscographyViewFilter()`'s drain calls `initCaaPics()`/`initEaaPics()`
+  because a per-table rebuild enqueues into the old `_caaQueue`. Deleted, and
+  the three comments that named it now say "a per-table rebuild (the former
+  `_artRebuildBigPicsForTable()`)".
+- **`createFilterHistoryWidget()`'s `_histActiveList` was write-only.** Its
+  ArrowDown always goes to the pin list first, so it never needs to know
+  which list is active, unlike `showLoadFilterDialog()`'s copy. Removed. Making
+  the two copies behave alike is a separate change.
+- **`playwright/expect-expect` and `no-skipped-test` were false positives**
+  (assertions in helpers, conditional skips), so the rules are configured
+  (`assertFunctionNames`, `allowConditional`) rather than the tests edited.
+  Both still fire on a planted bare test and an unconditional `test.skip()`,
+  checked with `eslint --stdin`.
+- **`_buildMasterRowIndex()` had its JSDoc**, but `let _masterRowScanCount`
+  sat between the block and the function. The counter (with its own block) now
+  sits above it.
+
+Edits were applied by scripts that check every target line's exact text first
+and write nothing on a mismatch. Two runs stopped on my own off-by-one line
+numbers, and wrote nothing.
+
+**Lint:** 339 → 237. The library's two hits (one `no-useless-assignment`, one
+`require-jsdoc`) were fixed at the user's request as VZ_MBLibrary 4.3.1, which
+is versioned in its own header, `LIBRARY_VERSION` and its changelog comment.
+The 102 settings and config specs pass against it. Nothing is left at error
+level.

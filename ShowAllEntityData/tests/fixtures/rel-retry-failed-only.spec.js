@@ -137,7 +137,7 @@ test.describe('Relationships: retrying recovers the failures, not the whole tabl
         async ({ page }) => {
             test.setTimeout(180000);
             const failing = new Set();
-            const ws2 = await loadExpandedRelPage(page, failing);
+            await loadExpandedRelPage(page, failing);
             const mbids = await rowMbids(page);
             expect(mbids).toHaveLength(SERIES_ROWS);
 
