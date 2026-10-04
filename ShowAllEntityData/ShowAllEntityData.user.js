@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1215+2026-10-04
-// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting
+// @version      9.99.1216+2026-10-04
+// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists.
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -18,6 +18,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/release\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:\/disc\/\d+)?\/?(?:\?[^#]*)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3583,6 +3584,29 @@
             description: 'Background color for even rows in a nested compare table inside "Edit ' +
                          'details". A reasonable default, not sourced from MusicBrainz\'s ' +
                          'stylesheet.'
+        },
+
+        // ============================================================
+        // SPRINGSTEENLYRICS.COM SECTION
+        // ============================================================
+        divider_springsteenlyrics: {
+            type: 'divider',
+            label: '🎸 SPRINGSTEENLYRICS.COM'
+        },
+
+        sa_enable_springsteenlyrics: {
+            label: 'Enable on springsteenlyrics.com collection and bootleg lists',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
+                         'paginated list pages — collection.php?cmd=list… (every category and ' +
+                         'every format/country/date/… filter) and bootlegs.php?cmd=list… — and ' +
+                         'offers a "Show all" button that fetches every page of the list, turns ' +
+                         'the item cards into one filterable, sortable table, and adds the usual ' +
+                         'toolbar. Only what each list card shows is used; no item detail page is ' +
+                         'fetched. When off, the script exits on that site before touching the ' +
+                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
+                         'from either site.'
         }
 
     };
@@ -4501,6 +4525,31 @@
     // Copy settings reference so the callback can access them
     Object.assign(settings, Lib.settings);
 
+    /**
+     * True when this page is on springsteenlyrics.com rather than MusicBrainz.
+     *
+     * The only non-MusicBrainz host the script runs on (see the last
+     * `@include` line and docs/claude/springsteenlyrics.md). It is read by the
+     * opt-in gate just below, by the page-type detection loop (which only
+     * considers definitions whose `host` matches) and by the few
+     * MusicBrainz-shaped helpers that must stand down there
+     * (`performClutterCleanup()`, `initStickyPageHeaders()`,
+     * `initNavigationGuard()`).
+     * @type {boolean}
+     */
+    const _isSlHost = /(^|\.)springsteenlyrics\.com$/.test(window.location.hostname);
+
+    // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
+    // default off), so a published MusicBrainz script never changes another
+    // site's pages by surprise. Leave BEFORE anything visible — the migration
+    // notice below, the Ctrl-M listener, the toolbar. The library's own
+    // Tampermonkey menu items are already registered by now, so the setting can
+    // still be switched on from this very page.
+    if (_isSlHost && Lib.settings.sa_enable_springsteenlyrics !== true) {
+        Lib.info('init', 'springsteenlyrics.com support is off (sa_enable_springsteenlyrics) — nothing to do.');
+        return;
+    }
+
     // The notice is independent of pageType — it reports on GM storage, not on
     // anything this page renders — so it is armed here rather than from a
     // render tail, and it survives until dismissed rather than until the next
@@ -4536,7 +4585,7 @@
     const params = currentUrl.searchParams;
     const isFilteredRelationshipPage = params.has('link_type_id');
 
-    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on MusicBrainz page: ${currentUrl}`);
+    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on ${_isSlHost ? 'springsteenlyrics.com' : 'MusicBrainz'} page: ${currentUrl}`);
     Lib.debug('init', `URL: ${currentUrl}`);
     Lib.debug('init', `URL basepath: ${basePath}`);
     Lib.debug('init', `URL path: ${path}`);
@@ -8581,6 +8630,423 @@
         blocks.forEach(block => block.remove());
 
         Lib.debug('init', `applyEditsToTable: converted ${tbody.rows.length} edit-list block(s) → table.`);
+    }
+
+    // =========================================================================
+    // springsteenlyrics.com list pages (pageTypes 'sl-collection'/'sl-bootlegs')
+    // =========================================================================
+    // The one non-MusicBrainz site this script supports, opt-in via
+    // `sa_enable_springsteenlyrics`. Its list pages render 100 Bootstrap cards
+    // (`div.blog-post`) per page instead of a table; everything below turns
+    // them into the `table.tbl` the fetch/filter/sort pipeline expects. See
+    // docs/claude/springsteenlyrics.md.
+
+    /**
+     * Selector for one item card on a springsteenlyrics.com list page.
+     * Scoped to `.project-detail`, the main content block, which also keeps
+     * the site's navigation mega-menu (seven more `h3.heading`s) out of every
+     * lookup here.
+     * @type {string}
+     */
+    const _SL_CARD_SEL = '.project-detail div.blog-post';
+
+    /**
+     * Column headers per `features.slCardsToTable` kind, in render order.
+     *
+     * The names deliberately avoid `_sortColumnKind()`'s legacy name
+     * heuristic, which sorts any column whose name contains `#`, `Track`,
+     * `Releases`, `Year` or `Length` as a NUMBER: hence "Cat. no." and not the
+     * site's own "Cat #" (a catalogue number like "SBP 234758" must sort as
+     * text). "Original year" is numeric on purpose, and is also declared in
+     * the page definition's `integerColumns`.
+     * @type {Object<string, string[]>}
+     */
+    const _SL_HEADERS = {
+        collection: ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Format', 'Country', 'Release date', 'Original year', 'Copies'],
+        bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file']
+    };
+
+    /**
+     * Full English month names, indexed 0-11, for `_slFirstIsoDate()`.
+     * @type {string[]}
+     */
+    const _SL_MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december'];
+
+    /**
+     * Returns the list heading of a springsteenlyrics.com list page — the
+     * `h3.heading` (or, once converted, `h2.heading`) inside `.project-detail`
+     * that precedes the item cards, e.g. "OFFICIAL ALBUMS" or
+     * "LIVE SHOWS: 1967-1974". Exactly one exists per list page (checked on
+     * both snapshots and four live categories, 2026-10-04).
+     *
+     * @param {Document} docContext  The live or a fetched document.
+     * @returns {?HTMLElement} The heading, or `null` when the page has none.
+     */
+    function _slFindListHeading(docContext) {
+        return docContext.querySelector('.project-detail h3.heading, .project-detail h2.heading');
+    }
+
+    /**
+     * Reads one card's labelled value lines into a map. A card's details are
+     * a run of `<span class="text-primary"><em>Label:</em></span> value<br>`
+     * lines, so each value is the text between its label span and the next
+     * `<br>`. Keyed by label text without the colon (e.g. "Label (Cat #)",
+     * "Release date (Original year)", "Date"), so the caller looks values up
+     * by name and never by position — a card that lacks a line just yields
+     * no key.
+     *
+     * @param {Element} body  The card's text column (`.col-md-10`).
+     * @returns {Object<string, string>} Label → whitespace-collapsed value.
+     */
+    function _slReadCardFields(body) {
+        const fields = {};
+        body.querySelectorAll('span.text-primary > em').forEach(em => {
+            const label = em.textContent.trim().replace(/:$/, '');
+            let text = '';
+            for (let n = em.parentNode.nextSibling; n && n.nodeName !== 'BR'; n = n.nextSibling) {
+                text += n.textContent;
+            }
+            fields[label] = text.replace(/\s+/g, ' ').trim();
+        });
+        return fields;
+    }
+
+    /**
+     * Returns the card's sub-title: the bold text that follows the
+     * `glyphicon-option-vertical` marker on the title line. On a collection
+     * card that is the pressing/version ("Version 2, with hype sticker"); on
+     * a bootleg card it is the bootleg label ("E. St. Records"). Some cards
+     * have no marker at all (7 of 100 collection cards, 16 of 100 bootleg
+     * cards in the snapshots) — that yields `''`.
+     *
+     * @param {Element} body  The card's text column.
+     * @returns {string}
+     */
+    function _slCardSubtitle(body) {
+        const glyph = body.querySelector('.glyphicon-option-vertical');
+        if (!glyph) return '';
+        let n = (glyph.closest('span') || glyph).nextSibling;
+        while (n && n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) n = n.nextSibling;
+        return (n && n.nodeName === 'B') ? n.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * Converts the first date in a springsteenlyrics.com bootleg "Date" text
+     * to ISO form, so a plain text sort of the "First date" column is
+     * chronological. The site writes dates as "16 Sep 1967" and combines them
+     * freely: "16-17 Sep 1967", "16 Sep 1967, 30 Sep 1967",
+     * "16 Sep 1967 - 30 Sep 1967", "Sep 1967", "20 Sep 1969 (early show)".
+     * The first month word decides the month, a day number right before it
+     * (or the first number of a "16-17" range) the day, and the first
+     * four-digit year at or after it the year — so "30 Sep - 1 Oct 1967"
+     * still gives 1967-09-30.
+     *
+     * @param {string} text  The card's "Date" value.
+     * @returns {string} `YYYY-MM-DD`, `YYYY-MM` without a day, `YYYY` when only
+     *   a year is present, `''` when nothing date-like is found.
+     */
+    function _slFirstIsoDate(text) {
+        const s = String(text || '');
+        const re = /(?:\b(\d{1,2})(?:\s*[-–]\s*\d{1,2})?\s+)?\b([A-Za-z]{3,9})\b\.?/g;
+        let m;
+        while ((m = re.exec(s)) !== null) {
+            // Any 3+ letter prefix of a month name: "Sep", "Sept", "September".
+            const word = m[2].toLowerCase();
+            const monthIdx = _SL_MONTH_NAMES.findIndex(name => name.startsWith(word));
+            if (monthIdx < 0) continue;
+            const year = s.slice(m.index).match(/\b(1[89]\d{2}|20\d{2})\b/);
+            if (!year) continue;
+            const mm = String(monthIdx + 1).padStart(2, '0');
+            const day = m[1] ? parseInt(m[1], 10) : 0;
+            return (day >= 1 && day <= 31) ? `${year[1]}-${mm}-${String(day).padStart(2, '0')}` : `${year[1]}-${mm}`;
+        }
+        const yearOnly = s.match(/\b(1[89]\d{2}|20\d{2})\b/);
+        return yearOnly ? yearOnly[1] : '';
+    }
+
+    /**
+     * Splits a value that ends in one parenthesised group into the part
+     * before it and the group's content, taking the LAST group: "CBS (SBP
+     * 234758)" → ["CBS", "SBP 234758"]; "– (1973)" → ["–", "1973"]. A value
+     * with no trailing group is returned whole as the first part.
+     *
+     * @param {string} value
+     * @returns {string[]} `[before, inside]`, `inside` being `''` when absent.
+     */
+    function _slSplitTrailingParen(value) {
+        const m = String(value || '').match(/^(.*)\s*\(([^()]*)\)\s*$/);
+        return m ? [m[1].trim(), m[2].trim()] : [String(value || '').trim(), ''];
+    }
+
+    /**
+     * Builds the table row for one springsteenlyrics.com card.
+     *
+     * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
+     * (relative `collection.php?item=…`/`bootlegs.php?item=…`, which resolves
+     * against the same directory on the live and on a fetched page). Cover
+     * re-emits the card's thumbnail with `loading="lazy"`, so a consolidated
+     * list of hundreds of rows only loads the images scrolled into view.
+     *
+     * @param {Element}  card        The `div.blog-post` element.
+     * @param {string}   kind        `'collection'` or `'bootlegs'`.
+     * @param {Document} docContext  Document that will own the new nodes.
+     * @returns {HTMLTableRowElement}
+     */
+    function _slBuildRow(card, kind, docContext) {
+        const tr = docContext.createElement('tr');
+        const body = card.querySelector('.col-md-10') || card;
+        const fields = _slReadCardFields(body);
+        const titleLink = body.querySelector('a[href*="item="]');
+        const href = titleLink ? titleLink.getAttribute('href') : '';
+        const title = titleLink ? titleLink.textContent.replace(/\s+/g, ' ').trim() : '';
+
+        const textCell = (text) => {
+            const td = docContext.createElement('td');
+            td.textContent = text;
+            tr.appendChild(td);
+        };
+        const linkCell = (child) => {
+            const td = docContext.createElement('td');
+            if (href) {
+                const a = docContext.createElement('a');
+                a.setAttribute('href', href);
+                a.appendChild(child);
+                td.appendChild(a);
+            } else {
+                td.appendChild(child);
+            }
+            tr.appendChild(td);
+        };
+
+        const thumb = card.querySelector('.col-md-2 img');
+        if (thumb && thumb.getAttribute('src')) {
+            const img = docContext.createElement('img');
+            img.setAttribute('src', thumb.getAttribute('src'));
+            img.setAttribute('loading', 'lazy');
+            img.setAttribute('alt', title);
+            img.className = 'mb-sl-cover';
+            linkCell(img);
+        } else {
+            textCell('');
+        }
+        linkCell(docContext.createTextNode(title));
+
+        const notes = Array.from(body.querySelectorAll('.colored-text')).map(el => el.textContent.trim());
+        if (kind === 'bootlegs') {
+            textCell(_slCardSubtitle(body));
+            textCell(fields['Date'] || '');
+            textCell(_slFirstIsoDate(fields['Date']));
+            textCell(fields['Location'] || '');
+            textCell(fields['Format'] || '');
+            // The site writes "–" for an unknown duration. Use MusicBrainz's
+            // own placeholder instead: `align: ':'` split-aligns every cell
+            // and would render a colon-less "–" as ":–", while "?:??" aligns
+            // and is what _parseDurationToMs() reads as unknown (sorted last
+            // in both directions).
+            const duration = fields['Duration'] || '';
+            textCell(/^\d+(?::\d{2}){1,2}(?:\.\d+)?$/.test(duration) ? duration : '?:??');
+            textCell(notes.some(t => /\bLossy\b/i.test(t)) ? 'yes' : '');
+            textCell(body.querySelector('.bi-image') ? 'yes' : '');
+            textCell(body.querySelector('.glyphicon-file') ? 'yes' : '');
+        } else {
+            const [label, catNo] = _slSplitTrailingParen(fields['Label (Cat #)']);
+            const [released, originalYear] = _slSplitTrailingParen(fields['Release date (Original year)']);
+            // "I have N copies" appears only for N >= 2; the site's own
+            // "Nb. of copies = 1" filter shows that no line means one copy.
+            const copies = notes.map(t => t.match(/\bI have (\d+) copies\b/i)).find(Boolean);
+            textCell(_slCardSubtitle(body));
+            textCell(label);
+            textCell(catNo);
+            textCell(fields['Format'] || '');
+            textCell(fields['Country'] || '');
+            textCell(released);
+            textCell(originalYear);
+            textCell(copies ? copies[1] : '1');
+        }
+        return tr;
+    }
+
+    /**
+     * Converts a springsteenlyrics.com list page's item cards into a
+     * `<table class="tbl">`, so the standard fetch / filter / sort pipeline can
+     * process it like any MusicBrainz table — the counterpart of
+     * `applyEditsToTable()` for pageTypes carrying `features.slCardsToTable`
+     * (`'collection'` or `'bootlegs'`).
+     *
+     * Must run in the same three places as the other converters: the
+     * click-time pre-processing block of `startFetchingProcess()` (live
+     * page), the pagination loop for every fetched page (`doc !== document`),
+     * and `_hydrateAndRenderFromSnapshotData()` for Load from Disk — after a
+     * reload the live page holds cards again, and `renderFinalTable()` needs a
+     * `table.tbl tbody` to render into. Idempotent: a page with no cards left
+     * is a no-op.
+     *
+     * On the live document only, it also renames the list heading `h3.heading`
+     * to `<h2>`, so `updateH2Count()`'s "last h2 before the table" lookup
+     * anchors the row count and filter bar there, and marks the table's
+     * fixed-width Bootstrap `.container` ancestors `mb-sl-wide` so the table
+     * can use the full window width.
+     *
+     * @param {object}   def                     The active merged pageDefinition.
+     * @param {Document} [docContext=document]   The live or a fetched document.
+     * @returns {void}
+     */
+    function applySlCardsToTable(def, docContext = document) {
+        const kind = def?.features?.slCardsToTable;
+        if (!_SL_HEADERS[kind]) return;
+        const cards = Array.from(docContext.querySelectorAll(_SL_CARD_SEL));
+        if (cards.length === 0) return;
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-sl-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _SL_HEADERS[kind].forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        const tbody = docContext.createElement('tbody');
+        cards.forEach(card => tbody.appendChild(_slBuildRow(card, kind, docContext)));
+        table.appendChild(tbody);
+
+        cards[0].parentNode.insertBefore(table, cards[0]);
+        // The cards are separated by empty `div.divide30` spacer siblings;
+        // drop those along with the cards.
+        cards.forEach(card => {
+            const next = card.nextElementSibling;
+            if (next && next.matches('div.divide30')) next.remove();
+            card.remove();
+        });
+
+        if (docContext === document) {
+            const heading = _slFindListHeading(document);
+            if (heading && heading.tagName === 'H3') {
+                const h2 = document.createElement('h2');
+                Array.from(heading.attributes).forEach(attr => h2.setAttribute(attr.name, attr.value));
+                while (heading.firstChild) h2.appendChild(heading.firstChild);
+                heading.replaceWith(h2);
+            }
+            for (let el = table.parentElement; el; el = el.parentElement) {
+                if (el.classList.contains('container')) el.classList.add('mb-sl-wide');
+            }
+        }
+
+        Lib.debug('init', `applySlCardsToTable: converted ${tbody.rows.length} ${kind} card(s) → table.`);
+    }
+
+    /**
+     * Installs the springsteenlyrics.com stylesheet, once per document.
+     *
+     * MusicBrainz's own site CSS is what normally gives `table.tbl` its
+     * borders, padding, header background and the `tr.even` zebra stripe that
+     * `applyZebraStriping()` merely toggles classes for; none of it exists on
+     * springsteenlyrics.com, so this supplies a minimal equivalent. Every rule
+     * is scoped to `body.mb-sa-host-sl`, and the table rules sit inside
+     * `:where()` so they carry almost no specificity: any of this script's
+     * own table styling (sticky header colours, finding tints, hover,
+     * highlights) still wins wherever it applies. The sticky `<thead>` is
+     * pushed down by the site's own sticky navbar height
+     * (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), which turns
+     * `position: fixed` once the page is scrolled and would otherwise cover
+     * the pinned header.
+     *
+     * @returns {void}
+     */
+    function _ensureSlStyle() {
+        if (document.getElementById('mb-sl-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-sl h1.mb-sl-h1 {
+                font-size: 24px;
+                margin: 0 0 12px;
+                line-height: 1.4;
+            }
+            body.mb-sa-host-sl .project-detail h2.heading {
+                font-size: 18px;
+                margin: 10px 0;
+            }
+            body.mb-sa-host-sl .container.mb-sl-wide {
+                width: auto;
+                max-width: none;
+            }
+            :where(body.mb-sa-host-sl table.tbl) {
+                border-collapse: collapse;
+                background: #fff;
+                font-size: 13px;
+                margin: 6px 0;
+            }
+            :where(body.mb-sa-host-sl table.tbl) th,
+            :where(body.mb-sa-host-sl table.tbl) td {
+                border: 1px solid #ddd;
+                padding: 3px 6px;
+                vertical-align: top;
+            }
+            :where(body.mb-sa-host-sl table.tbl) thead th {
+                background-color: #e8e8e8;
+                text-align: left;
+            }
+            :where(body.mb-sa-host-sl table.tbl) tr.even > td {
+                background-color: #f2f2f2;
+            }
+            body.mb-sa-host-sl table.tbl thead {
+                top: var(--mb-sl-navbar-h, 0px);
+            }
+            body.mb-sa-host-sl img.mb-sl-cover {
+                display: block;
+                height: 48px;
+                width: auto;
+                max-width: none;
+            }
+        `);
+        style.id = 'mb-sl-style';
+    }
+
+    /**
+     * Prepares a springsteenlyrics.com list page at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it right after that
+     * lookup, for SL definitions only): these pages have no `<h1>` (nor any
+     * `<h2>`), and the script needs one to hold its toolbar. Inserts `<h1 class="mb-sl-h1">` as the
+     * first child of `.project-detail`, reading "<section> — <list heading>"
+     * (e.g. "Collection — OFFICIAL ALBUMS", the section being the site's own
+     * breadcrumb title). The text sits in a `<bdi>` so the init-time entity
+     * name capture (`_cachedEntityName`, used for file names) picks it up the
+     * same way it reads a MusicBrainz h1.
+     *
+     * Also tags `<body>` with `mb-sa-host-sl` (the scope of every SL style
+     * rule), installs `_ensureSlStyle()`, and records the site's navbar height
+     * in `--mb-sl-navbar-h` for the sticky table header. Nothing else on the
+     * page changes until the user presses the "Show all" button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the page has no `.project-detail` block.
+     */
+    function _slPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-sl-h1');
+        if (existing) return existing;
+        const main = document.querySelector('.project-detail');
+        if (!main) return null;
+
+        document.body.classList.add('mb-sa-host-sl');
+        _ensureSlStyle();
+        const navbar = document.querySelector('.navbar.sticky, .navbar-fixed-top, .navbar');
+        if (navbar && navbar.offsetHeight > 0) {
+            document.documentElement.style.setProperty('--mb-sl-navbar-h', `${navbar.offsetHeight}px`);
+        }
+
+        const section = document.querySelector('.breadcrumb-wrap h4')?.textContent.replace(/\s+/g, ' ').trim() || '';
+        const listHeading = _slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || '';
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-sl-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
+        h1.appendChild(bdi);
+        main.insertBefore(h1, main.firstChild);
+        return h1;
     }
 
     /**
@@ -18252,6 +18718,45 @@
                 stickyColumn: 'Event'
             },
             tableMode: 'single'
+        },
+
+        // --- springsteenlyrics.com -------------------------------------------
+        // Not MusicBrainz at all: Bruce Springsteen collection and bootleg
+        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination. Opt-in
+        // via `sa_enable_springsteenlyrics`, and only ever considered on that
+        // host — the `host` key is read by the detection loop, which skips every
+        // definition whose host does not match, so none of the broad
+        // MusicBrainz matchers above can claim an SL path and these two can
+        // never match on MusicBrainz. `slCardsToTable` turns the cards into the
+        // `table.tbl` the whole pipeline expects; see applySlCardsToTable() and
+        // docs/claude/springsteenlyrics.md. Page count needs no hook:
+        // determineMaxPageFromDOM()'s no-"Next" branch takes the highest
+        // `page=` link, and SL's "»" always points at the last page (checked
+        // live on 2026-10-04, see DEBUG-NOTES.md).
+        {
+            type: 'sl-collection',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/collection.php' && params.get('cmd') === 'list',
+            buttons: [ { label: 'Show all items of this collection list', shortLabel: 'Items' } ],
+            features: {
+                slCardsToTable: 'collection',
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]
+            },
+            tableMode: 'single'
+        },
+        {
+            type: 'sl-bootlegs',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/bootlegs.php' && params.get('cmd') === 'list',
+            buttons: [ { label: 'Show all bootlegs of this list', shortLabel: 'Bootlegs' } ],
+            features: {
+                slCardsToTable: 'bootlegs',
+                // `align: ':'` is what makes _sortColumnKind() sort it as a
+                // duration (_parseDurationToMs() accepts minutes above 59, so
+                // "129:33.23" sorts after "61:58.22").
+                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]
+            },
+            tableMode: 'single'
         }
     ];
 
@@ -22633,6 +23138,10 @@
      * @returns {void}
      */
     function initStickyPageHeaders() {
+        // Without a MusicBrainz `#page`, `_sphCollectTargets()` pins every
+        // direct <body> child — on springsteenlyrics.com that is the site's
+        // own navbar and footer. The feature is MusicBrainz-layout-only.
+        if (_isSlHost) return;
         if (!_sph.initialized) {
             _sphEnsureStyle();
             if (typeof ResizeObserver === 'function') {
@@ -40045,6 +40554,12 @@ a { color: #1565c0; }`;
     let _cachedEntityName = '';       // Entity name extracted from h1 at init time (before any DOM mutation)
 
     for (const def of pageDefinitions) {
+        // A definition with a `host` belongs to that site alone, and on a
+        // non-MusicBrainz host only such definitions are considered — so the
+        // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
+        // can never claim a springsteenlyrics.com path, and the SL ones can
+        // never match on MusicBrainz.
+        if (Boolean(def.host) !== _isSlHost) continue;
         if (def.match(path, params)) {
             pageType = def.type;
             baseDefinition = def;   // Save the base reference
@@ -40080,6 +40595,13 @@ a { color: #1565c0; }`;
     // silently picking up an unrelated h2.
     if (!headerContainer && (pageType === 'user-edits' || pageType === 'user-open-edits')) {
         headerContainer = document.querySelector('#content h2') || document.querySelector('h2');
+    }
+
+    // springsteenlyrics.com list pages have no <h1> or <h2> at all. Give them
+    // one to hold the toolbar — see _slPrepareLivePage(). Scoped to the SL
+    // definitions only, like the user-edits fallback above.
+    if (baseDefinition?.host === 'springsteenlyrics.com') {
+        headerContainer = _slPrepareLivePage();
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -47476,6 +47998,11 @@ a { color: #1565c0; }`;
      *   - `cleanupBarcodeHighlights()`, unconditionally.
      */
     function performClutterCleanup() {
+        // Every target below is MusicBrainz page furniture or a MusicBrainz
+        // userscript's widget, and some removals (any <details> with more
+        // than 5 images, any 700px-wide div) would hit unrelated content on
+        // another site.
+        if (_isSlHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -57035,6 +57562,14 @@ a { color: #1565c0; }`;
             applyNotesReceivedToTable(activeDefinition);
         }
 
+        // ── slCardsToTable pre-processing ────────────────────────────────────
+        // springsteenlyrics.com list pages ('sl-collection'/'sl-bootlegs'):
+        // turn the div.blog-post item cards into a <table class="tbl"> — see
+        // applySlCardsToTable's JSDoc. Same ordering constraints apply.
+        if (activeDefinition.features?.slCardsToTable) {
+            applySlCardsToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -57440,6 +57975,13 @@ a { color: #1565c0; }`;
                         break;
                     }
                     applyNotesReceivedToTable(activeDefinition, doc);
+                }
+
+                // ── slCardsToTable on fetched pages ──────────────────────────
+                // Mirrors the listToTable handling above: a fetched
+                // springsteenlyrics.com page is raw cards, never converted.
+                if (doc !== document && activeDefinition.features?.slCardsToTable) {
+                    applySlCardsToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -73893,7 +74435,8 @@ a { color: #1565c0; }`;
      *   - `target="_blank"` / `target="_new"` — opens in new tab, no state lost
      *   - Fragment-only hrefs (`#…`) — same-page scroll
      *   - `javascript:` pseudo-hrefs
-     *   - Links whose resolved URL matches the current page (query/hash-only change)
+     *   - Links whose resolved URL matches the current page (query/hash-only change;
+     *     on springsteenlyrics.com hash-only, since there the query string IS the page)
      *
      * ── Guard 2: Tab key focus-trap (page-wide) ────────────────────────────────
      * Captures Tab / Shift+Tab keydown events.  When the focus would leave the
@@ -73970,9 +74513,13 @@ a { color: #1565c0; }`;
                 return; // Unparseable href — let the browser handle it
             }
 
-            // Same-page links (query/hash-only change) do not navigate away
-            const currentBase = window.location.origin + window.location.pathname;
-            const targetBase  = targetUrl.origin  + targetUrl.pathname;
+            // Same-page links (query/hash-only change) do not navigate away.
+            // Not so on springsteenlyrics.com, where every page is one script
+            // told apart by its query string — `collection.php?item=…` (an
+            // item) and `collection.php?cmd=list…` (this list) share a path —
+            // so there only a hash-only change counts as the same page.
+            const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');
+            const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');
             if (targetBase === currentBase) return;
 
             if (!confirmNavigation(`anchor click → ${targetUrl.href}`)) {
@@ -82674,6 +83221,13 @@ a { color: #1565c0; }`;
                 applyRenameH2ToH3(activeDefinition);
                 applyInsertH2(activeDefinition);
                 applyListToTable(activeDefinition);
+            }
+            // Same reason for springsteenlyrics.com: after a reload the live
+            // page holds item cards again, and without the converted table
+            // the headers block below would fabricate a bare shell at the end
+            // of <body> (there is no #content on that site).
+            if (activeDefinition.features?.slCardsToTable) {
+                applySlCardsToTable(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -96172,6 +96726,30 @@ a { color: #1565c0; }`;
              */
             sortColumnKind(name) {
                 return _sortColumnKind(name);
+            },
+
+            /**
+             * Thin wrapper around `_slFirstIsoDate()` — the springsteenlyrics.com
+             * bootleg "First date" column's parser, exposed so a spec can pin
+             * the date shapes the fixtures happen not to contain (month-only,
+             * cross-month ranges, year-only).
+             *
+             * @param {string} text - A bootleg card's "Date" value.
+             * @returns {string} ISO date, partial ISO date, or `''`.
+             */
+            slFirstIsoDate(text) {
+                return _slFirstIsoDate(text);
+            },
+
+            /**
+             * Thin wrapper around `_slSplitTrailingParen()` — splits
+             * "Label (Cat #)" / "Release date (Original year)" values.
+             *
+             * @param {string} value
+             * @returns {string[]} `[before, inside]`.
+             */
+            slSplitTrailingParen(value) {
+                return _slSplitTrailingParen(value);
             },
 
             /**

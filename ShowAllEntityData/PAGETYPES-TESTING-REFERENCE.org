@@ -5,13 +5,17 @@
 
 * Overview
 
-This file enumerates every one of the 86 routable page types (plus one
-auxiliary =subType= companion, 87 array entries total) recognised by
+This file enumerates 88 of the 89 routable page types (plus one
+auxiliary =subType= companion, 90 array entries total) recognised by
 =ShowAllEntityData.user.js=, as declared in the =pageDefinitions= array
 (=ShowAllEntityData.user.js:12073-14907= as of this sync — re-grep
 =const pageDefinitions = [= rather than trust this range, it drifts
-as the script grows) and gated by the four
-=// @include= regexes in the userscript header. For each page type it gives
+as the script grows) and gated by the
+=// @include= regexes in the userscript header (five for MusicBrainz, one
+for springsteenlyrics.com). The one routable type without a row here is
+=iswc= — pre-existing drift, noticed on 2026-10-04 while adding the two
+springsteenlyrics.com types (#87/#88), which are the only ones not on
+MusicBrainz at all (see docs/claude/springsteenlyrics.md). For each page type it gives
 a real, clickable MusicBrainz URL (using live MBIDs looked up via the
 MusicBrainz web service), the script's =tableMode=, the button(s) that
 trigger it, and a plain-language summary of which script features actually
@@ -62,7 +66,7 @@ All URLs below use ~https://musicbrainz.org~ as the base.
 
 * Coverage clusters & representatives
 
-Most of the 86 page types above are structural near-duplicates of a
+Most of the page types above are structural near-duplicates of a
 smaller number of shapes (same =tableMode=/feature pipeline, different
 entity kind or column names). This section names those clusters, picks
 1-2 representatives per cluster for the =tests/snapshots/= regression
@@ -129,97 +133,100 @@ skill for turning a =planned= row into a =captured= one.
 | recording-fingerprints                       | captured | Trivial passthrough (no extra column pipeline). 3 rows (REC_BTR).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | release-discids                              | captured | Trivial passthrough. =REL_BTR= (Born to Run, 12" Vinyl) has NO disc IDs at all — native page reads "This release has no mediums that can have disc IDs," so the button never produces a table and the capture timed out. Fixed by switching to =REL_DARK= (Darkness on the Edge of Town, CD, real disc ID/CD TOC) — 1 row.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | artist-events                                | captured | Deliberate large/paginated perf-comparison target (42 pages, 4174 rows) — see PERFORMANCE.org.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| sl-collection / sl-bootlegs                  | fixtures | Not MusicBrainz (springsteenlyrics.com, opt-in): own =slCardsToTable= card converter, injected =<h1>=, own CSS. The snapshot harness is MusicBrainz-shaped, so coverage is four fixture specs built from =debug/sl-*-initial.html= by =scripts/build-sl-fixtures.py=, plus the =@extended= live spec =tests/live/sl-lists.spec.js=. See docs/claude/springsteenlyrics.md.                                                                                                                                                                                                                                                                                                                                                              |
 
 * Quick reference table
 
-|  # | Page type                     | tableMode    | URL                                           | Key features                                                                                                               |
-|----+-------------------------------+--------------+-----------------------------------------------+----------------------------------------------------------------------------------------------------------------------------|
-|  1 | taglookup                     | single       | /taglookup                                    | CAA thumbnails, country/date split, relationship column                                                                    |
-|  2 | cdtoc                         | single       | /cdtoc                                        | CAA thumbnails, country/date split, relationship column                                                                    |
-|  3 | artist-credit-entity          | single       | /artist-credit/AC_ID/release-groups           | listToTable, per-entity-kind columns                                                                                       |
-|  4 | artist-credit                 | multi        | /artist-credit/AC_ID                          | insertH2, listToTable, per-entity-kind columns                                                                             |
-|  5 | user-subscriptions            | single       | /user/USER/subscriptions                      | sticky Name column, 5 sub-type buttons                                                                                     |
-|  6 | editor-subscribers            | single       | /user/USER/subscribers                        | listToTable                                                                                                                |
-|  7 | account-applications          | multi        | /account/applications                         | non-paginated, groupByH3                                                                                                   |
-|  8 | artist-tags                   | multi        | /artist/ARTIST/tags                           | showAllTags, listToTable, renameH2ToH3                                                                                     |
-|  9 | releasegroup-tags             | multi        | /release-group/RG_BTR/tags                    | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 10 | release-tags                  | multi        | /release/REL_BTR/tags                         | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 11 | recording-tags                | multi        | /recording/REC_BTR/tags                       | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 12 | work-tags                     | multi        | /work/WORK_BTR/tags                           | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 13 | label-tags                    | multi        | /label/LABEL_COL/tags                         | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 14 | series-tags                   | multi        | /series/SERIES_ST/tags                        | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 15 | place-tags                    | multi        | /place/PLACE_SP/tags                          | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 16 | area-tags                     | multi        | /area/AREA_NJ/tags                            | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 17 | instrument-tags               | multi        | /instrument/INSTR_GT/tags                     | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 18 | event-tags                    | multi        | /event/EVENT_SX/tags                          | showAllTags, listToTable, renameH2ToH3                                                                                     |
-| 19 | user-tags                     | multi        | /user/USER/tags?show_downvoted=0              | listToTable, container re-root (no div#content)                                                                            |
-| 20 | ratings-entity                | single       | /artist/ARTIST/ratings                        | listToTable, numeric Rating column                                                                                         |
-| 21 | user-ratings-type             | single       | /user/USER/ratings/recording                  | listToTable, numeric Rating column                                                                                         |
-| 22 | user-ratings                  | multi        | /user/USER/ratings                            | renameH2ToH3, insertH2, per-entity-kind sections                                                                           |
-| 23 | popular-tags                  | multi        | /tags?show_list=1                             | renameH2ToH3, insertH2, numeric Tag count                                                                                  |
-| 24 | reports-index                 | multi        | /reports                                      | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
-| 25 | report-multiple-linked        | single       | /report/ISRCsWithManyRecordings               | numeric fallback + runtime-derived main column, CAA/EAA                                                                    |
-| 26 | report-detail                 | single       | /report/REPORT?filter=0                       | date/annotation extraction, collapsible cells, CAA/EAA                                                                     |
-| 27 | auto-elections                | single       | /elections                                    | non-paginated, numeric vote columns, sticky Candidate                                                                      |
-| 28 | genres-list                   | single       | /genres                                       | non-paginated, listToTable                                                                                                 |
-| 29 | top-cd-stub                   | single       | /cdstub/browse                                | numeric lookup/modify counts, sticky Title                                                                                 |
-| 30 | cd-stub                       | single       | /cdstub/CDSTUB                                | non-paginated, numeric track # column                                                                                      |
-| 31 | isrc                          | single       | /isrc/ISRC                                    | non-paginated, event-parts synthetic columns, sticky Title                                                                 |
-| 32 | auto-editor-election          | single       | /election/ELECTION                            | non-paginated, sticky Voter column                                                                                         |
-| 33 | edit-types                    | multi        | /doc/Edit_Types                               | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
-| 34 | instrument-list               | multi        | /instruments                                  | non-paginated, renameH2ToH3, insertH2, per-instrument-kind sections                                                        |
-| 35 | privileged-accounts           | multi        | /privileged                                   | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
-| 36 | user-tag-value-entity         | single       | /user/USER/tag/rock/artist?show_downvoted=0   | listToTable, per-entity-kind sections                                                                                      |
-| 37 | user-tag-value                | multi        | /user/USER/tag/rock?show_downvoted=0          | listToTable, per-entity-kind sections                                                                                      |
-| 38 | tag-value-entity              | single       | /tag/rock/artist                              | listToTable, per-entity-kind tag counts                                                                                    |
-| 39 | tag-value                     | multi        | /tag/rock                                     | listToTable, per-entity-kind sections                                                                                      |
-| 40 | user-collections              | multi        | /user/USER/collections                        | groupByH3                                                                                                                  |
-| 41 | release-collections           | single       | /release/REL_BTR/collections                  | listToTable, Collection/Editor split                                                                                       |
-| 42 | releasegroup-collections      | single       | /release-group/RG_BTR/collections             | listToTable, Collection/Editor split                                                                                       |
-| 43 | collections-releases          | single*      | /collection/<collection-mbid>                 | per-entity-kind sections (some force tableMode multi)                                                                      |
-| 44 | edits                         | single       | /artist/ARTIST/edits                          | edits-to-table, unbounded pagination, collapsible details/notes, CAA                                                       |
-| 45 | notes-received                | single       | /edit/notes-received                          | notes-to-table, unbounded pagination, collapsible notes                                                                    |
-| 46 | user-open-edits               | single       | /user/USER/edits/open                         | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
-| 47 | user-edits                    | single       | /user/USER/edits                              | edits-to-table, unbounded pagination, collapsible details/notes, CAA                                                       |
-| 48 | search                        | single       | /search?query=Bruce+Springsteen&type=artist   | transformToH2, per-search-type column sets                                                                                 |
-| 49 | instrument-artists            | single       | /instrument/INSTR_GT/artists                  | area split, relationship-types multi-row/collapsible                                                                       |
-| 50 | instrument-releases           | single       | /instrument/INSTR_GT/releases                 | country/date split, CAA, relationship-types collapsible                                                                    |
-| 51 | instrument-recordings         | single       | /instrument/INSTR_GT/recordings               | video detection, event-parts, ISRC/relationship-types collapsible                                                          |
-| 52 | entity-aliases                | single       | /release-group/RG_BTR/aliases                 | begin/end + locale split; shared type also covers instrument/area/place/series/label/release/recording/event aliases pages |
-| 53 | annotations                   | single       | /label/LABEL_COL/annotations                  | non-paginated, Date/Editor synthetic columns, sticky Editor                                                                |
-| 54 | area-artists                  | single       | /area/AREA_NJ/artists                         | area split (begin/end), date split, sticky Artist                                                                          |
-| 55 | area-events                   | single       | /area/AREA_NJ/events                          | cancelled-event flag, EAA, location split, sticky Event                                                                    |
-| 56 | area-labels                   | single       | /area/AREA_NJ/labels                          | area split, date split, sticky Label                                                                                       |
-| 57 | area-users                    | single       | /area/AREA_NJ/users                           | listToTable                                                                                                                |
-| 58 | area-releases-filtered        | single       | /area/AREA_NJ/releases?link_type_id=1         | Relationships column, CAA, sticky Title                                                                                    |
-| 59 | area-releases                 | single/multi | /area/AREA_NJ/releases                        | 2 buttons: full release table + relationship table                                                                         |
-| 60 | area-places                   | single       | /area/AREA_NJ/places                          | area split, sticky Place                                                                                                   |
-| 61 | area-recordings-filtered      | single       | /area/AREA_NJ/recordings?link_type_id=1       | video detection, event-parts, numeric Length                                                                               |
-| 62 | area-recordings               | multi        | /area/AREA_NJ/recordings                      | non-paginated, video detection, event-parts                                                                                |
-| 63 | area-works-filtered           | single       | /area/AREA_NJ/works?link_type_id=1            | date split, sticky Title                                                                                                   |
-| 64 | area-works                    | multi        | /area/AREA_NJ/works                           | non-paginated, date split, sticky Title                                                                                    |
-| 65 | place-events                  | single       | /place/PLACE_SP/events                        | cancelled-event flag, EAA, sticky Event                                                                                    |
-| 66 | place-performances-filtered   | single       | /place/PLACE_SP/performances?link_type_id=1   | video detection, injected Release events/Relationships                                                                     |
-| 67 | place-performances            | multi        | /place/PLACE_SP/performances                  | non-paginated, same pipeline as #66                                                                                        |
-| 68 | series-releases               | single       | /series/SERIES_ST                             | per-entity-kind sections (Releases/Events/RGs/Recordings/Works)                                                            |
-| 69 | label-relationships-filtered  | multi        | /label/LABEL_COL/relationships?link_type_id=1 | non-paginated, injected Release events/Relationships, CAA                                                                  |
-| 70 | label-relationships           | multi        | /label/LABEL_COL/relationships                | non-paginated, same pipeline as #69                                                                                        |
-| 71 | label-releases                | single       | /label/LABEL_COL                              | column erasers, CAA, format types, sticky Release                                                                          |
-| 72 | work-recordings-filtered      | single       | /work/WORK_BTR?link_type_id=1                 | date split, video detection, numeric Length                                                                                |
-| 73 | work-recordings               | multi        | /work/WORK_BTR                                | non-paginated, same pipeline as #72                                                                                        |
-| 74 | artist-relationships-filtered | single       | /artist/ARTIST/relationships?link_type_id=1   | column erasers, video/CAA detection, injected Relationships                                                                |
-| 75 | artist-relationships          | multi        | /artist/ARTIST/relationships                  | non-paginated, same pipeline as #74                                                                                        |
-| 76 | artist-aliases                | single       | /artist/ARTIST/aliases                        | 2 targets: Aliases table + Artist credits table                                                                            |
-| 77 | artist-releasegroups          | multi        | /artist/ARTIST?all=1&va=1                     | native h3 tables, column erasers, CAA, numeric Year/Releases                                                               |
-| 78 | artist-releases               | single       | /artist/ARTIST/releases?va=0                  | CAA, country/date split, injected Relationships                                                                            |
-| 79 | artist-recordings             | single       | /artist/ARTIST/recordings?all=1               | video detection, event-parts, CAA on Release groups                                                                        |
-| 80 | artist-works                  | single       | /artist/ARTIST/works                          | Authors/Recording artists/ISWC collapsible, Relationships                                                                  |
-| 81 | releasegroup-releases         | multi        | /release-group/RG_BTR                         | column erasers, CAA, format types, injected Relationships                                                                  |
-| 82 | release-discids               | multi        | /release/REL_DARK/discids                     | non-paginated, no extra column pipeline                                                                                    |
-| 83 | release-tracks                | multi        | /release/REL_BTR                              | bespoke AR-column engine, gated by sa_enable_release_tracks                                                                |
-| 84 | recording-fingerprints        | single       | /recording/REC_BTR/fingerprints               | no extra column pipeline                                                                                                   |
-| 85 | recording-releases            | multi        | /recording/REC_BTR                            | non-paginated, country/date split, injected Relationships                                                                  |
-| 86 | artist-events                 | single       | /artist/ARTIST/events                         | cancelled-event flag, EAA, location split, sticky Event                                                                    |
+|  # | Page type                     | tableMode    | URL                                            | Key features                                                                                                               |
+|----+-------------------------------+--------------+------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------|
+|  1 | taglookup                     | single       | /taglookup                                     | CAA thumbnails, country/date split, relationship column                                                                    |
+|  2 | cdtoc                         | single       | /cdtoc                                         | CAA thumbnails, country/date split, relationship column                                                                    |
+|  3 | artist-credit-entity          | single       | /artist-credit/AC_ID/release-groups            | listToTable, per-entity-kind columns                                                                                       |
+|  4 | artist-credit                 | multi        | /artist-credit/AC_ID                           | insertH2, listToTable, per-entity-kind columns                                                                             |
+|  5 | user-subscriptions            | single       | /user/USER/subscriptions                       | sticky Name column, 5 sub-type buttons                                                                                     |
+|  6 | editor-subscribers            | single       | /user/USER/subscribers                         | listToTable                                                                                                                |
+|  7 | account-applications          | multi        | /account/applications                          | non-paginated, groupByH3                                                                                                   |
+|  8 | artist-tags                   | multi        | /artist/ARTIST/tags                            | showAllTags, listToTable, renameH2ToH3                                                                                     |
+|  9 | releasegroup-tags             | multi        | /release-group/RG_BTR/tags                     | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 10 | release-tags                  | multi        | /release/REL_BTR/tags                          | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 11 | recording-tags                | multi        | /recording/REC_BTR/tags                        | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 12 | work-tags                     | multi        | /work/WORK_BTR/tags                            | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 13 | label-tags                    | multi        | /label/LABEL_COL/tags                          | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 14 | series-tags                   | multi        | /series/SERIES_ST/tags                         | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 15 | place-tags                    | multi        | /place/PLACE_SP/tags                           | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 16 | area-tags                     | multi        | /area/AREA_NJ/tags                             | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 17 | instrument-tags               | multi        | /instrument/INSTR_GT/tags                      | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 18 | event-tags                    | multi        | /event/EVENT_SX/tags                           | showAllTags, listToTable, renameH2ToH3                                                                                     |
+| 19 | user-tags                     | multi        | /user/USER/tags?show_downvoted=0               | listToTable, container re-root (no div#content)                                                                            |
+| 20 | ratings-entity                | single       | /artist/ARTIST/ratings                         | listToTable, numeric Rating column                                                                                         |
+| 21 | user-ratings-type             | single       | /user/USER/ratings/recording                   | listToTable, numeric Rating column                                                                                         |
+| 22 | user-ratings                  | multi        | /user/USER/ratings                             | renameH2ToH3, insertH2, per-entity-kind sections                                                                           |
+| 23 | popular-tags                  | multi        | /tags?show_list=1                              | renameH2ToH3, insertH2, numeric Tag count                                                                                  |
+| 24 | reports-index                 | multi        | /reports                                       | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
+| 25 | report-multiple-linked        | single       | /report/ISRCsWithManyRecordings                | numeric fallback + runtime-derived main column, CAA/EAA                                                                    |
+| 26 | report-detail                 | single       | /report/REPORT?filter=0                        | date/annotation extraction, collapsible cells, CAA/EAA                                                                     |
+| 27 | auto-elections                | single       | /elections                                     | non-paginated, numeric vote columns, sticky Candidate                                                                      |
+| 28 | genres-list                   | single       | /genres                                        | non-paginated, listToTable                                                                                                 |
+| 29 | top-cd-stub                   | single       | /cdstub/browse                                 | numeric lookup/modify counts, sticky Title                                                                                 |
+| 30 | cd-stub                       | single       | /cdstub/CDSTUB                                 | non-paginated, numeric track # column                                                                                      |
+| 31 | isrc                          | single       | /isrc/ISRC                                     | non-paginated, event-parts synthetic columns, sticky Title                                                                 |
+| 32 | auto-editor-election          | single       | /election/ELECTION                             | non-paginated, sticky Voter column                                                                                         |
+| 33 | edit-types                    | multi        | /doc/Edit_Types                                | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
+| 34 | instrument-list               | multi        | /instruments                                   | non-paginated, renameH2ToH3, insertH2, per-instrument-kind sections                                                        |
+| 35 | privileged-accounts           | multi        | /privileged                                    | non-paginated, renameH2ToH3, insertH2, listToTable                                                                         |
+| 36 | user-tag-value-entity         | single       | /user/USER/tag/rock/artist?show_downvoted=0    | listToTable, per-entity-kind sections                                                                                      |
+| 37 | user-tag-value                | multi        | /user/USER/tag/rock?show_downvoted=0           | listToTable, per-entity-kind sections                                                                                      |
+| 38 | tag-value-entity              | single       | /tag/rock/artist                               | listToTable, per-entity-kind tag counts                                                                                    |
+| 39 | tag-value                     | multi        | /tag/rock                                      | listToTable, per-entity-kind sections                                                                                      |
+| 40 | user-collections              | multi        | /user/USER/collections                         | groupByH3                                                                                                                  |
+| 41 | release-collections           | single       | /release/REL_BTR/collections                   | listToTable, Collection/Editor split                                                                                       |
+| 42 | releasegroup-collections      | single       | /release-group/RG_BTR/collections              | listToTable, Collection/Editor split                                                                                       |
+| 43 | collections-releases          | single*      | /collection/<collection-mbid>                  | per-entity-kind sections (some force tableMode multi)                                                                      |
+| 44 | edits                         | single       | /artist/ARTIST/edits                           | edits-to-table, unbounded pagination, collapsible details/notes, CAA                                                       |
+| 45 | notes-received                | single       | /edit/notes-received                           | notes-to-table, unbounded pagination, collapsible notes                                                                    |
+| 46 | user-open-edits               | single       | /user/USER/edits/open                          | edits-to-table, unbounded pagination, renameH2ToH1, CAA                                                                    |
+| 47 | user-edits                    | single       | /user/USER/edits                               | edits-to-table, unbounded pagination, collapsible details/notes, CAA                                                       |
+| 48 | search                        | single       | /search?query=Bruce+Springsteen&type=artist    | transformToH2, per-search-type column sets                                                                                 |
+| 49 | instrument-artists            | single       | /instrument/INSTR_GT/artists                   | area split, relationship-types multi-row/collapsible                                                                       |
+| 50 | instrument-releases           | single       | /instrument/INSTR_GT/releases                  | country/date split, CAA, relationship-types collapsible                                                                    |
+| 51 | instrument-recordings         | single       | /instrument/INSTR_GT/recordings                | video detection, event-parts, ISRC/relationship-types collapsible                                                          |
+| 52 | entity-aliases                | single       | /release-group/RG_BTR/aliases                  | begin/end + locale split; shared type also covers instrument/area/place/series/label/release/recording/event aliases pages |
+| 53 | annotations                   | single       | /label/LABEL_COL/annotations                   | non-paginated, Date/Editor synthetic columns, sticky Editor                                                                |
+| 54 | area-artists                  | single       | /area/AREA_NJ/artists                          | area split (begin/end), date split, sticky Artist                                                                          |
+| 55 | area-events                   | single       | /area/AREA_NJ/events                           | cancelled-event flag, EAA, location split, sticky Event                                                                    |
+| 56 | area-labels                   | single       | /area/AREA_NJ/labels                           | area split, date split, sticky Label                                                                                       |
+| 57 | area-users                    | single       | /area/AREA_NJ/users                            | listToTable                                                                                                                |
+| 58 | area-releases-filtered        | single       | /area/AREA_NJ/releases?link_type_id=1          | Relationships column, CAA, sticky Title                                                                                    |
+| 59 | area-releases                 | single/multi | /area/AREA_NJ/releases                         | 2 buttons: full release table + relationship table                                                                         |
+| 60 | area-places                   | single       | /area/AREA_NJ/places                           | area split, sticky Place                                                                                                   |
+| 61 | area-recordings-filtered      | single       | /area/AREA_NJ/recordings?link_type_id=1        | video detection, event-parts, numeric Length                                                                               |
+| 62 | area-recordings               | multi        | /area/AREA_NJ/recordings                       | non-paginated, video detection, event-parts                                                                                |
+| 63 | area-works-filtered           | single       | /area/AREA_NJ/works?link_type_id=1             | date split, sticky Title                                                                                                   |
+| 64 | area-works                    | multi        | /area/AREA_NJ/works                            | non-paginated, date split, sticky Title                                                                                    |
+| 65 | place-events                  | single       | /place/PLACE_SP/events                         | cancelled-event flag, EAA, sticky Event                                                                                    |
+| 66 | place-performances-filtered   | single       | /place/PLACE_SP/performances?link_type_id=1    | video detection, injected Release events/Relationships                                                                     |
+| 67 | place-performances            | multi        | /place/PLACE_SP/performances                   | non-paginated, same pipeline as #66                                                                                        |
+| 68 | series-releases               | single       | /series/SERIES_ST                              | per-entity-kind sections (Releases/Events/RGs/Recordings/Works)                                                            |
+| 69 | label-relationships-filtered  | multi        | /label/LABEL_COL/relationships?link_type_id=1  | non-paginated, injected Release events/Relationships, CAA                                                                  |
+| 70 | label-relationships           | multi        | /label/LABEL_COL/relationships                 | non-paginated, same pipeline as #69                                                                                        |
+| 71 | label-releases                | single       | /label/LABEL_COL                               | column erasers, CAA, format types, sticky Release                                                                          |
+| 72 | work-recordings-filtered      | single       | /work/WORK_BTR?link_type_id=1                  | date split, video detection, numeric Length                                                                                |
+| 73 | work-recordings               | multi        | /work/WORK_BTR                                 | non-paginated, same pipeline as #72                                                                                        |
+| 74 | artist-relationships-filtered | single       | /artist/ARTIST/relationships?link_type_id=1    | column erasers, video/CAA detection, injected Relationships                                                                |
+| 75 | artist-relationships          | multi        | /artist/ARTIST/relationships                   | non-paginated, same pipeline as #74                                                                                        |
+| 76 | artist-aliases                | single       | /artist/ARTIST/aliases                         | 2 targets: Aliases table + Artist credits table                                                                            |
+| 77 | artist-releasegroups          | multi        | /artist/ARTIST?all=1&va=1                      | native h3 tables, column erasers, CAA, numeric Year/Releases                                                               |
+| 78 | artist-releases               | single       | /artist/ARTIST/releases?va=0                   | CAA, country/date split, injected Relationships                                                                            |
+| 79 | artist-recordings             | single       | /artist/ARTIST/recordings?all=1                | video detection, event-parts, CAA on Release groups                                                                        |
+| 80 | artist-works                  | single       | /artist/ARTIST/works                           | Authors/Recording artists/ISWC collapsible, Relationships                                                                  |
+| 81 | releasegroup-releases         | multi        | /release-group/RG_BTR                          | column erasers, CAA, format types, injected Relationships                                                                  |
+| 82 | release-discids               | multi        | /release/REL_DARK/discids                      | non-paginated, no extra column pipeline                                                                                    |
+| 83 | release-tracks                | multi        | /release/REL_BTR                               | bespoke AR-column engine, gated by sa_enable_release_tracks                                                                |
+| 84 | recording-fingerprints        | single       | /recording/REC_BTR/fingerprints                | no extra column pipeline                                                                                                   |
+| 85 | recording-releases            | multi        | /recording/REC_BTR                             | non-paginated, country/date split, injected Relationships                                                                  |
+| 86 | artist-events                 | single       | /artist/ARTIST/events                          | cancelled-event flag, EAA, location split, sticky Event                                                                    |
+| 87 | sl-collection                 | single       | springsteenlyrics.com /collection.php?cmd=list | NOT MusicBrainz, opt-in; cards → table (slCardsToTable), Label/Cat. no. + date/year splits, Copies                         |
+| 88 | sl-bootlegs                   | single       | springsteenlyrics.com /bootlegs.php?cmd=list   | NOT MusicBrainz, opt-in; cards → table, ISO First date, Duration sorted as a duration, Lossy/Artwork/Info file flags       |
 
 * Page type details
 ** 1. taglookup
@@ -769,6 +776,24 @@ lists converted into sortable tables), tableMode =multi=.
 - Button: "Show all Events for Artist"
 - tableMode: single
 - Features exercised: cancelled-event flag + EAA on Event; Location split; Date → numeric D/M/Y; collapsible Location/EAA/Place/Locality/Region/Country; tooltips; sticky/main Event
+
+** 87. sl-collection
+- URL: [[https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i][springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i]] (539 items, 6 pages on 2026-10-04)
+- Match: ~path === '/collection.php' && params.get('cmd') === 'list'~, host =springsteenlyrics.com= only (=host:= key, see the detection loop)
+- Button: "Show all items of this collection list" (short label "Items")
+- tableMode: single
+- Not MusicBrainz, and opt-in: =sa_enable_springsteenlyrics= (default off). Every category and every =f_*= filter of the collection list.
+- Features exercised: =slCardsToTable: 'collection'= (100 =div.blog-post= cards per page → =table.tbl=, on the live page, every fetched page and Load from Disk); injected =<h1>= toolbar anchor; Label/Cat. no. and Release date/Original year split at the last parenthesised group; Copies (no line ⇒ 1); integerColumns Original year/Copies; lazy Cover thumbnails
+- Coverage: =tests/fixtures/sl-collection.spec.js=, =sl-host.spec.js=, =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=). No snapshot baseline (the snapshot harness is MusicBrainz-shaped).
+
+** 88. sl-bootlegs
+- URL: [[https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967][springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967]] (273 items, 3 pages on 2026-10-04)
+- Match: ~path === '/bootlegs.php' && params.get('cmd') === 'list'~, host =springsteenlyrics.com= only
+- Button: "Show all bootlegs of this list" (short label "Bootlegs")
+- tableMode: single
+- Not MusicBrainz, and opt-in (same setting as #87). Every category and every =f_*= filter of the bootleg list.
+- Features exercised: =slCardsToTable: 'bootlegs'=; Label from the card's sub-title; Date verbatim plus ISO "First date" (=_slFirstIsoDate()=); Duration as integerColumns =align: ':'= (sorted as a duration; the site's "–" written as =?:??=); Lossy/Artwork/Info file flags
+- Coverage: =tests/fixtures/sl-bootlegs.spec.js=, =sl-host.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=).
 
 * Not independently routable
 
