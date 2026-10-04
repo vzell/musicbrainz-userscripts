@@ -1,0 +1,41 @@
+[
+  {
+    "name": "the post-render auto-focus takes focus from any field again",
+    "why": "Without the guard the 150 ms timer focuses the global filter over a field the user is typing in, and the rest of their typing lands in the global filter. This is the uvd-grouped-sections.spec.js:257 flake.",
+    "edits": [
+      {
+        "find": "                if (_gfi && _ae && _ae !== _gfi && _ae.matches &&",
+        "replace": "                if (false && _gfi && _ae && _ae !== _gfi && _ae.matches &&"
+      }
+    ],
+    "spec": "tests/fixtures/autofocus-does-not-steal.spec.js",
+    "grep": "a field focused while the table renders",
+    "expect": "fail"
+  },
+  {
+    "name": "same mutation, seen from the 📊 quick filter",
+    "why": "The realistic case: typing into a dropdown's quick filter right after the render.",
+    "edits": [
+      {
+        "find": "                if (_gfi && _ae && _ae !== _gfi && _ae.matches &&",
+        "replace": "                if (false && _gfi && _ae && _ae !== _gfi && _ae.matches &&"
+      }
+    ],
+    "spec": "tests/fixtures/autofocus-does-not-steal.spec.js",
+    "grep": "typing into a 📊 quick filter",
+    "expect": "fail"
+  },
+  {
+    "name": "the guard skips the action button too",
+    "why": "KNOWN NON-GUARD, recorded honestly. Over-correction would be treating the just-pressed load button as a field being typed in, which would stop the global filter from being auto-focused. It is not exercised: checked 2026-10-04, document.activeElement is already BODY right after the click on this fixture and still BODY when the timer fires (why the button loses focus was not investigated), so the guard sees no button either way.",
+    "edits": [
+      {
+        "find": "_ae.matches('input, textarea, select, [contenteditable=\"\"], [contenteditable=\"true\"]')) {",
+        "replace": "_ae.matches('input, textarea, select, button, [contenteditable=\"\"], [contenteditable=\"true\"]')) {"
+      }
+    ],
+    "spec": "tests/fixtures/filter-autofocus.spec.js",
+    "grep": "after the render, the global filter is focused and editable",
+    "expect": "pass"
+  }
+]

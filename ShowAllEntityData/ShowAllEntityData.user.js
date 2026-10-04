@@ -60020,10 +60020,22 @@ a { color: #1565c0; }`;
             // typing a filter query immediately without a manual click.
             // Not on a phone/tablet: the focus would raise the on-screen
             // keyboard over the freshly rendered page (_autoFocusInput()).
+            // Not over a field someone is already typing in either: by the
+            // time this fires (later on a busy page), the user may have opened
+            // a 📊 quick filter or clicked into a column filter or MusicBrainz's
+            // search box, and taking focus would send the rest of their typing
+            // to the global filter. Focus on the action button they just
+            // pressed (or on nothing) is still taken, which is the point.
             setTimeout(() => {
                 if (_isTouchPrimaryDevice()) return;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
                              document.querySelector('.mb-global-filter input');
+                const _ae = document.activeElement;
+                if (_gfi && _ae && _ae !== _gfi && _ae.matches &&
+                        _ae.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
+                    Lib.debug('ui', 'Skipped auto-focusing the global filter: another field already has focus', _ae);
+                    return;
+                }
                 if (_gfi) {
                     // This is a PROGRAMMATIC focus — the readonly-until-genuine-
                     // interaction guard in _hardenFilterInputAgainstAutofill()
