@@ -18312,3 +18312,45 @@ numbers, and wrote nothing.
 is versioned in its own header, `LIBRARY_VERSION` and its changelog comment.
 The 102 settings and config specs pass against it. Nothing is left at error
 level.
+
+## 2026-10-04 — uvd-grouped-sections.spec.js:257 flake: the post-render auto-focus stole the typing (branch fix/uvd-grouped-sections-flake)
+
+**Symptom.** "quick filter matches the hidden prefix…" failed in 2 of 5
+`test:full` runs, always at `expect(date.collapsed).toBe(false)` right after
+`qf.fill('month')`, and passed every time alone.
+
+**Two wrong guesses first, recorded so nobody repeats them.** (1) The auto-resize
+pass still running (`waitForAutoResize: false`): a diagnostic showed the resize
+button already reading "Restore…" before the fill, even with CDP CPU throttling
+at 20×. (2) `fill()`'s focus-scroll tripping the dropdown's close-on-scroll
+listener: no scroll event fired, and the panel stayed open. Load alone did not
+reproduce it either (60 repeats on 24 workers; 40 alongside a full suite run).
+
+**Root cause, from a diagnostic that failed at viewport height 900.** The
+quick-filter input was empty, and `document.activeElement` was
+`#mb-global-filter-input` with the value `"🔍 month"`. At the end of
+`startFetchingProcess()`'s render tail, a `setTimeout(…, 150)` focuses the
+global filter, unconditionally. `waitForRenderComplete()` does not wait for
+that timer, so the test opens the 📊 dropdown and types inside the window. When
+the timer fires between Playwright's focus of the quick filter and its
+`insertText`, the text goes to the global filter. For a user it is the same
+thing slower: on a busy page the timer fires late, after they have clicked into
+another field.
+
+**Fix.** The timer now leaves focus alone when another editable field (input,
+textarea, select, contenteditable) has it. Taking focus from the just-pressed
+button or from nothing is unchanged, and filter-autofocus.spec.js still pins
+that.
+
+**Tests.** `tests/fixtures/autofocus-does-not-steal.spec.js`, 2 tests (a field
+focused during the render keeps focus and text; typing into a 📊 quick filter
+right after render stays there). Both failed 3/3 before the fix. The timing is
+ordered, not slept: the test's own 300 ms timer is started after the script's
+150 ms one. `scripts/mutations/autofocus-does-not-steal.json`: 3/3 as expected.
+The third entry (adding `button` to the guard) is recorded `"expect": "pass"`,
+because on this fixture `activeElement` is already BODY right after the click.
+Why the button loses focus was not investigated.
+
+The `org/TODO.org` entry for this flake still names the auto-resize guess as
+the suspected cause. It is left for the user to mark DONE, because the file
+has uncommitted edits of theirs.
