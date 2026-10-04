@@ -18005,3 +18005,47 @@ from the CDNs), so they predate this branch and are recorded here, not fixed:
 - `releasegroup-releases-caa-type-comment-filter.spec.js`: the
   `thead .mb-caa-col-hdr-btn` of the first table is never found.
 - `caa-icon-survives-sort.spec.js`: "a re-render must show no hourglass at all".
+
+## 2026-10-04 — ESLint 10 set up, report-only, with a ratchet baseline (branch tooling/eslint)
+
+The legacy `.eslintrc.json` from b7697b1 was never wired into npm, ESLint 9+
+no longer reads that format, and its hand-written GM globals list had already
+lost `GM_listValues`. It is replaced by `eslint.config.js` (flat config, ESLint
+10.12.0) covering the userscript, `../lib/VZ_MBLibrary.user.js` and the harness.
+No userscript or library change, so no version bump or changelog entry.
+
+- **GM globals come from each file's own `// @grant` lines**, read when the config
+  loads, so `no-undef` reports a GM API that is called but not granted.
+  Feature-detected globals are declared separately: `GM` in the userscript, and
+  in the library `GM_xmlhttpRequest` plus `iro` (a `@require`d library runs with
+  its consumer's grants and `@require`s).
+- **Lint runs from the repo root.** ESLint 10 looks a config up from each
+  linted file's own directory and ignores files outside the base path, and the
+  library is in `../lib/`. A first run there failed with "File ignored because
+  outside of base path". So the npm `lint*` scripts `cd ..` and pass
+  `--config`, and every config object carries `basePath: REPO_ROOT` with
+  root-anchored patterns.
+- **Tuning, 1320 → 399 hits.** Most of the noise came from house-style
+  Playwright rules (`prefer-locator` 369, `prefer-to-have-length`,
+  `no-conditional-in-test`, …), now off. `no-use-before-define` with
+  `variables: true` flagged 328 references from inside nested functions, none
+  of them a TDZ; `variables: false` keeps only same-scope reads and found none.
+  Other changes: irregular whitespace is allowed in comments, regexes and
+  templates; `catch (_) {}` and ternary/short-circuit calls are allowed;
+  `VZ_MBLibrary` (the library's export) is exempt from `no-unused-vars`.
+  `no-tabs`/`no-trailing-spaces` found zero hits.
+- **Real findings, triaged into org/TODO.org, not fixed here:**
+  - 57 regexes put an astral emoji in a character class without `/u`. Checked
+    in node: line 18888's class turns `"🔗 Relationships"` into
+    `"\udd17 Relationships"`.
+  - One un-awaited `expect(...).toHaveCount(1)` in
+    `app-help-github-and-markdown.spec.js:252`, an assertion that never ran.
+  - 17 `no-useless-assignment`.
+- **Proof the guards fire:** `scripts/selftest-lint.py` checks 12 lint cases
+  (9 planted defects, 3 clean controls) plus 3 ratchet cases, all at the
+  planted line. A hand mutation check broke three guards in turn: dropped the
+  `GM` feature-detect, turned off `no-focused-test`, emptied the `@grant`
+  parser. Each made its own case fail, and the config came back hash-identical.
+- **Timing** (vzell-lap, 2026-10-04 02:27:23–02:27:36Z): `npm run lint` took 13 s
+  wall-clock, and `lint-summary.py --check` 10 s. Dev-only; nothing in the
+  published script changes.

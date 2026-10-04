@@ -190,6 +190,9 @@ bounded by the merge gate, not removed.
 | =npm run report=                                 | Open the last HTML report                      |
 | =npm run auth:login=                             | One-time interactive MusicBrainz login         |
 | =npm run live-interop=                           | Debugging aid, not a test — see below          |
+| =npm run lint=                                   | ESLint, everything — report-only, see "Lint"   |
+| =npm run lint:userscript=                        | ESLint on the userscript + VZ_MBLibrary        |
+| =npm run lint:harness=                           | ESLint on =tests/=, =scripts/*.js=, configs    |
 
 To run a single spec directly:
 
@@ -495,6 +498,44 @@ the standalone capture scripts (=capture-snapshots.js=, =capture-fixture.js=,
 =capture-interaction-perf.js=). Each has a JSDoc header explaining its own
 non-obvious constraints; read that before working around one. Which pages those
 scripts can measure at all is data, in =perfDescriptors.js=.
+
+* Lint (report-only)
+
+=npm run lint= runs ESLint 10 over the userscript, =../lib/VZ_MBLibrary.user.js=
+and the harness (=tests/=, =scripts/*.js=, =playwright.config.js=). It is *not*
+part of =npm test= or =test:full= yet: the existing code carries a baseline of
+hits (399 on 2026-10-04), and the plan is to ratchet that down, not to fail every
+run on day one. The config is =eslint.config.js=; its JSDoc says why each
+non-default rule setting is what it is.
+
+| Command                                         | What it does                                                |
+|-------------------------------------------------+-------------------------------------------------------------|
+| =npm run lint=                                  | Raw ESLint output, all files (~13 s)                        |
+| =python3 scripts/lint-summary.py=               | Totals per rule, with severity and file count               |
+| =python3 scripts/lint-summary.py --examples R=  | Every =file:line= for rule =R=                              |
+| =python3 scripts/lint-summary.py --check=       | *The ratchet*: fails if any (file, rule) count went up      |
+| =python3 scripts/lint-summary.py --write=       | Rewrite =tests/lint-baseline.json= — do this after a fix    |
+| =python3 scripts/selftest-lint.py=              | Proves each guarded rule fires at a planted defect (~7 s)   |
+
+*What it catches that nothing else does.* The userscript has no build step and
+no types, so a misspelt identifier, a duplicate key in =configSchema= or
+=pageDefinitions=, or a GM API called without its =@grant= only fails when that
+code path runs in a browser. ESLint sees all three statically. *GM globals are
+read from each file's own =// @grant= lines* when the config loads, so the list
+cannot drift from the header (the old =.eslintrc.json= list had already lost
+=GM_listValues=). In specs it catches an =expect= that is never awaited (so
+never checks anything) and a stray =test.only=.
+
+*Why lint runs from the repo root.* ESLint 10 looks a config up from each
+linted file's own directory and treats files outside the base path as ignored,
+and the library lives in =../lib/=. So the npm scripts =cd ..= and pass
+=--config ShowAllEntityData/eslint.config.js=, and every pattern in the config
+is anchored at the repo root. A bare =npx eslint ShowAllEntityData.user.js=
+from this directory still works for that one file.
+
+*Node.* =eslint-plugin-jsdoc= declares =node ^22.22.2 || >=24.15.0=; the
+=.nvmrc= version satisfies it. An older 24.x prints an =EBADENGINE= warning on
+=npm install= and has so far run fine.
 
 * Not a test: =npm run live-interop=
 

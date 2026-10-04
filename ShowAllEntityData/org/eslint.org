@@ -1,0 +1,54 @@
+* DONE add the eslint package inside our git repo (maybe others too which are needed for testing functionality)
+
+Act on:
+
+1.)
+
+ESLint setup should be its own follow-up change after this branch merges—it needs decisions on config format (v8 vs v9),
+scope (userscript vs test harness), and whether it gates builds initially. I'll propose that separately later
+
+2.)
+
+what is it good for
+
+* TODO Fix what the first lint baseline found (follow-up branch, after tooling/eslint merges)
+
+Setup is on branch =tooling/eslint=: =eslint.config.js=, =npm run lint=, and the
+ratchet =python3 scripts/lint-summary.py --check= against
+=tests/lint-baseline.json= (399 hits on 2026-10-04). See tests/README.org,
+section "Lint". This is the triage of the error-level hits. Every fix here is
+a userscript change and needs a WIP changelog entry; lower the baseline with
+=--write= in the same commit. =--examples RULE= lists every location.
+
+1. *no-misleading-character-class (32 in the userscript, 25 in the harness).*
+   Astral emoji like 📊 inside =[...]= without the =u= flag. The class then
+   matches each HALF of the surrogate pair, so it also strips the high half of
+   any OTHER emoji that shares it. Checked with line 18888's class
+   (=_sortColumnHeaderName()=): ="🔗 Relationships"= becomes
+   ="\udd17 Relationships"= (a lone surrogate); with =/u= it is left alone.
+   Fix: add =u= to each regex, after checking that the class has no escapes
+   =u= rejects (=\-= outside a class, for example). The userscript lines start at
+   18888, 22958, 23604, 30149, 30520, …
+2. *playwright/missing-playwright-await (1).* =app-help-github-and-markdown.spec.js:252=
+   has =expect(await table.locator('tbody tr')).toHaveCount(1)= without an
+   =await= on the =expect=, so the assertion never runs. Fix it, then
+   mutation-check that it can fail.
+3. *no-useless-assignment (13 in the userscript, 3 in the harness, 1 in the library).*
+   A value is written and then overwritten or never read. Most are harmless
+   leftovers, but each needs a look, because sometimes the "useless" write was
+   meant to be read. Userscript lines 6443, 7996, 7997, 50214, 53861, 54006,
+   57077, 57246, 57247, 61607, 77240, 89145, 89831.
+4. *no-useless-escape (4)*, at userscript lines 5990, 25078 (×2) and 47872. Cosmetic.
+5. *no-cond-assign (3).* The =while (node = walker.nextNode())= idiom at lines
+   48576, 48812 and 68219. Wrap each in an extra pair of parentheses to mark it
+   as intended.
+6. *no-case-declarations (1).* A =const= in a bare =case= at line 37625.
+   Give that case its own braces.
+7. *Warnings to review in the same pass:*
+   - =no-unused-vars=: 24 in the userscript, for example =_formatIsrc= and
+     =_artRebuildBigPicsForTable= (dead functions?) and =isWeekday=. This is the
+     b7697b1 audit again; check the real call sites before deleting anything.
+   - =jsdoc/require-jsdoc=: 31 in the userscript.
+   - =playwright/expect-expect=: 4 tests with no assertion.
+   - =playwright/no-skipped-test=: 4.
+   - Four =eslint-disable= comments for rules that aren't enabled.

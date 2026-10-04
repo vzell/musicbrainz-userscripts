@@ -286,3 +286,16 @@ assigns `textContent` unconditionally) or a replaced node makes the text
 eligible. A trigger that writes NOTHING still times out — so a spec whose
 trigger may be a genuine no-op must wait on what it asserts (a row set, a
 request count) instead. `harness-settled-text.spec.js` pins both halves.
+
+## Lint rules for specs
+
+`eslint-plugin-playwright` runs on `tests/**/*.spec.js` under `npm run lint`
+(report-only, see `tests/README.org` section "Lint"). Two of its rules are
+errors because they are defects, not style: `missing-playwright-await` (an
+un-awaited `expect(locator).toHaveCount()` never checks anything — the
+2026-10-04 baseline found one in `app-help-github-and-markdown.spec.js`) and
+`no-focused-test` (a stray `test.only` silently shrinks the suite).
+`no-wait-for-timeout` is a warning and is this file's "settle, don't sleep"
+rule in machine form. House-style rules (`prefer-locator`,
+`no-conditional-in-test`, `no-eval`, …) are switched off on purpose: the
+harness reads the DOM through `page.evaluate()` by design.

@@ -1,0 +1,402 @@
+{
+  "about": "Per-file, per-rule ESLint counts. Written by scripts/lint-summary.py --write; checked by --check, which fails if any count goes up. Lower it when a fix lands.",
+  "eslint": "10.12.0",
+  "counts": {
+    "ShowAllEntityData/ShowAllEntityData.user.js": {
+      "jsdoc/require-jsdoc": 31,
+      "no-case-declarations": 1,
+      "no-cond-assign": 3,
+      "no-misleading-character-class": 32,
+      "no-unused-expressions": 1,
+      "no-unused-vars": 24,
+      "no-useless-assignment": 13,
+      "no-useless-escape": 4
+    },
+    "ShowAllEntityData/scripts/bench-release-event-cell-clone.js": {
+      "no-unused-vars": 1
+    },
+    "ShowAllEntityData/scripts/diagnose-rel-expanded-arm.js": {
+      "(eslint-directive)": 2
+    },
+    "ShowAllEntityData/scripts/probe-fixture-columns.js": {
+      "no-misleading-character-class": 2
+    },
+    "ShowAllEntityData/scripts/probe-multitable-metric-targets.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/scripts/probe-uniq-collapse-gate.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/fixtures/action-button-shortlabel-and-rich-tooltip.spec.js": {
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/fixtures/app-help-github-and-markdown.spec.js": {
+      "playwright/missing-playwright-await": 1,
+      "playwright/no-unused-locators": 1,
+      "playwright/no-useless-await": 1,
+      "playwright/no-wait-for-selector": 3,
+      "playwright/prefer-web-first-assertions": 7
+    },
+    "ShowAllEntityData/tests/fixtures/area-recordings-ms-length.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/art-inline-uniq-filter-late-load.spec.js": {
+      "playwright/no-conditional-expect": 3
+    },
+    "ShowAllEntityData/tests/fixtures/art-mirror-master-row-index.spec.js": {
+      "no-unused-vars": 1,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/artist-credit-relationships-column.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/artist-recordings-ms-batch.spec.js": {
+      "no-unused-vars": 2,
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/barcode-col-header-toggle.spec.js": {
+      "playwright/prefer-web-first-assertions": 4
+    },
+    "ShowAllEntityData/tests/fixtures/barcode-column-validity.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/bigbox-tooltip.spec.js": {
+      "playwright/no-wait-for-timeout": 2,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/fixtures/caa-artwork-summary.spec.js": {
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/caa-col-hdr-deferred-visibility.spec.js": {
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/caa-metadata-transient-503.spec.js": {
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/caa-summary-button-position.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/collapse-column-width-stable-on-sort.spec.js": {
+      "playwright/expect-expect": 1
+    },
+    "ShowAllEntityData/tests/fixtures/column-filter-modes.spec.js": {
+      "playwright/no-conditional-expect": 1,
+      "playwright/no-wait-for-selector": 1,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/control-run-segmented-pill.spec.js": {
+      "playwright/no-skipped-test": 1
+    },
+    "ShowAllEntityData/tests/fixtures/filter-autofocus.mobile.spec.js": {
+      "playwright/no-wait-for-timeout": 3,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/fixtures/filter-autofocus.spec.js": {
+      "playwright/no-wait-for-timeout": 1,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/fixtures/filter-flag-scoping.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/fixtures/h2-table-controls-anchor.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/harness-settled-text.spec.js": {
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/fixtures/html-fetch-transient.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/info-dialog-resize-geometry.spec.js": {
+      "playwright/no-wait-for-selector": 6,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/jesus2099-artifact-purge.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/length-column-filter-colon-gap.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/length-duration-sort.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/ms-length-filter-after-toggle.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/pending-edits-collapsed-cell.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-wait-for-timeout": 6
+    },
+    "ShowAllEntityData/tests/fixtures/pending-edits-filter.spec.js": {
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/per-table-failed-retry.spec.js": {
+      "no-unused-vars": 1,
+      "playwright/no-wait-for-timeout": 4
+    },
+    "ShowAllEntityData/tests/fixtures/place-performances-intcol-align.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/place-performances-jesus-ms-leak.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/rel-auto-retry-failed.spec.js": {
+      "no-unused-vars": 1,
+      "playwright/no-wait-for-timeout": 3
+    },
+    "ShowAllEntityData/tests/fixtures/rel-cell-state-glyphs.spec.js": {
+      "playwright/no-wait-for-timeout": 8
+    },
+    "ShowAllEntityData/tests/fixtures/rel-column-browse-batch.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/rel-column-collapse-toggle.spec.js": {
+      "playwright/no-wait-for-timeout": 8
+    },
+    "ShowAllEntityData/tests/fixtures/rel-column-fetch-failure.spec.js": {
+      "playwright/no-wait-for-timeout": 5
+    },
+    "ShowAllEntityData/tests/fixtures/rel-retry-failed-only.spec.js": {
+      "no-unused-vars": 1
+    },
+    "ShowAllEntityData/tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js": {
+      "(eslint-directive)": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-events-transient.spec.js": {
+      "playwright/no-wait-for-timeout": 2,
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-credit-pending-edits.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-ms-length-overflow-pending-edits.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-ms-length-overflow.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-ms-length.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-recording-length.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-recording-of-pending-edits.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-third-party-youtube-lookup.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-title-pending-edits.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-video-medium-flag.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/release-tracks-work-ars.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/report-relationships-column.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/resume-from-failed-page.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/rich-tooltips-liner.spec.js": {
+      "playwright/no-wait-for-timeout": 5,
+      "playwright/prefer-web-first-assertions": 7
+    },
+    "ShowAllEntityData/tests/fixtures/rich-tooltips.spec.js": {
+      "playwright/no-conditional-expect": 1,
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/settings-dialog-header.spec.js": {
+      "playwright/no-wait-for-selector": 2,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/fixtures/settings-dialog.spec.js": {
+      "no-unused-vars": 1,
+      "playwright/no-wait-for-selector": 4,
+      "playwright/no-wait-for-timeout": 1,
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/fixtures/sort-pill-segments.spec.js": {
+      "playwright/no-wait-for-selector": 1,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/sticky-page-headers.mobile.spec.js": {
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/fixtures/sticky-page-headers.spec.js": {
+      "playwright/no-wait-for-timeout": 6
+    },
+    "ShowAllEntityData/tests/fixtures/subtable-tab-handoff.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/table-seed-ledger.spec.js": {
+      "playwright/no-wait-for-selector": 3
+    },
+    "ShowAllEntityData/tests/fixtures/tag-value-entity-column-leak.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/tag-value-entity-extractmaincolumn-zero.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/tag-value-relationships-column.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/thirdPartyScripts/jesus2099-title-mismatch.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/fixtures/thirdPartyScripts/rogue-filter-writer.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/fixtures/toolbar-menus.spec.js": {
+      "playwright/no-skipped-test": 1,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/fixtures/touch-tooltip.mobile.spec.js": {
+      "playwright/no-wait-for-timeout": 6,
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-area-name-flag-thirdparty-shapes.spec.js": {
+      "playwright/expect-expect": 2
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-count-click-toggle.spec.js": {
+      "playwright/no-useless-not": 2
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-join-phrases.spec.js": {
+      "playwright/expect-expect": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-length-mismatch-section.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-length-ms-state.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-quickfilter-multi-occurrence.spec.js": {
+      "playwright/no-wait-for-selector": 1,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-recording-date-sections.spec.js": {
+      "playwright/no-wait-for-selector": 2
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-recording-length-sections.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/uniq-drop-release-events-sections.spec.js": {
+      "playwright/no-wait-for-selector": 5
+    },
+    "ShowAllEntityData/tests/fixtures/user-ratings-multigroup.spec.js": {
+      "playwright/no-wait-for-selector": 1,
+      "playwright/no-wait-for-timeout": 5
+    },
+    "ShowAllEntityData/tests/fixtures/user-ratings-relationships-column.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/fixtures/work-recordings-ms-length.spec.js": {
+      "playwright/no-force-option": 1,
+      "playwright/no-wait-for-selector": 4
+    },
+    "ShowAllEntityData/tests/fixtures/ws2-transient-classifier.spec.js": {
+      "playwright/no-wait-for-selector": 1
+    },
+    "ShowAllEntityData/tests/live/artist-events-interactions.spec.js": {
+      "playwright/no-force-option": 1,
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/live/artist-releases-filter-sort.spec.js": {
+      "playwright/no-conditional-expect": 5,
+      "playwright/no-skipped-test": 2,
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/live/column-visibility-survives-refilter.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-wait-for-timeout": 2
+    },
+    "ShowAllEntityData/tests/live/discography-view-artwork.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/live/discography-view.spec.js": {
+      "playwright/prefer-web-first-assertions": 2
+    },
+    "ShowAllEntityData/tests/live/event-parts-extraction.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/filter-column.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/label-relationships-single-table-column-swap.spec.js": {
+      "no-unused-vars": 1,
+      "playwright/no-networkidle": 2
+    },
+    "ShowAllEntityData/tests/live/merged-view-caa-search-sync.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/release-tracks-part-of-series-multirow.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/release-tracks-part-of-series-uniqdrop.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-conditional-expect": 2
+    },
+    "ShowAllEntityData/tests/live/release-tracks-recorded-at-place-multidate.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/release-tracks-streaming-ars-leak.spec.js": {
+      "no-misleading-character-class": 1,
+      "playwright/no-conditional-expect": 2,
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/live/releasegroup-releases-caa-type-comment-filter.spec.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/live/releasegroup-releases-filter-sort.spec.js": {
+      "playwright/no-conditional-expect": 4,
+      "playwright/no-wait-for-timeout": 6
+    },
+    "ShowAllEntityData/tests/live/sort-column.spec.js": {
+      "playwright/prefer-web-first-assertions": 1
+    },
+    "ShowAllEntityData/tests/live/tag-value-sort-overflow-row.spec.js": {
+      "playwright/no-conditional-expect": 3
+    },
+    "ShowAllEntityData/tests/live/third-party-rogue-filter-write.spec.js": {
+      "playwright/no-wait-for-timeout": 1
+    },
+    "ShowAllEntityData/tests/live/uniqdrop-structure-section.spec.js": {
+      "no-misleading-character-class": 2
+    },
+    "ShowAllEntityData/tests/support/capture-interaction-perf.js": {
+      "(eslint-directive)": 1
+    },
+    "ShowAllEntityData/tests/support/capture-snapshots.js": {
+      "no-misleading-character-class": 1
+    },
+    "ShowAllEntityData/tests/support/filterSortAssertions.js": {
+      "no-misleading-character-class": 2
+    },
+    "ShowAllEntityData/tests/support/measure-caa-metadata-404s.js": {
+      "no-useless-assignment": 1
+    },
+    "ShowAllEntityData/tests/support/runMetadata.js": {
+      "no-useless-assignment": 1
+    },
+    "ShowAllEntityData/tests/support/subtableTab.js": {
+      "no-useless-assignment": 1
+    },
+    "lib/VZ_MBLibrary.user.js": {
+      "jsdoc/require-jsdoc": 1,
+      "no-unused-expressions": 1,
+      "no-useless-assignment": 1
+    }
+  }
+}
