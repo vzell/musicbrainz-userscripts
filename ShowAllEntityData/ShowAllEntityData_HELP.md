@@ -1208,12 +1208,16 @@ page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
 off, the script leaves that site's pages untouched.
 
 Once on, every **collection list** (`collection.php?cmd=list…`) and every
-**bootleg list** (`bootlegs.php?cmd=list…`) — any category, and any format,
+**bootleg list** (`bootlegs.php?cmd=list…`) — with any format,
 country, date, title or other filter you picked on the site — gets a heading
 with the usual toolbar and one action button: **Items** on a collection list,
 **Bootlegs** on a bootleg list. Pressing it fetches every page of that list
 (100 items each), turns the item cards into one table, and gives you the usual
 filters, sorting, column controls, export and Save/Load.
+
+**Known limitation:** on collection lists only the *Official albums* category
+works so far; the other collection categories are not yet supported. Bootleg
+lists work with any filter.
 
 The columns come from what each card shows — no item page is opened:
 
