@@ -551,6 +551,73 @@ reported **0 of 21** affected columns for exactly that reason, against **20 of
 21** on the real page. A "cannot reproduce" here means nothing until that
 override has been switched back on.
 
+## Script tooltips go through `_setTip()` ("Liner notes")
+
+Every hover text the script sets itself is shown by ONE delegated engine,
+`_initStatTooltip()`, as a "Liner notes" card in `#mb-stat-tooltip`. The engine
+recognises a script tooltip only by its marker, `data-mb-tip`. MusicBrainz's own
+titles and other userscripts' never carry it and stay native.
+
+**Rule: never write `el.title = …` for a tooltip of the script's own; call
+`_setTip(el, text)`.** It sets the title AND stamps `data-mb-tip`, and returns
+`text`, so it also works where the assignment was used as a value. In markup
+built as a string, write `data-mb-tip title="…"`. `scripts/mark-own-tooltips.js`
+(acorn) converted all 238 assignments and 27 attributes in one pass on
+2026-10-04; re-run its dry run to list any bare `.title =` that has crept back.
+It skips the two engines' own stash/restore code (`_initStatTooltip`,
+`_initRelTooltipListeners`).
+
+How it behaves, and why:
+- **Nearest title wins.** The engine takes `closest('[data-mbtt], [title],
+  [data-mb-tip-saved]')`, the same element the browser would take a tooltip
+  from. A native MusicBrainz link inside one of our headings therefore keeps
+  its native tooltip; it does not show the heading's card.
+- **The title is kept**, as the fallback when `sa_rich_tooltips` is off and for
+  code that reads `el.title` back. While a card shows, the title is stashed in
+  `data-mb-tip-saved` and offered as `aria-description`; leaving puts it back,
+  unless code set a new title meanwhile. **A test that locates an element by
+  `[title*=…]` must park the pointer first** (`page.mouse.move(0, 0)`): a
+  pointer resting on the element has its title stashed.
+- **Delegation, not wiring.** The marker is an attribute, so it survives
+  `cloneNode(true)`; nothing needs re-wiring after a re-render.
+- **Live titles.** A title changed under the pointer (a button relabelling
+  itself on click) is re-stashed and re-rendered on the next mousemove. A
+  mousedown hides the card for the rest of that hover, like a native tooltip.
+- **It steps aside for the other rich tooltips.** No card opens while
+  `#mb-art-bigbox-tooltip`, `#mb-art-hover-preview` or `#mb-rel-tooltip`
+  shows (`_OTHER_RICH_TIPS`). The title stays stashed, so no grey box appears
+  either. A Relationships icon whose cell a filter matches is skipped before
+  the stash: that tooltip's plain panel shows this very title, and a stash
+  would leave the panel empty. **Give any NEW floating hover tooltip's id to
+  `_OTHER_RICH_TIPS`**, or its elements' own titles will draw a card on top of
+  it. All three were found in a browser, not by a spec: an inline CAA
+  thumbnail's "N images found" card on its own preview, a Relationships URL
+  shown twice.
+- `[data-mbtt]` (ready-made HTML: row counts, action buttons) keeps its old
+  path: shown at once, no delay, and not gated by `sa_rich_tooltips`.
+- `_tipTextToHtml()` only infers structure from plain text and escapes first.
+  First line → `.mb-tt-title` (a lone line only if 60 characters or fewer), a
+  "Configurable in" line → `.mb-tt-foot`, key combos → `<kbd>`. Its rules are
+  pinned through `window.__saTest.tipTextToHtml`.
+
+**One layer.** `.mb-tt-liner` carries `z-index: 2147483500`, and the five
+tooltip elements carry none of their own. The 📊 dropdown sits at 999999 and
+drew over the card of its own entries while the card was at 99999. A tooltip
+is the top layer; only the page-corner notice (2147483000) comes close.
+
+**One look.** `.mb-tt-liner` in the main `GM_addStyle` block is the style of
+every floating tooltip: `#mb-stat-tooltip`, `#mb-art-bigbox-tooltip`,
+`#mb-rel-tooltip`, `#mb-rel-plain-tooltip` and `#mb-ctrl-m-tooltip`. Give a new
+one that class and its row classes (`.mb-tt-title`, `-body`, `-foot`,
+`-comment`, `-dim`, `-rule`, `-pill`, `-alert`). Never give it inline colours:
+the old dark panel's `#cdd6f4` / `#45475a` literals were what had to be hunted
+down. It uses a system serif stack on purpose: no web font request, and nothing
+for MusicBrainz's CSP to block.
+
+Specs: `tests/fixtures/rich-tooltips-liner.spec.js` and the Liner notes case in
+`touch-tooltip.mobile.spec.js`; mutations in
+`scripts/mutations/rich-tooltips-liner.json`.
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,
@@ -566,7 +633,7 @@ directly. Without one (e.g. `_showArtHoverPreview()`, called from several
 `mouseenter` closures), it falls back to "a touch contact within
 `TOUCH_COMPAT_WINDOW_MS`", which `_installTouchInputTracker()` records from
 capture-phase `pointerdown`/`touchstart`. Guarded today: `_initStatTooltip()`
-(every `[data-mbtt]`), the Relationships tooltips (`_initRelTooltipListeners()`),
+(every `[data-mbtt]` and `[data-mb-tip]`), the Relationships tooltips (`_initRelTooltipListeners()`),
 `_showArtHoverPreview()`, the per-image `_showLiTooltip()`, the bigbox
 wrapper tooltip and the inline-thumbnail tooltip. Hover *styling* (background
 tints, `mouseenter` focus moves) needs no guard: the next tap moves it.

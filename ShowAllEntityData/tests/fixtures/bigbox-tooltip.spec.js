@@ -161,6 +161,40 @@ test.describe('big-picture strip: rich hover tooltip', () => {
         expect(errors).toEqual([]);
         expect(res.display).toBe('block');
         expect(res.text.trim()).not.toBe('');
+        // The "Liner notes" card: cream background, serif face, bold title.
+        const look = await page.evaluate(() => {
+            const t = document.getElementById('mb-art-bigbox-tooltip');
+            const cs = getComputedStyle(t);
+            return { bg: cs.backgroundColor, font: cs.fontFamily, title: !!t.querySelector('.mb-tt-title') };
+        });
+        expect(look.bg).toBe('rgb(251, 248, 241)');
+        expect(look.font).toContain('Georgia');
+        expect(look.title).toBe(true);
+    });
+
+    test('an inline CAA thumbnail: its own title opens no "Liner notes" card over the preview and cover-art card', async ({ page }) => {
+        // Reported 2026-10-04 with a screenshot: the thumbnail's title ("8
+        // images found for this release / release-group") was drawn as a
+        // third box on top of its own art preview.
+        await open(page, {
+            url: RG_URL, fixture: RG_FIXTURE, host: 'coverartarchive.org',
+            button: 'Show all Releases for ReleaseGroup', boxSel: '.mb-caa-bigbox',
+            settings: { sa_caa_hover_preview: true, sa_rich_tooltip_delay_ms: 0 },
+        });
+        const ph = page.locator('table.tbl tbody .mb-caa-inline-ph[data-mb-tip][title]').first();
+        await expect(ph).toHaveCount(1);
+        await ph.evaluate((el) => { el.style.minWidth = '24px'; el.style.minHeight = '24px'; el.style.display = 'inline-block'; });
+        const box = await ph.boundingBox();
+        await page.mouse.move(0, 0);
+        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 3 });
+
+        await expect(page.locator('#mb-art-bigbox-tooltip')).toBeVisible();
+        await page.waitForTimeout(400);
+        await expect(page.locator('#mb-stat-tooltip')).toBeHidden();
+        // ...and the browser gets no title to draw its grey box from either.
+        expect(await ph.getAttribute('title')).toBe('');
+        await page.mouse.move(0, 0);
+        expect(await ph.getAttribute('title')).not.toBe('');
     });
 
     test('releasegroup-releases with "Right Side Flags Everywhere": the tooltip still shows, Country/Date line included', async ({ page }) => {

@@ -1,0 +1,16 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Every hover text the script adds now shows as a \"Liner notes\" card: a small cream card in a serif face, like the insert of a record sleeve, with the first line as a bold title and keyboard shortcuts drawn as keycaps. This replaces the browser's plain grey tooltip on the buttons, filter boxes, column headers, collapse toggles, flagged cells and 📊 dropdown entries. The card appears after a short pause, follows the pointer and goes away when you click. MusicBrainz's own hover texts (an artist's sort name, the rating stars, a country's full name) and other userscripts' stay as they are.",
+          "The tooltips that were already rich use the same look: the row counts and action buttons, the cover-art card over the picture strip and thumbnails, the Relationships panels, and the Ctrl+M shortcut overlay. On the cover-art card the release or event name is now the bold title on every page.",
+          "Two new settings in ⚙️ Settings → 💬 TOOLTIPS: \"Rich 'Liner notes' tooltips\" turns the cards off (plain browser tooltips again), and \"Rich tooltip delay (ms)\" sets how long the pointer must rest first (default 400). The row-count tooltip and Relationships tooltip colours now default to the cream card, and the performer role colours to a darker green and orange that read on it. If you had saved the old defaults, you get the new ones; colours you chose yourself are kept."
+        ]
+      }
+    ]
+  }
+]
