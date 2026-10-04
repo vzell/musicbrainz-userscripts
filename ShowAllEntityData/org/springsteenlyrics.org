@@ -1,0 +1,49 @@
+* TODO Is it possible to support springsteenlyrics.com
+** DONE i
+
+Is it possible for our userscript to optionally to support the springsteenlyrics.com website, specifically pages of the
+following type, collections and bootlegs
+
+#+begin_example
+collections - https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i - raw HTML of initial rendered page - @debug/sl-collections-initial.html
+bootlegs - https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967 - raw HTML of initial rendered page - @debug/sl-bootlegs-initial.html
+#+end_example
+
+They all look like paginated pages which describe Bruce Springsteen releases
+
+#+begin_example
+@debug/collection-release.html - a specific collection release
+@debug/bootleg-release.html - a specific bootleg release
+#+end_example
+
+Both URL are rendered unauthenticated
+
+** TODO on collections ONLY "Official albums" works
+
+** TODO redesign header part and make it sticky
+
+** TODO add detail page support
+
+** Answer (2026-10-04, branch =sl-support=)
+
+Yes — implemented as two opt-in pageTypes, =sl-collection= and =sl-bootlegs=,
+behind the new setting =sa_enable_springsteenlyrics= (default OFF). Scope as
+decided: every =collection.php?cmd=list…= and =bootlegs.php?cmd=list…= URL (any
+category, any =f_*= filter); list cards only, no item detail pages fetched.
+(The two "release" files are saved as =debug/bootleg-collection.html= and
+=debug/bootleg-release.html=; both are single list cards, not detail pages.)
+
+- Design and rules: =docs/claude/springsteenlyrics.md=; root-cause/probe log:
+  =DEBUG-NOTES.md=, "2026-10-04 — springsteenlyrics.com collection and bootleg
+  lists".
+- Verified live with the working copy: album/12i → 539 rows from 6 pages,
+  aud_live1967 → 273 rows from 3 pages, matching each page's own "Showing
+  items … of N".
+- Tests: four fixture specs (=tests/fixtures/sl-*.spec.js=), the =@extended=
+  live spec =tests/live/sl-lists.spec.js=, mutation list
+  =scripts/mutations/sl-support.json=.
+- Still to do: a real-browser check under Tampermonkey, then the merge (fold
+  WIP.1, version bump, HELP re-read) — flip this TODO to DONE then.
+- Possible follow-ups, not done: per-item detail pages (track lists);
+  cross-checking the row total against "Showing items … of N"; lyrics pages.
+
