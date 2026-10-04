@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "fd6b5d4be1d0b102a514933c0f76e1faa6c0477b",
-    "revisions_walked": 697
+    "head": "c4ba53b7fc55164f2bf68237995302101d1920b9",
+    "revisions_walked": 699
   },
   "changes": [
     {
@@ -615,6 +615,7 @@
     "sa_edits_color_diff_new": "#e4fbe4",
     "sa_edits_color_diff_old": "#fbe3e4",
     "sa_edits_color_zebra_odd": "#ffffff",
-    "sa_edits_color_zebra_even": "#f2f2f2"
+    "sa_edits_color_zebra_even": "#f2f2f2",
+    "sa_enable_springsteenlyrics": false
   }
 }
