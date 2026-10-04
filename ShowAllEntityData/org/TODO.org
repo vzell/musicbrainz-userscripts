@@ -1208,10 +1208,6 @@ I get
 
 * DONE integrate springsteenlyrics.com
 
-* TODO add the eslint package inside our git repo (maybe others too which are needed for testing functionality)
-
-ESLint setup should be its own follow-up change after this branch merges—it needs decisions on config format (v8 vs v9),
-scope (userscript vs test harness), and whether it gates builds initially. I'll propose that separately later
 
 * TODO add cover art to the 'release-tracks' PT
 
