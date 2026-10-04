@@ -1,4 +1,5 @@
 * TODO Is it possible to support springsteenlyrics.com
+** DONE i
 
 Is it possible for our userscript to optionally to support the springsteenlyrics.com website, specifically pages of the
 following type, collections and bootlegs
@@ -16,6 +17,12 @@ They all look like paginated pages which describe Bruce Springsteen releases
 #+end_example
 
 Both URL are rendered unauthenticated
+
+** TODO on collections ONLY "Official albums" works
+
+** TODO redesign header part and make it sticky
+
+** TODO add detail page support
 
 ** Answer (2026-10-04, branch =sl-support=)
 
