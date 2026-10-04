@@ -1,4 +1,4 @@
-* TODO tooltip redesign to rich HTML
+* DONE tooltip redesign to rich HTML
 ** DONE i
 
 Analyze where we currently use standard (in this case list the ones which are coming already from the initial raw
@@ -230,6 +230,14 @@ The missing strip tooltip on release-group pages is fixed. It wasn't your script
   - Switching the script's own tooltips: pick a style from the mockups and I'll do it on its own branch.
 
 ** DONE the fix works, tested in browser, commit and push, then fix the "Escape does not close the Ctrl+M overlay" on the same branch
-** TODO switch the tooltips to "Liner notes" in a new branch
+** DONE switch the tooltips to "Liner notes" in a new branch
 
 Switch the tooltips to "Liner notes" in a new branch after the test suite ran
+
+** DONE bug
+
+When the UVD is open, the tooltips for its entries is behind the UVD, see [Image #20] the same happens when hovering
+over a filtered and highlighted relationship icon, see [Image #21] and inline CAA images
+
+
+
