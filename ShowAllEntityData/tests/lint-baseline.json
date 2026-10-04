@@ -21,9 +21,6 @@
       "playwright/prefer-web-first-assertions": 1
     },
     "ShowAllEntityData/tests/fixtures/app-help-github-and-markdown.spec.js": {
-      "playwright/missing-playwright-await": 1,
-      "playwright/no-unused-locators": 1,
-      "playwright/no-useless-await": 1,
       "playwright/no-wait-for-selector": 3,
       "playwright/prefer-web-first-assertions": 7
     },

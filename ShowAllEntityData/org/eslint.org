@@ -31,10 +31,14 @@ a userscript change and needs a WIP changelog entry; lower the baseline with
    18888, 22958, 23604, 30149, 30520, …
    *Done*, shipped in 9.99.1217 (=fix/lint-misleading-character-class=): 57 → 0,
    guarded by =tests/fixtures/regex-unicode-flag-guard.spec.js=.
-2. *playwright/missing-playwright-await (1).* =app-help-github-and-markdown.spec.js:252=
+2. DONE *playwright/missing-playwright-await (1).* =app-help-github-and-markdown.spec.js:252=
    has =expect(await table.locator('tbody tr')).toHaveCount(1)= without an
    =await= on the =expect=, so the assertion never runs. Fix it, then
    mutation-check that it can fail.
+   *Done* on =fix/lint-items-2-7=. Correction: it did run. A planted empty
+   =<tr>= (=scripts/mutations/app-help-table-row-count.json=) fails the
+   unawaited form too, because the next line awaits and the rejection surfaces
+   there. It was right only by that accident.
 3. *no-useless-assignment (13 in the userscript, 3 in the harness, 1 in the library).*
    A value is written and then overwritten or never read. Most are harmless
    leftovers, but each needs a look, because sometimes the "useless" write was
