@@ -47,8 +47,13 @@ So when you change a `default:`, the third obligation is **an entry in
 `_SETTINGS_MIGRATIONS`** naming the value it moved away from — otherwise
 everyone who has ever pressed SAVE keeps the old one. You do not have to
 remember: refresh `scripts/config-default-history.json` with
-`scripts/dump-default-history.py` (a walk of all 591 revisions, ~26 s) and the
-audit's Stage 3 names what is missing. It fails on an INVENTED entry too, which
+`scripts/dump-default-history.py` (a walk of every revision, merges included —
+732 on 2026-10-04, ~46 s) and the audit's Stage 3 names what is missing. It
+reads COMMITTED history up to `HEAD`, never the working tree, so refresh it
+after committing the schema change, not before. It walks each revision against
+its own parents (`git log --topo-order --parents`), not in date order; since
+2026-10-04 `scripts/check-default-history-walk.py` pins that against a scratch
+repository with a merge in it. It fails on an INVENTED entry too, which
 is the worse direction — that one silently overwrites a value the user may have
 chosen on purpose.
 

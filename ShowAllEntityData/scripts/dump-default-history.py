@@ -58,24 +58,43 @@ _spec.loader.exec_module(dumpcfg)
 _NON_VALUE_TYPES = ('divider', 'function', 'table')
 
 
-def revisions():
-    """Every revision that touched the userscript, oldest first."""
+def revisions(repo=REPO, path=PATH):
+    """Every revision that touched the userscript, parents before children.
+
+    Returns `(sha, date, parents)` rows. `parents` are REWRITTEN parents: path
+    limiting with `--parents` names, for each side of a commit, the nearest
+    ancestor that also touched `path`, so every revision can be compared with
+    its own predecessor(s) instead of with whatever was walked just before it.
+
+    This used to be `git log --follow --reverse`, which was wrong twice over on
+    a history with merges. `--follow` leaves merge commits out, so the last
+    revision walked — the one `current` was taken from — could be an older
+    commit on the first-parent line rather than HEAD: right after the
+    sl-support merge (2026-10-04) that made `sa_enable_springsteenlyrics` read
+    as removed, and the audit failed until a later non-merge commit touched
+    the file. And date order interleaves two branches, so consecutive
+    revisions could sit on different lines of development and record a
+    default flipping back and forth that no line ever had. The file has never
+    been renamed, so `--follow` bought nothing.
+    """
     out = subprocess.run(
-        ['git', 'log', '--follow', '--reverse', '--format=%H\t%ad', '--date=short',
-         '--', PATH],
-        cwd=REPO, capture_output=True, text=True, check=True).stdout
+        ['git', 'log', '--topo-order', '--reverse', '--parents',
+         '--format=%H %P\t%ad', '--date=short', '--', path],
+        cwd=repo, capture_output=True, text=True, check=True).stdout
     rows = []
     for line in out.splitlines():
         if not line.strip():
             continue
-        sha, date = line.split('\t')
-        rows.append((sha, date))
+        shas, date = line.split('\t')
+        sha, *parents = shas.split()
+        rows.append((sha, date, parents))
     return rows
 
 
-def source_at(sha):
-    r = subprocess.run(['git', 'show', f'{sha}:{PATH}'],
-                       cwd=REPO, capture_output=True, text=True)
+def source_at(sha, repo=REPO, path=PATH):
+    """The userscript's text at `sha`, or None if it did not exist there."""
+    r = subprocess.run(['git', 'show', f'{sha}:{path}'],
+                       cwd=repo, capture_output=True, text=True)
     return r.stdout if r.returncode == 0 else None
 
 
@@ -92,16 +111,45 @@ def defaults_at(src):
     return out
 
 
-def walk():
-    """Replay every revision, collecting default changes, survivors and strays."""
-    revs = revisions()
-    prev = None
+def _parsed_ancestors(parents, parents_of, at):
+    """The nearest revisions behind `parents` that parsed.
+
+    A parent that did not parse (see `unparseable` in walk()) is stepped over
+    to its own parents, so the revision after a broken one is still compared
+    with the last good state of its own line — which is what the old linear
+    walk did, minus the jump across branches.
+    """
+    found, seen, todo = [], set(), list(parents)
+    while todo:
+        sha = todo.pop(0)
+        if sha in seen:
+            continue
+        seen.add(sha)
+        if sha in at:
+            found.append(sha)
+        else:
+            todo.extend(parents_of.get(sha, []))
+    return found
+
+
+def walk(repo=REPO, path=PATH):
+    """Replay every revision, collecting default changes, survivors and strays.
+
+    Each revision is compared with its own parent revision(s). A merge records
+    a change only for a value that matches NONE of its parents — one the
+    resolution itself introduced; a value it merely carries over from a side
+    branch was already recorded on that branch's own commit. `current` is the
+    schema at HEAD, never "the last revision walked".
+    """
+    revs = revisions(repo, path)
+    parents_of = {sha: ps for sha, _date, ps in revs}
+    at = {}          # sha -> parsed defaults, for every revision that parsed
     changes = []
     ever = {}
     unparseable = []
 
-    for sha, date in revs:
-        src = source_at(sha)
+    for sha, date, parents in revs:
+        src = source_at(sha, repo, path)
         if src is None:
             continue
         try:
@@ -113,20 +161,22 @@ def walk():
             # has drifted from the file, not that the history is quiet.
             unparseable.append({'sha': sha[:8], 'date': date, 'error': str(exc)})
             continue
+        at[sha] = cur
         for key, cfg in cur.items():
             ever[key] = {'last_version': ver, 'last_date': date,
                          'last_default': cfg['default'], 'type': cfg['type']}
-        if prev is not None:
-            for key, cfg in cur.items():
-                if key in prev and prev[key]['default'] != cfg['default']:
-                    changes.append({
-                        'sha': sha[:8], 'date': date, 'version': ver, 'key': key,
-                        'type': cfg['type'],
-                        'from': prev[key]['default'], 'to': cfg['default'],
-                    })
-        prev = cur
+        before = [at[p] for p in _parsed_ancestors(parents, parents_of, at)]
+        for key, cfg in cur.items():
+            had = [b[key]['default'] for b in before if key in b]
+            if had and cfg['default'] not in had:
+                changes.append({
+                    'sha': sha[:8], 'date': date, 'version': ver, 'key': key,
+                    'type': cfg['type'],
+                    'from': had[0], 'to': cfg['default'],
+                })
 
-    current = prev or {}
+    head_src = source_at('HEAD', repo, path)
+    current = defaults_at(head_src) if head_src is not None else {}
 
     # Every value this key ever shipped as a default that is NOT the current
     # one. A stored value matching one of these is what a SAVE froze.
