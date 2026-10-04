@@ -1,5 +1,31 @@
 [
   {
+    "version": "9.99.1222",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Live titles that name several dates are no longer flagged as errors. Three forms are accepted: more days of one month (\"1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA\"), separate dates each with its own location (\"1978‐08‐21: … / 1979‐01‐01: …\"), and separate dates sharing one location (\"1989‐07‐04 / 1990‐04‐22: Park West, Chicago, IL, USA\"). Each date is checked on its own, so such a title is still marked ❌ when one of its days does not exist, such as \"1977‐04‐30/31\". Before, every one of them was reported as a near miss.",
+          "The 📊 dropdown has a new \"Live title info - Multiple dates\" section that counts titles with several days of one month and titles with several separate dates. Ticking an entry filters to those rows. Event names and recording comments get the same section."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1221",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a page with a single table, such as an artist's release groups, the ⚠⟳ button that retries failed cover art lookups appeared twice side by side. The page-wide button and the button for that one table did exactly the same thing. Only the page-wide one is shown now. The Relationships ⚠⟳ had the same problem and is fixed too.",
+          "A browser tooltip no longer appears on top of the rich tooltip after hovering for a while. Buttons whose text changes while you look at them, such as the ⚠⟳ count during an artwork load, put their plain tooltip back. The browser then showed it as soon as the mouse had rested for a second."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1220",
     "date": "2026-10-04",
     "sections": [
