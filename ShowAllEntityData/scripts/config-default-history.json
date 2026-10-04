@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "645b5c08d564bbe3190603bb386f49489c9fce97",
-    "revisions_walked": 695
+    "head": "48e35da438e0fb47c23fdc11ed9b51f6959b0599",
+    "revisions_walked": 696
   },
   "changes": [
     {
@@ -131,6 +131,60 @@
       "type": "popup_dialog",
       "from": "#78909C|white|1px solid #607D8B",
       "to": "#ECEFF1|#263238|1px solid #B0BEC5"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_count_stat_tooltip_bg",
+      "type": "color_picker",
+      "from": "#1e1e2e",
+      "to": "#fbf8f1"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_count_stat_tooltip_color",
+      "type": "color_picker",
+      "from": "#cdd6f4",
+      "to": "#2b2622"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_rel_tooltip_bg",
+      "type": "color_picker",
+      "from": "#ffffff",
+      "to": "#fbf8f1"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_rel_tooltip_color",
+      "type": "color_picker",
+      "from": "#000000",
+      "to": "#2b2622"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_ui_artist_role_main_performer_color",
+      "type": "color_picker",
+      "from": "#57ff5a",
+      "to": "#2e7d32"
+    },
+    {
+      "sha": "48e35da4",
+      "date": "2026-10-04",
+      "version": "9.99.1214+2026-10-04",
+      "key": "sa_ui_artist_role_guest_performer_color",
+      "type": "color_picker",
+      "from": "#e07000",
+      "to": "#b35900"
     }
   ],
   "stale": {
@@ -217,6 +271,48 @@
       "was": [
         "#78909C|white|1px solid #607D8B"
       ]
+    },
+    "sa_count_stat_tooltip_bg": {
+      "type": "color_picker",
+      "current": "#fbf8f1",
+      "was": [
+        "#1e1e2e"
+      ]
+    },
+    "sa_count_stat_tooltip_color": {
+      "type": "color_picker",
+      "current": "#2b2622",
+      "was": [
+        "#cdd6f4"
+      ]
+    },
+    "sa_rel_tooltip_bg": {
+      "type": "color_picker",
+      "current": "#fbf8f1",
+      "was": [
+        "#ffffff"
+      ]
+    },
+    "sa_rel_tooltip_color": {
+      "type": "color_picker",
+      "current": "#2b2622",
+      "was": [
+        "#000000"
+      ]
+    },
+    "sa_ui_artist_role_main_performer_color": {
+      "type": "color_picker",
+      "current": "#2e7d32",
+      "was": [
+        "#57ff5a"
+      ]
+    },
+    "sa_ui_artist_role_guest_performer_color": {
+      "type": "color_picker",
+      "current": "#b35900",
+      "was": [
+        "#e07000"
+      ]
     }
   },
   "orphans": {
@@ -260,9 +356,11 @@
     "sa_collabsable_sidebar": true,
     "sa_sidebar_collapsed": true,
     "sa_render_overflow_tables_in_new_tab": true,
+    "sa_rich_tooltips": true,
+    "sa_rich_tooltip_delay_ms": 400,
     "sa_enable_count_stat_tooltip": true,
-    "sa_count_stat_tooltip_bg": "#1e1e2e",
-    "sa_count_stat_tooltip_color": "#cdd6f4",
+    "sa_count_stat_tooltip_bg": "#fbf8f1",
+    "sa_count_stat_tooltip_color": "#2b2622",
     "sa_ui_row_count_color": "#111111",
     "sa_ui_row_count_bg": "#e8e8e8",
     "sa_enable_numeric_alignment": true,
@@ -383,8 +481,8 @@
     "sa_rel_idb_ttl_days": 30,
     "sa_rel_completion_toast_duration": 8,
     "sa_enable_relationship_debug": false,
-    "sa_rel_tooltip_bg": "#ffffff",
-    "sa_rel_tooltip_color": "#000000",
+    "sa_rel_tooltip_bg": "#fbf8f1",
+    "sa_rel_tooltip_color": "#2b2622",
     "sa_ui_thead_th_injected_bg": "#b8b8d0",
     "sa_enable_column_resizing": true,
     "sa_auto_resize_columns": true,
@@ -455,8 +553,8 @@
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,
-    "sa_ui_artist_role_main_performer_color": "#57ff5a",
-    "sa_ui_artist_role_guest_performer_color": "#e07000",
+    "sa_ui_artist_role_main_performer_color": "#2e7d32",
+    "sa_ui_artist_role_guest_performer_color": "#b35900",
     "sa_enable_caa_pics": true,
     "sa_caa_pics_small": true,
     "sa_caa_pics_big": true,
