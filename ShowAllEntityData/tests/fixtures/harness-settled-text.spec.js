@@ -49,6 +49,7 @@ test.describe('harness: settle-waits', () => {
         // duration: it assigns the same string again.
         await waitForFilterSettled(page, () => page.evaluate((sel) => {
             const el = document.querySelector(sel);
+            // eslint-disable-next-line no-self-assign -- the point: a write of identical text
             el.textContent = el.textContent;
         }, STATUS), { timeout: 3000 });
         expect(await page.locator(STATUS).textContent()).toBe(before);

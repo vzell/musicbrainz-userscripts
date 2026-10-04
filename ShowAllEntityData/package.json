@@ -20,13 +20,21 @@
         "test:live:report:releasegroup-releases": "PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/releasegroup-releases-report.json playwright test tests/live/releasegroup-releases-filter-sort.spec.js --project=chromium-live --reporter=list,json; e=$?; node tests/support/generate-releasegroup-releases-filtersort-report.js < test-results/releasegroup-releases-report.json; exit $e",
         "report": "playwright show-report",
         "auth:login": "node tests/support/auth-setup.js",
-        "live-interop": "node tests/support/run-live-interop.js"
+        "live-interop": "node tests/support/run-live-interop.js",
+        "lint": "cd .. && eslint --config ShowAllEntityData/eslint.config.js ShowAllEntityData lib/VZ_MBLibrary.user.js",
+        "lint:userscript": "cd .. && eslint --config ShowAllEntityData/eslint.config.js ShowAllEntityData/ShowAllEntityData.user.js lib/VZ_MBLibrary.user.js",
+        "lint:harness": "cd .. && eslint --config ShowAllEntityData/eslint.config.js ShowAllEntityData/tests ShowAllEntityData/scripts ShowAllEntityData/playwright.config.js ShowAllEntityData/eslint.config.js"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
         "@jaames/iro": "5.5.2",
         "@playwright/test": "^1.62.1",
         "acorn": "^8.18.0",
         "acorn-walk": "^8.3.5",
+        "eslint": "^10.12.0",
+        "eslint-plugin-jsdoc": "^65.1.0",
+        "eslint-plugin-playwright": "^2.12.0",
+        "globals": "^17.13.0",
         "pako": "2.1.0",
         "playwright": "^1.62.1"
     },

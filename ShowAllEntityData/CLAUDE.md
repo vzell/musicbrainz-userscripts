@@ -332,6 +332,7 @@ directory, never the real one. Full checklist: `org/config-handling.org` F6.
 ## Tooling Conventions
 - Never run inline `python3 -c "..."` or inline `node -e "..."`. Write a script file under `scripts/` (or `test/`) and execute it, so the logic is reviewable and re-runnable.
 - Every DOM/rendering fix must be accompanied by a jsdom or Playwright regression test that fails before the fix and passes after.
+- ESLint is report-only (`eslint.config.js`, `tests/README.org` section "Lint"). Before committing, run `python3 scripts/lint-summary.py --check`: a change must not raise any (file, rule) count above `tests/lint-baseline.json`. After a fix lowers one, rewrite the baseline with `--write` in the same commit. Never weaken a rule to make a count fit.
 
 ## Debugging DOM/Rendering Bugs
 Before proposing a fix for a rendering or 'element not appearing' bug, first confirm the root cause with evidence: check for late/async DOM injection (MutationObserver), stale node references, and third-party userscript CSS. Do not ship a CSS-overflow or rAF-batching guess as the fix.
