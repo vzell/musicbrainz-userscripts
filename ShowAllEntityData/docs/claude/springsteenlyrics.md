@@ -26,12 +26,12 @@ storage, so MusicBrainz and SL share them.
 
 Four places read `_isSlHost` after that, and each says why:
 
-| Where | Why |
-|---|---|
+| Where                                | Why                                                                                                                                           |
+|--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | the `pageDefinitions` detection loop | `if (Boolean(def.host) !== _isSlHost) continue;` — a definition with a `host` belongs to that site alone, and on SL only those are considered |
-| `performClutterCleanup()` | every target is MusicBrainz furniture; some removals (any `<details>` with >5 images, any 700px div) would hit unrelated content |
-| `initStickyPageHeaders()` | with no `#page`, `_sphCollectTargets()` pins every `<body>` child — SL's navbar and footer |
-| `initNavigationGuard()` | every SL page is one PHP script told apart by its query string, so there only a HASH-only change is "the same page" |
+| `performClutterCleanup()`            | every target is MusicBrainz furniture; some removals (any `<details>` with >5 images, any 700px div) would hit unrelated content              |
+| `initStickyPageHeaders()`            | with no `#page`, `_sphCollectTargets()` pins every `<body>` child — SL's navbar and footer                                                    |
+| `initNavigationGuard()`              | every SL page is one PHP script told apart by its query string, so there only a HASH-only change is "the same page"                           |
 
 **The `host` filter is a guard no spec can see today** — no MusicBrainz matcher
 claims `/collection.php`, and no MusicBrainz URL reaches the SL matchers. It is
@@ -141,13 +141,13 @@ once scrolled and would otherwise cover it (checked live, 2026-10-04).
 
 ## Tests
 
-| Spec | Pins |
-|---|---|
-| `tests/fixtures/sl-collection.spec.js` | both pages in one table, exact headers, parsed fields (incl. a FETCHED-page card), item links, lazy thumbnails, Cat. no. text sort, Copies numeric sort, a column filter, zero MusicBrainz/CAA requests with CAA and Relationships switched back ON |
-| `tests/fixtures/sl-bootlegs.spec.js` | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack |
-| `tests/fixtures/sl-host.spec.js` | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip |
-| `tests/fixtures/sl-include-regex.spec.js` | the `@include` header line |
-| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" |
+| Spec                                        | Pins                                                                                                                                                                                                                                                |
+|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `tests/fixtures/sl-collection.spec.js`      | both pages in one table, exact headers, parsed fields (incl. a FETCHED-page card), item links, lazy thumbnails, Cat. no. text sort, Copies numeric sort, a column filter, zero MusicBrainz/CAA requests with CAA and Relationships switched back ON |
+| `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
+| `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
+| `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header line                                                                                                                                                                                                                          |
+| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N"                                                                                                                                                                                       |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits the two
 logged-out snapshots in `debug/` into two 50-card pages each, rewrites only the
