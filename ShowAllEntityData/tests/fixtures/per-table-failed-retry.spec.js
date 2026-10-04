@@ -27,7 +27,6 @@
 // sub-sections are expanded before anything is measured because a collapsed
 // sub-table is `display:none` and loads no artwork at all.
 
-const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');

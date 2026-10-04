@@ -27,7 +27,6 @@
 // request itself — see CLAUDE.md's warning that a "cannot reproduce" here means
 // nothing until that override has been switched back on.
 
-const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage } = require('../support/loadPage');

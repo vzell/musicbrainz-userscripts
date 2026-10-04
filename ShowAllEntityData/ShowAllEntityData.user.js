@@ -4049,6 +4049,15 @@
         if (el) el.id = 'mb-sa-startup-notice-style';
     }
 
+    /**
+     * Shows the one-time "Settings updated to current defaults" notice for the
+     * report `_applySettingsMigrations()` left in GM storage: which pinned
+     * settings adopted the current default, plus a note on pruned and orphaned
+     * keys. Does nothing when there is no report, no adopted setting, or the
+     * notice is already on the page.
+     *
+     * @returns {void}
+     */
     function _showSettingsMigrationNotice() {
         if (typeof GM_getValue === 'undefined' || !document.body) return;
         const report = GM_getValue(_SETTINGS_MIGRATION_NOTICE_KEY, null);
@@ -6036,7 +6045,7 @@
                         continue;
                     }
                     if (_pastLink && node.nodeType === Node.TEXT_NODE) {
-                        const _m = node.nodeValue.match(/\(\s*([\d\-]+)\s*\)/);
+                        const _m = node.nodeValue.match(/\(\s*([\d-]+)\s*\)/);
                         if (_m) { tdDate.textContent = _m[1].trim(); break; }
                     }
                 }
@@ -6489,7 +6498,7 @@
 
             // ── Location extraction (post-colon, or the colon-less form) ──────
             let locStr = '';
-            let additionalInfo = '';
+            let additionalInfo;
             if (postPart) {
                 // Split off Additional-Info at the FIRST ';' in the whole post-colon
                 // string before any comma-splitting — if Additional-Info itself
@@ -8042,8 +8051,8 @@
             const _singular    = sectionId.replace(/s$/i, '');
             const _ulClassName = `${_singular}-list`;
 
-            let _ul            = null;   // the <ul> to convert
-            let _replaceTarget = null;   // the node to replace in the parent DOM
+            let _ul;   // the <ul> to convert
+            let _replaceTarget;   // the node to replace in the parent DOM
 
             const _div = docContext.getElementById(sectionId);
             if (_div) {
@@ -14415,6 +14424,13 @@
     // at every log site that uses it) rather than removed, for reuse if a similar
     // CAA/EAA regression ever needs chasing again.
     const _debugCallCounters = new Map();
+    /**
+     * Increments and returns the call counter for `fnName` (see
+     * `_debugCallCounters` above).
+     *
+     * @param {string} fnName - Name of the function being counted.
+     * @returns {number} The count including this call (1 on the first).
+     */
     function _debugCallCount(fnName) {
         const n = (_debugCallCounters.get(fnName) || 0) + 1;
         _debugCallCounters.set(fnName, n);
@@ -20375,6 +20391,18 @@
         );
     }
 
+    /**
+     * Looks up a track row's millisecond length: by the recording MBID in its
+     * title cell first, else by medium and track position.
+     *
+     * @param {HTMLCollection|HTMLTableCellElement[]} cells - The row's cells.
+     * @param {number} medIdx - The row's medium number.
+     * @param {number} titleIdx - Title column index, or -1.
+     * @param {number} posIdx - Track-position column index, or -1.
+     * @param {{byRecording: Map<string, number>, byPosition: Map<string, number>}} maps
+     *   Lengths keyed by recording MBID and by `m<medium>n<position>`.
+     * @returns {number|undefined} Length in ms, or undefined when neither key is known.
+     */
     function _msLengthForRow(cells, medIdx, titleIdx, posIdx, maps) {
         const titleTd = titleIdx === -1 ? null : cells[titleIdx];
         const recA    = _titleRecordingAnchor(titleTd);
@@ -24637,6 +24665,13 @@
     function _findCellRelIcons(cell) {
         if (!cell) return [];
         const PATH_SENSITIVE_HOSTS = new Set(['springsteenlyrics.com']);
+        /**
+         * True when `hostname` is, or is a subdomain of, a host in
+         * `PATH_SENSITIVE_HOSTS`, whose links are told apart by path, not domain.
+         *
+         * @param {string} hostname
+         * @returns {boolean}
+         */
         function _isPathSensitive(hostname) {
             for (const h of PATH_SENSITIVE_HOSTS) {
                 if (hostname === h || hostname.endsWith('.' + h)) return true;
@@ -25584,7 +25619,7 @@
     //     ", Parts I–V" / ", Pt. II".
     //   - OC ReMix: 'Game "Title" OC ReMix' (the guide's one named exception).
     const _TITLE_MEDLEY_RE   = /^(Medley(?:\s+(\d+))?)\s*[:;]\s*/i;
-    const _TITLE_ETI_RE      = /\s[(\[]([^()\[\]]+)[)\]]$/;
+    const _TITLE_ETI_RE      = /\s[([]([^()[\]]+)[)\]]$/;
     const _TITLE_ETI_MINOR_RE = /^(?:a|an|the|and|or|but|nor|with|of|in|on|at|to|by|for|as|into|onto|upon)\b/;
     const _TITLE_SERIES_RE   = /,\s(?:Vol(?:ume)?\.?|Parts?|Pt\.)\s*([IVXLC\d]+(?:\s*[–-]\s*[IVXLC\d]+)?)\b/i;
     const _TITLE_FORMAT_RE   = /\b(EP|LP|CD|Single)\b/g;
@@ -27816,21 +27851,6 @@
         const yearInt = parseInt(year, 10);
         const yearFull = (yearInt < 40 ? 2000 : 1900) + yearInt;
         return { country, registrant, year, yearFull, designation };
-    }
-
-    /**
-     * Formats a compact ISRC as the hyphenated `CC-XXX-YY-NNNNN` display
-     * form — see `_parseIsrcCode()`'s own JSDoc for the parsing rules.
-     * Returns `null` for a code that doesn't match the required shape, so
-     * callers can tell "reformat" apart from "flag as invalid"
-     * (org/ISRC.org items 3/6).
-     *
-     * @param {string} rawCode
-     * @returns {?string}
-     */
-    function _formatIsrc(rawCode) {
-        const p = _parseIsrcCode(rawCode);
-        return p ? `${p.country}-${p.registrant}-${p.year}-${p.designation}` : null;
     }
 
     /**
@@ -33235,7 +33255,7 @@ ${sections.join('\n')}
      */
     function uiGlobalFilterInputCSS() {
         const defaults = '1em|2px 28px 2px 6px|2px solid #000|3px|500px|24px';
-        const [fontSize, padding, _border, borderRadius, _width, height] =
+        const [fontSize, padding, _unusedBorder, borderRadius, _unusedWidth, height] =
             parseCondensedStyle(Lib.settings.sa_ui_global_filter_input_style, defaults);
         const borderColor = Lib.settings.sa_global_filter_border_idle || '#000';
         const width       = (Lib.settings.sa_global_filter_initial_width ?? 500) + 'px';
@@ -33431,7 +33451,6 @@ ${sections.join('\n')}
         };
 
         // ── Navigation state ─────────────────────────────────────────────────────
-        let _histActiveList = 'lru';
         let _histPinVisible = [];
         let _histLruVisible = [];
         let _histPinSelIdx  = -1;
@@ -33545,7 +33564,6 @@ ${sections.join('\n')}
 
             container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
-                    _histActiveList = listId;
                     _selectRow(parseInt(row.dataset.idx), listId);
                 });
                 row.addEventListener('click', () => _applyEntry(parseInt(row.dataset.idx), listId));
@@ -33700,11 +33718,9 @@ ${sections.join('\n')}
             if (ev.key === 'ArrowDown') {
                 ev.preventDefault();
                 if (_histPinVisible.length > 0) {
-                    _histActiveList = 'pin';
                     _selectRow(0, 'pin');
                     pinList.focus();
                 } else if (_histLruVisible.length > 0) {
-                    _histActiveList = 'lru';
                     _selectRow(0, 'lru');
                     lruList.focus();
                 }
@@ -33738,10 +33754,8 @@ ${sections.join('\n')}
                     ev.preventDefault();
                     const next = selIdx + 1;
                     if (next < visible.length) {
-                        _histActiveList = listId;
                         _selectRow(next, listId);
                     } else if (listId === 'pin' && _histLruVisible.length > 0) {
-                        _histActiveList = 'lru';
                         _selectRow(0, 'lru');
                         lruList && lruList.focus();
                     }
@@ -33749,11 +33763,9 @@ ${sections.join('\n')}
                     ev.preventDefault();
                     const prev = selIdx - 1;
                     if (prev >= 0) {
-                        _histActiveList = listId;
                         _selectRow(prev, listId);
                     } else if (listId === 'lru' && _histPinVisible.length > 0) {
                         const lastPin = _histPinVisible.length - 1;
-                        _histActiveList = 'pin';
                         _selectRow(lastPin, 'pin');
                         pinList && pinList.focus();
                     } else {
@@ -35137,7 +35149,7 @@ ${sections.join('\n')}
         });
         if (!result) return; // toggled closed
 
-        const { dialog, scrollArea: contentArea, close: closeDialog, applyQF: _helpApplyQF } = result;
+        const { scrollArea: contentArea, applyQF: _helpApplyQF } = result;
         Object.assign(contentArea.style, {
             padding:    '20px 24px',
             fontSize:   Lib.libPrefs.lib_content_font_size,
@@ -36195,7 +36207,6 @@ ${sections.join('\n')}
         // this context so EAA pages show EAA everywhere instead of CAA.
         const _artCtx    = _getActiveArtCtx();
         const _artKey    = _artCtx.key.toUpperCase();          // 'CAA' or 'EAA'
-        const _artIsEaa  = _artCtx.key === 'eaa';
 
         const _cs  = (typeof _caaFetchStats !== 'undefined') ? _caaFetchStats : null;
         const _caaElapsedMs = (_cs && _cs.startTime !== null)
@@ -36222,13 +36233,10 @@ ${sections.join('\n')}
             : '— (not available in this browser)';
         const _memComment = _mem ? 'JS heap via performance.memory (Chromium)' : '';
 
-        let totalRows = 0, visibleRows = 0;
+        let totalRows = 0;
         tables.forEach(t => {
-            const rs = t.querySelectorAll('tbody tr');
-            totalRows   += rs.length;
-            visibleRows += Array.from(rs).filter(r => r.style.display !== 'none').length;
+            totalRows += t.querySelectorAll('tbody tr').length;
         });
-        const hiddenRows = totalRows - visibleRows;
 
         const firstTable = tables[0];
         const headerRow  = firstTable.querySelector('thead tr:first-child');
@@ -36706,7 +36714,7 @@ ${sections.join('\n')}
 
         // Original / extracted / derived column counts — from snapshot when available,
         // live DOM class scan otherwise.
-        const { _origCols, _extractedCols, _derivedCols, _injectedCols, _synthCols } = (() => {
+        const { _origCols, _extractedCols, _derivedCols, _injectedCols } = (() => {
             if (_statsSnapshot.captured) {
                 return {
                     _origCols:      _statsSnapshot.originalCols,
@@ -37012,7 +37020,6 @@ ${sections.join('\n')}
             // Tag placeholder <td> cells with their data-id so we can fill them in.
             _idbPlaceholderRows.forEach(row => {
                 if (!row._id) return;
-                const tds = _idbTbl.querySelectorAll('tbody tr td:nth-child(2)');
                 const tr = Array.from(_idbTbl.querySelectorAll('tbody tr')).find(
                     r => r.querySelector('td') && r.querySelector('td').textContent.includes(
                         // U+FE0F leads the class: written after 🖼 it would read as
@@ -37696,6 +37703,13 @@ ${sections.join('\n')}
 
         Lib.debug('stats', `Statistics panel displayed (${_tableData.length} table(s))`);
 
+        /**
+         * Saves the open statistics panel as a standalone HTML file: a clone of
+         * its body with every table card expanded and the quick filter removed,
+         * titled after the page heading.
+         *
+         * @returns {void}
+         */
         function _exportStatsToHTML() {
             const bodyClone = body.cloneNode(true);
             // Force-expand all table-detail cards (may be collapsed by toggle)
@@ -38171,7 +38185,7 @@ a { color: #1565c0; }`;
                     updateOptionFocus(selectedOptionIndex, true);
                     break;
 
-                case 'Enter':
+                case 'Enter': {
                     e.preventDefault();
                     const selectedOption = menuOptions[selectedOptionIndex];
                     applyTableDensity(selectedOption.dataset.densityKey);
@@ -38184,6 +38198,7 @@ a { color: #1565c0; }`;
                         opt.style.fontWeight = isSelected ? '600' : 'normal';
                     });
                     break;
+                }
             }
         };
         document.addEventListener('keydown', densityMenuKeyHandler);
@@ -38398,6 +38413,14 @@ a { color: #1565c0; }`;
         return _w + 8;
     }
 
+    /**
+     * Adds a drag handle (`.column-resizer`) to each of `table`'s header
+     * cells, so a column can be resized by dragging its right edge. A header
+     * that already has a handle is skipped.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {void}
+     */
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
 
@@ -38597,6 +38620,13 @@ a { color: #1565c0; }`;
                 });
             }
 
+            /**
+             * Ends a column-resize drag: detaches the drag listeners, restores text
+             * selection and records the final width.
+             *
+             * @param {MouseEvent} e
+             * @returns {void}
+             */
             function onMouseUp(e) {
                 resizer.classList.remove('resizing');
                 resizer.style.background = 'transparent';
@@ -39908,7 +39938,6 @@ a { color: #1565c0; }`;
             <div id="mb-resize-progress">Preparing…</div>
         `;
         document.body.appendChild(_resizeOverlay);
-        const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
         // Offscreen measurement container — shared across all source tables.
@@ -40282,8 +40311,6 @@ a { color: #1565c0; }`;
         if (!Lib.settings.sa_collabsable_sidebar) return; // Only available if true
 
         const sidebar = document.getElementById("sidebar");
-        const page = document.getElementById("page");
-        const content = document.getElementById("content");
 
         if (!sidebar) return;
 
@@ -40299,7 +40326,7 @@ a { color: #1565c0; }`;
         const sidebarWidth = '240px';
 
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
-        const style = GM_addStyle(`
+        GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
                 transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
@@ -42793,7 +42820,7 @@ a { color: #1565c0; }`;
     // GM_addStyle so this is exempt from page CSP style-src restrictions
     // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
     // style-src, which silently drops plain injected <style> tags).
-    const style = GM_addStyle(`
+    GM_addStyle(`
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         button.mb-show-all-btn-loading:disabled {
             cursor: default !important;
@@ -45327,7 +45354,6 @@ a { color: #1565c0; }`;
         // ── Detect EXTRA sibling text after </i> inside the <bdi> ────────────
         // Walk the text nodes that follow <i> within its parent <bdi> (or the
         // commentSpan itself when there is no wrapping <bdi>).
-        const bdiEl = iEl.closest('bdi') || commentSpan;
         let extraText = '';
         let node = iEl.nextSibling;
         while (node) {
@@ -47693,8 +47719,6 @@ a { color: #1565c0; }`;
 
             histQuickFilter.addEventListener('keydown', (ev) => {
                 if (!_histIsOpen()) return;
-                const allVisible  = [..._histPinVisible, ..._histLruVisible];
-                const totalVisible = allVisible.length;
 
                 if (ev.key === 'ArrowDown') {
                     ev.preventDefault();
@@ -48438,7 +48462,7 @@ a { color: #1565c0; }`;
         const keycaps = (s) => s
             .replace(comboRe, (m, pre, combo) =>
                 pre + combo.split(/\+(?=.)/).map(kbd).join('+'))
-            .replace(/\bthen ([A-Za-z0-9,.\/?;\-=])(?![A-Za-z0-9])/g, (m, k) => `then ${kbd(k)}`)
+            .replace(/\bthen ([A-Za-z0-9,./?;\-=])(?![A-Za-z0-9])/g, (m, k) => `then ${kbd(k)}`)
             .replace(/(^|[\s(])(Escape)\b(?![^<]*<\/kbd>)/g, (m, pre, k) => pre + kbd(k));
 
         const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
@@ -48663,8 +48687,26 @@ a { color: #1565c0; }`;
      * Returns an HTML string stored in `data-mbtt`; never used as `title`.
      */
     function _buildH2CountTooltip(filteredCount, totalCount, absoluteTotal) {
+        /**
+         * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _nR(n) { return n === 1 ? `There is ${_mbttCount(n)} row` : `There are ${_mbttCount(n)} rows`; }
+        /**
+         * "row" or "rows" for `n`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _r(n)  { return n === 1 ? 'row' : 'rows'; }
+        /**
+         * `n` formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _cN(n) { return _mbttCount(n); }
 
         const _gfEl  = document.getElementById('mb-global-filter-input');
@@ -49142,7 +49184,7 @@ a { color: #1565c0; }`;
             });
 
             let node;
-            while (node = walker.nextNode()) {
+            while ((node = walker.nextNode())) {
                 if (node.nodeType === Node.TEXT_NODE) {
                     const trimmed = node.nodeValue.trim();
                     if (trimmed && !isDecorativeIcon(trimmed)) {
@@ -49378,7 +49420,7 @@ a { color: #1565c0; }`;
         });
 
         let node;
-        while (node = walker.nextNode()) {
+        while ((node = walker.nextNode())) {
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.nodeValue;
                 // Skip text nodes that are just decorative icons or pure whitespace
@@ -50780,7 +50822,7 @@ a { color: #1565c0; }`;
      * @returns {Object<string, Object<string, {w: number, h: number}>>}
      */
     function _uvdGeoReadAll() {
-        let all = null;
+        let all;
         try { all = GM_getValue(MB_UNIQ_DROP_GEOMETRY_KEY, null); } catch (_) { all = null; }
         return (all && typeof all === 'object' && !Array.isArray(all)) ? all : {};
     }
@@ -53453,7 +53495,6 @@ a { color: #1565c0; }`;
         const isDecade  = mode.startsWith('datedecade:');
         const isMonth   = mode.startsWith('datemonth:');
         const isYear    = mode.startsWith('dateyear:');
-        const isWeekday = mode.startsWith('dateweekday:');
         const want = mode.slice(mode.indexOf(':') + 1);
         if (!want) return;
         const parts = _findCellDateExpressionParts(cell);
@@ -54427,7 +54468,7 @@ a { color: #1565c0; }`;
         // --- Global filter ---
         let globalHit = !globalQuery;
         if (!globalHit) {
-            let matchFound = false;
+            let matchFound;
             if (isRegExp && globalRegex) {
                 // Test each cell individually so anchored patterns like ^Thunder Road work correctly
                 matchFound = Array.from(row.cells).some((cell, i) =>
@@ -54572,7 +54613,7 @@ a { color: #1565c0; }`;
             const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
 
             const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
-            let match = false;
+            let match;
 
             if (_fIsRegExp) {
                 // Regexp mode — always run the full test; a plain includes pre-check
@@ -57651,7 +57692,7 @@ a { color: #1565c0; }`;
         // Removed isLoaded block to allow re-fetching
         Lib.debug('fetch', 'Starting fetch process...', overrideParams);
         globalStatusDisplay.textContent = 'Getting number of pages to fetch...';
-        let maxPage = 1;
+        let maxPage;
 
         // ── Compute effective fetch path (accounts for virtualPath) ──────────
         // When a button carries virtualPath (e.g. '/label'), replace the last
@@ -57820,8 +57861,8 @@ a { color: #1565c0; }`;
         // stage timings without needing to know this closure's internal
         // variable names.
         performance.mark('sa-fetch-phase-start');
-        let totalFetchingTime = 0;
-        let totalRenderingTime = 0;
+        let totalFetchingTime;
+        let totalRenderingTime;
 
         const currentUrlParams = new URLSearchParams(window.location.search);
         const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);
@@ -61026,6 +61067,13 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * How many linear master-row scans have run since the page loaded.
+     * Read by `__saTest.masterRowScans()`; see its JSDoc for why the effect of
+     * sharing one index cannot be asserted from the DOM.
+     */
+    let _masterRowScanCount = 0;
+
+    /**
      * Builds a one-shot `data-mb-row-idx` → master-row index over every captured
      * source row, together with the ARRAY that owns each row.
      *
@@ -61048,13 +61096,6 @@ a { color: #1565c0; }`;
      *
      * @returns {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>}
      */
-    /**
-     * How many linear master-row scans have run since the page loaded.
-     * Read by `__saTest.masterRowScans()`; see its JSDoc for why the effect of
-     * sharing one index cannot be asserted from the DOM.
-     */
-    let _masterRowScanCount = 0;
-
     function _buildMasterRowIndex() {
         const idx = new Map();
         if (typeof groupedRows !== 'undefined') {
@@ -61324,6 +61365,17 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Corrects one row's Locality/Region split once a flag userscript has
+     * decorated its Locality anchor: a subdivision the flag identifies as a
+     * region moves from Locality to Region. Each (row, trio) is corrected at
+     * most once (`_areaFlagRegionCorrected`).
+     *
+     * @param {HTMLTableRowElement} tr - A live row carrying `data-mb-row-idx`.
+     * @param {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>} trios
+     *   Column trios from `_flagRegionColumnTrios()`.
+     * @returns {void}
+     */
     function _maybeCorrectAreaFlagRegion(tr, trios) {
         const rowIdx = tr.dataset.mbRowIdx;
         if (rowIdx === undefined) return;
@@ -62188,7 +62240,7 @@ a { color: #1565c0; }`;
                 if (row.style.display === 'none') return;
 
                 // ── Test the row ───────────────────────────────────────────────
-                let matchFound = false;
+                let matchFound;
                 if (useRx) {
                     try {
                         // Use getCleanColumnText so .mb-rel-filter-key URL text is
@@ -62564,8 +62616,26 @@ a { color: #1565c0; }`;
         const _colHTML = _activeCol
             .map(f => `${_mbttColName(f.colName)}:${_mbttSpan(f.expr, 'cf')}`).join(', ');
 
+        /**
+         * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _nRows(n) { return n === 1 ? `There is ${_mbttCount(n)} row` : `There are ${_mbttCount(n)} rows`; }
+        /**
+         * "row" or "rows" for `n`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _r(n)     { return n === 1 ? 'row' : 'rows'; }
+        /**
+         * `n` formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _cN(n)    { return _mbttCount(n); }
 
         // Build the rich HTML tooltip string
@@ -64453,52 +64523,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Rebuilds the CAA and EAA bigbox artwork strips for a single table after
-     * its tbody content has been replaced (e.g. by the 'merged' discography view
-     *
-     * Mirrors the single-table path inside `_artInitPics` but operates on an
-     * already-known table element without the full querySelectorAll pass.
-     *
-     * Guards: `Lib.settings.sa_enable_caa_pics` must be true; `_caaQueue` must
-     * be initialised (initCaaPics must have run before this call).
-     *
-     * @param {HTMLTableElement} table  The table whose bigbox should be rebuilt.
-     */
-    function _artRebuildBigPicsForTable(table) {
-        if (!Lib.settings.sa_enable_caa_pics) return;
-        if (!_caaQueue) return; // queue not yet initialised
-
-        // Determine this table's DOM index among all table.tbl elements — the
-        // bigbox and toggle button are keyed by this index.
-        const _allTables = Array.from(document.querySelectorAll('table.tbl'));
-        const _tblIdx    = _allTables.indexOf(table);
-        if (_tblIdx === -1) return; // table not in DOM
-
-        for (const _ctx of [CAA_CTX, EAA_CTX]) {
-            const _hasCol = caaFindColumnByName(table, _ctx.column) !== -1;
-            const _hasAdd = !!(activeDefinition &&
-                               activeDefinition.features &&
-                               activeDefinition.features[_ctx.addFeature]);
-            if (!_hasCol && !_hasAdd) continue;
-
-            const { count: _cnt, firstImgUrl: _url } = _artCountLinks(_ctx, table);
-
-            if (_cnt === 0) {
-                // No links — clear stale bigbox and hide toggle button
-                const _staleBox = document.getElementById(_ctx.boxPrefix + '-' + _tblIdx);
-                if (_staleBox) { _staleBox.innerHTML = ''; _staleBox.style.display = 'none'; }
-                const _staleBtn = document.getElementById(_ctx.btnPrefix + '-' + _tblIdx);
-                if (_staleBtn) _staleBtn.style.display = 'none';
-                continue;
-            }
-
-            const _btnId = _artCreateOrUpdateToggleButton(_ctx, table, _tblIdx, _cnt, _url);
-            _artCreateOrUpdateRetryButton(_ctx, table, _tblIdx);
-            _artInitBigPics(_ctx, table, _tblIdx, _btnId);
-        }
-    }
-
-    /**
      * Injects four discography view-mode buttons into controlsContainer for
      * artist-releasegroups pages after the combined (all:'1') render completes
      * and the h3 category arrays have been built.
@@ -64943,12 +64967,12 @@ a { color: #1565c0; }`;
         const _allH3s = Array.from(_container.querySelectorAll('h3.mb-toggle-h3'));
 
         // ── Bigbox rebuild queue ─────────────────────────────────────────────────
-        // All _artRebuildBigPicsForTable calls are deferred: tables are collected here
+        // All bigbox rebuilds are deferred: tables are collected here
         // and rebuilt in a single drain pass AFTER the full visibility loop has
         // completed.  This fixes the CAA count corruption on merged ↔ other-view
         // switches caused by two interacting races:
         //
-        //  Race A (wrong _tblIdx): _artRebuildBigPicsForTable resolves a table's DOM
+        //  Race A (wrong _tblIdx): a per-table rebuild resolves a table's DOM
         //  index via querySelectorAll('table.tbl').indexOf(table).  When called inline
         //  inside a forEach that also hides/shows other sections, subsequent
         //  insertBefore moves (bigbox repositioning) can shift that index between calls,
@@ -64964,7 +64988,7 @@ a { color: #1565c0; }`;
         //  Deferring to after the visibility loop ensures:
         //   (1) All h3.dataset.mbDiscHidden flags are set before any IDB/network
         //       requests begin — no transitional state visible to async callbacks.
-        //   (2) The DOM table order read by _artRebuildBigPicsForTable is the final
+        //   (2) The DOM table order read by the rebuild is the final
         //       settled order — no further bigbox insertBefore moves occur later.
         //   (3) _artCreateOrUpdateGlobalToggleButton sees per-table badges freshly
         //       reset to 0, giving a consistent baseline for async increments.
@@ -65228,9 +65252,10 @@ a { color: #1565c0; }`;
         // restore-from-merged), we must rebuild their CAA/EAA bigboxes.
         //
         // We intentionally use initCaaPics()/initEaaPics() rather than calling
-        // _artRebuildBigPicsForTable() for each table individually.  The reason:
+        // a per-table rebuild for each table individually (the former
+        // _artRebuildBigPicsForTable(), removed 2026-10-04 as dead code).  The reason:
         //
-        //   _artRebuildBigPicsForTable enqueues new tasks into the SHARED _caaQueue,
+        //   A per-table rebuild enqueues new tasks into the SHARED _caaQueue,
         //   which already holds in-flight tasks from every previous _artInitBigPics
         //   call (initial render, earlier view switches, …).  Even though the per-
         //   button render-generation counter (data-art-render-gen) should invalidate
@@ -68310,8 +68335,6 @@ a { color: #1565c0; }`;
             return (name === 'CAA' || name === 'EAA') ? name : null;
         })();
         const isCaaOrEaaCol = _caaOrEaaColName !== null;
-        const caaYesCount = 0; // unused after 9.99.569 — artwork-presence filtered via makeSynItem rename
-        const caaNoCount  = 0;
 
         // Does this column's cells carry flag icon(s) the unique-values
         // dropdown should decorate each entry with? Detected by column
@@ -68800,7 +68823,7 @@ a { color: #1565c0; }`;
                     }
                 });
                 let node;
-                while (node = walker.nextNode()) {
+                while ((node = walker.nextNode())) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if (node.matches(iconSel)) {
                             const baked = bakedIcons[iconIdx++];
@@ -71053,6 +71076,11 @@ a { color: #1565c0; }`;
         // ---- Quickfilter input events -------------------------------------
 
         // Show/hide the clear button depending on whether there is input
+        /**
+         * Shows the quick filter's clear button while the input holds text.
+         *
+         * @returns {void}
+         */
         function updateClearBtn() {
             if (qfInput.value.length > 0) {
                 qfClear.classList.add('mb-uniq-qf-clear-visible');
@@ -76420,6 +76448,19 @@ a { color: #1565c0; }`;
         await startFetchingProcess(_synthetic, st.buttonConfig, st.baseDef, st);
     }
 
+    /**
+     * Describes why a fetch run did not complete, for the status line and its
+     * tooltip: a failed page, an unreadable page count, or an unfinished
+     * pre-fetch.
+     *
+     * @param {{pageFailure?: {page: number, detail: string}, maxPageUnknown?: string,
+     *   preFetchIncomplete?: string}} rec - What went wrong in this run.
+     * @param {number} maxPage - Page count the run used.
+     * @param {number} pagesProcessed - Pages actually loaded.
+     * @returns {?{dataIncomplete: boolean, reasons: string[], tip: string, pagesPhrase: string}}
+     *   `null` when nothing went wrong. `dataIncomplete` is true when rows are
+     *   missing (a failed page or an unknown page count), not only a pre-fetch.
+     */
     function _fetchIncompleteSummary(rec, maxPage, pagesProcessed) {
         const reasons = [];
         if (rec.pageFailure) {
@@ -77826,7 +77867,7 @@ a { color: #1565c0; }`;
             }
 
             // Type coercion
-            let coerced = value;
+            let coerced;
             try {
                 if (schemaCfg.type === 'checkbox') {
                     coerced = value === true || value === 'true';
@@ -79458,6 +79499,13 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Fills the injected "Release events" column: adds a `td.mb-re-cell`
+     * placeholder to every row, then loads and renders each release's events.
+     * Does nothing when the column is switched off or this page has none.
+     *
+     * @returns {Promise<void>}
+     */
     async function initReleaseEventsColumn() {
         if (!Lib.settings.sa_enable_release_events_column) return;
         if (!activeReleaseEventColumns.length) return;
@@ -79467,6 +79515,13 @@ a { color: #1565c0; }`;
         };
 
         const _injBg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '22';
+        /**
+         * Adds the Release events placeholder cell to `row` unless it already has
+         * one, placed before the row's Relationships cell when there is one.
+         *
+         * @param {HTMLTableRowElement} row
+         * @returns {void}
+         */
         function _ensureReCell(row) {
             if (row.querySelector('td.mb-re-cell')) return;
             const mbid = _extractMbidFromRow(row);
@@ -81488,14 +81543,22 @@ a { color: #1565c0; }`;
         // stamped with `mbRelEntityType` (every pageType without a per-group
         // rebuild, where this module-level value is correct and stable for the
         // whole page). May be `{}` now that the entry gate above is DOM-based
-        // rather than `activeInjectedColumns.length`, so default both fields.
-        const { entityType = 'release', incOptions = ['url-rels'] } = activeInjectedColumns[0] || {};
+        // rather than `activeInjectedColumns.length`, so default the field.
+        const { entityType = 'release' } = activeInjectedColumns[0] || {};
         // ── Ensure mb-rel-cell tds exist in every data row ───────────────────
         // Inject into BOTH DOM rows and source rows (groupedRows/allRows).
         // runFilter() clones from source rows — if those lack mb-rel-cell,
         // every filter re-render loses the icons.
         if (activeInjectedColumns.length) {
             const _injBg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '22';
+            /**
+             * Adds the Relationships placeholder cell (`td.mb-rel-cell`) to `row`
+             * unless it already has one, placed before the row's Picard cell when
+             * there is one.
+             *
+             * @param {HTMLTableRowElement} row
+             * @returns {void}
+             */
             function _ensureRelCell(row) {
                 if (row.querySelector('td.mb-rel-cell')) return;
                 const _mbid = _extractMbidFromRow(row);
@@ -81649,6 +81712,14 @@ a { color: #1565c0; }`;
             return !_table || _relTableExpanded(_table);
         }
 
+        /**
+         * Writes one entity's Relationships answer into every cell for `mbid`
+         * that may still receive content, and onto their master rows.
+         *
+         * @param {string} mbid
+         * @param {Object} data - The WS/2 answer for that entity.
+         * @returns {Promise<void>}
+         */
         async function _populateCells(mbid, data) {
             // Only the cells still allowed to receive content. Filtering here
             // rather than at the call site keeps every writer — Phase 1's IDB
@@ -82310,10 +82381,24 @@ a { color: #1565c0; }`;
         return _a;
     }
 
+    /**
+     * Creates the Relationships retry buttons: the page-wide 🔗⟳ on
+     * multi-table pages, and the per-table ones.
+     *
+     * @returns {void}
+     */
     function _relCreateRetryButtons() {
         if (!Lib.settings.sa_enable_relationships_column) return;
         if (!_relPageHasColumn()) return;
         const C = _REL_RETRY_BTN_CSS;
+        /**
+         * Builds one 🔗⟳ retry button, or returns null when `id` already exists.
+         *
+         * @param {string} id - Element id.
+         * @param {string} t - Tooltip text.
+         * @param {Function} fn - Click handler.
+         * @returns {?HTMLButtonElement}
+         */
         function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';_setTip(b, t);b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
         // The global Relationships retry button is only meaningful on multi-table
         // pages where there are multiple sub-tables.  On single-table pages the
@@ -82440,6 +82525,12 @@ a { color: #1565c0; }`;
         return [{ table: tables[0], rows: (typeof allRows !== 'undefined' && allRows) || [] }];
     }
 
+    /**
+     * Collects the MBIDs whose Relationships lookup failed, from the live
+     * page and the source rows, leaving out any that succeeded somewhere.
+     *
+     * @returns {Set<string>}
+     */
     function _relFailedMbidsPageWide() {
         const _failed = new Set();
         const _done = new Set();
@@ -82710,6 +82801,12 @@ a { color: #1565c0; }`;
         _relRetryMbids(entry.mbids, et, _relIncOptionsForEntityType(et));
     }
 
+    /**
+     * Shows the page-wide "retry failed Relationships" button with the current
+     * failure count, or removes it when nothing failed.
+     *
+     * @returns {void}
+     */
     function _relRefreshFailedRetryButtons() {
         const _existing = document.getElementById('mb-rel-retry-failed');
         if (!Lib.settings.sa_enable_relationships_column || !_relPageHasColumn()) {
@@ -85088,6 +85185,12 @@ a { color: #1565c0; }`;
         // Lazy loader — fires only once (first click), then detaches itself.
         // After an error a one-shot retry handler is installed instead, so
         // the next click re-arms the original loader.
+        /**
+         * Fetches `url` on first press, then detaches itself. On failure it
+         * installs a one-shot handler that re-arms it for the next press.
+         *
+         * @returns {void}
+         */
         function loadOnce() {
             button.removeEventListener('mousedown', loadOnce, false);
             const req = new XMLHttpRequest();
@@ -85096,6 +85199,11 @@ a { color: #1565c0; }`;
                 if (req.status === 200 && req.responseText) {
                     successCallback(JSON.parse(req.responseText));
                 } else {
+                    /**
+                     * Re-arms `loadOnce` for the next press after a failed fetch.
+                     *
+                     * @returns {void}
+                     */
                     function retrySetup() {
                         button.removeEventListener('mousedown', retrySetup, false);
                         button.addEventListener('mousedown', loadOnce, false);
@@ -89223,6 +89331,16 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Builds or rebuilds an artwork cell's image list: one `<li>` per image
+     * under `ul.mb-caa-art-ul`, behind the cell's ▶/▼ expand button. A
+     * rebuild replaces the image rows and keeps the cell expanded if it was.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {HTMLTableCellElement} artCell
+     * @param {Object[]} images - Archive image records for this entity.
+     * @returns {void}
+     */
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
         // TEMP DEBUG (bug 2 investigation) — call counter and row lookup kept
         // unconditional (cheap, reused by the second TEMP DEBUG block below);
@@ -89621,6 +89739,13 @@ a { color: #1565c0; }`;
             // Single-use retry: clicking re-triggers _artLoadIcon with cache
             // busting so the browser fetches a fresh copy rather than replaying
             // the cached failure response.
+            /**
+             * One-shot click handler on a failed icon's ⚠ hint: reloads the icon with
+             * cache busting.
+             *
+             * @param {MouseEvent} e
+             * @returns {void}
+             */
             function _retryIconHandler(e) {
                 e.stopPropagation();
                 hintSpan.removeEventListener('click', _retryIconHandler);
@@ -89742,7 +89867,7 @@ a { color: #1565c0; }`;
 
         // ── Resolve count + images — from session cache, IDB, or network ────────
         let count;
-        let images = [];
+        let images;
         if (ctx.countCache.has(entityPath)) {
             // Tier 1: in-session Map — no network round-trip.
             count  = ctx.countCache.get(entityPath);
@@ -90405,33 +90530,11 @@ a { color: #1565c0; }`;
 
                     if (!firstImgUrl) firstImgUrl = imgurl;
 
-                    // ── Build wrapper tooltip text ─────────────────────────────
-                    // Start with the anchor's own text (e.g. "Greetings From Asbury Park, N.J.").
-                    // Then append the disambiguation comment from the enclosing <td>'s
-                    // <span class="comment"> (if present), including the opening '(' and
-                    // closing ')' characters, so the tooltip reads e.g.
-                    //   "Greetings From Asbury Park, N.J. (Pitman pressing)"
-                    // or for EAA events:
-                    //   "2025‐12‐14: The Stone Pony, Asbury Park, NJ, USA (Hungerthon Benefit)"
+                    // The anchor's own text (e.g. "Greetings From Asbury Park, N.J."):
+                    // the tooltip's name line and the image's alt text. The comment
+                    // line comes from _commentForTooltip below.
                     const _anchorText = a.textContent.trim();
-                    let _wrapperTitle = _anchorText;
                     const _td = a.closest('td');
-                    if (_td) {
-                        const _commentSpan = _td.querySelector('span.comment');
-                        if (_commentSpan) {
-                            // Extract visible text from the comment span.
-                            // MusicBrainz renders it as "(\n  <bdi>text</bdi>\n)" so
-                            // textContent gives "(\n  text\n)"; collapse whitespace and
-                            // ensure it is wrapped with exactly one "(" … ")".
-                            const _commentRaw = _commentSpan.textContent.trim();
-                            // The span's textContent typically starts with '(' and ends with ')'.
-                            // Normalise: strip outer parens if present, then re-wrap.
-                            const _commentInner = _commentRaw.replace(/^\(\s*/, '').replace(/\s*\)$/, '').trim();
-                            if (_commentInner) {
-                                _wrapperTitle += ' (' + _commentInner + ')';
-                            }
-                        }
-                    }
 
                     // Wrapper anchor mirrors jesus2099's inline-block anchor in bigbox
                     const wrapper = document.createElement('a');
@@ -92036,6 +92139,13 @@ a { color: #1565c0; }`;
         _artRefreshPerTableFailedButtons(ctx);
     }
 
+    /**
+     * Shows the page-wide "retry failed artwork" button for `ctx` with the
+     * current failure count, or removes it when nothing failed.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @returns {void}
+     */
     function _artRefreshFailedRetryButton(ctx) {
         const id = ctx.btnPrefix + '-retry-failed';
         const existing = document.getElementById(id);
@@ -92101,6 +92211,15 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Reloads one sub-table's artwork from the network: takes its count off
+     * the global badge, clears its cached entries and rebuilds it.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {HTMLTableElement} table
+     * @param {number} tableIndex - Its index among `table.tbl` elements.
+     * @returns {Promise<void>}
+     */
     async function _artRetryTable(ctx, table, tableIndex) {
         Lib.debug(ctx.key, `${ctx.key}RetryTable: starting forced reload for table ${tableIndex}`);
 
@@ -93764,7 +93883,6 @@ a { color: #1565c0; }`;
                     ? listItems.filter(li => !li.querySelector(phSelector))
                     : [td];
 
-                let anyInjected = false;
 
                 targets.forEach(container => {
                     const link = container.querySelector(ctx.inlineLinkSel);
@@ -93825,7 +93943,6 @@ a { color: #1565c0; }`;
                     }
 
                     injected++;
-                    anyInjected = true;
 
                     // ── Defer fetch through _caaQueue (concurrency-throttled) ───
                     // When IDB is enabled AND this is not a cache-busted retry, the

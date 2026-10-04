@@ -64,7 +64,6 @@ async function setup(page, { failBatches = [], failStatus = 503 } = {}) {
         const url = new URL(route.request().url());
         const query = url.searchParams.get('query') || '';
         const ids = (query.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g) || []);
-        const ordinal = calls.length;
         calls.push({ ids, limit: url.searchParams.get('limit'), query });
 
         // Which batch is this? Attempts of the same batch repeat its MBIDs, so
@@ -124,9 +123,6 @@ async function waitForVisibleRowCount(page, n) {
 }
 
 const toggle = (page) => page.locator('.mb-ms-col-hdr-btn').first();
-
-/** Distinct batches actually requested, ignoring retry attempts. */
-const distinctBatches = (calls) => new Set(calls.map((c) => c.ids[0])).size;
 
 test.describe('artist-recordings: millisecond Length precision via batched lookups', () => {
     test('the toggle is offered, quotes its cost, and fetches nothing until pressed', async ({ page }) => {

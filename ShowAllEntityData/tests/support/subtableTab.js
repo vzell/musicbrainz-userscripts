@@ -99,7 +99,7 @@ async function readCapturedSnapshot(page) {
     return page.evaluate(() => {
         // gmStubs.js keeps every GM value inside ONE localStorage entry as a
         // JSON object, rather than as individual top-level keys.
-        let values = {};
+        let values;
         try {
             values = JSON.parse(localStorage.getItem('__sa_test_gm_values__') || '{}');
         } catch {

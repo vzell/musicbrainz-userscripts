@@ -108,9 +108,6 @@ async function loadExpandedRelPage(page, opts) {
     return { ws2, failing, heal: () => { state.healed = true; } };
 }
 
-const rowMbids = (page) => page.evaluate(() => Array.from(
-    document.querySelectorAll('table.tbl tbody td.mb-rel-cell[data-mbid]')).map((td) => td.dataset.mbid));
-
 const shape = (page) => page.evaluate(() => {
     const cells = Array.from(document.querySelectorAll('table.tbl tbody td.mb-rel-cell[data-mbid]'));
     return {

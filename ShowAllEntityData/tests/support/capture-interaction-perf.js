@@ -438,12 +438,10 @@ async function loadPage(browser, config) {
             let last = -1, stable = 0;
             const deadline = Date.now() + 120000;
             while (Date.now() < deadline && stable < 4) {
-                /* eslint-disable no-await-in-loop */
                 const n = await page.locator('table.tbl tbody td.mb-rel-cell a').count();
                 stable = (n === last && n > 0) ? stable + 1 : 0;
                 last = n;
                 await page.waitForTimeout(250);
-                /* eslint-enable no-await-in-loop */
             }
             // A FLOOR, not an equality — and the difference was found the hard
             // way. The first version asserted `rendered === urlRelTotal` and

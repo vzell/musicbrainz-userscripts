@@ -39,18 +39,23 @@ a userscript change and needs a WIP changelog entry; lower the baseline with
    =<tr>= (=scripts/mutations/app-help-table-row-count.json=) fails the
    unawaited form too, because the next line awaits and the rejection surfaces
    there. It was right only by that accident.
-3. *no-useless-assignment (13 in the userscript, 3 in the harness, 1 in the library).*
+3. DONE *no-useless-assignment (13 in the userscript, 3 in the harness, 1 in the library).*
    A value is written and then overwritten or never read. Most are harmless
    leftovers, but each needs a look, because sometimes the "useless" write was
    meant to be read. Userscript lines 6443, 7996, 7997, 50214, 53861, 54006,
    57077, 57246, 57247, 61607, 77240, 89145, 89831.
-4. *no-useless-escape (4)*, at userscript lines 5990, 25078 (×2) and 47872. Cosmetic.
-5. *no-cond-assign (3).* The =while (node = walker.nextNode())= idiom at lines
+   *Done* on =fix/lint-items-2-7=, all 17 (the library one in VZ_MBLibrary
+   4.3.1). None was meant to be read: 16 initializers that every path
+   overwrites, and =_wrapperTitle=, a plain-title tooltip text that the rich
+   tooltip replaced, removed with the block that built it.
+4. DONE *no-useless-escape (4)*, at userscript lines 5990, 25078 (×2) and 47872. Cosmetic.
+   *Done*. Old and new regexes agree on 600,000 random strings.
+5. DONE *no-cond-assign (3).* The =while (node = walker.nextNode())= idiom at lines
    48576, 48812 and 68219. Wrap each in an extra pair of parentheses to mark it
-   as intended.
-6. *no-case-declarations (1).* A =const= in a bare =case= at line 37625.
-   Give that case its own braces.
-7. *Warnings to review in the same pass:*
+   as intended. *Done*, matching the three existing =while ((…))= loops.
+6. DONE *no-case-declarations (1).* A =const= in a bare =case= at line 37625.
+   Give that case its own braces. *Done*.
+7. DONE *Warnings to review in the same pass:*
    - =no-unused-vars=: 24 in the userscript, for example =_formatIsrc= and
      =_artRebuildBigPicsForTable= (dead functions?) and =isWeekday=. This is the
      b7697b1 audit again; check the real call sites before deleting anything.
@@ -58,3 +63,20 @@ a userscript change and needs a WIP changelog entry; lower the baseline with
    - =playwright/expect-expect=: 4 tests with no assertion.
    - =playwright/no-skipped-test=: 4.
    - Four =eslint-disable= comments for rules that aren't enabled.
+   *Done*:
+   - =no-unused-vars=: 33 → 0 (24 userscript, 9 harness), every one dead.
+     =_artRebuildBigPicsForTable= was dead on purpose: the merged-view
+     drain calls =initCaaPics()=/=initEaaPics()= instead, because a
+     per-table rebuild shares the old =_caaQueue=; its comments now name it
+     as the removed alternative. Two cascades followed (=visibleRows=,
+     =allVisible=), and the first =_histActiveList= copy was write-only.
+   - =jsdoc/require-jsdoc=: 31 → 0 in the userscript (30 new blocks; one
+     existing block had a =let= wedged between it and its function).
+   - =expect-expect= and =no-skipped-test=: false positives, so configured
+     rather than edited (=assertFunctionNames= for three asserting helpers,
+     =allowConditional=). Both still fire on a planted bare test and an
+     unconditional skip.
+   - The four directives (and their three =eslint-enable= partners) removed.
+   - The library's one =require-jsdoc= and one =no-useless-assignment= are
+     fixed too, released as VZ_MBLibrary 4.3.1.
+   Baseline 339 → 237.
