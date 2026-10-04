@@ -6,8 +6,24 @@ const { buildGmStubsScript } = require('./gmStubs');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
-const IRO_URL = 'https://cdn.jsdelivr.net/npm/@jaames/iro@5';
-const PAKO_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+// The two third-party libraries the userscript `@require`s, served from
+// node_modules instead of their CDNs. They are exact-pinned devDependencies
+// (package.json) and byte-identical to what the CDNs serve: same sha256 for
+// `@jaames/iro@5` (jsdelivr resolves it to 5.5.2, dist/iro.min.js) and for
+// cdnjs `pako/2.1.0/pako.min.js`, checked 2026-10-04. Loading them from the
+// CDNs on every page load made each spec depend on two third-party hosts: on
+// 2026-10-04 a jsdelivr outage failed 72 tests of the merge gate, every one in
+// `addScriptTag` before any assertion ran (DEBUG-NOTES.md).
+// `tests/fixtures/harness-required-libs.spec.js` keeps the pin in step with
+// the userscript's `@require` lines; `scripts/check-vendored-libs.py` compares
+// the bytes with the CDNs by hand.
+const IRO_PATH = require.resolve('@jaames/iro/dist/iro.min.js');
+const PAKO_PATH = require.resolve('pako/dist/pako.min.js');
+
+// The CDN hosts of the userscript's `@require`s. With PLAYWRIGHT_BLOCK_CDN=1
+// every request to them is aborted, which is how a whole suite run proves it
+// needs neither of them.
+const CDN_RE = /^https?:\/\/(?:cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)\//;
 const MB_LIBRARY_PATH = path.join(REPO_ROOT, 'lib', 'VZ_MBLibrary.user.js');
 const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 
@@ -73,10 +89,9 @@ const ARCHIVE_ORG_RE = /^https?:\/\/(?:[^/]+\.)?archive\.org\//;
  * musicbrainz.org URL the fixture represents. Omit `fixtureFile` to navigate
  * to a real live page instead.
  *
- * iro/pako are pulled from the same CDN URLs the userscript itself
- * `@require`s (pinned versions, so they're already stable/offline-safe in
- * practice) rather than vendored locally — revisit only if that CDN
- * dependency turns out to cause real friction.
+ * iro and pako come from node_modules (`addRequiredLibs()`), not from the
+ * CDNs the userscript `@require`s them from: a fixture load touches no
+ * network at all. See IRO_PATH for why, and for how the pin is kept honest.
  *
  * `testMode: true` sets `window.__SA_TEST_MODE__ = true` before the
  * userscript loads, which gates its `window.__saTest` debug hook (see
@@ -128,12 +143,32 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
             : route.fallback()));
     }
 
+    if (process.env.PLAYWRIGHT_BLOCK_CDN) {
+        await page.context().route(CDN_RE, (route) => route.abort('blockedbyclient'));
+    }
+
     await page.goto(url);
 
-    await page.addScriptTag({ url: IRO_URL });
-    await page.addScriptTag({ url: PAKO_URL });
+    await addRequiredLibs(page);
     await page.addScriptTag({ path: MB_LIBRARY_PATH });
     await page.addScriptTag({ path: USERSCRIPT_PATH });
 }
 
-module.exports = { loadUserscriptPage, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE };
+/**
+ * Injects the userscript's two third-party `@require`s, iro then pako (the
+ * header's order), from node_modules. Every place that loads the userscript
+ * by hand (a popup tab, a real-network page) goes through this, so there is
+ * one copy of where they come from.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+async function addRequiredLibs(page) {
+    await page.addScriptTag({ path: IRO_PATH });
+    await page.addScriptTag({ path: PAKO_PATH });
+}
+
+module.exports = {
+    loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE,
+    IRO_PATH, PAKO_PATH, CDN_RE,
+};

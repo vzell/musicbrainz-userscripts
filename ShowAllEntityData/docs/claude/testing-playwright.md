@@ -264,3 +264,25 @@ assumptions the change invalidates, and live-spec assertions or timing
 etc.) tied to the changed behavior. Call out every affected test file
 explicitly in the plan/PR description, even when no test code needs to
 change — a stale comment is still a defect.
+
+## Fixture specs are network-free; settle-waits count writes
+
+**The userscript's `@require`d libraries come from `node_modules`.** iro and
+pako are exact-pinned devDependencies, injected by `addRequiredLibs()`
+(`tests/support/loadPage.js`), never `addScriptTag({ url })` to a CDN: on
+2026-10-04 a jsdelivr outage failed 72 merge-gate tests in `addScriptTag`. A new
+place that loads the userscript by hand (a popup tab, a real-network page) calls
+`addRequiredLibs()` too. `harness-required-libs.spec.js` fails when a `@require`
+version moves without the devDependency; `scripts/check-vendored-libs.py`
+compares the bytes with the CDNs by hand. `PLAYWRIGHT_BLOCK_CDN=1` blocks both
+CDN hosts for a whole run.
+
+**`waitForFilterSettled` / `waitForSortSettled` / `waitForSubTableFilterSettled`
+count WRITES to the status element, not only text changes.** An operation that
+ends with a byte-identical line ("✓ Filtered 9 rows in 22ms …" twice) used to
+make the wait unsatisfiable. `_runAndWaitForSettledText()` now installs a
+MutationObserver before the trigger: a write after the trigger (every writer
+assigns `textContent` unconditionally) or a replaced node makes the text
+eligible. A trigger that writes NOTHING still times out — so a spec whose
+trigger may be a genuine no-op must wait on what it asserts (a row set, a
+request count) instead. `harness-settled-text.spec.js` pins both halves.

@@ -17946,3 +17946,62 @@ on one element, or two layers on one spot. Regression tests now pin each
 `bigbox-tooltip.spec.js`). Mutations: `rich-tooltips-liner.json`, now 16/16 OK.
 Test trap in the narrow-window test: at 520 px the sticky Title column covers
 the scrolled-in icon, so that test turns sticky columns off and centres the icon.
+
+## 2026-10-04 — Two recorded harness weaknesses closed: CDN libraries, and settle-waits on identical text (branch harness/offline-libs-and-settled-writes)
+
+Both had been recorded on 2026-09-18 and left alone. See the entries "A third,
+environmental one" (inside the focus-prefix entry) and "A fourth load-sensitive
+spec: waiting for a status text that never changes". Those entries stay as they
+are; this one closes them.
+
+**1. iro and pako from the CDN on every page load.** The 9.99.1215 merge gate
+failed 72 tests, every one with `page.addScriptTag: Failed to load script at
+https://cdn.jsdelivr.net/npm/@jaames/iro@5`, at the end of the run. All 72
+passed on `--last-failed` once the CDN answered.
+- **Fix:** both are exact-pinned devDependencies (`@jaames/iro` 5.5.2, which
+  jsdelivr serves for `@5`; `pako` 2.1.0). The sha256 of each `node_modules`
+  file equals the CDN file's, checked by hand and by
+  `scripts/check-vendored-libs.py`.
+- **One helper:** `addRequiredLibs()` in `loadPage.js` replaces four copies of
+  the URL constants (`loadPage.js`, `subtableTab.js`, `realNetworkGmXhr.js`,
+  `label-relationships-single-table-column-swap.spec.js`).
+- **Proof:** with `PLAYWRIGHT_BLOCK_CDN=1`, which aborts every request to both
+  hosts, `test:full` passed 947/947.
+- **Test:** `harness-required-libs.spec.js` (3 tests). It pins the
+  devDependencies to the userscript's `@require` lines (pako exact, iro by
+  major version, because users get whatever `@5` serves), checks the version
+  banners, and renders a fixture with both CDNs unreachable.
+- **Mutation:** pointing `addRequiredLibs()` back at the URLs fails with the
+  outage's exact error (`harness-offline-libs.json`, 1/1).
+
+**2. Settle-waits on a byte-identical status line.**
+- **Fix:** `_runAndWaitForSettledText()` now also counts writes to the polled
+  element, with a MutationObserver installed before the trigger and removed in
+  a `finally`. A write after the trigger, or a replaced node, makes the text
+  eligible. The `⏳` and two-stable-polls rules are unchanged.
+- **Why that works:** every writer of the polled elements assigns `textContent`
+  unconditionally (`#mb-filter-status-display`, `#mb-sort-status-display`,
+  h3 `.mb-sort-status`, and `_setCountStatText()` for `.mb-row-count-stat`).
+  An identical string still replaces the text node, so a MutationObserver sees
+  it. A background pass that re-runs `runFilter()` during a wait also writes,
+  but it reads the inputs as they are after the trigger, so that is a settled
+  result, not a stale one.
+- **Test:** `harness-settled-text.spec.js`. An identical rewrite resolves; the
+  old helper timed out there, and its new error reports "writes after the
+  trigger: 1". A no-op trigger still throws. Its setup polls the status line
+  directly, so a broken helper fails the assertion that names it rather than
+  the setup. That cost one round: the first version settled its premise
+  through the helper under test.
+- **Mutations:** `harness-settled-text.json`, 2/2.
+- Both triggers are synthetic on purpose: a real re-filter cannot be made to
+  repeat its "in N ms".
+
+
+**Live check of the real-network path** (`realNetworkGmXhr.js` now uses
+`addRequiredLibs()` too): two live specs load the userscript and the libraries
+on musicbrainz.org (35 CAA images loaded), and each fails one assertion. Both
+fail **identically on `main`** (run from a temporary worktree, which loads
+from the CDNs), so they predate this branch and are recorded here, not fixed:
+- `releasegroup-releases-caa-type-comment-filter.spec.js`: the
+  `thead .mb-caa-col-hdr-btn` of the first table is never found.
+- `caa-icon-survives-sort.spec.js`: "a re-render must show no hourglass at all".

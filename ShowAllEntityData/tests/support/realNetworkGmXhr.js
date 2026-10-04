@@ -1,10 +1,7 @@
 'use strict';
 
 const { buildGmStubsScript } = require('./gmStubs');
-const { USERSCRIPT_PATH, MB_LIBRARY_PATH } = require('./loadPage');
-
-const IRO_URL = 'https://cdn.jsdelivr.net/npm/@jaames/iro@5';
-const PAKO_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+const { USERSCRIPT_PATH, MB_LIBRARY_PATH, addRequiredLibs } = require('./loadPage');
 
 /**
  * Real, network-passthrough replacement for `gmStubs.js`'s always-404
@@ -102,8 +99,7 @@ async function loadUserscriptPageWithRealNetwork(page, { url, testMode, settings
     await page.addInitScript({ content: buildPassthroughGmXhrScript() });
 
     await page.goto(url);
-    await page.addScriptTag({ url: IRO_URL });
-    await page.addScriptTag({ url: PAKO_URL });
+    await addRequiredLibs(page);
     await page.addScriptTag({ path: MB_LIBRARY_PATH });
     await page.addScriptTag({ path: USERSCRIPT_PATH });
 }
