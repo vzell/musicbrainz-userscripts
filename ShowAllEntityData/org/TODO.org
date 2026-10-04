@@ -1253,7 +1253,7 @@ window
 the h2/h3 header lines should stretch up to where we end when scrolling to the far right. The last column on a very wide
 table is actually aligned with the h2/h3 header lines when scrolled to the very right end, see screenshot 
 
-* TODO flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
+* DONE flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
 
 "quick filter matches the hidden prefix, opens what matches, hides the rest,
 and restores on clear" failed in 2 of 5 =npm run test:full= runs on 2026-10-04,
@@ -1270,6 +1270,16 @@ rebuilds the headers, it would close the dropdown, and =readDrop()= then reads
 the closed panel with the stored collapsed state. Check that first, e.g. by
 logging dropdown open/close around the fill on a loaded run, before changing
 the wait.
+
+*Done* in 9.99.1220. The suspicion above was WRONG, and so was a second one
+(the dropdown's close-on-scroll listener). Real cause: 150 ms after the final
+render, =startFetchingProcess()= focused the global filter unconditionally,
+so the test's typing landed in the global filter as ="🔍 month"=. The timer
+now leaves focus alone when another editable field has it. That was a user-facing
+bug too: typing into a 📊 quick filter, column filter or search box right
+after a render could jump to the global filter. Test:
+=tests/fixtures/autofocus-does-not-steal.spec.js=. Full write-up:
+=DEBUG-NOTES.md=, 2026-10-04, "the post-render auto-focus stole the typing".
 
 (The same runs also hit filter-autofocus.spec.js:18 once, a =page.goto=
 timeout before the userscript is injected: environmental. And
