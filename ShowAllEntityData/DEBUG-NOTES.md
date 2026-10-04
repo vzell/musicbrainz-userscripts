@@ -18117,3 +18117,56 @@ Specs: `tests/fixtures/sl-collection.spec.js`, `sl-bootlegs.spec.js`,
 `scripts/build-sl-fixtures.py`, served by `tests/support/slFixture.js`).
 Mutations: `scripts/mutations/sl-support.json`, 11/11 OK — 10 caught, and the
 detection loop's `host` filter recorded `pass` (no current URL can show it).
+
+## 2026-10-04 — dump-default-history.py misreads a merge: a new setting shows as an orphan (branch fix/default-history-merge-walk)
+
+**Symptom.** Merging `sl-support` into `main` (merge `e215368`, shipped as
+9.99.1216), then running `scripts/dump-default-history.py`, left
+`audit-config-defaults.py` Stage 3 failing with
+`setting added: sa_enable_springsteenlyrics`. The orphan count rose 4 → 5, so the
+history claimed a setting that HEAD has had been REMOVED. It went green only
+once the fold commit `c4ba53b` touched the userscript again, which is why the
+history refresh `f70ae92` is a separate commit after the fold.
+
+**Root cause, two defects in `revisions()`'s `git log --follow --reverse`:**
+
+1. `--follow` leaves merge commits out: of `e215368` and `c4ba53b`, only the
+   second is listed. `walk()` took `current` from the LAST revision walked, so
+   after a merge it came from `main`'s newest non-merge commit (`4f7521f`), which
+   predates the merged setting. Every schema key in `ever` but not in that stale
+   `current` became an orphan.
+2. Date order interleaves two branches. `prev` → `cur` compared consecutive
+   revisions, so a branch commit was diffed against a `main` commit it never
+   descended from. A default `main` changed would then show up as changed BACK
+   on the branch, a flip no single line of history made. On this repo's history
+   the flips happened to repeat values that really shipped, so `stale` and the
+   migration table came out right. The scratch test below shows how it can go
+   wrong.
+
+The file has never been renamed (`git log --follow --diff-filter=R` is empty),
+so `--follow` bought nothing.
+
+**Fix.** `git log --topo-order --reverse --parents -- PATH`: path-limited parent
+rewriting gives each revision its nearest ancestors that also touched the file.
+Each revision is compared with ITS OWN parents (stepping over unparseable ones,
+as the linear walk used to). A merge records a change only for a value that
+matches none of its parents. `current` is parsed from `HEAD`.
+
+**Unchanged where it matters.** `scripts/compare-default-history.py` on the old
+and new JSON at `f70ae92`: 699 → 732 revisions walked (the merges), and `changes`
+(as key/from/to triples), `stale`, `orphans` and `current` are all identical, so
+`_SETTINGS_MIGRATIONS` and `_SETTINGS_ORPHANED_KEYS` needed no edit. That is
+not luck. The audit's "invented" arm would have failed on any migration entry
+whose value a narrower walk (e.g. `--first-parent`) stopped seeing. This is why
+the walk still visits branch commits and was not reduced to the first-parent
+line.
+
+**Test.** `scripts/check-default-history-walk.py` builds a scratch repo in a temp
+dir (M0 main, M1 main changes a default, B branch adds a setting, X a `--no-ff`
+merge resolved by hand), in two date orders, and runs the script black-box from
+a copied layout. Fixed: 8/8. The `main` version (`--script` pointing at
+`git show main:…`): 3/8. "main-last" reproduces the orphan exactly, and
+"branch-last" the reverse flip plus a wrong `current`.
+
+**Timing** (petri, 2026-10-04): a full refresh now takes ~46 s, up from
+~26 s at 591 revisions. This is dev-only and never touches the published script.
