@@ -25971,6 +25971,11 @@
     // "bad date" apart from its "bad rest".
     const _LIVE_DATE_HEAD_RE = new RegExp(`^${_LIVE_DATE_SRC}(?![\\d‐\\-–./])`);
     const _LIVE_DATE_LED_RE = /^(?:(?:\d{4}|\?{4})[‐\-–./]\s?(?:\d{1,2}|\?\?)|(?:\d{1,2}|\?\?)[‐\-–./](?:\d{1,2}|\?\?)[‐\-–./,:])/;
+    // A date with a day, followed by more days of the same month
+    // ("1978‐08‐21/22/23", org/live-bootleg.org 2a) — the "/DD" convention
+    // recording comments already use (_REC_MULTIDAY_RE). Group 1 is the
+    // date, group 2 the "/DD…" tail.
+    const _LIVE_DAYS_RE = /^((?:\d{4}|\?{4})[‐-](?:\d{2}|\?\?)[‐-](?:\d{2}|\?\?)|(?:\d{2}|\?\?)[‐-](?:\d{2}|\?\?))((?:\/\d{2})+)(?=$|, |: )/;
 
     /**
      * Number of days in `month` of `year`, for the live-title date check.
@@ -26004,21 +26009,46 @@
      * A bare-year title whose location lacks ", " is `null`, not a near miss
      * ("1984: The Musical" is a title, not a live date).
      *
+     * A title can name several dates (org/live-bootleg.org 2a), and is then
+     * judged date by date (`_parseMultiDateLiveTitle()`):
+     *   - `days`  — "1978‐08‐21/22/23: Venue, City, …", more days of one month;
+     *   - `dates` — "1978‐08‐21: Venue, … / 1979‐01‐01: Venue, …" (each part a
+     *               live title) or "1989‐07‐04 / 1990‐04‐22: Venue, …" (one
+     *               location for all).
+     * Such a title is `valid` unless one of its dates is impossible.
+     *
      * @param {?string} text - The displayed title.
      * @returns {?{kind: ('valid'|'invalid'|'nearmiss'), shape: ?string,
      *   complete: boolean, sep: ?('unicode'|'ascii'|'mixed'), extra: ?string,
-     *   locParts: ?number, problems: string[]}} `null` when the title is not
-     *   date-led. `shape` spells the date's parts, e.g. `YYYY-MM-DD`,
-     *   `YYYY-MM`, `MM-DD`, `YYYY-??-??`. `locParts` counts the location's
-     *   ", "-separated parts (always 2 or more, see `_liveLocLabel()`).
-     *   `shape`, `sep`, `extra` and `locParts` are `null` on a near miss.
+     *   locParts: ?number, problems: string[], multi: ?('days'|'dates')}}
+     *   `null` when the title is not date-led. `shape` spells the date's
+     *   parts, e.g. `YYYY-MM-DD`, `YYYY-MM`, `MM-DD`, `YYYY-??-??`.
+     *   `locParts` counts the location's ", "-separated parts (always 2 or
+     *   more, see `_liveLocLabel()`). `shape`, `sep`, `extra` and `locParts`
+     *   are `null` on a near miss. `multi` is `null` for a single date.
      */
     function _parseLiveTitle(text) {
         if (!text) return null;
         const full = text.trim();
         const c0 = full.charCodeAt(0);
         if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
-        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, locParts: null, problems: [problem] });
+        // The pre-check keeps every single-date title on the path it always took.
+        if (full.includes('/')) {
+            const multi = _parseMultiDateLiveTitle(full);
+            if (multi) return multi;
+        }
+        return _parseSingleDateLiveTitle(full);
+    }
+
+    /**
+     * `_parseLiveTitle()` for one date: the "DATE[, info]: Venue, City, …"
+     * grammar itself, with no "/" handling.
+     *
+     * @param {string} full - Trimmed, date-led title.
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _parseSingleDateLiveTitle(full) {
+        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, locParts: null, problems: [problem], multi: null });
         const m = _LIVE_TITLE_RE.exec(full);
         if (!m || !m[10].includes(', ')) {
             if (!_LIVE_DATE_LED_RE.test(full)) return null;
@@ -26030,6 +26060,93 @@
             return nearMiss('location is not "Venue, City, …"');
         }
         return _liveVerdictFromMatch(m, m[10]);
+    }
+
+    /**
+     * One live title that may carry extra "/DD" days after its date
+     * ("1978‐08‐21/22/23: …"): the title without them goes through
+     * `_parseSingleDateLiveTitle()`, then every extra day is checked against
+     * the date's month and year like the date's own day.
+     *
+     * @param {string} full - Trimmed title, no " / ".
+     * @returns {?ReturnType<typeof _parseLiveTitle>} `null` when not date-led.
+     */
+    function _parseLiveTitleWithDays(full) {
+        const c0 = full.charCodeAt(0);
+        if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
+        const d = _LIVE_DAYS_RE.exec(full);
+        if (!d) return _parseSingleDateLiveTitle(full);
+        const v = _parseSingleDateLiveTitle(d[1] + full.slice(d[0].length));
+        if (!v || v.kind === 'nearmiss') return v ? Object.assign(v, { multi: 'days' }) : null;
+        // The date's own groups: 1 year, 3 month (year-led); 6 month (year-less).
+        const h = _LIVE_DATE_HEAD_RE.exec(d[1]);
+        const known = s => !!s && !s.startsWith('?');
+        const year = h && known(h[1]) ? parseInt(h[1], 10) : null;
+        const monthRaw = h ? (h[1] ? h[3] : h[6]) : null;
+        const month = known(monthRaw) ? parseInt(monthRaw, 10) : null;
+        const max = month !== null && month >= 1 && month <= 12 ? _liveDaysInMonth(month, year) : 31;
+        const problems = v.problems.slice();
+        d[2].slice(1).split('/').forEach(dd => {
+            const n = parseInt(dd, 10);
+            if ((n < 1 || n > max) && !problems.includes(`day ${dd}`)) problems.push(`day ${dd}`);
+        });
+        return Object.assign(v, { kind: problems.length ? 'invalid' : 'valid', problems, multi: 'days' });
+    }
+
+    /**
+     * The several-dates forms of a live title (org/live-bootleg.org 2a), in
+     * this order:
+     *   1. one date with extra days — "1978‐08‐21/22/23: Venue, City, …";
+     *   2. dates sharing one location — "1989‐07‐04 / 1990‐04‐22: Venue, …":
+     *      every " / "-separated date before the first ": " is read with that
+     *      location, so each is judged as a whole live title;
+     *   3. live titles joined by " / " — "1978‐08‐21: A, B / 1979‐01‐01: C, D".
+     * Anything else is `null`, and `_parseLiveTitle()` goes on with the
+     * single-date grammar — so "2001‐01‐01: Venue A / Venue B, City, …" (a
+     * "/" inside the location) stays the one live title it is.
+     *
+     * The verdict merges the parts: the worst `kind` (a near miss, then an
+     * impossible date), every part's `problems`, `complete` only when every
+     * date is, `shape` the parts' shapes (joined by " / " when they differ),
+     * `sep` across all parts, and `extra`/`locParts` from the first part that
+     * has them.
+     *
+     * @param {string} full - Trimmed, date-led title containing "/".
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _parseMultiDateLiveTitle(full) {
+        if (!full.includes(' / ')) {
+            return _LIVE_DAYS_RE.test(full) ? _parseLiveTitleWithDays(full) : null;
+        }
+        const colon = full.indexOf(': ');
+        const head = colon > 0 ? full.slice(0, colon) : '';
+        let parts = null;
+        if (head.includes(' / ')) {
+            const loc = full.slice(colon);
+            const shared = head.split(' / ').map(u => _parseLiveTitleWithDays(u.trim() + loc));
+            if (shared.every(Boolean)) parts = shared;
+        }
+        if (!parts) {
+            const joined = full.split(' / ').map(p => _parseLiveTitleWithDays(p.trim()));
+            if (joined.every(Boolean)) parts = joined;
+        }
+        if (!parts) return null;
+        const near = parts.find(p => p.kind === 'nearmiss');
+        if (near) return Object.assign({}, near, { multi: 'dates' });
+        const shapes = [...new Set(parts.map(p => p.shape))];
+        const seps = [...new Set(parts.map(p => p.sep).filter(Boolean))];
+        const problems = [...new Set(parts.flatMap(p => p.problems))];
+        const first = key => (parts.find(p => p[key]) || {})[key] || null;
+        return {
+            kind: problems.length ? 'invalid' : 'valid',
+            shape: shapes.join(' / '),
+            complete: parts.every(p => p.complete),
+            sep: !seps.length ? null : seps.length === 1 ? seps[0] : 'mixed',
+            extra: first('extra'),
+            locParts: first('locParts'),
+            problems,
+            multi: 'dates',
+        };
     }
 
     /**
@@ -26073,6 +26190,7 @@
             extra: m[9] ? m[9].trim() : null,
             locParts: locStr ? locStr.split(', ').length : null,
             problems,
+            multi: null,
         };
     }
 
@@ -26254,6 +26372,7 @@
         const facets = () => ({ all: 0, valid: 0, invalid: 0, partial: 0, extra: 0 });
         return {
             valid: 0, invalid: 0, nearMiss: 0, complete: 0, partial: 0, extra: 0,
+            multiDays: 0, multiDates: 0,
             shape: new Map(), extraValue: new Map(), loc: new Map(),
             sep: { unicode: facets(), ascii: facets(), mixed: facets() },
         };
@@ -26277,6 +26396,8 @@
         // A date-only recording comment ("live, 2002") has no location.
         if (live.locParts) bump(counts.loc, _liveLocLabel(live.locParts));
         if (live.extra) { counts.extra++; bump(counts.extraValue, live.extra); }
+        if (live.multi === 'days') counts.multiDays++;
+        else if (live.multi === 'dates') counts.multiDates++;
         if (live.sep) {
             const f = counts.sep[live.sep];
             f.all++;
@@ -26592,8 +26713,9 @@
      * in step with the counting loop in `openUniqDrop()` (same facets).
      *
      * @param {ReturnType<typeof _parseLiveTitle>} live - Non-null.
-     * @param {string} mode - `live-*`, `liveshape:<shape>`, `liveextra:<text>`
-     *   or `liveloc:<label>` (`_liveLocLabel()`).
+     * @param {string} mode - `live-*` (`live-multi-days`/`-dates` for the
+     *   several-dates forms), `liveshape:<shape>`, `liveextra:<text>` or
+     *   `liveloc:<label>` (`_liveLocLabel()`).
      * @returns {boolean}
      */
     function _liveTitleMatchesMode(live, mode) {
@@ -26613,6 +26735,8 @@
         if (mode === 'live-complete') return live.complete;
         if (mode === 'live-partial')  return !live.complete;
         if (mode === 'live-extra')    return !!live.extra;
+        if (mode === 'live-multi-days')  return live.multi === 'days';
+        if (mode === 'live-multi-dates') return live.multi === 'dates';
         return false;
     }
 
@@ -48430,14 +48554,30 @@ a { color: #1565c0; }`;
      * `cloneNode(true)`, and the engine is delegated, so clones need no
      * re-wiring.
      *
+     * While the engine has the element's title stashed (`data-mb-tip-saved`,
+     * i.e. its card is up), the text goes into the stash instead, and into
+     * the visible card if the element is the one hovered. Writing `title`
+     * there exposed it to the browser: a control that re-tips itself on a
+     * timer (the ⚠⟳ retry counts) drew a native box over its own card once
+     * the pointer had rested for a second, because only a mousemove
+     * re-stashes (org/live-bootleg.org 1).
+     *
      * @param {Element} el    - The element the tooltip belongs to.
      * @param {string}  text  - Plain tooltip text; `\n` starts a new line.
      * @returns {string} `text`, so a converted assignment used as a value
      *   keeps its value.
      */
     function _setTip(el, text) {
-        el.title = text;
         el.setAttribute('data-mb-tip', '');
+        if (el.dataset.mbTipSaved === undefined || el.title) {
+            el.title = text;
+            return text;
+        }
+        if (el.dataset.mbTipSaved === text) return text;
+        el.dataset.mbTipSaved = text;
+        if (el.dataset.mbTipAria !== undefined) el.setAttribute('aria-description', text);
+        const card = el.matches(':hover') ? document.getElementById('mb-stat-tooltip') : null;
+        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);
         return text;
     }
 
@@ -51181,6 +51321,7 @@ a { color: #1565c0; }`;
         liveValidity:    { label: 'Live title info - Validity',              glyph: '🎤' },
         liveNearMiss:    { label: 'Live title info - Near miss',             glyph: '❗' },
         liveDate:        { label: 'Live title info - Date completeness',     glyph: '📅' },
+        liveMulti:       { label: 'Live title info - Multiple dates',        glyph: '🗓️' },
         liveExtra:       { label: 'Live title info - Additional date info',  glyph: '🕗' },
         liveLoc:         { label: 'Live title info - Location completeness', glyph: '📍' },
         liveSepUnicode:  { label: 'Live title info - Separator ‐ only',      glyph: '‐' },
@@ -51200,6 +51341,7 @@ a { color: #1565c0; }`;
         evLiveValidity:    { label: 'Event name info - Live form validity',       glyph: '🎤' },
         evLiveNearMiss:    { label: 'Event name info - Live form near miss',      glyph: '❗' },
         evLiveDate:        { label: 'Event name info - Date completeness',        glyph: '📅' },
+        evLiveMulti:       { label: 'Event name info - Multiple dates',           glyph: '🗓️' },
         evLiveExtra:       { label: 'Event name info - Additional date info',     glyph: '🕗' },
         evLiveLoc:         { label: 'Event name info - Location completeness',    glyph: '📍' },
         evLiveSepUnicode:  { label: 'Event name info - Separator ‐ only',         glyph: '‐' },
@@ -51216,6 +51358,7 @@ a { color: #1565c0; }`;
         rcNearMiss:        { label: 'Recording comment info - Near miss',             glyph: '❗' },
         rcLiveValidity:    { label: 'Recording comment info - Validity',              glyph: '✅' },
         rcLiveDate:        { label: 'Recording comment info - Date completeness',     glyph: '📅' },
+        rcLiveMulti:       { label: 'Recording comment info - Multiple dates',        glyph: '🗓️' },
         rcMultiDay:        { label: 'Recording comment info - Uncertain day',         glyph: '❔' },
         rcLiveExtra:       { label: 'Recording comment info - Additional date info',  glyph: '🕗' },
         rcLiveLoc:         { label: 'Recording comment info - Location completeness', glyph: '📍' },
@@ -51466,14 +51609,17 @@ a { color: #1565c0; }`;
         'title-truncated': 'titleStyle', 'title-ocremix': 'titleStyle', 'title-allcaps': 'titleStyle',
         'live-valid': 'liveValidity', 'live-invalid': 'liveValidity', 'live-nearmiss': 'liveNearMiss',
         'live-complete': 'liveDate', 'live-partial': 'liveDate', 'live-extra': 'liveExtra',
+        'live-multi-days': 'liveMulti', 'live-multi-dates': 'liveMulti',
         'evform-live': 'evForm', 'evform-oneoff': 'evForm', 'evform-festival': 'evForm',
         'evform-tour': 'evForm', 'evform-other': 'evForm', 'evform-nearmiss': 'evStyleNearMiss',
         'evlive-valid': 'evLiveValidity', 'evlive-invalid': 'evLiveValidity', 'evlive-nearmiss': 'evLiveNearMiss',
         'evlive-complete': 'evLiveDate', 'evlive-partial': 'evLiveDate', 'evlive-extra': 'evLiveExtra',
+        'evlive-multi-days': 'evLiveMulti', 'evlive-multi-dates': 'evLiveMulti',
         'rcform-typeonly': 'rcForm', 'rcform-date': 'rcForm', 'rcform-datelocation': 'rcForm',
         'rcform-location': 'rcForm', 'rcform-other': 'rcForm', 'rcform-nearmiss': 'rcNearMiss',
         'rclive-valid': 'rcLiveValidity', 'rclive-invalid': 'rcLiveValidity',
         'rclive-complete': 'rcLiveDate', 'rclive-partial': 'rcLiveDate', 'rclive-extra': 'rcLiveExtra',
+        'rclive-multi-days': 'rcLiveMulti', 'rclive-multi-dates': 'rcLiveMulti',
         'rc-multiday': 'rcMultiDay', 'rc-info-has': 'rcInfo', 'rc-info-none': 'rcInfo',
         'evcountry-abbr': 'eventPartsCountryForm', 'evcountry-full': 'eventPartsCountryForm',
         'evdetail-has': 'eventPartsDetail', 'evdetail-none': 'eventPartsDetail',
@@ -70526,6 +70672,8 @@ a { color: #1565c0; }`;
             _pushSyn(`${p}live-partial`, _structureModeLabel('live-partial'), c.partial);
             _pushVals(`${p}liveshape`, c.shape, _byText(c.shape));
             _pushSyn(`${p}live-extra`, _structureModeLabel('live-extra'), c.extra);
+            _pushSyn(`${p}live-multi-days`, _structureModeLabel('live-multi-days'), c.multiDays);
+            _pushSyn(`${p}live-multi-dates`, _structureModeLabel('live-multi-dates'), c.multiDates);
             _pushVals(`${p}liveextra`, c.extraValue, _byText(c.extraValue));
             _pushVals(`${p}liveloc`, c.loc, _byText(c.loc));
             _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet =>
@@ -71594,6 +71742,8 @@ a { color: #1565c0; }`;
         if (mode === 'live-complete')   return '📅 complete date (YYYY-MM-DD)';
         if (mode === 'live-partial')    return '◐ incomplete date';
         if (mode === 'live-extra')      return '🕗 has additional date information';
+        if (mode === 'live-multi-days')  return '🗓️ several days of one month ("1978‐08‐21/22/23")';
+        if (mode === 'live-multi-dates') return '🗓️ several separate dates ("… / …")';
         {
             const sm = _LIVE_SEP_MODE_RE.exec(mode);
             if (sm) {
@@ -71808,6 +71958,8 @@ a { color: #1565c0; }`;
         if (mode === 'live-complete') return '📅 = the live title\'s date has year, month and day.';
         if (mode === 'live-partial') return '◐ = the live title\'s date lacks a part: "2008-12", "2008", "12-07" (year unknown) or a "??" part.';
         if (mode === 'live-extra') return '🕗 = the live title carries additional date information before the colon, e.g. "2008-12-17, early show: …".';
+        if (mode === 'live-multi-days') return '🗓️ = the live title names more days of the same month after its date, e.g. "1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA" — a multi-night run or "one of these days". Valid as long as every day exists in that month.';
+        if (mode === 'live-multi-dates') return '🗓️ = the live title names separate dates joined by " / ": each with its own location ("1978‐08‐21: Venue, City, … / 1979‐01‐01: Venue, City, …") or one location for all ("1989‐07‐04 / 1990‐04‐22: Venue, City, …"). Every date is checked on its own.';
         if (_LIVE_SEP_MODE_RE.test(mode)) {
             const sep = mode.split('-')[2];
             return sep === 'unicode' ? 'Live titles whose date uses only the Unicode hyphen "‐" (U+2010) between its parts — MusicBrainz\'s normalized form.'
@@ -82746,6 +82898,24 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether the page-wide ⚠⟳ and table 0's per-table ⚠⟳ would be the same
+     * control twice (org/live-bootleg.org 1). The page-wide one anchors after
+     * the global ⟳ (`globalRetryId`), which only a multi-table page builds;
+     * without it, it falls back to table 0's run — where table 0's per-table
+     * ⚠⟳ goes too. On a single table both cover exactly the same rows, so the
+     * per-table one is left out. With several tables and no global row the two
+     * differ in scope and both stay.
+     *
+     * @param   {string} globalRetryId - Id of the global ⟳ the page-wide ⚠⟳
+     *   anchors on (`<btnPrefix>-global-retry`, `mb-rel-retry-global`).
+     * @param   {number} tableCount    - Tables the per-table refresh covers.
+     * @returns {boolean}
+     */
+    function _failedRetrySharesTableSlot(globalRetryId, tableCount) {
+        return tableCount <= 1 && !document.getElementById(globalRetryId);
+    }
+
+    /**
      * Creates, updates or removes the PER-TABLE Relationships failed-retry
      * controls, one per table that has failures of its own.
      *
@@ -82758,11 +82928,16 @@ a { color: #1565c0; }`;
      * segmented pill automatically, and it is inserted at the END of that run
      * via `_ctlRunEnd()` — see CLAUDE.md's pill section for why both matter.
      *
+     * None at all on a single table without a global control row
+     * (`_failedRetrySharesTableSlot()`): the page-wide control already sits
+     * in that table's run and covers exactly its rows.
+     *
      * @returns {void}
      */
     function _relRefreshPerTableFailedButtons() {
         const _enabled = Lib.settings.sa_enable_relationships_column && _relPageHasColumn();
-        const _entries = _enabled ? _relFailedMbidsByTable() : [];
+        const _all = _enabled ? _relFailedMbidsByTable() : [];
+        const _entries = _failedRetrySharesTableSlot('mb-rel-retry-global', _all.length) ? [] : _all;
         const _live = new Set();
         _entries.forEach(({ table, mbids }, i) => {
             const id = 'mb-rel-retry-failed-' + i;
@@ -92053,11 +92228,16 @@ a { color: #1565c0; }`;
      * a large listing, so these controls would never appear on exactly the
      * pages that need them.
      *
+     * None at all on a single table without a global control row
+     * (`_failedRetrySharesTableSlot()`): the page-wide control already sits
+     * in that table's run and covers exactly its rows.
+     *
      * @param   {Object} ctx
      * @returns {void}
      */
     function _artRefreshPerTableFailedButtons(ctx) {
-        const entries = _artFailedPathsByTable(ctx);
+        const all = _artFailedPathsByTable(ctx);
+        const entries = _failedRetrySharesTableSlot(ctx.btnPrefix + '-global-retry', all.length) ? [] : all;
         const live = new Set();
         entries.forEach(({ table, paths }, i) => {
             const id = ctx.btnPrefix + '-retry-failed-' + i;
@@ -96158,6 +96338,17 @@ a { color: #1565c0; }`;
              */
             parseLiveTitle(text) {
                 return _parseLiveTitle(text);
+            },
+            /**
+             * Runs the shipping `_setTip()`, so a spec can re-tip an element
+             * the way a refreshing control does, without waiting for one to.
+             *
+             * @param {Element} el
+             * @param {string} text
+             * @returns {string} `_setTip()`'s own result.
+             */
+            setTip(el, text) {
+                return _setTip(el, text);
             },
             /**
              * Runs the shipping `_parseEventName()` on one event name, for the

@@ -418,6 +418,13 @@ exists for the plausible future simplification that collapses them.
   second it is ~0.5%. Do not "simplify" `_artSchedulePerTableFailedRefresh()`
   into the per-frame path. Settle-only is also wrong: the CAA completion never
   fires on a large listing, so the controls would never appear there at all.
+- **No per-table ⚠⟳ on a single table without a global row.** The page-wide
+  one anchors after the global ⟳, which only multi-table pages build; without
+  it, it falls back to table 0's run, and table 0's per-table ⚠⟳ was its
+  identical twin in the same run. `_failedRetrySharesTableSlot()` leaves the
+  per-table one out in both halves (CAA and Relationships) when there is one
+  table and no global row (`single-table-failed-retry.spec.js`,
+  `rel-retry-failed-only.spec.js`, `scripts/mutations/live-multidate-retry-dup.json`).
 - **Nothing recomputes the per-table counts after a filter**, because the
   refresh is driven by the enrich pass, which has finished by then. That is
   benign — the counts only change while failures are being recorded — but it

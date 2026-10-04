@@ -171,6 +171,10 @@ test.describe('the h2 table-control pair (↔️ / 👁️)', () => {
             .toMatch(/^(Resize|Auto-resize|Restore|One or more)/);
 
         await resize.click();
+        // Park the pointer: resting on the button after .click(), its title
+        // is stashed while the rich card owns it (docs/claude/
+        // toolbar-and-header-ui.md, "Script tooltips go through _setTip()").
+        await page.mouse.move(0, 0);
         await expect.poll(() => resize.getAttribute('title'), { timeout: 30000 })
             .toMatch(/^Restore/);
         expect((await resize.textContent()).trim(),

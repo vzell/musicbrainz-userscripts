@@ -18354,3 +18354,60 @@ Why the button loses focus was not investigated.
 The `org/TODO.org` entry for this flake still names the auto-resize guess as
 the suspected cause. It is left for the user to mark DONE, because the file
 has uncommitted edits of theirs.
+
+## 2026-10-05 — Duplicate ⚠⟳ on single-table pages; native tooltip over the card; multi-date live titles (branch fix/live-multidate-and-retry-dup)
+
+Source: `org/live-bootleg.org` items 1 and 2. Items 3 and 4 are not on this
+branch.
+
+**Duplicate ⚠⟳ (item 1).** Snapshot `debug/bs-bootleg-releases.html`
+(artist-releasegroups, host "vzell-lap") has one `table.tbl`, and both
+`#mb-caa-toggle-btn-retry-failed` and `#mb-caa-toggle-btn-retry-failed-0`
+read "⚠⟳ 3", next to each other. Cause: `_artRefreshFailedRetryButton()`
+anchors the page-wide control after `-global-retry`. That element is only
+built by `_artCreateOrUpdateGlobalToggleButton()`, which returns early unless
+`tableMode === 'multi'`. So on a single table the page-wide control falls
+back to `-retry-0`, and `_artRefreshPerTableFailedButtons()` puts table 0's
+control into the same run. The Relationships pair has the same fallback
+(`mb-rel-retry-global` → `mb-rel-retry-0`). Fix: `_failedRetrySharesTableSlot()`
+leaves out the per-table control when there is one table and no global row.
+With several tables and no global row the two controls differ in scope, so
+both stay.
+
+**Native tooltip over the rich card (item 1, "after a while").** While the
+card shows, the engine keeps the element's title in `data-mb-tip-saved`, and
+puts a changed title back into the stash only on the next mousemove. During
+an artwork load the ⚠⟳ count is refreshed every frame / every second.
+`_setTip()` wrote `title` again, and with the pointer resting no mousemove
+came, so the browser showed its own box after about a second. Confirmed by
+`rich-tooltips-liner.spec.js` "pointer at rest", which failed before the fix
+(`title` was the new text, not `''`). Fix: `_setTip()` writes the stash, and
+`aria-description` when the stash set it, and repaints the visible card if
+the element is hovered.
+
+**Multi-date live titles (item 2).** Snapshot `debug/rg-r-multiple-dates.html`
+(host "petri") has eight titles like `1977‐03‐22/23/24/25: Music Hall, Boston,
+MA, USA`, and every one was a ❌ near miss (`_LIVE_TITLE_RE` has no "/").
+`debug/BoDeans-*.html` also has `1989-07-04 / 1990-04-22: Chicago, IL, USA`.
+`_parseLiveTitle()` now hands any title containing "/" to
+`_parseMultiDateLiveTitle()` first. It accepts three forms: days of one month
+(checked against `_liveDaysInMonth()`), dates sharing one location, and whole
+titles joined by " / ". If none fits, it returns `null` and the title takes
+the old single-date path. So a "/" inside a location ("Venue A / Venue B, …")
+still gives one valid title. The verdict gains `multi`, and 📊 gains
+"… - Multiple dates" for releases/RGs, event names and recording comments.
+Recording comments still strip "/DD" before the parser (`_REC_MULTIDAY_RE`),
+so `rc.multiDay` remains their "days" signal.
+
+**Tests.** `single-table-failed-retry.spec.js` (new; CAA on the BoDeans disk
+fixture, all metadata 503) and a count assertion in
+`rel-retry-failed-only.spec.js`; both reproduced the duplicate before the fix
+(2 controls, expected 1). The BoDeans disk fixture carries saved
+relationships, so it cannot fail a Relationships lookup; the series shell
+does that. Live titles: `uvd-live-titles.spec.js`, new parser cases and a
+`releasegroup-releases-live-multidate.html` block built by
+`scripts/build-live-multidate-fixture.py`, a separate fixture because
+`releasegroup-releases-live-titles.html`'s counts are pinned by other specs.
+`scripts/mutations/live-multidate-retry-dup.json`: 10/10 as expected,
+including the over-correction (guard firing on a multi-table page, caught by
+`per-table-failed-retry.spec.js`).
