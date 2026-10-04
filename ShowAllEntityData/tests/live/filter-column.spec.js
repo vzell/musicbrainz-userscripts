@@ -38,7 +38,7 @@ test('column filter narrows the page-wide row count and every sub-table sums to 
     await clickMasterToggleAndExpandAll(page);
 
     const colIdx = await page.evaluate((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === colName);
     }, FILTER_COLUMN);
     expect(colIdx).toBeGreaterThanOrEqual(0);

@@ -1,0 +1,54 @@
+[
+  {
+    "name": "the 👁️ column-visibility strip loses its u flag",
+    "why": "Without u, the 📊 in the class contributes its two UTF-16 halves as separate members, so the high half \\uD83D is also stripped from 🔗 and every other emoji that shares it. The label becomes '\\uDD17 Links': present, non-empty, still ending in 'Links', so only an exact comparison sees it.",
+    "edits": [
+      {
+        "find": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();\n            if (!colName) return; // Skip empty headers",
+        "replace": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();\n            if (!colName) return; // Skip empty headers"
+      }
+    ],
+    "spec": "tests/fixtures/header-emoji-surrogate.spec.js",
+    "grep": "column-visibility label",
+    "expect": "fail"
+  },
+  {
+    "name": "the source guard sees the same lost flag",
+    "why": "The same planted defect, seen from the guard that covers the call sites the DOM spec cannot reach.",
+    "edits": [
+      {
+        "find": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();\n            if (!colName) return; // Skip empty headers",
+        "replace": "            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();\n            if (!colName) return; // Skip empty headers"
+      }
+    ],
+    "spec": "tests/fixtures/regex-unicode-flag-guard.spec.js",
+    "grep": "userscript: no misleading character class",
+    "expect": "fail"
+  },
+  {
+    "name": "_sortColumnHeaderName loses its u flag",
+    "why": "A call site no DOM spec in this pair exercises. Only the source guard can see it, which is the reason the guard exists.",
+    "edits": [
+      {
+        "find": "        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim();",
+        "replace": "        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim();"
+      }
+    ],
+    "spec": "tests/fixtures/regex-unicode-flag-guard.spec.js",
+    "grep": "userscript: no misleading character class",
+    "expect": "fail"
+  },
+  {
+    "name": "U+FE0F written after ⚠ again in the action-cell strip",
+    "why": "The combined-character case: [\\u26a0\\ufe0f] reads as the ⚠️ emoji but is two members, with or without u. The set is unchanged by the reorder, so only the source guard can tell.",
+    "edits": [
+      {
+        "find": ".replace(/^[\\ufe0f\\u25b6\\u2795\\u26a0\\u{1F300}-\\u{1FAFF}\\u2600-\\u27BF]+/gu, '')",
+        "replace": ".replace(/^[\\u25b6\\u2795\\u26a0\\ufe0f\\u{1F300}-\\u{1FAFF}\\u2600-\\u27BF]+/gu, '')"
+      }
+    ],
+    "spec": "tests/fixtures/regex-unicode-flag-guard.spec.js",
+    "grep": "userscript: no misleading character class",
+    "expect": "fail"
+  }
+]

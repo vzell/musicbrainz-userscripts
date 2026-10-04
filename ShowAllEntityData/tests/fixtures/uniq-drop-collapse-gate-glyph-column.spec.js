@@ -49,7 +49,7 @@ const COLLAPSED = '▶ collapsed multi-row cells';
  * `structureCount()` for why pairing them up matters.
  */
 const collapsableHeaders = (page) => page.evaluate(() => {
-    const strip = (t) => t.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+    const strip = (t) => t.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
     return Array.from(document.querySelectorAll('table.tbl'))
         .flatMap((t, tableIndex) => Array.from(t.querySelectorAll('thead tr:first-child th'))
             .map((th) => ({ th, tableIndex })))

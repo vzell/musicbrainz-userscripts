@@ -537,6 +537,10 @@ from this directory still works for that one file.
 =.nvmrc= version satisfies it. An older 24.x prints an =EBADENGINE= warning on
 =npm install= and has so far run fine.
 
+*"sh: 1: eslint: not found".* =node_modules/= is not tracked, so a checkout
+installed before ESLint joined the lockfile (fee0fd1) does not have it. Run
+=npm ci=.
+
 * Not a test: =npm run live-interop=
 
 =tests/support/run-live-interop.js= opens a real MusicBrainz page with a chosen

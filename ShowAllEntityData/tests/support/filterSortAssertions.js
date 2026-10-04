@@ -339,7 +339,7 @@ async function waitForActualRowCount(page, expectedCount, { timeout = 30000 } = 
 async function waitForColHeaderUniqCount(page, colName, expected, { timeout = 90000, tableIndex } = {}) {
     await page.waitForFunction(
         ({ name, want, idx }) => {
-            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             let ths;
             if (idx === null) {
                 ths = Array.from(document.querySelectorAll('table.tbl thead th'));
@@ -728,7 +728,7 @@ async function ensureSubTableVisible(page, tableIndex) {
  */
 function columnIndex(page, colName, { tableIndex } = {}) {
     return page.evaluate(({ name, idx }) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         let ths;
         if (idx === null) {
             ths = Array.from(document.querySelectorAll('table.tbl thead th'));

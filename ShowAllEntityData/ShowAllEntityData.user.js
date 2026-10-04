@@ -19390,7 +19390,7 @@
      */
     function _sortColumnHeaderName(th) {
         if (!th) return '';
-        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim();
+        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim();
     }
 
     /**
@@ -23464,7 +23464,7 @@
         if (stickyName) {
             const found = headers.findIndex(th => {
                 const txt = th.dataset.colName ||
-                    th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                    th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
                 return txt === stickyName;
             });
             if (found !== -1) stickyIdx = found;
@@ -24110,7 +24110,7 @@
         const isColVisible = colName => {
             const th = headers.find(h => {
                 const clean = h.textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '')
+                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '')
                     .trim()
                     .replace(/\s+/g, ' ');
                 return clean === colName;
@@ -30655,7 +30655,7 @@
 
         // Create checkbox for each column
         headers.forEach((th, index) => {
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             if (!colName) return; // Skip empty headers
 
             const wrapper = document.createElement('div');
@@ -31026,7 +31026,7 @@
 
         if (headerRow) {
             Array.from(headerRow.cells).forEach((th, index) => {
-                const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
                 if (!colName) return;
 
                 const wrapper = document.createElement('div');
@@ -31313,7 +31313,7 @@
         if (fallback) return fallback;
 
         // Last resort: raw textContent stripped of known glyph characters
-        return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
     }
 
     /**
@@ -31441,7 +31441,7 @@
             '.mb-picard-col-hdr-btn'
         ).forEach(el => el.remove());
         let text = clone.textContent
-            .replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim().replace(/\s+/g, ' ');
+            .replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim().replace(/\s+/g, ' ');
         if (!text && th.dataset.colName) text = th.dataset.colName.trim();
         if (sortSuffix) text += sortSuffix;
         if (uniqCount) text = `${text} (${uniqCount})`;
@@ -36341,7 +36341,7 @@ ${sections.join('\n')}
             const _columns = _tHdrRow ? Array.from(_tHdrRow.cells).map((th, ci) => {
                 const _thFlex  = th.querySelector('.mb-col-hdr-flex');
                 const _rawName = (_thFlex || th).textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/g, '')
+                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
                     .replace(/\d+\s*$/, '').trim();
                 const _colName = _rawName || `Col ${ci + 1}`;
 
@@ -36975,7 +36975,9 @@ ${sections.join('\n')}
                 const tds = _idbTbl.querySelectorAll('tbody tr td:nth-child(2)');
                 const tr = Array.from(_idbTbl.querySelectorAll('tbody tr')).find(
                     r => r.querySelector('td') && r.querySelector('td').textContent.includes(
-                        row.stat.replace(/[🖼️📋🔗]/g, '').trim().substring(0, 10)
+                        // U+FE0F leads the class: written after 🖼 it would read as
+                        // one "🖼️" member (eslint no-misleading-character-class).
+                        row.stat.replace(/[\ufe0f🖼📋🔗]/gu, '').trim().substring(0, 10)
                     )
                 );
                 if (tr) tr.dataset.idbPlaceholder = row._id;
@@ -52226,7 +52228,7 @@ a { color: #1565c0; }`;
             const colIdx  = parseInt(inp.dataset.colIdx, 10);
             const headers = table.querySelectorAll('thead tr:first-child th');
             const colName = headers[colIdx]
-                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰-⁹📊▶◀▤0-9]/g, '').trim()
+                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                 : `Col ${colIdx}`;
 
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
@@ -56328,7 +56330,7 @@ a { color: #1565c0; }`;
         // are skipped — they produce no cells and need no header.
         activeColumnExtractors.forEach(entry => {
             if (entry.colIdx === -1) return; // column absent from this page
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             entry.syntheticColumns.forEach(colName => {
                 if (!headersText.includes(colName)) {
                     const th = document.createElement('th');
@@ -56372,7 +56374,7 @@ a { color: #1565c0; }`;
             _resolvedPrimaryCols.add('Primary alias');
         }
         activeSyntheticColumnExtractors.forEach(entry => {
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             // Skip if the source column was neither produced by a resolved primary
             // extractor NOR is already a real header on this table — the latter
             // covers page types like release-tracks, whose bespoke pre-processing
@@ -56401,7 +56403,7 @@ a { color: #1565c0; }`;
         // On pages where the configuration is enabled, create the "MB-Name", "Comment",
         // and "Primary alias" columns
         if (isMainColEnabled) {
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             if (!headersText.includes('MB-Name')) {
                 const thN = document.createElement('th');
                 thN.textContent = 'MB-Name';
@@ -58715,7 +58717,7 @@ a { color: #1565c0; }`;
                             const _ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
                             _ths.forEach((th, idx) => {
                                 const _txt = (th.dataset.colName || th.textContent)
-                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                     .replace(/\s+/g, ' ');
                                 activeColumnExtractors.forEach(entry => {
                                     if (_txt === entry.sourceColumn) entry.colIdx = idx;
@@ -58730,7 +58732,7 @@ a { color: #1565c0; }`;
                             activeColumnErasers.forEach(e => { e.colIdx = -1; });
                             _ths.forEach((th, idx) => {
                                 const _txt = (th.dataset.colName || th.textContent)
-                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                     .replace(/\s+/g, ' ');
                                 activeColumnErasers.forEach(entry => {
                                     if (_txt === entry.sourceColumn) entry.colIdx = idx;
@@ -58743,7 +58745,7 @@ a { color: #1565c0; }`;
                                 const _perTableColNames = [];
                                 _ths.forEach((th) => {
                                     const _n = (th.dataset.colName || th.textContent)
-                                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                         .replace(/\s+/g, ' ');
                                     _perTableColNames.push(_n);
                                 });
@@ -60753,7 +60755,7 @@ a { color: #1565c0; }`;
         const _stripForeignHeaderTh = (el) => {
             if (el.tagName !== 'TH' || !el.closest('table.tbl thead')) return;
             if (OWN_HEADER_MARKER_CLASSES.some(c => el.classList.contains(c))) return;
-            const txt = el.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const txt = el.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             if (/^(Relationships|Performance Attributes|Release events|Tagger)\b/.test(txt)) {
                 el.remove();
                 Lib.debug('cleanup', `_watchForLateJesus2099Injections: removed a late foreign header <th> ("${txt}").`);
@@ -61048,7 +61050,7 @@ a { color: #1565c0; }`;
     function _flagRegionColumnTrios(table) {
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const names = headers.map(th => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' '));
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' '));
         const trios = [];
         for (let i = 0; i < names.length - 2; i++) {
             if (names[i].endsWith('ocality') && names[i + 1].endsWith('egion') && names[i + 2].endsWith('ountry')) {
@@ -66184,7 +66186,7 @@ a { color: #1565c0; }`;
         const th = headers[colIndex];
         if (!th) return '';
         return th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
     }
 
     // Per-table memo of _getLengthColumnAverages()'s own computed averages —
@@ -66292,7 +66294,7 @@ a { color: #1565c0; }`;
         // resolution (isFormatCol/isLengthCol/etc. inside openUniqDrop()).
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
         const lengthIdx = headers.findIndex(th => clean(th) === lengthColName);
         const liveColName = (activeDefinition && activeDefinition.features &&
             activeDefinition.features.lengthDeviationLiveColumn) || 'Attributes';
@@ -66402,7 +66404,7 @@ a { color: #1565c0; }`;
 
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
         const barcodeIdx = headers.findIndex(th => clean(th) === 'Barcode');
 
         const all = new Map();
@@ -67090,7 +67092,7 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return false;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return name === 'Title';
         })();
         // Column-name gate for Format/Tracks/Catalog# — unlike every other
@@ -68264,7 +68266,7 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return null;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return (name === 'CAA' || name === 'EAA') ? name : null;
         })();
         const isCaaOrEaaCol = _caaOrEaaColName !== null;
@@ -68332,7 +68334,7 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return false;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return name.endsWith('ountry') || name.endsWith('ocality') ||
                 name.endsWith('egion') || name.endsWith('rea') ||
                 name === 'Location' || name === 'Place' || name === 'Country/Date' ||
@@ -74012,7 +74014,7 @@ a { color: #1565c0; }`;
             // seconder"). Only the decorative icon glyphs and Unicode
             // superscript digits (used later for the multi-sort order badge,
             // a distinct code point range from ASCII 0-9) are stripped.
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {
@@ -79266,7 +79268,9 @@ a { color: #1565c0; }`;
         const _indicesToRemove = [];
         Array.from(_theadRow.cells).forEach((th, idx) => {
             const _colName = th.dataset.colName ||
-                th.textContent.replace(/[\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a4\u2702\ufe0f0-9]/g, '').trim();
+                // U+FE0F leads the class so it is not read as part of "\u2702\ufe0f"
+                // (eslint no-misleading-character-class).
+                th.textContent.replace(/[\ufe0f\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a40-9]/g, '').trim();
             // Remove: the Release events injected-column <th> itself
             const _isReCol = activeReleaseEventColumns.some(e => e.colName === _colName);
             // Remove: every ICE synthetic <th> derived from Release events
@@ -87068,7 +87072,7 @@ a { color: #1565c0; }`;
         return Array.from(headerRow.children).findIndex(th => {
             const named = th.dataset && th.dataset.colName;
             if (named) return candidates.includes(named);
-            const txt = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const txt = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             return candidates.includes(txt);
         });
     }
@@ -87478,7 +87482,9 @@ a { color: #1565c0; }`;
         // ── Plain text fallback (also used for multi-anchor cells) ────────────
         const _raw = clone.textContent
             .replace(/\s+/g, ' ')
-            .replace(/^[\u25b6\u2795\u26a0\ufe0f\u{1F300}-\u{1FAFF}\u2600-\u27BF]+/gu, '')
+            // U+FE0F leads the class so it is not read as part of "\u26a0\ufe0f"
+            // (eslint no-misleading-character-class).
+            .replace(/^[\ufe0f\u25b6\u2795\u26a0\u{1F300}-\u{1FAFF}\u2600-\u27BF]+/gu, '')
             .trim();
 
         // Suppress raw JSON/data strings injected by the script into hidden
@@ -96052,7 +96058,7 @@ a { color: #1565c0; }`;
              *   itself applies to the "(cancelled)" marker in the cell.
              */
             getUniqDropSections(colName, tableIndex = null) {
-                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
                 // Prefer th.dataset.colName (set by makeTableSortableUnified()
                 // for every header) over a re-derived textContent strip —
                 // mirrors openUniqDrop()'s own `_colHeaderName` resolution.

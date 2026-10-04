@@ -28,7 +28,7 @@ const FIXTURE_FILE = path.join(__dirname, 'length-duration-sort.html');
 /** Reads one column's visible cell text for every rendered row, in row order. */
 async function columnValues(page, colName) {
     return page.evaluate((name) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         const ths = Array.from(document.querySelectorAll('table.tbl thead th'));
         const idx = ths.findIndex((t) => (t.dataset.colName || strip(t.textContent)) === name);
         if (idx < 0) return null;

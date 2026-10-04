@@ -30,7 +30,7 @@ test('a column hidden via Column Visibility stays hidden after filtering a diffe
     await expect(page.locator('#mb-filter-container')).toBeVisible({ timeout: 90000 });
 
     const headerIndex = await page.evaluate(() => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹​]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹​]/gu, '').trim();
         const ths = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'));
         const map = {};
         ths.forEach((th, i) => { map[strip(th.textContent)] = i; });

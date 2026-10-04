@@ -243,7 +243,7 @@ async function captureArtistEventsInteractionSnapshots(browser, dir) {
     await waitForRenderComplete(page, { waitForAutoResize: false, timeout: 60000 });
 
     const colIdx = await page.evaluate((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         return Array.from(document.querySelectorAll('table.tbl thead th')).findIndex((t) => strip(t.textContent) === colName);
     }, ARTIST_EVENTS_FILTER_COLUMN);
     const colInput = page.locator(`table.tbl thead .mb-col-filter-input[data-col-idx="${colIdx}"]`).first();
