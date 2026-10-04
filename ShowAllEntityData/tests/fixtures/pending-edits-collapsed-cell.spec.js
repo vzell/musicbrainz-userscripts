@@ -82,7 +82,7 @@ const toggles = (page) => page.evaluate(() => {
             if (th.dataset && th.dataset.colName) return th.dataset.colName;
             const c = th.cloneNode(true);
             c.querySelectorAll('.mb-col-hdr-flex span, button').forEach((e) => e.remove());
-            return c.textContent.replace(/[​⬍▲▼📊]/g, '').trim();
+            return c.textContent.replace(/[​⬍▲▼📊]/gu, '').trim();
         };
         tbl.querySelectorAll('tbody tr').forEach((tr) => {
             if (tr.classList.contains('mb-col-filter-row')) return;

@@ -49,7 +49,7 @@ test('unique-values dropdown "Structure" section reflects all four cell-structur
     // get there and build that column's per-cell toggles before trying to
     // click one.
     await page.waitForFunction((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         const idx = Array.from(document.querySelectorAll('table.tbl thead th'))
             .findIndex((t) => strip(t.textContent) === colName);
         if (idx === -1) return false;
@@ -61,7 +61,7 @@ test('unique-values dropdown "Structure" section reflects all four cell-structur
     // would, so the dropdown's Structure section has a non-zero "expanded"
     // count to report (see COLLAPSIBLE_COLUMN's own comment above).
     const expandedOne = await page.evaluate((colName) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         const idx = Array.from(document.querySelectorAll('table.tbl thead th'))
             .findIndex((t) => strip(t.textContent) === colName);
         const rows = Array.from(document.querySelectorAll('table.tbl tbody tr'));

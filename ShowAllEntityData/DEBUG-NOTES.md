@@ -18170,3 +18170,49 @@ a copied layout. Fixed: 8/8. The `main` version (`--script` pointing at
 
 **Timing** (petri, 2026-10-04): a full refresh now takes ~46 s, up from
 ~26 s at 591 revisions. This is dev-only and never touches the published script.
+
+## 2026-10-04 — header-strip regexes split emoji into lone surrogates (branch fix/lint-misleading-character-class)
+
+**Symptom.** A column header like "🔗 Links" (one that a third-party script adds
+or decorates) showed up in the 👁️ column-visibility menu as "\uDD17 Links", a
+broken glyph, and was saved under that name in `vz-mb-colvis-<pageType>`.
+Found by the first ESLint baseline (`no-misleading-character-class`, 32 hits in
+the userscript and 25 in the harness), not by a user report.
+
+**Root cause.** The script strips its own header decorations with copies of
+`/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g`, about two dozen of them
+(`_sortColumnHeaderName`, `_cleanColHeaderText`, `_resolveColHeaderName`, both
+col-vis menus, `caaFindColumnByName`, …). Without `u`, a class matches UTF-16
+code units, so 📊 (U+1F4CA) adds `\uD83D` and `\uDCCA` as two members. Every
+emoji whose high half is `\uD83D` (🔗 🖼 📋 💿 …) therefore loses it. 📊 itself
+was stripped correctly, which is why no test noticed. Two more sites had the
+"combined character" form: U+FE0F written after another member
+(`[…✂️…]` in the release-events column removal, `[…⚠️…]`
+in the action-cell plain-text fallback, and `[🖼️📋🔗]` in the IDB stats
+placeholder match). Those read as one emoji but are two members, with or
+without `u`.
+
+**Fix.** Added `u` to every flagged literal. Checked first that none of them
+holds an escape that `u` rejects; only `\s` occurs, and it is valid. For the
+FE0F sites, U+FE0F now leads the class: the set is unchanged and the
+misreading is gone. `getColFilters`' `⁰-⁹` range (U+2070–2079, which misses
+¹²³ at U+00B9/B2/B3) is now the explicit list the other copies use. No
+migration of saved col-vis state: the script's own header glyphs never reach
+`textContent` (▶🔗 is CSS `::before`, and the CAA header button is an `<img>`),
+so only third-party-decorated columns are re-keyed, and only once.
+
+**Tests.** `tests/fixtures/header-emoji-surrogate.spec.js` adds a "🔗 Links"
+column to the artist-events fixture and asserts that the col-vis label is
+exactly that and `isWellFormed()`. `tests/fixtures/regex-unicode-flag-guard.spec.js`
+walks every regex literal in the userscript and the library with acorn and
+fails on either form. It is in `npm test`, which ESLint is not.
+`scripts/mutations/misleading-char-class.json`: 4/4 caught (the col-vis site
+seen by both specs, `_sortColumnHeaderName` and the FE0F reorder seen by the
+guard).
+
+**Lint.** 399 → 342; `no-misleading-character-class` is now 0 everywhere.
+
+**Why ESLint was missing locally.** `node_modules/` is gitignored and was last
+installed at 03:17, before fee0fd1 (05:13) added ESLint to the lockfile; `npm ci`
+fixed it. Anyone on an older checkout has to re-run it before
+`scripts/lint-summary.py` works ("sh: 1: eslint: not found").

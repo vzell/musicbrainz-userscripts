@@ -61,7 +61,7 @@ const CAA_TYPE_COMMENT_FILTER = 'ont cass'; // substring of "Front cassette case
  */
 async function findCaaColIndex(page, tableIndex) {
     return page.evaluate((idx) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         const table = document.querySelectorAll('table.tbl')[idx];
         if (!table) return -1;
         return Array.from(table.querySelectorAll('thead th')).findIndex((t) => strip(t.textContent) === 'CAA');

@@ -29,6 +29,8 @@ a userscript change and needs a WIP changelog entry; lower the baseline with
    Fix: add =u= to each regex, after checking that the class has no escapes
    =u= rejects (=\-= outside a class, for example). The userscript lines start at
    18888, 22958, 23604, 30149, 30520, …
+   *Done* on =fix/lint-misleading-character-class= (WIP.1): 57 → 0, guarded by
+   =tests/fixtures/regex-unicode-flag-guard.spec.js=.
 2. *playwright/missing-playwright-await (1).* =app-help-github-and-markdown.spec.js:252=
    has =expect(await table.locator('tbody tr')).toHaveCount(1)= without an
    =await= on the =expect=, so the assertion never runs. Fix it, then
