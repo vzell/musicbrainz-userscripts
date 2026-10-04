@@ -624,6 +624,8 @@ filter with a ✕ to remove it.
 | ❌    | Recording comment with an impossible date                       | Name / Recording / Disambiguation           |
 | ❌    | Recording comment almost in the live form                       | Name / Recording / Disambiguation           |
 | ❌    | Recording date differs from the comment date                    | Release tracklist: Recording date           |
+| ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
+| ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
@@ -1102,7 +1104,28 @@ recording's, because they are relationships of a different entity.
 
 Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
-the recording date.
+the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
+at event, Recorded at place).
+
+**Live recordings from more than one event.** Each track is matched to an
+event: its **Recorded at event**, else the event its recording comment names
+(`live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany`), else its **Recording
+date**. A medium whose tracks come from two or more events gets a **🎪 N
+events** badge in its heading, after the ⏳ pending-edits badge; its tooltip
+lists each event with its number of tracks. The **Disambiguation** column's 📊
+dropdown then has an **Event info - Events on this medium** section, one entry
+per event, to filter to its tracks. Both count every track, also those a
+filter hides.
+
+**Event and place against the comment.** A **Recorded at event** cell is
+marked ❌ when none of its events is named like the recording comment without
+its event type: the comment `live, 1996‐04‐19: Saal 1, ICC Berlin, …` needs
+the event `1996‐04‐19: Saal 1, ICC Berlin, …`. A **Recorded at place** cell is
+marked ❌ when a place is not named like the venue, the first part of the
+comment's location: here `Saal 1`, so the places `Internationales Congress
+Centrum Berlin` and `Festhalle Frankfurt` (for `Festhalle, Frankfurt, …`) are
+flagged. The tooltip shows both names. Both appear in the ❌ ERROR menu; the
+tint can be switched off in ⚙️ Settings → ⚠️ Findings.
 
 **Video on a medium that cannot carry video.** When a recording marked as a
 video sits on a CD, a vinyl record, a cassette, an SACD or any other format

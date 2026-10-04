@@ -18411,3 +18411,39 @@ does that. Live titles: `uvd-live-titles.spec.js`, new parser cases and a
 `scripts/mutations/live-multidate-retry-dup.json`: 10/10 as expected,
 including the over-correction (guard firing on a multi-table page, caught by
 `per-table-failed-retry.spec.js`).
+
+## 2026-10-05 — release-tracks: events per medium, event/place vs comment, Performer date check (branch feature/release-tracks-event-consistency)
+
+Source: `org/live-bootleg.org` item 3. Snapshot
+`debug/multiple-concerts-on-release.html` (release d390b4ff, "Berlin Night",
+three CDs). CD 3 mixes `1996‐04‐19: Saal 1, ICC Berlin, …` (11 tracks) with
+`1992‐06‐26: Festhalle, Frankfurt, Germany` (2). The places on record are
+"Saal 1", "Internationales Congress Centrum Berlin" (3 tracks) and
+"Festhalle Frankfurt" (2).
+
+**Already there, unchanged:** Recording date vs comment date (`rec-date-*`),
+and credit dates vs Recording date (`live-credit-*`). Performer was excluded
+on purpose; the user asked for it to be included.
+
+**Fixture trap, worth remembering.** `scripts/fetch-release-fixture.js` saves
+the raw server HTML, which has no recording comment after the track links:
+MusicBrainz's release script renders them from the embedded JSON.
+`scripts/build-multi-event-fixture.py` puts the real comments back in. Even
+then, the first probe showed no "Disambiguation" column. The DOM held 7.2 MB
+against a 1.36 MB file, with 0 comments in title cells. A freshly fetched page
+names CURRENT `static.metabrainz.org` bundles, so in the fixture harness
+MusicBrainz's own script really downloads and re-renders the tracklist from
+JSON, discarding the injected markup. Older fixtures name bundles that are
+gone, so they were never affected. The spec aborts `static.metabrainz.org/**`.
+
+**Decisions (user, 2026-10-05):** a place must EQUAL the venue (the comment
+location's first part), not just contain it. The 🎪 badge comes after the ⏳
+pending-edits badge. Item 4 (RG name, main-event highlight, RG preview) is the
+next branch, and it reuses `data-mb-event-key`.
+
+**Tests.** `release-tracks-event-consistency.spec.js`, 6 tests: place rule (5
+exact cells), event rule (real data agrees; an edited comment flags exactly
+its row), badge (CD 3 only, survives a filter hiding the Festhalle rows), badge
+after ⏳ (pending edit planted), 📊 section (counts, absent on CD 1, ticking
+filters), Performer ❌/⚠️ (dates planted).
+`scripts/mutations/release-tracks-event-consistency.json`: 9/9 as expected.
