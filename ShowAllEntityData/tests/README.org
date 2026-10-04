@@ -23,6 +23,15 @@ npm run test:full    # all 587, incl. the two @slow specs — what a merge needs
 there. Everything else in this file costs real time and real requests to
 musicbrainz.org.
 
+"No network" is literal since 2026-10-04. The userscript's two third-party
+=@require=s, iro and pako, come from =node_modules= (exact-pinned
+devDependencies that =npm install= fetches, byte-identical to the CDN files),
+not from cdn.jsdelivr.net and cdnjs on every page load; a jsdelivr outage had
+failed 72 tests of a merge gate. =PLAYWRIGHT_BLOCK_CDN=1 npm run test:full=
+aborts every request to those two hosts and proves it.
+=python3 scripts/check-vendored-libs.py= (network, by hand) compares the
+pinned files with what the =@require= URLs serve today.
+
 =npm test= leaves out the two =@slow= fixture specs, which is why it is two
 minutes rather than five. Run =npm run test:full= before merging anything —
 see "The fixture =@slow= tag" below for what is being skipped and why that is

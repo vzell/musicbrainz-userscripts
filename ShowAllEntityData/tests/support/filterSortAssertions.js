@@ -1,5 +1,8 @@
 'use strict';
 
+/** Sequence number for `_runAndWaitForSettledText()`'s page-side write watchers. */
+let _settleSeq = 0;
+
 /**
  * Runs `trigger()` (e.g. a filter-input keystroke, a sort-icon click), then
  * polls `locator`'s textContent until it reflects a genuinely NEW, settled
@@ -35,6 +38,21 @@
  * this function takes `trigger` as a parameter instead of assuming the
  * caller already ran it.
  *
+ *   4. "Differs from baseline" is still not the whole answer: an operation
+ *      can finish with a BYTE-IDENTICAL line — the same row count and query,
+ *      and an "in 22ms" that happens to repeat — while its `⏳` phase is too
+ *      short for a 100 ms poll to catch. Then nothing distinguishes "done"
+ *      from "not started", and no timeout is long enough (DEBUG-NOTES.md,
+ *      2026-09-18 "A fourth load-sensitive spec"; it hit
+ *      artist-recordings-ms-batch twice). So a MutationObserver is installed
+ *      on the element with the baseline, before the trigger, and counts
+ *      WRITES: every writer of the polled elements assigns `textContent`
+ *      unconditionally, and that replaces the text node even when the string
+ *      is the same. A write after the trigger makes the text eligible; a
+ *      node replaced by a re-render does too. The `⏳` and "stable for two
+ *      polls" rules still apply, and a trigger that writes nothing still
+ *      times out — a no-op is never "settled".
+ *
  * @param {import('@playwright/test').Locator} locator
  * @param {() => Promise<void>} trigger
  * @param {number} timeout
@@ -44,32 +62,58 @@
 async function _runAndWaitForSettledText(locator, trigger, timeout, pollIntervalMs = 100) {
     const readOnce = () => locator.textContent().catch(() => null);
     const baseline = await readOnce();
+    const page = locator.page();
+    const key = `settle-${++_settleSeq}`;
+    // Reason 4 above: count writes to the element from here on. Best effort:
+    // with no element to observe yet, the text rules alone decide, as before.
+    await locator.evaluate((el, k) => {
+        const watch = (window.__mbSettleWatch = window.__mbSettleWatch || {});
+        const rec = { writes: 0, el };
+        rec.obs = new MutationObserver((records) => { rec.writes += records.length; });
+        rec.obs.observe(el, { childList: true, characterData: true, subtree: true });
+        watch[k] = rec;
+    }, key, { timeout: 1000 }).catch(() => {});
+    const readWrites = () => page.evaluate((k) => {
+        const rec = window.__mbSettleWatch && window.__mbSettleWatch[k];
+        return rec ? { writes: rec.writes, replaced: !rec.el.isConnected } : { writes: 0, replaced: false };
+    }, key).catch(() => ({ writes: 0, replaced: false }));
 
-    await trigger();
+    try {
+        await trigger();
 
-    const deadline = Date.now() + timeout;
-    let sawInProgress = false;
-    let lastText = baseline;
-    let stableStreak = 0;
+        const deadline = Date.now() + timeout;
+        let sawInProgress = false;
+        let lastText = baseline;
+        let stableStreak = 0;
+        let lastWrites = { writes: 0, replaced: false };
 
-    while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-        const text = await readOnce();
+        while (Date.now() < deadline) {
+            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+            const text = await readOnce();
+            lastWrites = await readWrites();
+            const written = lastWrites.writes > 0 || lastWrites.replaced;
 
-        if (text !== null && text.startsWith('⏳')) {
-            sawInProgress = true;
-            stableStreak = 0;
-        } else {
-            const eligible = text !== null && (sawInProgress || text !== baseline);
-            stableStreak = eligible && text === lastText ? stableStreak + 1 : (eligible ? 1 : 0);
-            if (stableStreak >= 2) return;
+            if (text !== null && text.startsWith('⏳')) {
+                sawInProgress = true;
+                stableStreak = 0;
+            } else {
+                const eligible = text !== null && (sawInProgress || text !== baseline || written);
+                stableStreak = eligible && text === lastText ? stableStreak + 1 : (eligible ? 1 : 0);
+                if (stableStreak >= 2) return;
+            }
+            lastText = text;
         }
-        lastText = text;
+        throw new Error(
+            `_runAndWaitForSettledText: text did not settle to a new value within ${timeout}ms `
+            + `(baseline: ${JSON.stringify(baseline)}, last seen: ${JSON.stringify(lastText)}, `
+            + `writes after the trigger: ${lastWrites.writes}${lastWrites.replaced ? ', element replaced' : ''})`
+        );
+    } finally {
+        await page.evaluate((k) => {
+            const rec = window.__mbSettleWatch && window.__mbSettleWatch[k];
+            if (rec) { rec.obs.disconnect(); delete window.__mbSettleWatch[k]; }
+        }, key).catch(() => {});
     }
-    throw new Error(
-        `_runAndWaitForSettledText: text did not settle to a new value within ${timeout}ms `
-        + `(baseline: ${JSON.stringify(baseline)}, last seen: ${JSON.stringify(lastText)})`
-    );
 }
 
 /**

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "writes no longer count as settled",
+    "why": "Drops the write count from the eligibility test: a byte-identical status line is unsatisfiable again (DEBUG-NOTES 2026-09-18, 'A fourth load-sensitive spec').",
+    "file": "tests/support/filterSortAssertions.js",
+    "edits": [ { "find": "                const eligible = text !== null && (sawInProgress || text !== baseline || written);\n", "replace": "                const eligible = text !== null && (sawInProgress || text !== baseline);\n" } ],
+    "spec": "tests/fixtures/harness-settled-text.spec.js",
+    "grep": "byte-identical",
+    "expect": "fail"
+  },
+  {
+    "name": "any text counts as settled",
+    "why": "Makes every non-null text eligible: a trigger that did nothing is reported as settled on the stale line, the opposite failure.",
+    "file": "tests/support/filterSortAssertions.js",
+    "edits": [ { "find": "                const eligible = text !== null && (sawInProgress || text !== baseline || written);\n", "replace": "                const eligible = text !== null;\n" } ],
+    "spec": "tests/fixtures/harness-settled-text.spec.js",
+    "grep": "writes nothing",
+    "expect": "fail"
+  }
+]
