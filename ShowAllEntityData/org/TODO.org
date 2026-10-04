@@ -1252,3 +1252,26 @@ window
 
 the h2/h3 header lines should stretch up to where we end when scrolling to the far right. The last column on a very wide
 table is actually aligned with the h2/h3 header lines when scrolled to the very right end, see screenshot 
+
+* TODO flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
+
+"quick filter matches the hidden prefix, opens what matches, hides the rest,
+and restores on clear" failed in 2 of 5 =npm run test:full= runs on 2026-10-04,
+on two different trees, always at the same assertion:
+=expect(date.collapsed).toBe(false)= right after =qf.fill('month')= (line 271).
+It passes 50/50 alone (=--repeat-each=5=), so only load brings it out.
+
+Not the quick filter itself: its =input= handler (=renderItems()= +
+=_applySynBoxQuickFilter()=) is synchronous, and =openUniqDrop()= defers
+nothing. Suspected, NOT proven: =openDrop()= renders with
+=waitForRenderComplete(page, { waitForAutoResize: false })=, so the
+auto-resize pass may still be running when the test types. If that pass
+rebuilds the headers, it would close the dropdown, and =readDrop()= then reads
+the closed panel with the stored collapsed state. Check that first, e.g. by
+logging dropdown open/close around the fill on a loaded run, before changing
+the wait.
+
+(The same runs also hit filter-autofocus.spec.js:18 once, a =page.goto=
+timeout before the userscript is injected: environmental. And
+colvis-clean-column-names.spec.js's label click outside the viewport, fixed on
+=fix/colvis-spec-viewport=.)

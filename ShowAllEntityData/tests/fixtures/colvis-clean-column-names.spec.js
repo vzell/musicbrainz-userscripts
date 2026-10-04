@@ -176,10 +176,19 @@ test.describe('👁️ sub-table column visibility uses clean column names', () 
         // never propagated.
         await loadMulti(page);
         await page.click('#mb-visible-btn');
-        await page.locator('label[for^="mb-col-vis-"]', { hasText: /Barcode$/ }).click();
-        // Every sub-table menu has its own (hidden) button of the same name, and
-        // this one sits below the fold of the fixed-position menu, where
-        // Playwright cannot scroll to it; its handler is a plain onclick.
+        // Both clicks are made from inside the page. The menu is fixed-position,
+        // and where it opens depends on where the h2 ends up after layout, so
+        // under load the Barcode label (as well as the Choose button below it)
+        // can land outside the viewport, where Playwright cannot scroll a fixed
+        // element into view. It then retries until the test times out. Every
+        // sub-table menu also has its own hidden Choose button, hence :visible.
+        const pageBarcode = page.locator('label[for^="mb-col-vis-"]', { hasText: /Barcode$/ });
+        await pageBarcode.evaluate((l) => l.click());
+        expect(await page.evaluate(() => {
+            const l = Array.from(document.querySelectorAll('label[for^="mb-col-vis-"]'))
+                .find((x) => /Barcode$/.test(x.textContent));
+            return document.getElementById(l.htmlFor).checked;
+        }), 'the page-wide Barcode checkbox is now unticked').toBe(false);
         await page.locator('button:visible', { hasText: 'Choose current configuration' }).evaluate((b) => b.click());
 
         const subBarcode = await page.evaluate(() =>
