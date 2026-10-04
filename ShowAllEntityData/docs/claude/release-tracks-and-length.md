@@ -605,6 +605,17 @@ section on Disambiguation. `rec-event-mismatch`/`rec-place-mismatch` compare
 the comment with the event name and with the place name (= the venue, the
 location's first part). See docs/claude/findings.md.
 
+**Item 4: the release group decides the main event.** `initReleaseGroupLink()`
+(page init, and again at the end of every `stampFindings()`) rewrites the
+subheader's "see all versions" link from `release.releaseGroup` in the page's
+JSON (`_releaseGroupInfo()`, no request), loads its preview table with one
+WS/2 release browse on the first hover (`_rgPreviewLoad()`, kept only on
+success), and adds the 4c ⚠️. `data-mb-main-event="0"` greens the "#" cell
+(CSS placed before the track-target rule, which out-ranks it).
+`rg-title-mismatch` (⚠️) compares main-event tracks with
+`_rgTitlePartForDate()`. Spec `release-rg-main-event.spec.js`; probe
+`scripts/probe-rg-release-browse.py`.
+
 **Fixture trap: a freshly fetched release page re-renders itself.**
 `tests/fixtures/release-tracks-multi-event.html` came from
 `scripts/fetch-release-fixture.js`, so its `static.metabrainz.org` bundle

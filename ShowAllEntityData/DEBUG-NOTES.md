@@ -18447,3 +18447,51 @@ its row), badge (CD 3 only, survives a filter hiding the Festhalle rows), badge
 after ⏳ (pending edit planted), 📊 section (counts, absent on CD 1, ticking
 filters), Performer ❌/⚠️ (dates planted).
 `scripts/mutations/release-tracks-event-consistency.json`: 9/9 as expected.
+
+## 2026-10-05 — release group link, preview and main event (branch feature/release-rg-main-event)
+
+Source: `org/live-bootleg.org` item 4. **The release group (RG) name needs no
+request.** The release page's embedded JSON carries `release.releaseGroup`
+(name, gid, `l_type_name`, artist), read through `_readEmbeddedReleaseJson()`.
+On Berlin Night it is `1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany`,
+while the events and comments say `Saal 1, ICC Berlin`, a real case for 4b.
+The name occurs in TWO JSON blobs of the page, so a test that renames the RG
+must replace both (the first `replace()` hit another blob and the link kept
+the old name).
+
+**The preview's request** was checked against the API docs and then probed
+(`scripts/probe-rg-release-browse.py`, 2026-10-05): release-count 5, all 5
+returned, each with title, date, country, status, media, label-info. The raw
+answer is the spec's canned response (`tests/fixtures/ws2-rg-release-browse.json`).
+Mockup approved by the user: https://claude.ai/artifact/GLjW6qPpEAY1BD8JawRZs6.
+
+**Decisions (user):** a track is on the main event when its DATE is one of
+the RG title's dates; 4b is a ⚠️; with no live RG title there is no green,
+only the ⚠️ on the link; the preview loads on the first hover.
+
+**Bug caught by the spec, before shipping.** The 4c suggestion said "72 of
+76" on a 38-track release. `stampFindings()`'s shared traversal
+(`_forEachStampRow()`) visits a multi-table live clone AND its master row.
+That is right for writing a stamp, wrong for counting. `_computeMainEventCtx()`
+now dedupes by `data-mb-row-idx`.
+
+**Main event vs green, split after a mutation survived.** At first the 2+
+dates gate decided the main event itself, so 4b was silent on every
+single-concert release, where every track is main-event data. The item reads
+"multiple dates" as the condition for the green highlight only. Now the main
+event (and 4b) apply to every release with a valid live RG title, and the
+green needs the table's `data-mb-multi-event` (2+ dates). The "4b off the
+main event" mutation stays `expect: pass`: `_rgTitlePartForDate()` finds no
+part for a track off the RG's date, so the guard has no observable effect of
+its own. The item 3 spec's event test had to accept
+a second tooltip line, because its edited Berlin row is also a main-event
+track and now carries the RG warning.
+
+**Tests.** `release-rg-main-event.spec.js`, 11 tests: link at load with no
+request; preview (1 request, kept, 503×4 then retried on the next hover);
+Festhalle tracks green through a filter and a sort; one date on the page →
+no green but 4b on all 38; RG date off the page's one date → off, not green;
+4b counts (36 per column) and detail texts; 4c (non-live title, impossible
+date); no ⚠️ on a live title; setting off.
+`scripts/mutations/release-rg-main-event.json`: 13 entries, 12 `fail` + 1
+honest `pass`.
