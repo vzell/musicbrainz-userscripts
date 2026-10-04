@@ -1,5 +1,24 @@
 [
   {
+    "version": "9.99.1217",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column headers that contain an emoji such as 🔗, 🖼 or 📋 keep it intact in the 👁️ column-visibility menus and wherever the script looks a column up by its name. The code that removes the script's own header decorations (⇅ ▲ ▼ 📊 …) also removed half of every emoji that shares a building block with 📊, which left a broken character behind, e.g. \"\\uDD17 Links\" instead of \"🔗 Links\". MusicBrainz's own headers carry no emoji, so this only showed on columns that another userscript adds or decorates. The saved show/hide choice for such a column was stored under the broken name, so it is forgotten once, after which it is saved correctly.",
+          "The column name in a column-filter error message no longer keeps the sort-priority superscripts ¹ ² ³."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "All 57 hits of ESLint's no-misleading-character-class rule are fixed, 32 in the userscript and 25 in the test harness, and the lint baseline is lowered to match. A new source-level check (tests/fixtures/regex-unicode-flag-guard.spec.js) runs in npm test and keeps the rule at zero in the userscript and the library while ESLint itself stays report-only."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1216",
     "date": "2026-10-04",
     "sections": [
