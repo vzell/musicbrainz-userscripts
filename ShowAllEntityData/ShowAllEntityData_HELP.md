@@ -606,6 +606,7 @@ filter with a ✕ to remove it.
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
 | ⚠️     | Recording comment date uses a plain "-" instead of "‐"          | Name / Recording / Disambiguation           |
 | ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
+| ⚠️     | Main-event track differs from the release group title           | Release tracklist: event columns            |
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
@@ -1116,6 +1117,25 @@ lists each event with its number of tracks. The **Disambiguation** column's 📊
 dropdown then has an **Event info - Events on this medium** section, one entry
 per event, to filter to its tracks. Both count every track, also those a
 filter hides.
+
+**The release group and the main event.** On a release page the
+`(see all versions of this release, 5 available)` link names its release
+group: `(5 versions available in 1996‐04‐19: ICC Berlin, Saal 1, Berlin,
+Germany)`. The name is in the page already, so this costs nothing. Hovering
+it previews the release group: its cover, type and artist, and a table of its
+releases with this one marked ▸, loaded with one request on the first hover
+(a failed load is tried again on the next hover). Switch it off in ⚙️ Settings
+→ 💿 RELEASE TRACKLIST.
+
+When the release group title is a live title, it names the release's **main
+event**, by its date. If the tracks come from two or more dates, the **#**
+cell of every track from another date turns light green. Main-event tracks
+whose Disambiguation, **Recorded at event** or **Recorded at place** name the
+event or venue differently from the release group title get a ⚠️ warning,
+with both names in the tooltip (the venue is the first part of the title's
+location). When tracks carry live event data but the release group title is
+not a live title, a ⚠️ after the link explains why and suggests a title from
+the event with the most tracks; there is then no main event and no green.
 
 **Event and place against the comment.** A **Recorded at event** cell is
 marked ❌ when none of its events is named like the recording comment without

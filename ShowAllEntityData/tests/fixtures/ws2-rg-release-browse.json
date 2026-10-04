@@ -1,0 +1,329 @@
+{
+ "release-count": 5,
+ "release-offset": 0,
+ "releases": [
+  {
+   "barcode": "",
+   "packaging": "Jewel Case",
+   "label-info": [
+    {
+     "catalog-number": "ELECTRIC 40067",
+     "label": {
+      "disambiguation": "",
+      "name": "Osa/Bong",
+      "id": "ce3ed5e2-3837-4437-85e6-c4c3e381ff56",
+      "type-id": null,
+      "label-code": null,
+      "sort-name": "Osa/Bong",
+      "type": null
+     }
+    }
+   ],
+   "quality": "normal",
+   "cover-art-archive": {
+    "artwork": true,
+    "darkened": false,
+    "count": 4,
+    "back": true,
+    "front": true
+   },
+   "title": "I Am the Real Bob Dylan",
+   "asin": null,
+   "id": "23b9ef0e-528d-4ab5-9393-53f2e3cf91cb",
+   "media": [
+    {
+     "format": "CD",
+     "position": 1,
+     "id": "d707823b-f4ed-3676-b977-e7827a0478c1",
+     "title": "",
+     "track-count": 14,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    }
+   ],
+   "status": "Bootleg",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "packaging-id": "ec27701a-4a22-37f4-bfac-6616e0f9750a",
+   "disambiguation": ""
+  },
+  {
+   "label-info": [
+    {
+     "catalog-number": "OXY 087",
+     "label": {
+      "sort-name": "Oxygen",
+      "type": "Bootleg Production",
+      "type-id": "fdac9b96-359b-3488-9322-ad99c2473636",
+      "label-code": null,
+      "disambiguation": "Czech bootlegs",
+      "name": "Oxygen",
+      "id": "e99c0722-aa7d-4500-a194-189b51fa25be"
+     }
+    }
+   ],
+   "barcode": "8595005102719",
+   "packaging": null,
+   "quality": "normal",
+   "title": "Born Again",
+   "cover-art-archive": {
+    "artwork": true,
+    "darkened": false,
+    "count": 2,
+    "back": true,
+    "front": true
+   },
+   "asin": null,
+   "release-events": [
+    {
+     "date": "1996",
+     "area": {
+      "sort-name": "Czechia",
+      "type": null,
+      "iso-3166-1-codes": [
+       "CZ"
+      ],
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Czechia",
+      "id": "51d34c28-61bf-3d21-849f-7492672a9d44"
+     }
+    }
+   ],
+   "date": "1996",
+   "id": "9b5d52e9-e509-4fa1-8f35-48e66e0235e5",
+   "media": [
+    {
+     "id": "8c312377-60f4-3bf8-b15e-564d02d08cb4",
+     "format": "CD",
+     "position": 1,
+     "title": "",
+     "track-count": 13,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    }
+   ],
+   "status": "Bootleg",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "packaging-id": null,
+   "disambiguation": "",
+   "country": "CZ"
+  },
+  {
+   "status": "Bootleg",
+   "packaging-id": "57429523-ffe6-3336-9381-32565c142c18",
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "disambiguation": "",
+   "country": "XE",
+   "quality": "normal",
+   "barcode": "",
+   "packaging": "Fatbox",
+   "label-info": [
+    {
+     "catalog-number": "CC 399-401",
+     "label": {
+      "type-id": "fdac9b96-359b-3488-9322-ad99c2473636",
+      "label-code": null,
+      "type": "Bootleg Production",
+      "sort-name": "Crystal Cat Records",
+      "disambiguation": "",
+      "id": "24eee387-decf-44af-94ee-0692b2b97180",
+      "name": "Crystal Cat Records"
+     }
+    }
+   ],
+   "asin": null,
+   "cover-art-archive": {
+    "count": 10,
+    "back": true,
+    "front": true,
+    "artwork": true,
+    "darkened": false
+   },
+   "title": "Berlin Night",
+   "id": "d390b4ff-38ab-4783-99ef-2c4d338e016b",
+   "date": "1996",
+   "release-events": [
+    {
+     "date": "1996",
+     "area": {
+      "sort-name": "Europe",
+      "type": null,
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "type-id": null,
+      "disambiguation": "",
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a"
+     }
+    }
+   ],
+   "media": [
+    {
+     "id": "2deb6797-fbb2-353d-ba52-475427529c98",
+     "position": 1,
+     "format": "CD",
+     "track-count": 14,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": ""
+    },
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 11,
+     "title": "",
+     "format": "CD",
+     "position": 2,
+     "id": "10ab1e7b-3282-3490-b849-fbf1906e5155"
+    },
+    {
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "track-count": 13,
+     "title": "",
+     "position": 3,
+     "format": "CD",
+     "id": "66280093-77dc-3f90-8167-0c455839eceb"
+    }
+   ]
+  },
+  {
+   "disambiguation": "",
+   "country": "IT",
+   "status": "Bootleg",
+   "text-representation": {
+    "language": "eng",
+    "script": "Latn"
+   },
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "packaging-id": null,
+   "release-events": [
+    {
+     "area": {
+      "disambiguation": "",
+      "id": "c6500277-9a3d-349b-bf30-41afdbf42add",
+      "name": "Italy",
+      "type-id": null,
+      "iso-3166-1-codes": [
+       "IT"
+      ],
+      "type": null,
+      "sort-name": "Italy"
+     },
+     "date": "1996"
+    }
+   ],
+   "date": "1996",
+   "id": "d8aa852d-6099-4da7-bfa6-da1d9865a4b0",
+   "media": [
+    {
+     "id": "2b5740ad-a8b1-3038-a495-f25f1af842bb",
+     "position": 1,
+     "format": "CD",
+     "track-count": 14,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31",
+     "title": ""
+    }
+   ],
+   "label-info": [
+    {
+     "label": {
+      "type-id": "fdac9b96-359b-3488-9322-ad99c2473636",
+      "label-code": null,
+      "sort-name": "Kiss the Stone",
+      "type": "Bootleg Production",
+      "disambiguation": "",
+      "name": "Kiss the Stone",
+      "id": "f06f81b9-d42c-4ac7-9295-30147f345f85"
+     },
+     "catalog-number": "KTS566"
+    }
+   ],
+   "packaging": null,
+   "barcode": "8013780015661",
+   "quality": "normal",
+   "title": "Old Habits",
+   "cover-art-archive": {
+    "darkened": false,
+    "artwork": true,
+    "front": true,
+    "back": true,
+    "count": 4
+   },
+   "asin": null
+  },
+  {
+   "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+   "text-representation": {
+    "script": "Latn",
+    "language": "eng"
+   },
+   "packaging-id": null,
+   "status": "Bootleg",
+   "country": "XE",
+   "disambiguation": "",
+   "cover-art-archive": {
+    "back": false,
+    "count": 1,
+    "front": true,
+    "artwork": true,
+    "darkened": false
+   },
+   "title": "Berlin ’96",
+   "asin": null,
+   "barcode": null,
+   "packaging": null,
+   "label-info": [
+    {
+     "catalog-number": "No Catalog Number",
+     "label": {
+      "name": "[no label]",
+      "id": "157afde4-4bf5-4039-8ad2-5a15acc85176",
+      "disambiguation": "Special purpose label – white labels, self-published releases and other “no label” releases",
+      "label-code": null,
+      "type-id": "a2426aab-2dd4-339c-b47d-b4923a241678",
+      "sort-name": "[no label]",
+      "type": "Production"
+     }
+    }
+   ],
+   "quality": "normal",
+   "media": [
+    {
+     "id": "acffd80b-5a7b-30e6-9754-515593742ec7",
+     "position": 1,
+     "format": "CD",
+     "title": "",
+     "track-count": 10,
+     "format-id": "9712d52a-4509-3d4b-a1a2-67c88c643e31"
+    }
+   ],
+   "date": "1996",
+   "release-events": [
+    {
+     "area": {
+      "name": "Europe",
+      "id": "89a675c2-3e37-3518-b83c-418bad59a85a",
+      "disambiguation": "",
+      "type-id": null,
+      "sort-name": "Europe",
+      "iso-3166-1-codes": [
+       "XE"
+      ],
+      "type": null
+     },
+     "date": "1996"
+    }
+   ],
+   "id": "ee6fc76d-b590-49dc-ad28-351615c02b12"
+  }
+ ]
+}

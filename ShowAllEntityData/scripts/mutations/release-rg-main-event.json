@@ -1,0 +1,171 @@
+[
+  {
+    "name": "link not rewritten",
+    "why": "initReleaseGroupLink() returns before touching the link.",
+    "edits": [
+      {
+        "find": "        const a = document.querySelector('p.subheader span.small > a[href^=\"/release-group/\"]');\n        if (!a) return;\n        const info = _releaseGroupInfo();",
+        "replace": "        const a = null;\n        if (!a) return;\n        const info = _releaseGroupInfo();"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4a: the link names the release group",
+    "expect": "fail"
+  },
+  {
+    "name": "preview re-requested on every hover",
+    "why": "Without the done-guard each hover costs a WS/2 request.",
+    "edits": [
+      {
+        "find": "        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;",
+        "replace": "        if (_rgPreview.status === 'loading') return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "loads on the first hover only",
+    "expect": "fail"
+  },
+  {
+    "name": "a failed preview is kept",
+    "why": "Caching the failure strands the preview on its error line for the rest of the page.",
+    "edits": [
+      {
+        "find": "        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;",
+        "replace": "        if (_rgPreview.status !== 'idle') return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "a failed preview is not kept",
+    "expect": "fail"
+  },
+  {
+    "name": "main event decided by full text instead of date",
+    "why": "\"Saal 1, ICC Berlin\" ≠ \"ICC Berlin, Saal 1\": every track would be off the main event.",
+    "edits": [
+      {
+        "find": "        if (d) row.dataset.mbMainEvent = _mainEventCtx.rgDates.has(d) ? '1' : '0';",
+        "replace": "        if (d) row.dataset.mbMainEvent = row.dataset.mbEventKey === _mainEventCtx.rgTitle ? '1' : '0';"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "exactly the Festhalle tracks are off the main event",
+    "expect": "fail"
+  },
+  {
+    "name": "green on a single-date page",
+    "why": "Drops the 2+ dates gate on the green \"#\".",
+    "edits": [
+      {
+        "find": "        ctx.multi = ctx.active && ctx.pageDates.size >= 2;",
+        "replace": "        ctx.multi = ctx.active && ctx.pageDates.size >= 1;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "single-date page is not green",
+    "expect": "fail"
+  },
+  {
+    "name": "a non-live RG title still names a main event",
+    "why": "_liveTitleDates() must name no date unless the title is a valid live title.",
+    "edits": [
+      {
+        "find": "        if (!live || live.kind !== 'valid') return [];\n        const out = [];",
+        "replace": "        const out = [];"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "impossible date names no main event",
+    "expect": "fail"
+  },
+  {
+    "name": "green rule missing",
+    "why": "Rows are flagged but the \"#\" cell stays white.",
+    "edits": [
+      {
+        "find": "            background-color: #dff3df !important;",
+        "replace": "            background-color: inherit;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "exactly the Festhalle tracks are off the main event",
+    "expect": "fail"
+  },
+  {
+    "name": "4b fires off the main event too",
+    "why": "KNOWN OVERLAP, recorded honestly: _rgTitlePartForDate() finds no title part for a track off the RG's date, so the Festhalle tracks are never compared even without this guard. The guard keeps the meaning explicit and saves the lookup; nothing observable depends on it alone.",
+    "edits": [
+      {
+        "find": "        if (row.dataset.mbMainEvent !== '1' || !_mainEventCtx.rgTitle) return null;",
+        "replace": "        if (!_mainEventCtx.rgTitle) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4b: main-event cells",
+    "expect": "pass"
+  },
+  {
+    "name": "4b place compared with the whole location",
+    "why": "The venue is the location's first part (\"ICC Berlin\"), not all of it.",
+    "edits": [
+      {
+        "find": "            const venue = part.slice(part.indexOf(': ') + 2).split(', ')[0].trim();",
+        "replace": "            const venue = part.slice(part.indexOf(': ') + 2).trim();"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4b: main-event cells",
+    "expect": "fail"
+  },
+  {
+    "name": "no ⚠️ for a non-live RG title",
+    "why": "The 4c condition never holds.",
+    "edits": [
+      {
+        "find": "        if (!(_mainEventCtx.liveRows > 0 && (!live || live.kind !== 'valid'))) {",
+        "replace": "        if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4c: a release group title that is not a live title",
+    "expect": "fail"
+  },
+  {
+    "name": "⚠️ also on a live RG title",
+    "why": "Over-correction: the condition ignores the title.",
+    "edits": [
+      {
+        "find": "        if (!(_mainEventCtx.liveRows > 0 && (!live || live.kind !== 'valid'))) {",
+        "replace": "        if (!(_mainEventCtx.liveRows > 0)) {"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4c: no ⚠️ while the title is a live title",
+    "expect": "fail"
+  },
+  {
+    "name": "tracks counted twice for the 4c suggestion",
+    "why": "The live clone and its master row are one track (the bug the spec caught: 76 of 38).",
+    "edits": [
+      {
+        "find": "            if (seen.has(id)) return;\n            seen.add(id);",
+        "replace": "            seen.add(id);"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "4c: a release group title that is not a live title",
+    "expect": "fail"
+  },
+  {
+    "name": "setting ignored",
+    "why": "sa_release_rg_link off must leave MusicBrainz's link alone.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_release_rg_link === false) return;",
+        "replace": "        if (false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-rg-main-event.spec.js",
+    "grep": "setting off",
+    "expect": "fail"
+  }
+]

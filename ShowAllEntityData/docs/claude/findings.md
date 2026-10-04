@@ -92,6 +92,16 @@ The same pass stamps each release-tracklist row's `data-mb-event-key`
 badge (`_updateMediumEventBadges()`, memoized on `_findingStampGen`) and the
 📊 "Event info - Events on this medium" section count (org/live-bootleg.org 3).
 
+Since item 4 the stamp runs in TWO passes, both through `_forEachStampRow()`
+(live row, master row, filtered-out owner rows): pass 1 writes every event
+key page-wide, `_computeMainEventCtx()` then decides the main event from the
+release group title in the page's JSON (by DATE, for a valid live title; the
+table's `data-mb-multi-event`, which the green "#" needs, only with 2+ dates on
+the page), and pass 2 writes `data-mb-main-event` before the
+findings, because `rg-title-mismatch` reads it. `_forEachStampRow()` reaches
+a live clone AND its master, so anything that COUNTS rows there must dedupe
+by `data-mb-row-idx` (`_computeMainEventCtx()` once counted 76 tracks for 38).
+
 Attributes only, so none of the "writing cell text after the render" duties
 apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,
 whose `findingCounts` come from these attributes: the stamp invalidates each

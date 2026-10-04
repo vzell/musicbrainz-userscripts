@@ -181,7 +181,8 @@ test.describe('release-tracks: event consistency (org/live-bootleg.org 3)', () =
         await open(page, (html) => once(html, INTRO_COMMENT, INTRO_COMMENT.replace('1996‐04‐19:', '1996‐04‐20:')));
         const r = await findingCells(page, 'Recorded at event', 'rec-event-mismatch');
         expect(r.flagged).toEqual([SAAL]);
-        expect(r.tips[0]).toBe(`❌ Recorded at event differs from the comment: comment "1996‐04‐20: Saal 1, ICC Berlin, Berlin, Germany", event "${SAAL}"`);
+        // One of its lines: a main-event track may carry the release group warning too.
+        expect(r.tips[0].split('\n')).toContain(`❌ Recorded at event differs from the comment: comment "1996‐04‐20: Saal 1, ICC Berlin, Berlin, Germany", event "${SAAL}"`);
     });
 
     test('🎪 badge: only the medium that mixes events, filter-proof', async ({ page }) => {

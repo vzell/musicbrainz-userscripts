@@ -2214,6 +2214,15 @@
                          'comment\'s location ("Saal 1").'
         },
 
+        sa_findings_tint_rg_title: {
+            label: 'Highlight main-event tracks that disagree with the release group title as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist, when the release group title is a live title: tint a Disambiguation, ' +
+                         '"Recorded at event" or "Recorded at place" cell of a track from the main event light ' +
+                         'yellow with a ⚠️ when it names the event or venue differently from that title.'
+        },
+
         sa_findings_tint_event_state: {
             label: 'Highlight a missing state for USA/Canada as WARNING',
             type: 'checkbox',
@@ -2554,6 +2563,19 @@
                          'of\' / \'Recorded at\' / \'Recorded in\' / \'Mixed at\' columns" above for the ' +
                          '"Recording date" data itself, and on each target column\'s own setting for that ' +
                          'column to exist in the first place.'
+        },
+
+        sa_release_rg_link: {
+            label: 'Name the release group in the "see all versions" link, with a preview',
+            type: 'checkbox',
+            default: true,
+            description: 'On a release page, rewrite "(see all versions of this release, 5 available)" as ' +
+                         '"(5 versions available in <release group name>)" — the name is in the page already, ' +
+                         'so this costs no request. Hovering it shows a preview of the release group: its ' +
+                         'cover, type and artist, and a table of its releases, which one MusicBrainz Web ' +
+                         'Service request loads on the first hover. When tracks carry live event data but the ' +
+                         'release group title is not a live title ("YYYY-MM-DD: Venue, City, …"), a ⚠️ after ' +
+                         'the link explains why and suggests one.'
         },
 
         sa_enable_release_tracks_dynamic_ar_columns: {
@@ -27100,6 +27122,18 @@
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
         },
         {
+            id: 'rg-title-mismatch', level: 'warn', glyph: '🏷️', scope: 'cell',
+            label: 'Main-event track differs from the release group title',
+            tip: 'Release tracklist, when the release group title is a live title: a track from the main event whose Disambiguation, "Recorded at event" or "Recorded at place" names the event or venue differently from that title — "1996‐04‐19: ICC Berlin, Saal 1, …" vs the event "1996‐04‐19: Saal 1, ICC Berlin, …".',
+            cols: (name, plan) => name === 'Recorded at event' || name === 'Recorded at place' || plan.recComment(name) === 'plain',
+            test: (cell, row, plan) => !!_findingRgTitleMismatch(cell, row, plan),
+            detail: (cell, row, plan) => {
+                const m = _findingRgTitleMismatch(cell, row, plan);
+                return m ? `release group "${m.expected}", here "${m.found.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rg_title'),
+        },
+        {
             id: 'event-state-missing', level: 'warn', glyph: '🗺️', scope: 'cell',
             label: 'No state code for a USA/Canada event location',
             tip: 'The location parsed from a recording comment ends in USA or Canada, but the part before it is not a two-letter state or province code ("OH", "NJ", "ON"): the state is missing ("The Roxy, West Hollywood, USA" puts the city in its place) or written out.',
@@ -27466,6 +27500,410 @@
     }
 
     /**
+     * The release's main event, decided once per `stampFindings()` pass from
+     * the release group title (org/live-bootleg.org 4). `active` when the
+     * title is a valid live title — then a track is on the main event when
+     * its date is one of `rgDates`, which 4b checks on every live release.
+     * `multi` when the tracks come from two or more dates: only then does a
+     * track off the main event get its green "#" (the table's
+     * `data-mb-multi-event`). `rgTitle` is set whenever the page names its
+     * release group.
+     *
+     * @type {{active: boolean, multi: boolean, rgTitle: ?string, rgDates: Set<string>, pageDates: Set<string>, liveRows: number, keys: Map<string, number>}}
+     */
+    let _mainEventCtx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map() };
+
+    // A full date with optional extra "/DD" days, in either hyphen.
+    const _FULL_DATE_RE = /(\d{4})[‐-](\d{2})[‐-](\d{2})((?:\/\d{2})*)/g;
+
+    /**
+     * Every full date a live title names, as `YYYY-MM-DD` with plain hyphens:
+     * "1978‐08‐21/22/23: …" gives three, "A / B: …" and "A: … / B: …" one each.
+     * Empty unless `_parseLiveTitle()` calls the title `valid`, so a near miss
+     * or an impossible date names no main event.
+     *
+     * @param {?string} text
+     * @returns {string[]}
+     */
+    function _liveTitleDates(text) {
+        const live = _parseLiveTitle(text);
+        if (!live || live.kind !== 'valid') return [];
+        const out = [];
+        for (const m of String(text).matchAll(_FULL_DATE_RE)) {
+            out.push(`${m[1]}-${m[2]}-${m[3]}`);
+            if (m[4]) m[4].slice(1).split('/').forEach(d => out.push(`${m[1]}-${m[2]}-${d}`));
+        }
+        return out;
+    }
+
+    /**
+     * The first full date in an event key ("1996‐04‐19: …" or a bare
+     * "1996-04-19"), as `YYYY-MM-DD`; `null` without one.
+     *
+     * @param {?string} key
+     * @returns {?string}
+     */
+    function _eventKeyDate(key) {
+        const m = /(\d{4})[‐-](\d{2})[‐-](\d{2})/.exec(key || '');
+        return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+    }
+
+    /**
+     * The part of a live release group title that names one date, in the
+     * "DATE: Location" form an event name takes, for comparing a main-event
+     * track with it: the title itself for one date; for "A / B: Loc", the
+     * matching date with the shared location; for "A: L1 / B: L2", the
+     * matching part; for "DATE/DD/DD: Loc", the date with that day.
+     *
+     * @param {string} title
+     * @param {string} isoDate - `YYYY-MM-DD`.
+     * @returns {?string}
+     */
+    function _rgTitlePartForDate(title, isoDate) {
+        const live = _parseLiveTitle(title);
+        if (!live || live.kind !== 'valid') return null;
+        const same = s => _eventKeyDate(s) === isoDate;
+        if (live.multi === 'dates') {
+            const colon = title.indexOf(': ');
+            const head = colon > 0 ? title.slice(0, colon) : '';
+            if (head.includes(' / ')) {
+                const unit = head.split(' / ').map(u => u.trim()).find(same);
+                return unit ? `${unit}${title.slice(colon)}` : null;
+            }
+            return title.split(' / ').map(p => p.trim()).find(same) || null;
+        }
+        if (live.multi === 'days') {
+            const m = /^(.*?)([‐-])(\d{2})((?:\/\d{2})+)(.*)$/.exec(title);
+            if (!m) return null;
+            return `${m[1]}${m[2]}${isoDate.slice(8)}${m[5]}`;
+        }
+        return same(title) ? title : null;
+    }
+
+    /**
+     * `_mainEventCtx` for this page, from the release group title in the
+     * page's own JSON (`_readEmbeddedReleaseJson()`) and the event keys pass 1
+     * of `stampFindings()` just wrote. Release tracklists only.
+     *
+     * @param {HTMLTableElement[]} tables
+     * @param {Map} master - From `_buildMasterRowIndex()`.
+     * @returns {typeof _mainEventCtx}
+     */
+    function _computeMainEventCtx(tables, master) {
+        const ctx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map() };
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return ctx;
+        const info = _releaseGroupInfo();
+        ctx.rgTitle = info ? info.name : null;
+        // _forEachStampRow() visits a live clone AND its master row; count
+        // each track once, by its row index.
+        const seen = new Set();
+        tables.forEach((table, ti) => _forEachStampRow(table, master, r => {
+            const id = r.dataset.mbRowIdx !== undefined ? `${ti}:${r.dataset.mbRowIdx}` : r;
+            if (seen.has(id)) return;
+            seen.add(id);
+            const key = r.dataset.mbEventKey;
+            if (!key) return;
+            const d = _eventKeyDate(key);
+            if (d) ctx.pageDates.add(d);
+            // A key in the event-name form came from an event or a comment.
+            if (key.includes(': ')) {
+                ctx.liveRows++;
+                ctx.keys.set(key, (ctx.keys.get(key) || 0) + 1);
+            }
+        }));
+        _liveTitleDates(ctx.rgTitle).forEach(d => ctx.rgDates.add(d));
+        ctx.active = ctx.rgDates.size > 0;
+        ctx.multi = ctx.active && ctx.pageDates.size >= 2;
+        return ctx;
+    }
+
+    /**
+     * Writes (or clears) a row's `data-mb-main-event`: "1" for a track from
+     * the main event, "0" for one that is not (its "#" cell turns green
+     * when the table carries `data-mb-multi-event`), none when there is no
+     * main event to judge by or the row has no date.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {boolean} on - Whether this table takes part.
+     */
+    function _stampMainEventRow(row, on) {
+        const d = on ? _eventKeyDate(row.dataset.mbEventKey) : null;
+        if (d) row.dataset.mbMainEvent = _mainEventCtx.rgDates.has(d) ? '1' : '0';
+        else delete row.dataset.mbMainEvent;
+    }
+
+    /**
+     * Whether a main-event track's cell names the event differently from the
+     * release group title (org/live-bootleg.org 4b). Disambiguation: the
+     * comment's event (`_recCommentEvent()`) vs the title's part for the
+     * track's date; Recorded at event: no linked event equals that part;
+     * Recorded at place: a place is not named like its venue.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {object} plan
+     * @returns {?{expected: string, found: string[]}}
+     */
+    function _findingRgTitleMismatch(cell, row, plan) {
+        if (row.dataset.mbMainEvent !== '1' || !_mainEventCtx.rgTitle) return null;
+        const part = _rgTitlePartForDate(_mainEventCtx.rgTitle, _eventKeyDate(row.dataset.mbEventKey));
+        if (!part) return null;
+        const name = plan.nameOf(cell.cellIndex);
+        if (cell.cellIndex === plan.recPlainIdx) {
+            const ce = _recCommentEvent(_recCommentTextOf(cell));
+            return ce && ce.event !== part ? { expected: part, found: [ce.event] } : null;
+        }
+        if (name === 'Recorded at event') {
+            const names = _findCellLinkedNames(cell, 'event');
+            return names.length && !names.includes(part) ? { expected: part, found: names } : null;
+        }
+        if (name === 'Recorded at place') {
+            const venue = part.slice(part.indexOf(': ') + 2).split(', ')[0].trim();
+            const names = _findCellLinkedNames(cell, 'place');
+            return names.length && names.some(n => n !== venue) ? { expected: venue, found: names } : null;
+        }
+        return null;
+    }
+
+    // ── Release group link and preview (org/live-bootleg.org 4a/4c) ─────────
+    //
+    // A release page's subheader links its release group as "(see all
+    // versions of this release, 5 available)". The name is in the page
+    // already (`release.releaseGroup` of the embedded JSON), so the link is
+    // rewritten with no request; only the preview's table of releases costs
+    // one, on the first hover:
+    //   /ws/2/release?release-group=<mbid>&inc=media+labels&limit=100&fmt=json
+    // https://musicbrainz.org/doc/MusicBrainz_API (checked 2026-10-05) allows
+    // `media` and `labels` on that browse, 100 at most, at most 500 tracks in
+    // all. Probed 2026-10-05 (scripts/probe-rg-release-browse.py) on RG
+    // fa9c43a7…: release-count 5, 5 returned, each with title, date,
+    // country, status, media[].format, label-info[] — saved as
+    // tests/fixtures/ws2-rg-release-browse.json. Mockup the card follows:
+    // https://claude.ai/artifact/GLjW6qPpEAY1BD8JawRZs6 (approved 2026-10-05).
+
+    /** Attempts for the preview's one request, including the first (see `_ws2GetJson()`). */
+    const _RG_PREVIEW_TRIES = 4;
+    /** Base spacing between those attempts, ms; widened per attempt. */
+    const _RG_PREVIEW_DELAY = 1200;
+
+    /**
+     * The preview's table, per page: `idle` until the first hover, then
+     * `loading`, `done` (kept for the page) or `failed` (the next hover asks
+     * again — only a successful answer is kept).
+     *
+     * @type {{status: ('idle'|'loading'|'done'|'failed'), table: string, detail: string}}
+     */
+    let _rgPreview = { status: 'idle', table: '', detail: '' };
+
+    /**
+     * HTML-escapes text for the preview and warning cards.
+     *
+     * @param {*} v
+     * @returns {string}
+     */
+    const _rgEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    /**
+     * The release group of the current release page, from the page's own
+     * embedded JSON; `null` on any other page or when the JSON is absent.
+     *
+     * @returns {?{gid: string, name: string, type: string, artist: string, releaseGid: string}}
+     */
+    function _releaseGroupInfo() {
+        const p = _readEmbeddedReleaseJson();
+        const rg = p && p.release && p.release.releaseGroup;
+        if (!rg || !rg.gid || !rg.name) return null;
+        return {
+            gid: rg.gid, name: rg.name, type: rg.l_type_name || '',
+            artist: typeof rg.artist === 'string' ? rg.artist : '', releaseGid: p.release.gid || '',
+        };
+    }
+
+    /**
+     * The preview's table of releases, from the WS/2 browse: the current
+     * release first and marked, then by date and title; format as
+     * "3×CD" / "CD + DVD", label and catalog number. One string, no
+     * whitespace between tags (`#mb-stat-tooltip` is `white-space: pre-wrap`).
+     *
+     * @param {{releases?: Array<object>, 'release-count'?: number}} data
+     * @param {{releaseGid: string}} info
+     * @returns {string}
+     */
+    function _rgReleasesTableHtml(data, info) {
+        const rels = (data.releases || []).slice().sort((a, b) =>
+            (b.id === info.releaseGid) - (a.id === info.releaseGid) ||
+            (a.date || '9999').localeCompare(b.date || '9999') || String(a.title).localeCompare(String(b.title)));
+        const fmt = r => {
+            const counts = new Map();
+            (r.media || []).forEach(m => counts.set(m.format || '?', (counts.get(m.format || '?') || 0) + 1));
+            return Array.from(counts).map(([f, n]) => (n > 1 ? `${n}×${f}` : f)).join(' + ') || '—';
+        };
+        const label = r => (r['label-info'] || [])
+            .map(li => [li.label && li.label.name, li['catalog-number']].filter(Boolean).join(' · '))
+            .filter(Boolean).join('; ');
+        const td = 'padding:2px 6px 2px 0;';
+        const dim = 'color:#7a6d5c;';
+        const rows = rels.map(r => {
+            const cur = r.id === info.releaseGid;
+            const lab = label(r);
+            return `<tr${cur ? ' style="background:#f1e8d5;"' : ''}>` +
+                `<td style="padding:2px 6px 2px 4px;${cur ? 'font-weight:700;' : ''}">${cur ? '▸ ' : ''}${_rgEsc(r.title)}</td>` +
+                `<td style="${td}">${_rgEsc(fmt(r))}</td>` +
+                `<td style="${td}${r.date ? '' : dim}">${_rgEsc(r.date || '—')}</td>` +
+                `<td style="${td}${r.country ? '' : dim}">${r.country ? `<span style="font-size:0.85em;border:1px solid #d9cfbd;border-radius:2px;padding:0 3px;">${_rgEsc(r.country)}</span>` : '—'}</td>` +
+                `<td style="padding:2px 4px 2px 0;${!lab || lab.startsWith('[') ? dim : ''}">${_rgEsc(lab || '—')}</td></tr>`;
+        }).join('');
+        const th = 'font-weight:400;font-style:italic;padding:0 6px 3px 0;';
+        const statuses = new Set(rels.map(r => r.status).filter(Boolean));
+        const total = data['release-count'] || rels.length;
+        const foot = [
+            statuses.size === 1 ? `All ${total} release${total === 1 ? '' : 's'} are ${[...statuses][0]}` : `${total} release${total === 1 ? '' : 's'}`,
+            total > rels.length ? `showing ${rels.length}` : null,
+            '▸ = this release · click to open the release group',
+        ].filter(Boolean).join(' · ');
+        return `<table style="width:100%;border-collapse:collapse;font-size:0.92em;line-height:1.4;">` +
+            `<thead><tr style="color:#7a6d5c;text-align:left;"><th style="${th}">Release</th><th style="${th}">Format</th>` +
+            `<th style="${th}">Date</th><th style="${th}">Country</th><th style="${th}padding-right:0;">Label / Cat#</th></tr></thead>` +
+            `<tbody>${rows}</tbody></table><div class="mb-tt-foot">${_rgEsc(foot)}</div>`;
+    }
+
+    /**
+     * The whole preview card: the release group's cover, name, type and
+     * artist, then the table — or its loading or failure line.
+     *
+     * @param {{gid: string, name: string, type: string, artist: string}} info
+     * @param {number} n - Releases the link says the group has.
+     * @returns {string}
+     */
+    function _rgPreviewHtml(info, n) {
+        const live = _parseLiveTitle(info.name);
+        const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
+        const head = `<div style="display:flex;gap:12px;align-items:flex-start;">` +
+            `<div style="width:84px;height:84px;flex-shrink:0;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;overflow:hidden;">` +
+            `<img src="https://coverartarchive.org/release-group/${_rgEsc(info.gid)}/front-250" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` +
+            `<div style="min-width:0;"><div class="mb-tt-title">${_rgEsc(info.name)}</div>` +
+            `<div class="mb-tt-body">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${live && live.kind === 'valid' ? pill('✓ live title') : ''}${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
+            `</div></div><div class="mb-tt-rule"></div>`;
+        let body;
+        if (_rgPreview.status === 'done') body = _rgPreview.table;
+        else if (_rgPreview.status === 'failed') {
+            body = `<div class="mb-tt-alert">Could not load the releases (${_rgEsc(_rgPreview.detail)}).</div>` +
+                   `<div class="mb-tt-foot">Hover again to retry.</div>`;
+        } else body = `<div class="mb-tt-comment">Loading the ${n} release${n === 1 ? '' : 's'}…</div>`;
+        return `<div style="width:500px;max-width:100%;">${head}${body}</div>`;
+    }
+
+    /**
+     * Writes the preview into the link's `data-mbtt`, and into the shown
+     * card when the pointer is on the link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {number} n
+     */
+    function _rgPreviewRefresh(a, info, n) {
+        a.dataset.mbtt = _rgPreviewHtml(info, n);
+        const tip = document.getElementById('mb-stat-tooltip');
+        if (tip && tip.style.display === 'block' && a.matches(':hover')) tip.innerHTML = a.dataset.mbtt;
+    }
+
+    /**
+     * Loads the preview's table on the first hover (and on the next one after
+     * a failure): one WS/2 browse, retried on a transient status with the
+     * server's `Retry-After` as a floor. Never more than one in flight.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {number} n
+     * @returns {Promise<void>}
+     */
+    async function _rgPreviewLoad(a, info, n) {
+        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;
+        _rgPreview = { status: 'loading', table: '', detail: '' };
+        _rgPreviewRefresh(a, info, n);
+        const res = await _ws2GetJson(`/ws/2/release?release-group=${encodeURIComponent(info.gid)}&inc=media+labels&limit=100&fmt=json`, {
+            tries: _RG_PREVIEW_TRIES,
+            beforeRetry: (attempt, retryAfterMs) => new Promise(
+                r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs))),
+            dbg: (...args) => Lib.debug('rg', ...args),
+            label: '_rgPreviewLoad',
+        });
+        _rgPreview = res.ok && res.data
+            ? { status: 'done', table: _rgReleasesTableHtml(res.data, info), detail: '' }
+            : { status: 'failed', table: '', detail: res.detail || `HTTP ${res.status}` };
+        _rgPreviewRefresh(a, info, n);
+    }
+
+    /**
+     * The 4c card: why a release with live tracks should have a live release
+     * group title, what is wrong with this one, and a title built from the
+     * event with the most tracks.
+     *
+     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {?ReturnType<typeof _parseLiveTitle>} live
+     * @returns {string}
+     */
+    function _rgLiveWarnHtml(info, live) {
+        const why = !live ? 'does not start with a date'
+            : live.kind === 'nearmiss' ? `starts with a date but is not a live title: ${live.problems[0]}`
+            : `has an impossible date: ${live.problems.join(', ')}`;
+        const top = Array.from(_mainEventCtx.keys).sort((x, y) => y[1] - x[1])[0];
+        return `<div style="width:460px;max-width:100%;">` +
+            `<div class="mb-tt-title">The release group title is not a live title</div>` +
+            `<div class="mb-tt-body">This release has live tracks — ${_mainEventCtx.liveRows} of them carry an event — but its release group is called <b>“${_rgEsc(info.name)}”</b>, which ${_rgEsc(why)}.</div>` +
+            `<div class="mb-tt-body">The live bootleg style guide names a live release group <span class="mb-tt-pill">YYYY-MM-DD: Venue, City, State, Country</span>.</div>` +
+            (top ? `<div class="mb-tt-rule"></div><div class="mb-tt-dim">Suggested, from the event with the most tracks (${top[1]} of ${_mainEventCtx.liveRows}):</div><div class="mb-tt-title">${_rgEsc(top[0])}</div>` : '') +
+            `<div class="mb-tt-body">No track is marked as “not the main event”: without a live title there is no main event to compare with.</div>` +
+            `<div class="mb-tt-foot">musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs</div></div>`;
+    }
+
+    /**
+     * Rewrites the release page's "(see all versions of this release, N
+     * available)" link as "(N versions available in <name>)" with the
+     * preview card, once; and on every call (page init, then each
+     * `stampFindings()` pass) adds or removes the 4c ⚠️ after it: shown when
+     * tracks carry live event data (`_mainEventCtx.liveRows`) and the release
+     * group title is not a valid live title.
+     *
+     * @returns {void}
+     */
+    function initReleaseGroupLink() {
+        if (Lib.settings.sa_release_rg_link === false) return;
+        const a = document.querySelector('p.subheader span.small > a[href^="/release-group/"]');
+        if (!a) return;
+        const info = _releaseGroupInfo();
+        if (!info) return;
+        if (!a.dataset.mbRgLink) {
+            const m = /(\d+)\s+available/.exec(a.textContent);
+            if (!m) return;
+            const n = parseInt(m[1], 10);
+            a.dataset.mbRgLink = String(n);
+            a.textContent = `${n} version${n === 1 ? '' : 's'} available in `;
+            const bdi = document.createElement('bdi');
+            bdi.textContent = info.name;
+            a.appendChild(bdi);
+            a.addEventListener('mouseenter', () => { _rgPreviewLoad(a, info, n); });
+            _rgPreviewRefresh(a, info, n);
+        }
+        const live = _parseLiveTitle(info.name);
+        let warn = a.parentNode.querySelector('.mb-rg-live-warn');
+        if (!(_mainEventCtx.liveRows > 0 && (!live || live.kind !== 'valid'))) {
+            if (warn) warn.remove();
+            return;
+        }
+        if (!warn) {
+            warn = document.createElement('span');
+            warn.className = 'mb-rg-live-warn';
+            warn.textContent = '⚠️';
+            warn.style.cssText = 'display:inline-block; margin-left:4px; background:#fff3cd; border:1px solid #e0c14a;' +
+                ' border-radius:3px; padding:0 3px; font-size:11px; color:#8a6d00; cursor:default;';
+            a.after(warn);
+        }
+        warn.dataset.mbtt = _rgLiveWarnHtml(info, live);
+    }
+
+    /**
      * Where one table's rows say which event they come from, for
      * `data-mb-event-key` (org/live-bootleg.org 3): the "Recorded at event",
      * plain comment ("Disambiguation") and "Recording date" columns. Only a
@@ -27543,35 +27981,64 @@
     function stampFindings() {
         _findingStampGen++;
         const master = _buildMasterRowIndex();
-        const done = new Set();
-        document.querySelectorAll('table.tbl').forEach(table => {
-            const tbody = table.tBodies[0];
-            if (!tbody) return;
-            const plan = _findingPlanForTable(table);
+        const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
+        const plans = new Map(tables.map(t => [t, _findingPlanForTable(t)]));
+        // Pass 1: every row's event key, page-wide, because the main event
+        // (pass 2) is decided from all of them at once.
+        tables.forEach(table => {
+            const plan = plans.get(table);
             const evCols = _eventKeyColsForTable(table, plan);
-            if (!plan.byCol.size && !plan.rowWide.length && !evCols) return;
-            const stamp = r => {
+            if (evCols) _forEachStampRow(table, master, r => _stampRowEventKey(r, evCols, plan));
+        });
+        _mainEventCtx = _computeMainEventCtx(tables, master);
+        // Pass 2: main-event flag, then findings (rg-title-mismatch reads it).
+        let stamped = 0;
+        tables.forEach(table => {
+            const plan = plans.get(table);
+            const mainEvent = _mainEventCtx.active && !!_eventKeyColsForTable(table, plan);
+            if (mainEvent && _mainEventCtx.multi) table.dataset.mbMultiEvent = '1';
+            else delete table.dataset.mbMultiEvent;
+            if (!plan.byCol.size && !plan.rowWide.length && !mainEvent && !table.querySelector('tr[data-mb-main-event]')) return;
+            stamped += _forEachStampRow(table, master, r => {
+                _stampMainEventRow(r, mainEvent);
                 _stampFindingRow(r, plan);
-                if (evCols) _stampRowEventKey(r, evCols, plan);
-            };
-            const owners = new Set();
-            Array.from(tbody.rows).forEach(row => {
-                stamp(row);
-                const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
-                if (!m) return;
-                if (m.row !== row) stamp(m.row);
-                done.add(m.row);
-                owners.add(m.owner);
             });
-            owners.forEach(owner => owner.forEach(r => {
-                if (done.has(r)) return;
-                stamp(r);
-                done.add(r);
-            }));
             _invalidateUniqDropDataCacheForTable(table);
         });
-        Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${done.size} source row(s) stamped.`);
+        Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${stamped} source row(s) stamped.`);
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
+        initReleaseGroupLink();
+    }
+
+    /**
+     * Calls `fn` once for every row a stamp must reach in `table`: each live
+     * row, its master row, and the rows of the same source arrays the active
+     * filter left out of the live tbody (`renderGroupedTable()` renders
+     * clones, so a live-only stamp vanishes on the next re-render).
+     *
+     * @param {HTMLTableElement} table
+     * @param {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>} master
+     *   From `_buildMasterRowIndex()`.
+     * @param {function(HTMLTableRowElement): void} fn
+     * @returns {number} Source rows reached.
+     */
+    function _forEachStampRow(table, master, fn) {
+        const done = new Set();
+        const owners = new Set();
+        Array.from(table.tBodies[0].rows).forEach(row => {
+            fn(row);
+            const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
+            if (!m) return;
+            if (m.row !== row) fn(m.row);
+            done.add(m.row);
+            owners.add(m.owner);
+        });
+        owners.forEach(owner => owner.forEach(r => {
+            if (done.has(r)) return;
+            fn(r);
+            done.add(r);
+        }));
+        return done.size;
     }
 
     /**
@@ -43894,6 +44361,15 @@ a { color: #1565c0; }`;
            and the sticky Title cell's inline background. The cells that carry
            a warning flag keep their own tint — a flag is the more urgent
            message, and the rest of the row still shows the target. */
+        /* A release-tracklist track NOT from the main event — the one the
+           release group's live title names (stampFindings(), org/live-bootleg.org
+           4), on a release whose tracks come from two or more dates
+           (data-mb-multi-event): its "#" cell goes light green. Placed before the track-target
+           rule, which out-ranks it on specificity, so a targeted row keeps the
+           target colour. !important for the zebra rule. */
+        table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child {
+            background-color: #dff3df !important;
+        }
         tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]):not([data-mb-finding]) {
             background-color: #f2f2b2 !important;
         }
@@ -45626,6 +46102,7 @@ a { color: #1565c0; }`;
     // row-count stat — which still independently gates its OWN data-mbtt via
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
+    initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
 
     if (headerContainer.tagName === 'A') {
         // Resolve the owning <h1> and append at the END so that any pre-existing
