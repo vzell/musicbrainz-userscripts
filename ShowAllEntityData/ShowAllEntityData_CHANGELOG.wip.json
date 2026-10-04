@@ -1,0 +1,17 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 👁️ column-visibility menu lists Barcode as \"Barcode\" instead of \"▌█Barcode\". The menu named each column after its header's full text, which includes the barcode highlight button. It now uses the same clean column name as sorting and filtering, and a column name that contains a digit keeps it.",
+          "\"Barcode\" in ⚙️ Settings → \"Default hidden columns per page type\" now hides the Barcode column. The setting saved \"Barcode\" while the menu looked for \"▌█Barcode\", so it never applied.",
+          "\"Choose current configuration\" in the page-wide 👁️ menu now also applies to the Barcode column in every sub-table on multi-table pages. It was the one column the sub-table menus did not recognise.",
+          "Show/hide choices saved by earlier versions still apply: a Barcode column you hid stays hidden after the update."
+        ]
+      }
+    ]
+  }
+]

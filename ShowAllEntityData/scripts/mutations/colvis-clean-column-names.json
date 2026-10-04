@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the page-wide menu names columns by raw header text again",
+    "why": "Back to textContent minus a glyph list: the Barcode highlight toggle's ▌█ is not on the list, so the label reads '▌█Barcode'.",
+    "edits": [
+      {
+        "find": "            const colName = _cleanColHeaderText(th);\n            if (!colName) return; // Skip empty headers",
+        "replace": "            const colName = _colVisLegacyName(th);\n            if (!colName) return; // Skip empty headers"
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "every label is its header's clean name",
+    "expect": "fail"
+  },
+  {
+    "name": "same defect: a default-hidden Barcode stops hiding",
+    "why": "_seedDefaultHiddenColumnsForPageType() saves the configured name 'Barcode'; a menu looking up '▌█Barcode' never finds it. Nothing errors, and the column simply stays visible.",
+    "edits": [
+      {
+        "find": "            const colName = _cleanColHeaderText(th);\n            if (!colName) return; // Skip empty headers",
+        "replace": "            const colName = _colVisLegacyName(th);\n            if (!colName) return; // Skip empty headers"
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "a default-hidden \"Barcode\"",
+    "expect": "fail"
+  },
+  {
+    "name": "same defect: Choose current configuration skips Barcode in sub-tables",
+    "why": "applyGlobalConfig() matches by name; '▌█Barcode' from the page-wide menu never matches the sub-table menus' 'Barcode'.",
+    "edits": [
+      {
+        "find": "            const colName = _cleanColHeaderText(th);\n            if (!colName) return; // Skip empty headers",
+        "replace": "            const colName = _colVisLegacyName(th);\n            if (!colName) return; // Skip empty headers"
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "reaches every sub-table menu",
+    "expect": "fail"
+  },
+  {
+    "name": "the legacy-key fallback is dropped",
+    "why": "Without it, a column hidden before the fix (saved as '▌█Barcode') silently reappears after the update.",
+    "edits": [
+      {
+        "find": "        return [cb.dataset.columnName, cb.dataset.legacyColumnName]",
+        "replace": "        return [cb.dataset.columnName]"
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "old \"▌█Barcode\" key still applies",
+    "expect": "fail"
+  },
+  {
+    "name": "the page-wide menu stops recording the legacy name",
+    "why": "The fallback has nothing to look up if the checkbox never carries data-legacy-column-name.",
+    "edits": [
+      {
+        "find": "            if (legacyName && legacyName !== colName) checkbox.dataset.legacyColumnName = legacyName;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "old \"▌█Barcode\" key still applies",
+    "expect": "fail"
+  },
+  {
+    "name": "the sub-table menu names columns by raw header text again",
+    "why": "KNOWN OVERLAP, recorded honestly: the sub-table menu is built before the Barcode header gets its highlight button, so its raw text never carries ▌█ and the two naming rules agree on this fixture. The change there is for consistency with the page-wide menu, which applyGlobalConfig() depends on.",
+    "edits": [
+      {
+        "find": "                const colName = _cleanColHeaderText(th);\n                if (!colName) return;",
+        "replace": "                const colName = _colVisLegacyName(th);\n                if (!colName) return;"
+      }
+    ],
+    "spec": "tests/fixtures/colvis-clean-column-names.spec.js",
+    "grep": "sub-table labels carry no header-button glyphs",
+    "expect": "pass"
+  }
+]
