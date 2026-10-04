@@ -2203,6 +2203,17 @@
                          'when one is less precise than the other (2004-10 vs 2004-10-02) or only one of them has a date.'
         },
 
+        sa_findings_tint_rec_event: {
+            label: 'Highlight events and places that disagree with the comment',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist: tint a "Recorded at event" cell light red with a ❌ when no linked event ' +
+                         'is named exactly like the recording\'s comment without its event type ("live, 1996‐04‐19: ' +
+                         'Saal 1, ICC Berlin, …" vs the event "1996‐04‐19: Saal 1, ICC Berlin, …"), and a "Recorded at ' +
+                         'place" cell when a linked place is not named like the venue, the first part of the ' +
+                         'comment\'s location ("Saal 1").'
+        },
+
         sa_findings_tint_event_state: {
             label: 'Highlight a missing state for USA/Canada as WARNING',
             type: 'checkbox',
@@ -2530,8 +2541,8 @@
             default: true,
             description: 'For a track whose "Recording of work" cell carries the "live" attribute ' +
                          '(e.g. "The Rising (live)"), compares that track\'s "Recording date" against ' +
-                         'each entity\'s own date attribute in five columns — "Recording engineer", ' +
-                         '"Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
+                         'each entity\'s own date attribute in six columns — "Recording engineer", ' +
+                         '"Performer", "Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
                          'appends a small icon with an explanatory tooltip when they disagree: "⚠️" when ' +
                          'that entity has no date attribute at all (can\'t be confirmed either way), "❌" ' +
                          'when it has its own date but it differs from "Recording date" (may belong to a ' +
@@ -2539,7 +2550,7 @@
                          'for differing date precision. A track without the "live" attribute, or with ' +
                          'no "Recording date" to compare against, is never flagged. Deliberately ' +
                          'excludes "Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/ ' +
-                         '"Performer"/"Produced for label"/"Mixed at place". Depends on "Show \'Recording ' +
+                         '"Produced for label"/"Mixed at place". Depends on "Show \'Recording ' +
                          'of\' / \'Recorded at\' / \'Recorded in\' / \'Mixed at\' columns" above for the ' +
                          '"Recording date" data itself, and on each target column\'s own setting for that ' +
                          'column to exist in the first place.'
@@ -10381,15 +10392,16 @@
      *     `sa_enable_release_tracks_live_date_check`, gated additionally on
      *     `_recOfEnabled` — see `_liveDateCheckEnabled`): for a track whose
      *     "Recording of work" carries the `live` attribute AND has a
-     *     "Recording date", each entity named in exactly five columns —
-     *     "Recording engineer", "Vocals", "Instruments", "Recorded at
-     *     event", "Recorded at place" — gets a trailing `⚠️`/`❌`
+     *     "Recording date", each entity named in exactly six columns —
+     *     "Recording engineer", "Performer" (since org/live-bootleg.org 3),
+     *     "Vocals", "Instruments", "Recorded at event", "Recorded at
+     *     place" — gets a trailing `⚠️`/`❌`
      *     `<span class="mb-live-date-flag">` (native `title` tooltip) when
      *     its OWN date attribute is missing entirely (`⚠️`) or doesn't
      *     exactly match "Recording date" (`❌`, via `_liveDateCheckResult`).
      *     Deliberately excludes every other credit/place column
      *     ("Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/
-     *     "Performer"/"Produced for label"/"Mixed at place") — "Mixed at
+     *     "Produced for label"/"Mixed at place") — "Mixed at
      *     place" in particular shares `_buildRecordedAtPlaceTd` with
      *     "Recorded at place" but is opted out by simply never passing the
      *     `liveDateCtx` parameter at its own call site. Comparison is exact
@@ -11506,7 +11518,9 @@
                     const _entries = _matches
                         .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
                         .filter(e => e.dd && e.dd.tagName === 'DD');
-                    row.appendChild(_buildCreditListTd(_entries));
+                    // Live-date checked like Vocals/Instruments
+                    // (org/live-bootleg.org 3).
+                    row.appendChild(_buildCreditListTd(_entries, _liveDateCtx));
                 }
 
                 // "Vocals"/"Instruments" — Vocals appended first, matching
@@ -26647,6 +26661,82 @@
         return src ? _recDateCheck(cell.textContent, _findCellRecordingComment(src, true)) : null;
     }
 
+    /**
+     * The event a live recording comment names, in the form an event name
+     * takes: the comment without its "<type>, " prefix and "; info" tail
+     * ("live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" →
+     * "1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany"), plus the venue,
+     * the location's first ", " part ("Saal 1"). Only the full
+     * "<type>, DATE: Venue, City, …" form names one: a date-only comment
+     * cannot equal an event name, and a location-only one starts with a
+     * city, not a venue (org/live-bootleg.org 3).
+     *
+     * @param {string} text - The comment, as `_recCommentTextOf()` reads it.
+     * @returns {?{event: string, venue: string}}
+     */
+    function _recCommentEvent(text) {
+        const rc = _parseRecordingComment(text);
+        if (!rc || rc.form !== 'datelocation') return null;
+        const semi = text.indexOf(';');
+        const head = (semi === -1 ? text : text.slice(0, semi)).trim();
+        const event = head.slice(rc.type.length + 2).trim();
+        const colon = event.indexOf(': ');
+        if (colon === -1) return null;
+        return { event, venue: event.slice(colon + 2).split(', ')[0].trim() };
+    }
+
+    /**
+     * `_recCommentEvent()` of a row's plain comment column
+     * (`plan.recPlainIdx`, "Disambiguation").
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?{event: string, venue: string}}
+     */
+    function _rowRecCommentEvent(row, plan) {
+        const src = plan.recPlainIdx >= 0 ? row.cells[plan.recPlainIdx] : null;
+        return src ? _recCommentEvent(_recCommentTextOf(src)) : null;
+    }
+
+    /**
+     * Names of the entities of one kind a cell links, read from each link's
+     * own `<bdi>` — for a place that is the text before " in …", so neither
+     * the area chain nor the "(on …)" date is part of it.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {('event'|'place')} kind
+     * @returns {string[]}
+     */
+    function _findCellLinkedNames(cell, kind) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll(`a[href*="/${kind}/"]`))
+            .map(a => (a.querySelector('bdi') || a).textContent.replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * Whether a "Recorded at event" / "Recorded at place" cell disagrees with
+     * the row's comment: no linked event is named like the comment's event,
+     * or a linked place is not named like its venue. `null` when there is
+     * nothing to compare (no full live comment, or no link).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @param {('event'|'place')} kind
+     * @returns {?{comment: string, linked: string[]}} The mismatch, for the
+     *   cell tooltip.
+     */
+    function _findingRecLinkMismatch(cell, row, plan, kind) {
+        const ce = _rowRecCommentEvent(row, plan);
+        if (!ce) return null;
+        const names = _findCellLinkedNames(cell, kind);
+        if (!names.length) return null;
+        const want = kind === 'event' ? ce.event : ce.venue;
+        const bad = kind === 'event' ? !names.includes(want) : names.some(n => n !== want);
+        return bad ? { comment: want, linked: names } : null;
+    }
+
     // MusicBrainz's release statuses, as a sub-table heading names them
     // (releasegroup-releases groups its releases by status).
     const _RELEASE_STATUS_NAMES = new Set(['Official', 'Promotion', 'Bootleg', 'Pseudo-Release', 'Withdrawn', 'Expunged', 'Cancelled']);
@@ -26905,6 +26995,9 @@
     //   • `scope: 'row'` findings can sit in several unrelated columns of one
     //     row, so the menu filters them with `_findingRowFilter` (any cell),
     //     never with 📊 ticks — those AND across columns.
+    //   • `detail(cell, row, plan)` (optional, cell scope) returns this cell's
+    //     own text for the tooltip line after the label, e.g. the two values
+    //     that disagree; same source-row rule as `test()`.
 
     /**
      * Whether a `sa_findings_tint_*` setting is on (they default to true).
@@ -26934,6 +27027,7 @@
      *               enabled?: function(): boolean, rowGate?: function(HTMLTableRowElement): boolean,
      *               cols: (function(string, object): boolean|'*'),
      *               test: function(HTMLTableCellElement, HTMLTableRowElement, object): boolean,
+     *               detail?: function(HTMLTableCellElement, HTMLTableRowElement, object): ?string,
      *               tint: function(HTMLTableCellElement): boolean}>}
      */
     const FINDINGS = [
@@ -27100,7 +27194,7 @@
         {
             id: 'live-credit-nodate', level: 'warn', glyph: '📅', scope: 'row', inlineGlyph: true,
             label: 'Live credit without a date',
-            tip: 'A live recording\'s credit (vocals, instruments, engineer, event, place) carries no date attribute. Can sit in several credit columns, so this filters by row.',
+            tip: 'A live recording\'s credit (performer, vocals, instruments, engineer, event, place) carries no date attribute. Can sit in several credit columns, so this filters by row.',
             rowGate: row => !!row.querySelector('.mb-live-date-flag'),
             cols: () => '*',
             test: cell => _cellHasLiveDateFlag(cell, '⚠️'),
@@ -27180,6 +27274,30 @@
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'mismatch',
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
+        },
+        {
+            id: 'rec-event-mismatch', level: 'error', glyph: '🎪', scope: 'cell',
+            label: 'Recorded at event differs from the comment',
+            tip: 'Release tracklist: no event in "Recorded at event" is named exactly like the recording\'s comment without its event type — "live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" needs the event "1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany".',
+            cols: (name, plan) => name === 'Recorded at event' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => !!_findingRecLinkMismatch(cell, row, plan, 'event'),
+            detail: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'event');
+                return m ? `comment "${m.comment}", event "${m.linked.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rec_event'),
+        },
+        {
+            id: 'rec-place-mismatch', level: 'error', glyph: '📍', scope: 'cell',
+            label: 'Recorded at place differs from the comment venue',
+            tip: 'Release tracklist: a place in "Recorded at place" is not named like the venue in the recording\'s comment, the first part of its location — "live, 1996‐04‐19: Saal 1, ICC Berlin, …" needs the place "Saal 1".',
+            cols: (name, plan) => name === 'Recorded at place' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => !!_findingRecLinkMismatch(cell, row, plan, 'place'),
+            detail: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'place');
+                return m ? `comment venue "${m.comment}", place "${m.linked.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
         {
             id: 'live-credit-date', level: 'error', glyph: '📅', scope: 'row', inlineGlyph: true,
@@ -27287,12 +27405,14 @@
      *     that level (ISRC, ISWC, barcode, live credit), so CSS adds none;
      *   - `title`: the findings' labels, only on a cell with no tooltip of
      *     its own and no family flag (`data-mb-finding-tip` marks one this
-     *     function wrote).
+     *     function wrote), each followed by the finding's `detail` for this
+     *     cell when it has one.
      *
      * @param {HTMLTableCellElement} td
      * @param {string[]} ids
+     * @param {Object<string, string>} [details] - Per-cell detail text by id.
      */
-    function _writeFindingAttrs(td, ids) {
+    function _writeFindingAttrs(td, ids, details = {}) {
         if (!ids.length) {
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
@@ -27317,7 +27437,7 @@
         if (!familyPainted && (!td.hasAttribute('title') || td.dataset.mbFindingTip)) {
             _setTip(td, ids.map(id => {
                 const f = _FINDING_BY_ID.get(id);
-                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}${details[id] ? `: ${details[id]}` : ''}`;
             }).join('\n'));
             td.dataset.mbFindingTip = '1';
         }
@@ -27333,10 +27453,73 @@
         const rowWide = plan.rowWide.filter(f => !f.rowGate || f.rowGate(row));
         Array.from(row.cells).forEach((td, i) => {
             const ids = [];
-            (plan.byCol.get(i) || []).forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            const details = {};
+            (plan.byCol.get(i) || []).forEach(f => {
+                if (!f.test(td, row, plan)) return;
+                ids.push(f.id);
+                const d = f.detail && f.detail(td, row, plan);
+                if (d) details[f.id] = d;
+            });
             rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
-            _writeFindingAttrs(td, ids);
+            _writeFindingAttrs(td, ids, details);
         });
+    }
+
+    /**
+     * Where one table's rows say which event they come from, for
+     * `data-mb-event-key` (org/live-bootleg.org 3): the "Recorded at event",
+     * plain comment ("Disambiguation") and "Recording date" columns. Only a
+     * release tracklist is stamped — a medium is where "rows from several
+     * events" means something; on a recordings list every row is its own.
+     *
+     * @param {HTMLTableElement} table
+     * @param {ReturnType<typeof _findingPlanForTable>} plan
+     * @returns {?{event: number, date: number}} `null` when not stamped.
+     */
+    function _eventKeyColsForTable(table, plan) {
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return null;
+        const count = table.querySelectorAll('thead tr:first-child th').length;
+        let event = -1, date = -1;
+        for (let i = 0; i < count; i++) {
+            const name = plan.nameOf(i);
+            if (name === 'Recorded at event') event = i;
+            else if (name === 'Recording date') date = i;
+        }
+        return event >= 0 || date >= 0 || plan.recPlainIdx >= 0 ? { event, date } : null;
+    }
+
+    /**
+     * The event one row comes from, as a "DATE: Location" name: the first
+     * linked event, else the event its live comment names
+     * (`_rowRecCommentEvent()`), else the bare "Recording date". The first
+     * two share the event-name form, so a row whose data agrees lands on one
+     * key either way. `null` when the row says nothing.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{event: number, date: number}} cols
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?string}
+     */
+    function _rowEventKey(row, cols, plan) {
+        const linked = cols.event >= 0 ? _findCellLinkedNames(row.cells[cols.event], 'event')[0] : null;
+        if (linked) return linked;
+        const ce = _rowRecCommentEvent(row, plan);
+        if (ce) return ce.event;
+        const d = cols.date >= 0 && row.cells[cols.date] ? row.cells[cols.date].textContent.trim() : '';
+        return d || null;
+    }
+
+    /**
+     * Writes (or clears) a row's `data-mb-event-key` from `_rowEventKey()`.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{event: number, date: number}} cols
+     * @param {{recPlainIdx: number}} plan
+     */
+    function _stampRowEventKey(row, cols, plan) {
+        const key = _rowEventKey(row, cols, plan);
+        if (key) row.dataset.mbEventKey = key;
+        else delete row.dataset.mbEventKey;
     }
 
     /**
@@ -27352,6 +27535,10 @@
      * — except the 📊 cache: its `findingCounts` are read from these
      * attributes, so every table it touched is invalidated. And the menu tally,
      * which `_findingStampGen` invalidates.
+     *
+     * The same pass stamps each release-tracklist row's `data-mb-event-key`
+     * (`_stampRowEventKey()`), which the 🎪 badge and the 📊 "Events on this
+     * medium" section count — same once-per-fetch, source-row reasons.
      */
     function stampFindings() {
         _findingStampGen++;
@@ -27361,19 +27548,24 @@
             const tbody = table.tBodies[0];
             if (!tbody) return;
             const plan = _findingPlanForTable(table);
-            if (!plan.byCol.size && !plan.rowWide.length) return;
+            const evCols = _eventKeyColsForTable(table, plan);
+            if (!plan.byCol.size && !plan.rowWide.length && !evCols) return;
+            const stamp = r => {
+                _stampFindingRow(r, plan);
+                if (evCols) _stampRowEventKey(r, evCols, plan);
+            };
             const owners = new Set();
             Array.from(tbody.rows).forEach(row => {
-                _stampFindingRow(row, plan);
+                stamp(row);
                 const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
                 if (!m) return;
-                if (m.row !== row) _stampFindingRow(m.row, plan);
+                if (m.row !== row) stamp(m.row);
                 done.add(m.row);
                 owners.add(m.owner);
             });
             owners.forEach(owner => owner.forEach(r => {
                 if (done.has(r)) return;
-                _stampFindingRow(r, plan);
+                stamp(r);
                 done.add(r);
             }));
             _invalidateUniqDropDataCacheForTable(table);
@@ -29475,6 +29667,12 @@
             // release/release group title, see _liveTitleMatchesMode().
             const live = _findCellLiveTitle(cell);
             return !!live && _liveTitleMatchesMode(live, mode);
+        }
+        if (mode.startsWith('mediumevent:')) {
+            // "Event info - Events on this medium" — the row's event key,
+            // stamped by stampFindings(); an attribute, so clones carry it.
+            const tr = cell && cell.parentElement;
+            return !!tr && tr.dataset.mbEventKey === mode.slice(12);
         }
         if (_isRecCommentMode(mode)) {
             // "Recording comment info - …" — one _parseRecordingComment()
@@ -42258,6 +42456,68 @@ a { color: #1565c0; }`;
         runFilter();
     }
 
+    /** Per table: the source rows and stamp generation its event counts were read at. */
+    const _mediumEventMemo = new WeakMap();
+
+    /**
+     * Rows per event key (`data-mb-event-key`) over a table's SOURCE rows, so
+     * a filter that hides one event's rows cannot hide the event. Memoized on
+     * the row array, its length and `_findingStampGen` — the stamp writes into
+     * rows already captured, which only the generation can see.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLTableRowElement[]} rows
+     * @returns {Map<string, number>}
+     */
+    function _mediumEventCounts(table, rows) {
+        const memo = _mediumEventMemo.get(table);
+        if (memo && memo.rows === rows && memo.len === rows.length && memo.gen === _findingStampGen) return memo.counts;
+        const counts = new Map();
+        rows.forEach(r => {
+            const k = r.dataset.mbEventKey;
+            if (k) counts.set(k, (counts.get(k) || 0) + 1);
+        });
+        _mediumEventMemo.set(table, { rows, len: rows.length, gen: _findingStampGen, counts });
+        return counts;
+    }
+
+    /**
+     * The "🎪 N events" badge of each release-tracklist medium whose rows
+     * come from two or more events (org/live-bootleg.org 3). Counts only, no
+     * action: its tooltip lists each event and its rows; the 📊 "Events on
+     * this medium" section is where to filter. Sits right after the ⏳
+     * pending-edits button when there is one, else where that button would
+     * go. Rides `updateFilterButtonsVisibility()`, and costs a Map read per
+     * table there (`_mediumEventCounts()`).
+     *
+     * @returns {void}
+     */
+    function _updateMediumEventBadges() {
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
+        _tableSourceRows().forEach(({ table, rows }) => {
+            const h3 = findH3ForTable(table);
+            if (!h3) return;
+            const counts = _mediumEventCounts(table, rows);
+            let badge = h3.querySelector('.mb-medium-events-badge');
+            if (counts.size < 2) { if (badge) badge.remove(); return; }
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'mb-medium-events-badge';
+                badge.style.cssText = `${uiFilterBarBtnCSS()} margin-left:6px; cursor:default; color:#2e6b2e; border-color:#9cc59c;`;
+            }
+            const pending = h3.querySelector('.mb-subtable-pending-edits-btn');
+            const anchor = pending || h3.querySelector('.mb-subtable-filter-container') ||
+                           h3.querySelector('.mb-subtable-filter-toggle-icon');
+            if (anchor && anchor.nextElementSibling !== badge) anchor.after(badge);
+            else if (!anchor && !badge.isConnected) h3.appendChild(badge);
+            badge.textContent = `🎪 ${counts.size} events`;
+            const lines = Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .map(([k, n]) => `${n} row${n === 1 ? '' : 's'}: ${k}`);
+            _setTip(badge, `Rows from ${counts.size} events on this medium\n${lines.join('\n')}`);
+        });
+    }
+
     /**
      * Creates (once) and repaints the global and per-sub-table ⏳ toggles.
      *
@@ -42842,6 +43102,7 @@ a { color: #1565c0; }`;
         // piggybacks on every existing call site of this function rather than
         // needing its own.
         _updatePendingEditsButtons();
+        _updateMediumEventBadges();
         _updateFindingMenus();
     }
 
@@ -51366,6 +51627,11 @@ a { color: #1565c0; }`;
         rcLiveSepUnicode:  { label: 'Recording comment info - Separator ‐ only',      glyph: '‐' },
         rcLiveSepAscii:    { label: 'Recording comment info - Separator - only',      glyph: '⚠️' },
         rcLiveSepMixed:    { label: 'Recording comment info - Separator mixed',       glyph: '⚠️' },
+        // "Event info - Events on this medium" — release tracklists only: the
+        // event each row comes from (`data-mb-event-key`, stamped by
+        // `stampFindings()`), on the plain comment column, shown only when a
+        // medium mixes two or more events (org/live-bootleg.org 3).
+        mediumEvents:      { label: 'Event info - Events on this medium',             glyph: '🎪' },
         // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
         // in the open column (mode `finding-<id>`, read off the
         // data-mb-findings attribute stampFindings() writes). The entries the
@@ -51713,7 +51979,7 @@ a { color: #1565c0; }`;
         evliveshape: 'evLiveDate', evliveextra: 'evLiveExtra', evliveloc: 'evLiveLoc',
         evstylemiss: 'evStyleNearMiss', evedition: 'evFestEdition',
         rcliveshape: 'rcLiveDate', rcliveextra: 'rcLiveExtra', rcliveloc: 'rcLiveLoc',
-        rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo',
+        rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo', mediumevent: 'mediumEvents',
         eventdetail: 'eventPartsDetail', eventaddinfo: 'eventPartsAddInfo',
     };
 
@@ -67195,7 +67461,7 @@ a { color: #1565c0; }`;
         const _rc = _uniqCacheHit ? _uniqCacheHit.recCommentCounts : {
             form: { typeonly: 0, date: 0, location: 0, datelocation: 0, other: 0, nearmiss: 0 },
             type: new Map(), miss: new Map(), info: new Map(), infoHas: 0, infoNone: 0, multiDay: 0,
-            live: _newLiveCounts(),
+            live: _newLiveCounts(), mediumEvent: new Map(),
         };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
@@ -67620,6 +67886,11 @@ a { color: #1565c0; }`;
                     }
                 }
                 if (recCommentKind) {
+                    // "Event info - Events on this medium": the row's stamp
+                    // (stampFindings()), counted on the plain comment column.
+                    if (recCommentKind === 'plain' && row.dataset.mbEventKey) {
+                        _rc.mediumEvent.set(row.dataset.mbEventKey, (_rc.mediumEvent.get(row.dataset.mbEventKey) || 0) + 1);
+                    }
                     const _r = _findCellRecordingComment(cell, recCommentKind === 'plain');
                     if (_r) {
                         const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
@@ -70112,6 +70383,7 @@ a { color: #1565c0; }`;
                  : kind === 'rctype'        ? '» type: '
                  : kind === 'rcmiss'        ? '» problem: '
                  : kind === 'rcinfo'        ? '» info: '
+                 : kind === 'mediumevent'   ? '» event: '
                  : kind === 'eventdetail'   ? '» detail: '
                  : kind === 'eventaddinfo'  ? '» info: '
                  : kind === 'evliveshape'   ? '» date: '
@@ -70704,6 +70976,8 @@ a { color: #1565c0; }`;
             _pushSyn('rc-info-none', _structureModeLabel('rc-info-none'), _rc.infoNone);
             _pushVals('rcinfo', _rc.info, _byText(_rc.info));
             _pushLiveSections('rc', _rc.live, '');
+            // Only a medium that mixes events gets the section.
+            if (_rc.mediumEvent.size >= 2) _pushVals('mediumevent', _rc.mediumEvent, _byText(_rc.mediumEvent));
         }
         _pushSyn('evcountry-abbr', _structureModeLabel('evcountry-abbr'), _ep.abbr);
         _pushSyn('evcountry-full', _structureModeLabel('evcountry-full'), _ep.full);
@@ -71658,6 +71932,7 @@ a { color: #1565c0; }`;
             }[mode.slice(7)] || mode;
         }
         if (mode.startsWith('rctype:'))      return `» type: ${mode.slice(7)}`;
+        if (mode.startsWith('mediumevent:')) return `» event: ${mode.slice(12)}`;
         if (mode.startsWith('rcmiss:'))      return `» problem: ${mode.slice(7)}`;
         if (mode.startsWith('rcinfo:'))      return `» info: ${mode.slice(7)}`;
         if (mode === 'rc-multiday')          return '❔ uncertain day ("2001-12-22/23")';
@@ -71879,6 +72154,7 @@ a { color: #1565c0; }`;
             }[mode.slice(7)] || '';
         }
         if (mode.startsWith('rctype:'))      return 'The event type the comment starts with (live, soundcheck, rehearsal, live rehearsal, interview, audition, studio).';
+        if (mode.startsWith('mediumevent:')) return 'One event this medium\'s rows come from: the linked "Recorded at event", else the event the recording comment names, else the "Recording date".';
         if (mode.startsWith('rcmiss:'))      return 'Why a recording comment almost follows "live, YYYY-MM-DD: Venue, City, …".';
         if (mode.startsWith('rcinfo:'))      return 'One text after the ";" that ends a recording comment.';
         if (mode === 'rc-multiday')          return '❔ = the date ends in one or more "/DD" days, MusicBrainz\'s way of saying "one of these days".';

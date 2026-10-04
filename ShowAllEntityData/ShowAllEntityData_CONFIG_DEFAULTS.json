@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1216+2026-10-04",
-    "schema_entries": 322,
+    "script_version": "9.99.1222+2026-10-05",
+    "schema_entries": 323,
     "sections": 41,
-    "settings": 281,
-    "settings_with_default": 276,
+    "settings": 282,
+    "settings_with_default": 277,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 126,
+      "checkbox": 127,
       "color_picker": 62,
       "divider": 41,
       "number": 41,
@@ -344,6 +344,7 @@
     "sa_findings_tint_low_quality": "Highlight 🟠 low data quality releases as WARNING",
     "sa_findings_tint_pending": "Highlight cells with pending edits as WARNING",
     "sa_findings_tint_rec_date": "Highlight recording dates that disagree with the comment",
+    "sa_findings_tint_rec_event": "Highlight events and places that disagree with the comment",
     "sa_findings_tint_title_mismatch": "Highlight track ≠ recording names as WARNING",
     "sa_findings_tint_truncated": "Highlight truncated titles as WARNING",
     "sa_fn_edit_pinned_filter_list": "Edit Pinned Filter List",
@@ -626,6 +627,7 @@
     "sa_findings_tint_low_quality": true,
     "sa_findings_tint_pending": true,
     "sa_findings_tint_rec_date": true,
+    "sa_findings_tint_rec_event": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_truncated": true,
     "sa_fn_edit_pinned_filter_list": "_openEditPinnedFilterListFromSettings",

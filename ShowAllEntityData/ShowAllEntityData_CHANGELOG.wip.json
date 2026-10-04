@@ -1,0 +1,38 @@
+[
+  {
+    "version": "WIP.3",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists show when a medium mixes concerts. Each track is matched to an event: its \"Recorded at event\", else the event its recording comment names, else its \"Recording date\". A medium whose tracks come from two or more events gets a \"🎪 N events\" badge in its heading, after the ⏳ pending-edits badge, and the badge's tooltip lists each event with its number of tracks. The Disambiguation column's 📊 dropdown gets a new \"Event info - Events on this medium\" section with one entry per event, for filtering to its tracks. Both count every track, including tracks a filter hides."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.2",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists check \"Recorded at event\" and \"Recorded at place\" against the recording comment. An event cell is marked ❌ when none of its events is named like the comment without its event type: \"live, 1996‐04‐19: Saal 1, ICC Berlin, …\" needs the event \"1996‐04‐19: Saal 1, ICC Berlin, …\". A place cell is marked ❌ when a place is not named like the venue, the first part of the comment's location, so \"Saal 1\" passes and \"Festhalle Frankfurt\" for \"Festhalle, Frankfurt, …\" does not. The tooltip shows both names. Both are listed in the ❌ ERROR menu and the 📊 \"Findings - Error\" section, and their tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The live-recording date check now covers the \"Performer\" column too. A performer credit dated differently from the track's \"Recording date\" gets a ❌, and one without a date gets a ⚠️, as Vocals and Instruments already did."
+        ]
+      }
+    ]
+  }
+]

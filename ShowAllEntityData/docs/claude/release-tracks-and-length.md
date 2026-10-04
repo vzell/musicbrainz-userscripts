@@ -592,3 +592,25 @@ Rules that fail silently if broken:
 Spec: `release-tracks-track-target.spec.js`; mutations
 `scripts/mutations/release-tracks-track-target.json` (the `!important` entry is
 `expect: pass` — see its `why`).
+
+## Live recordings: credit dates, events per medium, event/place vs comment
+
+org/live-bootleg.org item 3. **Performer** joined the live-date check
+(`_liveDateCtx` passed to its `_buildCreditListTd()`), so six columns are
+checked now. Each row is stamped with `data-mb-event-key` in
+`stampFindings()`'s pass (first "Recorded at event" name, else the event its
+comment names, else "Recording date"); a medium with 2+ keys gets the
+"🎪 N events" h3 badge and the 📊 "Event info - Events on this medium"
+section on Disambiguation. `rec-event-mismatch`/`rec-place-mismatch` compare
+the comment with the event name and with the place name (= the venue, the
+location's first part). See docs/claude/findings.md.
+
+**Fixture trap: a freshly fetched release page re-renders itself.**
+`tests/fixtures/release-tracks-multi-event.html` came from
+`scripts/fetch-release-fixture.js`, so its `static.metabrainz.org` bundle
+hashes are CURRENT: loaded as a fixture, MusicBrainz's own release script
+downloads and re-renders the tracklist from JSON, discarding the recording
+comments `scripts/build-multi-event-fixture.py` put into the server markup.
+Older fixtures name bundles that no longer exist, which is the only reason
+they never hit this. `release-tracks-event-consistency.spec.js` aborts
+`static.metabrainz.org/**`; any spec on a newly fetched release page must too.
