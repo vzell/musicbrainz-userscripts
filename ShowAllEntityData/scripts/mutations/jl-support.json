@@ -42,7 +42,7 @@
     {
         "name": "the Title link keeps the site's frame target",
         "why": "Standalone there is no inferioredx1 frame; each click would open (or reuse) a window of that name instead of a plain new tab. The spec pins target=_blank on every row.",
-        "edits": [{ "find": "        link.target = '_blank';", "replace": "        link.target = item.anchor.target;" }],
+        "edits": [{ "find": "        link.target = '_blank';\n        link.rel = 'noopener';\n        link.textContent = title;", "replace": "        link.target = item.anchor.target;\n        link.rel = 'noopener';\n        link.textContent = title;" }],
         "spec": "tests/fixtures/jl-list.spec.js",
         "grep": "the date is cut off the title",
         "expect": "fail"

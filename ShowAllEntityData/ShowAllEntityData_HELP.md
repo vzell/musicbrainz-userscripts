@@ -1033,6 +1033,7 @@ you automatically.
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
+| 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 
 </details>
 
@@ -1089,8 +1090,9 @@ an import brings your deletions back.
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
-  category and the entry page) and bootleg lists, and the **jungleland.it**
-  bootleg artwork list — each off until you switch it on, see
+  category and the entry page) and bootleg lists, the **jungleland.it**
+  bootleg artwork list and the **brucespringsteen.it** record database —
+  each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1458,6 +1460,46 @@ The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table
 is shown.
 Everything is on that one page; nothing is fetched.
+
+</details>
+
+<details>
+<summary>brucespringsteen.it record database</summary>
+
+Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+→ *💿 brucespringsteen.it* → *Enable on the brucespringsteen.it record
+database*. Settings are shared, so you can switch it on from a MusicBrainz
+page or from the Tampermonkey menu on brucespringsteen.it itself. While it is
+off, the script leaves that site's pages untouched.
+
+It works on the record list **opened in its own tab**. On the site's usual
+two-frame view (`Blegsdx.htm`), the list is the narrow left frame, and the
+script leaves it as it is. To use the script, open one of these addresses on
+its own. They are the two lists with every format ticked:
+
+- Unofficial:
+  `https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0`
+- Official:
+  `https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0`
+
+Any other `records.aspx` list works too. The page gets a heading with the
+usual toolbar and two buttons, **Unofficial** and **Official**, and every
+format box of the site's own filter is ticked. Each button loads **every**
+record of its kind, all formats, whatever the page itself was showing, and
+turns them into one table:
+
+- **Unofficial:** Title, Matrix, Format, Label, Code, Notes.
+- **Official:** Title, Catalogue, Format, Country, Promo, Code, Notes.
+  *Promo* reads "yes" for a promo.
+
+*Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
+line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
+Steven Mix"). The title links to the record's detail page, which opens in a
+new tab.
+
+To switch from one kind to the other, press the other button. The page
+reloads first, as it does whenever a second list is loaded, so press it once
+more after the reload.
 
 </details>
 

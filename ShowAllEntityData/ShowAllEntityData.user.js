@@ -2,7 +2,7 @@
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
 // @version      9.99.1242+2026-10-06
-// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, and the jungleland.it bootleg artwork list.
+// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -22,6 +22,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3725,6 +3726,30 @@
                          'fetched. When off, the script exits on that site before touching the ' +
                          'page. Settings are shared with MusicBrainz, so this can be switched on ' +
                          'from either site.'
+        },
+
+        // ============================================================
+        // BRUCESPRINGSTEEN.IT SECTION
+        // ============================================================
+        divider_brucespringsteen: {
+            type: 'divider',
+            label: '💿 BRUCESPRINGSTEEN.IT'
+        },
+
+        sa_enable_brucespringsteen: {
+            label: 'Enable on the brucespringsteen.it record database',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on brucespringsteen.it\'s ' +
+                         'record list (DB/records.aspx) and offers two buttons, "Unofficial" and ' +
+                         '"Official", which load every record of that kind, all formats ticked, ' +
+                         'into one filterable, sortable table (Title, Matrix or Catalogue, Format, ' +
+                         'Label or Country, Code, Notes). It works only when records.aspx is ' +
+                         'opened in its own tab: inside the site\'s two-frame view (Blegsdx.htm) ' +
+                         'the narrow list frame is left as it is. No record\'s detail page is ' +
+                         'fetched. When off, the script exits on that site before touching the ' +
+                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
+                         'from either site.'
         }
 
     };
@@ -4678,6 +4703,19 @@
     const _isJlHost = /(^|\.)jungleland\.it$/.test(window.location.hostname);
 
     /**
+     * True when this page is on brucespringsteen.it rather than MusicBrainz.
+     *
+     * The third non-MusicBrainz host (its `@include` line and
+     * docs/claude/brucespringsteen.md): the record database's list page,
+     * `DB/records.aspx`. Read by its own opt-in and frame gates just below,
+     * through `_foreignHost` by the detection loop, by
+     * `performClutterCleanup()`, and by `initNavigationGuard()` (every list
+     * is the same path told apart by its query, as on springsteenlyrics.com).
+     * @type {boolean}
+     */
+    const _isBsHost = /(^|\.)brucespringsteen\.it$/.test(window.location.hostname);
+
+    /**
      * The non-MusicBrainz host this page is on, as the `host` key of its
      * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
      *
@@ -4686,7 +4724,10 @@
      * considers the definitions without one.
      * @type {?string}
      */
-    const _foreignHost = _isSlHost ? 'springsteenlyrics.com' : (_isJlHost ? 'jungleland.it' : null);
+    const _foreignHost = _isSlHost ? 'springsteenlyrics.com'
+        : _isJlHost ? 'jungleland.it'
+        : _isBsHost ? 'brucespringsteen.it'
+        : null;
 
     // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
     // default off), so a published MusicBrainz script never changes another
@@ -4712,6 +4753,19 @@
     }
     if (_isJlHost && window.top !== window) {
         Lib.info('init', 'jungleland.it: this list is inside the artwork.htm frameset — open list.htm in its own tab to get the table. Nothing to do here.');
+        return;
+    }
+
+    // brucespringsteen.it: opt-in (`sa_enable_brucespringsteen`, default off)
+    // and own-tab only, for the same reasons as jungleland.it — its
+    // records.aspx is the 222 px left frame ("sommario") of the Blegsdx.htm
+    // frameset (decided 2026-10-06; docs/claude/brucespringsteen.md).
+    if (_isBsHost && Lib.settings.sa_enable_brucespringsteen !== true) {
+        Lib.info('init', 'brucespringsteen.it support is off (sa_enable_brucespringsteen) — nothing to do.');
+        return;
+    }
+    if (_isBsHost && window.top !== window) {
+        Lib.info('init', 'brucespringsteen.it: this list is inside the Blegsdx.htm frameset — open records.aspx in its own tab to get the table. Nothing to do here.');
         return;
     }
 
@@ -9243,13 +9297,14 @@
 
     /**
      * Installs the minimal `table.tbl` look shared by the non-MusicBrainz
-     * hosts (springsteenlyrics.com, jungleland.it), once per document.
+     * hosts (springsteenlyrics.com, jungleland.it, brucespringsteen.it),
+     * once per document.
      *
      * MusicBrainz's own site CSS is what normally gives `table.tbl` its
      * borders, padding, header background and the `tr.even` zebra stripe
      * that `applyZebraStriping()` merely toggles classes for; neither site
      * has any of it. The rules are scoped to the hosts' body classes
-     * (`mb-sa-host-sl`, `mb-sa-host-jl`) and sit inside `:where()` so they
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`) and sit inside `:where()` so they
      * carry almost no specificity: any of this script's own table styling
      * (sticky header colours, finding tints, hover, highlights) still wins
      * wherever it applies. A further host extends the `:is()` list here
@@ -9261,23 +9316,23 @@
         if (document.getElementById('mb-foreign-table-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) {
                 border-collapse: collapse;
                 background: #fff;
                 font-size: 13px;
                 margin: 6px 0;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) th,
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) td {
                 border: 1px solid #ddd;
                 padding: 3px 6px;
                 vertical-align: top;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) thead th {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) thead th {
                 background-color: #e8e8e8;
                 text-align: left;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) tr.even > td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
         `);
@@ -11506,6 +11561,342 @@
         h1.className = 'mb-jl-h1';
         const bdi = document.createElement('bdi');
         bdi.textContent = 'jungleland.it — Bootleg artwork list';
+        h1.appendChild(bdi);
+        document.body.insertBefore(h1, document.body.firstChild);
+        return h1;
+    }
+
+    // -------------------------------------------------------------------------
+    // brucespringsteen.it: the record database (DB/records.aspx)
+    // -------------------------------------------------------------------------
+    // One ASP.NET page per query: `tipe=-1|-2,<format codes>` (unofficial or
+    // official, then the formats ticked in the site's form, 0–11) and `sort=`.
+    // Each record is one `<p>`:
+    //   <p><b>2 CD-R (Anubis Records) <br><a href="detrec.aspx?code=CR1AD1">1001 AMERICAN DREAMS</a><br>Mx:2211/12</b><br>[<i><u>note</u></i><br>]</p>
+    //   <p><b>1 7 in. (Germany) <span …>PROMO</span><br><a href = "detrec.aspx?code=CBS39404">…</a><br>Catalogue : CBS 3940</b><br></p>
+    // with `<hr><center><b><u>A</u></b></center><hr>` section headers between
+    // them. Served as UTF-8 (the header says so, the bytes are; the page's own
+    // meta tag claims windows-1252). See docs/claude/brucespringsteen.md.
+
+    /**
+     * The site's twelve format codes (its form's checkboxes C0–C11: Album,
+     * Vinyl 7 in., CD, miniCD 3in., Vinyl LP, Tape, Vinyl 12 in., VHS, CD-R,
+     * DVD, miniCD 5in., VA Album), as the `tipe=` list after the kind.
+     * @type {string}
+     */
+    const _BS_ALL_FORMATS = '0,1,2,3,4,5,6,7,8,9,10,11';
+
+    /**
+     * Column headers of the brucespringsteen.it table, per kind of record:
+     * an unofficial record names its label and matrix, an official one its
+     * country, catalogue number and whether it is a promo.
+     * @type {{unofficial: string[], official: string[]}}
+     */
+    const _BS_HEADERS = {
+        unofficial: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
+        official: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
+    };
+
+    /**
+     * Splits a record's first line — "2 CD-R (Anubis Records)",
+     * "1 7 in. (Germany) PROMO", "2 CD (UPC (?))" — into its parts.
+     *
+     * A trailing PROMO (the site highlights it in a `<span>`) is a flag. The
+     * rest is "format (label or country)": the format runs to the FIRST "(",
+     * and the parenthesised part takes everything up to the LAST ")", so a
+     * label with its own parentheses stays whole. No parentheses at all: the
+     * whole line is the format.
+     *
+     * @param {string} text The record's first line, as text.
+     * @returns {{format: string, party: string, promo: boolean}} `party` is the label (unofficial) or country (official).
+     */
+    function _bsParseHead(text) {
+        let t = String(text || '').replace(/\s+/g, ' ').trim();
+        let promo = false;
+        const pm = t.match(/^(.*?)\s*\bPROMO$/);
+        if (pm) {
+            promo = true;
+            t = pm[1];
+        }
+        const m = t.match(/^(.*?)\s*\((.*)\)$/);
+        return m ? { format: m[1].trim(), party: m[2].trim(), promo } : { format: t, party: '', promo };
+    }
+
+    /**
+     * Finds the record paragraphs of a records.aspx page: every `<p>` holding
+     * a `detrec.aspx?code=` link, outside an already converted table.
+     *
+     * @param {Document} docContext The document to read.
+     * @returns {HTMLParagraphElement[]} The records, in page order.
+     */
+    function _bsFindRecords(docContext) {
+        return Array.from(docContext.querySelectorAll('p'))
+            .filter(p => !p.closest('table.mb-bs-table') && p.querySelector('a[href*="detrec.aspx?code="]'));
+    }
+
+    /**
+     * Reads one record paragraph into its fields.
+     *
+     * The bold block holds three lines split by `<br>`: the head
+     * (`_bsParseHead()`), the title link, and "Mx: …" (unofficial) or
+     * "Catalogue: …" (official), written with or without spaces around the
+     * colon. An italic line after the bold block is the record's note; there
+     * can be none. Whitespace is collapsed throughout, so "COL  3-10274"
+     * filters as "COL 3-10274".
+     *
+     * @param {HTMLParagraphElement} p The record.
+     * @returns {{title: string, href: string, code: string, number: string, format: string, party: string, promo: boolean, notes: string}}
+     *   `number` is the matrix or catalogue number; `href` is absolute.
+     */
+    function _bsReadRecord(p) {
+        const collapse = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+        const link = p.querySelector('a[href*="detrec.aspx?code="]');
+        const holder = link.parentNode;
+        let before = '';
+        let after = '';
+        let seen = false;
+        holder.childNodes.forEach(node => {
+            if (node === link) {
+                seen = true;
+                return;
+            }
+            if (node.nodeType === 1 && node.tagName === 'BR') {
+                if (seen) after += ' ';
+                else before += ' ';
+                return;
+            }
+            if (seen) after += node.textContent;
+            else before += node.textContent;
+        });
+        const head = _bsParseHead(before);
+        const numberMatch = collapse(after).match(/^(?:Mx|Catalogue)\s*:\s*(.*)$/i);
+        const url = new URL(link.getAttribute('href'), window.location.href);
+        const notes = Array.from(p.querySelectorAll('i'))
+            .filter(i => !holder.contains(i))
+            .map(i => collapse(i.textContent))
+            .filter(Boolean)
+            .join('; ');
+        return {
+            title: collapse(link.textContent),
+            href: url.href,
+            code: url.searchParams.get('code') || '',
+            number: numberMatch ? numberMatch[1] : collapse(after),
+            format: head.format,
+            party: head.party,
+            promo: head.promo,
+            notes
+        };
+    }
+
+    /**
+     * Builds one table row for a record, in the column order of `_BS_HEADERS[kind]`.
+     *
+     * The Title cell links to the record's detail page by its absolute URL,
+     * in a new tab: standalone there is no "principale" frame for the site's
+     * `<base target>` to name.
+     *
+     * @param {HTMLParagraphElement} p          The record.
+     * @param {('unofficial'|'official')} kind  Which column set.
+     * @param {Document}             docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _bsBuildRow(p, kind, docContext) {
+        const r = _bsReadRecord(p);
+        const tr = docContext.createElement('tr');
+        const titleTd = docContext.createElement('td');
+        const link = docContext.createElement('a');
+        link.href = r.href;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = r.title;
+        titleTd.appendChild(link);
+        tr.appendChild(titleTd);
+        const values = kind === 'official'
+            ? [r.number, r.format, r.party, r.promo ? 'yes' : '', r.code, r.notes]
+            : [r.number, r.format, r.party, r.code, r.notes];
+        values.forEach(value => {
+            const td = docContext.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts a brucespringsteen.it records.aspx page into a
+     * `<table class="tbl">`, so the standard fetch / filter / sort pipeline
+     * can process it — the counterpart of `applyJlListToTable()` for the
+     * pageType carrying `features.bsRecordsToTable` (`'unofficial'` or
+     * `'official'` from the pressed button; `true` from the base definition,
+     * which is what Load from Disk runs with).
+     *
+     * Called from the same three places as the other converters. Here the
+     * FETCHED page (the pagination loop, `doc !== document`) is the one that
+     * matters: both buttons carry `params`, so page 1 is always fetched with
+     * every format of their kind, and its records become the table's rows.
+     * The live document — the click-time pre-processing and
+     * `_hydrateAndRenderFromSnapshotData()` — only gets an EMPTY table: its
+     * own records show whatever filter the page was opened with (often
+     * another kind), `renderFinalTable()` empties the tbody before filling
+     * it, and Load from Disk rebuilds the header row from the file. Its
+     * records, section headers and rules after the site's form are removed,
+     * and `<h2 class="mb-bs-list-heading">` is inserted before the table,
+     * where `updateH2Count()` anchors the count and filter bar.
+     *
+     * Never silent: a page with no records and no converted table logs a
+     * warning (on a fetched page, an error page instead of the list).
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBsRecordsToTable(def, docContext = document) {
+        const feature = def?.features?.bsRecordsToTable;
+        if (!feature) return;
+        const kind = feature === 'official' ? 'official' : 'unofficial';
+        const isLive = docContext === document;
+        const records = _bsFindRecords(docContext);
+        if (records.length === 0) {
+            if (!docContext.querySelector('table.mb-bs-table')) {
+                Lib.warn('init', `applyBsRecordsToTable: no records found on the ${isLive ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href*="detrec.aspx"]').length} detrec.aspx link(s)) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bs-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BS_HEADERS[kind].forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        if (!isLive) records.forEach(p => tbody.appendChild(_bsBuildRow(p, kind, docContext)));
+        table.appendChild(tbody);
+
+        // Everything of the list after the site's form: the records, and the
+        // `<hr><center>…</center><hr>` section headers between them.
+        const form = docContext.querySelector('form[name="mio"]');
+        const afterForm = (el) => !form || (!form.contains(el) &&
+            !!(form.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
+        const furniture = Array.from(docContext.querySelectorAll('hr, center'))
+            .filter(el => afterForm(el) && !el.closest('table.mb-bs-table'));
+        const firstOf = [furniture[0], records[0]].filter(Boolean)
+            .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
+        firstOf.parentNode.insertBefore(table, firstOf);
+        records.forEach(p => p.remove());
+        furniture.forEach(el => el.remove());
+
+        if (isLive && !document.querySelector('h2.mb-bs-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bs-list-heading';
+            h2.textContent = 'Records';
+            table.parentNode.insertBefore(h2, table);
+        }
+
+        Lib.debug('init', `applyBsRecordsToTable: ${isLive
+            ? `live page — ${records.length} record(s) of its own filter removed, empty ${kind} table in their place`
+            : `converted ${tbody.rows.length} ${kind} record(s) → table`}.`);
+    }
+
+    /**
+     * Ticks every format checkbox (C0–C11) of the site's own filter form,
+     * and — given a kind — selects the matching Unofficial/Official radio.
+     *
+     * The buttons always load every format of their kind, so the form is
+     * made to say so: at init (the page's own `onload="setup(…)"` ticks only
+     * the formats of the list it shows — Vinyl LP alone in the frameset's
+     * default), and again at click time. Only `.checked` is set: the site's
+     * `setup()`/`clean()` would also reset its producer/country selects.
+     *
+     * @param {('unofficial'|'official')} [kind] The button's kind, if any.
+     * @returns {void}
+     */
+    function _bsCheckAllFormats(kind) {
+        const form = document.querySelector('form[name="mio"]');
+        if (!form) return;
+        _BS_ALL_FORMATS.split(',').forEach(code => {
+            const box = form.querySelector(`input[type="checkbox"][name="C${code}"]`);
+            if (box) box.checked = true;
+        });
+        if (kind) {
+            const radio = form.querySelector(`input[type="radio"][name="UN"][value="${kind === 'official' ? '-2' : '-1'}"]`);
+            if (radio) radio.checked = true;
+        }
+    }
+
+    /**
+     * Installs the brucespringsteen.it stylesheet, once per document.
+     *
+     * The table itself is styled by `_ensureForeignTableStyle()`, shared with
+     * the other non-MusicBrainz hosts; this adds the injected `<h1>`/`<h2>`
+     * (the site has none) and left-aligns them against the site's centred
+     * layout. Every rule is scoped to `body.mb-sa-host-bs`.
+     *
+     * @returns {void}
+     */
+    function _ensureBsStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-bs-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-bs h1.mb-bs-h1 {
+                font-family: Arial, sans-serif;
+                font-size: 24px;
+                margin: 8px 0 12px;
+                line-height: 1.4;
+                text-align: left;
+            }
+            body.mb-sa-host-bs h2.mb-bs-list-heading {
+                font-family: Arial, sans-serif;
+                font-size: 18px;
+                margin: 10px 0;
+                text-align: left;
+            }
+            body.mb-sa-host-bs table.mb-bs-table {
+                font-family: Arial, sans-serif;
+            }
+        `);
+        style.id = 'mb-bs-style';
+    }
+
+    /**
+     * Prepares a brucespringsteen.it records.aspx page at init, standing in
+     * for the MusicBrainz header lookup (the init block calls it right after
+     * that lookup, for the brucespringsteen.it definition only): the page has
+     * no heading, and the script needs an `<h1>` to hold its toolbar and the
+     * two buttons. Inserts `<h1 class="mb-bs-h1">` as the first child of
+     * `<body>`, its text in a `<bdi>` for the init-time entity name capture.
+     *
+     * Also tags `<body>` with `mb-sa-host-bs`, installs `_ensureBsStyle()`,
+     * and ticks every format checkbox of the site's form
+     * (`_bsCheckAllFormats()`) — once now, and once more after the page's
+     * own `onload` handler, which runs `setup()` and would untick them again
+     * when this init comes first.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _bsPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-bs-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+
+        document.body.classList.add('mb-sa-host-bs');
+        _ensureBsStyle();
+        _bsCheckAllFormats();
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });
+        }
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bs-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = 'brucespringsteen.it — Bootleg database';
         h1.appendChild(bdi);
         document.body.insertBefore(h1, document.body.firstChild);
         return h1;
@@ -21298,6 +21689,44 @@
             features: {
                 jlListToTable: true,
                 integerColumns: [ { sourceColumn: 'Year', align: 'C' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // --- brucespringsteen.it ---------------------------------------------
+        // Not MusicBrainz either: the brucespringsteen.it record database's
+        // list page (`DB/records.aspx`), one `<p>` per record, no pagination.
+        // Which records it lists is all in the query: `tipe=-1|-2,<format
+        // codes>` (unofficial or official, then the ticked formats 0–11) and
+        // `sort=`. The two buttons always fetch ALL formats of their kind via
+        // `params`, whatever the page itself shows, so page 1 is always
+        // fetched (button params never reuse the live document); and
+        // `non_paginated` skips the extra page-1 request that
+        // fetchMaxPageGeneric() would make for params. Opt-in via
+        // `sa_enable_brucespringsteen`, own tab only. See
+        // applyBsRecordsToTable() and docs/claude/brucespringsteen.md.
+        {
+            type: 'bs-records',
+            host: 'brucespringsteen.it',
+            match: (path) => path.toLowerCase() === '/db/records.aspx',
+            non_paginated: true,
+            buttons: [
+                {
+                    label: 'Unofficial',
+                    params: { tipe: `-1,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' },
+                    features: { bsRecordsToTable: 'unofficial' }
+                },
+                {
+                    label: 'Official',
+                    params: { tipe: `-2,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' },
+                    features: { bsRecordsToTable: 'official' }
+                }
+            ],
+            features: {
+                // `true` here (Load from Disk runs with the base definition);
+                // each button narrows it to its own kind.
+                bsRecordsToTable: true,
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -44701,9 +45130,9 @@ a { color: #1565c0; }`;
         // A definition with a `host` belongs to that site alone, and on a
         // non-MusicBrainz host only such definitions are considered — so the
         // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
-        // can never claim a springsteenlyrics.com or jungleland.it path, and
-        // those sites' definitions can never match on MusicBrainz (or on each
-        // other's host).
+        // can never claim a springsteenlyrics.com, jungleland.it or
+        // brucespringsteen.it path, and those sites' definitions can never
+        // match on MusicBrainz (or on each other's host).
         if ((def.host || null) !== _foreignHost) continue;
         if (def.match(path, params)) {
             pageType = def.type;
@@ -44775,6 +45204,9 @@ a { color: #1565c0; }`;
         // jungleland.it's list has no heading at all either — see
         // _jlPrepareLivePage().
         headerContainer = _jlPrepareLivePage();
+    } else if (baseDefinition?.host === 'brucespringsteen.it') {
+        // Nor has brucespringsteen.it's records.aspx — see _bsPrepareLivePage().
+        headerContainer = _bsPrepareLivePage();
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -52298,7 +52730,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost || _isJlHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -61935,6 +62367,16 @@ a { color: #1565c0; }`;
             applyJlListToTable(activeDefinition);
         }
 
+        // ── bsRecordsToTable pre-processing ──────────────────────────────────
+        // brucespringsteen.it ('bs-records'): tick every format in the site's
+        // form for the pressed kind, and give the live page an empty table to
+        // render into — the rows come from the fetched page, see
+        // applyBsRecordsToTable's JSDoc.
+        if (activeDefinition.features?.bsRecordsToTable) {
+            _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);
+            applyBsRecordsToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -62355,6 +62797,10 @@ a { color: #1565c0; }`;
                 // page could never arrive unconverted.
                 if (doc !== document && activeDefinition.features?.jlListToTable) {
                     applyJlListToTable(activeDefinition, doc);
+                }
+                // brucespringsteen.it: THE path — both buttons fetch page 1.
+                if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
+                    applyBsRecordsToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -78905,9 +79351,11 @@ a { color: #1565c0; }`;
             // Not so on springsteenlyrics.com, where every page is one script
             // told apart by its query string — `collection.php?item=…` (an
             // item) and `collection.php?cmd=list…` (this list) share a path —
-            // so there only a hash-only change counts as the same page.
-            const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');
-            const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');
+            // so there only a hash-only change counts as the same page. The
+            // same on brucespringsteen.it: every list is `records.aspx?tipe=…`,
+            // and its predefined-filter links leave a loaded table behind.
+            const currentBase = window.location.origin + window.location.pathname + ((_isSlHost || _isBsHost) ? window.location.search : '');
+            const targetBase  = targetUrl.origin  + targetUrl.pathname + ((_isSlHost || _isBsHost) ? targetUrl.search : '');
             if (targetBase === currentBase) return;
 
             if (!confirmNavigation(`anchor click → ${targetUrl.href}`)) {
@@ -87715,6 +88163,11 @@ a { color: #1565c0; }`;
             // And for jungleland.it: the reloaded list is plain links again.
             if (activeDefinition.features?.jlListToTable) {
                 applyJlListToTable(activeDefinition);
+            }
+            // And for brucespringsteen.it: the reloaded page holds the site's
+            // record paragraphs again; an empty table takes their place.
+            if (activeDefinition.features?.bsRecordsToTable) {
+                applyBsRecordsToTable(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -101379,6 +101832,18 @@ a { color: #1565c0; }`;
              */
             jlParseItem(text, section) {
                 return _jlParseItem(text, section);
+            },
+
+            /**
+             * Thin wrapper around `_bsParseHead()` — splits a
+             * brucespringsteen.it record's first line ("1 7 in. (Germany)
+             * PROMO") into format, label/country and the promo flag.
+             *
+             * @param {string} text A record's first line.
+             * @returns {{format: string, party: string, promo: boolean}} The parts.
+             */
+            bsParseHead(text) {
+                return _bsParseHead(text);
             },
 
             /**

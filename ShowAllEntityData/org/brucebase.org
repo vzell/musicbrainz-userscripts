@@ -1,0 +1,13 @@
+﻿* BruceBase
+
+Give the website https://brucebase.wikidot.com/status:songs-list the same treatment as what we've done with the
+https://www.jungleland.it/html/list.htm website, albeit not so complex
+
+1.)
+
+Parse the URL @debug/bb-songs.html and extract the song title, then let our userscript handle the rest. No need to do
+some other fancy stuff in the beginning
+
+2.)
+
+The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)

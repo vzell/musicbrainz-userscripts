@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1241+2026-10-05",
-    "schema_entries": 332,
-    "sections": 42,
-    "settings": 290,
-    "settings_with_default": 285,
+    "script_version": "9.99.1242+2026-10-06",
+    "schema_entries": 334,
+    "sections": 43,
+    "settings": 291,
+    "settings_with_default": 286,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,9 +15,9 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 134,
+      "checkbox": 135,
       "color_picker": 62,
-      "divider": 42,
+      "divider": 43,
       "number": 42,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
@@ -194,6 +194,10 @@
     {
       "key": "divider_jungleland",
       "label": "🌴 JUNGLELAND.IT"
+    },
+    {
+      "key": "divider_brucespringsteen",
+      "label": "💿 BRUCESPRINGSTEEN.IT"
     }
   ],
   "labels": {
@@ -258,6 +262,7 @@
     "sa_enable_art_fetch_debug_logging": "Enable CAA/EAA image fetch debug logging",
     "sa_enable_barcode_highlight": "Enable Barcode Highlight",
     "sa_enable_barcode_validation": "Enable Barcode Format Validation",
+    "sa_enable_brucespringsteen": "Enable on the brucespringsteen.it record database",
     "sa_enable_caa_inline_jesus2099_observer": "Watch for late jesus2099 cover-art icon re-injection",
     "sa_enable_caa_pics": "Enable CAA/EAA Illustrated Discography",
     "sa_enable_column_filter_modes": "Cc / Rx / Ex Switches On Every Column Filter",
@@ -549,6 +554,7 @@
     "sa_enable_art_fetch_debug_logging": false,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,
+    "sa_enable_brucespringsteen": false,
     "sa_enable_caa_inline_jesus2099_observer": true,
     "sa_enable_caa_pics": true,
     "sa_enable_column_filter_modes": true,

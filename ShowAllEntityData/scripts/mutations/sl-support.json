@@ -56,11 +56,11 @@
     "why": "Every SL page is one PHP script told apart by its query string, so a path-only comparison calls collection.php?item=… the same page as the list and lets an item link discard the loaded table without asking.",
     "edits": [
       {
-        "find": "const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');",
+        "find": "const currentBase = window.location.origin + window.location.pathname + ((_isSlHost || _isBsHost) ? window.location.search : '');",
         "replace": "const currentBase = window.location.origin + window.location.pathname;"
       },
       {
-        "find": "const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');",
+        "find": "const targetBase  = targetUrl.origin  + targetUrl.pathname + ((_isSlHost || _isBsHost) ? targetUrl.search : '');",
         "replace": "const targetBase  = targetUrl.origin  + targetUrl.pathname;"
       }
     ],

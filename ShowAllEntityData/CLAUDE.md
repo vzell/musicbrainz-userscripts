@@ -74,6 +74,7 @@ until you open it.
 | `performance-rules.md`                     | Anything on the filter/sort/render/artwork hot path, measurements                                         | See the digest below; full text has the baselines                                                                                                                                 |
 | `springsteenlyrics.md`                     | springsteenlyrics.com: `_isSlHost`, the `sl-*` pageTypes, `applySlCardsToTable()`, `_ensureSlStyle()`     | The opt-in gate exits before anything visible; the converter runs in THREE places (live, fetched, disk load); find the list from its cards, never via `.project-detail`           |
 | `jungleland.md`                            | jungleland.it: `_isJlHost`, `_foreignHost`, `jl-list`, `applyJlListToTable()`, the shared table CSS       | Only list.htm as its own tab (a frame gate, no `@noframes`); `_foreignHost` names WHICH host; the table CSS is shared — extend its `:is()` list                                   |
+| `brucespringsteen.md`                      | brucespringsteen.it: `_isBsHost`, `bs-records` (two buttons), `applyBsRecordsToTable()`                   | Rows come from the FETCHED page (button params); the live page gets an empty table; own tab only; the server sends UTF-8                                                          |
 
 **Big files — grep, never read whole** (a whole read costs 10–250k tokens):
 `DEBUG-NOTES.md` (dated root-cause log, ~1 MB), `PERFORMANCE.org`,

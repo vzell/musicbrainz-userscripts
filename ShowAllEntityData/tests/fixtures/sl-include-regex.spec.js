@@ -6,7 +6,8 @@
 // broken pattern. This reads the header the way Tampermonkey does (a value
 // wrapped in slashes is a regular expression) and checks the
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
-// line exactly its list.htm, while every MusicBrainz sample still matches.
+// line exactly its list.htm, the brucespringsteen.it line exactly its
+// DB/records.aspx, while every MusicBrainz sample still matches.
 
 const fs = require('fs');
 const { test, expect } = require('../support/test');
@@ -98,6 +99,32 @@ test.describe('@include coverage', () => {
             'https://www.jungleland.it.example.org/html/list.htm',
             'https://example.org/www.jungleland.it/html/list.htm',
             'https://notjungleland.it/html/list.htm',
+        ];
+        expect(lists.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('brucespringsteen.it: DB/records.aspx, and nothing else', () => {
+        const lists = [
+            'https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0',
+            'https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0',
+            'https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,4&sort=0',
+            'https://www.brucespringsteen.it/DB/records.aspx',
+            'http://www.brucespringsteen.it/db/records.aspx?tipe=-1,9&sort=0',
+            'https://brucespringsteen.it/DB/records.aspx?tipe=-1,4&sort=0',
+        ];
+        const others = [
+            // The frameset that holds records.aspx, a record's detail page,
+            // the database's other frameset, the home page.
+            'https://www.brucespringsteen.it/Blegsdx.htm',
+            'https://www.brucespringsteen.it/DB/detrec.aspx?code=CR1AD1',
+            'https://www.brucespringsteen.it/DB/Databasex.htm',
+            'https://www.brucespringsteen.it/',
+            'https://www.brucespringsteen.it/records.aspx',
+            'https://www.brucespringsteen.it/DB/records.aspx.bak',
+            'https://www.brucespringsteen.it.example.org/DB/records.aspx',
+            'https://example.org/www.brucespringsteen.it/DB/records.aspx',
+            'https://notbrucespringsteen.it/DB/records.aspx',
         ];
         expect(lists.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);
