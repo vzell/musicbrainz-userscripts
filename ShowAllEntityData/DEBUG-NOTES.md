@@ -18715,3 +18715,42 @@ carry the block-in-inline `<p>` along. While pinned it is `display: block`
 (`.mb-sph-inline`, no `!important`, so an inline `display: none` still wins).
 Its native display is captured on first sight with position and z-index
 (`_sphNativeStyle()`), so the class cannot feed back into the decision.
+
+## 2026-10-05 — MB header menus drawn behind the pinned entity header (branch feature/sticky-col-align)
+
+Reported on release/9d451257-ebce-44ec-aad8-b48609bfaf7a with a screenshot and
+`debug/mb-native-menu-bug.html` (taken with the Editing menu open): the menu
+opens, but the release header (h1 + ISRC / Tracks / Data / View / WARNING)
+paints over its top rows. MB's menus are `li[tabindex=-1]` opened by click
+(focus) or hover, so an open menu leaves `div.header` at 106 (`.mb-sph-chrome`)
+or 107 (`SPH_Z_RAISED`, via `:hover`/`:focus-within`).
+
+Two causes, both in `_sphEnsureStyle()`:
+
+1. *The entity header was raised for good.* The open-popup rule matched
+   `[style*="position: absolute"][style*="display: block"]`, and
+   `#mb-fetch-progress-fill` in the h1 toolbar keeps exactly that inline style
+   after every fetch, inside `#mb-fetch-progress-wrap` (`display: none`),
+   which CSS cannot see. So `.releaseheader` sat at 107 at all times — the
+   snapshot has it as the only match. At 107 against the header's 106/107 it
+   wins (a tie goes to DOM order, and the content comes after the header).
+   Fix: the rule also requires an inline `z-index`, which a real in-place
+   popup has (the filter-history dropdown: `z-index: 20001`).
+2. *A tie even without (1).* Menu opened by click (header 107 through
+   `:focus-within`), pointer then resting on the title bar beside it (bar 107
+   through `:hover`): same tie, same loser. Fix: the raise rules read
+   `var(--mb-sph-z-raised, 107)`, and `body > .mb-sph-target` sets it to 108
+   (`SPH_Z_CHROME_RAISED`). A custom property because a plain override rule
+   cannot out-rank the focus rule's specificity (its `:not(:has(…))`).
+   Registered `inherits: false` like the other three.
+
+Why no test saw it: the "no base z-index" assertion only covered
+`#content h2`, never the entity header, which is the one bar holding the
+progress fill. It now covers `.seriesheader` (with a premise that the fill is
+inside it, styled like a popup), and a new spec opens the header's Editing
+menu, rests the pointer on the entity header beside it and hit-tests the
+overlap. The fixture has neither MB's CSS nor its JS, so the test places the
+submenu itself — out of flow FIRST: unstyled, the submenu is part of the
+header's height, and taking it out shifted the entity header up by 235 px
+between measuring and placing. Both guards are in
+`scripts/mutations/sticky-page-headers.json`.

@@ -22557,7 +22557,16 @@
     // sticky thead (100), the sticky sidebar (105) and every other bar while it
     // is hovered, contains focus or holds an open popup. Focus resting in a
     // text field does not count: the global filter is focused after every
-    // render, which would otherwise keep the data h2 raised. Otherwise the native
+    // render, which would otherwise keep the data h2 raised. An "open popup"
+    // is an inline display:block + position:absolute element that also has an
+    // inline z-index: without that last part the h1 toolbar's fetch progress
+    // fill (display:block; position:absolute, permanently, inside a hidden
+    // wrapper) kept the entity header raised at all times, and it painted
+    // over MusicBrainz's own header menus. A raised BODY-LEVEL element (the
+    // MB header with an open menu) goes one higher still (SPH_Z_CHROME_RAISED),
+    // because equal z-indexes resolve by DOM order and the content bars come
+    // later: a menu opened by click, with the pointer then resting on the
+    // title bar beside it, was covered by that hovered bar. Otherwise the native
     // stacking is left alone: content bars get NO base z-index (a vertically
     // sticky header keeps covering the bars scrolling under it), and only a
     // non-positioned, z-index:auto body-level element (the plain MB header)
@@ -22591,6 +22600,8 @@
     const SPH_Z_CHROME = 106;
     /** z-index of a hovered / focus-containing / popup-holding pinned element: above sticky thead (100) and sidebar (105). */
     const SPH_Z_RAISED = 107;
+    /** z-index of a raised BODY-LEVEL pinned element (MB header, banners, footer): one above SPH_Z_RAISED, so an open MB header menu beats a raised content bar instead of tying with it (a tie goes to the later element in DOM order, i.e. the content bar). */
+    const SPH_Z_CHROME_RAISED = 108;
     /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
@@ -22675,6 +22686,7 @@
             @property --mb-sph-body-native-minw { syntax: '*'; inherits: false; }
             @property --mb-sph-left { syntax: '*'; inherits: false; }
             @property --mb-sph-maxw { syntax: '*'; inherits: false; }
+            @property --mb-sph-z-raised { syntax: '*'; inherits: false; }
             /* Widen <body> to the scrolled content so its direct children
                (MB header, banners, footer) have room to stay pinned. Margins
                and box model are pinned down so the widening cannot feed back
@@ -22709,7 +22721,7 @@
                rows would then paint over a vertically sticky MB header. Its
                menus (the 📊 panel and the like) live on body anyway. */
             html.mb-sph-on .mb-sph-target:not(.mb-sph-table):hover {
-                z-index: ${SPH_Z_RAISED};
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Focus raises too (a menu opened by click or keyboard keeps its
                bar on top after the pointer leaves), but NOT while focus merely
@@ -22719,14 +22731,27 @@
                (the filter-history dropdown) is caught by the popup rule
                below. Separate rule: a browser without :has() drops only it. */
             html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
-                z-index: ${SPH_Z_RAISED};
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Open in-place popup (e.g. the filter-history dropdown, whose
-               inline cssText serializes as "display: block; position: absolute")
-               while neither hovered nor focused. Separate rule on purpose: a
+               inline cssText serializes as "display: block; position: absolute;
+               … z-index: 20001") while neither hovered nor focused. The z-index
+               is part of the test: the h1 toolbar's fetch progress fill is
+               display:block + position:absolute for good, inside a hidden
+               wrapper, and without it the entity header stayed raised and
+               painted over the MB header's menus. Separate rule on purpose: a
                browser without :has() drops only this rule, not the one above. */
-            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"]) {
-                z-index: ${SPH_Z_RAISED};
+            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
+            }
+            /* The level the three raise rules above use. Body-level chrome
+               (the MB header and its menus) is raised one higher than a
+               content bar, so the two never tie: a tie goes to the later
+               element in DOM order, which is always the content bar. A
+               custom property rather than a fourth z-index rule, because a
+               plain override could not out-rank the focus rule's specificity. */
+            html.mb-sph-on body > .mb-sph-target {
+                --mb-sph-z-raised: ${SPH_Z_CHROME_RAISED};
             }
         `);
         style.id = 'mb-sticky-page-headers-style';

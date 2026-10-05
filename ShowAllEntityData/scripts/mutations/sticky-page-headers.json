@@ -207,7 +207,7 @@
     "why": "With focus inside the history dropdown's own text field, only this rule raises the bar; without it the dropdown is trapped under the next bar.",
     "edits": [
       {
-        "find": "            html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"]) {\n                z-index: ${SPH_Z_RAISED};\n            }\n",
+        "find": "            html.mb-sph-on .mb-sph-target:has([style*=\"position: absolute\"][style*=\"display: block\"][style*=\"z-index\"]) {\n                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});\n            }\n",
         "replace": ""
       }
     ],
@@ -537,6 +537,32 @@
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "docks at the table's own left|nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "the open-popup rule no longer requires an inline z-index",
+    "why": "The h1 toolbar's fetch progress fill is display:block + position:absolute for good (inside a hidden wrapper), so the entity header matches the popup rule and stays raised at 107, painting over MB's header menus (debug/mb-native-menu-bug.html). The menu test cannot see this one: there the header is raised to 108 anyway.",
+    "edits": [
+      {
+        "find": "[style*=\"display: block\"][style*=\"z-index\"])",
+        "replace": "[style*=\"display: block\"])"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "pins header, entity header, tabs, h2 bars and footer",
+    "expect": "fail"
+  },
+  {
+    "name": "body-level chrome is raised no higher than a content bar",
+    "why": "Header (focus-within, menu open) and the hovered entity header both end at 107; the tie goes to DOM order, so the entity header covers the open menu.",
+    "edits": [
+      {
+        "find": "                --mb-sph-z-raised: ${SPH_Z_CHROME_RAISED};\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "an open MB header menu stays above",
     "expect": "fail"
   }
 ]

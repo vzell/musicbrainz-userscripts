@@ -75,8 +75,9 @@ const REFRESH_SETTLE_MS = 1000;
  *   - the global filter input is focused shortly AFTER the render completes,
  *     and `focus()` scrolls it into view — measured: a scroll to scrollX 4658
  *     was pulled back to 70 by it;
- *   - a pinned element is raised to z-index 107 while it is hovered or
- *     contains focus (by design), and Playwright's pointer rests at (0, 0),
+ *   - a pinned element is raised to z-index 107 (body-level chrome: 108)
+ *     while it is hovered or contains focus (by design), and Playwright's
+ *     pointer rests at (0, 0),
  *     i.e. on the MB header.
  *
  * @param {import('@playwright/test').Page} page
@@ -294,6 +295,26 @@ test.describe('sticky page headers — single-table page', () => {
                     (h) => getComputedStyle(h).zIndex));
                 expect(h2z.length).toBeGreaterThan(0);
                 expect(new Set(h2z)).toEqual(new Set(['auto']));
+
+                // Nor does the entity header, although its h1 toolbar holds
+                // the fetch progress fill, whose inline style keeps
+                // "display: block; position: absolute" after the fetch (inside
+                // a hidden wrapper). The open-popup rule used to take that for
+                // an open popup, raised the entity header for good, and it
+                // then painted over MusicBrainz's own header menus.
+                const entity = await page.evaluate(() => {
+                    const hdr = document.querySelector('#content > .seriesheader');
+                    const fill = document.getElementById('mb-fetch-progress-fill');
+                    const st = fill ? fill.getAttribute('style') || '' : '';
+                    return {
+                        fillInside: !!(hdr && fill && hdr.contains(fill)),
+                        fillLooksLikePopup: /display: block/.test(st) && /position: absolute/.test(st),
+                        zIndex: hdr ? getComputedStyle(hdr).zIndex : null,
+                    };
+                });
+                expect(entity, 'premise: the progress fill sits in the entity header, styled like a popup')
+                    .toMatchObject({ fillInside: true, fillLooksLikePopup: true });
+                expect(entity.zIndex, 'the entity header has no base z-index').toBe('auto');
 
                 // Body-level chrome WITHOUT stacking of its own (the plain MB
                 // header, the footer) does get SPH_Z_CHROME (106), so #page
@@ -611,6 +632,74 @@ test.describe('sticky page headers — stacking while the global filter has focu
         expect(probe.barInsideHeader, 'premise: the bar is scrolled under the stuck header').toBe(true);
         expect(probe, 'the stuck header paints over the bar, not the other way round')
             .toMatchObject({ hitHeader: true, hitBar: false });
+    });
+
+    test('an open MB header menu stays above the entity header while the pointer rests on it', async ({ page }) => {
+        // A menu opened by click keeps the MB header raised through
+        // :focus-within; the pointer then resting on the title bar beside the
+        // menu raises that bar through :hover. At an equal z-index the later
+        // element in DOM order (the title bar) won and covered the menu, so
+        // body-level chrome is raised one level higher (SPH_Z_CHROME_RAISED).
+        await openSeries(page);
+        await waitEngaged(page);
+
+        // MB's own script and CSS are not part of the fixture: open the menu
+        // the way it does (focus the item, bring its submenu into view), and
+        // place the submenu where MB's long Editing menu reaches, down over
+        // the left part of the entity header. No inline z-index on the
+        // submenu, so the open-popup rule cannot be what raises the header.
+        const geo = await page.evaluate(async () => {
+            const li = document.querySelector('body > div.header li.editing');
+            const menu = li.querySelector(':scope > ul');
+            const ent = document.querySelector('#content > .seriesheader');
+            // Out of flow FIRST: unstyled, the submenu is part of the header's
+            // height, and taking it out moves everything below it up.
+            li.style.position = 'relative';
+            Object.assign(menu.style, {
+                position: 'absolute', width: '200px', margin: '0', background: '#fff',
+            });
+            ent.scrollIntoView({ block: 'center' });
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const lr = li.getBoundingClientRect();
+            const er0 = ent.getBoundingClientRect();
+            menu.style.left = `${er0.left + 10 - lr.left}px`;
+            menu.style.top = `${er0.top - 20 - lr.top}px`;
+            li.focus({ preventScroll: true });
+            const mr = menu.getBoundingClientRect();
+            const er = ent.getBoundingClientRect();
+            return {
+                focused: document.activeElement === li,
+                menu: { left: mr.left, right: mr.right, top: mr.top, bottom: mr.bottom },
+                ent: { left: er.left, right: er.right, top: er.top, bottom: er.bottom },
+            };
+        });
+        expect(geo.focused, 'premise: the menu item has focus').toBe(true);
+        const overlapTop = Math.max(geo.menu.top, geo.ent.top);
+        const overlapBottom = Math.min(geo.menu.bottom, geo.ent.bottom);
+        expect(overlapBottom - overlapTop, `premise: the open menu overlaps the entity header ${JSON.stringify(geo)}`).toBeGreaterThan(4);
+        expect(geo.ent.right - geo.menu.right, 'premise: room on the entity header beside the menu')
+            .toBeGreaterThan(20);
+
+        // Rest the pointer on the entity header, beside the menu.
+        const y = (overlapTop + overlapBottom) / 2;
+        await page.mouse.move(Math.min(geo.menu.right + 10, geo.ent.right - 5), y);
+
+        const probe = await page.evaluate(({ x, y }) => {
+            const ent = document.querySelector('#content > .seriesheader');
+            const menu = document.querySelector('body > div.header li.editing > ul');
+            const hdr = document.querySelector('body > div.header');
+            const hit = document.elementFromPoint(x, y);
+            return {
+                entHovered: ent.matches(':hover'),
+                entZ: getComputedStyle(ent).zIndex,
+                hdrZ: getComputedStyle(hdr).zIndex,
+                hitMenu: !!(hit && menu.contains(hit)),
+            };
+        }, { x: geo.menu.left + 10, y });
+        expect(probe.entHovered, 'premise: the pointer rests on the entity header').toBe(true);
+        expect(probe.entZ, 'premise: the hovered entity header is raised').toBe('107');
+        expect(probe, 'the header (and its menu) is raised above the hovered entity header')
+            .toMatchObject({ hdrZ: '108', hitMenu: true });
     });
 });
 

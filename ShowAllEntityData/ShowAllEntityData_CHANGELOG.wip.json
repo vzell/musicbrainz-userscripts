@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz's own header menus (Editing, Search, My data, …) are no longer drawn behind the page's title bar (for example a release's title with its ISRC, Tracks, Data and View buttons). This happened after a table had been loaded on a page wide enough to scroll sideways, and also when the pointer rested on the title bar beside an open menu. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-05",
     "sections": [
