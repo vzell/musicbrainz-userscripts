@@ -79,6 +79,16 @@ const MUST_PIN_COMPACT = [
 ];
 
 /**
+ * The bootleg lists wrap their content in `.col-md-12`, not `.col-sm-12`
+ * (debug/sl-bootleg-date-range.html); Bootstrap gives it the same padding and
+ * full-width float from 992 px up. Added for that page only, so the other
+ * shapes keep exactly the CSS they were checked with.
+ * @type {string}
+ */
+const BOOTSTRAP_CSS_MD = '@media (min-width: 992px) { .col-md-12 { position: relative; min-height: 1px; '
+    + 'padding-left: 15px; padding-right: 15px; float: left; width: 100%; } }';
+
+/**
  * Opens one SL fixture at VIEWPORT with BOOTSTRAP_CSS and renders the table.
  * @param {import('@playwright/test').Page} page
  * @param {string} kind
@@ -88,7 +98,7 @@ const MUST_PIN_COMPACT = [
 async function openSl(page, kind, settingsOverride = {}) {
     await page.setViewportSize(VIEWPORT);
     const { spec } = await loadSlListPage(page, { kind, settingsOverride });
-    await page.addStyleTag({ content: BOOTSTRAP_CSS });
+    await page.addStyleTag({ content: kind === 'bootlegs' ? `${BOOTSTRAP_CSS}\n${BOOTSTRAP_CSS_MD}` : BOOTSTRAP_CSS });
     // Through the DOM: a pinned bar can sit over the button for the hit-test.
     await page.$eval(`button[data-label="${spec.button}"]`, (b) => b.click());
     await waitForRenderComplete(page, { waitForAutoResize: false });
@@ -154,6 +164,7 @@ for (const [kind, sels, settings, tag] of [
     ['collection', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
     ['sampler', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
     ['memorabilia', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
+    ['bootlegs', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
 ]) {
     test(`${kind}${tag}: everything above the table stays put, and Title docks at the table's left`, async ({ page }) => {
         await openSl(page, kind, settings);

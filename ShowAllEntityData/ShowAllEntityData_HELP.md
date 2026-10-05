@@ -1321,15 +1321,27 @@ on by default) — everything above the table stays where it is while you
 scroll sideways: the site's header and breadcrumb, the toolbar, the category
 and filter buttons and the list's heading bar.
 
-**A compact category and filter bar** (collection pages; off by default): ⚙️
-Settings → *🎸 springsteenlyrics.com* → *Compact category and filter bar on
-springsteenlyrics.com collection pages*. The site's rows of category, format,
-country, album, year and copies buttons become one row of pull-down menus
-above the list: *Category: Official Albums ▾*, *Format: Any ▾*, and so on.
+**A compact category and filter bar** (off by default): ⚙️ Settings → *🎸
+springsteenlyrics.com* → *Compact category and filter bar on
+springsteenlyrics.com lists*. On a collection list the site's rows of
+category, format, country, album, year and copies buttons become one row of
+pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
+▾*, and so on. On a bootleg list the category buttons become a *Category* menu
+(the search boxes stay as they are).
 
 - Each menu offers exactly what that page's own buttons offer, and the current
-  choice has a ✓. The Category menu is grouped into Audio, Video and Print &
-  memorabilia.
+  choice has a ✓. The Category menu is grouped (Audio, Video and Print &
+  memorabilia for the collection; Live shows, Other audio and Video for the
+  bootlegs).
+- The Category menu shows each category's **exact number of items** once you
+  have opened that list with the bar on. It is read from the list's own
+  "Showing items … of N" line and kept from then on. A category you have not
+  opened yet shows no number; nothing is estimated.
+- On a bootleg list the Category menu starts with a **timeline of the
+  live-show eras** from 1967 on. Each bar spans its era's years, and its height
+  shows how many recordings there are per year. An era you have not opened yet
+  is drawn dashed with a "?". The current era is outlined, and clicking a bar
+  opens that era.
 - Long menus (Category, Country, Album) have a search box: type part of a
   name, then Enter to go to the first match. The arrow keys move through the
   list, and Escape closes it.

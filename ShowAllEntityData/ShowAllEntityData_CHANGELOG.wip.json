@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.3",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact category and filter bar (WIP.2) now also works on the bootleg lists, where the category buttons become a Category menu. Its setting is renamed \"Compact category and filter bar on springsteenlyrics.com lists\".",
+          "springsteenlyrics.com: the Category menu marks the list you are on (the bootleg lists' own buttons never did). Once you have opened a list with the bar on, it also shows that category's exact number of items, read from the list's own \"Showing items … of N\" line. A list you have not opened yet shows no number; nothing is estimated.",
+          "springsteenlyrics.com: on the bootleg lists the Category menu starts with a timeline of the live-show eras since 1967. Each bar spans its era's years, its height shows recordings per year, and an era you have not opened yet is drawn dashed with a \"?\". Click a bar to open that era."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.2",
     "date": "2026-10-05",
     "sections": [

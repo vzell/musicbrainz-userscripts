@@ -56,8 +56,8 @@
     "why": "f_date_main names an Official Albums title; carried into another category it narrows that list to nothing.",
     "edits": [
       {
-        "find": "            _SL_CATEGORY_SPECIFIC_PARAMS.forEach(k => url.searchParams.delete(k));",
-        "replace": ""
+        "find": "                if (dropAll ? k.startsWith('f_') : _SL_CATEGORY_SPECIFIC_PARAMS.includes(k)) url.searchParams.delete(k);",
+        "replace": "                if (dropAll && k.startsWith('f_')) url.searchParams.delete(k);"
       }
     ],
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
@@ -101,6 +101,97 @@
     ],
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
     "grep": "starts at page 1",
+    "expect": "fail"
+  },
+  {
+    "name": "a bootleg category change keeps the search parameters",
+    "why": "A bootleg list category ignores f_date/f_title (probed live): the target URL would carry a filter that does nothing and reads as if it applied.",
+    "edits": [
+      {
+        "find": "            const dropAll = _SL_CATEGORY_CHANGE_DROPS_FILTERS.includes(url.pathname);",
+        "replace": "            const dropAll = false;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a category drops the search",
+    "expect": "fail"
+  },
+  {
+    "name": "a filtered list records its total as the category's",
+    "why": "album with f_format=12i has 539 items, the album category 1315: recording the filtered total would put a wrong exact count in the menu.",
+    "edits": [
+      {
+        "find": "        if (Array.from(params.keys()).some(k => k.startsWith('f_'))) return null;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a filtered list does not",
+    "expect": "fail"
+  },
+  {
+    "name": "a bootleg search page (category=f_*) records a count",
+    "why": "A search's total is not a category's. Not visible on its own: every such page also carries its f_* parameter, which the next guard rejects, so the spec stays green. Kept for the day a search arrives without one.",
+    "edits": [
+      {
+        "find": "        if (params.get('cmd') !== 'list' || !cat || cat.startsWith('f_')) return null;",
+        "replace": "        if (params.get('cmd') !== 'list' || !cat) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a category drops the search",
+    "expect": "pass"
+  },
+  {
+    "name": "the era timeline is sized by raw counts, not per year",
+    "why": "A thirteen-year era with 222 recordings would tower over a one-year tour with 159; the timeline is meant to show how densely each era was recorded.",
+    "edits": [
+      {
+        "find": "            e.perYear = c ? c.n / (e.span.to - e.span.from + 1) : null;",
+        "replace": "            e.perYear = c ? c.n : null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "sized per year",
+    "expect": "fail"
+  },
+  {
+    "name": "the timeline does not mark the current era",
+    "why": "The site marks no current category on the bootleg lists; marking it was one of the reasons for the bar.",
+    "edits": [
+      {
+        "find": "            if (e.o.category === curCat) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "sized per year",
+    "expect": "fail"
+  },
+  {
+    "name": "an era never visited is drawn as if counted",
+    "why": "Unknown must look unknown; a bar with a made-up height would read as a real count.",
+    "edits": [
+      {
+        "find": "                a.classList.add('mb-sl-era-unknown');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "unknown never estimated",
+    "expect": "fail"
+  },
+  {
+    "name": "the bootleg Category menu offers \"All categories\"",
+    "why": "Only the collection has an \"all\" list; on bootlegs.php the entry would lead nowhere useful.",
+    "edits": [
+      {
+        "find": "            if (path === '/collection.php') {",
+        "replace": "            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "records its exact count; the menu shows it",
     "expect": "fail"
   }
 ]

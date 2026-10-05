@@ -3684,17 +3684,20 @@
         },
 
         sa_sl_compact_nav: {
-            label: 'Compact category and filter bar on springsteenlyrics.com collection pages',
+            label: 'Compact category and filter bar on springsteenlyrics.com lists',
             type: 'checkbox',
             default: false,
             description: 'Off by default; needs the setting above. When on, the collection\'s ' +
                          'walls of category and filter buttons (category, format, country, ' +
-                         'album, original year, copies) are folded into one row of pull-down ' +
-                         'menus above the list. Each menu has a search box, and filters ' +
-                         'combine: choosing a country keeps the format you already chose. ' +
-                         'Chosen filters are shown as chips you can remove one by one. The ' +
-                         'site\'s own buttons are only hidden, so turning this off brings them ' +
-                         'back unchanged.'
+                         'album, original year, copies) and the bootleg lists\' category ' +
+                         'buttons are folded into one row of pull-down menus above the list. ' +
+                         'Each menu has a search box, and filters combine: choosing a country ' +
+                         'keeps the format you already chose. Chosen filters are shown as ' +
+                         'chips you can remove one by one. The Category menu marks the current ' +
+                         'list and shows each category\'s exact item count once you have ' +
+                         'opened it; on the bootleg lists it starts with a timeline of the ' +
+                         'live-show eras. The site\'s own buttons are only hidden, so turning ' +
+                         'this off brings them back unchanged.'
         }
 
     };
@@ -9307,6 +9310,71 @@
                 font-weight: bold;
                 text-decoration: none;
             }
+            /* Recorded item count of a category, right-aligned in its entry. */
+            body.mb-sa-host-sl .mb-sl-scope-n {
+                margin-left: auto;
+                padding-left: 8px;
+                color: #607080;
+                font-weight: normal;
+                font-variant-numeric: tabular-nums;
+            }
+            /* The bootleg era timeline heading the Category menu: bars placed
+               on one year axis, width = the era's span, height = recordings
+               per year; a dashed bar is an era not counted yet. */
+            body.mb-sa-host-sl .mb-sl-scope-pop.mb-sl-scope-pop-wide {
+                width: 560px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-ruler {
+                margin: 2px 2px 10px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-bars {
+                position: relative;
+                height: 90px;
+                margin-top: 14px;
+            }
+            body.mb-sa-host-sl .mb-sl-era {
+                position: absolute;
+                bottom: 0;
+                background: #7d95bd;
+                border-radius: 3px 3px 0 0;
+            }
+            body.mb-sa-host-sl .mb-sl-era:hover,
+            body.mb-sa-host-sl .mb-sl-era:focus {
+                background: #2b4a7b;
+                outline: none;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-era-unknown {
+                background: transparent;
+                border: 1px dashed #7d95bd;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-cur {
+                background: #2b4a7b;
+                box-shadow: 0 0 0 2px #fff, 0 0 0 3px #263238;
+            }
+            body.mb-sa-host-sl .mb-sl-era-n {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10px;
+                color: #607080;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis {
+                position: relative;
+                height: 14px;
+                border-top: 1px solid #b0bec5;
+                font-size: 10px;
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span {
+                position: absolute;
+                top: 1px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span.mb-sl-era-axis-end {
+                right: 0;
+            }
         `);
         style.id = 'mb-sl-style';
     }
@@ -9389,25 +9457,114 @@
     };
 
     /**
-     * The collection's category keys by group, for the Category menu. The site
-     * lists them flat; a key not named here goes under "More", so a category
-     * the site adds later still appears.
-     * @type {Array<[string, string[]]>}
+     * Category groups for the Category menu, per list script: a group name and
+     * the test a category key must pass. The site lists its categories flat;
+     * a key no group takes goes under "More", so a category the site adds
+     * later still appears. A key goes to the FIRST group that takes it.
+     * @type {Object<string, Array<[string, function(string): boolean]>>}
      */
-    const _SL_CATEGORY_GROUPS = [
-        ['Audio', ['album', 'sampler', 'single', 'nugs', 'radioshows', 'vaalbum', 'guest', 'cover', 'audioboot', 'other']],
-        ['Video', ['video', 'video_unauth', 'video_var', 'video_guest', 'video_cover', 'video_doc', 'video_movie', 'video_boot']],
-        ['Print & memorabilia', ['book', 'fanzine', 'magazine', 'newspaper', 'program', 'printedmusic', 'calendar', 'memorabilia']]
-    ];
+    const _SL_CATEGORY_GROUPS = {
+        '/collection.php': [
+            ['Audio', k => ['album', 'sampler', 'single', 'nugs', 'radioshows', 'vaalbum', 'guest', 'cover', 'audioboot', 'other'].includes(k)],
+            ['Video', k => ['video', 'video_unauth', 'video_var', 'video_guest', 'video_cover', 'video_doc', 'video_movie', 'video_boot'].includes(k)],
+            ['Print & memorabilia', k => ['book', 'fanzine', 'magazine', 'newspaper', 'program', 'printedmusic', 'calendar', 'memorabilia'].includes(k)]
+        ],
+        '/bootlegs.php': [
+            ['Live shows', k => /^aud_live\d{4}$/.test(k)],
+            ['Other audio', k => k.startsWith('aud_')],
+            ['Video', k => k.startsWith('vid_')]
+        ]
+    };
 
     /**
      * Filters that only mean something inside the category that offered them
      * and are dropped when the category changes: an album (`f_date_main`) is
-     * a release date of an "Official Albums" title. Every other filter is
-     * kept across a category change.
+     * a release date of an "Official Albums" title. Every other collection
+     * filter is kept across a category change.
      * @type {string[]}
      */
     const _SL_CATEGORY_SPECIFIC_PARAMS = ['f_date_main'];
+
+    /**
+     * List scripts whose filters never combine with a category, so a category
+     * change drops every `f_*` parameter. On the bootleg lists a filter IS the
+     * category (`category=f_date&f_date=…`), and a list category ignores one:
+     * `category=aud_live1975&f_date=1975-08-15` returns the whole era (probed
+     * live, 2026-10-05).
+     * @type {string[]}
+     */
+    const _SL_CATEGORY_CHANGE_DROPS_FILTERS = ['/bootlegs.php'];
+
+    /**
+     * GM storage key of the exact item count of every springsteenlyrics.com
+     * list visited with the compact bar on: `{ "<path>?category=<key>": { n,
+     * at } }`, `at` being the visit's date. Written by
+     * `_slRecordListCount()`, shown in the Category menus. A cache, not a
+     * user setting: it is not in the config export (`_CFG_WORKSPACE_GROUPS`).
+     * Exact on purpose (decided 2026-10-05): the bootleg landing page's
+     * "Statistics" counts drift from the lists' own totals (544 there, 487
+     * on the Live 1975-1977 list itself).
+     * @type {string}
+     */
+    const _SL_LIST_COUNTS_KEY = 'mb_sa_sl_list_counts';
+
+    /**
+     * The `_SL_LIST_COUNTS_KEY` entry key of one list.
+     *
+     * @param {string} pathname  - The list script, e.g. '/bootlegs.php'.
+     * @param {string} category  - The category key, e.g. 'aud_live1992'.
+     * @returns {string}
+     */
+    function _slListCountKey(pathname, category) {
+        return `${pathname}?category=${category}`;
+    }
+
+    /**
+     * Reads the stored list counts (`_SL_LIST_COUNTS_KEY`).
+     *
+     * @returns {Object<string, {n: number, at: string}>} Never null.
+     */
+    function _slReadListCounts() {
+        try {
+            const v = GM_getValue(_SL_LIST_COUNTS_KEY, {});
+            return (v && typeof v === 'object') ? v : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /**
+     * Records this list's exact item count, from the site's own "Showing
+     * items 1-100 of N" line, under its category — but only for a whole
+     * category (`cmd=list`, a real category key, no `f_*` filter): a filtered
+     * list's total is not the category's. Writes only when the count changed.
+     *
+     * @returns {?number} The count recorded or confirmed, or `null` when this
+     *   page is not a whole category or shows no count line.
+     */
+    function _slRecordListCount() {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const cat = params.get('category');
+        if (params.get('cmd') !== 'list' || !cat || cat.startsWith('f_')) return null;
+        if (Array.from(params.keys()).some(k => k.startsWith('f_'))) return null;
+        let n = null;
+        for (const d of document.querySelectorAll('div[align="center"]')) {
+            const m = d.textContent.match(/Showing items\s+\d+\s*-\s*\d+\s+of\s+(\d+)/);
+            if (m) {
+                n = parseInt(m[1], 10);
+                break;
+            }
+        }
+        if (n === null) return null;
+        const counts = _slReadListCounts();
+        const key = _slListCountKey(url.pathname, cat);
+        if (counts[key]?.n !== n) {
+            counts[key] = { n, at: new Date().toISOString().slice(0, 10) };
+            GM_setValue(_SL_LIST_COUNTS_KEY, counts);
+        }
+        return n;
+    }
 
     /**
      * Reads the year span the collection's "original year of release" slider
@@ -9508,8 +9665,10 @@
      * dropped (a new scope starts at page 1), `cmd=list`, and `category=all`
      * when the page has none (the entry page, whose own filter links say the
      * same). Then `change.category` replaces the category (dropping
-     * `_SL_CATEGORY_SPECIFIC_PARAMS`), `change.clear` removes parameters and
-     * `change.set` sets them — so a new value for one filter keeps the others.
+     * `_SL_CATEGORY_SPECIFIC_PARAMS`, or every `f_*` on a list script in
+     * `_SL_CATEGORY_CHANGE_DROPS_FILTERS`), `change.clear` removes parameters
+     * and `change.set` sets them — so a new value for one filter keeps the
+     * others.
      *
      * @param {{category?: string, clear?: string[], set?: Object<string, string>}} change
      * @returns {string} Absolute URL.
@@ -9522,7 +9681,10 @@
         if (!url.searchParams.get('category')) url.searchParams.set('category', 'all');
         if (change.category !== undefined) {
             url.searchParams.set('category', change.category);
-            _SL_CATEGORY_SPECIFIC_PARAMS.forEach(k => url.searchParams.delete(k));
+            const dropAll = _SL_CATEGORY_CHANGE_DROPS_FILTERS.includes(url.pathname);
+            Array.from(url.searchParams.keys()).forEach(k => {
+                if (dropAll ? k.startsWith('f_') : _SL_CATEGORY_SPECIFIC_PARAMS.includes(k)) url.searchParams.delete(k);
+            });
         }
         (change.clear || []).forEach(k => url.searchParams.delete(k));
         Object.entries(change.set || {}).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -9542,7 +9704,12 @@
         if (facet.kind === 'category') {
             const cat = params.get('category') || 'all';
             const option = facet.options.find(o => o.category === cat) || null;
-            return { active: false, label: option ? option.label : (cat === 'all' ? 'All categories' : cat), option };
+            // Not one of the wall's categories: "all", or a bootleg search
+            // (category=f_title…), whose list heading ("SHOWS BY TITLE")
+            // says what the page is.
+            const fallback = cat === 'all' ? 'All categories'
+                : (_slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || cat);
+            return { active: false, label: option ? option.label : fallback, option };
         }
         if (facet.kind === 'range') {
             const v = params.get('f_range');
@@ -9579,10 +9746,105 @@
     }
 
     /**
+     * Reads a bootleg era out of a category label: "Live 1967-1974" → 1967 to
+     * 1974, "Live 2005" → 2005 to 2005.
+     *
+     * @param {string} label
+     * @returns {?{from: number, to: number}} `null` for a label that is not an era.
+     */
+    function _slParseEra(label) {
+        const m = label.match(/^Live\s+(\d{4})(?:\s*-\s*(\d{4}))?$/);
+        if (!m) return null;
+        const from = Number(m[1]);
+        const to = Number(m[2] || m[1]);
+        return to >= from ? { from, to } : null;
+    }
+
+    /**
+     * Builds the era timeline that heads the bootleg Category menu: every
+     * "Live YYYY-YYYY" category as a bar on one year axis, its width the
+     * era's span and its height the recordings PER YEAR, from the exact
+     * counts recorded on earlier visits (`_SL_LIST_COUNTS_KEY`). An era not
+     * visited yet is drawn dashed at a fixed height with "?", never
+     * estimated. Every bar is a link to its list; the current one is marked.
+     *
+     * @param {object}                facet   - The Category facet.
+     * @param {string}                curCat  - The page's category key.
+     * @param {Object<string, {n: number, at: string}>} counts
+     * @returns {?HTMLElement} The timeline, or `null` with fewer than three eras.
+     */
+    function _slBuildEraRuler(facet, curCat, counts) {
+        const path = window.location.pathname;
+        const eras = facet.options.map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        if (eras.length < 3) return null;
+        const min = Math.min(...eras.map(e => e.span.from));
+        const max = Math.max(...eras.map(e => e.span.to));
+        const years = max - min + 1;
+        const pct = y => `${(100 * (y - min) / years).toFixed(3)}%`;
+        eras.forEach(e => {
+            const c = counts[_slListCountKey(path, e.o.category)];
+            e.n = c ? c.n : null;
+            e.perYear = c ? c.n / (e.span.to - e.span.from + 1) : null;
+        });
+        const top = Math.max(1, ...eras.map(e => e.perYear || 0));
+
+        const ruler = document.createElement('div');
+        ruler.className = 'mb-sl-era-ruler';
+        const bars = document.createElement('div');
+        bars.className = 'mb-sl-era-bars';
+        eras.forEach(e => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-era';
+            a.href = _slScopeHref({ category: e.o.category });
+            a.style.left = pct(e.span.from);
+            a.style.width = `calc(${(100 * (e.span.to - e.span.from + 1) / years).toFixed(3)}% - 2px)`;
+            const n = document.createElement('span');
+            n.className = 'mb-sl-era-n';
+            if (e.n === null) {
+                a.classList.add('mb-sl-era-unknown');
+                a.style.height = '30%';
+                n.textContent = '?';
+                _setTip(a, `${e.o.label}\nNot counted yet: the count is recorded when you open this list.`);
+            } else {
+                a.style.height = `${Math.max(8, Math.round(100 * e.perYear / top))}%`;
+                n.textContent = String(e.n);
+                _setTip(a, `${e.o.label}\n${e.n} recordings, about ${Math.round(e.perYear)} a year\nCounted on ${counts[_slListCountKey(path, e.o.category)].at}`);
+            }
+            if (e.o.category === curCat) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            a.setAttribute('aria-label', `${e.o.label}${e.n === null ? '' : `, ${e.n} recordings`}`);
+            a.appendChild(n);
+            bars.appendChild(a);
+        });
+        const axis = document.createElement('div');
+        axis.className = 'mb-sl-era-axis';
+        const ticks = [min];
+        for (let y = Math.ceil((min + 1) / 10) * 10; y <= max - 4; y += 10) {
+            if (y - min >= 4) ticks.push(y);
+        }
+        ticks.forEach(y => {
+            const t = document.createElement('span');
+            t.textContent = String(y);
+            t.style.left = pct(y);
+            axis.appendChild(t);
+        });
+        const last = document.createElement('span');
+        last.className = 'mb-sl-era-axis-end';
+        last.textContent = String(max);
+        axis.appendChild(last);
+        ruler.append(bars, axis);
+        return ruler;
+    }
+
+    /**
      * Fills a scope-bar pull-down for a Category or links facet: one link per
-     * option (the Category facet grouped Audio / Video / Print, a filter facet
-     * led by "Any"), the current one marked, and a search box above a long
-     * list. Typing filters the list; Enter follows the first match.
+     * option (the Category facet grouped per `_SL_CATEGORY_GROUPS` with the
+     * recorded item count of each category, and headed by the era timeline
+     * on the bootleg lists; a filter facet led by "Any"), the current one
+     * marked, and a search box above a long list. Typing filters the list;
+     * Enter follows the first match.
      *
      * @param {HTMLElement}     pop     - The empty panel.
      * @param {object}          facet   - From `_slReadNavFacets()`.
@@ -9591,9 +9853,11 @@
      */
     function _slFillScopeList(pop, facet, params) {
         const cur = _slFacetCurrent(facet, params);
+        const path = window.location.pathname;
+        const counts = facet.kind === 'category' ? _slReadListCounts() : {};
         const list = document.createElement('div');
         list.className = 'mb-sl-scope-list';
-        const addOpt = (label, href, isCur, icon) => {
+        const addOpt = (label, href, isCur, icon, category) => {
             const a = document.createElement('a');
             a.className = 'mb-sl-scope-opt';
             a.href = href;
@@ -9605,6 +9869,14 @@
             const span = document.createElement('span');
             span.textContent = label;
             a.appendChild(span);
+            const c = category !== undefined ? counts[_slListCountKey(path, category)] : null;
+            if (c) {
+                const n = document.createElement('span');
+                n.className = 'mb-sl-scope-n';
+                n.textContent = String(c.n);
+                _setTip(n, `${c.n} items, counted on ${c.at}`);
+                a.appendChild(n);
+            }
             list.appendChild(a);
         };
         const addGroup = (text) => {
@@ -9616,16 +9888,29 @@
 
         if (facet.kind === 'category') {
             const curCat = params.get('category') || 'all';
-            addOpt('All categories', _slScopeHref({ category: 'all' }), curCat === 'all', null);
-            const known = new Set(_SL_CATEGORY_GROUPS.flatMap(g => g[1]));
-            const groups = _SL_CATEGORY_GROUPS.map(([name, cats]) =>
-                [name, facet.options.filter(o => cats.includes(o.category))]);
-            groups.push(['More', facet.options.filter(o => !known.has(o.category))]);
+            // Only the collection has an "all" list (its entry page's own
+            // filter links use it); the bootleg lists have none.
+            if (path === '/collection.php') {
+                addOpt('All categories', _slScopeHref({ category: 'all' }), curCat === 'all', null, 'all');
+            }
+            const defs = _SL_CATEGORY_GROUPS[path] || [];
+            const groups = defs.map(([name]) => [name, []]);
+            const more = [];
+            facet.options.forEach(o => {
+                const i = defs.findIndex(([, takes]) => takes(o.category));
+                (i >= 0 ? groups[i][1] : more).push(o);
+            });
+            groups.push(['More', more]);
             groups.forEach(([name, opts]) => {
                 if (opts.length === 0) return;
                 addGroup(name);
-                opts.forEach(o => addOpt(o.label, _slScopeHref({ category: o.category }), o.category === curCat, o.icon));
+                opts.forEach(o => addOpt(o.label, _slScopeHref({ category: o.category }), o.category === curCat, o.icon, o.category));
             });
+            const ruler = _slBuildEraRuler(facet, curCat, counts);
+            if (ruler) {
+                pop.classList.add('mb-sl-scope-pop-wide');
+                pop.appendChild(ruler);
+            }
         } else {
             addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
             facet.options.forEach(o => addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }),
@@ -9637,7 +9922,7 @@
             const q = document.createElement('input');
             q.type = 'search';
             q.className = 'mb-sl-scope-search';
-            q.placeholder = `Search ${optCount - 1} ${facet.label.toLowerCase()} entries…`;
+            q.placeholder = `Search ${facet.options.length} ${facet.label.toLowerCase()} entries…`;
             q.setAttribute('aria-label', `Search ${facet.label}`);
             q.addEventListener('input', () => {
                 const needle = q.value.trim().toLowerCase();
@@ -43095,10 +43380,12 @@ a { color: #1565c0; }`;
     // definitions only, like the user-edits fallback above.
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
-        // The compact category/filter bar (sa_sl_compact_nav): collection
-        // pages only so far; the bootleg lists get theirs in a later change.
+        // The compact category/filter bar (sa_sl_compact_nav), on the
+        // collection and bootleg lists. This list's exact count is recorded
+        // first, so its own Category menu already shows it.
         if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&
-            baseDefinition.features?.slCardsToTable === 'collection') {
+            ['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable)) {
+            _slRecordListCount();
             _slInstallScopeBar();
         }
     }

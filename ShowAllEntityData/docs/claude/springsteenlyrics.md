@@ -210,10 +210,12 @@ pushed back at the far right — plain `position: sticky`, on any host.
 ## The compact category/filter bar — `_slInstallScopeBar()`
 
 Behind its own setting, `sa_sl_compact_nav` (default **off**; needs
-`sa_enable_springsteenlyrics`), on the collection pageTypes only
-(`slCardsToTable: 'collection'`; the bootleg lists are a later change). Design
+`sa_enable_springsteenlyrics`), on the collection and bootleg list pageTypes
+(`slCardsToTable` `'collection'`/`'bootlegs'`; on the bootleg lists only the
+category wall is folded, since the four search forms are not links). Design
 study and the decisions behind it: `org/springsteenlyrics.org`, `** analyze`.
-Called from the init block right after `_slPrepareLivePage()`.
+Called from the init block right after `_slPrepareLivePage()`, after
+`_slRecordListCount()`.
 
 **It reads the walls, it never lists them.** `_slReadNavFacets()` turns every
 `.element-buttons` block of same-page links into a facet: links that set no
@@ -260,6 +262,36 @@ takes them out of Sticky Page Headers: `_sphIsEligible()` skips an element with
 no client rects. The bar sits where the first wall was, in `.project-detail`,
 and is pinned like the walls before it.
 
+**The bootleg lists differ in three ways**, each in a named table rather than
+a branch in the reader:
+
+- **Grouping** comes from `_SL_CATEGORY_GROUPS[pathname]`, a list of
+  `[name, predicate]` (bootlegs: `aud_live\d{4}` → Live shows, other `aud_` →
+  Other audio, `vid_` → Video). "All categories" is offered on the collection
+  only; the bootleg lists have no "all" list.
+- **A category change drops every `f_*`** (`_SL_CATEGORY_CHANGE_DROPS_FILTERS`).
+  There a search IS the category (`category=f_date&f_date=…`), and a list
+  category ignores a search parameter (live probe: `aud_live1975&f_date=…`
+  returns the whole era). On a search page the Category button shows the list
+  heading ("SHOWS BY TITLE"), and no entry is marked current.
+- **The era timeline** (`_slBuildEraRuler()`) heads the Category menu when at
+  least three labels parse as "Live YYYY[-YYYY]" (`_slParseEra()`). The bars
+  are absolutely positioned on one year axis: width = span, height =
+  recordings PER YEAR, relative to the densest counted era. Raw counts would
+  make "Live 2014-2026" (222 in thirteen years) taller than "Live 2005" (159
+  in one); a mutation pins it.
+
+**Exact counts, never estimates** (decided 2026-10-05). `_slRecordListCount()`
+reads the site's "Showing items 1-100 of N" and stores N under
+`mb_sa_sl_list_counts` (`{"<path>?category=<key>": {n, at}}`), but only for a
+WHOLE category: `cmd=list`, a real category key, and no `f_*` parameter (album
+with `f_format=12i` has 539 items, the category 1315). The Category menus show
+the count beside each entry, and the timeline sizes by it. A category never
+visited shows no number and a dashed "?" bar. The bootleg landing page's
+"Statistics" numbers are deliberately NOT used: they drift from the lists' own
+totals (544 vs 487 for Live 1975-1977). The key is a cache, not a setting, so
+it is not in the config export. It is written only while the bar is on.
+
 ## Tests
 
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
@@ -268,8 +300,8 @@ and is pinned like the walls before it.
 | `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
-| `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls |
-| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Mutations: `scripts/mutations/sl-scope-bar.json` |
+| `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 

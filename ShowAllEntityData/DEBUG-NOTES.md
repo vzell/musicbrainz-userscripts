@@ -18937,3 +18937,26 @@ Tests: `tests/fixtures/sl-scope-bar.spec.js` (10), the three
 `sl-sticky-headers.spec.js` shapes again with the bar on (6 tests in total, 3 new),
 `scripts/mutations/sl-scope-bar.json` (8 entries, all caught, including both
 findings above).
+
+## 2026-10-05 — springsteenlyrics.com: the compact bar on the bootleg lists, exact counts, era timeline (branch feature/sl-scope-bar)
+
+Part 2 of the bar. Notes for whoever touches it next:
+
+- **The bootleg fixture needed `.col-md-12` CSS for the sticky check.** The
+  bootleg lists wrap their content in `.col-md-12`, the collection in
+  `.col-sm-12`. `sl-sticky-headers.spec.js`'s minimal Bootstrap CSS covered only
+  the latter, so on the bootleg fixture the table sat at x=0 and the premise
+  "the table is indented" failed. That was the fixture, not the code. The rule
+  is added for that page only (`BOOTSTRAP_CSS_MD`), so the three earlier shapes
+  keep exactly the CSS they were checked with.
+- **One recording guard cannot be seen by any spec**: `category=f_*` (a bootleg
+  search). Every such URL also carries its `f_*` parameter, which the next
+  guard rejects, so the mutation stays green. It is recorded as
+  `"expect": "pass"` in `scripts/mutations/sl-scope-bar.json` with that reason.
+- **A mutation that crashes the menu is not a pin.** The first "unknown era
+  drawn as counted" mutation made `counts[…].at` throw, so the menu never
+  opened and the spec failed for the wrong reason. It now removes only the
+  `mb-sl-era-unknown` class, and the spec fails on the dashed-bar count.
+
+Tests: `sl-scope-bar.spec.js` 15 (5 new), the sticky spec gains a bootleg shape
+with the bar on (7), mutations 15 (14 fail as expected, 1 recorded pass).

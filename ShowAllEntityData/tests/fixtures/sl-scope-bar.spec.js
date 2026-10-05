@@ -44,16 +44,22 @@ function barButtons(page) {
  * Opens the pull-down of one facet and returns its entries.
  * @param {import('@playwright/test').Page} page
  * @param {string} facet  The button's `data-mb-sl-facet`, e.g. 'f_country'.
- * @returns {Promise<Array<{text: string, href: string, cur: boolean}>>}
+ * @returns {Promise<Array<{text: string, n: ?string, href: string, cur: boolean}>>}
+ *   `text` is the entry's label, `n` its recorded item count (or null).
  */
 async function openMenu(page, facet) {
     await page.click(`.mb-sl-scope-btn[data-mb-sl-facet="${facet}"]`);
     await expect(page.locator('.mb-sl-scope-pop')).toBeVisible();
-    return page.$$eval('.mb-sl-scope-pop .mb-sl-scope-opt', (as) => as.map((a) => ({
-        text: a.textContent.replace(/\s+/g, ' ').trim(),
-        href: a.href,
-        cur: a.classList.contains('mb-sl-cur'),
-    })));
+    return page.$$eval('.mb-sl-scope-pop .mb-sl-scope-opt', (as) => as.map((a) => {
+        const n = a.querySelector('.mb-sl-scope-n');
+        return {
+            text: (a.textContent.slice(0, a.textContent.length - (n ? n.textContent.length : 0)))
+                .replace(/\s+/g, ' ').trim(),
+            n: n ? n.textContent : null,
+            href: a.href,
+            cur: a.classList.contains('mb-sl-cur'),
+        };
+    }));
 }
 
 /**
@@ -243,5 +249,135 @@ test.describe('sl compact category/filter bar', () => {
             page.keyboard.press('Enter'),
         ]);
         expect(query(page.url())).toEqual({ cmd: 'list', category: 'memorabilia', f_format: '12i' });
+    });
+});
+
+// The bootleg lists, and the exact item counts both kinds of list record.
+//
+// Counts are recorded per whole category from the site's own "Showing items
+// … of N" line and kept in GM storage under COUNTS_KEY; the Category menus
+// show them, and on the bootleg lists the era timeline is sized by them
+// (recordings PER YEAR, so a long era with many recordings is not taller
+// than a one-year tour with more per year). An era never visited is drawn
+// as unknown, never estimated. Seeds go through the GM store like a setting.
+
+const COUNTS_KEY = 'mb_sa_sl_list_counts';
+
+/**
+ * The stored list counts, as the page's GM store holds them.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Object<string, {n: number, at: string}>>}
+ */
+function storedCounts(page) {
+    return page.evaluate((k) => (window.__gmValues || {})[k] || {}, COUNTS_KEY);
+}
+
+/**
+ * A counts seed: `{ category: n }` → the stored shape for one list script.
+ * @param {string} path
+ * @param {Object<string, number>} byCat
+ * @returns {Object<string, Object<string, {n: number, at: string}>>}
+ */
+const seedCounts = (path, byCat) => ({
+    [COUNTS_KEY]: Object.fromEntries(Object.entries(byCat)
+        .map(([cat, n]) => [`${path}?category=${cat}`, { n, at: '2026-10-01' }])),
+});
+
+/**
+ * Every era bar of the open Category menu, in page order.
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<Array<{cat: string, n: string, unknown: boolean, cur: boolean, left: number, right: number, height: number}>>}
+ */
+function eraBars(page) {
+    return page.$$eval('.mb-sl-scope-pop .mb-sl-era', (as) => as.map((a) => {
+        const r = a.getBoundingClientRect();
+        return {
+            cat: new URL(a.href).searchParams.get('category'),
+            n: a.querySelector('.mb-sl-era-n').textContent,
+            unknown: a.classList.contains('mb-sl-era-unknown'),
+            cur: a.classList.contains('mb-sl-cur'),
+            left: r.left, right: r.right, height: r.height,
+        };
+    }));
+}
+
+test.describe('sl compact bar: bootleg lists and recorded counts', () => {
+    test('bootlegs: one Category menu, the buttons hidden, the search forms left alone', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        expect(await barButtons(page)).toEqual([
+            { facet: 'category', key: 'Category:', value: 'Live 1967-1974', set: false },
+        ]);
+        expect(await page.$$eval('.element-buttons.mb-sl-nav-hidden a.btn', (as) => as.length)).toBe(21);
+        // The four filter forms are the next change's; they stay as they are.
+        await expect(page.locator('#filter_bootlegs_date')).toBeVisible();
+    });
+
+    test('a whole list records its exact count; the menu shows it', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        const counts = await storedCounts(page);
+        expect(counts['/bootlegs.php?category=aud_live1967'].n, 'the page says "of 100"').toBe(100);
+        expect(counts['/bootlegs.php?category=aud_live1967'].at).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+        const entries = await openMenu(page, 'category');
+        expect(entries.find((e) => e.cur)).toMatchObject({ text: 'Live 1967-1974', n: '100' });
+        const groups = await page.$$eval('.mb-sl-scope-pop .mb-sl-scope-group', (gs) => gs.map((g) => g.textContent));
+        expect(groups).toEqual(['Live shows', 'Other audio', 'Video']);
+        expect(entries.map((e) => e.text), 'no "All categories" on the bootleg lists')
+            .not.toContain('All categories');
+    });
+
+    test('the era timeline: one bar per era, on one axis, sized per year, unknown never estimated', async ({ page }) => {
+        // Raw counts order 1984 > 2014 > 2005; per year 1984 (178) > 2005 (159) > 2014 (17).
+        await loadSlListPage(page, {
+            kind: 'bootlegs',
+            settingsOverride: { ...ON, ...seedCounts('/bootlegs.php', { aud_live1984: 713, aud_live2005: 159, aud_live2014: 222 }) },
+        });
+        await openMenu(page, 'category');
+        const bars = await eraBars(page);
+        expect(bars).toHaveLength(16);
+        expect(bars.filter((b) => b.cur).map((b) => b.cat)).toEqual(['aud_live1967']);
+        // Chronological, side by side, none overlapping.
+        for (let i = 1; i < bars.length; i++) {
+            expect(bars[i].left, `${bars[i].cat} after ${bars[i - 1].cat}`).toBeGreaterThanOrEqual(bars[i - 1].right - 0.5);
+        }
+        // 1967-1974 is 8 years wide, 2005 one year.
+        const w = (cat) => { const b = bars.find((x) => x.cat === cat); return b.right - b.left + 2; };
+        expect(w('aud_live1967') / w('aud_live2005')).toBeCloseTo(8, 0);
+
+        const by = Object.fromEntries(bars.map((b) => [b.cat, b]));
+        expect(by.aud_live1984.n).toBe('713');
+        expect(by.aud_live1984.height).toBeGreaterThan(by.aud_live2005.height);
+        expect(by.aud_live2005.height, 'per year, not raw: 159 in one year beats 222 in thirteen')
+            .toBeGreaterThan(by.aud_live2014.height);
+        // Recorded on this visit, so known too.
+        expect(by.aud_live1967.unknown).toBe(false);
+        expect(bars.filter((b) => b.unknown).map((b) => b.n)).toEqual(Array(12).fill('?'));
+    });
+
+    test('a bootleg search page: its heading is the label, a category drops the search', async ({ page }) => {
+        await loadSlListPage(page, {
+            kind: 'bootlegs', settingsOverride: ON,
+            url: 'https://springsteenlyrics.com/bootlegs.php?cmd=list&category=f_date&f_date=1975-08-15',
+        });
+        const heading = await page.$eval('.blog-post', (c) => c.parentElement
+            .querySelector(':scope > h3.heading, :scope > h2.heading').textContent.trim());
+        expect((await barButtons(page))[0].value).toBe(heading);
+        const entries = await openMenu(page, 'category');
+        expect(entries.filter((e) => e.cur), 'no category is current on a search').toEqual([]);
+        const era = entries.find((e) => e.text.startsWith('Live 1975-1977'));
+        expect(query(era.href), 'the server ignores f_date beside a list category').toEqual({ cmd: 'list', category: 'aud_live1975' });
+        // A search's total is not a category's.
+        expect(Object.keys(await storedCounts(page))).toEqual([]);
+    });
+
+    test('collection: a whole category records its count, a filtered list does not', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'sampler', settingsOverride: ON });
+        expect((await storedCounts(page))['/collection.php?category=sampler'].n).toBe(99);
+        const entries = await openMenu(page, 'category');
+        expect(entries.find((e) => e.cur)).toMatchObject({ text: 'Samplers and Unique Releases', n: '99' });
+
+        await loadSlListPage(page, { kind: 'collection', settingsOverride: ON });
+        expect((await storedCounts(page))['/collection.php?category=album'], 'album with f_format=12i is not the album total')
+            .toBeUndefined();
     });
 });
