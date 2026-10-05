@@ -616,6 +616,20 @@ success), and adds the 4c ⚠️. `data-mb-main-event="0"` greens the "#" cell
 `_rgTitlePartForDate()`. Spec `release-rg-main-event.spec.js`; probe
 `scripts/probe-rg-release-browse.py`.
 
+**Per-event tints and the "#" card (follow-up to item 4).** `_computeMainEventCtx()`
+numbers the events off the main one by date (`eventIdx`); `_stampMainEventRow()`
+writes `data-mb-event-idx`/`data-mb-event-tint` on the "#" CELL (its
+`::before` "E<n>" chip reads them with `attr()`, which cannot reach the row).
+Tints come from `_EVENT_TINTS`, which the CSS template also generates its
+rules from. The "#" card is wired ONCE, delegated (`initEventRgTooltip()`):
+a `pointerover` writes `data-mbtt` just before the engine's `mouseover`,
+and only that hover may START a lookup (`_eventRgCardHtml(td, true)`) — a
+repaint that restarted one looped forever on a 503 (caught by the spec).
+All requests share `_rgWsGet()`'s queue (≥1.1 s apart). A hit counts only
+when its title IS the event name: terms mode scores wrong concerts 100
+(`scripts/probe-rg-event-search.py`). Spec
+`release-event-colours-rg-tooltip.spec.js` on `release-tracks-brixton-night.html`.
+
 **Fixture trap: a freshly fetched release page re-renders itself.**
 `tests/fixtures/release-tracks-multi-event.html` came from
 `scripts/fetch-release-fixture.js`, so its `static.metabrainz.org` bundle

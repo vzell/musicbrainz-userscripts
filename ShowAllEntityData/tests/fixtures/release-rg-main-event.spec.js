@@ -104,7 +104,9 @@ const greenCells = (page) => page.evaluate(() => Array.from(document.querySelect
     .map((r) => getComputedStyle(r.cells[0]).backgroundColor));
 
 const FESTHALLE = '1992‐06‐26: Festhalle, Frankfurt, Germany';
-const GREEN = 'rgb(223, 243, 223)';
+// Since the per-event colours, an off-main track's "#" carries its event's
+// own tint: the Festhalle event is the page's only other one, so E1.
+const GREEN = 'rgb(230, 220, 245)';
 
 test.describe('release group link and main event (org/live-bootleg.org 4)', () => {
     let pageErrors;
@@ -161,7 +163,7 @@ test.describe('release group link and main event (org/live-bootleg.org 4)', () =
         expect(calls).toHaveLength(5);
     });
 
-    test('4: exactly the Festhalle tracks are off the main event, and their "#" is green', async ({ page }) => {
+    test('4: exactly the Festhalle tracks are off the main event, and their "#" carries the tint of their event', async ({ page }) => {
         await open(page);
         const st = await mainState(page);
         expect(st.off).toEqual([FESTHALLE, FESTHALLE]);

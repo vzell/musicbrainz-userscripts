@@ -17,8 +17,8 @@
     "why": "Without the done-guard each hover costs a WS/2 request.",
     "edits": [
       {
-        "find": "        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;",
-        "replace": "        if (_rgPreview.status === 'loading') return;"
+        "find": "        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;\n        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });",
+        "replace": "        if (cur && cur.status === 'loading') return;\n        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });"
       }
     ],
     "spec": "tests/fixtures/release-rg-main-event.spec.js",
@@ -30,8 +30,8 @@
     "why": "Caching the failure strands the preview on its error line for the rest of the page.",
     "edits": [
       {
-        "find": "        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;",
-        "replace": "        if (_rgPreview.status !== 'idle') return;"
+        "find": "        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;\n        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });",
+        "replace": "        if (cur) return;\n        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });"
       }
     ],
     "spec": "tests/fixtures/release-rg-main-event.spec.js",
@@ -78,12 +78,12 @@
     "expect": "fail"
   },
   {
-    "name": "green rule missing",
-    "why": "Rows are flagged but the \"#\" cell stays white.",
+    "name": "tint rule missing",
+    "why": "Rows are flagged but the \"#\" cell keeps no tint.",
     "edits": [
       {
-        "find": "            background-color: #dff3df !important;",
-        "replace": "            background-color: inherit;"
+        "find": "{ background-color: ${c} !important; }",
+        "replace": "{ background-color: inherit; }"
       }
     ],
     "spec": "tests/fixtures/release-rg-main-event.spec.js",

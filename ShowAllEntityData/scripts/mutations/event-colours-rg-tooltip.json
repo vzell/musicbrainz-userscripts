@@ -1,0 +1,171 @@
+[
+  {
+    "name": "events not numbered by date",
+    "why": "Without the date order E1..E4 follow the order the tracks appear in (04-25 first), not the calendar. A text sort alone would pass here: these event names start with their dates.",
+    "edits": [
+      {
+        "find": "                .sort((a, b) => _eventKeyDate(a).localeCompare(_eventKeyDate(b)) || a.localeCompare(b))",
+        "replace": "                .sort(() => 0)"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "numbered by date",
+    "expect": "fail"
+  },
+  {
+    "name": "an undated linked event name wins over the dated comment",
+    "why": "\"68th Academy Awards\" carries no date, so its track would get no number and no tint.",
+    "edits": [
+      {
+        "find": "        if (linked && _eventKeyDate(linked)) return linked;",
+        "replace": "        if (linked) return linked;"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "numbered by date",
+    "expect": "fail"
+  },
+  {
+    "name": "no chip",
+    "why": "The tint alone; the chip is what tells events apart without colour.",
+    "edits": [
+      {
+        "find": "            content: \"E\" attr(data-mb-event-idx);",
+        "replace": "            content: none;"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "numbered by date",
+    "expect": "fail"
+  },
+  {
+    "name": "badge legend missing",
+    "why": "The badge keeps its plain-text tooltip only.",
+    "edits": [
+      {
+        "find": "            if (_mainEventCtx.active) badge.dataset.mbtt = _mediumEventLegendHtml(counts);",
+        "replace": "            if (false) badge.dataset.mbtt = _mediumEventLegendHtml(counts);"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "badge legend",
+    "expect": "fail"
+  },
+  {
+    "name": "main event searched like any other",
+    "why": "The main event's RG is known from the page; searching for it wastes a request.",
+    "edits": [
+      {
+        "find": "        if (row.dataset.mbMainEvent === '1') {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgPreviewLoad(info, refresh);",
+        "replace": "        if (false) {\n            const info = _releaseGroupInfo();\n            if (info) {\n                if (start) _rgPreviewLoad(info, refresh);"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "main event: the release",
+    "expect": "fail"
+  },
+  {
+    "name": "searched again for every hover",
+    "why": "Without the per-event cache every track of the event costs a search.",
+    "edits": [
+      {
+        "find": "        const cur = _eventRgSearches.get(text);\n        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;",
+        "replace": "        const cur = _eventRgSearches.get(text);\n        if (cur && cur.status === 'loading') return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "kept per event",
+    "expect": "fail"
+  },
+  {
+    "name": "a hit accepted by score instead of title",
+    "why": "Terms mode scores 2005 RAH groups 100 for a 1996 event; the first hit must not be taken as the event's group.",
+    "edits": [
+      {
+        "find": "        const hit = rgs.find(r => fold(r.title) === fold(text));",
+        "replace": "        const hit = rgs[0];"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "no match: the event",
+    "expect": "fail"
+  },
+  {
+    "name": "repaint restarts a failed search",
+    "why": "The loop the spec caught: a failure retried by its own repaint, forever.",
+    "edits": [
+      {
+        "find": "        if (start) _eventRgLookup(text, refresh);",
+        "replace": "        _eventRgLookup(text, refresh);"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "failed search is not kept",
+    "expect": "fail"
+  },
+  {
+    "name": "hint count ignored",
+    "why": "The setting caps the closest titles; 0 shows none.",
+    "edits": [
+      {
+        "find": "            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => r.title), query, detail: '',",
+        "replace": "            hints: rgs.filter(r => r !== hit).map(r => r.title), query, detail: '',"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "no match: the event",
+    "expect": "fail"
+  },
+  {
+    "name": "phrase setting ignored",
+    "why": "The query is always a phrase.",
+    "edits": [
+      {
+        "find": "        let q = Lib.settings.sa_event_rg_search_phrase !== false",
+        "replace": "        let q = true"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "settings shape the query",
+    "expect": "fail"
+  },
+  {
+    "name": "artist setting ignored",
+    "why": "The query is always scoped to the release artist.",
+    "edits": [
+      {
+        "find": "        const arids = Lib.settings.sa_event_rg_search_artist !== false ? _releaseArtistGids() : [];",
+        "replace": "        const arids = _releaseArtistGids();"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "settings shape the query",
+    "expect": "fail"
+  },
+  {
+    "name": "tooltip setting ignored",
+    "why": "Off must mean no card and no request.",
+    "edits": [
+      {
+        "find": "            if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;\n            const td = e.target.closest(_EVENT_RG_CELL_SEL);\n            if (td) td.dataset.mbtt",
+        "replace": "            if (!e.target.closest) return;\n            const td = e.target.closest(_EVENT_RG_CELL_SEL);\n            if (td) td.dataset.mbtt"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "tooltip setting off",
+    "expect": "fail"
+  },
+  {
+    "name": "Alt+click not wired",
+    "why": "The card cannot be clicked (pointer-events: none); Alt+click is the only way to its target.",
+    "edits": [
+      {
+        "find": "            if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;",
+        "replace": "            return;"
+      }
+    ],
+    "spec": "tests/fixtures/release-event-colours-rg-tooltip.spec.js",
+    "grep": "opens the found group, or the search",
+    "expect": "fail"
+  }
+]

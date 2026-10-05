@@ -1129,13 +1129,27 @@ releases with this one marked ▸, loaded with one request on the first hover
 
 When the release group title is a live title, it names the release's **main
 event**, by its date. If the tracks come from two or more dates, the **#**
-cell of every track from another date turns light green. Main-event tracks
+cell of every track from another event gets that event's own tint and a small
+chip, **E1**, **E2**, … numbered by date, so the events can be told apart with
+or without colour. Hovering the 🎪 badge shows the legend. Main-event tracks
 whose Disambiguation, **Recorded at event** or **Recorded at place** name the
 event or venue differently from the release group title get a ⚠️ warning,
 with both names in the tooltip (the venue is the first part of the title's
 location). When tracks carry live event data but the release group title is
 not a live title, a ⚠️ after the link explains why and suggests a title from
-the event with the most tracks; there is then no main event and no green.
+the event with the most tracks; there is then no main event and no tint.
+
+**The release group of each track's event.** Hovering a live track's **#**
+cell shows a release group card. For the main event it is the release's own
+release group. For any other event, a search looks for a release group named
+exactly like the event: the Disambiguation without `live, ` and without a
+trailing `; …`. It runs once per event, only when you hover. A found group
+gets the same card as the header link. Otherwise the card says so and lists
+the closest titles the search returned. Alt+click the **#** cell to open the
+release group, or the search, on musicbrainz.org. In ⚙️ Settings → 💿 RELEASE
+TRACKLIST you can switch the card off, search the words instead of the exact
+phrase (like the website's search, with many more hits), drop the
+restriction to the release's artist, and set how many closest titles to show.
 
 **Event and place against the comment.** A **Recorded at event** cell is
 marked ❌ when none of its events is named like the recording comment without

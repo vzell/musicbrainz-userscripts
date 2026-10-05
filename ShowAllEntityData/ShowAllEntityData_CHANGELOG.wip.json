@@ -1,0 +1,26 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Hovering the \"#\" cell of a live track shows a release group card for that track's event. For the main event it is the release's own release group. For any other event, a search looks for a release group named exactly like the event: the Disambiguation without \"live, \" and without a trailing \"; …\". The search runs once per event, only when you hover. A found group gets the same card as the header link. Otherwise the card says so and lists the closest titles the search returned. Alt+click the cell to open the release group, or the search, on musicbrainz.org. Four new settings in ⚙️ Settings → 💿 RELEASE TRACKLIST: switch the card off, search the words instead of the exact phrase, search only the release's artist, and set how many closest titles to show."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Tracks from different events are now told apart in the \"#\" column. Instead of one light green for every track outside the main event, each event gets its own tint and a small chip, \"E1\", \"E2\", …, numbered by date. The chips stay readable without colour. Hovering the \"🎪 N events\" badge shows a legend with each event's tint, chip and number of tracks. A track whose linked event is named without a date, such as \"68th Academy Awards\", now takes its event from the dated recording comment."
+        ]
+      }
+    ]
+  }
+]
