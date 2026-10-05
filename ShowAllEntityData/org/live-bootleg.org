@@ -1,4 +1,5 @@
 * TODO additions to live releases
+** DONE i
 
 1.)
 
@@ -95,4 +96,19 @@ c.)
 
 If there are rows with event data but the RG title doesn't follow the live style guide, flag the RG name itself with a
 warning icon in the above "span" and tell with a rich HTML tooltip
+
+** new feature
+
+1.)
+
+[Image #5] show me a rich HTML based mockup how to better distinguish in column "#" rows coming from different events
+
+2.)
+
+the row cells should have a rich HTML based tooltip like the RG one from the main event, but in the background a WS call
+should be send to check if a RG for that row specific event exist. Search for a RG with the value of the
+"Disambiguation" column but without the event type .e.g "live, " and the optional "; <free text>" part at the end.
+Check the MusicBrainz search API how to best perform that search. When an RG is found display the same tooltip like for
+the main event when hovering over the "#" data cell
+
 

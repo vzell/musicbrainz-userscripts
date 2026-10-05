@@ -2578,6 +2578,42 @@
                          'the link explains why and suggests one.'
         },
 
+        sa_event_rg_tooltip: {
+            label: 'Release group card on the "#" cell of each live track',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist: hovering a track\'s "#" cell shows the release group of the event the ' +
+                         'track comes from. For the main event that is the release\'s own release group; for any ' +
+                         'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
+                         'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
+                         'Alt+click the cell to open that release group, or the search, on musicbrainz.org.'
+        },
+
+        sa_event_rg_search_phrase: {
+            label: 'Search the event name as an exact phrase',
+            type: 'checkbox',
+            default: true,
+            description: 'On: releasegroup:"<event name>" — only titles with exactly these words in this order. Off: ' +
+                         'the words alone, like the website\'s indexed search — many more hits, mostly other dates of ' +
+                         'the same venue; they then serve as the "closest titles". Either way a release group counts ' +
+                         'as the event\'s only when its title IS the event name ("-" and "‐" alike).'
+        },
+
+        sa_event_rg_search_artist: {
+            label: 'Search only release groups by the release\'s artist',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds "AND arid:<artist MBID>" (each artist of the release\'s artist credit) to the search.'
+        },
+
+        sa_event_rg_search_hints: {
+            label: 'Closest titles to show when no release group matches',
+            type: 'number',
+            default: 5,
+            description: 'How many of the search\'s other results the "#" card lists when none is named like the ' +
+                         'event. 0 shows none.'
+        },
+
         sa_enable_release_tracks_dynamic_ar_columns: {
             label: 'Auto-discover columns for every other relationship type',
             type: 'checkbox',
@@ -27509,9 +27545,28 @@
      * `data-mb-multi-event`). `rgTitle` is set whenever the page names its
      * release group.
      *
-     * @type {{active: boolean, multi: boolean, rgTitle: ?string, rgDates: Set<string>, pageDates: Set<string>, liveRows: number, keys: Map<string, number>}}
+     * `eventIdx` numbers the events that are NOT the main one, by date then
+     * name (1, 2, …): the "#" cell's tint and "E<n>" chip, and the 🎪 badge
+     * legend (org/live-bootleg.org follow-up). `allKeys` counts every key.
+     *
+     * @type {{active: boolean, multi: boolean, rgTitle: ?string, rgDates: Set<string>, pageDates: Set<string>,
+     *         liveRows: number, keys: Map<string, number>, allKeys: Map<string, number>, eventIdx: Map<string, number>}}
      */
-    let _mainEventCtx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map() };
+    let _mainEventCtx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map(), allKeys: new Map(), eventIdx: new Map() };
+
+    // Tints of the "#" cell per non-main event, by `eventIdx` (cycling after
+    // six): pastels told apart by lightness as well as hue, so they also work
+    // for the colour-blind; the "E<n>" chip carries the number regardless.
+    // Mockup approved 2026-10-05 (variant B): https://claude.ai/artifact/WNk84AymBEwfc6pKoyvmLR
+    const _EVENT_TINTS = ['#e6dcf5', '#cfe3f7', '#fbe0c2', '#cdeee6', '#f6efb8', '#f6d4dc'];
+
+    /**
+     * The tint of one non-main event's "#" cells.
+     *
+     * @param {number} idx - 1-based `eventIdx`.
+     * @returns {string}
+     */
+    const _eventTint = idx => _EVENT_TINTS[(idx - 1) % _EVENT_TINTS.length];
 
     // A full date with optional extra "/DD" days, in either hyphen.
     const _FULL_DATE_RE = /(\d{4})[‐-](\d{2})[‐-](\d{2})((?:\/\d{2})*)/g;
@@ -27590,7 +27645,7 @@
      * @returns {typeof _mainEventCtx}
      */
     function _computeMainEventCtx(tables, master) {
-        const ctx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map() };
+        const ctx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map(), allKeys: new Map(), eventIdx: new Map() };
         if (!activeDefinition || activeDefinition.type !== 'release-tracks') return ctx;
         const info = _releaseGroupInfo();
         ctx.rgTitle = info ? info.name : null;
@@ -27603,6 +27658,7 @@
             seen.add(id);
             const key = r.dataset.mbEventKey;
             if (!key) return;
+            ctx.allKeys.set(key, (ctx.allKeys.get(key) || 0) + 1);
             const d = _eventKeyDate(key);
             if (d) ctx.pageDates.add(d);
             // A key in the event-name form came from an event or a comment.
@@ -27614,14 +27670,22 @@
         _liveTitleDates(ctx.rgTitle).forEach(d => ctx.rgDates.add(d));
         ctx.active = ctx.rgDates.size > 0;
         ctx.multi = ctx.active && ctx.pageDates.size >= 2;
+        if (ctx.active) {
+            Array.from(ctx.allKeys.keys())
+                .filter(k => _eventKeyDate(k) && !ctx.rgDates.has(_eventKeyDate(k)))
+                .sort((a, b) => _eventKeyDate(a).localeCompare(_eventKeyDate(b)) || a.localeCompare(b))
+                .forEach((k, i) => ctx.eventIdx.set(k, i + 1));
+        }
         return ctx;
     }
 
     /**
      * Writes (or clears) a row's `data-mb-main-event`: "1" for a track from
-     * the main event, "0" for one that is not (its "#" cell turns green
-     * when the table carries `data-mb-multi-event`), none when there is no
-     * main event to judge by or the row has no date.
+     * the main event, "0" for one that is not, none when there is no main
+     * event to judge by or the row has no date. A track off the main event
+     * also gets `data-mb-event-idx`/`data-mb-event-tint` on its "#" cell:
+     * its own tint and "E<n>" chip when the table carries
+     * `data-mb-multi-event`.
      *
      * @param {HTMLTableRowElement} row
      * @param {boolean} on - Whether this table takes part.
@@ -27630,6 +27694,18 @@
         const d = on ? _eventKeyDate(row.dataset.mbEventKey) : null;
         if (d) row.dataset.mbMainEvent = _mainEventCtx.rgDates.has(d) ? '1' : '0';
         else delete row.dataset.mbMainEvent;
+        // The event's number, on the "#" cell itself: its ::before chip reads
+        // it with attr(), and CSS cannot read the row's attribute from there.
+        const idx = d && row.dataset.mbMainEvent === '0' ? _mainEventCtx.eventIdx.get(row.dataset.mbEventKey) : null;
+        const cell = row.cells[0];
+        if (!cell) return;
+        if (idx) {
+            cell.dataset.mbEventIdx = String(idx);
+            cell.dataset.mbEventTint = String(((idx - 1) % _EVENT_TINTS.length) + 1);
+        } else {
+            delete cell.dataset.mbEventIdx;
+            delete cell.dataset.mbEventTint;
+        }
     }
 
     /**
@@ -27687,13 +27763,49 @@
     const _RG_PREVIEW_DELAY = 1200;
 
     /**
-     * The preview's table, per page: `idle` until the first hover, then
-     * `loading`, `done` (kept for the page) or `failed` (the next hover asks
-     * again — only a successful answer is kept).
+     * Each release group's preview table, per page, by RG gid — shared by
+     * the header link, the "#" cells of the main event and those of any
+     * other event whose RG the search found. Absent until the first hover,
+     * then `loading`, `done` (kept for the page) or `failed` (the next hover
+     * asks again — only a successful answer is kept).
      *
-     * @type {{status: ('idle'|'loading'|'done'|'failed'), table: string, detail: string}}
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), table: string, detail: string}>}
      */
-    let _rgPreview = { status: 'idle', table: '', detail: '' };
+    const _rgPreviews = new Map();
+
+    /** Minimum spacing between this feature's WS/2 requests, ms (MusicBrainz asks for ~1/s). */
+    const _RG_WS_SPACING = 1100;
+    /** The tail of the request queue `_rgWsGet()` appends to. */
+    let _rgWsQueue = Promise.resolve();
+    /** When the last queued request started, ms since the epoch. */
+    let _rgWsLastAt = 0;
+
+    /**
+     * One WS/2 request of the release group previews and the "#" event
+     * search, run one at a time and at least `_RG_WS_SPACING` apart, however
+     * fast the pointer moves over the table; `_ws2GetJson()` retries a
+     * transient status with the server's `Retry-After` as a floor.
+     *
+     * @param {string} url - Same-origin `/ws/2/...`.
+     * @param {string} label - For the `rg` debug channel.
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     */
+    function _rgWsGet(url, label) {
+        const run = _rgWsQueue.then(async () => {
+            const wait = _rgWsLastAt + _RG_WS_SPACING - Date.now();
+            if (wait > 0) await new Promise(r => setTimeout(r, wait));
+            _rgWsLastAt = Date.now();
+            return _ws2GetJson(url, {
+                tries: _RG_PREVIEW_TRIES,
+                beforeRetry: (attempt, retryAfterMs) => new Promise(
+                    r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs))),
+                dbg: (...args) => Lib.debug('rg', ...args),
+                label,
+            });
+        });
+        _rgWsQueue = run.catch(() => {});
+        return run;
+    }
 
     /**
      * HTML-escapes text for the preview and warning cards.
@@ -27772,23 +27884,26 @@
      * artist, then the table — or its loading or failure line.
      *
      * @param {{gid: string, name: string, type: string, artist: string}} info
-     * @param {number} n - Releases the link says the group has.
+     * @param {number} n - Releases the group has.
+     * @param {string} [lead] - HTML before the pills: the "main event" pill
+     *   or an event's "E<n>" chip, on a "#" cell's card.
      * @returns {string}
      */
-    function _rgPreviewHtml(info, n) {
+    function _rgPreviewHtml(info, n, lead = '') {
         const live = _parseLiveTitle(info.name);
+        const st = _rgPreviews.get(info.gid) || { status: 'loading', table: '', detail: '' };
         const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
         const head = `<div style="display:flex;gap:12px;align-items:flex-start;">` +
             `<div style="width:84px;height:84px;flex-shrink:0;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;overflow:hidden;">` +
             `<img src="https://coverartarchive.org/release-group/${_rgEsc(info.gid)}/front-250" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` +
             `<div style="min-width:0;"><div class="mb-tt-title">${_rgEsc(info.name)}</div>` +
             `<div class="mb-tt-body">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
-            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${live && live.kind === 'valid' ? pill('✓ live title') : ''}${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
             `</div></div><div class="mb-tt-rule"></div>`;
         let body;
-        if (_rgPreview.status === 'done') body = _rgPreview.table;
-        else if (_rgPreview.status === 'failed') {
-            body = `<div class="mb-tt-alert">Could not load the releases (${_rgEsc(_rgPreview.detail)}).</div>` +
+        if (st.status === 'done') body = st.table;
+        else if (st.status === 'failed') {
+            body = `<div class="mb-tt-alert">Could not load the releases (${_rgEsc(st.detail)}).</div>` +
                    `<div class="mb-tt-foot">Hover again to retry.</div>`;
         } else body = `<div class="mb-tt-comment">Loading the ${n} release${n === 1 ? '' : 's'}…</div>`;
         return `<div style="width:500px;max-width:100%;">${head}${body}</div>`;
@@ -27809,30 +27924,24 @@
     }
 
     /**
-     * Loads the preview's table on the first hover (and on the next one after
-     * a failure): one WS/2 browse, retried on a transient status with the
-     * server's `Retry-After` as a floor. Never more than one in flight.
+     * Loads one release group's preview table on the first hover (and on
+     * the next one after a failure): one WS/2 browse through `_rgWsGet()`.
+     * Never more than one in flight per group.
      *
-     * @param {HTMLAnchorElement} a
-     * @param {object} info - `_releaseGroupInfo()`.
-     * @param {number} n
+     * @param {object} info - `_releaseGroupInfo()`, or a found event's RG.
+     * @param {function(): void} onUpdate - Repaints whatever shows the card.
      * @returns {Promise<void>}
      */
-    async function _rgPreviewLoad(a, info, n) {
-        if (_rgPreview.status === 'loading' || _rgPreview.status === 'done') return;
-        _rgPreview = { status: 'loading', table: '', detail: '' };
-        _rgPreviewRefresh(a, info, n);
-        const res = await _ws2GetJson(`/ws/2/release?release-group=${encodeURIComponent(info.gid)}&inc=media+labels&limit=100&fmt=json`, {
-            tries: _RG_PREVIEW_TRIES,
-            beforeRetry: (attempt, retryAfterMs) => new Promise(
-                r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs))),
-            dbg: (...args) => Lib.debug('rg', ...args),
-            label: '_rgPreviewLoad',
-        });
-        _rgPreview = res.ok && res.data
+    async function _rgPreviewLoad(info, onUpdate) {
+        const cur = _rgPreviews.get(info.gid);
+        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
+        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });
+        onUpdate();
+        const res = await _rgWsGet(`/ws/2/release?release-group=${encodeURIComponent(info.gid)}&inc=media+labels&limit=100&fmt=json`, '_rgPreviewLoad');
+        _rgPreviews.set(info.gid, res.ok && res.data
             ? { status: 'done', table: _rgReleasesTableHtml(res.data, info), detail: '' }
-            : { status: 'failed', table: '', detail: res.detail || `HTTP ${res.status}` };
-        _rgPreviewRefresh(a, info, n);
+            : { status: 'failed', table: '', detail: res.detail || `HTTP ${res.status}` });
+        onUpdate();
     }
 
     /**
@@ -27883,7 +27992,7 @@
             const bdi = document.createElement('bdi');
             bdi.textContent = info.name;
             a.appendChild(bdi);
-            a.addEventListener('mouseenter', () => { _rgPreviewLoad(a, info, n); });
+            a.addEventListener('mouseenter', () => { _rgPreviewLoad(info, () => _rgPreviewRefresh(a, info, n)); });
             _rgPreviewRefresh(a, info, n);
         }
         const live = _parseLiveTitle(info.name);
@@ -27901,6 +28010,251 @@
             a.after(warn);
         }
         warn.dataset.mbtt = _rgLiveWarnHtml(info, live);
+    }
+
+    // ── "#" cell: the release group of the track's event ─────────────────────
+    //
+    // Every release-tracklist track with an event key gets a card on its "#"
+    // cell: the release's own RG for the main event, else the RG a search
+    // finds for the track's event. /ws/2/release-group search, per
+    // https://musicbrainz.org/doc/MusicBrainz_API/Search (checked 2026-10-05):
+    // `releasegroup` (title) and `arid` fields, full Lucene syntax, `score`
+    // per hit. Probed 2026-10-05 (scripts/probe-rg-event-search.py): a
+    // phrase + arid query finds "1996‐04‐19: ICC Berlin, Saal 1, …" at score
+    // 100, with "-" too; the venue order swapped finds nothing; terms mode
+    // scores three 2005 Royal Albert Hall RGs 100 for a 1996 event — so a hit
+    // counts only when its title IS the event name, never by score.
+
+    /**
+     * Each event search, per page, by search text: `loading`, `done` (kept;
+     * `rg` is null when nothing matched) or `failed` (asked again on the next
+     * hover).
+     *
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), rg: ?object, n: number, hints: string[], query: string, detail: string}>}
+     */
+    const _eventRgSearches = new Map();
+
+    /** Findings plan per table, to find a hovered row's comment column. */
+    const _eventRgPlans = new WeakMap();
+
+    /**
+     * MBIDs of the release's artist credit, from the page's own JSON.
+     *
+     * @returns {string[]}
+     */
+    function _releaseArtistGids() {
+        const p = _readEmbeddedReleaseJson();
+        const names = (p && p.release && p.release.artistCredit && p.release.artistCredit.names) || [];
+        return names.map(n => n && n.artist && n.artist.gid).filter(Boolean);
+    }
+
+    /**
+     * The Lucene query for one event name, per the search settings: a
+     * phrase (only `"` and `\` escaped) or plain terms (every special
+     * character escaped), and the release's artists as `arid:`.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _eventRgQuery(text) {
+        let q = Lib.settings.sa_event_rg_search_phrase !== false
+            ? `releasegroup:"${text.replace(/[\\"]/g, '\\$&')}"`
+            : `releasegroup:(${text.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&')})`;
+        const arids = Lib.settings.sa_event_rg_search_artist !== false ? _releaseArtistGids() : [];
+        if (arids.length) q += ` AND (${arids.map(a => `arid:${a}`).join(' OR ')})`;
+        return q;
+    }
+
+    /**
+     * The name to search for a row's event: its Disambiguation without the
+     * event type and "; …" (`_rowRecCommentEvent()`), else its event key
+     * when that is an event name; `null` for a bare date.
+     *
+     * @param {HTMLTableRowElement} row
+     * @returns {?string}
+     */
+    function _eventSearchText(row) {
+        const table = row.closest('table');
+        let plan = table ? _eventRgPlans.get(table) : null;
+        if (table && !plan) {
+            plan = _findingPlanForTable(table);
+            _eventRgPlans.set(table, plan);
+        }
+        const ce = plan ? _rowRecCommentEvent(row, plan) : null;
+        if (ce) return ce.event;
+        const key = row.dataset.mbEventKey || '';
+        return key.includes(': ') ? key : null;
+    }
+
+    /**
+     * Searches once per event name for a release group named exactly like it
+     * ("-" and "‐" alike), keeps the closest other titles as hints, and loads
+     * a found group's preview table.
+     *
+     * @param {string} text
+     * @param {function(): void} onUpdate
+     * @returns {Promise<void>}
+     */
+    async function _eventRgLookup(text, onUpdate) {
+        const cur = _eventRgSearches.get(text);
+        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
+        const h = Lib.settings.sa_event_rg_search_hints;
+        const hintsN = typeof h === 'number' && h >= 0 ? h : 5;
+        const query = _eventRgQuery(text);
+        _eventRgSearches.set(text, { status: 'loading', rg: null, n: 0, hints: [], query, detail: '' });
+        onUpdate();
+        const res = await _rgWsGet(`/ws/2/release-group?query=${encodeURIComponent(query)}&limit=${Math.min(25, hintsN + 5)}&fmt=json`, '_eventRgLookup');
+        if (!res.ok || !res.data) {
+            _eventRgSearches.set(text, { status: 'failed', rg: null, n: 0, hints: [], query, detail: res.detail || `HTTP ${res.status}` });
+            onUpdate();
+            return;
+        }
+        const fold = v => String(v || '').replace(/‐/g, '-').trim();
+        const rgs = res.data['release-groups'] || [];
+        const hit = rgs.find(r => fold(r.title) === fold(text));
+        const p = _readEmbeddedReleaseJson();
+        const info = hit ? {
+            gid: hit.id, name: hit.title,
+            type: [hit['primary-type'], ...(hit['secondary-types'] || [])].filter(Boolean).join(' + '),
+            artist: (hit['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join(''),
+            releaseGid: (p && p.release && p.release.gid) || '',
+        } : null;
+        _eventRgSearches.set(text, {
+            status: 'done', rg: info, n: hit ? (hit.count || (hit.releases || []).length) : 0,
+            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => r.title), query, detail: '',
+        });
+        if (info) _rgPreviewLoad(info, onUpdate);
+        onUpdate();
+    }
+
+    /**
+     * How many versions the release's group has, as the header link says.
+     *
+     * @returns {number}
+     */
+    function _releaseGroupVersionCount() {
+        const a = document.querySelector('p.subheader span.small > a[href^="/release-group/"]');
+        if (!a) return 0;
+        if (a.dataset.mbRgLink) return Number(a.dataset.mbRgLink);
+        const m = /(\d+)\s+available/.exec(a.textContent);
+        return m ? Number(m[1]) : 0;
+    }
+
+    /**
+     * The "#" cell's card: the release's own RG for the main event; for
+     * another event its found RG, or the search's state — searching,
+     * failed, or no match with hints. With `start` (a hover, never a
+     * repaint) it also starts whatever lookup is still needed: a repaint
+     * that restarted one would retry a failed request forever.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {boolean} [start]
+     * @returns {string}
+     */
+    function _eventRgCardHtml(td, start = false) {
+        const row = td.parentElement;
+        const key = row.dataset.mbEventKey || '';
+        const refresh = () => _eventRgRepaint(td);
+        const idx = td.dataset.mbEventIdx ? Number(td.dataset.mbEventIdx) : null;
+        const chip = idx
+            ? `<span style="font-size:0.75em;font-weight:700;border:1px solid #8f8f8f;border-radius:2px;padding:0 3px;background:${_eventTint(idx)};">E${idx}</span>`
+            : '';
+        const foot = t => `<div class="mb-tt-foot">${t}</div>`;
+        if (row.dataset.mbMainEvent === '1') {
+            const info = _releaseGroupInfo();
+            if (info) {
+                if (start) _rgPreviewLoad(info, refresh);
+                return _rgPreviewHtml(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>') +
+                    foot('The release\'s own release group · Alt+click to open it');
+            }
+        }
+        const text = _eventSearchText(row);
+        const count = _mainEventCtx.allKeys.get(key) || 0;
+        const head = `<div style="display:flex;gap:8px;align-items:center;">${chip}<span class="mb-tt-title">${_rgEsc(text || key)}</span></div>` +
+            `<div class="mb-tt-body">${count} track${count === 1 ? '' : 's'} on this release${row.dataset.mbMainEvent === '0' ? ' · not the main event' : ''}</div><div class="mb-tt-rule"></div>`;
+        const wrap = body => `<div style="width:460px;max-width:100%;">${head}${body}</div>`;
+        if (!text) return wrap('<div class="mb-tt-body">No event name to search for: this track has a date but no event and no live comment.</div>');
+        if (start) _eventRgLookup(text, refresh);
+        const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
+        if (st.status === 'done' && st.rg) {
+            return _rgPreviewHtml(st.rg, st.n, chip) + foot('Found by searching for this event · Alt+click to open it');
+        }
+        if (st.status === 'loading') return wrap('<div class="mb-tt-comment">Searching for a release group named like this event…</div>');
+        if (st.status === 'failed') {
+            return wrap(`<div class="mb-tt-alert">Could not search (${_rgEsc(st.detail)}).</div>${foot('Hover again to retry.')}`);
+        }
+        const mode = `${Lib.settings.sa_event_rg_search_phrase !== false ? 'phrase' : 'terms'} search` +
+            `${Lib.settings.sa_event_rg_search_artist !== false ? ', by the release\'s artist' : ''}`;
+        const hints = st.hints.length
+            ? `<div class="mb-tt-dim" style="margin-top:4px;">Closest titles the search returned:</div><div class="mb-tt-body">${st.hints.map(_rgEsc).join('<br>')}</div>`
+            : '';
+        return wrap(`<div class="mb-tt-body">No release group is named like this event.</div>${hints}` +
+            foot(`${mode} · Alt+click to run it on musicbrainz.org`));
+    }
+
+    /**
+     * Rewrites a "#" cell's card, and the shown tooltip when the pointer is
+     * on that cell.
+     *
+     * @param {HTMLTableCellElement} td
+     */
+    function _eventRgRepaint(td) {
+        if (!td.isConnected) return;
+        td.dataset.mbtt = _eventRgCardHtml(td);
+        const tip = document.getElementById('mb-stat-tooltip');
+        if (tip && tip.style.display === 'block' && td.matches(':hover')) tip.innerHTML = td.dataset.mbtt;
+    }
+
+    /**
+     * Where Alt+click on a "#" cell goes: the main event's or the found
+     * release group, else the search on musicbrainz.org; `null` before the
+     * search has answered.
+     *
+     * @param {HTMLTableCellElement} td
+     * @returns {?string}
+     */
+    function _eventRgTargetUrl(td) {
+        const row = td.parentElement;
+        if (row.dataset.mbMainEvent === '1') {
+            const info = _releaseGroupInfo();
+            if (info) return `/release-group/${info.gid}`;
+        }
+        const text = _eventSearchText(row);
+        const st = text ? _eventRgSearches.get(text) : null;
+        if (!st || st.status !== 'done') return null;
+        if (st.rg) return `/release-group/${st.rg.gid}`;
+        return `/search?query=${encodeURIComponent(st.query)}&type=release_group&method=advanced`;
+    }
+
+    /** The "#" cells the event card serves. */
+    const _EVENT_RG_CELL_SEL = 'table.tbl tr[data-mb-event-key] > td:first-child';
+    let _eventRgTooltipWired = false;
+
+    /**
+     * Wires the "#" event card once, delegated on `document`, so the clones
+     * every re-render makes need nothing: a `pointerover` (dispatched before
+     * the tooltip engine's `mouseover`) writes the cell's `data-mbtt` just
+     * in time and starts the lookup; an Alt+click opens the card's target.
+     *
+     * @returns {void}
+     */
+    function initEventRgTooltip() {
+        if (_eventRgTooltipWired) return;
+        _eventRgTooltipWired = true;
+        document.addEventListener('pointerover', e => {
+            if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
+            const td = e.target.closest(_EVENT_RG_CELL_SEL);
+            if (td) td.dataset.mbtt = _eventRgCardHtml(td, true);
+        }, true);
+        document.addEventListener('click', e => {
+            if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
+            const td = e.target.closest(_EVENT_RG_CELL_SEL);
+            const url = td ? _eventRgTargetUrl(td) : null;
+            if (!url) return;
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(url, '_blank', 'noopener');
+        }, true);
     }
 
     /**
@@ -27940,9 +28294,12 @@
      */
     function _rowEventKey(row, cols, plan) {
         const linked = cols.event >= 0 ? _findCellLinkedNames(row.cells[cols.event], 'event')[0] : null;
-        if (linked) return linked;
+        // A linked event named without a date ("68th Academy Awards") says
+        // less than the live comment, which carries one: prefer the comment.
+        if (linked && _eventKeyDate(linked)) return linked;
         const ce = _rowRecCommentEvent(row, plan);
         if (ce) return ce.event;
+        if (linked) return linked;
         const d = cols.date >= 0 && row.cells[cols.date] ? row.cells[cols.date].textContent.trim() : '';
         return d || null;
     }
@@ -42982,7 +43339,36 @@ a { color: #1565c0; }`;
                 .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
                 .map(([k, n]) => `${n} row${n === 1 ? '' : 's'}: ${k}`);
             _setTip(badge, `Rows from ${counts.size} events on this medium\n${lines.join('\n')}`);
+            // With a main event, the card is a legend: each event's tint and
+            // "E<n>" chip as the "#" cells show them.
+            if (_mainEventCtx.active) badge.dataset.mbtt = _mediumEventLegendHtml(counts);
+            else delete badge.dataset.mbtt;
         });
+    }
+
+    /**
+     * The 🎪 badge's legend card: one line per event on the medium, by date,
+     * with the swatch and "E<n>" chip its "#" cells carry ("main event" for
+     * the one the release group names) and its number of tracks.
+     *
+     * @param {Map<string, number>} counts - From `_mediumEventCounts()`.
+     * @returns {string}
+     */
+    function _mediumEventLegendHtml(counts) {
+        const rows = Array.from(counts.entries())
+            .sort((a, b) => (_eventKeyDate(a[0]) || '').localeCompare(_eventKeyDate(b[0]) || '') || a[0].localeCompare(b[0]))
+            .map(([k, n]) => {
+                const idx = _mainEventCtx.eventIdx.get(k);
+                const swatch = `<span style="display:inline-block;width:18px;height:12px;flex-shrink:0;border:1px solid #c9bfae;background:${idx ? _eventTint(idx) : '#ffffff'};"></span>`;
+                const chip = idx
+                    ? `<span style="font-size:0.75em;font-weight:700;border:1px solid #8f8f8f;border-radius:2px;padding:0 2px;background:#ffffff;">E${idx}</span>`
+                    : '<span class="mb-tt-pill">main event</span>';
+                return `<div style="display:flex;gap:6px;align-items:center;margin-top:3px;">${swatch}${chip}` +
+                    `<span>${n} track${n === 1 ? '' : 's'} · ${_rgEsc(k)}</span></div>`;
+            }).join('');
+        return `<div style="max-width:480px;"><div class="mb-tt-title">Rows from ${counts.size} events on this medium</div>` +
+            `<div class="mb-tt-rule"></div>${rows}` +
+            `<div class="mb-tt-foot">Main event: the release group, ${_rgEsc(_mainEventCtx.rgTitle || '')}</div></div>`;
     }
 
     /**
@@ -44364,11 +44750,26 @@ a { color: #1565c0; }`;
         /* A release-tracklist track NOT from the main event — the one the
            release group's live title names (stampFindings(), org/live-bootleg.org
            4), on a release whose tracks come from two or more dates
-           (data-mb-multi-event): its "#" cell goes light green. Placed before the track-target
-           rule, which out-ranks it on specificity, so a targeted row keeps the
-           target colour. !important for the zebra rule. */
-        table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child {
-            background-color: #dff3df !important;
+           (data-mb-multi-event): its "#" cell gets its event's own tint
+           (_EVENT_TINTS, by data-mb-event-tint) and an "E<n>" chip, so the
+           events can be told apart, by colour and without it. The chip is a
+           ::before: no cell text, so no filter or sort sees it. Placed before
+           the track-target rule, which out-ranks it on specificity, so a
+           targeted row keeps the target colour. !important for the zebra
+           rule. */
+        ${_EVENT_TINTS.map((c, i) => `table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child[data-mb-event-tint="${i + 1}"] { background-color: ${c} !important; }`).join('\n        ')}
+        table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child[data-mb-event-idx]::before {
+            content: "E" attr(data-mb-event-idx);
+            float: left;
+            margin-right: 4px;
+            padding: 0 2px;
+            border: 1px solid #8f8f8f;
+            border-radius: 2px;
+            background: #ffffff;
+            color: #3d3d3d;
+            font-size: 9.5px;
+            font-weight: 700;
+            line-height: 1.35;
         }
         tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]):not([data-mb-finding]) {
             background-color: #f2f2b2 !important;
@@ -46103,6 +46504,7 @@ a { color: #1565c0; }`;
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
     initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
+    initEventRgTooltip(); // the "#" cell's event card: delegated, requests only on hover
 
     if (headerContainer.tagName === 'A') {
         // Resolve the owning <h1> and append at the END so that any pre-existing

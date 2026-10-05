@@ -18495,3 +18495,39 @@ no green but 4b on all 38; RG date off the page's one date → off, not green;
 date); no ⚠️ on a live title; setting off.
 `scripts/mutations/release-rg-main-event.json`: 13 entries, 12 `fail` + 1
 honest `pass`.
+
+## 2026-10-05 — per-event "#" tints and the "#" release group card (branch feature/event-colours-rg-tooltip)
+
+Source: the user's screenshot of Brixton Night (release e384f062): CD 3 mixes
+four events besides the main one, and item 4's single green could not tell
+them apart. Mockup with three variants
+(https://claude.ai/artifact/WNk84AymBEwfc6pKoyvmLR); the user picked B, a
+tint plus an "E<n>" chip numbered by date.
+
+**Search behaviour, probed (scripts/probe-rg-event-search.py, 2026-10-05).**
+Phrase + `arid:` finds an RG only under its exact title ("-" and "‐" alike).
+None of Brixton Night's other events has an RG. In terms mode (what the
+website's indexed search does, 23,542 hits unscoped) three 2005 Royal Albert
+Hall RGs score 100 for a 1996 RAH event. So a hit counts only when its title
+IS the event name, and the other results become hints. The search is
+configurable (phrase/terms, artist scope, hint count), as the user asked.
+
+**Two bugs found while testing, both fixed before shipping.**
+1. The "68th Academy Awards" track had no number: its linked event name has
+   no date. `_rowEventKey()` now prefers the dated comment over an undated
+   event name.
+2. A failed search retried itself forever. The repaint after the failure
+   called `_eventRgCardHtml()`, which restarted the lookup it saw "failed".
+   The 503 test saw 5 searches in one hover. Only a real hover may start a
+   lookup now (`start` flag). The header link never had this, because its
+   repaint only renders.
+
+**Tests.** `release-event-colours-rg-tooltip.spec.js`, 10 tests: numbering
+and tints, filter and sort, badge legend, the main-event card without a
+search, found (1 search + 1 browse, cached per event), no match with
+hints, settings (query shape, hints 0, tooltip off), a 503 not cached and
+not looping, Alt+click targets. The "found" answer is a test double (the
+real found answer retitled), because no real one exists for these events.
+`scripts/mutations/event-colours-rg-tooltip.json`: 13 entries. Item 4's
+spec and mutations were updated for the tint (E1) and the per-gid preview
+cache.

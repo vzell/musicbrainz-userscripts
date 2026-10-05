@@ -1,0 +1,128 @@
+{
+ "created": "2026-10-04T23:56:05.413Z",
+ "count": 1,
+ "offset": 0,
+ "release-groups": [
+  {
+   "id": "fa9c43a7-2592-3336-a09b-1414b4b6ee68",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 100,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 5,
+   "title": "1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany",
+   "first-release-date": "1996",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "23b9ef0e-528d-4ab5-9393-53f2e3cf91cb",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "I Am the Real Bob Dylan",
+     "status": "Bootleg"
+    },
+    {
+     "id": "ee6fc76d-b590-49dc-ad28-351615c02b12",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Berlin ’96",
+     "status": "Bootleg"
+    },
+    {
+     "id": "d8aa852d-6099-4da7-bfa6-da1d9865a4b0",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Old Habits",
+     "status": "Bootleg"
+    },
+    {
+     "id": "9b5d52e9-e509-4fa1-8f35-48e66e0235e5",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Born Again",
+     "status": "Bootleg"
+    },
+    {
+     "id": "d390b4ff-38ab-4783-99ef-2c4d338e016b",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Berlin Night",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  }
+ ]
+}

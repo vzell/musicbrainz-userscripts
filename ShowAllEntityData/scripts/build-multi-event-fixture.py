@@ -19,7 +19,11 @@ scripts/build-recording-comments-fixture.py injects for the same reason.
 
 Idempotent: a link already followed by a comment span is left alone.
 
-Usage: python3 scripts/build-multi-event-fixture.py
+Also used for tests/fixtures/release-tracks-brixton-night.html (release
+e384f062-85a3-4141-9122-0814d987cda3, four events on CD 3), fetched the same
+way and passed as the argument.
+
+Usage: python3 scripts/build-multi-event-fixture.py [fixture.html]
 """
 
 import html
@@ -29,7 +33,7 @@ import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent.parent
-FIXTURE = HERE / 'tests' / 'fixtures' / 'release-tracks-multi-event.html'
+FIXTURE = pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else HERE / 'tests' / 'fixtures' / 'release-tracks-multi-event.html'
 
 LINK_RE = re.compile(r'(<a href="/recording/([0-9a-f-]{36})"><bdi>[^<]*</bdi></a>)(?! <span class="comment">)')
 
