@@ -60,6 +60,28 @@ test.describe('sl-bootlegs (springsteenlyrics.com bootleg list)', () => {
         expect(await page.locator('div.blog-post').count()).toBe(0);
     });
 
+    test('Title is the sticky column, not the first column (Cover)', async ({ page }) => {
+        // Without `features.stickyColumn` applyStickyColumn() falls back to
+        // column 0, the thumbnail. Geometry: sl-sticky-headers.spec.js.
+        const sticky = await page.evaluate(() => {
+            const table = document.querySelector('table.tbl');
+            const names = Array.from(table.querySelectorAll('thead tr:first-child th'))
+                .map((th) => th.dataset.colName || th.textContent.trim());
+            const idx = (n) => names.indexOf(n);
+            const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+            return {
+                th: Array.from(table.querySelectorAll('thead tr:first-child th.mb-sticky-col'))
+                    .map((th) => th.dataset.colName || th.textContent.trim()),
+                titleCells: bodyRows.filter((tr) => tr.cells[idx('Title')].classList.contains('mb-sticky-col')).length,
+                coverCells: bodyRows.filter((tr) => tr.cells[idx('Cover')].classList.contains('mb-sticky-col')).length,
+                rows: bodyRows.length,
+            };
+        });
+        expect(sticky.th).toEqual(['Title']);
+        expect(sticky.titleCells).toBe(sticky.rows);
+        expect(sticky.coverCells).toBe(0);
+    });
+
     test('card fields and flags are parsed into their own columns', async ({ page }) => {
         const byItem = Object.fromEntries((await renderedSlRows(page)).map((r) => [r._item, r]));
 

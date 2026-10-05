@@ -20,7 +20,91 @@ Both URL are rendered unauthenticated
 
 ** TODO on collections ONLY "Official albums" works
 
-** TODO redesign header part and make it sticky
+Currently our userscript doesn't work on the SpringsteenLyrics.com collection entry page
+https://www.springsteenlyrics.com/collection.php, see @debug/sl-collection-initial.html
+
+1.)
+
+adjust the @include directive
+
+2.)
+
+It currently only works for the "category=album"
+
+#+begin_example
+<div class="element-buttons" align="center"><p><strong>List items by category:</strong></p>
+
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=album">Official Albums</a>
+<a class="btn btn border-exists-selected" href="collection.php?cmd=list&amp;category=sampler">Samplers and Unique Releases</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=single">Singles and Maxi Singles</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=nugs">Nugs.net releases</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=radioshows">Radio Shows</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=vaalbum">Various Artists Albums</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=guest">Guest Appearances</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=cover">Covers and Tribute Albums</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=audioboot">Audio Bootlegs</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=other">Other Audio</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video">Video</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_unauth">Video Unauthorized</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_var">Video Various Artists</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_guest">Video Guest Appearances</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_cover">Video Covers</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_doc">Documentaries</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_movie">Movies</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=video_boot">Video Bootlegs</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=book">Books</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=fanzine">Fanzines</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=magazine">Magazines</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=newspaper">Newspapers</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=program">Programs</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=printedmusic">Printed Music</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=calendar">Calendars</a>
+<a class="btn btn border-exists-notselected" href="collection.php?cmd=list&amp;category=memorabilia">Memorabilia</a>
+</div>
+#+end_example
+
+parse the initial page of other categories, to make it workable anywhere
+
+3.)
+
+Everything starting from the beginning of the page inclusive the h2 header line
+
+#+begin_example
+<h2 class="heading mb-h2-processed mb-toggle-h2"
+#+end_example
+
+is missing the sticky support.
+
+4.)
+
+The "Title" column (also for the bootleg PT e.g. https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_inter) should be the sticky column in the table
+
+*** Answer (2026-10-05, branch =feature/sl-all-categories=)
+
+All four done; details in =DEBUG-NOTES.md= ("springsteenlyrics.com: only
+\"Official Albums\" converted; entry page; sticky headers") and
+=docs/claude/springsteenlyrics.md=.
+
+1. =@include=: a second line admits =collection.php= (bare, =cmd=intro=, or
+   =pg=N=). New pageType =sl-collection-intro= ("Show all latest additions").
+   It paginates with =pg=N= (=page=N= returns page 1 again), hence the new
+   =features.pageParam=. Live: 5365 rows from 54 pages.
+2. Root cause: the card markup is the same in every category. Every category
+   but "Official Albums" (and the entry page) renders a year-filter block
+   whose stray =</div>= closes =.project-detail= before the cards, and the
+   cards were looked up inside it. They are now found from the cards
+   themselves (=_slFindCards()=). Live: book 105 rows from 2 pages.
+3. Sticky Page Headers now runs on the site: the breadcrumb, the toolbar
+   =<h1>=, the category and filter blocks and the list =<h2>= stay put. On
+   book and memorabilia a second stray =</div>= leaves a floated Bootstrap
+   column beside the table, and the walk now descends into full-width floats.
+   The site's centred inner containers lose their auto margins. Both issues
+   were found by the live check under the site's real CSS.
+4. =stickyColumn: 'Title'= on all three SL pageTypes.
+
+Still to do: your real-browser check under Tampermonkey (sampler, book, the
+entry page, bootlegs aud_inter, scrolled sideways and with the navbar fixed),
+then the merge — flip this TODO to DONE then.
 
 ** TODO add detail page support
 

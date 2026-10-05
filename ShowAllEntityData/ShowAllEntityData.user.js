@@ -19,6 +19,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3672,7 +3673,8 @@
             default: false,
             description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
-                         'every format/country/date/… filter) and bootlegs.php?cmd=list… — and ' +
+                         'every format/country/date/… filter), the collection\'s entry page ' +
+                         'collection.php ("Latest additions") and bootlegs.php?cmd=list… — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
                          'toolbar. Only what each list card shows is used; no item detail page is ' +
@@ -4609,13 +4611,12 @@
     /**
      * True when this page is on springsteenlyrics.com rather than MusicBrainz.
      *
-     * The only non-MusicBrainz host the script runs on (see the last
-     * `@include` line and docs/claude/springsteenlyrics.md). It is read by the
+     * The only non-MusicBrainz host the script runs on (see the last two
+     * `@include` lines and docs/claude/springsteenlyrics.md). It is read by the
      * opt-in gate just below, by the page-type detection loop (which only
      * considers definitions whose `host` matches) and by the few
-     * MusicBrainz-shaped helpers that must stand down there
-     * (`performClutterCleanup()`, `initStickyPageHeaders()`,
-     * `initNavigationGuard()`).
+     * MusicBrainz-shaped helpers that must stand down or adapt there
+     * (`performClutterCleanup()`, `initNavigationGuard()`).
      * @type {boolean}
      */
     const _isSlHost = /(^|\.)springsteenlyrics\.com$/.test(window.location.hostname);
@@ -8723,13 +8724,28 @@
     // docs/claude/springsteenlyrics.md.
 
     /**
-     * Selector for one item card on a springsteenlyrics.com list page.
-     * Scoped to `.project-detail`, the main content block, which also keeps
-     * the site's navigation mega-menu (seven more `h3.heading`s) out of every
-     * lookup here.
-     * @type {string}
+     * Returns the item cards of a springsteenlyrics.com list page: every
+     * `div.blog-post` outside the site's navbar and footer.
+     *
+     * Deliberately NOT scoped to `.project-detail`, the main content block.
+     * On every collection page that renders the "Filter by original year of
+     * release" slider (all categories but "Official Albums", and the
+     * `collection.php` entry page) that block ends in a stray `</div>`, and
+     * the parser closes `.project-detail` right there — the list heading and
+     * all cards end up AFTER it, not inside it. A `.project-detail`-scoped
+     * selector found nothing on those pages, so the conversion was a silent
+     * no-op (checked live on 2026-10-05: sampler, book, memorabilia and the
+     * entry page close it before the first card; album and the bootleg
+     * lists after the last). The document-wide count equals the page's own
+     * "Showing items" count on every page checked.
+     *
+     * @param {Document} docContext  The live or a fetched document.
+     * @returns {Element[]} The cards, in document order.
      */
-    const _SL_CARD_SEL = '.project-detail div.blog-post';
+    function _slFindCards(docContext) {
+        return Array.from(docContext.querySelectorAll('div.blog-post'))
+            .filter(card => !card.closest('.navbar, footer'));
+    }
 
     /**
      * Column headers per `features.slCardsToTable` kind, in render order.
@@ -8756,16 +8772,22 @@
 
     /**
      * Returns the list heading of a springsteenlyrics.com list page — the
-     * `h3.heading` (or, once converted, `h2.heading`) inside `.project-detail`
-     * that precedes the item cards, e.g. "OFFICIAL ALBUMS" or
-     * "LIVE SHOWS: 1967-1974". Exactly one exists per list page (checked on
-     * both snapshots and four live categories, 2026-10-04).
+     * `h3.heading` (or, once converted, `h2.heading`) that precedes the item
+     * cards as their sibling, e.g. "OFFICIAL ALBUMS", "LIVE SHOWS: 1967-1974"
+     * or the entry page's "Latest additions".
+     *
+     * Found from the cards (or, once they are converted, from the table that
+     * took their place), never by a page-wide or `.project-detail`-scoped
+     * query: seven of the page's ten `h3.heading`s belong to the navigation
+     * mega-menu, and on most collection pages `.project-detail` is closed
+     * before the list starts — see `_slFindCards()`.
      *
      * @param {Document} docContext  The live or a fetched document.
      * @returns {?HTMLElement} The heading, or `null` when the page has none.
      */
     function _slFindListHeading(docContext) {
-        return docContext.querySelector('.project-detail h3.heading, .project-detail h2.heading');
+        const anchor = _slFindCards(docContext)[0] || docContext.querySelector('table.mb-sl-table');
+        return anchor?.parentElement?.querySelector(':scope > h3.heading, :scope > h2.heading') || null;
     }
 
     /**
@@ -8976,8 +8998,20 @@
     function applySlCardsToTable(def, docContext = document) {
         const kind = def?.features?.slCardsToTable;
         if (!_SL_HEADERS[kind]) return;
-        const cards = Array.from(docContext.querySelectorAll(_SL_CARD_SEL));
-        if (cards.length === 0) return;
+        const cards = _slFindCards(docContext);
+        if (cards.length === 0) {
+            // Said out loud, because a silent no-op here is how "only
+            // Official Albums works" went unnoticed: the button then renders
+            // "0 rows" with nothing in the log to say why. A page this
+            // function already converted (the table took the cards' place)
+            // is the one legitimate case and stays quiet. On a fetched page
+            // the likeliest cause is a CloudFlare challenge instead of the list.
+            if (!docContext.querySelector('table.mb-sl-table')) {
+                Lib.warn('init', `applySlCardsToTable: no item cards found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('div.blog-post').length} div.blog-post in the document, none outside the navbar/footer) — nothing converted.`);
+            }
+            return;
+        }
 
         const table = docContext.createElement('table');
         table.className = 'tbl mb-sl-table';
@@ -9010,6 +9044,10 @@
                 const h2 = document.createElement('h2');
                 Array.from(heading.attributes).forEach(attr => h2.setAttribute(attr.name, attr.value));
                 while (heading.firstChild) h2.appendChild(heading.firstChild);
+                // The site styles h3.heading only; this class carries the
+                // replacement rule in _ensureSlStyle(), wherever the heading
+                // sits (often outside `.project-detail`, see _slFindCards()).
+                h2.classList.add('mb-sl-list-heading');
                 heading.replaceWith(h2);
             }
             for (let el = table.parentElement; el; el = el.parentElement) {
@@ -9036,6 +9074,15 @@
      * `position: fixed` once the page is scrolled and would otherwise cover
      * the pinned header.
      *
+     * The site's fixed-width Bootstrap `.container`s INSIDE a widened
+     * (`mb-sl-wide`) one — the year-filter slider and the "Formats guide"
+     * panel — lose their auto side margins. Centred in a column as wide as
+     * the table they sat around its middle, off-screen at scrollX 0; and once
+     * Sticky Page Headers pinned one, every width cap grew its auto margins
+     * and pushed it further right (measured live on "book", 2026-10-05:
+     * left 1198 px, capped to 120 px in a 1000 px window). Left-aligned they
+     * sit at the content's left edge and stay pinned there.
+     *
      * @returns {void}
      */
     function _ensureSlStyle() {
@@ -9047,13 +9094,17 @@
                 margin: 0 0 12px;
                 line-height: 1.4;
             }
-            body.mb-sa-host-sl .project-detail h2.heading {
+            body.mb-sa-host-sl h2.mb-sl-list-heading {
                 font-size: 18px;
                 margin: 10px 0;
             }
             body.mb-sa-host-sl .container.mb-sl-wide {
                 width: auto;
                 max-width: none;
+            }
+            body.mb-sa-host-sl .container.mb-sl-wide .container:not(.mb-sl-wide) {
+                margin-left: 0;
+                margin-right: 0;
             }
             :where(body.mb-sa-host-sl table.tbl) {
                 border-collapse: collapse;
@@ -18821,17 +18872,18 @@
 
         // --- springsteenlyrics.com -------------------------------------------
         // Not MusicBrainz at all: Bruce Springsteen collection and bootleg
-        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination. Opt-in
+        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination (the
+        // collection entry page: `&pg=N`, via `pageParam`). Opt-in
         // via `sa_enable_springsteenlyrics`, and only ever considered on that
         // host — the `host` key is read by the detection loop, which skips every
         // definition whose host does not match, so none of the broad
-        // MusicBrainz matchers above can claim an SL path and these two can
+        // MusicBrainz matchers above can claim an SL path and these can
         // never match on MusicBrainz. `slCardsToTable` turns the cards into the
         // `table.tbl` the whole pipeline expects; see applySlCardsToTable() and
         // docs/claude/springsteenlyrics.md. Page count needs no hook:
         // determineMaxPageFromDOM()'s no-"Next" branch takes the highest
-        // `page=` link, and SL's "»" always points at the last page (checked
-        // live on 2026-10-04, see DEBUG-NOTES.md).
+        // page-parameter link, and SL's "»" always points at the last page
+        // (checked live on 2026-10-04 and 2026-10-05, see DEBUG-NOTES.md).
         {
             type: 'sl-collection',
             host: 'springsteenlyrics.com',
@@ -18839,7 +18891,29 @@
             buttons: [ { label: 'Show all items of this collection list', shortLabel: 'Items' } ],
             features: {
                 slCardsToTable: 'collection',
-                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The collection's entry page, "Latest additions": every item of the
+        // whole collection, newest first (5365 items in 54 pages on
+        // 2026-10-05). Same cards as a category list, but it paginates with
+        // `cmd=intro&category=all&pg=N` — `page=N` is ignored there and
+        // returns page 1 again (checked live) — hence `pageParam: 'pg'`.
+        // `cmd` is absent on the bare `/collection.php`; an item page always
+        // carries `item=`.
+        {
+            type: 'sl-collection-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/collection.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [ { label: 'Show all latest additions', shortLabel: 'Items' } ],
+            features: {
+                slCardsToTable: 'collection',
+                pageParam: 'pg',
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         },
@@ -18853,7 +18927,8 @@
                 // `align: ':'` is what makes _sortColumnKind() sort it as a
                 // duration (_parseDurationToMs() accepts minutes above 59, so
                 // "129:33.23" sorts after "61:58.22").
-                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]
+                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         }
@@ -22902,6 +22977,25 @@
     }
 
     /**
+     * Tells whether `el` is floated and spans its parent's whole content box
+     * — a grid column used as a plain block (Bootstrap's `.col-sm-12`), as
+     * opposed to a narrow float beside other content. `_sphContentBodies()`
+     * descends into such a float instead of offering it as a body, since
+     * `_sphIsEligible()` never pins a float. A hidden float has no width and
+     * is not one.
+     *
+     * @param {Element} el - Candidate element.
+     * @returns {boolean}
+     */
+    function _sphIsFullWidthFloat(el) {
+        const parent = el.parentElement;
+        if (!parent || getComputedStyle(el).float === 'none') return false;
+        const pcs = getComputedStyle(parent);
+        const contentWidth = parent.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
+        return contentWidth > 0 && el.getBoundingClientRect().width >= contentWidth - 1;
+    }
+
+    /**
      * Returns every block of page content that is not a data table, so that
      * all of it stays in view while a wide table is scrolled sideways: the
      * content of expanded sections (Credits, Annotation, Relationships, the
@@ -22917,6 +23011,15 @@
      *   - an element CONTAINING a `table.tbl` (`#content`, a `<form>` around
      *     the table) is descended into; it is never pinned itself, so the
      *     table inside keeps scrolling;
+     *   - a floated element as wide as its parent's content box (a Bootstrap
+     *     `.col-sm-12` grid column, see `_sphIsFullWidthFloat()`) is descended
+     *     into too: `_sphIsEligible()` never pins a float, so pushed as a
+     *     body it would scroll away with everything in it. On
+     *     springsteenlyrics.com's "book"/"memorabilia" lists the site's stray
+     *     `</div>`s close the column holding the toolbar `<h1>` and the
+     *     category buttons before the list starts, leaving that floated
+     *     column beside the table (checked live, 2026-10-05). A NARROW float
+     *     (a right-floated box) is still pushed as a body, i.e. left alone;
      *   - anything else is a body, pinned as a whole. A bar inside it (a
      *     section's `<h2>` in `div.wikipedia-extract`, the Credits
      *     `Release` / `Release group` h3s) is dropped by the nesting rule in
@@ -22956,7 +23059,7 @@
                 if (el === sidebar || el.matches('table.tbl')) continue;
                 // #content is always a container, also before any table is
                 // rendered: pinned whole it would be capped to the viewport.
-                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);
+                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);
                 else bodies.push(el);
             }
         }
@@ -23679,10 +23782,13 @@
      * @returns {void}
      */
     function initStickyPageHeaders() {
-        // Without a MusicBrainz `#page`, `_sphCollectTargets()` pins every
-        // direct <body> child — on springsteenlyrics.com that is the site's
-        // own navbar and footer. The feature is MusicBrainz-layout-only.
-        if (_isSlHost) return;
+        // Also runs on springsteenlyrics.com. With no MusicBrainz `#page`,
+        // `_sphCollectTargets()` pins every direct <body> child that holds no
+        // table — the site's top bar, navbar, breadcrumb and footer — and
+        // `_sphContentBodies()` walks down from <body> to the list table,
+        // pinning the toolbar h1, the category/filter blocks and the list h2
+        // beside it. That is everything above the table, which is wanted
+        // there (see docs/claude/springsteenlyrics.md).
         if (!_sph.initialized) {
             _sphEnsureStyle();
             if (typeof ResizeObserver === 'function') {
@@ -58363,11 +58469,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Returns the name of the query parameter that selects a result page on
+     * the current pageType: `features.pageParam` of the active definition,
+     * else MusicBrainz's `page`. Only springsteenlyrics.com's collection
+     * entry page sets it (`pg` — that page ignores `page=N`). Read by
+     * `determineMaxPageFromDOM()` and by the single-table fetch loop, the two
+     * places a non-MusicBrainz page can reach; the MusicBrainz-only paths
+     * (`fetchMaxPageGeneric()`, the artist-releasegroups pre-fetch pass) keep
+     * `page`.
+     *
+     * @returns {string}
+     */
+    function _pageParamName() {
+        return activeDefinition?.features?.pageParam || 'page';
+    }
+
+    /**
      * Determines the maximum page number by parsing the pagination UI on the current page
+     * (the page number is read from the `_pageParamName()` query parameter of each link).
      * @returns {number} The maximum page number found, defaults to 1 if no pagination is present
      */
     function determineMaxPageFromDOM() {
         let maxPage = 1;
+        const pageParam = _pageParamName();
 
         Lib.debug('fetch', 'Context: Standard pagination. Parsing "ul.pagination" from current page.');
         const pagination = document.querySelector('ul.pagination');
@@ -58376,7 +58500,7 @@ a { color: #1565c0; }`;
             const nextIdx = links.findIndex(a => a.textContent.trim() === 'Next');
             if (nextIdx > 0) {
                 const urlObj = new URL(links[nextIdx - 1].href, window.location.origin);
-                const p = urlObj.searchParams.get('page');
+                const p = urlObj.searchParams.get(pageParam);
                 if (p) {
                     maxPage = parseInt(p, 10);
                     Lib.debug('fetch', `determineMaxPageFromDOM: Found "Next" link. Extracted page: ${maxPage}`);
@@ -58384,7 +58508,7 @@ a { color: #1565c0; }`;
             } else if (links.length > 0) {
                 const pageNumbers = links
                       .map(a => {
-                          const p = new URL(a.href, window.location.origin).searchParams.get('page');
+                          const p = new URL(a.href, window.location.origin).searchParams.get(pageParam);
                           return p ? parseInt(p, 10) : 1;
                       })
                       .filter(num => !isNaN(num));
@@ -59617,7 +59741,9 @@ a { color: #1565c0; }`;
         let totalRenderingTime;
 
         const currentUrlParams = new URLSearchParams(window.location.search);
-        const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);
+        // Same parameter the loop below sets: on a `pageParam` page, reading
+        // `page` would call `?pg=3` "page 1" and reuse its live cards as page 1.
+        const currentPageNum = parseInt(currentUrlParams.get(_pageParamName()) || '1', 10);
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
@@ -59650,7 +59776,7 @@ a { color: #1565c0; }`;
 
                 // Initialize fetchUrl from the full current URL to preserve Search parameters (query, type, etc.)
                 const fetchUrl = new URL(window.location.href);
-                fetchUrl.searchParams.set('page', p.toString());
+                fetchUrl.searchParams.set(_pageParamName(), p.toString());
 
                 // ── virtualPath support ───────────────────────────────────────
                 // When the clicked button carries a virtualPath value (e.g.

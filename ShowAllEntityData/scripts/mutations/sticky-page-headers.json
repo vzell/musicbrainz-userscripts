@@ -116,8 +116,8 @@
     "why": "Whole-feature kill switch: every positive test must notice.",
     "edits": [
       {
-        "find": "        if (_isSlHost) return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();",
-        "replace": "        if (_isSlHost) return;\n        return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();"
+        "find": "        if (!_sph.initialized) {\n            _sphEnsureStyle();",
+        "replace": "        return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",

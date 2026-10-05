@@ -18789,3 +18789,123 @@ four rows are hand-shaped: one has a single link, one is very long.
 `scripts/mutations/annotation-tooltip.json`: 6 planted defects, all caught.
 The inline thumbnail's fit was not covered at first (expect "pass"); a test
 was added rather than leaving it recorded.
+
+## 2026-10-05 — springsteenlyrics.com: only "Official Albums" converted; entry page; sticky headers (branch feature/sl-all-categories)
+
+`org/springsteenlyrics.org` listed four items: the collection entry page
+`collection.php` was not supported; on the collection "only category=album
+works"; everything above the table scrolled away sideways; and Title should
+be the sticky column (it was Cover, the column-0 fallback).
+
+**Root cause of "only album works".** Card markup is the same in all 26
+collection categories (checked with curl, page 1 of each). The difference is a
+"Filter by original year of release" block, rendered on every category except
+"Official Albums" and on the entry page. It ends in a stray `</div>` (after its
+slider `<script>`, `<p></p></div>`), and the parser closes `.project-detail`
+there, before the list heading and every card. `_SL_CARD_SEL` was
+`.project-detail div.blog-post`, and `_slFindListHeading()` was scoped the same
+way. Both found nothing, so `applySlCardsToTable()` returned without a word and
+the injected `<h1>` read just "Collection". `debug/sl-sampler.html` (saved by
+the user after the script ran) shows exactly that: 99 cards left in place.
+
+Div balance on the live pages (curl, depth counted from `.project-detail`'s
+opening tag):
+
+| Page                                 | Year filter | `.project-detail` closes | Also closes its floated `.col-sm-12` |
+|--------------------------------------|-------------|--------------------------|--------------------------------------|
+| album, album/12i                     | no          | after the last card      | no                                   |
+| sampler, video, `collection.php`     | yes         | before the first card    | no                                   |
+| book, memorabilia                    | yes         | before the first card    | yes                                  |
+| bootlegs aud_live1967 / aud_inter    | no          | after the last card      | no                                   |
+
+Fix: `_slFindCards()` takes every `div.blog-post` outside the navbar and
+footer. Its count equals "Showing items" on every page checked. The heading is
+the `h3.heading`/`h2.heading` that is a direct child of the first card's parent
+(or, once converted, of the table's parent). The renamed `<h2>` gets
+`mb-sl-list-heading`, because the CSS rule `.project-detail h2.heading` had the
+same flaw.
+
+**Entry page.** "Latest additions": 5365 items, 54 pages. It paginates with
+`cmd=intro&category=all&pg=N`, and its "»" link is `?pg=54&cmd=intro`.
+`page=2` returns page 1 again; `pg=2` returns items 101–200, with or without
+`cmd=intro` (probed with curl). The changes:
+- a new pageType `sl-collection-intro` with `features.pageParam: 'pg'`;
+- `_pageParamName()`, read by `determineMaxPageFromDOM()`, the fetch loop and
+  the loop's `currentPageNum`. Read as `page`, `?pg=3` counted as page 1 and
+  its live cards stood in for page 1;
+- a second `@include` line.
+
+`bootlegs.php` with no query renders no cards and stays excluded. Live: 5365
+rows from 54 pages, matching "Showing items".
+
+**Sticky Page Headers on SL.** I removed the `_isSlHost` early return. With no
+`#page`, the generic collector pins the body-level chrome and walks down to
+the table. The fixtures passed at once, but the live check under the real
+site CSS (`tests/live/sl-lists.spec.js`, book at 1000px) found two more
+defects:
+1. **Book: the toolbar `<h1>` scrolled away.** The second stray `</div>` closes
+   the floated Bootstrap `.col-sm-12` too, so that float sits beside the table
+   and holds `.project-detail`. `_sphContentBodies()` pushed it as a body,
+   and `_sphIsEligible()` refuses floats, so the whole column scrolled away.
+   New `_sphIsFullWidthFloat()`: a float as wide as its parent's content box
+   is descended into like a container. A narrow float is still pushed as a
+   body (and refused, as before). MusicBrainz pages only change if they have a
+   full-width float beside the data table. The full fixture suite stays green.
+2. **The year-filter block ended up at left 1198px, capped to 120px.** It is a
+   fixed-width (970px) Bootstrap `.container` centred with auto margins. In
+   the table-wide `.mb-sl-wide` column it sat around x≈773 before any pinning,
+   off-screen at scrollX 0, which is a pre-existing side effect of the
+   widening. Pinned, `left = parentContentLeft + marginLeft` read the auto
+   margin, and every width cap grew it further.
+   `_ensureSlStyle()` now zeroes the side margins of `.container`s inside
+   `.mb-sl-wide` ones. Verified by screenshots before and after a sideways
+   scroll. The generic `marginLeft`-based left is still exposed to
+   auto-margin centring; no MusicBrainz page is known to hit it.
+
+**Fixture artifacts met on the way.** These are not bugs:
+- The DOM-serialized snapshots carry jquery.sticky's inline `height: 80px` on
+  the navbar wrapper. With the site CSS stripped, the unstyled navbar spilled
+  out of it. Once the wrapper was pinned (z-index 106), the spill covered the
+  toolbar and two `sl-host` tests failed on intercepted clicks. The builder
+  now strips that inline height.
+- The spec's stand-in Bootstrap CSS first lacked `box-sizing: border-box`, so
+  each `width: 100%` column overflowed by its padding.
+- A 657px Title column in a 700px window is pushed back by the table's right
+  edge at the far right. That is plain `position: sticky`, so the spec now
+  uses a 1000px window and asserts the column fits.
+- The site throws `ReferenceError: init is not defined` on every year-filter
+  page (its slider snippet runs `window.onload = init;`). The live spec
+  exempts that exact message.
+
+**Tests.**
+- Fixtures, all from `scripts/build-sl-fixtures.py`:
+  - the entry page, two `pg=` pages;
+  - sampler (`debug/sl-sampler-raw.html`, curl), one widget-less page;
+  - memorabilia (`debug/sl-memorabilia-raw.html`, curl), the
+    double-stray-close shape.
+- Specs:
+  - `sl-collection-intro.spec.js`, which first asserts that the cards really
+    sit outside `.project-detail`;
+  - `sl-sticky-headers.spec.js`, three page shapes, geometry;
+  - a sticky-Title test in `sl-bootlegs.spec.js`;
+  - `sl-include-regex.spec.js`, extended;
+  - `tests/live/sl-lists.spec.js`: book, the entry page, and a sticky test
+    under the real CSS.
+- `scripts/mutations/sl-support.json`: 12 new planted defects, all caught.
+  The margin rule is caught only on memorabilia: on sampler the year-filter
+  block rides inside a `.project-detail` pinned and capped to its own width,
+  where the auto margins come out 0. `sticky-page-headers.json`'s kill-switch
+  entry was re-anchored now that the gate line is gone.
+
+**A false alarm, and what it left behind.** After the fix, a real-browser check
+of sampler again showed "Collection" / "0 rows". The cause was the mutation run
+itself: `scripts/mutation-check.py` plants each defect into the working-copy
+userscript in place, and the copy imported into Tampermonkey during that run
+was the "cards scoped to `.project-detail`" mutant. It matched the symptom
+exactly, and it also carried every other new line, the style rules included,
+which is what made it look like the real code. The file's mtime, 18:10 (the
+restore), gave it away. A clean re-import fixed it. What it left: the converter
+now logs a warning when it finds no cards and no table it converted earlier
+(`sl-collection-intro.spec.js`: the warning fires; a normal conversion stays
+quiet; `sl-host.spec.js`: a second Load from Disk onto a rendered page stays
+quiet). Two more mutation entries cover it, both caught.

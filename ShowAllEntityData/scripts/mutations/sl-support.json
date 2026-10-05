@@ -145,5 +145,187 @@
     "spec": "tests/fixtures/sl-collection.spec.js",
     "grep": "both pages become one table",
     "expect": "pass"
+  },
+  {
+    "name": "cards are looked up inside .project-detail only",
+    "why": "On every collection page with the year-filter block (all categories but Official Albums, and the entry page) the site's stray </div> closes .project-detail before the list, so a scoped lookup finds no card and the button converts nothing (2026-10-05).",
+    "edits": [
+      {
+        "find": "return Array.from(docContext.querySelectorAll('div.blog-post'))",
+        "replace": "return Array.from(docContext.querySelectorAll('.project-detail div.blog-post'))"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "the single widget-less page becomes a table",
+    "expect": "fail"
+  },
+  {
+    "name": "the list heading is looked up inside .project-detail only",
+    "why": "Same stray </div>: a .project-detail-scoped heading lookup finds nothing, so the toolbar <h1> reads just \"Collection\" and the heading never becomes the h2 that carries the count and filter bar.",
+    "edits": [
+      {
+        "find": "        const anchor = _slFindCards(docContext)[0] || docContext.querySelector('table.mb-sl-table');\n        return anchor?.parentElement?.querySelector(':scope > h3.heading, :scope > h2.heading') || null;",
+        "replace": "        return docContext.querySelector('.project-detail h3.heading, .project-detail h2.heading');"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "the fixture has the cards outside .project-detail",
+    "expect": "fail"
+  },
+  {
+    "name": "the fetch loop ignores pageParam",
+    "why": "The collection entry page ignores page=N and answers page 1 again; only pg=N reaches page 2. With page= the table has 100 rows but only 50 distinct items.",
+    "edits": [
+      {
+        "find": "fetchUrl.searchParams.set(_pageParamName(), p.toString());",
+        "replace": "fetchUrl.searchParams.set('page', p.toString());"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "both pg= pages become one table",
+    "expect": "fail"
+  },
+  {
+    "name": "the page count ignores pageParam",
+    "why": "The entry page's pagination links carry pg=, never page=, so reading page= finds no number and the count stays 1: only the live page is shown.",
+    "edits": [
+      {
+        "find": "        const pageParam = _pageParamName();\n",
+        "replace": "        const pageParam = 'page';\n"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "both pg= pages become one table",
+    "expect": "fail"
+  },
+  {
+    "name": "the current page number ignores pageParam",
+    "why": "Opened on ?pg=2, reading page= calls it page 1: the live page-2 cards stand in for page 1 and page 2 is fetched again.",
+    "edits": [
+      {
+        "find": "const currentPageNum = parseInt(currentUrlParams.get(_pageParamName()) || '1', 10);",
+        "replace": "const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "opened on .pg=2",
+    "expect": "fail"
+  },
+  {
+    "name": "the list heading h2 does not get its own class",
+    "why": "The heading usually sits outside .project-detail (see _slFindCards()), so the h2 styling rule keys on mb-sl-list-heading, not on its position.",
+    "edits": [
+      {
+        "find": "                h2.classList.add('mb-sl-list-heading');\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "the single widget-less page becomes a table",
+    "expect": "fail"
+  },
+  {
+    "name": "the entry page @include line is missing",
+    "why": "Tampermonkey would never inject the script on collection.php; the fixture harness injects unconditionally, so only the regex spec can see it.",
+    "edits": [
+      {
+        "find": "// @include      /^https?:\\/\\/(?:www\\.)?springsteenlyrics\\.com\\/collection\\.php(?:\\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\\d+(?:&[^#]*)?))?(?:#.*)?$/\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "every list page, and only list pages",
+    "expect": "fail"
+  },
+  {
+    "name": "Sticky Page Headers stands down on springsteenlyrics.com again",
+    "why": "Until 2026-10-05 initStickyPageHeaders() returned on SL, and everything above the table (breadcrumb, toolbar h1, category/filter blocks, list h2) scrolled away with a wide table.",
+    "edits": [
+      {
+        "find": "        if (!_sph.initialized) {\n            _sphEnsureStyle();",
+        "replace": "        if (_isSlHost) return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();"
+      }
+    ],
+    "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+    "grep": "everything above the table stays put",
+    "expect": "fail"
+  },
+  {
+    "name": "sl-bootlegs has no stickyColumn",
+    "why": "applyStickyColumn() then falls back to column 0, the Cover thumbnail, instead of Title.",
+    "edits": [
+      {
+        "find": "                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],\n                stickyColumn: 'Title'\n",
+        "replace": "                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]\n"
+      }
+    ],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Title is the sticky column",
+    "expect": "fail"
+  },
+  {
+    "name": "sl-collection has no stickyColumn",
+    "why": "Same fallback to the Cover column on every collection category list.",
+    "edits": [
+      {
+        "find": "                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],\n                stickyColumn: 'Title'\n            },\n            tableMode: 'single'\n        },\n        // The collection's entry page",
+        "replace": "                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]\n            },\n            tableMode: 'single'\n        },\n        // The collection's entry page"
+      }
+    ],
+    "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+    "grep": "Title docks at the table",
+    "expect": "fail"
+  },
+  {
+    "name": "Sticky Page Headers does not descend into a full-width float",
+    "why": "On memorabilia/book a second stray </div> closes the floated .col-sm-12 around .project-detail; _sphIsEligible() never pins a float, so pushed as a body the toolbar <h1> and the category buttons scroll away (found by the live check, 2026-10-05).",
+    "edits": [
+      {
+        "find": "if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);",
+        "replace": "if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+    "grep": "memorabilia: everything above the table",
+    "expect": "fail"
+  },
+  {
+    "name": "the inner Bootstrap containers keep their auto margins",
+    "why": "Centred in the table-wide column the year-filter block sat off-screen, and pinned, each width cap grew its auto margins and pushed it further right (left 1198 px, 120 px wide, live on book). Only the memorabilia/book shape pins that block on its own; on sampler it rides inside a pinned .project-detail capped to its own width, where the auto margins come out 0 anyway.",
+    "edits": [
+      {
+        "find": "            body.mb-sa-host-sl .container.mb-sl-wide .container:not(.mb-sl-wide) {\n                margin-left: 0;\n                margin-right: 0;\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-sticky-headers.spec.js",
+    "grep": "memorabilia: everything above the table",
+    "expect": "fail"
+  },
+  {
+    "name": "the converter says nothing when it finds no cards",
+    "why": "A silent no-op is how \"only Official Albums works\" went unnoticed: the button rendered \"0 rows\" with nothing in the console to say why.",
+    "edits": [
+      {
+        "find": "            if (!docContext.querySelector('table.mb-sl-table')) {\n                Lib.warn('init', `applySlCardsToTable: no item cards found",
+        "replace": "            if (false) {\n                Lib.warn('init', `applySlCardsToTable: no item cards found"
+      }
+    ],
+    "spec": "tests/fixtures/sl-collection-intro.spec.js",
+    "grep": "no cards on the live page: a console warning",
+    "expect": "fail"
+  },
+  {
+    "name": "the no-cards warning also fires on an already converted page",
+    "why": "A page the converter already turned into a table has no cards left, and Load from Disk runs the converter on it again; warning there would cry wolf on every second load.",
+    "edits": [
+      {
+        "find": "            if (!docContext.querySelector('table.mb-sl-table')) {\n                Lib.warn('init', `applySlCardsToTable: no item cards found",
+        "replace": "            if (true) {\n                Lib.warn('init', `applySlCardsToTable: no item cards found"
+      }
+    ],
+    "spec": "tests/fixtures/sl-host.spec.js",
+    "grep": "a reopened list renders in place",
+    "expect": "fail"
   }
 ]

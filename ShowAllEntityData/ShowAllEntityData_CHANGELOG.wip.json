@@ -1,0 +1,28 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: every collection category now works, not just \"Official Albums\". On the other categories (Samplers, Singles, Books, Memorabilia, …) the button converted nothing, and the heading read just \"Collection\"."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com: the collection's entry page (collection.php, \"Latest additions\", the whole collection) is now supported, with a \"Show all latest additions\" button (\"Items\"). It has over 5000 items in more than 50 pages, so the usual \"many pages\" and \"many rows\" questions come first."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: Title is now the sticky column instead of Cover, on collection and bootleg lists.",
+          "springsteenlyrics.com: with Enable Sticky Page Headers (📌 Table stickiness, on by default), everything above a wide table now stays in place while you scroll sideways. That covers the site's header and breadcrumb, the toolbar, the category and filter buttons, and the list's heading bar. The year-filter slider and the \"Formats guide\" panel no longer drift off to the right.",
+          "springsteenlyrics.com: when the script finds no item cards on a list page, it now writes a warning to the browser console instead of silently showing an empty table."
+        ]
+      }
+    ]
+  }
+]

@@ -1,11 +1,13 @@
-<!-- Written on branch sl-support (org/springsteenlyrics.org). This file is the authority for its topic; CLAUDE.md keeps only the doc-map row. -->
+<!-- Written on branch sl-support (org/springsteenlyrics.org), extended on feature/sl-all-categories. This file is the authority for its topic; CLAUDE.md keeps only the doc-map row. -->
 
 # springsteenlyrics.com: the one non-MusicBrainz host
 
 ShowAllEntityData also runs on springsteenlyrics.com's paginated list pages —
 the **collection** (`collection.php?cmd=list…`) and the **bootleg** lists
 (`bootlegs.php?cmd=list…`), every category and every `f_*` filter — as the
-pageTypes `sl-collection` and `sl-bootlegs`. It is **opt-in**:
+pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
+page `collection.php` ("Latest additions", every item, `pg=` pagination) as
+`sl-collection-intro`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
 is used; no item detail page is fetched.
 
@@ -24,26 +26,32 @@ The library's own Tampermonkey menu items are registered earlier still, so the
 setting can be switched on from the SL page itself; settings are per-script GM
 storage, so MusicBrainz and SL share them.
 
-Four places read `_isSlHost` after that, and each says why:
+Three places read `_isSlHost` after that, and each says why:
 
 | Where                                | Why                                                                                                                                           |
 |--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | the `pageDefinitions` detection loop | `if (Boolean(def.host) !== _isSlHost) continue;` — a definition with a `host` belongs to that site alone, and on SL only those are considered |
 | `performClutterCleanup()`            | every target is MusicBrainz furniture; some removals (any `<details>` with >5 images, any 700px div) would hit unrelated content              |
-| `initStickyPageHeaders()`            | with no `#page`, `_sphCollectTargets()` pins every `<body>` child — SL's navbar and footer                                                    |
 | `initNavigationGuard()`              | every SL page is one PHP script told apart by its query string, so there only a HASH-only change is "the same page"                           |
+
+`initStickyPageHeaders()` used to be a fourth and stand down on SL; since
+2026-10-05 it runs there too — see "Sticky Page Headers and the sticky Title"
+below.
 
 **The `host` filter is a guard no spec can see today** — no MusicBrainz matcher
 claims `/collection.php`, and no MusicBrainz URL reaches the SL matchers. It is
 recorded as `"expect": "pass"` in `scripts/mutations/sl-support.json` and
 exists for the next broad `path.includes()` matcher.
 
-**The `@include` line is the real outer gate**, and the fixture harness never
-evaluates it (`loadPage.js` injects unconditionally), so
+**The two `@include` lines are the real outer gate**, and the fixture harness
+never evaluates them (`loadPage.js` injects unconditionally), so
 `tests/fixtures/sl-include-regex.spec.js` reads the header and checks it:
-every list page in, item pages / intro pages / `lyrics.php` / look-alike hosts
-out. `cmd=list` is matched anywhere in the query, because the site's own filter
-forms submit `?f_date=…&cmd=list&category=f_date`.
+every list page and the collection entry page in; item pages, the bootleg
+intro page (it has no cards), `lyrics.php` and look-alike hosts out. `cmd=list`
+is matched anywhere in the query, because the site's own filter forms submit
+`?f_date=…&cmd=list&category=f_date`. The second line admits `collection.php`
+bare, with `cmd=intro` anywhere in the query, or with only `pg=N` (the entry
+page's "»" link is `?pg=54&cmd=intro`).
 
 ## The toolbar anchor — `_slPrepareLivePage()`
 
@@ -56,10 +64,21 @@ lets the init-time `_cachedEntityName` capture read it like a MusicBrainz
 `<h1>`. It also adds `body.mb-sa-host-sl`, installs `_ensureSlStyle()`, and
 measures the site's sticky navbar into `--mb-sl-navbar-h`.
 
-**Scope every SL lookup to `.project-detail`.** The page carries ten
-`h3.heading`s; seven belong to the navigation mega-menu. Exactly one — the
-list heading — is inside `.project-detail` (checked on both snapshots and four
-live categories, 2026-10-04).
+**Never scope a lookup to `.project-detail`; find the list from its cards.**
+That was the rule until 2026-10-05, and it made the converter a silent no-op
+on every collection category but "Official Albums". Those pages render a
+"Filter by original year of release" block that ends in a stray `</div>`, and
+the parser closes `.project-detail` right there — the list heading and every
+card come AFTER it (on book and memorabilia a second stray `</div>` also
+closes the floated `.col-sm-12` around it). Checked live: sampler, book,
+memorabilia and the entry page close it before the first card; album and the
+bootleg lists after the last. So `_slFindCards()` takes every `div.blog-post`
+outside the navbar and footer (its count equals the page's "Showing items"
+count), and `_slFindListHeading()` takes the `h3.heading`/`h2.heading` that
+is a direct child of the first card's parent (or, once converted, of the
+table's) — which also keeps out the seven `h3.heading`s of the navigation
+mega-menu. `.project-detail` is still where the toolbar `<h1>` goes: it
+exists on every page and still holds the category buttons.
 
 ## The converter — `applySlCardsToTable(def, docContext)`
 
@@ -74,9 +93,18 @@ disappears:
    live page holds cards again, and without the table the headers block
    fabricates a shell at the end of `<body>` — the site has no `#content`).
 
-On the live document it also renames the list `h3.heading` to `<h2>` (so
-`updateH2Count()` anchors the count and filter bar there) and tags the table's
-fixed-width Bootstrap `.container` ancestors `mb-sl-wide`.
+**It never returns silently on a page without cards.** If it finds no card and
+no `table.mb-sl-table` (the one legitimate case: a page it already converted,
+which Load from Disk hits on a second load), it logs a `Lib.warn` with the
+number of `div.blog-post`s it saw — "only Official Albums works" stayed
+invisible precisely because the button rendered "0 rows" and the console said
+nothing. On a fetched page the likeliest cause is a CloudFlare challenge.
+
+On the live document it also renames the list `h3.heading` to
+`<h2 class="… mb-sl-list-heading">` (so `updateH2Count()` anchors the count
+and filter bar there; the class carries its style, since the heading usually
+sits outside `.project-detail`) and tags the table's fixed-width Bootstrap
+`.container` ancestors `mb-sl-wide`.
 
 **Read card fields by label, never by position.** `_slReadCardFields()` maps
 each `<span class="text-primary"><em>Label:</em></span> value<br>` line by its
@@ -127,17 +155,57 @@ finding tints, hover, highlights) still wins. The sticky `<thead>` is offset by
 `--mb-sl-navbar-h`: the site's `jquery.sticky` navbar turns `position: fixed`
 once scrolled and would otherwise cover it (checked live, 2026-10-04).
 
+## Sticky Page Headers and the sticky Title
+
+All three definitions set `stickyColumn: 'Title'` (without it
+`applyStickyColumn()` falls back to column 0, the Cover thumbnail).
+
+`initStickyPageHeaders()` runs on SL since 2026-10-05; the user asked for
+"everything from the top of the page down to the list heading" to stay put
+while a wide table is scrolled sideways. With no MusicBrainz `#page`, the
+generic collector does that: every `<body>` child without a table (top bar,
+navbar wrapper, breadcrumb, footer) is pinned as chrome, and
+`_sphContentBodies()` walks from `<body>` down the chain of elements holding
+the table, pinning everything beside it (`.project-detail` with the toolbar
+`<h1>` and category buttons, the filter blocks, the pagination) and the list
+`<h2>` as a bar. Two things had to change for the real page, both found only
+by the live check (`tests/live/sl-lists.spec.js`, under the site's own CSS):
+
+- **A full-width float is descended into** (`_sphIsFullWidthFloat()`). On
+  book/memorabilia the column closed by the second stray `</div>` is a
+  floated Bootstrap `.col-sm-12` beside the table; `_sphIsEligible()` never
+  pins a float, so it scrolled away whole. A narrow float is still left
+  alone, so a MusicBrainz page only changes if it has a full-width float
+  beside its data table.
+- **Inner Bootstrap `.container`s lose their auto side margins**
+  (`_ensureSlStyle()`). Centred in the table-wide column, the year-filter and
+  "Formats guide" blocks sat off-screen, and pinned, each width cap grew the
+  auto margins (book: left 1198 px, capped to 120 px).
+
+The navbar wrapper gets the chrome z-index (106), so the site's mega-menu
+still opens above the pinned bars. A sticky cell cannot travel past its
+table's right edge, so a Title column wider than the room left of it is
+pushed back at the far right — plain `position: sticky`, on any host.
+
 ## Page count and fetching need nothing
 
 - `fetchHtml()` is a same-origin `fetch()`; SL is behind CloudFlare, and the
   browser's cookie lets same-origin requests through (the reason
   `SpringsteenCoverArtUploader` cannot fetch cross-origin, see its own notes).
-- The per-page URL is `new URL(location.href)` with only `page=N` set, so every
-  `f_*` filter is kept.
+- The per-page URL is `new URL(location.href)` with only the page parameter
+  set, so every `f_*` filter is kept. That parameter is `page` except on the
+  entry page, which answers `page=N` with page 1 again and needs `pg=N`:
+  `features.pageParam: 'pg'`, read through `_pageParamName()` by
+  `determineMaxPageFromDOM()`, the fetch loop and the loop's "current page"
+  shortcut (read as `page`, `?pg=3` would count as page 1 and its live cards
+  would stand in for page 1).
 - `determineMaxPageFromDOM()`'s no-"Next" branch takes the highest `page=`
   link, and SL's windowed widget always ends in a "»" pointing at the LAST page
   (album/12i → 6, single → 14, aud_comp → 6; a 99-item category has no widget,
-  i.e. 1 page). Checked live 2026-10-04.
+  i.e. 1 page). Checked live 2026-10-04; the entry page's "»" is
+  `?pg=54&cmd=intro` (2026-10-05).
+- The entry page's 54 pages and 5365 rows trip ⚠️ High Page Count and the
+  render-decision dialog at the default thresholds — expected, not a bug.
 
 ## Tests
 
@@ -146,13 +214,19 @@ once scrolled and would otherwise cover it (checked live, 2026-10-04).
 | `tests/fixtures/sl-collection.spec.js`      | both pages in one table, exact headers, parsed fields (incl. a FETCHED-page card), item links, lazy thumbnails, Cat. no. text sort, Copies numeric sort, a column filter, zero MusicBrainz/CAA requests with CAA and Relationships switched back ON |
 | `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
-| `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header line                                                                                                                                                                                                                          |
-| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N"                                                                                                                                                                                       |
+| `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
+| `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left                                                                   |
+| `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
+| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 
-Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits the two
-logged-out snapshots in `debug/` into two 50-card pages each, rewrites only the
-pagination widget, and strips scripts, `<link>`s and inline background images.
+Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
+logged-out snapshots in `debug/` into two 50-card pages each (rewriting only
+the pagination widget, `page=` or `pg=`), keeps two whole categories
+(sampler, memorabilia, curl captures) as one widget-less page each, and strips
+scripts, `<link>`s, inline background images and jquery.sticky's inline
+navbar-wrapper height (without the site CSS the unstyled navbar spilled out of
+it over the toolbar once pinned).
 `tests/support/slFixture.js` serves them: a catch-all ABORT for the host
 registered first (thumbnails and stray subresources), page 1 at the list URL,
-and a predicate route for every `page=N` fetch (a glob cannot work: the list
-URL already contains `?`). Mutation list: `scripts/mutations/sl-support.json`.
+and a predicate route for every `page=N`/`pg=N` fetch (a glob cannot work: the
+list URL already contains `?`). Mutation list: `scripts/mutations/sl-support.json`.

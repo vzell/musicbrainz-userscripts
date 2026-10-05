@@ -1087,8 +1087,9 @@ an import brings your deletions back.
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
-- **Not MusicBrainz:** the **springsteenlyrics.com** collection and bootleg
-  lists — off until you switch them on, see
+- **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
+  category and the entry page) and bootleg lists — off until you switch them
+  on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1300,17 +1301,25 @@ bootleg lists*. Settings are shared, so you can switch it on from a MusicBrainz
 page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
 off, the script leaves that site's pages untouched.
 
-Once on, every **collection list** (`collection.php?cmd=list…`) and every
-**bootleg list** (`bootlegs.php?cmd=list…`) — with any format,
-country, date, title or other filter you picked on the site — gets a heading
-with the usual toolbar and one action button: **Items** on a collection list,
-**Bootlegs** on a bootleg list. Pressing it fetches every page of that list
-(100 items each), turns the item cards into one table, and gives you the usual
-filters, sorting, column controls, export and Save/Load.
+Once on, every **collection list** (`collection.php?cmd=list…`, any
+category), the collection's **entry page** (`collection.php`, "Latest
+additions") and every **bootleg list** (`bootlegs.php?cmd=list…`) — with any
+format, country, date, title or other filter you picked on the site — gets a
+heading with the usual toolbar and one action button: **Items** on a
+collection list or the entry page, **Bootlegs** on a bootleg list. Pressing it
+fetches every page of that list (100 items each), turns the item cards into
+one table, and gives you the usual filters, sorting, column controls, export
+and Save/Load.
 
-**Known limitation:** on collection lists only the *Official albums* category
-works so far; the other collection categories are not yet supported. Bootleg
-lists work with any filter.
+The entry page holds the whole collection (over 5000 items in more than 50
+pages), so the usual "many pages" and "many rows" questions come up before it
+loads everything.
+
+When the table is wider than the window, **Title** stays in view as the
+sticky column, and — with *Enable Sticky Page Headers* (📌 Table stickiness,
+on by default) — everything above the table stays where it is while you
+scroll sideways: the site's header and breadcrumb, the toolbar, the category
+and filter buttons and the list's heading bar.
 
 The columns come from what each card shows — no item page is opened:
 
