@@ -1216,18 +1216,6 @@ I get
 
 * TODO add more functionality to the SP parser
 
-* TODO indent tables to its heading even when scrolled to the far right - the sticky column gets moved to the very left browser window
-
-1.)
-
-indent tables to its heading even when scrolled to the far right - the sticky column gets moved to the very left browser
-window
-
-2.)
-
-the h2/h3 header lines should stretch up to where we end when scrolling to the far right. The last column on a very wide
-table is actually aligned with the h2/h3 header lines when scrolled to the very right end, see screenshot 
-
 * DONE flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
 
 "quick filter matches the hidden prefix, opens what matches, hides the rest,

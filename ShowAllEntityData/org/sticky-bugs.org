@@ -89,7 +89,7 @@ there are potentially other PTs, please check
 Re-measure on this host "petri" what we did on the slow host "vzell-lap", see @tests/MEASUREMENTS.org
 
 #+begin_example
-* 2026-10-05 — sticky column docks at its table's left (branch feature/sticky-col-align), artist-events (vzell-lap)
+ * 2026-10-05 — sticky column docks at its table's left (branch feature/sticky-col-align), artist-events (vzell-lap)
 #+end_example
 
 ** DONE bug: big-picture-stripe-indent-bug
@@ -99,7 +99,7 @@ image stripe is not indented under its h3 when scrolling, see @debug/big-picture
 
 On single-table pageTypes it's ok
 
-** summary
+** DONE summary
 
 ● Everything in org/sticky-bugs.org is fixed on feature/sticky-col-align, except 3b's docking, which I couldn't reproduce. One performance cost needs your decision before I commit. Nothing is committed or merged; there is no version bump, and the changes are recorded as WIP.2 in
   the WIP changelog.
@@ -133,7 +133,7 @@ On single-table pageTypes it's ok
 
   Should I commit, after you've reviewed git diff? I'd also like your call on the pinning cost.
   
-** summary after push
+** DONE summary after push
 
 ● Committed as f1827aa and pushed to origin/feature/sticky-col-align. Nothing is merged to main.
 
@@ -141,3 +141,14 @@ On single-table pageTypes it's ok
   - 3b: I updated its entry in DEBUG-NOTES.md to record that you confirmed it docks on the new build. The likely cause of the original snapshot was an older build still loaded in Tampermonkey.
   - Performance: I took "everything confirmed live" as accepting the ~+60 ms per sort that whole-table pinning costs on the 521-row Credits table, and the commit message says so. If you want a row cap after all, that is a small follow-up.
   - Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events). Nothing has traced it to a cause yet.
+
+** DONE native MusicBrainz header menues bug
+
+After the latest sticky feature bug fixes there is still one left with native MusicBrainz header menues:
+
+[Image #1] - https://musicbrainz.org/release/9d451257-ebce-44ec-aad8-b48609bfaf7a - full raw HTML from final rendered page after clicking the "Editing" menu @debug/mb-native-menu-bug.html
+
+
+** TODO Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events)
+
+Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events). Nothing has traced it to a cause yet.
