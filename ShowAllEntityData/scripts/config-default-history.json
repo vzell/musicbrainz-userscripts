@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "6440ae00ba8a4a4ea99afd7b2241432cfcb9134a",
-    "revisions_walked": 745
+    "head": "5994c2140a4b58345036f3bef5f7c7d9c18904b7",
+    "revisions_walked": 747
   },
   "changes": [
     {
@@ -547,6 +547,10 @@
     "sa_enable_release_tracks_instrument_vocal_columns": true,
     "sa_enable_release_tracks_live_date_check": true,
     "sa_release_rg_link": true,
+    "sa_event_rg_tooltip": true,
+    "sa_event_rg_search_phrase": true,
+    "sa_event_rg_search_artist": true,
+    "sa_event_rg_search_hints": 5,
     "sa_enable_release_tracks_dynamic_ar_columns": true,
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_ars_collapse": false,
