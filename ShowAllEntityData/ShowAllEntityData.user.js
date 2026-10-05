@@ -17639,6 +17639,9 @@
                 },
                 'Annotations': {
                     collapsableColumns: [ 'Annotation' ],
+                    // 'Annotation' gets its own renderer (_artTooltipAnnotation):
+                    // the full, uncollapsed cell markup in a wider card.
+                    tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Annotation' ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Name',
                     extractMainColumn: 'Name',
@@ -44966,6 +44969,14 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
         .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
         .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        /* Annotation prose in the artwork card (_artTooltipAnnotation): the
+           cell markup, kept compact. Height is capped per hover by
+           _fitArtTooltipToViewport, which also reveals the "more" foot. */
+        .mb-tt-liner .mb-tt-annotation { overflow: hidden; }
+        .mb-tt-liner .mb-tt-annotation p { margin: 0 0 4px; }
+        .mb-tt-liner .mb-tt-annotation :is(h2, h3, h4) { font-size: 1em; margin: 4px 0 2px; }
+        .mb-tt-liner .mb-tt-annotation :is(ul, ol) { margin: 0 0 4px; padding-left: 1.2em; }
+        .mb-tt-liner .mb-tt-annotation-more { display: none; }
         .mb-tt-liner kbd { display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9; border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 ui-monospace, Consolas, "Courier New", monospace; }
         #mb-stat-tooltip {
             position: fixed;
@@ -89811,6 +89822,92 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Renders a prose "Annotation" cell into the tooltip as rich HTML — the
+     * FULL text, whatever collapsed state the cell is in.
+     *
+     * `_artTooltipCellText()` is wrong for this cell in three ways: it
+     * flattens every `<br>`/paragraph into one line, it returns only the link
+     * text when the annotation holds exactly one link (its single-anchor
+     * shortcut), and a plain clone would keep the cell's collapsed state —
+     * the `.mb-text-clamp-inner` height clamp on the wrapper, and the inline
+     * `display:none` that `_rewireNestedTableH2Toggles()` puts on the content
+     * of every collapsed wiki `<h2>` sub-section inside the cell.
+     *
+     * So the wrapper's CHILDREN are cloned (never the wrapper itself), the
+     * script's own UI is removed, filter highlights are unwrapped to plain
+     * text, and every inline `display` is cleared. The card is widened to
+     * 600px; `_fitArtTooltipToViewport()` later caps the block's height and
+     * reveals the trailing "more in the cell" foot when it had to cut.
+     *
+     * @param {HTMLTableRowElement} row  Data row.
+     * @param {number}              ci   Column index of the Annotation cell.
+     * @param {HTMLDivElement}      tip  Tooltip div to append the block to.
+     * @returns {boolean}  true when an annotation block was appended.
+     */
+    function _artTooltipAnnotation(row, ci, tip) {
+        if (ci < 0 || ci >= row.cells.length) return false;
+        const cell = row.cells[ci];
+        const src = cell.querySelector(':scope > .mb-text-clamp-marker') || cell;
+
+        const block = document.createElement('div');
+        block.className = 'mb-tt-annotation';
+        src.childNodes.forEach(n => block.appendChild(n.cloneNode(true)));
+
+        block.querySelectorAll(
+            '.mb-cell-collapse-toggle,.mb-toggle-icon,[data-erg-btn],script,style,' +
+            _CLEAN_STRIP_SEL
+        ).forEach(el => el.remove());
+        block.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el => el.replaceWith(...el.childNodes));
+        block.querySelectorAll('*').forEach(el => {
+            el.style.removeProperty('display');
+            el.removeAttribute('title');
+            el.removeAttribute('data-mb-tip');
+            el.classList.remove('mb-text-clamp-marker', 'mb-text-clamp-inner',
+                'mb-text-clamp-inner-ars', 'mb-text-clamp-expanded', 'mb-toggle-h2', 'mb-h2-processed');
+        });
+
+        if (!block.textContent.trim()) return false;
+
+        tip.style.maxWidth = '600px';
+        tip.appendChild(block);
+        const more = document.createElement('div');
+        more.className = 'mb-tt-foot mb-tt-annotation-more';
+        more.textContent = '… (more in the cell)';
+        tip.appendChild(more);
+        return true;
+    }
+
+    /**
+     * Keeps a just-shown artwork tooltip inside the viewport by shortening its
+     * `.mb-tt-annotation` block, the only part of the card that can be
+     * arbitrarily long. The card has `pointer-events:none` and cannot be
+     * scrolled, so anything past the bottom of the window would simply be
+     * unreadable. When the block had to be cut, its
+     * `.mb-tt-annotation-more` foot is shown.
+     *
+     * Must run after `tip.style.display = 'block'` (it measures) and before
+     * the caller reads `offsetHeight` to position the card. A no-op for a
+     * card without an annotation block.
+     *
+     * @param {HTMLDivElement} tip  The visible tooltip.
+     * @returns {void}
+     */
+    function _fitArtTooltipToViewport(tip) {
+        const block = tip.querySelector('.mb-tt-annotation');
+        if (!block) return;
+        const more = tip.querySelector('.mb-tt-annotation-more');
+        block.style.maxHeight = '';
+        if (more) more.style.display = '';
+        const limit = window.innerHeight - 12;
+        let over = tip.offsetHeight - limit;
+        if (over <= 0) return;
+        // Show the foot first so its own height is part of the budget.
+        if (more) more.style.display = 'block';
+        over = tip.offsetHeight - limit;
+        block.style.maxHeight = Math.max(0, block.offsetHeight - over) + 'px';
+    }
+
+    /**
      * Renders the rich bigbox/inline-thumbnail hover tooltip from the active page
      * definition's `features.tooltipColumns` spec, when one is configured.
      *
@@ -90029,6 +90126,10 @@ a { color: #1565c0; }`;
                     // (including MusicBrainz-collapsed ones) and renders them as
                     // "Name (role)" entries comma-separated on a single tooltip line.
                     _artTooltipArtistRoles(row, ci, tip);
+                } else if (_colName === 'Annotation') {
+                    // Rich rendering: the whole prose cell as HTML, uncollapsed,
+                    // in a wider card (see _artTooltipAnnotation).
+                    _artTooltipAnnotation(row, ci, tip);
                 } else if (_colName === 'Cancelled') {
                     // Special rendering for the synthetic Cancelled column:
                     //   - cell has no visible text (only the hidden sort-key "no") → silently omitted
@@ -92642,6 +92743,8 @@ a { color: #1565c0; }`;
                             const _tip = _ensureArtBigboxTooltip();
                             if (!_tip) return;
                             _tip.innerHTML = '';
+                            // Singleton card: undo a previous Annotation card's widening.
+                            _tip.style.maxWidth = '380px';
 
                             // ── Primary path: tooltipColumns-driven rendering ─────────────────────
                             // When the active page definition declares a tooltipColumns
@@ -92798,6 +92901,7 @@ a { color: #1565c0; }`;
                             const _r  = this.getBoundingClientRect();
                             const _vw = window.innerWidth, _vh = window.innerHeight;
                             _tip.style.display = 'block';
+                            _fitArtTooltipToViewport(_tip);
                             const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
                             let _x = _r.right + 8;
                             let _y = _r.top;
@@ -95146,6 +95250,8 @@ a { color: #1565c0; }`;
             const _tip = _ensureArtBigboxTooltip();
             if (!_tip) return;
             _tip.innerHTML = '';
+            // Singleton card: undo a previous Annotation card's widening.
+            _tip.style.maxWidth = '380px';
 
             const _rowEl = ph.closest('tr');
 
@@ -95287,6 +95393,7 @@ a { color: #1565c0; }`;
                 : ph.getBoundingClientRect();
             const _vw = window.innerWidth, _vh = window.innerHeight;
             _tip.style.display = 'block';
+            _fitArtTooltipToViewport(_tip);
             const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
             let _x = _anchorRect.right + 8;
             let _y = _anchorRect.top;

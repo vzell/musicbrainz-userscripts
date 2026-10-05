@@ -18754,3 +18754,38 @@ submenu itself — out of flow FIRST: unstyled, the submenu is part of the
 header's height, and taking it out shifted the entity header up by 235 px
 between measuring and placing. Both guards are in
 `scripts/mutations/sticky-page-headers.json`.
+
+## 2026-10-05 — annotation search: the artwork card showed the name only (branch feature/annotation-search-tooltip)
+
+**Symptom.** On `search?type=annotation`, hovering a big-picture strip image
+or an inline thumbnail showed only the entity name. The search pageType's
+`entityFeatures['Annotations']` had no `tooltipColumns`, so both hover
+handlers used their static fallback.
+
+**Why adding the spec alone was not enough.** The generic
+`_artTooltipCellText()` path is wrong for a prose cell in three ways. It
+collapses whitespace, so every `<br>`/paragraph becomes one line. It returns
+only the anchor text when a cell holds exactly one `<a>`, so a one-link
+annotation became the single word "Discogs". And a plain clone copies the
+cell's collapsed state: the `.mb-text-clamp-inner` max-height, plus the inline
+`display:none` that `_rewireNestedTableH2Toggles()` puts on every collapsed
+nested wiki `<h2>` section (collapsed by default).
+
+**Fix.** `tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary
+alias', '---', 'Annotation' ]`, plus an `'Annotation'` branch that calls the new
+`_artTooltipAnnotation()`. That function clones the clamp wrapper's CHILDREN,
+removes the script's UI and the `_CLEAN_STRIP_SEL` sentinels, unwraps
+`_COLLAPSE_MATCH_SEL` highlights and clears every inline `display`. The card
+widens to 600px. Both hover handlers reset `maxWidth` to 380px before
+rendering, because the tooltip is a singleton. They also call the new
+`_fitArtTooltipToViewport()` after showing it, since the card has
+`pointer-events:none` and cannot scroll. That function shortens the
+annotation block to the window and reveals a "… (more in the cell)" foot.
+
+**Tests.** `tests/fixtures/search-annotation-tooltip.spec.js` (8 tests) on
+`tests/fixtures/search-annotation-tooltip.html`, built by
+`scripts/build-search-annotation-fixture.py` from the live page. Two of its
+four rows are hand-shaped: one has a single link, one is very long.
+`scripts/mutations/annotation-tooltip.json`: 6 planted defects, all caught.
+The inline thumbnail's fit was not covered at first (expect "pass"); a test
+was added rather than leaving it recorded.
