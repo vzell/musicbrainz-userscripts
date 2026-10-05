@@ -1,4 +1,5 @@
 * TODO sticky feature bugs
+** DONE i
 
 There are still some bugs, a couple predating the latest sticky changes in commit "fddfe5b". Also note, that the
 implementation and measurements in commit "fddfe5b" have been performed on host "vzell-lap". We are now on "petri" which
@@ -51,7 +52,13 @@ under the h2 "Credits" line is not sticky and the table does not dock in line wi
 
 4.)
 
-The following look like the same type of bug. On PTs which are misssing the
+The following looks like the same type of bug. On PTs which are misssing the e.g. (this is from https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/releases)
+
+#+begin_example
+<p class="subheader"><span class="prefix">~</span> <!-- -->Group<span id="mb-status-sentinel" style="display: inline-block; width: 0px; height: 0px; overflow: hidden; vertical-align: middle;">
+#+end_example
+
+some text is not sticky
 
 a.)
 
@@ -84,3 +91,53 @@ Re-measure on this host "petri" what we did on the slow host "vzell-lap", see @t
 #+begin_example
 * 2026-10-05 — sticky column docks at its table's left (branch feature/sticky-col-align), artist-events (vzell-lap)
 #+end_example
+
+** DONE bug: big-picture-stripe-indent-bug
+
+Everything works as expected in a live browser except one small glitch on multi-table pageTypes, where the big picture
+image stripe is not indented under its h3 when scrolling, see @debug/big-picture-stripe-indent-bug.html - [Image #19]
+
+On single-table pageTypes it's ok
+
+** summary
+
+● Everything in org/sticky-bugs.org is fixed on feature/sticky-col-align, except 3b's docking, which I couldn't reproduce. One performance cost needs your decision before I commit. Nothing is committed or merged; there is no version bump, and the changes are recorded as WIP.2 in
+  the WIP changelog.
+
+  Your live strip report (multi-table): fixed. The strip never had an indent of its own: the h3 bar and the table are indented 1.5em, the strip sat at the h2's edge, and pinning kept it there. It now takes its table's indent; single-table pages don't change.
+
+  The reported bugs:
+  - 1. Cover-art strip, 3b/3c intro text, 4a–e status line and intro text: all pinned now. Instead of pinning only bars and certain section bodies, everything on the page except a wide data table is pinned. A wrapper with no data table inside (the Wikipedia extract, Annotation,
+    Credits) is pinned as one block.
+  - 2. Wikipedia licence note covering the link: fixed. The "Continue reading" link and the licence note were pinned separately at the same left edge, so one was drawn over the other.
+  - 3a. "Add a new alias": removed on artist and all other entity Aliases pages.
+  - 3c. Credits: fixed. Its only column fills the whole 906 px table, so it had no room to dock. A table that fits in the window is now pinned whole.
+  - 3b. Aliases table docking: not reproduced. On fddfe5b, logged in, at 2000 and 2034 px with real scrollbars, the table docks at 20 px every time. Your snapshot has no trace of the docking stylesheet at all, so please re-check it on the new build.
+  - 4f. Other page types: a new live sweep covered all reported pages plus every registered page type, and finally left nothing behind. It found one more case, edit/notes-received's alert checkbox, which is fixed too.
+  - 5. Re-measure on petri: done; the harness is now committed in tests/support/.
+
+  Found along the way:
+  - A real bug in fddfe5b: after a refresh while scrolled right (e.g. a window resize), the sticky column lost its docked state and the strip to its left stopped being masked. fddfe5b's own docking test fails on petri every time with fddfe5b's own code; vzell-lap just never hit
+    the timing. Fixed, with a test that forces the case.
+  - Two millisecond-length tests only passed because a layout shift moved the button out from under the mouse. They now read the tooltip text correctly.
+
+  Tests: the full fixture suite passes (1015). All 40 planted defects in the sticky mutation list behave as recorded, and lint is within the baseline. I ran npm test, not the test:full merge gate.
+
+  Performance (petri, everything in one session):
+  - On the big artist-events table, today's changes are indistinguishable from fddfe5b.
+  - Decision for you: pinning a table whole costs about +60 ms per sort on the 521-row Credits table (+17–20%). It appeared in every round of three sessions and disappears when only that part is switched off. I didn't measure how it grows with more rows. Options: accept it, cap
+    whole-table pinning at some row count, or drop it, in which case narrow tables scroll away again.
+  - Separate flag from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle: +1.1 s in 7 of 9 rounds this session, +0.5 s in the first. Not traced to a cause yet.
+
+  Known limit (documented in DEBUG-NOTES.md): a pinned block is capped to the window width. If unbreakable content inside one were the only thing making a page too wide, the feature could switch on and off repeatedly. No MusicBrainz page is known to do that.
+
+  Should I commit, after you've reviewed git diff? I'd also like your call on the pinning cost.
+  
+** summary after push
+
+● Committed as f1827aa and pushed to origin/feature/sticky-col-align. Nothing is merged to main.
+
+  - Left out of the commit: your own edits to org/sticky-bugs.org. They are still uncommitted in the working tree.
+  - 3b: I updated its entry in DEBUG-NOTES.md to record that you confirmed it docks on the new build. The likely cause of the original snapshot was an older build still loaded in Tampermonkey.
+  - Performance: I took "everything confirmed live" as accepting the ~+60 ms per sort that whole-table pinning costs on the 521-row Credits table, and the commit message says so. If you want a row cap after all, that is a small follow-up.
+  - Still open, from fddfe5b itself: after a sort finishes, the browser stays busy longer before going idle (+0.5 to +1.1 s on artist-events). Nothing has traced it to a cause yet.
