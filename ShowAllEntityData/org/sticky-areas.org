@@ -133,8 +133,6 @@ global filter. On release pages that's the same set, because Credits is moved ab
 live in the sidebar, which is never pinned. If you've turned off the setting that moves trailing sections above the
 table, sections left below it would be pinned too. Say if you want that narrowed.
 
-** TODO go after the remaining ~0.7 s
-
 ** DONE when scrolling to the right, all the sticky parts behave correctly, except the sticky column moves to the right browser
 
 1.)
@@ -193,7 +191,7 @@ Can this be achieved, otherwise it looks a little ugly, see [Image 6]
   3. Ship the alignment without the painted strip. Columns would then show through a ~20–40 px strip left of the docked column while you scroll.
 #+end_example
 
-** bug
+** DONE bug
 
 [Image #8] [Image #9] The end out come looks good, image 8, but when the sticky column is not the first C, that one
 still renders visible until the sticky attaches. Additionally there are stray lines stetching to the left at the
@@ -220,4 +218,7 @@ beginning and end of each table @debug/stray-lines.html
 
   To try it, re-import the script in Tampermonkey and scroll right on release 52c6808b… and isrc/USSM19500019. Tell me when you want it merged.
 #+end_example
+
+
+** TODO go after the remaining ~0.7 s
 

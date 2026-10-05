@@ -1,0 +1,86 @@
+* TODO sticky feature bugs
+
+There are still some bugs, a couple predating the latest sticky changes in commit "fddfe5b". Also note, that the
+implementation and measurements in commit "fddfe5b" have been performed on host "vzell-lap". We are now on "petri" which
+ist much more potent.
+
+1.)
+
+The big image stripe above the table in
+e.g. https://musicbrainz.org/artist/b3c01c39-429c-4b1e-8ad4-c7b04b601ca4/releases still not dock in line with its pinned
+h2 (single-table)/h3(multi-table) bar - @debug/big-image-strip-not-docking.html - [Image #10]
+
+2.)
+
+"Continue reading at Wikipedia..." gets overwritten with "Wikipedia content provided under the terms of the Creative Commons BY-SA license"
+on e.g. https://musicbrainz.org/work/bcd490e5-dac7-3b8a-b423-ae17e1209f3d when srolling to the right - [Image #11] - @debug/wikipedia-overwritten-come-together.html
+
+3.)
+
+On https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases
+
+a.)
+
+the
+
+#+begin_example
+<p><a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/add-alias">Add a new alias</a></p>
+#+end_example
+
+should be removed on the final rendered page
+
+b.)
+
+After pressing the "Aliases" action button, the text
+
+#+begin_example
+<p>An alias is an alternate name for an entity. They typically contain common misspellings or variations of the name and are also used to improve search results. View the <a href="/doc/Aliases">alias documentation</a> for more details.</p>
+#+end_example
+
+under the h2 "Aliases" line is not sticky and the table does not dock in line with its pinned h2 - @debug/aliases.html - [Image #12]
+
+b.)
+
+After pressing the "Credits" action button, the text
+
+#+begin_example
+<p>This is a list of all the different ways <a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f" title="Springsteen, Bruce"><bdi>Bruce Springsteen</bdi></a> is credited in the database. View the <a href="/doc/Artist_Credits">artist credit documentation</a> for more details.</p>
+#+end_example
+
+under the h2 "Credits" line is not sticky and the table does not dock in line with its pinned h2 - @debug/credits.html - [Image #13]
+
+4.)
+
+The following look like the same type of bug. On PTs which are misssing the
+
+a.)
+
+[Image #14] - https://musicbrainz.org/user/vzell/subscriptions/artist - @debug/artist-subscriptions.html
+
+b.)
+
+[Image #15] - https://musicbrainz.org/user/vzell/ratings - @debug/user-ratings.html
+
+c.)
+
+[Image #16] - https://musicbrainz.org/search?query=Barcode+and+other+i&type=annotation&limit=25&method=indexed - @debug/search-pages.html
+
+d.)
+
+[Image #17] - https://musicbrainz.org/isrc/USSM19500019 - @debug/ISRCs.html
+
+e.)
+
+[Image #18] - https://musicbrainz.org/cdstub/browse - @debug/top-CD-stubs.html
+
+f.)
+
+there are potentially other PTs, please check
+
+5.)
+
+Re-measure on this host "petri" what we did on the slow host "vzell-lap", see @tests/MEASUREMENTS.org
+
+#+begin_example
+* 2026-10-05 — sticky column docks at its table's left (branch feature/sticky-col-align), artist-events (vzell-lap)
+#+end_example

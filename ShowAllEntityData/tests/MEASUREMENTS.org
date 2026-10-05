@@ -2928,8 +2928,8 @@ render, 15 fresh page loads per arm, branch / main / branch in one session
 
 ** =release-tracks=, single-table, 25 rows ("Live and Swingin': The Ultimate Rat Pack Collection", =tests/fixtures/release-tracks-medley.html=)
 
-| Metric                      | main | branch | branch again | ratio      |
-|-----------------------------+------+--------+--------------+------------|
+| Metric                        | main | branch | branch again | ratio      |
+|-------------------------------+------+--------+--------------+------------|
 | Title 📊 cold open, median ms | 4.60 |   7.20 |         7.70 | 1.57–1.67x |
 
 *Read as: ~1.6x on this page, ~3 ms absolute.* This release is the worst case
@@ -3164,12 +3164,12 @@ bars alone carry it.*
 | Arm (median of 5, ms; UTC 21:44–22:02) | long tasks in 2 s after render |
 |----------------------------------------+--------------------------------|
 | on (=@property= fix in)                |                           1186 |
-| frozen after engaging                  |                     702 / 779 / 862 |
+| frozen after engaging                  |                702 / 779 / 862 |
 | frozen, =<body>= not widened           |                            764 |
 | frozen, bars not sticky                |                            816 |
 | frozen, =:has()= rules deleted         |                            932 |
 | frozen, sidebar rule deleted           |                            767 |
-| off                                    |                    147 / 95 / 157 |
+| off                                    |                 147 / 95 / 157 |
 
 (the frozen and off rows ran in three rounds; one value per round)
 
