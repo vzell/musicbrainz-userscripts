@@ -5,8 +5,8 @@
 // the script unconditionally — so nothing else in the suite would notice a
 // broken pattern. This reads the header the way Tampermonkey does (a value
 // wrapped in slashes is a regular expression) and checks the
-// springsteenlyrics.com lines admit exactly the list pages, while every
-// MusicBrainz sample still matches.
+// springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
+// line exactly its list.htm, while every MusicBrainz sample still matches.
 
 const fs = require('fs');
 const { test, expect } = require('../support/test');
@@ -72,6 +72,32 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/index.php',
             'https://springsteenlyrics.com.example.org/collection.php?cmd=list',
             'https://example.org/springsteenlyrics.com/collection.php?cmd=list',
+        ];
+        expect(lists.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('jungleland.it: list.htm, and nothing else', () => {
+        const lists = [
+            'https://www.jungleland.it/html/list.htm',
+            'http://www.jungleland.it/html/list.htm',
+            'https://jungleland.it/html/list.htm',
+            'https://www.jungleland.it/html/list.htm#1975',
+            'https://www.jungleland.it/html/list.htm?x=1',
+        ];
+        const others = [
+            // The frameset that holds list.htm, its default right frame, an
+            // item page, the site's splash page.
+            'https://www.jungleland.it/html/artwork.htm',
+            'https://www.jungleland.it/html/images.htm',
+            'https://www.jungleland.it/html/19750815.htm',
+            'https://www.jungleland.it/',
+            'https://www.jungleland.it/html/list.html',
+            'https://www.jungleland.it/html/list.htm.bak',
+            'https://www.jungleland.it/list.htm',
+            'https://www.jungleland.it.example.org/html/list.htm',
+            'https://example.org/www.jungleland.it/html/list.htm',
+            'https://notjungleland.it/html/list.htm',
         ];
         expect(lists.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

@@ -170,5 +170,5 @@ async function addRequiredLibs(page) {
 
 module.exports = {
     loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE,
-    IRO_PATH, PAKO_PATH, CDN_RE,
+    IRO_PATH, PAKO_PATH, CDN_RE, FIXTURE_SETTINGS_OVERRIDE, SETTINGS_MIGRATION_PRE_APPLIED,
 };

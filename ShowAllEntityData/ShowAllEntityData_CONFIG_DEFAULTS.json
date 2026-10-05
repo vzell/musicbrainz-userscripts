@@ -3,10 +3,10 @@
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
     "script_version": "9.99.1241+2026-10-05",
-    "schema_entries": 330,
-    "sections": 41,
-    "settings": 289,
-    "settings_with_default": 284,
+    "schema_entries": 332,
+    "sections": 42,
+    "settings": 290,
+    "settings_with_default": 285,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,10 +15,10 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 133,
+      "checkbox": 134,
       "color_picker": 62,
+      "divider": 42,
       "number": 42,
-      "divider": 41,
       "keyboard_shortcut": 23,
       "popup_dialog": 14,
       "text": 9,
@@ -190,6 +190,10 @@
     {
       "key": "divider_springsteenlyrics",
       "label": "🎸 SPRINGSTEENLYRICS.COM"
+    },
+    {
+      "key": "divider_jungleland",
+      "label": "🌴 JUNGLELAND.IT"
     }
   ],
   "labels": {
@@ -274,6 +278,7 @@
     "sa_enable_h1_comment_span_relocation_on_final_page": "Relocate H1 comment-span alias block (final rendered page)",
     "sa_enable_h1_comment_span_relocation_on_initial_page": "Relocate H1 comment-span alias block (initial page)",
     "sa_enable_h2_section_relocation_on_final_page": "Relocate trailing h2 sections before data table (final rendered page)",
+    "sa_enable_jungleland": "Enable on the jungleland.it bootleg artwork list",
     "sa_enable_keyboard_shortcut_tooltip": "Enable Keyboard Shortcut Tooltip",
     "sa_enable_keyboard_shortcuts": "Enable Keyboard Shortcuts",
     "sa_enable_legal_name_relocation_on_final_page": "Relocate legal name below subheader (final rendered page)",
@@ -564,6 +569,7 @@
     "sa_enable_h1_comment_span_relocation_on_final_page": true,
     "sa_enable_h1_comment_span_relocation_on_initial_page": true,
     "sa_enable_h2_section_relocation_on_final_page": true,
+    "sa_enable_jungleland": false,
     "sa_enable_keyboard_shortcut_tooltip": true,
     "sa_enable_keyboard_shortcuts": true,
     "sa_enable_legal_name_relocation_on_final_page": true,

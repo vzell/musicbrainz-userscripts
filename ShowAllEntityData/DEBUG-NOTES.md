@@ -19073,3 +19073,63 @@ since a Format entry's label span also holds its guide line.
 Tests: `sl-scope-bar.spec.js` 39 (4 new), mutations 40 (38 fail as expected, 2
 recorded passes: the bootleg-search count guard, and the guide panel's
 "not the page container" guard, which no fixture can show).
+
+## 2026-10-06 — jungleland.it: the bootleg artwork list as a second foreign host (branch feature/jl-support)
+
+`org/jungleland.it.org`: springsteenlyrics.com's treatment "albeit not so
+complex" for `https://www.jungleland.it/html/list.htm`, opt-in
+(`sa_enable_jungleland`, default off). Design and rules:
+docs/claude/jungleland.md.
+
+**What the snapshot and a live look showed (`debug/jungleland.it.html`,
+2026-10-05):**
+
+- **Page:** one static FrontPage page, windows-1252, no doctype, no
+  pagination, no heading of any kind.
+- **Entries:** 6,326 `<p><a target="inferioredx1" href="YYYYMMDD[_N].htm">`
+  entries under 59 year anchors plus "others".
+  - Every entry under a year anchor ends in a glued `(YYYY-MM-DD)`.
+  - Under "others", 485 are undated, and one, "Magic In The Köln Night
+    (2007-12-13)", has the date after a space.
+  - The "others" heading's second `<a name="others">` sits inside its first
+    entry's `<p>`.
+- **Frameset:** list.htm is not the page users see. The site's entry is
+  `html/artwork.htm`, a frameset whose 25 % LEFT frame is list.htm. Entries
+  open in the right frame `inferioredx1`, which shows the bootleg's artwork.
+  The header has no `@noframes`, so Tampermonkey runs the script in that frame
+  as well. Decided with the user: only a list.htm opened as its own tab is
+  converted. The frame gate (`window.top !== window`) sits next to the opt-in
+  gate, and the table's links open in a new tab, since that frame does not
+  exist there.
+
+**What changed in shared code:**
+
+- **Detection loop:** it compared `Boolean(def.host) !== _isSlHost`. With two
+  foreign hosts that only says "some foreign host", so it now compares
+  `(def.host || null) !== _foreignHost`. No spec can see the difference today,
+  because no SL matcher claims `/html/list.htm`. Removing the comparison
+  entirely is also invisible: checked by mutation, no MusicBrainz matcher
+  claims that path either. Both are recorded as passes.
+- **CSS:** `_ensureSlStyle()`'s `:where()` table rules moved, verbatim, into
+  `_ensureForeignTableStyle()`, keyed on
+  `body:is(.mb-sa-host-sl, .mb-sa-host-jl)`. All 73 sl-* fixture tests pass
+  unchanged.
+
+**Equivalent mutant, dropped:** planting "no `\s*` before the date" in
+`_jlParseItem()`'s regex changes nothing. The lazy title group then ends with
+the space, and `.trim()` removes it. The `\s*` stays as documentation of the
+shape; it is not a guard.
+
+**Pre-existing, fixed on the way:** `sl-support.json`'s "the entry page
+@include line is missing" grepped `every list page, and only list pages`.
+Commit 7e321c2 renamed that test, so the grep selected no test and the entry
+reported ERROR. It now greps `springsteenlyrics.com: every list page` and
+fails as expected.
+
+**Results:**
+
+- `jl-list.spec.js`: 10 tests, plus one new test in `sl-include-regex.spec.js`.
+- Mutations: `jl-support.json` has 14 entries, 12 failing as expected and 2
+  recorded passes (the two host-comparison guards above). `sl-support.json`
+  is all OK after the grep fix.
+- Live `jl-list.spec.js` (`@extended`): the whole real page, 6.3 s.
