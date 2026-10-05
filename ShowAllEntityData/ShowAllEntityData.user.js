@@ -8903,6 +8903,101 @@
     }
 
     /**
+     * The collection's formats, one entry per `f_format` code: group, the
+     * site's own filter label, its "Formats guide" abbreviation and text
+     * (`guide: false` where the site's guide has no entry, so the text is
+     * ours), and the card texts that name the medium (`re`, matched against
+     * one medium of a Format text with its count stripped).
+     *
+     * One table for three vocabularies the site keeps apart: filter codes
+     * (12i), guide abbreviations (LP) and the cards' free text ("2xLP",
+     * "4x12\" + 7\""). Probed live on 2026-10-05
+     * (`scripts/probe-sl-format-codes.py`, page 1 of every code): the server
+     * files an item under the format of its FIRST medium — "VHS + CD" is
+     * vhs, "Blu-ray + DVD" bd, "SACD-HYBRID + 2xCD" cd5 — and 12i holds the
+     * "LP"s. One "CD" filed under cdr is the site's own data, not a rule.
+     * Order matters: the first `re` that matches wins, so "CD-R" is tried
+     * before "CD", "Blu-ray-R" before "Blu-ray", "DVD-R" before "DVD".
+     * @type {Array<{code: string, group: string, label: string, abbr: string, text: string, guide: boolean, re: RegExp}>}
+     */
+    const _SL_FORMATS = [
+        { code: '7i', group: 'Audio', label: '7" vinyl', abbr: '7"', text: '7-inch record', guide: true, re: /^7"$/ },
+        { code: '10i', group: 'Audio', label: '10" vinyl', abbr: '10"', text: '10-inch record', guide: true, re: /^10"$/ },
+        { code: '12i', group: 'Audio', label: '12" vinyl', abbr: '12" / LP', text: '12-inch record: single or EP (12"), album (LP)', guide: true, re: /^(?:12"|lp)$/ },
+        { code: 'flex', group: 'Audio', label: 'Flexi-disc', abbr: 'Flexi', text: 'Flexi-disc, a thin flexible vinyl record', guide: false, re: /^flexi(?:-disc)?$/ },
+        { code: 'cd3', group: 'Audio', label: 'MiniCD (CD3)', abbr: 'MiniCD', text: '80 mm Compact Disc', guide: true, re: /^(?:mini ?cd|cd3)$/ },
+        { code: 'cdr', group: 'Audio', label: 'CD-R', abbr: 'CD-R', text: 'Compact Disc Recordable', guide: true, re: /^cd-?r$/ },
+        { code: 'cd5', group: 'Audio', label: 'Compact Disc (CD5)', abbr: 'CD', text: 'Compact Disc (SACD hybrids are filed here too)', guide: true, re: /^(?:cd|cd5|sacd(?:-hybrid)?)$/ },
+        { code: 'nt', group: 'Audio', label: 'NT Cassette', abbr: 'NT', text: 'NT Cassette, Sony\'s stamp-sized digital tape', guide: false, re: /^nt cassette$/ },
+        { code: 'mc', group: 'Audio', label: 'Cassette tape', abbr: 'MC', text: 'Music Cassette tape', guide: true, re: /^(?:cassette(?: tape)?|mc)$/ },
+        { code: '8t', group: 'Audio', label: '8-track cartridge', abbr: '8T', text: '8-Track tape', guide: true, re: /^8-track(?: cartridge)?$/ },
+        { code: 'r2r', group: 'Audio', label: 'Reel-to-reel tape', abbr: 'R2R', text: 'Reel-to-reel tape', guide: true, re: /^reel-to-reel(?: tape)?$/ },
+        { code: 'md', group: 'Audio', label: 'Minidisc', abbr: 'MD', text: 'Minidisc', guide: true, re: /^(?:md|minidisc)$/ },
+        { code: 'vhs', group: 'Video', label: 'VHS cassette tape', abbr: 'VHS', text: 'VHS cassette tape', guide: true, re: /^vhs$/ },
+        { code: 'betamax', group: 'Video', label: 'Betamax', abbr: 'Betamax', text: 'Betamax video cassette', guide: false, re: /^betamax$/ },
+        { code: 'betacamsp', group: 'Video', label: 'Betacam SP', abbr: 'Betacam SP', text: 'Betacam SP professional video cassette (S or L size)', guide: false, re: /^betacam sp\b/ },
+        { code: 'umatic', group: 'Video', label: 'U-matic', abbr: 'U-matic', text: 'U-matic professional video cassette', guide: false, re: /^u-?matic$/ },
+        { code: 'v8', group: 'Video', label: 'Video8 cassette tape', abbr: 'Video8', text: 'Video8 cassette tape', guide: true, re: /^video ?8$/ },
+        { code: 'ced', group: 'Video', label: 'Capacitance Electronic Disc (CED)', abbr: 'CED', text: 'Capacitance Electronic Disc', guide: true, re: /^ced$/ },
+        { code: 'vhd', group: 'Video', label: 'Video High Density (VHD)', abbr: 'VHD', text: 'Video High Density disc', guide: true, re: /^vhd$/ },
+        { code: 'ld', group: 'Video', label: 'LaserDisc (LD)', abbr: 'LD', text: 'LaserDisc', guide: true, re: /^(?:ld|laserdisc)$/ },
+        { code: 'vcd', group: 'Video', label: 'Video CD (VCD)', abbr: 'VCD', text: 'Video Compact Disc', guide: true, re: /^(?:vcd|video cd)$/ },
+        { code: 'dvdr', group: 'Video', label: 'DVD-R', abbr: 'DVD-R', text: 'Digital Video Disc Recordable', guide: true, re: /^dvd-r$/ },
+        { code: 'dvd', group: 'Video', label: 'DVD', abbr: 'DVD', text: 'Digital Video Disc', guide: true, re: /^dvd$/ },
+        { code: 'bdr', group: 'Video', label: 'Blu-ray-R Disc', abbr: 'BD-R', text: 'Blu-ray Disc Recordable', guide: false, re: /^blu-?ray-?r$/ },
+        { code: 'bd', group: 'Video', label: 'Blu-ray Disc', abbr: 'BD', text: 'Blu-Ray Disc', guide: true, re: /^(?:blu-?ray|bd)$/ },
+        { code: 'prt', group: 'Print', label: 'Print', abbr: 'Print', text: 'Printed matter: books (paperback, hardcover) and other print', guide: false, re: /^(?:paperback|hardcover|print)$/ }
+    ];
+
+    /**
+     * Splits a card's Format text into its media: "4xCD + 2xBlu-ray" → CD ×4
+     * and Blu-ray ×2, "2 x Cassette Tape" → Cassette Tape ×2, each with its
+     * `_SL_FORMATS` entry when one names it. The site's "–" (unknown) and an
+     * empty text give no media.
+     *
+     * @param {string} text
+     * @returns {Array<{name: string, count: number, format: ?object}>}
+     */
+    function _slFormatParts(text) {
+        const t = String(text || '').trim();
+        if (!t || /^[–-]$/.test(t)) return [];
+        return t.split('+').map(part => {
+            const m = part.trim().match(/^(\d+)\s*x\s*(.+)$/i);
+            const name = (m ? m[2] : part).trim();
+            const key = name.toLowerCase();
+            return { name, count: m ? Number(m[1]) : 1, format: _SL_FORMATS.find(f => f.re.test(key)) || null };
+        }).filter(p => p.name);
+    }
+
+    /**
+     * The `f_format` code the site files a card under: its FIRST medium's
+     * (see `_SL_FORMATS`), or `null` when that medium is not one it names.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {?string}
+     */
+    function _slFormatCode(text) {
+        return _slFormatParts(text)[0]?.format?.code || null;
+    }
+
+    /**
+     * The hover text of a collection Format cell: one line per medium with
+     * its count and the formats guide's text, then the format the site files
+     * the item under. `''` when no medium is known, so the cell gets no tip.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {string}
+     */
+    function _slFormatTip(text) {
+        const parts = _slFormatParts(text);
+        if (!parts.some(p => p.format)) return '';
+        const lines = parts.map(p => `${p.name}${p.count > 1 ? ` ×${p.count}` : ''}: ${p.format ? p.format.text : 'not in the formats guide'}`);
+        const filed = parts[0].format;
+        if (filed) lines.push(`Filed under: ${filed.label}`);
+        return [text, ...lines].join('\n');
+    }
+
+    /**
      * Builds the table row for one springsteenlyrics.com card.
      *
      * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
@@ -8982,6 +9077,11 @@
             textCell(label);
             textCell(catNo);
             textCell(fields['Format'] || '');
+            // The formats guide, per cell: an attribute, so it survives every
+            // cloneNode(true) re-render and a Save/Load round trip, and the
+            // cell's text (what filters, sorts and highlights) is unchanged.
+            const formatTip = _slFormatTip(fields['Format'] || '');
+            if (formatTip) _setTip(tr.lastElementChild, formatTip);
             textCell(fields['Country'] || '');
             textCell(released);
             textCell(originalYear);
@@ -9321,6 +9421,13 @@
                 color: #fff;
                 font-weight: bold;
                 text-decoration: none;
+            }
+            /* The formats guide line under a Format menu entry. */
+            body.mb-sa-host-sl .mb-sl-scope-sub {
+                display: block;
+                font-size: 11px;
+                font-weight: normal;
+                color: #607080;
             }
             /* Recorded item count of a category, right-aligned in its entry. */
             body.mb-sa-host-sl .mb-sl-scope-n {
@@ -9792,7 +9899,15 @@
             });
             const label = _SL_FACET_LABELS[keyList[0]] ||
                 caption.replace(/^Filter by\s+/i, '').replace(/:$/, '').replace(/^./, c => c.toUpperCase()) || keyList[0];
-            facets.push({ kind: 'links', label, keys: keyList, options, hide: [block] });
+            const hide = [block];
+            // The Format menu carries the formats guide (every entry's guide
+            // line, `_SL_FORMATS`), so the site's "Formats guide" panel goes
+            // with the format wall — only its own box, never a page container.
+            if (keyList.includes('f_format')) {
+                const guideBox = doc.getElementById('collapseFormats')?.closest('.container');
+                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);
+            }
+            facets.push({ kind: 'links', label, keys: keyList, options, hide });
         });
         return facets;
     }
@@ -9889,10 +10004,11 @@
     // Once a list is loaded, a server filter would reload the page and throw
     // the table away, while the same narrowing is a column filter away. So a
     // facet whose values ARE a column's cell values filters the table instead
-    // (decided 2026-10-05): Country, the year range and Copies. Format does
-    // not map — the site's codes (12i, "12\" vinyl") are not the cells' text
-    // (LP, 2xLP, 4x12" + 7") — and Album has no column, so those, and the
-    // Category, keep navigating, and the menu says which kind it is. Filtering
+    // (decided 2026-10-05): Country, the year range and Copies, and Format
+    // through the formats glossary (`_SL_FORMATS`), since the site's codes
+    // (12i, "12\" vinyl") are not the cells' text (LP, 2xLP, 4x12" + 7").
+    // Album has no column, so it and the Category keep navigating, and the
+    // menu says which kind it is. Filtering
     // goes through applyUniqValueSet(), the 📊 dropdown's own exact-value
     // path, so every cache and highlight rule of that path holds unchanged.
 
@@ -9904,7 +10020,10 @@
         f_country: 'Country',
         f_range: 'Original year',
         f_nbcopies: 'Copies',
-        f_multi: 'Copies'
+        f_multi: 'Copies',
+        // Through `_SL_FORMATS`: a row counts under the format of its FIRST
+        // medium, as the server files it (probed, see that table).
+        f_format: 'Format'
     };
 
     /**
@@ -9965,9 +10084,10 @@
     /**
      * The column values one bar choice stands for: a country by its name
      * (matched case-blind against the column, so the site's chip label and
-     * the cards' text may differ in case); "Copies = N" as N; "Duplicates"
-     * as every count of 2 or more; a year range as every year in it the
-     * column holds. When nothing in the table qualifies, a value no cell
+     * the cards' text may differ in case); a format code as every Format text
+     * whose first medium it names (`_slFormatCode()`); "Copies = N" as N;
+     * "Duplicates" as every count of 2 or more; a year range as every year in
+     * it the column holds. When nothing in the table qualifies, a value no cell
      * holds is returned, so the filter shows an empty table rather than
      * silently clearing itself (an empty set means "no filter").
      *
@@ -9981,6 +10101,8 @@
         if (set.f_country !== undefined) {
             const want = set.f_country.toLowerCase();
             hit = vals.filter(v => v.toLowerCase() === want);
+        } else if (set.f_format !== undefined) {
+            hit = vals.filter(v => _slFormatCode(v) === set.f_format);
         } else if (set.f_nbcopies !== undefined) {
             hit = vals.filter(v => Number(v) === Number(set.f_nbcopies));
         } else if (set.f_multi !== undefined) {
@@ -10194,7 +10316,8 @@
         const list = document.createElement('div');
         list.className = 'mb-sl-scope-list';
         // `target`: an href (navigates), or a function (filters the table).
-        const addOpt = (label, target, isCur, icon, category) => {
+        // `sub`: a second, smaller line (the Format menu's guide text).
+        const addOpt = (label, target, isCur, icon, category, sub) => {
             const a = document.createElement(typeof target === 'function' ? 'button' : 'a');
             a.className = 'mb-sl-scope-opt';
             if (typeof target === 'function') {
@@ -10212,7 +10335,14 @@
             }
             if (icon) a.appendChild(icon.cloneNode(true));
             const span = document.createElement('span');
+            span.className = 'mb-sl-scope-label';
             span.textContent = label;
+            if (sub) {
+                const s = document.createElement('span');
+                s.className = 'mb-sl-scope-sub';
+                s.textContent = sub;
+                span.appendChild(s);
+            }
             a.appendChild(span);
             const c = category !== undefined ? counts[_slListCountKey(path, category)] : null;
             if (c) {
@@ -10256,16 +10386,34 @@
                 pop.classList.add('mb-sl-scope-pop-wide');
                 pop.appendChild(ruler);
             }
-        } else if (handoff) {
-            const chosen = _slTableChoice(handoff);
-            addOpt('Any', () => _slApplyTableFilter(handoff, [], ''), chosen === null, null);
-            facet.options.forEach(o => addOpt(o.label,
-                () => _slApplyTableFilter(handoff, _slHandoffValues(handoff, o.set), o.label),
-                chosen === o.label, o.icon));
         } else {
-            addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
-            facet.options.forEach(o => addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }),
-                cur.option === o, o.icon));
+            // One entry per option: a table filter after the fetch, a link
+            // before it. The Format menu is the formats guide too: entries
+            // grouped Audio / Video / Print, each with its guide line.
+            const chosen = handoff ? _slTableChoice(handoff) : null;
+            const addOption = o => {
+                const fmt = o.set.f_format !== undefined ? _SL_FORMATS.find(f => f.code === o.set.f_format) : null;
+                const sub = fmt ? `${fmt.abbr} · ${fmt.text}${fmt.guide ? '' : ' (not in the site\'s guide)'}` : '';
+                if (handoff) {
+                    addOpt(o.label, () => _slApplyTableFilter(handoff, _slHandoffValues(handoff, o.set), o.label),
+                        chosen === o.label, o.icon, undefined, sub);
+                } else {
+                    addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }), cur.option === o, o.icon, undefined, sub);
+                }
+            };
+            if (handoff) addOpt('Any', () => _slApplyTableFilter(handoff, [], ''), chosen === null, null);
+            else addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
+            if (facet.keys.includes('f_format')) {
+                const groupOf = o => _SL_FORMATS.find(f => f.code === o.set.f_format)?.group || 'More';
+                ['Audio', 'Video', 'Print', 'More'].forEach(g => {
+                    const opts = facet.options.filter(o => groupOf(o) === g);
+                    if (opts.length === 0) return;
+                    addGroup(g);
+                    opts.forEach(addOption);
+                });
+            } else {
+                facet.options.forEach(addOption);
+            }
         }
 
         const optCount = list.querySelectorAll('.mb-sl-scope-opt').length;

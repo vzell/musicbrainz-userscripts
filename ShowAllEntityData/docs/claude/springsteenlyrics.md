@@ -341,9 +341,10 @@ of repeating. A cache, not in the config export.
 Decided 2026-10-05: once a list is loaded, a facet whose values ARE a column's
 cell values filters that column instead of reloading. They are listed in
 `_SL_TABLE_FILTER_COLUMNS`: `f_country` → Country, `f_range` → Original year,
-`f_nbcopies`/`f_multi` → Copies. **Format does not map**: the site's codes and
+`f_nbcopies`/`f_multi` → Copies, and since part 6 `f_format` → Format through
+the formats glossary (see "The formats guide" below). The site's codes and
 chip labels (`12i`, `12" vinyl`) are not the cells' free text (`LP`, `2xLP`,
-`4x12" + 7"`). It joins once the formats glossary maps codes to cell text.
+`4x12" + 7"`), so Format needed `_slFormatCode()` before it could join.
 **Album** has no column, and **Category** is another list, so these keep
 navigating. Every menu says which kind it is (`_slAddScopeNote()`).
 
@@ -380,6 +381,49 @@ list hung past the window, with its last entries unreachable.
 Cost: one choice reads one column of every loaded row once (about 5,400
 `getCleanColumnText()` calls on the entry page). That happens on the click, not
 on the filter, sort or render path.
+
+### The formats guide — `_SL_FORMATS`
+
+The site keeps three vocabularies for one format, and none of them maps to the
+others: filter codes (`cd5`, chip label "Compact Disc (CD5)"), its "Formats
+guide" panel (abbreviation `CD`, text "Compact Disc") and the cards' free text
+("4xCD + Blu-ray", "2 x Cassette Tape", "SACD-HYBRID"). The guide also lacks
+seven filter formats (Flexi, NT, Betamax, Betacam SP, U-matic, BD-R, Print),
+and has two (5", 8") no filter offers. `_SL_FORMATS` is one entry per code:
+group (Audio / Video / Print), the site's label, the guide's abbreviation and
+text (`guide: false` where the text is ours), and `re` — the card texts that
+name the medium.
+
+**How the server files an item, probed rather than guessed**
+(`scripts/probe-sl-format-codes.py`, page 1 of each of the 26 codes,
+2026-10-05): by its **first** medium. "VHS + CD" is under vhs, "Blu-ray + DVD"
+under bd, "SACD-HYBRID + 2xCD" under cd5, and 12i holds the "LP"s (it is 12"
+vinyl, singles and albums). One "CD" filed under cdr is a slip in the site's
+own data. `_slFormatParts()` splits a text into media with counts;
+`_slFormatCode()` is the first medium's code. Order in `_SL_FORMATS` matters:
+the first `re` that matches wins, so CD-R, DVD-R and Blu-ray-R come before CD,
+DVD and Blu-ray. A medium the table does not name maps to nothing, so that row
+matches no Format choice. Print is known only as Paperback/Hardcover (the
+probe's first page).
+
+The glossary is used in three places:
+
+- **The Format menu is the guide.** Entries are grouped Audio / Video / Print,
+  each with its guide line as a second line (`mb-sl-scope-sub`, inside the
+  label span). The menu's search reads the whole entry, so "mc" finds Cassette
+  tape. The site's "Formats guide" panel is hidden WITH the format wall
+  (`_slReadNavFacets()`, its own `.container` only; a page with the panel but
+  no format wall, such as memorabilia, keeps it).
+- **Every collection Format cell carries a tip** (`_slFormatTip()`, set by
+  `_slBuildRow()` through `_setTip()`): the text, one line per medium with its
+  count and guide text, then "Filed under: <label>". It is an attribute, so it
+  survives every `cloneNode(true)` re-render and Save/Load, and the cell's
+  text, which filters, sorts and highlights, is unchanged. Set at conversion,
+  so the live page, fetched pages and Load from Disk all get it; it is not
+  gated on the bar.
+- **After the fetch, Format filters the table**: `_slHandoffValues()` keeps
+  the column values whose `_slFormatCode()` is the chosen code. A spec pins
+  that "CD + 2xDVD" counts as CD; a last-medium rule fails it.
 
 ### The bootleg landing page — `sl-bootlegs-intro`, `features.slNavOnly`
 
@@ -421,7 +465,7 @@ leaves the other fixtures byte-identical.
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
-| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Mutations: `scripts/mutations/sl-scope-bar.json` |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Formats guide: the Format menu grouped Audio/Video/Print with a guide line per entry, found by abbreviation; the site panel hidden with the format wall and kept where there is none; every Format cell's tip (compound and counted texts); after the fetch Format filters by first medium ("CD + 2xDVD" is CD); Album and Category still navigate. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 

@@ -19038,3 +19038,38 @@ asserts it is included (bare, `#top`, `cmd=intro`), while `cmd=introx` and
 
 Tests: `sl-scope-bar.spec.js` 35 (4 new), the `@include` spec flipped,
 mutations 34 (33 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the formats guide; how the server files a format (branch feature/sl-scope-bar)
+
+Part 6 of the bar. **The one fact everything rests on was probed, not
+assumed:** `scripts/probe-sl-format-codes.py` fetched page 1 of
+`collection.php?cmd=list&category=all&f_format=<code>` for all 26 codes and
+tallied the cards' Format texts. Results:
+
+- An item is filed under its FIRST medium: `vhs` holds "VHS + CD" (5) and "VHS +
+  2xMiniCD"; `bd` holds "Blu-ray + DVD"; `cd5` holds "SACD-HYBRID" and
+  "SACD-HYBRID + 2xCD"; `cdr` holds "3xCD-R + 3xDVD-R". No code held an item
+  whose first medium was another code's, apart from one plain "CD" under `cdr`
+  (the site's data).
+- `12i` ("12\" vinyl") is the "LP"s (100 of 100 on page 1); `prt` is
+  "Paperback"/"Hardcover" (65/27); counts are written "2xCD", "2 x Cassette
+  Tape" and "4XLP".
+- Totals for the record (the "of N" line): 7i 989, 10i 16, 12i 1153, flex 13,
+  cd3 33, cd5 1646, cdr 166, mc 261, 8t 20, r2r 11, nt 1, md 18, vhs 61,
+  betamax 3, betacamsp 4, umatic 2, v8 3, ced 1, vhd 2, ld 15, vcd 1, dvd 161,
+  dvdr 6, bd 21, bdr 1, prt 744.
+
+So the bar files a loaded row the same way (`_slFormatCode()`, first medium),
+and the spec pins it with the sampler fixture's "CD + 2xDVD": a last-medium (or
+any-medium) rule would file it as DVD. Only page 1 of each code was read, so a
+rarer spelling may still be missing from `_SL_FORMATS`' patterns; such a row
+matches no Format choice rather than a wrong one.
+
+Changed test: part 4's "Format and Category still navigate" became "Album and
+Category still navigate" on the Official Albums fixture (the only one with an
+Album wall). Test helpers now read an entry's label from its own text node,
+since a Format entry's label span also holds its guide line.
+
+Tests: `sl-scope-bar.spec.js` 39 (4 new), mutations 40 (38 fail as expected, 2
+recorded passes: the bootleg-search count guard, and the guide panel's
+"not the page container" guard, which no fixture can show).

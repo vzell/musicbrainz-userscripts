@@ -1379,15 +1379,28 @@ type, and press Enter or *Search*.
 - *Recent* lists your last eight searches, newest first, wherever you started
   them, including the site's own forms. *Forget these searches* empties it.
 
-**Once the table is loaded**, *Country*, *Year* and *Copies* filter the
-**loaded table** instead of reloading the page. They work like that column's 📊
-pick: the table narrows at once, and the chip is marked 📊. The chip's **×** (or
-the column's own ✕) removes just that filter, and with only table filters
-active, *Clear all* clears them in place. *Format*, *Album* and *Category* still
-open another list, because the site's format names are not the text in the
-Format column. Each menu says at the top which kind it is. A filter that the
-list was fetched with (for example *Country: USA* in the address) can only be
-changed by reloading, because the table holds nothing else.
+**The Format menu is also the formats guide.** Its entries are grouped into
+Audio, Video and Print, and each has a second line with the guide's
+abbreviation and meaning, e.g. *Cassette tape*, then *MC · Music Cassette
+tape*. The search box matches those lines too, so typing `mc` finds the
+cassette. Formats the site's own guide leaves out (Flexi-disc, NT Cassette,
+Betamax, Betacam SP, U-matic, Blu-ray-R, Print) are explained as well, marked
+*(not in the site's guide)*. The site's "Formats guide" panel is hidden along
+with the format buttons.
+
+**Once the table is loaded**, *Country*, *Year*, *Copies* and *Format* filter
+the **loaded table** instead of reloading the page. They work like that
+column's 📊 pick: the table narrows at once, and the chip is marked 📊. The
+chip's **×** (or the column's own ✕) removes just that filter, and with only
+table filters active, *Clear all* clears them in place.
+
+- *Format* files an item under its **first** medium, as the site does:
+  "CD + 2xDVD" counts as a CD, and "VHS + CD" as a VHS.
+- *Album* and *Category* still open another list. Each menu says at the top
+  which kind it is.
+- A filter that the list was fetched with (for example *Country: USA* in the
+  address) can only be changed by reloading, because the table holds nothing
+  else.
 
 The site's own buttons and forms are only hidden, so switching the setting off
 brings them back. A choice that opens another list is an ordinary link:
@@ -1399,7 +1412,9 @@ The columns come from what each card shows — no item page is opened:
 - **Collection:** Cover, Title, Version, Label, Cat. no., Format, Country,
   Release date, Original year, Copies. The site's *Label (Cat #)* and *Release
   date (Original year)* are split in two. *Copies* is 1 unless the card says
-  "I have N copies".
+  "I have N copies". Hovering a *Format* cell explains each medium in it from
+  the formats guide (e.g. "4xCD + 2xBlu-ray": CD ×4 and Blu-ray ×2), and names
+  the format the site files the item under, which is its first medium.
 - **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
   Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
   1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those

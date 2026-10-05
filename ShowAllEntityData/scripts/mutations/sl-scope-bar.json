@@ -444,5 +444,83 @@
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
     "grep": "with the bar on: Category, the search box and Recent",
     "expect": "fail"
+  },
+  {
+    "name": "a row is filed under its LAST medium",
+    "why": "The server files an item under its first medium (probed: \"VHS + CD\" is vhs). \"CD + 2xDVD\" filed as DVD would leave the CD filter short of rows the site counts as CD.",
+    "edits": [
+      {
+        "find": "        return _slFormatParts(text)[0]?.format?.code || null;",
+        "replace": "        return _slFormatParts(text).slice(-1)[0]?.format?.code || null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Format filters the table by first medium",
+    "expect": "fail"
+  },
+  {
+    "name": "Format never filters the loaded table",
+    "why": "Without the glossary mapping Format reloads the page and throws the loaded table away, the one menu part 4 had to leave out.",
+    "edits": [
+      {
+        "find": "        // medium, as the server files it (probed, see that table).\n        f_format: 'Format'",
+        "replace": "        // medium, as the server files it (probed, see that table)."
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Format filters the table by first medium",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's Formats guide panel stays beside the Format menu",
+    "why": "The menu carries the guide; the panel would keep its pinned row for nothing.",
+    "edits": [
+      {
+        "find": "                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Formats guide panel goes with the format wall",
+    "expect": "fail"
+  },
+  {
+    "name": "the guide panel's box is hidden even when it holds the page",
+    "why": "A guard against a future page where the panel's nearest .container is the page's own. Not visible: on every fixture the panel has its own box, so the spec stays green.",
+    "edits": [
+      {
+        "find": "                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);",
+        "replace": "                if (guideBox) hide.push(guideBox);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Formats guide panel goes with the format wall",
+    "expect": "pass"
+  },
+  {
+    "name": "Format cells carry no guide text",
+    "why": "The guide's third place: hovering a cell is where \"4xCD + 2xBlu-ray\" needs explaining.",
+    "edits": [
+      {
+        "find": "            if (formatTip) _setTip(tr.lastElementChild, formatTip);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "every collection Format cell carries its guide text",
+    "expect": "fail"
+  },
+  {
+    "name": "Format menu entries lose their guide line",
+    "why": "Without it the menu is the site's chip labels again, and \"mc\" finds nothing.",
+    "edits": [
+      {
+        "find": "                const sub = fmt ? `${fmt.abbr} · ${fmt.text}${fmt.guide ? '' : ' (not in the site\\'s guide)'}` : '';",
+        "replace": "                const sub = '';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "the Format menu is the guide",
+    "expect": "fail"
   }
 ]

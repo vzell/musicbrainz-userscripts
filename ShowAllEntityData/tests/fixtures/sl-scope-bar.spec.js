@@ -44,7 +44,7 @@ function barButtons(page) {
  * Opens the pull-down of one facet and returns its entries.
  * @param {import('@playwright/test').Page} page
  * @param {string} facet  The button's `data-mb-sl-facet`, e.g. 'f_country'.
- * @returns {Promise<Array<{text: string, n: ?string, href: string, cur: boolean}>>}
+ * @returns {Promise<Array<{text: string, sub: ?string, n: ?string, href: string, cur: boolean}>>}
  *   `text` is the entry's label, `n` its recorded item count (or null).
  */
 async function openMenu(page, facet) {
@@ -52,9 +52,15 @@ async function openMenu(page, facet) {
     await expect(page.locator('.mb-sl-scope-pop')).toBeVisible();
     return page.$$eval('.mb-sl-scope-pop .mb-sl-scope-opt', (as) => as.map((a) => {
         const n = a.querySelector('.mb-sl-scope-n');
+        // The label's own text node: a Format entry's guide line is a child
+        // span of the label, and the count a sibling of it.
+        const label = a.querySelector('.mb-sl-scope-label');
+        const sub = a.querySelector('.mb-sl-scope-sub');
         return {
-            text: (a.textContent.slice(0, a.textContent.length - (n ? n.textContent.length : 0)))
+            text: (label ? label.firstChild.textContent
+                : a.textContent.slice(0, a.textContent.length - (n ? n.textContent.length : 0)))
                 .replace(/\s+/g, ' ').trim(),
+            sub: sub ? sub.textContent : null,
             n: n ? n.textContent : null,
             href: a.href,
             cur: a.classList.contains('mb-sl-cur'),
@@ -557,8 +563,14 @@ async function loadAndRender(page, kind, opts = {}) {
  * @returns {Promise<void>}
  */
 async function pick(page, text) {
-    const esc = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    await page.locator('.mb-sl-scope-pop .mb-sl-scope-opt', { hasText: new RegExp(`^\\s*${esc}\\s*$`) }).click();
+    // By the label's own text node: a Format entry's label also holds its
+    // guide line, so a text match on the whole entry would miss it.
+    const i = await page.$$eval('.mb-sl-scope-pop .mb-sl-scope-opt', (opts, t) => opts.findIndex((o) => {
+        const label = o.querySelector('.mb-sl-scope-label');
+        return (label ? label.firstChild.textContent : o.textContent).trim() === t;
+    }), text);
+    expect(i, `menu entry "${text}"`).toBeGreaterThanOrEqual(0);
+    await page.locator('.mb-sl-scope-pop .mb-sl-scope-opt').nth(i).click();
 }
 
 /**
@@ -653,10 +665,11 @@ test.describe('sl compact bar: after the fetch, filtering the loaded table', () 
         await expect(page.locator('.mb-sl-scope-chip')).toHaveCount(0);
     });
 
-    test('Format and Category still navigate after the fetch, and say they reload', async ({ page }) => {
-        await loadAndRender(page, 'sampler');
+    test('Album and Category still navigate after the fetch, and say they reload', async ({ page }) => {
+        // Official Albums: the only category with an Album wall.
+        await loadAndRender(page, 'collection');
         for (const [facet, note] of [
-            ['f_format', 'Reloads the page and replaces the loaded table.'],
+            ['f_date_main', 'Reloads the page and replaces the loaded table.'],
             ['category', 'Opens another list and replaces the loaded table.'],
         ]) {
             await openMenu(page, facet);
@@ -794,5 +807,86 @@ test.describe('sl compact bar: the bootleg landing page', () => {
         await loadSlListPage(page, { kind: 'bootlegs-intro', settingsOverride: ON });
         expect((await typeSearch(page, '15 Aug 1975')).q).toEqual({ cmd: 'list', category: 'f_date', f_date: '1975-08-15' });
         expect((await typeSearch(page, 'Born')).q).toEqual({ cmd: 'list', category: 'f_title', f_title: 'Born' });
+    });
+});
+
+// The formats guide (part 6). The site keeps three vocabularies apart —
+// filter codes (cd5), its "Formats guide" (CD) and the cards' free text
+// ("4xCD + Blu-ray") — and _SL_FORMATS joins them. Probed live 2026-10-05
+// (scripts/probe-sl-format-codes.py): the server files an item under its FIRST
+// medium ("VHS + CD" is VHS). Pinned here: the Format menu IS the guide; the
+// site's guide panel goes with the format wall (and only then); every
+// collection Format cell carries its guide text; and after the fetch, Format
+// filters the table by first medium — "CD + 2xDVD" counts as CD, not DVD.
+
+/**
+ * The format code a test expects for a Format text, by first medium, for the
+ * CD family only (what the sampler fixture holds most of).
+ * @param {string} text
+ * @returns {boolean}
+ */
+const firstIsCd = (text) => ['cd', 'sacd', 'sacd-hybrid'].includes(
+    text.split('+')[0].trim().replace(/^\d+\s*x\s*/i, '').toLowerCase());
+
+test.describe('sl compact bar: the formats guide', () => {
+    test('the Format menu is the guide: grouped, every entry with its guide line, searchable by abbreviation', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'collection-intro', settingsOverride: ON });
+        const entries = await openMenu(page, 'f_format');
+        const groups = await page.$$eval('.mb-sl-scope-pop .mb-sl-scope-group', (gs) => gs.map((g) => g.textContent));
+        expect(groups).toEqual(['Audio', 'Video', 'Print']);
+        expect(entries.slice(1).every((e) => e.sub), 'every format has its guide line').toBe(true);
+        expect(entries.find((e) => e.text === 'Cassette tape').sub).toBe('MC · Music Cassette tape');
+        expect(entries.find((e) => e.text === 'NT Cassette').sub).toMatch(/\(not in the site's guide\)$/);
+        expect(entries.find((e) => e.text === '12" vinyl').sub).toBe('12" / LP · 12-inch record: single or EP (12"), album (LP)');
+
+        // "mc" (the guide's abbreviation) finds the cassette, which its label does not say.
+        await page.locator('.mb-sl-scope-pop .mb-sl-scope-search').fill('mc');
+        const shown = await page.$$eval('.mb-sl-scope-pop .mb-sl-scope-opt:not([hidden]) .mb-sl-scope-label',
+            (ls) => ls.map((l) => l.firstChild.textContent.trim()));
+        expect(shown).toContain('Cassette tape');
+    });
+
+    test('the site\'s Formats guide panel goes with the format wall, and only then', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'collection-intro', settingsOverride: ON });
+        expect(await page.$eval('#collapseFormats', (el) => el.closest('.container').classList.contains('mb-sl-nav-hidden'))).toBe(true);
+        // Memorabilia has the panel but no format wall: nothing carries the guide, so it stays.
+        await loadSlListPage(page, { kind: 'memorabilia', settingsOverride: ON });
+        await expect(page.locator('.mb-sl-scope-btn[data-mb-sl-facet="f_format"]'), 'premise: no format wall').toHaveCount(0);
+        expect(await page.$eval('#collapseFormats', (el) => el.closest('.container').classList.contains('mb-sl-nav-hidden'))).toBe(false);
+    });
+
+    test('every collection Format cell carries its guide text', async ({ page }) => {
+        await loadAndRender(page, 'sampler');
+        const cells = await page.evaluate(() => {
+            const idx = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+                .findIndex((th) => (th.dataset.colName || th.textContent).trim().startsWith('Format'));
+            return Array.from(document.querySelectorAll('table.tbl tbody tr')).map((tr) => {
+                const td = tr.cells[idx];
+                return { text: td.textContent.trim(), tip: td.getAttribute('title') || td.dataset.mbTipSaved || '' };
+            });
+        });
+        const compound = cells.find((c) => c.text === 'CD + 2xDVD');
+        expect(compound, 'premise: a compound format').toBeTruthy();
+        expect(compound.tip).toBe('CD + 2xDVD\nCD: Compact Disc (SACD hybrids are filed here too)\nDVD ×2: Digital Video Disc\nFiled under: Compact Disc (CD5)');
+        expect(cells.find((c) => c.text === '2 x Cassette Tape').tip)
+            .toBe('2 x Cassette Tape\nCassette Tape ×2: Music Cassette tape\nFiled under: Cassette tape');
+        // A cell whose medium the guide does not name gets no tip at all.
+        expect(cells.filter((c) => !c.tip).map((c) => c.text).every((t) => t === '' || t === '–')).toBe(true);
+    });
+
+    test('after the fetch, Format filters the table by first medium', async ({ page }) => {
+        const all = await loadAndRender(page, 'sampler');
+        const url = page.url();
+        await openMenu(page, 'f_format');
+        await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note-table')).toContainText('by its Format column');
+        await pick(page, 'Compact Disc (CD5)');
+        const expected = all.filter((r) => firstIsCd(r.Format));
+        expect(expected.some((r) => r.Format.includes('+')), 'premise: compound rows count').toBe(true);
+        expect(all.some((r) => /^CD \+ .*DVD/.test(r.Format)),
+            'premise: a CD-first row that also names DVD, which a last- or any-medium rule would file elsewhere').toBe(true);
+        const shown = await rowsSettleAt(page, expected.length);
+        expect(shown.every((r) => firstIsCd(r.Format))).toBe(true);
+        expect(page.url(), 'no reload').toBe(url);
+        expect((await barButtons(page)).find((b) => b.facet === 'f_format')).toMatchObject({ value: 'Compact Disc (CD5)', set: true });
     });
 });

@@ -1,5 +1,19 @@
 [
   {
+    "version": "WIP.7",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact bar's Format menu is now also the formats guide. Entries are grouped into Audio, Video and Print, and each has a line with the guide's abbreviation and meaning (e.g. Cassette tape, \"MC · Music Cassette tape\"). Searching matches those lines too, and formats missing from the site's own guide are explained as well. The site's \"Formats guide\" panel is hidden with the format buttons.",
+          "springsteenlyrics.com: hovering a collection Format cell explains each medium in it (\"4xCD + 2xBlu-ray\": CD ×4, Blu-ray ×2) and names the format the site files the item under.",
+          "springsteenlyrics.com: once a list is loaded, Format now filters the loaded table too (WIP.5), by each item's first medium, as the site files it: \"CD + 2xDVD\" counts as a CD."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.6",
     "date": "2026-10-05",
     "sections": [
