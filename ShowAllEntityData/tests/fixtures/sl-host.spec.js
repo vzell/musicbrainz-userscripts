@@ -120,6 +120,8 @@ test.describe('springsteenlyrics.com: Save to Disk → Load from Disk', () => {
 
         const page = await context.newPage();
         const errors = trackPageErrors(page);
+        const consoleTexts = [];
+        page.on('console', (m) => consoleTexts.push(m.text()));
         await loadSlListPage(page, { kind: 'bootlegs' });
         expect(await page.locator('div.blog-post').count(), 'a fresh page holds cards again').toBe(50);
 
@@ -137,6 +139,18 @@ test.describe('springsteenlyrics.com: Save to Disk → Load from Disk', () => {
         expect(await page.locator('.project-detail table.tbl').count()).toBe(1);
         expect(await page.locator('div.blog-post').count()).toBe(0);
         await expect(page.locator('.project-detail h2.heading')).toHaveCount(1);
+
+        // Loading again onto the page that already shows the table: the
+        // converter finds no cards there, and that is the one case its
+        // "no item cards found" warning must stay quiet for.
+        await clickToolbarItem(page, '#mb-load-from-disk-btn');
+        await page.locator('input[type="file"][accept*="json"]').setInputFiles(saved);
+        await renderBtn.waitFor({ state: 'attached', timeout: 15000 });
+        await renderBtn.evaluate((el) => el.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        expect((await renderedSlRows(page)).map((r) => r._item).sort()).toEqual(before);
+        expect(await page.locator('table.tbl').count()).toBe(1);
+        expect(consoleTexts.filter((t) => t.includes('no item cards found'))).toEqual([]);
         expect(errors).toEqual([]);
     });
 });

@@ -1,0 +1,526 @@
+[
+  {
+    "name": "the compact bar ignores its setting",
+    "why": "sa_sl_compact_nav defaults to off. Without the gate every user of the springsteenlyrics.com support gets the site's walls of links replaced without asking.",
+    "edits": [
+      {
+        "find": "        if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&",
+        "replace": "        if (headerContainer && true &&"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "off by default",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter the site carries over counts as the wall's own",
+    "why": "On a filtered page every country/album/copies link also carries f_format=12i. Taking every f_* parameter as the wall's own key merges walls into one Format menu and breaks the labels.",
+    "edits": [
+      {
+        "find": "            let keyList = Array.from(all).filter(k => !inherited(k));",
+        "replace": "            let keyList = Array.from(all);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "one pull-down per wall",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's red (active) entry is read from its href",
+    "why": "The active entry's href DROPS its own filter (a click removes it). Read from the href it has no value, so the bar shows the raw parameter (12i) instead of the site's label.",
+    "edits": [
+      {
+        "find": "                const src = o.active ? ",
+        "replace": "                const src = false ? "
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "one pull-down per wall",
+    "expect": "fail"
+  },
+  {
+    "name": "a new scope keeps the page parameter",
+    "why": "Page 2 of the old scope can be past the end of the new one; every choice must start at page 1.",
+    "edits": [
+      {
+        "find": "        ['page', 'pg', 'item'].forEach(k => url.searchParams.delete(k));",
+        "replace": "        ['item'].forEach(k => url.searchParams.delete(k));"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "starts at page 1",
+    "expect": "fail"
+  },
+  {
+    "name": "a category change keeps the album filter",
+    "why": "f_date_main names an Official Albums title; carried into another category it narrows that list to nothing.",
+    "edits": [
+      {
+        "find": "                if (dropAll ? k.startsWith('f_') : _SL_CATEGORY_SPECIFIC_PARAMS.includes(k)) url.searchParams.delete(k);",
+        "replace": "                if (dropAll && k.startsWith('f_')) url.searchParams.delete(k);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "drops the album",
+    "expect": "fail"
+  },
+  {
+    "name": "the walls are not hidden",
+    "why": "The point of the bar is the room the walls take, pinned, above the list.",
+    "edits": [
+      {
+        "find": "        facets.forEach(f => f.hide.forEach(el => el.classList.add('mb-sl-nav-hidden')));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "pinned area above the list shrinks",
+    "expect": "fail"
+  },
+  {
+    "name": "reversed year pickers are not put in order",
+    "why": "The server answers f_range=1990,1985 with nothing; a from year after the to year must be swapped.",
+    "edits": [
+      {
+        "find": "            if (a > b) [a, b] = [b, a];",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Apply follows the pickers",
+    "expect": "fail"
+  },
+  {
+    "name": "a scroll closes the open pull-down",
+    "why": "Opening a menu can itself scroll the page (focus, scroll-into-view); closing on every scroll shut menus the moment they opened.",
+    "edits": [
+      {
+        "find": "            if (_slScopePop && !(_slScopePop.pop.contains(e.target))) _slPlaceScopePop();",
+        "replace": "            if (_slScopePop && !(_slScopePop.pop.contains(e.target))) _slCloseScopePop();"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "starts at page 1",
+    "expect": "fail"
+  },
+  {
+    "name": "a bootleg category change keeps the search parameters",
+    "why": "A bootleg list category ignores f_date/f_title (probed live): the target URL would carry a filter that does nothing and reads as if it applied.",
+    "edits": [
+      {
+        "find": "            const dropAll = _SL_CATEGORY_CHANGE_DROPS_FILTERS.includes(url.pathname);",
+        "replace": "            const dropAll = false;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a category drops the search",
+    "expect": "fail"
+  },
+  {
+    "name": "a filtered list records its total as the category's",
+    "why": "album with f_format=12i has 539 items, the album category 1315: recording the filtered total would put a wrong exact count in the menu.",
+    "edits": [
+      {
+        "find": "        if (Array.from(params.keys()).some(k => k.startsWith('f_'))) return null;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a filtered list does not",
+    "expect": "fail"
+  },
+  {
+    "name": "a bootleg search page (category=f_*) records a count",
+    "why": "A search's total is not a category's. Not visible on its own: every such page also carries its f_* parameter, which the next guard rejects, so the spec stays green. Kept for the day a search arrives without one.",
+    "edits": [
+      {
+        "find": "        if (params.get('cmd') !== 'list' || !cat || cat.startsWith('f_')) return null;",
+        "replace": "        if (params.get('cmd') !== 'list' || !cat) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a category drops the search",
+    "expect": "pass"
+  },
+  {
+    "name": "the era timeline is sized by raw counts, not per year",
+    "why": "A thirteen-year era with 222 recordings would tower over a one-year tour with 159; the timeline is meant to show how densely each era was recorded.",
+    "edits": [
+      {
+        "find": "            e.perYear = c ? c.n / (e.span.to - e.span.from + 1) : null;",
+        "replace": "            e.perYear = c ? c.n : null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "sized per year",
+    "expect": "fail"
+  },
+  {
+    "name": "the timeline does not mark the current era",
+    "why": "The site marks no current category on the bootleg lists; marking it was one of the reasons for the bar.",
+    "edits": [
+      {
+        "find": "            if (e.o.category === curCat) {",
+        "replace": "            if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "sized per year",
+    "expect": "fail"
+  },
+  {
+    "name": "an era never visited is drawn as if counted",
+    "why": "Unknown must look unknown; a bar with a made-up height would read as a real count.",
+    "edits": [
+      {
+        "find": "                a.classList.add('mb-sl-era-unknown');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "unknown never estimated",
+    "expect": "fail"
+  },
+  {
+    "name": "the bootleg Category menu offers \"All categories\"",
+    "why": "Only the collection has an \"all\" list; on bootlegs.php the entry would lead nowhere useful.",
+    "edits": [
+      {
+        "find": "            if (path === '/collection.php') {",
+        "replace": "            if (true) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "records its exact count; the menu shows it",
+    "expect": "fail"
+  },
+  {
+    "name": "the search forms are not hidden",
+    "why": "The box stands in for the four forms; left visible they still take their pinned row above the list.",
+    "edits": [
+      {
+        "find": "        if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "buttons and forms hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "Auto never reads a date",
+    "why": "Auto is what makes one box do: a typed date must search the date field, not titles.",
+    "edits": [
+      {
+        "find": "            const asDate = field === 'f_date' || (field === 'auto' && d && search.fields.some(f => f.param === 'f_date'));",
+        "replace": "            const asDate = field === 'f_date';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a date in any common form",
+    "expect": "fail"
+  },
+  {
+    "name": "a day the calendar does not have is accepted",
+    "why": "Without the check 1975-02-30 becomes a search the server answers with nothing, which is exactly the silent empty list the site's dead checkForm() gives.",
+    "edits": [
+      {
+        "find": "            return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d)",
+        "replace": "            return true"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a day that does not exist",
+    "expect": "fail"
+  },
+  {
+    "name": "a partial date finds no era",
+    "why": "The site cannot search a month; the era list that holds it is the useful answer.",
+    "edits": [
+      {
+        "find": "                const era = eras.find(e => d.y >= e.span.from && d.y <= e.span.to);",
+        "replace": "                const era = null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "points to its era list",
+    "expect": "fail"
+  },
+  {
+    "name": "Enter does not search",
+    "why": "The site's forms submit on Enter; the box must too.",
+    "edits": [
+      {
+        "find": "            if (go.hasAttribute('href')) go.click();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Enter follows Search",
+    "expect": "fail"
+  },
+  {
+    "name": "a search result page opens with an empty box",
+    "why": "Refining a search starts from the search you are looking at.",
+    "edits": [
+      {
+        "find": "        input.value = curField ? (params.get(curField.param) || '') : '';",
+        "replace": "        input.value = '';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "the box holds that search",
+    "expect": "fail"
+  },
+  {
+    "name": "Recent repeats a search instead of moving it up",
+    "why": "Opening the same search twice would fill the eight slots with copies.",
+    "edits": [
+      {
+        "find": "        const list = [entry].concat(_slReadRecentSearches().filter(e => !(e.field === field && e.q === q)))",
+        "replace": "        const list = [entry].concat(_slReadRecentSearches())"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Recent records it once",
+    "expect": "fail"
+  },
+  {
+    "name": "Recent grows without bound",
+    "why": "A menu of every search ever made is not a recent list.",
+    "edits": [
+      {
+        "find": "            .slice(0, _SL_RECENT_SEARCH_MAX);",
+        "replace": "            ;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "newest eight",
+    "expect": "fail"
+  },
+  {
+    "name": "after the fetch nothing filters the table",
+    "why": "The hand-off itself: without it every choice reloads the page and throws the loaded table away.",
+    "edits": [
+      {
+        "find": "        return idx >= 0 ? { table, idx, column } : null;",
+        "replace": "        return null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Country filters the table in place",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter the list was fetched with is offered as a table filter",
+    "why": "With f_country=USA in the query the table holds only USA rows; another country as a table filter shows nothing, when only a reload can widen the list.",
+    "edits": [
+      {
+        "find": "        if (facet.keys.some(k => params.has(k))) return null;\n        const table = _slLoadedTable();",
+        "replace": "        const table = _slLoadedTable();"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "still reloads: the table holds only that value",
+    "expect": "fail"
+  },
+  {
+    "name": "the bar does not follow a column cleared elsewhere",
+    "why": "Cleared with the column's own ✕, the bar would still show the country and its chip.",
+    "edits": [
+      {
+        "find": "        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-mb-uniq-values'] });",
+        "replace": "        });"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "own ✕ updates the bar",
+    "expect": "fail"
+  },
+  {
+    "name": "a choice nothing matches clears the column instead",
+    "why": "An empty value set means \"no filter\" to applyUniqValueSet(): a year range with no items would show EVERY row.",
+    "edits": [
+      {
+        "find": "        return hit.length ? hit : [`∅ no ${h.column.toLowerCase()} matches`];",
+        "replace": "        return hit;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "not an unfiltered one",
+    "expect": "fail"
+  },
+  {
+    "name": "two table filters get a reloading Clear all",
+    "why": "With only table filters active there is nothing in the query to drop; a reload would just refetch the same list.",
+    "edits": [
+      {
+        "find": "            const all = document.createElement(urlChips.length ? 'a' : 'button');",
+        "replace": "            const all = document.createElement('a');"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "in-place Clear all",
+    "expect": "fail"
+  },
+  {
+    "name": "a pull-down near the window's bottom hangs past it",
+    "why": "A fixed panel cannot be scrolled into view; its lower entries were out of reach once the bar sat low.",
+    "edits": [
+      {
+        "find": "        const up = below < 240 && above > below;",
+        "replace": "        const up = false;"
+      },
+      {
+        "find": "        pop.style.maxHeight = `${Math.max(120, Math.round(up ? above : below))}px`;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "fits in the window",
+    "expect": "fail"
+  },
+  {
+    "name": "the bootleg landing page is touched with the bar off",
+    "why": "The landing page has nothing to consolidate; with sa_sl_compact_nav off the script would still inject a heading and a toolbar with nothing to do, on a page the user only enabled the lists for.",
+    "edits": [
+      {
+        "find": "    if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {",
+        "replace": "    if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar off, the page is left alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page's @include line no longer matches",
+    "why": "The fixture harness injects unconditionally; only the @include spec notices a pattern Tampermonkey would never match.",
+    "edits": [
+      {
+        "find": "bootlegs\\.php(?:\\?(?:[^#]*&)?cmd=intro",
+        "replace": "bootlegs\\.phpXX(?:\\?(?:[^#]*&)?cmd=intro"
+      }
+    ],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "both entry pages",
+    "expect": "fail"
+  },
+  {
+    "name": "the bar is not installed on a navigation-only page",
+    "why": "The landing page is supported for the bar alone.",
+    "edits": [
+      {
+        "find": "             baseDefinition.features?.slNavOnly)) {",
+        "replace": "             false)) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page keeps the Data and View menus",
+    "why": "Without a table they act on nothing, and the divider leads a toolbar with no fetch button.",
+    "edits": [
+      {
+        "find": "        if (baseDefinition.features?.slNavOnly) document.body.classList.add('mb-sa-sl-nav-only');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page's Category reads \"All categories\"",
+    "why": "The bootleg lists have no \"all\" list; the landing page shows none and should invite a choice.",
+    "edits": [
+      {
+        "find": "!params.get('category') && window.location.pathname === '/bootlegs.php' ? 'Choose a list'",
+        "replace": "false ? 'Choose a list'"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
+  },
+  {
+    "name": "a row is filed under its LAST medium",
+    "why": "The server files an item under its first medium (probed: \"VHS + CD\" is vhs). \"CD + 2xDVD\" filed as DVD would leave the CD filter short of rows the site counts as CD.",
+    "edits": [
+      {
+        "find": "        return _slFormatParts(text)[0]?.format?.code || null;",
+        "replace": "        return _slFormatParts(text).slice(-1)[0]?.format?.code || null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Format filters the table by first medium",
+    "expect": "fail"
+  },
+  {
+    "name": "Format never filters the loaded table",
+    "why": "Without the glossary mapping Format reloads the page and throws the loaded table away, the one menu part 4 had to leave out.",
+    "edits": [
+      {
+        "find": "        // medium, as the server files it (probed, see that table).\n        f_format: 'Format'",
+        "replace": "        // medium, as the server files it (probed, see that table)."
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Format filters the table by first medium",
+    "expect": "fail"
+  },
+  {
+    "name": "the site's Formats guide panel stays beside the Format menu",
+    "why": "The menu carries the guide; the panel would keep its pinned row for nothing.",
+    "edits": [
+      {
+        "find": "                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Formats guide panel goes with the format wall",
+    "expect": "fail"
+  },
+  {
+    "name": "the guide panel's box is hidden even when it holds the page",
+    "why": "A guard against a future page where the panel's nearest .container is the page's own. Not visible: on every fixture the panel has its own box, so the spec stays green.",
+    "edits": [
+      {
+        "find": "                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);",
+        "replace": "                if (guideBox) hide.push(guideBox);"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Formats guide panel goes with the format wall",
+    "expect": "pass"
+  },
+  {
+    "name": "Format cells carry no guide text",
+    "why": "The guide's third place: hovering a cell is where \"4xCD + 2xBlu-ray\" needs explaining.",
+    "edits": [
+      {
+        "find": "            if (formatTip) _setTip(tr.lastElementChild, formatTip);",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "every collection Format cell carries its guide text",
+    "expect": "fail"
+  },
+  {
+    "name": "Format menu entries lose their guide line",
+    "why": "Without it the menu is the site's chip labels again, and \"mc\" finds nothing.",
+    "edits": [
+      {
+        "find": "                const sub = fmt ? `${fmt.abbr} · ${fmt.text}${fmt.guide ? '' : ' (not in the site\\'s guide)'}` : '';",
+        "replace": "                const sub = '';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "the Format menu is the guide",
+    "expect": "fail"
+  }
+]

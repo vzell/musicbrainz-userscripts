@@ -5,16 +5,16 @@
 
 * Overview
 
-This file enumerates 88 of the 89 routable page types (plus one
-auxiliary =subType= companion, 90 array entries total) recognised by
+This file enumerates 89 of the 90 routable page types (plus one
+auxiliary =subType= companion, 91 array entries total) recognised by
 =ShowAllEntityData.user.js=, as declared in the =pageDefinitions= array
 (=ShowAllEntityData.user.js:12073-14907= as of this sync — re-grep
 =const pageDefinitions = [= rather than trust this range, it drifts
 as the script grows) and gated by the
-=// @include= regexes in the userscript header (five for MusicBrainz, one
+=// @include= regexes in the userscript header (five for MusicBrainz, two
 for springsteenlyrics.com). The one routable type without a row here is
-=iswc= — pre-existing drift, noticed on 2026-10-04 while adding the two
-springsteenlyrics.com types (#87/#88), which are the only ones not on
+=iswc= — pre-existing drift, noticed on 2026-10-04 while adding the
+springsteenlyrics.com types (#87/#88, and #89 on 2026-10-05), which are the only ones not on
 MusicBrainz at all (see docs/claude/springsteenlyrics.md). For each page type it gives
 a real, clickable MusicBrainz URL (using live MBIDs looked up via the
 MusicBrainz web service), the script's =tableMode=, the button(s) that
@@ -133,7 +133,7 @@ skill for turning a =planned= row into a =captured= one.
 | recording-fingerprints                       | captured | Trivial passthrough (no extra column pipeline). 3 rows (REC_BTR).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | release-discids                              | captured | Trivial passthrough. =REL_BTR= (Born to Run, 12" Vinyl) has NO disc IDs at all — native page reads "This release has no mediums that can have disc IDs," so the button never produces a table and the capture timed out. Fixed by switching to =REL_DARK= (Darkness on the Edge of Town, CD, real disc ID/CD TOC) — 1 row.                                                                                                                                                                                                                                                                                                                                                                                                             |
 | artist-events                                | captured | Deliberate large/paginated perf-comparison target (42 pages, 4174 rows) — see PERFORMANCE.org.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| sl-collection / sl-bootlegs                  | fixtures | Not MusicBrainz (springsteenlyrics.com, opt-in): own =slCardsToTable= card converter, injected =<h1>=, own CSS. The snapshot harness is MusicBrainz-shaped, so coverage is four fixture specs built from =debug/sl-*-initial.html= by =scripts/build-sl-fixtures.py=, plus the =@extended= live spec =tests/live/sl-lists.spec.js=. See docs/claude/springsteenlyrics.md.                                                                                                                                                                                                                                                                                                                                                              |
+| sl-collection(-intro) / sl-bootlegs(-intro) | fixtures | Not MusicBrainz (springsteenlyrics.com, opt-in): own =slCardsToTable= card converter, injected =<h1>=, own CSS; the bootleg landing page is the compact bar alone. The snapshot harness is MusicBrainz-shaped, so coverage is seven fixture specs built from the =debug/sl-*= snapshots by =scripts/build-sl-fixtures.py=, plus the =@extended= live spec =tests/live/sl-lists.spec.js=. See docs/claude/springsteenlyrics.md.                                                                                                                                                                                                                                                                                                                                                               |
 
 * Quick reference table
 
@@ -227,6 +227,8 @@ skill for turning a =planned= row into a =captured= one.
 | 86 | artist-events                 | single       | /artist/ARTIST/events                          | cancelled-event flag, EAA, location split, sticky Event                                                                    |
 | 87 | sl-collection                 | single       | springsteenlyrics.com /collection.php?cmd=list | NOT MusicBrainz, opt-in; cards → table (slCardsToTable), Label/Cat. no. + date/year splits, Copies                         |
 | 88 | sl-bootlegs                   | single       | springsteenlyrics.com /bootlegs.php?cmd=list   | NOT MusicBrainz, opt-in; cards → table, ISO First date, Duration sorted as a duration, Lossy/Artwork/Info file flags       |
+| 89 | sl-collection-intro           | single       | springsteenlyrics.com /collection.php          | NOT MusicBrainz, opt-in; the collection entry page ("Latest additions", every item), paginated by pg= (features.pageParam) |
+| 90 | sl-bootlegs-intro             | single       | springsteenlyrics.com /bootlegs.php            | NOT MusicBrainz, opt-in twice; the bootleg landing page, no cards and no button: the compact bar (slNavOnly) alone         |
 
 * Page type details
 ** 1. taglookup
@@ -782,9 +784,9 @@ lists converted into sortable tables), tableMode =multi=.
 - Match: ~path === '/collection.php' && params.get('cmd') === 'list'~, host =springsteenlyrics.com= only (=host:= key, see the detection loop)
 - Button: "Show all items of this collection list" (short label "Items")
 - tableMode: single
-- Not MusicBrainz, and opt-in: =sa_enable_springsteenlyrics= (default off). Every category and every =f_*= filter of the collection list.
-- Features exercised: =slCardsToTable: 'collection'= (100 =div.blog-post= cards per page → =table.tbl=, on the live page, every fetched page and Load from Disk); injected =<h1>= toolbar anchor; Label/Cat. no. and Release date/Original year split at the last parenthesised group; Copies (no line ⇒ 1); integerColumns Original year/Copies; lazy Cover thumbnails
-- Coverage: =tests/fixtures/sl-collection.spec.js=, =sl-host.spec.js=, =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=). No snapshot baseline (the snapshot harness is MusicBrainz-shaped).
+- Not MusicBrainz, and opt-in: =sa_enable_springsteenlyrics= (default off). Every category and every =f_*= filter of the collection list. Every category but "Official Albums" renders a year-filter block whose stray =</div>= closes =.project-detail= (on book/memorabilia also its floated column) before the list — cards and heading are found from the cards, see =_slFindCards()= (fixed 2026-10-05; until then only "Official Albums" converted).
+- Features exercised: =slCardsToTable: 'collection'= (100 =div.blog-post= cards per page → =table.tbl=, on the live page, every fetched page and Load from Disk); injected =<h1>= toolbar anchor; Label/Cat. no. and Release date/Original year split at the last parenthesised group; Copies (no line ⇒ 1); integerColumns Original year/Copies; lazy Cover thumbnails; sticky Title; Sticky Page Headers
+- Coverage: =tests/fixtures/sl-collection.spec.js=, =sl-collection-intro.spec.js= (sampler), =sl-sticky-headers.spec.js= (album, sampler, memorabilia), =sl-host.spec.js=, =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=, album/12i and book). No snapshot baseline (the snapshot harness is MusicBrainz-shaped).
 
 ** 88. sl-bootlegs
 - URL: [[https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967][springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967]] (273 items, 3 pages on 2026-10-04)
@@ -792,8 +794,26 @@ lists converted into sortable tables), tableMode =multi=.
 - Button: "Show all bootlegs of this list" (short label "Bootlegs")
 - tableMode: single
 - Not MusicBrainz, and opt-in (same setting as #87). Every category and every =f_*= filter of the bootleg list.
-- Features exercised: =slCardsToTable: 'bootlegs'=; Label from the card's sub-title; Date verbatim plus ISO "First date" (=_slFirstIsoDate()=); Duration as integerColumns =align: ':'= (sorted as a duration; the site's "–" written as =?:??=); Lossy/Artwork/Info file flags
+- Features exercised: =slCardsToTable: 'bootlegs'=; Label from the card's sub-title; Date verbatim plus ISO "First date" (=_slFirstIsoDate()=); Duration as integerColumns =align: ':'= (sorted as a duration; the site's "–" written as =?:??=); Lossy/Artwork/Info file flags; sticky Title
 - Coverage: =tests/fixtures/sl-bootlegs.spec.js=, =sl-host.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=).
+
+** 89. sl-collection-intro
+- URL: [[https://springsteenlyrics.com/collection.php][springsteenlyrics.com/collection.php]] (5365 items, 54 pages on 2026-10-05)
+- Match: ~path === '/collection.php' && !params.has('item') && (!params.has('cmd') || params.get('cmd') === 'intro')~, host =springsteenlyrics.com= only. =@include=: its own header line (bare URL, =cmd=intro=, or =pg=N=).
+- Button: "Show all latest additions" (short label "Items")
+- tableMode: single
+- Not MusicBrainz, and opt-in (same setting as #87). The collection's entry page, "Latest additions": the whole collection, newest first, same cards and columns as #87.
+- Features exercised: =slCardsToTable: 'collection'=; =pageParam: 'pg'= — the page paginates with =cmd=intro&category=all&pg=N= and answers =page=N= with page 1 again (checked live), read by =determineMaxPageFromDOM()=, the fetch loop and its "current page" shortcut; the year-filter block's stray =</div>= (see #87); sticky Title. 54 pages trip ⚠️ High Page Count (=sa_max_page= 50) and 5365 rows the render-decision dialog (=sa_render_threshold= 5000).
+- Coverage: =tests/fixtures/sl-collection-intro.spec.js= (two =pg== pages, and opened on =?pg=2=), =sl-include-regex.spec.js=; live =tests/live/sl-lists.spec.js= (=@extended=, all 54 pages, thresholds seeded).
+
+** 90. sl-bootlegs-intro
+- URL: [[https://springsteenlyrics.com/bootlegs.php][springsteenlyrics.com/bootlegs.php]] (also =?cmd=intro=)
+- Match: ~path === '/bootlegs.php' && !params.has('item') && (!params.has('cmd') || params.get('cmd') === 'intro')~, host =springsteenlyrics.com= only. =@include=: its own header line (bare URL or =cmd=intro=).
+- Buttons: none (=buttons: []=) — the page has no item cards, so nothing to fetch.
+- tableMode: single (never rendered)
+- Not MusicBrainz, and opt-in TWICE: =sa_enable_springsteenlyrics= and =sa_sl_compact_nav=. With the second off, the init block stops right after detection (=features.slNavOnly=), before any heading or toolbar, and logs at info level.
+- Features exercised: =slNavOnly= — the compact bar folds the 21 category buttons (Category menu with the era timeline, none current, label "Choose a list") and the four search forms (the search box and Recent); the toolbar keeps only ⚙️❓ (=body.mb-sa-sl-nav-only=). The page's "Statistics" counts are deliberately not read.
+- Coverage: =tests/fixtures/sl-scope-bar.spec.js= ("the bootleg landing page"), =sl-include-regex.spec.js=; fixture =sl-bootlegs-intro-page1.html= from =debug/sl-bootleg.html= (=scripts/build-sl-fixtures.py=, =PLAIN_TARGETS=). No live spec.
 
 * Not independently routable
 

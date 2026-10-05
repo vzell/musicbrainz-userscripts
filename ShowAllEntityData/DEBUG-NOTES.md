@@ -18789,3 +18789,287 @@ four rows are hand-shaped: one has a single link, one is very long.
 `scripts/mutations/annotation-tooltip.json`: 6 planted defects, all caught.
 The inline thumbnail's fit was not covered at first (expect "pass"); a test
 was added rather than leaving it recorded.
+
+## 2026-10-05 — springsteenlyrics.com: only "Official Albums" converted; entry page; sticky headers (branch feature/sl-all-categories)
+
+`org/springsteenlyrics.org` listed four items: the collection entry page
+`collection.php` was not supported; on the collection "only category=album
+works"; everything above the table scrolled away sideways; and Title should
+be the sticky column (it was Cover, the column-0 fallback).
+
+**Root cause of "only album works".** Card markup is the same in all 26
+collection categories (checked with curl, page 1 of each). The difference is a
+"Filter by original year of release" block, rendered on every category except
+"Official Albums" and on the entry page. It ends in a stray `</div>` (after its
+slider `<script>`, `<p></p></div>`), and the parser closes `.project-detail`
+there, before the list heading and every card. `_SL_CARD_SEL` was
+`.project-detail div.blog-post`, and `_slFindListHeading()` was scoped the same
+way. Both found nothing, so `applySlCardsToTable()` returned without a word and
+the injected `<h1>` read just "Collection". `debug/sl-sampler.html` (saved by
+the user after the script ran) shows exactly that: 99 cards left in place.
+
+Div balance on the live pages (curl, depth counted from `.project-detail`'s
+opening tag):
+
+| Page                                 | Year filter | `.project-detail` closes | Also closes its floated `.col-sm-12` |
+|--------------------------------------|-------------|--------------------------|--------------------------------------|
+| album, album/12i                     | no          | after the last card      | no                                   |
+| sampler, video, `collection.php`     | yes         | before the first card    | no                                   |
+| book, memorabilia                    | yes         | before the first card    | yes                                  |
+| bootlegs aud_live1967 / aud_inter    | no          | after the last card      | no                                   |
+
+Fix: `_slFindCards()` takes every `div.blog-post` outside the navbar and
+footer. Its count equals "Showing items" on every page checked. The heading is
+the `h3.heading`/`h2.heading` that is a direct child of the first card's parent
+(or, once converted, of the table's parent). The renamed `<h2>` gets
+`mb-sl-list-heading`, because the CSS rule `.project-detail h2.heading` had the
+same flaw.
+
+**Entry page.** "Latest additions": 5365 items, 54 pages. It paginates with
+`cmd=intro&category=all&pg=N`, and its "»" link is `?pg=54&cmd=intro`.
+`page=2` returns page 1 again; `pg=2` returns items 101–200, with or without
+`cmd=intro` (probed with curl). The changes:
+- a new pageType `sl-collection-intro` with `features.pageParam: 'pg'`;
+- `_pageParamName()`, read by `determineMaxPageFromDOM()`, the fetch loop and
+  the loop's `currentPageNum`. Read as `page`, `?pg=3` counted as page 1 and
+  its live cards stood in for page 1;
+- a second `@include` line.
+
+`bootlegs.php` with no query renders no cards and stays excluded. Live: 5365
+rows from 54 pages, matching "Showing items".
+
+**Sticky Page Headers on SL.** I removed the `_isSlHost` early return. With no
+`#page`, the generic collector pins the body-level chrome and walks down to
+the table. The fixtures passed at once, but the live check under the real
+site CSS (`tests/live/sl-lists.spec.js`, book at 1000px) found two more
+defects:
+1. **Book: the toolbar `<h1>` scrolled away.** The second stray `</div>` closes
+   the floated Bootstrap `.col-sm-12` too, so that float sits beside the table
+   and holds `.project-detail`. `_sphContentBodies()` pushed it as a body,
+   and `_sphIsEligible()` refuses floats, so the whole column scrolled away.
+   New `_sphIsFullWidthFloat()`: a float as wide as its parent's content box
+   is descended into like a container. A narrow float is still pushed as a
+   body (and refused, as before). MusicBrainz pages only change if they have a
+   full-width float beside the data table. The full fixture suite stays green.
+2. **The year-filter block ended up at left 1198px, capped to 120px.** It is a
+   fixed-width (970px) Bootstrap `.container` centred with auto margins. In
+   the table-wide `.mb-sl-wide` column it sat around x≈773 before any pinning,
+   off-screen at scrollX 0, which is a pre-existing side effect of the
+   widening. Pinned, `left = parentContentLeft + marginLeft` read the auto
+   margin, and every width cap grew it further.
+   `_ensureSlStyle()` now zeroes the side margins of `.container`s inside
+   `.mb-sl-wide` ones. Verified by screenshots before and after a sideways
+   scroll. The generic `marginLeft`-based left is still exposed to
+   auto-margin centring; no MusicBrainz page is known to hit it.
+
+**Fixture artifacts met on the way.** These are not bugs:
+- The DOM-serialized snapshots carry jquery.sticky's inline `height: 80px` on
+  the navbar wrapper. With the site CSS stripped, the unstyled navbar spilled
+  out of it. Once the wrapper was pinned (z-index 106), the spill covered the
+  toolbar and two `sl-host` tests failed on intercepted clicks. The builder
+  now strips that inline height.
+- The spec's stand-in Bootstrap CSS first lacked `box-sizing: border-box`, so
+  each `width: 100%` column overflowed by its padding.
+- A 657px Title column in a 700px window is pushed back by the table's right
+  edge at the far right. That is plain `position: sticky`, so the spec now
+  uses a 1000px window and asserts the column fits.
+- The site throws `ReferenceError: init is not defined` on every year-filter
+  page (its slider snippet runs `window.onload = init;`). The live spec
+  exempts that exact message.
+
+**Tests.**
+- Fixtures, all from `scripts/build-sl-fixtures.py`:
+  - the entry page, two `pg=` pages;
+  - sampler (`debug/sl-sampler-raw.html`, curl), one widget-less page;
+  - memorabilia (`debug/sl-memorabilia-raw.html`, curl), the
+    double-stray-close shape.
+- Specs:
+  - `sl-collection-intro.spec.js`, which first asserts that the cards really
+    sit outside `.project-detail`;
+  - `sl-sticky-headers.spec.js`, three page shapes, geometry;
+  - a sticky-Title test in `sl-bootlegs.spec.js`;
+  - `sl-include-regex.spec.js`, extended;
+  - `tests/live/sl-lists.spec.js`: book, the entry page, and a sticky test
+    under the real CSS.
+- `scripts/mutations/sl-support.json`: 12 new planted defects, all caught.
+  The margin rule is caught only on memorabilia: on sampler the year-filter
+  block rides inside a `.project-detail` pinned and capped to its own width,
+  where the auto margins come out 0. `sticky-page-headers.json`'s kill-switch
+  entry was re-anchored now that the gate line is gone.
+
+**A false alarm, and what it left behind.** After the fix, a real-browser check
+of sampler again showed "Collection" / "0 rows". The cause was the mutation run
+itself: `scripts/mutation-check.py` plants each defect into the working-copy
+userscript in place, and the copy imported into Tampermonkey during that run
+was the "cards scoped to `.project-detail`" mutant. It matched the symptom
+exactly, and it also carried every other new line, the style rules included,
+which is what made it look like the real code. The file's mtime, 18:10 (the
+restore), gave it away. A clean re-import fixed it. What it left: the converter
+now logs a warning when it finds no cards and no table it converted earlier
+(`sl-collection-intro.spec.js`: the warning fires; a normal conversion stays
+quiet; `sl-host.spec.js`: a second Load from Disk onto a rendered page stays
+quiet). Two more mutation entries cover it, both caught.
+
+## 2026-10-05 — springsteenlyrics.com: the compact category/filter bar reads the site's walls (branch feature/sl-scope-bar)
+
+New feature, `sa_sl_compact_nav` (default off): `_slInstallScopeBar()` folds
+the collection's walls of category/filter links into one row of pull-downs.
+Design study: `org/springsteenlyrics.org`, `** analyze`. Two things found while
+building it, both now in `docs/claude/springsteenlyrics.md`:
+
+1. **The site's links already combine filters on a filtered page.** The design
+   study was done on unfiltered snapshots, where every chip carries exactly one
+   `f_*`, and concluded the site "never offers" combining. The fixture
+   `sl-collection-page1.html` is album with `f_format=12i`, and there every
+   country, album and copies link also carries `f_format=12i`, and the active
+   format chip is `label-danger` with an href WITHOUT `f_format` (a click
+   removes it). The first reader took every `f_*` of a wall as its own: the
+   walls after Format merged into one "Format" menu showing `12i`. Now a wall's
+   keys are the `f_*` not carried with the page's own value by all of its
+   links, and the red entry's value is read from the page's query.
+2. **Closing the pull-down on scroll shut it the moment it opened.** Playwright
+   scrolls a target into view before clicking, and the scroll event arrives
+   after the click handler has opened the panel; a real user's focus or
+   scroll-into-view does the same. `_slPlaceScopePop()` now moves the panel
+   with its button and closes it only when the button has left the window.
+
+Tests: `tests/fixtures/sl-scope-bar.spec.js` (10), the three
+`sl-sticky-headers.spec.js` shapes again with the bar on (6 tests in total, 3 new),
+`scripts/mutations/sl-scope-bar.json` (8 entries, all caught, including both
+findings above).
+
+## 2026-10-05 — springsteenlyrics.com: the compact bar on the bootleg lists, exact counts, era timeline (branch feature/sl-scope-bar)
+
+Part 2 of the bar. Notes for whoever touches it next:
+
+- **The bootleg fixture needed `.col-md-12` CSS for the sticky check.** The
+  bootleg lists wrap their content in `.col-md-12`, the collection in
+  `.col-sm-12`. `sl-sticky-headers.spec.js`'s minimal Bootstrap CSS covered only
+  the latter, so on the bootleg fixture the table sat at x=0 and the premise
+  "the table is indented" failed. That was the fixture, not the code. The rule
+  is added for that page only (`BOOTSTRAP_CSS_MD`), so the three earlier shapes
+  keep exactly the CSS they were checked with.
+- **One recording guard cannot be seen by any spec**: `category=f_*` (a bootleg
+  search). Every such URL also carries its `f_*` parameter, which the next
+  guard rejects, so the mutation stays green. It is recorded as
+  `"expect": "pass"` in `scripts/mutations/sl-scope-bar.json` with that reason.
+- **A mutation that crashes the menu is not a pin.** The first "unknown era
+  drawn as counted" mutation made `counts[…].at` throw, so the menu never
+  opened and the spec failed for the wrong reason. It now removes only the
+  `mb-sl-era-unknown` class, and the spec fails on the dashed-bar count.
+
+Tests: `sl-scope-bar.spec.js` 15 (5 new), the sticky spec gains a bootleg shape
+with the bar on (7), mutations 15 (14 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: one search box for the bootleg forms (branch feature/sl-scope-bar)
+
+Part 3 of the bar. No defect was found; the notes are the facts the design
+rests on, so nobody "simplifies" them away:
+
+- **The server reads one search field, the one named by `category`.**
+  `f_title=born&f_version=soundboard` = `f_title=born` (73 rows each). A box that
+  combined fields would promise something the site ignores.
+- **`f_date` needs a full date** (1975-08-15 → 21; 1975-08, 1975 → 0), and
+  `checkForm()` is dead (`form.filter_date` vs the `f_date` input), so a
+  malformed date silently lists nothing on the site itself.
+- **Recent is recorded on the RESULT page, not on submit.** Recording on
+  submit would miss the site's own forms and bookmarks, and would record a
+  search whose navigation the guard cancelled.
+- **Lint caught one `expect(await page.inputValue(...))`**; it is now
+  `toHaveValue()`, and the mutation that empties the box still fails it.
+
+Tests: `sl-scope-bar.spec.js` 23 (8 new), mutations 23 (22 fail as expected, 1
+recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bar filters a loaded table; a fixed pull-down hung off-screen (branch feature/sl-scope-bar)
+
+Part 4 of the bar. Country, Year and Copies now filter the loaded table through
+`applyUniqValueSet()`; Format, Album and Category navigate (user's decision,
+2026-10-05: exact mappings only). Design in `docs/claude/springsteenlyrics.md`,
+"After the fetch".
+
+**Defect found by the new specs, in the part-1 code.** `_slPlaceScopePop()` always
+put the `position: fixed` panel under its button. After a render the page had
+scrolled (the global filter takes focus), the bar sat low, and the Country list
+ran past the window's bottom. Playwright reported "element is outside of the
+viewport" and timed out on every entry below the edge. That was not a test
+artefact: a fixed panel cannot be scrolled into view by the page, so a real user
+could not reach those entries either. Live testing missed it because the bar sat
+high whenever a menu was opened there. The fix opens the panel upwards when
+there is more room above and caps its height to the room it opens into
+(`overflow-y: auto` on the panel). It is pinned by "a pull-down opened low on the
+screen fits in the window" and a two-edit mutation.
+
+Two smaller things:
+
+- `_slLoadedTable()` checks for a column filter row before reading
+  `isLoaded`/`allRows`: the bar is built at init, above those `let`s.
+- The Category menu's note first said "This list was fetched with this filter",
+  because the category is always in the query. The category now has its own
+  note.
+
+Tests: `sl-scope-bar.spec.js` 31 (8 new), mutations 29 (28 fail as expected, 1
+recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bootleg landing page, for the compact bar only (branch feature/sl-scope-bar)
+
+Part 5 of the bar: `bootlegs.php` is now `@include`d, as pageType
+`sl-bootlegs-intro` with `buttons: []` and `features.slNavOnly`. Three things a
+future reader should not undo:
+
+- **The quiet exit is not the same as no match.** Skipping the definition when
+  `sa_sl_compact_nav` is off would leave `pageType` empty, and the
+  required-elements check would log "Required elements not found.
+  Terminating." at ERROR level on every visit. The init block now returns right
+  after detection with an info line, before any heading, toolbar or body class.
+  The spec checks that the page is untouched AND that the console shows no
+  script error.
+- **The toolbar probe found a leading `|` and two menus with nothing to act
+  on** (📦 Data, 🛠 View): with no fetch buttons the divider leads the bar. They
+  are hidden by `body.mb-sa-sl-nav-only`; ⚙️❓ stay. Found with a throwaway
+  probe spec (deleted), now pinned in the landing test.
+- **`build-sl-fixtures.py` gained `PLAIN_TARGETS`**: the card-less page goes
+  through the same `sanitise()`, unsplit. The refactor regenerated the five
+  existing fixtures byte-identical (no diff in `git status`).
+
+`sl-include-regex.spec.js` used to assert the landing page was EXCLUDED; it now
+asserts it is included (bare, `#top`, `cmd=intro`), while `cmd=introx` and
+`pg=2` stay out.
+
+Tests: `sl-scope-bar.spec.js` 35 (4 new), the `@include` spec flipped,
+mutations 34 (33 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the formats guide; how the server files a format (branch feature/sl-scope-bar)
+
+Part 6 of the bar. **The one fact everything rests on was probed, not
+assumed:** `scripts/probe-sl-format-codes.py` fetched page 1 of
+`collection.php?cmd=list&category=all&f_format=<code>` for all 26 codes and
+tallied the cards' Format texts. Results:
+
+- An item is filed under its FIRST medium: `vhs` holds "VHS + CD" (5) and "VHS +
+  2xMiniCD"; `bd` holds "Blu-ray + DVD"; `cd5` holds "SACD-HYBRID" and
+  "SACD-HYBRID + 2xCD"; `cdr` holds "3xCD-R + 3xDVD-R". No code held an item
+  whose first medium was another code's, apart from one plain "CD" under `cdr`
+  (the site's data).
+- `12i` ("12\" vinyl") is the "LP"s (100 of 100 on page 1); `prt` is
+  "Paperback"/"Hardcover" (65/27); counts are written "2xCD", "2 x Cassette
+  Tape" and "4XLP".
+- Totals for the record (the "of N" line): 7i 989, 10i 16, 12i 1153, flex 13,
+  cd3 33, cd5 1646, cdr 166, mc 261, 8t 20, r2r 11, nt 1, md 18, vhs 61,
+  betamax 3, betacamsp 4, umatic 2, v8 3, ced 1, vhd 2, ld 15, vcd 1, dvd 161,
+  dvdr 6, bd 21, bdr 1, prt 744.
+
+So the bar files a loaded row the same way (`_slFormatCode()`, first medium),
+and the spec pins it with the sampler fixture's "CD + 2xDVD": a last-medium (or
+any-medium) rule would file it as DVD. Only page 1 of each code was read, so a
+rarer spelling may still be missing from `_SL_FORMATS`' patterns; such a row
+matches no Format choice rather than a wrong one.
+
+Changed test: part 4's "Format and Category still navigate" became "Album and
+Category still navigate" on the Official Albums fixture (the only one with an
+Album wall). Test helpers now read an entry's label from its own text node,
+since a Format entry's label span also holds its guide line.
+
+Tests: `sl-scope-bar.spec.js` 39 (4 new), mutations 40 (38 fail as expected, 2
+recorded passes: the bootleg-search count guard, and the guide panel's
+"not the page container" guard, which no fixture can show).

@@ -19,6 +19,8 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3672,13 +3674,33 @@
             default: false,
             description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
-                         'every format/country/date/… filter) and bootlegs.php?cmd=list… — and ' +
+                         'every format/country/date/… filter), the collection\'s entry page ' +
+                         'collection.php ("Latest additions") and bootlegs.php?cmd=list… — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
                          'toolbar. Only what each list card shows is used; no item detail page is ' +
                          'fetched. When off, the script exits on that site before touching the ' +
                          'page. Settings are shared with MusicBrainz, so this can be switched on ' +
                          'from either site.'
+        },
+
+        sa_sl_compact_nav: {
+            label: 'Compact category and filter bar on springsteenlyrics.com lists',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, the collection\'s ' +
+                         'walls of category and filter buttons (category, format, country, ' +
+                         'album, original year, copies) and the bootleg lists\' category ' +
+                         'buttons are folded into one row of pull-down menus above the list. ' +
+                         'Each menu has a search box, and filters combine: choosing a country ' +
+                         'keeps the format you already chose. Chosen filters are shown as ' +
+                         'chips you can remove one by one. The Category menu marks the current ' +
+                         'list and shows each category\'s exact item count once you have ' +
+                         'opened it; on the bootleg lists it starts with a timeline of the ' +
+                         'live-show eras. The bootleg lists\' four search forms become one ' +
+                         'search box that reads dates the way you type them, plus a menu of ' +
+                         'recent searches. The site\'s own buttons and forms are only hidden, ' +
+                         'so turning this off brings them back unchanged.'
         }
 
     };
@@ -4609,13 +4631,12 @@
     /**
      * True when this page is on springsteenlyrics.com rather than MusicBrainz.
      *
-     * The only non-MusicBrainz host the script runs on (see the last
-     * `@include` line and docs/claude/springsteenlyrics.md). It is read by the
+     * The only non-MusicBrainz host the script runs on (see the last two
+     * `@include` lines and docs/claude/springsteenlyrics.md). It is read by the
      * opt-in gate just below, by the page-type detection loop (which only
      * considers definitions whose `host` matches) and by the few
-     * MusicBrainz-shaped helpers that must stand down there
-     * (`performClutterCleanup()`, `initStickyPageHeaders()`,
-     * `initNavigationGuard()`).
+     * MusicBrainz-shaped helpers that must stand down or adapt there
+     * (`performClutterCleanup()`, `initNavigationGuard()`).
      * @type {boolean}
      */
     const _isSlHost = /(^|\.)springsteenlyrics\.com$/.test(window.location.hostname);
@@ -8723,13 +8744,28 @@
     // docs/claude/springsteenlyrics.md.
 
     /**
-     * Selector for one item card on a springsteenlyrics.com list page.
-     * Scoped to `.project-detail`, the main content block, which also keeps
-     * the site's navigation mega-menu (seven more `h3.heading`s) out of every
-     * lookup here.
-     * @type {string}
+     * Returns the item cards of a springsteenlyrics.com list page: every
+     * `div.blog-post` outside the site's navbar and footer.
+     *
+     * Deliberately NOT scoped to `.project-detail`, the main content block.
+     * On every collection page that renders the "Filter by original year of
+     * release" slider (all categories but "Official Albums", and the
+     * `collection.php` entry page) that block ends in a stray `</div>`, and
+     * the parser closes `.project-detail` right there — the list heading and
+     * all cards end up AFTER it, not inside it. A `.project-detail`-scoped
+     * selector found nothing on those pages, so the conversion was a silent
+     * no-op (checked live on 2026-10-05: sampler, book, memorabilia and the
+     * entry page close it before the first card; album and the bootleg
+     * lists after the last). The document-wide count equals the page's own
+     * "Showing items" count on every page checked.
+     *
+     * @param {Document} docContext  The live or a fetched document.
+     * @returns {Element[]} The cards, in document order.
      */
-    const _SL_CARD_SEL = '.project-detail div.blog-post';
+    function _slFindCards(docContext) {
+        return Array.from(docContext.querySelectorAll('div.blog-post'))
+            .filter(card => !card.closest('.navbar, footer'));
+    }
 
     /**
      * Column headers per `features.slCardsToTable` kind, in render order.
@@ -8756,16 +8792,22 @@
 
     /**
      * Returns the list heading of a springsteenlyrics.com list page — the
-     * `h3.heading` (or, once converted, `h2.heading`) inside `.project-detail`
-     * that precedes the item cards, e.g. "OFFICIAL ALBUMS" or
-     * "LIVE SHOWS: 1967-1974". Exactly one exists per list page (checked on
-     * both snapshots and four live categories, 2026-10-04).
+     * `h3.heading` (or, once converted, `h2.heading`) that precedes the item
+     * cards as their sibling, e.g. "OFFICIAL ALBUMS", "LIVE SHOWS: 1967-1974"
+     * or the entry page's "Latest additions".
+     *
+     * Found from the cards (or, once they are converted, from the table that
+     * took their place), never by a page-wide or `.project-detail`-scoped
+     * query: seven of the page's ten `h3.heading`s belong to the navigation
+     * mega-menu, and on most collection pages `.project-detail` is closed
+     * before the list starts — see `_slFindCards()`.
      *
      * @param {Document} docContext  The live or a fetched document.
      * @returns {?HTMLElement} The heading, or `null` when the page has none.
      */
     function _slFindListHeading(docContext) {
-        return docContext.querySelector('.project-detail h3.heading, .project-detail h2.heading');
+        const anchor = _slFindCards(docContext)[0] || docContext.querySelector('table.mb-sl-table');
+        return anchor?.parentElement?.querySelector(':scope > h3.heading, :scope > h2.heading') || null;
     }
 
     /**
@@ -8861,6 +8903,101 @@
     }
 
     /**
+     * The collection's formats, one entry per `f_format` code: group, the
+     * site's own filter label, its "Formats guide" abbreviation and text
+     * (`guide: false` where the site's guide has no entry, so the text is
+     * ours), and the card texts that name the medium (`re`, matched against
+     * one medium of a Format text with its count stripped).
+     *
+     * One table for three vocabularies the site keeps apart: filter codes
+     * (12i), guide abbreviations (LP) and the cards' free text ("2xLP",
+     * "4x12\" + 7\""). Probed live on 2026-10-05
+     * (`scripts/probe-sl-format-codes.py`, page 1 of every code): the server
+     * files an item under the format of its FIRST medium — "VHS + CD" is
+     * vhs, "Blu-ray + DVD" bd, "SACD-HYBRID + 2xCD" cd5 — and 12i holds the
+     * "LP"s. One "CD" filed under cdr is the site's own data, not a rule.
+     * Order matters: the first `re` that matches wins, so "CD-R" is tried
+     * before "CD", "Blu-ray-R" before "Blu-ray", "DVD-R" before "DVD".
+     * @type {Array<{code: string, group: string, label: string, abbr: string, text: string, guide: boolean, re: RegExp}>}
+     */
+    const _SL_FORMATS = [
+        { code: '7i', group: 'Audio', label: '7" vinyl', abbr: '7"', text: '7-inch record', guide: true, re: /^7"$/ },
+        { code: '10i', group: 'Audio', label: '10" vinyl', abbr: '10"', text: '10-inch record', guide: true, re: /^10"$/ },
+        { code: '12i', group: 'Audio', label: '12" vinyl', abbr: '12" / LP', text: '12-inch record: single or EP (12"), album (LP)', guide: true, re: /^(?:12"|lp)$/ },
+        { code: 'flex', group: 'Audio', label: 'Flexi-disc', abbr: 'Flexi', text: 'Flexi-disc, a thin flexible vinyl record', guide: false, re: /^flexi(?:-disc)?$/ },
+        { code: 'cd3', group: 'Audio', label: 'MiniCD (CD3)', abbr: 'MiniCD', text: '80 mm Compact Disc', guide: true, re: /^(?:mini ?cd|cd3)$/ },
+        { code: 'cdr', group: 'Audio', label: 'CD-R', abbr: 'CD-R', text: 'Compact Disc Recordable', guide: true, re: /^cd-?r$/ },
+        { code: 'cd5', group: 'Audio', label: 'Compact Disc (CD5)', abbr: 'CD', text: 'Compact Disc (SACD hybrids are filed here too)', guide: true, re: /^(?:cd|cd5|sacd(?:-hybrid)?)$/ },
+        { code: 'nt', group: 'Audio', label: 'NT Cassette', abbr: 'NT', text: 'NT Cassette, Sony\'s stamp-sized digital tape', guide: false, re: /^nt cassette$/ },
+        { code: 'mc', group: 'Audio', label: 'Cassette tape', abbr: 'MC', text: 'Music Cassette tape', guide: true, re: /^(?:cassette(?: tape)?|mc)$/ },
+        { code: '8t', group: 'Audio', label: '8-track cartridge', abbr: '8T', text: '8-Track tape', guide: true, re: /^8-track(?: cartridge)?$/ },
+        { code: 'r2r', group: 'Audio', label: 'Reel-to-reel tape', abbr: 'R2R', text: 'Reel-to-reel tape', guide: true, re: /^reel-to-reel(?: tape)?$/ },
+        { code: 'md', group: 'Audio', label: 'Minidisc', abbr: 'MD', text: 'Minidisc', guide: true, re: /^(?:md|minidisc)$/ },
+        { code: 'vhs', group: 'Video', label: 'VHS cassette tape', abbr: 'VHS', text: 'VHS cassette tape', guide: true, re: /^vhs$/ },
+        { code: 'betamax', group: 'Video', label: 'Betamax', abbr: 'Betamax', text: 'Betamax video cassette', guide: false, re: /^betamax$/ },
+        { code: 'betacamsp', group: 'Video', label: 'Betacam SP', abbr: 'Betacam SP', text: 'Betacam SP professional video cassette (S or L size)', guide: false, re: /^betacam sp\b/ },
+        { code: 'umatic', group: 'Video', label: 'U-matic', abbr: 'U-matic', text: 'U-matic professional video cassette', guide: false, re: /^u-?matic$/ },
+        { code: 'v8', group: 'Video', label: 'Video8 cassette tape', abbr: 'Video8', text: 'Video8 cassette tape', guide: true, re: /^video ?8$/ },
+        { code: 'ced', group: 'Video', label: 'Capacitance Electronic Disc (CED)', abbr: 'CED', text: 'Capacitance Electronic Disc', guide: true, re: /^ced$/ },
+        { code: 'vhd', group: 'Video', label: 'Video High Density (VHD)', abbr: 'VHD', text: 'Video High Density disc', guide: true, re: /^vhd$/ },
+        { code: 'ld', group: 'Video', label: 'LaserDisc (LD)', abbr: 'LD', text: 'LaserDisc', guide: true, re: /^(?:ld|laserdisc)$/ },
+        { code: 'vcd', group: 'Video', label: 'Video CD (VCD)', abbr: 'VCD', text: 'Video Compact Disc', guide: true, re: /^(?:vcd|video cd)$/ },
+        { code: 'dvdr', group: 'Video', label: 'DVD-R', abbr: 'DVD-R', text: 'Digital Video Disc Recordable', guide: true, re: /^dvd-r$/ },
+        { code: 'dvd', group: 'Video', label: 'DVD', abbr: 'DVD', text: 'Digital Video Disc', guide: true, re: /^dvd$/ },
+        { code: 'bdr', group: 'Video', label: 'Blu-ray-R Disc', abbr: 'BD-R', text: 'Blu-ray Disc Recordable', guide: false, re: /^blu-?ray-?r$/ },
+        { code: 'bd', group: 'Video', label: 'Blu-ray Disc', abbr: 'BD', text: 'Blu-Ray Disc', guide: true, re: /^(?:blu-?ray|bd)$/ },
+        { code: 'prt', group: 'Print', label: 'Print', abbr: 'Print', text: 'Printed matter: books (paperback, hardcover) and other print', guide: false, re: /^(?:paperback|hardcover|print)$/ }
+    ];
+
+    /**
+     * Splits a card's Format text into its media: "4xCD + 2xBlu-ray" → CD ×4
+     * and Blu-ray ×2, "2 x Cassette Tape" → Cassette Tape ×2, each with its
+     * `_SL_FORMATS` entry when one names it. The site's "–" (unknown) and an
+     * empty text give no media.
+     *
+     * @param {string} text
+     * @returns {Array<{name: string, count: number, format: ?object}>}
+     */
+    function _slFormatParts(text) {
+        const t = String(text || '').trim();
+        if (!t || /^[–-]$/.test(t)) return [];
+        return t.split('+').map(part => {
+            const m = part.trim().match(/^(\d+)\s*x\s*(.+)$/i);
+            const name = (m ? m[2] : part).trim();
+            const key = name.toLowerCase();
+            return { name, count: m ? Number(m[1]) : 1, format: _SL_FORMATS.find(f => f.re.test(key)) || null };
+        }).filter(p => p.name);
+    }
+
+    /**
+     * The `f_format` code the site files a card under: its FIRST medium's
+     * (see `_SL_FORMATS`), or `null` when that medium is not one it names.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {?string}
+     */
+    function _slFormatCode(text) {
+        return _slFormatParts(text)[0]?.format?.code || null;
+    }
+
+    /**
+     * The hover text of a collection Format cell: one line per medium with
+     * its count and the formats guide's text, then the format the site files
+     * the item under. `''` when no medium is known, so the cell gets no tip.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {string}
+     */
+    function _slFormatTip(text) {
+        const parts = _slFormatParts(text);
+        if (!parts.some(p => p.format)) return '';
+        const lines = parts.map(p => `${p.name}${p.count > 1 ? ` ×${p.count}` : ''}: ${p.format ? p.format.text : 'not in the formats guide'}`);
+        const filed = parts[0].format;
+        if (filed) lines.push(`Filed under: ${filed.label}`);
+        return [text, ...lines].join('\n');
+    }
+
+    /**
      * Builds the table row for one springsteenlyrics.com card.
      *
      * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
@@ -8940,6 +9077,11 @@
             textCell(label);
             textCell(catNo);
             textCell(fields['Format'] || '');
+            // The formats guide, per cell: an attribute, so it survives every
+            // cloneNode(true) re-render and a Save/Load round trip, and the
+            // cell's text (what filters, sorts and highlights) is unchanged.
+            const formatTip = _slFormatTip(fields['Format'] || '');
+            if (formatTip) _setTip(tr.lastElementChild, formatTip);
             textCell(fields['Country'] || '');
             textCell(released);
             textCell(originalYear);
@@ -8976,8 +9118,20 @@
     function applySlCardsToTable(def, docContext = document) {
         const kind = def?.features?.slCardsToTable;
         if (!_SL_HEADERS[kind]) return;
-        const cards = Array.from(docContext.querySelectorAll(_SL_CARD_SEL));
-        if (cards.length === 0) return;
+        const cards = _slFindCards(docContext);
+        if (cards.length === 0) {
+            // Said out loud, because a silent no-op here is how "only
+            // Official Albums works" went unnoticed: the button then renders
+            // "0 rows" with nothing in the log to say why. A page this
+            // function already converted (the table took the cards' place)
+            // is the one legitimate case and stays quiet. On a fetched page
+            // the likeliest cause is a CloudFlare challenge instead of the list.
+            if (!docContext.querySelector('table.mb-sl-table')) {
+                Lib.warn('init', `applySlCardsToTable: no item cards found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('div.blog-post').length} div.blog-post in the document, none outside the navbar/footer) — nothing converted.`);
+            }
+            return;
+        }
 
         const table = docContext.createElement('table');
         table.className = 'tbl mb-sl-table';
@@ -9010,6 +9164,10 @@
                 const h2 = document.createElement('h2');
                 Array.from(heading.attributes).forEach(attr => h2.setAttribute(attr.name, attr.value));
                 while (heading.firstChild) h2.appendChild(heading.firstChild);
+                // The site styles h3.heading only; this class carries the
+                // replacement rule in _ensureSlStyle(), wherever the heading
+                // sits (often outside `.project-detail`, see _slFindCards()).
+                h2.classList.add('mb-sl-list-heading');
                 heading.replaceWith(h2);
             }
             for (let el = table.parentElement; el; el = el.parentElement) {
@@ -9036,6 +9194,15 @@
      * `position: fixed` once the page is scrolled and would otherwise cover
      * the pinned header.
      *
+     * The site's fixed-width Bootstrap `.container`s INSIDE a widened
+     * (`mb-sl-wide`) one — the year-filter slider and the "Formats guide"
+     * panel — lose their auto side margins. Centred in a column as wide as
+     * the table they sat around its middle, off-screen at scrollX 0; and once
+     * Sticky Page Headers pinned one, every width cap grew its auto margins
+     * and pushed it further right (measured live on "book", 2026-10-05:
+     * left 1198 px, capped to 120 px in a 1000 px window). Left-aligned they
+     * sit at the content's left edge and stay pinned there.
+     *
      * @returns {void}
      */
     function _ensureSlStyle() {
@@ -9047,13 +9214,17 @@
                 margin: 0 0 12px;
                 line-height: 1.4;
             }
-            body.mb-sa-host-sl .project-detail h2.heading {
+            body.mb-sa-host-sl h2.mb-sl-list-heading {
                 font-size: 18px;
                 margin: 10px 0;
             }
             body.mb-sa-host-sl .container.mb-sl-wide {
                 width: auto;
                 max-width: none;
+            }
+            body.mb-sa-host-sl .container.mb-sl-wide .container:not(.mb-sl-wide) {
+                margin-left: 0;
+                margin-right: 0;
             }
             :where(body.mb-sa-host-sl table.tbl) {
                 border-collapse: collapse;
@@ -9082,6 +9253,371 @@
                 height: 48px;
                 width: auto;
                 max-width: none;
+            }
+            /* A navigation-only page (the bootleg landing page) has no table,
+               so no Data or View menu, and no divider before them. */
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-button-divider-initial,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-data-menu-btn,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-view-menu-btn {
+                display: none !important;
+            }
+            /* The compact category/filter bar (sa_sl_compact_nav): the walls it
+               folds stay in the DOM, hidden. */
+            body.mb-sa-host-sl .mb-sl-nav-hidden {
+                display: none !important;
+            }
+            body.mb-sa-host-sl .mb-sl-scope {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin: 4px 0 10px;
+                font-size: 13px;
+                line-height: 1.3;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                height: 28px;
+                max-width: 320px;
+                padding: 0 10px;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                background: #eceff1;
+                color: #263238;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn:hover,
+            body.mb-sa-host-sl .mb-sl-scope-btn[aria-expanded="true"] {
+                background: #dfe7f4;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn.mb-sl-set {
+                border-color: #2b4a7b;
+                background: #dfe7f4;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn.mb-sl-set .mb-sl-scope-v {
+                color: #2b4a7b;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-k {
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-v {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chips {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin-left: 6px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 1px 2px 1px 9px;
+                border-radius: 999px;
+                background: #dfe7f4;
+                color: #2b4a7b;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > a {
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                color: inherit;
+                text-decoration: none;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > a:hover {
+                background: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-pop {
+                position: fixed;
+                z-index: 100000;
+                width: 320px;
+                max-width: calc(100vw - 16px);
+                padding: 8px;
+                background: #fff;
+                color: #263238;
+                border: 1px solid #b0bec5;
+                border-radius: 8px;
+                box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+                font-size: 13px;
+                line-height: 1.3;
+                text-align: left;
+                overflow-y: auto;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-search {
+                width: 100%;
+                height: 28px;
+                margin-bottom: 6px;
+                padding: 0 8px;
+                border: 1px solid #b0bec5;
+                border-radius: 5px;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-list {
+                max-height: 340px;
+                overflow-y: auto;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-group {
+                margin: 6px 0 2px;
+                font-size: 11px;
+                font-weight: bold;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 3px 6px;
+                border-radius: 4px;
+                color: #263238;
+                text-decoration: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt[hidden],
+            body.mb-sa-host-sl .mb-sl-scope-group[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt:hover,
+            body.mb-sa-host-sl .mb-sl-scope-opt:focus {
+                background: #dfe7f4;
+                outline: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt.mb-sl-cur {
+                color: #2b4a7b;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt.mb-sl-cur::before {
+                content: "\\2713";
+            }
+            body.mb-sa-host-sl .mb-sl-scope-years {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 4px 0 8px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-foot {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-apply {
+                margin-left: auto;
+                padding: 4px 14px;
+                border-radius: 5px;
+                background: #2b4a7b;
+                color: #fff;
+                font-weight: bold;
+                text-decoration: none;
+            }
+            /* The formats guide line under a Format menu entry. */
+            body.mb-sa-host-sl .mb-sl-scope-sub {
+                display: block;
+                font-size: 11px;
+                font-weight: normal;
+                color: #607080;
+            }
+            /* Recorded item count of a category, right-aligned in its entry. */
+            body.mb-sa-host-sl .mb-sl-scope-n {
+                margin-left: auto;
+                padding-left: 8px;
+                color: #607080;
+                font-weight: normal;
+                font-variant-numeric: tabular-nums;
+            }
+            /* The bootleg era timeline heading the Category menu: bars placed
+               on one year axis, width = the era's span, height = recordings
+               per year; a dashed bar is an era not counted yet. */
+            body.mb-sa-host-sl .mb-sl-scope-pop.mb-sl-scope-pop-wide {
+                width: 560px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-ruler {
+                margin: 2px 2px 10px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-bars {
+                position: relative;
+                height: 90px;
+                margin-top: 14px;
+            }
+            body.mb-sa-host-sl .mb-sl-era {
+                position: absolute;
+                bottom: 0;
+                background: #7d95bd;
+                border-radius: 3px 3px 0 0;
+            }
+            body.mb-sa-host-sl .mb-sl-era:hover,
+            body.mb-sa-host-sl .mb-sl-era:focus {
+                background: #2b4a7b;
+                outline: none;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-era-unknown {
+                background: transparent;
+                border: 1px dashed #7d95bd;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-cur {
+                background: #2b4a7b;
+                box-shadow: 0 0 0 2px #fff, 0 0 0 3px #263238;
+            }
+            body.mb-sa-host-sl .mb-sl-era-n {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10px;
+                color: #607080;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis {
+                position: relative;
+                height: 14px;
+                border-top: 1px solid #b0bec5;
+                font-size: 10px;
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span {
+                position: absolute;
+                top: 1px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span.mb-sl-era-axis-end {
+                right: 0;
+            }
+            /* The bootleg search box: a field switch, one input, Search. The
+               message line takes a row of its own under the bar. */
+            body.mb-sa-host-sl .mb-sl-search {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg {
+                display: inline-flex;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn {
+                height: 26px;
+                padding: 0 9px;
+                border: 0;
+                border-left: 1px solid #b0bec5;
+                background: #eceff1;
+                color: #263238;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn:first-child {
+                border-left: 0;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn[aria-pressed="true"] {
+                background: #2b4a7b;
+                color: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-search-input {
+                width: 260px;
+                max-width: 100%;
+                height: 28px;
+                padding: 0 8px;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                box-sizing: border-box;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go {
+                display: inline-flex;
+                align-items: center;
+                height: 28px;
+                padding: 0 14px;
+                border-radius: 6px;
+                background: #2b4a7b;
+                color: #fff;
+                font-weight: bold;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go[aria-disabled="true"] {
+                background: #b0bec5;
+                cursor: default;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg {
+                flex-basis: 100%;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg[hidden] {
+                display: none;
+            }
+            /* After the fetch: entries that filter the loaded table are
+               buttons; the note heading a menu says which kind it holds. */
+            body.mb-sa-host-sl button.mb-sl-scope-opt {
+                width: 100%;
+                border: 0;
+                background: none;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note {
+                margin: 0 0 6px;
+                padding: 4px 6px;
+                border-radius: 4px;
+                background: #fbefd9;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note.mb-sl-scope-note-table {
+                background: #dff2e6;
+                color: #1b5e20;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chips[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button {
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                padding: 0;
+                border: 0;
+                border-radius: 50%;
+                background: none;
+                color: inherit;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button:hover {
+                background: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip-mark {
+                font-size: 11px;
+            }
+            body.mb-sa-host-sl button.mb-sl-scope-clear {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                text-decoration: underline;
+                font: inherit;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-forget {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                padding: 4px 6px;
+                font-size: 12px;
             }
         `);
         style.id = 'mb-sl-style';
@@ -9128,6 +9664,1504 @@
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
         return h1;
+    }
+
+    // -------------------------------------------------------------------------
+    // springsteenlyrics.com: the compact category/filter bar (sa_sl_compact_nav)
+    // -------------------------------------------------------------------------
+    // The collection pages stack up to six walls of links above the list
+    // (category, format, country, album, year slider, copies: 123 links on the
+    // entry page), and Sticky Page Headers pins all of them. The bar folds
+    // each wall into one pull-down. It READS its options from those walls, so
+    // whatever a category offers (8 formats on "Official Albums", 26 on the
+    // entry page) is what the menu offers, and only HIDES them. Every choice
+    // is a plain `<a href>`, so initNavigationGuard()'s anchor guard asks
+    // before a loaded table is thrown away, and middle-click opens a new tab.
+    // Filters combine: probed live on 2026-10-05, the server narrows by every
+    // `f_*` parameter at once (album 1315 → f_format=12i 539 → plus
+    // f_country=USA 125; f_range=1980,1985 combines too), and on a filtered
+    // page the site's own links carry the active filter along — which is why
+    // _slReadNavFacets() has to tell a wall's own parameter from a carried
+    // one. See docs/claude/springsteenlyrics.md.
+
+    /**
+     * Short label of each scope-bar control, keyed by the query parameter its
+     * links set. A wall whose parameter is not listed falls back to its own
+     * "Filter by …:" caption.
+     * @type {Object<string, string>}
+     */
+    const _SL_FACET_LABELS = {
+        category: 'Category',
+        f_format: 'Format',
+        f_country: 'Country',
+        f_date_main: 'Album',
+        f_range: 'Year',
+        f_multi: 'Copies',
+        f_nbcopies: 'Copies'
+    };
+
+    /**
+     * Category groups for the Category menu, per list script: a group name and
+     * the test a category key must pass. The site lists its categories flat;
+     * a key no group takes goes under "More", so a category the site adds
+     * later still appears. A key goes to the FIRST group that takes it.
+     * @type {Object<string, Array<[string, function(string): boolean]>>}
+     */
+    const _SL_CATEGORY_GROUPS = {
+        '/collection.php': [
+            ['Audio', k => ['album', 'sampler', 'single', 'nugs', 'radioshows', 'vaalbum', 'guest', 'cover', 'audioboot', 'other'].includes(k)],
+            ['Video', k => ['video', 'video_unauth', 'video_var', 'video_guest', 'video_cover', 'video_doc', 'video_movie', 'video_boot'].includes(k)],
+            ['Print & memorabilia', k => ['book', 'fanzine', 'magazine', 'newspaper', 'program', 'printedmusic', 'calendar', 'memorabilia'].includes(k)]
+        ],
+        '/bootlegs.php': [
+            ['Live shows', k => /^aud_live\d{4}$/.test(k)],
+            ['Other audio', k => k.startsWith('aud_')],
+            ['Video', k => k.startsWith('vid_')]
+        ]
+    };
+
+    /**
+     * Filters that only mean something inside the category that offered them
+     * and are dropped when the category changes: an album (`f_date_main`) is
+     * a release date of an "Official Albums" title. Every other collection
+     * filter is kept across a category change.
+     * @type {string[]}
+     */
+    const _SL_CATEGORY_SPECIFIC_PARAMS = ['f_date_main'];
+
+    /**
+     * List scripts whose filters never combine with a category, so a category
+     * change drops every `f_*` parameter. On the bootleg lists a filter IS the
+     * category (`category=f_date&f_date=…`), and a list category ignores one:
+     * `category=aud_live1975&f_date=1975-08-15` returns the whole era (probed
+     * live, 2026-10-05).
+     * @type {string[]}
+     */
+    const _SL_CATEGORY_CHANGE_DROPS_FILTERS = ['/bootlegs.php'];
+
+    /**
+     * GM storage key of the exact item count of every springsteenlyrics.com
+     * list visited with the compact bar on: `{ "<path>?category=<key>": { n,
+     * at } }`, `at` being the visit's date. Written by
+     * `_slRecordListCount()`, shown in the Category menus. A cache, not a
+     * user setting: it is not in the config export (`_CFG_WORKSPACE_GROUPS`).
+     * Exact on purpose (decided 2026-10-05): the bootleg landing page's
+     * "Statistics" counts drift from the lists' own totals (544 there, 487
+     * on the Live 1975-1977 list itself).
+     * @type {string}
+     */
+    const _SL_LIST_COUNTS_KEY = 'mb_sa_sl_list_counts';
+
+    /**
+     * The `_SL_LIST_COUNTS_KEY` entry key of one list.
+     *
+     * @param {string} pathname  - The list script, e.g. '/bootlegs.php'.
+     * @param {string} category  - The category key, e.g. 'aud_live1992'.
+     * @returns {string}
+     */
+    function _slListCountKey(pathname, category) {
+        return `${pathname}?category=${category}`;
+    }
+
+    /**
+     * Reads the stored list counts (`_SL_LIST_COUNTS_KEY`).
+     *
+     * @returns {Object<string, {n: number, at: string}>} Never null.
+     */
+    function _slReadListCounts() {
+        try {
+            const v = GM_getValue(_SL_LIST_COUNTS_KEY, {});
+            return (v && typeof v === 'object') ? v : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /**
+     * Records this list's exact item count, from the site's own "Showing
+     * items 1-100 of N" line, under its category — but only for a whole
+     * category (`cmd=list`, a real category key, no `f_*` filter): a filtered
+     * list's total is not the category's. Writes only when the count changed.
+     *
+     * @returns {?number} The count recorded or confirmed, or `null` when this
+     *   page is not a whole category or shows no count line.
+     */
+    function _slRecordListCount() {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const cat = params.get('category');
+        if (params.get('cmd') !== 'list' || !cat || cat.startsWith('f_')) return null;
+        if (Array.from(params.keys()).some(k => k.startsWith('f_'))) return null;
+        let n = null;
+        for (const d of document.querySelectorAll('div[align="center"]')) {
+            const m = d.textContent.match(/Showing items\s+\d+\s*-\s*\d+\s+of\s+(\d+)/);
+            if (m) {
+                n = parseInt(m[1], 10);
+                break;
+            }
+        }
+        if (n === null) return null;
+        const counts = _slReadListCounts();
+        const key = _slListCountKey(url.pathname, cat);
+        if (counts[key]?.n !== n) {
+            counts[key] = { n, at: new Date().toISOString().slice(0, 10) };
+            GM_setValue(_SL_LIST_COUNTS_KEY, counts);
+        }
+        return n;
+    }
+
+    /**
+     * Reads the year span the collection's "original year of release" slider
+     * offers: from the site's inline rSlider setup (`values: [1973, …]`),
+     * else from the rendered slider's scale labels, else 1973 (the year of the
+     * first album) to the current year.
+     *
+     * @param {Document} [doc=document]
+     * @returns {{min: number, max: number}}
+     */
+    function _slReadYearSpan(doc = document) {
+        for (const s of doc.querySelectorAll('script:not([src])')) {
+            const m = s.textContent.match(/#f_range['"][\s\S]*?values:\s*\[([^\]]*)\]/);
+            if (m) {
+                const ys = m[1].split(',').map(Number).filter(n => n > 0);
+                if (ys.length) return { min: Math.min(...ys), max: Math.max(...ys) };
+            }
+        }
+        const ins = Array.from(doc.querySelectorAll('.rs-scale ins'))
+            .map(i => parseInt(i.textContent, 10)).filter(n => n > 0);
+        if (ins.length >= 2) return { min: Math.min(...ins), max: Math.max(...ins) };
+        return { min: 1973, max: new Date().getFullYear() };
+    }
+
+    /**
+     * Reads the page's category and filter walls into scope-bar "facets", in
+     * page order. A wall is a `.element-buttons` block of same-page links:
+     * links that set no `f_*` parameter make the Category facet, the others
+     * one facet per wall, keyed by the `f_*` parameters its links CHANGE (the
+     * copies wall changes both `f_multi` and `f_nbcopies`; a filter the site
+     * merely carries over from the page's own query is not the wall's). The
+     * year slider is a
+     * form, not links, and becomes a range facet. Each facet carries the
+     * elements to hide once the bar stands in for them.
+     *
+     * @param {Document} [doc=document]
+     * @returns {Array<{kind: ('category'|'links'|'range'), label: string, keys: string[],
+     *   options: Array<{label: string, category: string, set: Object<string, string>, active: boolean, icon: ?Element}>,
+     *   min?: number, max?: number, hide: Element[]}>}
+     */
+    function _slReadNavFacets(doc = document) {
+        const here = new URL(window.location.href);
+        const yearForm = doc.getElementById('filter_collection_year');
+        const facets = [];
+        doc.querySelectorAll('.element-buttons').forEach(block => {
+            if (block.closest('.navbar, footer, form')) return;
+            const caption = block.querySelector('p > strong')?.textContent.replace(/\s+/g, ' ').trim() || '';
+            const yearBox = block.nextElementSibling;
+            if (yearForm && yearBox && yearBox.contains(yearForm)) {
+                facets.push({ kind: 'range', label: _SL_FACET_LABELS.f_range, keys: ['f_range'],
+                    options: [], ..._slReadYearSpan(doc), hide: [block, yearBox] });
+                return;
+            }
+            const options = [];
+            block.querySelectorAll('a[href]').forEach(a => {
+                let url;
+                try { url = new URL(a.getAttribute('href'), here); } catch (e) { return; }
+                if (url.pathname !== here.pathname) return;
+                const set = {};
+                url.searchParams.forEach((v, k) => { if (k.startsWith('f_')) set[k] = v; });
+                options.push({ label: a.textContent.replace(/\s+/g, ' ').trim(),
+                    category: url.searchParams.get('category') || '', set,
+                    active: a.classList.contains('label-danger'),
+                    icon: a.querySelector('.flag-icon') });
+            });
+            if (options.length === 0) return;
+            // On a filtered page the site carries the active filter into the
+            // OTHER walls' links (with f_format=12i set, every country link
+            // also says f_format=12i), and draws the active entry of a wall
+            // red (`label-danger`) with an href WITHOUT its own filter, i.e.
+            // a click removes it. A wall's own keys are therefore the f_*
+            // parameters that are NOT on every link with the page's own
+            // value; only when that leaves nothing do all of them count.
+            const all = new Set(options.flatMap(o => Object.keys(o.set)));
+            if (all.size === 0 && !options.some(o => o.active)) {
+                facets.push({ kind: 'category', label: _SL_FACET_LABELS.category, keys: ['category'], options, hide: [block] });
+                return;
+            }
+            const inherited = k => options.every(o => o.set[k] !== undefined && o.set[k] === here.searchParams.get(k));
+            let keyList = Array.from(all).filter(k => !inherited(k));
+            if (keyList.length === 0) keyList = Array.from(all);
+            if (keyList.length === 0) return;
+            options.forEach(o => {
+                // The red entry's own value is the page's: its href drops it.
+                const src = o.active ? Object.fromEntries(keyList.filter(k => here.searchParams.has(k))
+                    .map(k => [k, here.searchParams.get(k)])) : o.set;
+                o.set = Object.fromEntries(keyList.filter(k => src[k] !== undefined).map(k => [k, src[k]]));
+            });
+            const label = _SL_FACET_LABELS[keyList[0]] ||
+                caption.replace(/^Filter by\s+/i, '').replace(/:$/, '').replace(/^./, c => c.toUpperCase()) || keyList[0];
+            const hide = [block];
+            // The Format menu carries the formats guide (every entry's guide
+            // line, `_SL_FORMATS`), so the site's "Formats guide" panel goes
+            // with the format wall — only its own box, never a page container.
+            if (keyList.includes('f_format')) {
+                const guideBox = doc.getElementById('collapseFormats')?.closest('.container');
+                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);
+            }
+            facets.push({ kind: 'links', label, keys: keyList, options, hide });
+        });
+        return facets;
+    }
+
+    /**
+     * Builds the URL of this list with the scope changed: the page parameter
+     * dropped (a new scope starts at page 1), `cmd=list`, and `category=all`
+     * when the page has none (the entry page, whose own filter links say the
+     * same). Then `change.category` replaces the category (dropping
+     * `_SL_CATEGORY_SPECIFIC_PARAMS`, or every `f_*` on a list script in
+     * `_SL_CATEGORY_CHANGE_DROPS_FILTERS`), `change.clear` removes parameters
+     * and `change.set` sets them — so a new value for one filter keeps the
+     * others.
+     *
+     * @param {{category?: string, clear?: string[], set?: Object<string, string>}} change
+     * @returns {string} Absolute URL.
+     */
+    function _slScopeHref(change) {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        ['page', 'pg', 'item'].forEach(k => url.searchParams.delete(k));
+        url.searchParams.set('cmd', 'list');
+        if (!url.searchParams.get('category')) url.searchParams.set('category', 'all');
+        if (change.category !== undefined) {
+            url.searchParams.set('category', change.category);
+            const dropAll = _SL_CATEGORY_CHANGE_DROPS_FILTERS.includes(url.pathname);
+            Array.from(url.searchParams.keys()).forEach(k => {
+                if (dropAll ? k.startsWith('f_') : _SL_CATEGORY_SPECIFIC_PARAMS.includes(k)) url.searchParams.delete(k);
+            });
+        }
+        (change.clear || []).forEach(k => url.searchParams.delete(k));
+        Object.entries(change.set || {}).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.href;
+    }
+
+    /**
+     * Tells what a facet is set to on this page.
+     *
+     * @param {object}          facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {{active: boolean, label: string, option: ?object}} `active` is
+     *   false for the Category facet (it always has a value) and for a filter
+     *   the query does not carry; `option` is the matching menu entry, if any.
+     */
+    function _slFacetCurrent(facet, params) {
+        if (facet.kind === 'category') {
+            const cat = params.get('category') || 'all';
+            const option = facet.options.find(o => o.category === cat) || null;
+            // Not one of the wall's categories: "all" (the collection entry
+            // page has no category and lists everything), none at all on the
+            // bootleg landing page (which lists nothing), or a bootleg search
+            // (category=f_title…), whose list heading ("SHOWS BY TITLE") says
+            // what the page is.
+            const fallback = !params.get('category') && window.location.pathname === '/bootlegs.php' ? 'Choose a list'
+                : cat === 'all' ? 'All categories'
+                    : (_slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || cat);
+            return { active: false, label: option ? option.label : fallback, option };
+        }
+        if (facet.kind === 'range') {
+            const v = params.get('f_range');
+            return v ? { active: true, label: v.replace(',', '–'), option: null }
+                : { active: false, label: 'Any', option: null };
+        }
+        if (!facet.keys.some(k => params.has(k))) return { active: false, label: 'Any', option: null };
+        const option = facet.options.find(o =>
+            facet.keys.every(k => (o.set[k] ?? null) === params.get(k))) || null;
+        const raw = facet.keys.filter(k => params.has(k)).map(k => params.get(k)).join(', ');
+        return { active: true, label: option ? option.label : raw, option };
+    }
+
+    /**
+     * The open scope-bar pull-down, if any: its panel and the button it hangs
+     * from.
+     * @type {?{pop: HTMLElement, btn: HTMLElement}}
+     */
+    let _slScopePop = null;
+
+    /**
+     * Closes the open scope-bar pull-down, if any.
+     *
+     * @param {boolean} [refocus=false] - Return focus to its button (Escape).
+     * @returns {void}
+     */
+    function _slCloseScopePop(refocus = false) {
+        if (!_slScopePop) return;
+        const { pop, btn } = _slScopePop;
+        _slScopePop = null;
+        pop.remove();
+        btn.setAttribute('aria-expanded', 'false');
+        if (refocus) btn.focus();
+    }
+
+    // --- After the fetch: the bar filters the loaded table ------------------
+    // Once a list is loaded, a server filter would reload the page and throw
+    // the table away, while the same narrowing is a column filter away. So a
+    // facet whose values ARE a column's cell values filters the table instead
+    // (decided 2026-10-05): Country, the year range and Copies, and Format
+    // through the formats glossary (`_SL_FORMATS`), since the site's codes
+    // (12i, "12\" vinyl") are not the cells' text (LP, 2xLP, 4x12" + 7").
+    // Album has no column, so it and the Category keep navigating, and the
+    // menu says which kind it is. Filtering
+    // goes through applyUniqValueSet(), the 📊 dropdown's own exact-value
+    // path, so every cache and highlight rule of that path holds unchanged.
+
+    /**
+     * The table column each table-filterable bar parameter narrows.
+     * @type {Object<string, string>}
+     */
+    const _SL_TABLE_FILTER_COLUMNS = {
+        f_country: 'Country',
+        f_range: 'Original year',
+        f_nbcopies: 'Copies',
+        f_multi: 'Copies',
+        // Through `_SL_FORMATS`: a row counts under the format of its FIRST
+        // medium, as the server files it (probed, see that table).
+        f_format: 'Format'
+    };
+
+    /**
+     * The loaded springsteenlyrics.com table, or `null` before one is
+     * rendered. The filter-row test comes FIRST on purpose: this runs from
+     * the bar, which is built at init, long before `isLoaded`/`allRows` are
+     * declared further down the script — reading them then would throw (TDZ).
+     * No table has a column filter row until a render, which is after both.
+     *
+     * @returns {?HTMLTableElement}
+     */
+    function _slLoadedTable() {
+        const table = document.querySelector('table.mb-sl-table');
+        if (!table || !table.querySelector('thead tr.mb-col-filter-row')) return null;
+        return (isLoaded && allRows.length > 0) ? table : null;
+    }
+
+    /**
+     * Tells whether a facet filters the loaded table instead of navigating:
+     * every key maps to the same column (`_SL_TABLE_FILTER_COLUMNS`), a table
+     * is loaded with that column, and the page's query does NOT already carry
+     * the facet — then the server narrowed the fetch and the table holds only
+     * that value, so only a reload can widen it.
+     *
+     * @param {object} facet  - From `_slReadNavFacets()`.
+     * @returns {?{table: HTMLTableElement, idx: number, column: string}}
+     */
+    function _slHandoff(facet) {
+        if (facet.kind !== 'links' && facet.kind !== 'range') return null;
+        const cols = new Set(facet.keys.map(k => _SL_TABLE_FILTER_COLUMNS[k]));
+        if (cols.size !== 1 || cols.has(undefined)) return null;
+        const params = new URL(window.location.href).searchParams;
+        if (facet.keys.some(k => params.has(k))) return null;
+        const table = _slLoadedTable();
+        if (!table) return null;
+        const column = [...cols][0];
+        const idx = _findColIdxByName(table, column);
+        return idx >= 0 ? { table, idx, column } : null;
+    }
+
+    /**
+     * The distinct, non-empty cell texts of one column over ALL loaded rows
+     * (`allRows`), not only those a filter leaves visible.
+     *
+     * @param {number} idx  - Column index.
+     * @returns {string[]}
+     */
+    function _slColumnValues(idx) {
+        const seen = new Set();
+        allRows.forEach(r => {
+            const cell = r.cells && r.cells[idx];
+            const t = cell ? getCleanColumnText(cell).trim() : '';
+            if (t) seen.add(t);
+        });
+        return Array.from(seen);
+    }
+
+    /**
+     * The column values one bar choice stands for: a country by its name
+     * (matched case-blind against the column, so the site's chip label and
+     * the cards' text may differ in case); a format code as every Format text
+     * whose first medium it names (`_slFormatCode()`); "Copies = N" as N;
+     * "Duplicates" as every count of 2 or more; a year range as every year in
+     * it the column holds. When nothing in the table qualifies, a value no cell
+     * holds is returned, so the filter shows an empty table rather than
+     * silently clearing itself (an empty set means "no filter").
+     *
+     * @param {{idx: number, column: string}} h  - From `_slHandoff()`.
+     * @param {Object<string, string>} set        - The choice's parameters.
+     * @returns {string[]}
+     */
+    function _slHandoffValues(h, set) {
+        const vals = _slColumnValues(h.idx);
+        let hit = [];
+        if (set.f_country !== undefined) {
+            const want = set.f_country.toLowerCase();
+            hit = vals.filter(v => v.toLowerCase() === want);
+        } else if (set.f_format !== undefined) {
+            hit = vals.filter(v => _slFormatCode(v) === set.f_format);
+        } else if (set.f_nbcopies !== undefined) {
+            hit = vals.filter(v => Number(v) === Number(set.f_nbcopies));
+        } else if (set.f_multi !== undefined) {
+            hit = vals.filter(v => Number(v) >= 2);
+        } else if (set.f_range !== undefined) {
+            const [a, b] = set.f_range.split(',').map(Number);
+            hit = vals.filter(v => Number(v) >= a && Number(v) <= b);
+        }
+        return hit.length ? hit : [`∅ no ${h.column.toLowerCase()} matches`];
+    }
+
+    /**
+     * The column filter `<input>` of a hand-off column.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?HTMLInputElement}
+     */
+    function _slHandoffInput(h) {
+        return h.table.querySelector(`thead tr.mb-col-filter-row .mb-col-filter-input[data-col-idx="${h.idx}"]`);
+    }
+
+    /**
+     * What a hand-off column is filtered to, as the bar should name it: the
+     * bar's own label while the column still holds exactly the value set the
+     * bar wrote, else a summary of whatever value set the 📊 dropdown left
+     * there, else `null` (no value set; a typed column filter is not the
+     * bar's to show).
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?string}
+     */
+    function _slTableChoice(h) {
+        const input = _slHandoffInput(h);
+        const vs = input?.dataset.mbUniqValues;
+        if (!vs) return null;
+        if (input.dataset.mbSlBarValues === vs && input.dataset.mbSlBarLabel) return input.dataset.mbSlBarLabel;
+        try {
+            const arr = JSON.parse(vs);
+            return arr.length <= 3 ? arr.join(', ') : `${arr.length} values`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Narrows (or, with an empty `values`, clears) a hand-off column through
+     * `applyUniqValueSet()`, remembers the bar's label for it, and redraws
+     * the bar.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @param {string[]} values  - From `_slHandoffValues()`, or `[]` to clear.
+     * @param {string}   label   - What the bar calls the choice.
+     * @returns {void}
+     */
+    function _slApplyTableFilter(h, values, label) {
+        applyUniqValueSet(values, h.table, h.idx);
+        const input = _slHandoffInput(h);
+        if (input) {
+            if (values.length) {
+                input.dataset.mbSlBarLabel = label;
+                input.dataset.mbSlBarValues = input.dataset.mbUniqValues || '';
+            } else {
+                delete input.dataset.mbSlBarLabel;
+                delete input.dataset.mbSlBarValues;
+            }
+        }
+        _slRenderScopeState();
+    }
+
+    /**
+     * Heads a pull-down with what its entries do once a table is loaded:
+     * filter that table (a hand-off facet), or reload the page and replace
+     * it. Says nothing before a table is loaded, when every entry navigates.
+     *
+     * @param {HTMLElement} pop      - The panel being filled.
+     * @param {object}      facet    - From `_slReadNavFacets()`.
+     * @param {?object}     handoff  - From `_slHandoff()`.
+     * @returns {void}
+     */
+    function _slAddScopeNote(pop, facet, handoff) {
+        let text = '';
+        if (handoff) {
+            text = `Filters the loaded table by its ${handoff.column} column; nothing is reloaded.`;
+        } else if (_slLoadedTable()) {
+            const carried = facet.kind !== 'category' &&
+                facet.keys.some(k => new URL(window.location.href).searchParams.has(k));
+            text = facet.kind === 'category' ? 'Opens another list and replaces the loaded table.'
+                : carried ? 'This list was fetched with this filter, so changing it reloads the page and replaces the loaded table.'
+                    : 'Reloads the page and replaces the loaded table.';
+        }
+        if (!text) return;
+        const note = document.createElement('div');
+        note.className = 'mb-sl-scope-note';
+        note.classList.toggle('mb-sl-scope-note-table', Boolean(handoff));
+        note.textContent = text;
+        pop.appendChild(note);
+    }
+
+    /**
+     * Reads a bootleg era out of a category label: "Live 1967-1974" → 1967 to
+     * 1974, "Live 2005" → 2005 to 2005.
+     *
+     * @param {string} label
+     * @returns {?{from: number, to: number}} `null` for a label that is not an era.
+     */
+    function _slParseEra(label) {
+        const m = label.match(/^Live\s+(\d{4})(?:\s*-\s*(\d{4}))?$/);
+        if (!m) return null;
+        const from = Number(m[1]);
+        const to = Number(m[2] || m[1]);
+        return to >= from ? { from, to } : null;
+    }
+
+    /**
+     * Builds the era timeline that heads the bootleg Category menu: every
+     * "Live YYYY-YYYY" category as a bar on one year axis, its width the
+     * era's span and its height the recordings PER YEAR, from the exact
+     * counts recorded on earlier visits (`_SL_LIST_COUNTS_KEY`). An era not
+     * visited yet is drawn dashed at a fixed height with "?", never
+     * estimated. Every bar is a link to its list; the current one is marked.
+     *
+     * @param {object}                facet   - The Category facet.
+     * @param {string}                curCat  - The page's category key.
+     * @param {Object<string, {n: number, at: string}>} counts
+     * @returns {?HTMLElement} The timeline, or `null` with fewer than three eras.
+     */
+    function _slBuildEraRuler(facet, curCat, counts) {
+        const path = window.location.pathname;
+        const eras = facet.options.map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        if (eras.length < 3) return null;
+        const min = Math.min(...eras.map(e => e.span.from));
+        const max = Math.max(...eras.map(e => e.span.to));
+        const years = max - min + 1;
+        const pct = y => `${(100 * (y - min) / years).toFixed(3)}%`;
+        eras.forEach(e => {
+            const c = counts[_slListCountKey(path, e.o.category)];
+            e.n = c ? c.n : null;
+            e.perYear = c ? c.n / (e.span.to - e.span.from + 1) : null;
+        });
+        const top = Math.max(1, ...eras.map(e => e.perYear || 0));
+
+        const ruler = document.createElement('div');
+        ruler.className = 'mb-sl-era-ruler';
+        const bars = document.createElement('div');
+        bars.className = 'mb-sl-era-bars';
+        eras.forEach(e => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-era';
+            a.href = _slScopeHref({ category: e.o.category });
+            a.style.left = pct(e.span.from);
+            a.style.width = `calc(${(100 * (e.span.to - e.span.from + 1) / years).toFixed(3)}% - 2px)`;
+            const n = document.createElement('span');
+            n.className = 'mb-sl-era-n';
+            if (e.n === null) {
+                a.classList.add('mb-sl-era-unknown');
+                a.style.height = '30%';
+                n.textContent = '?';
+                _setTip(a, `${e.o.label}\nNot counted yet: the count is recorded when you open this list.`);
+            } else {
+                a.style.height = `${Math.max(8, Math.round(100 * e.perYear / top))}%`;
+                n.textContent = String(e.n);
+                _setTip(a, `${e.o.label}\n${e.n} recordings, about ${Math.round(e.perYear)} a year\nCounted on ${counts[_slListCountKey(path, e.o.category)].at}`);
+            }
+            if (e.o.category === curCat) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            a.setAttribute('aria-label', `${e.o.label}${e.n === null ? '' : `, ${e.n} recordings`}`);
+            a.appendChild(n);
+            bars.appendChild(a);
+        });
+        const axis = document.createElement('div');
+        axis.className = 'mb-sl-era-axis';
+        const ticks = [min];
+        for (let y = Math.ceil((min + 1) / 10) * 10; y <= max - 4; y += 10) {
+            if (y - min >= 4) ticks.push(y);
+        }
+        ticks.forEach(y => {
+            const t = document.createElement('span');
+            t.textContent = String(y);
+            t.style.left = pct(y);
+            axis.appendChild(t);
+        });
+        const last = document.createElement('span');
+        last.className = 'mb-sl-era-axis-end';
+        last.textContent = String(max);
+        axis.appendChild(last);
+        ruler.append(bars, axis);
+        return ruler;
+    }
+
+    /**
+     * Fills a scope-bar pull-down for a Category or links facet: one link per
+     * option (the Category facet grouped per `_SL_CATEGORY_GROUPS` with the
+     * recorded item count of each category, and headed by the era timeline
+     * on the bootleg lists; a filter facet led by "Any"), the current one
+     * marked, and a search box above a long list. Typing filters the list;
+     * Enter follows the first match.
+     *
+     * @param {HTMLElement}     pop     - The empty panel.
+     * @param {object}          facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {void}
+     */
+    function _slFillScopeList(pop, facet, params) {
+        const cur = _slFacetCurrent(facet, params);
+        const path = window.location.pathname;
+        const counts = facet.kind === 'category' ? _slReadListCounts() : {};
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
+        const list = document.createElement('div');
+        list.className = 'mb-sl-scope-list';
+        // `target`: an href (navigates), or a function (filters the table).
+        // `sub`: a second, smaller line (the Format menu's guide text).
+        const addOpt = (label, target, isCur, icon, category, sub) => {
+            const a = document.createElement(typeof target === 'function' ? 'button' : 'a');
+            a.className = 'mb-sl-scope-opt';
+            if (typeof target === 'function') {
+                a.type = 'button';
+                a.addEventListener('click', () => {
+                    _slCloseScopePop(true);
+                    target();
+                });
+            } else {
+                a.href = target;
+            }
+            if (isCur) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            if (icon) a.appendChild(icon.cloneNode(true));
+            const span = document.createElement('span');
+            span.className = 'mb-sl-scope-label';
+            span.textContent = label;
+            if (sub) {
+                const s = document.createElement('span');
+                s.className = 'mb-sl-scope-sub';
+                s.textContent = sub;
+                span.appendChild(s);
+            }
+            a.appendChild(span);
+            const c = category !== undefined ? counts[_slListCountKey(path, category)] : null;
+            if (c) {
+                const n = document.createElement('span');
+                n.className = 'mb-sl-scope-n';
+                n.textContent = String(c.n);
+                _setTip(n, `${c.n} items, counted on ${c.at}`);
+                a.appendChild(n);
+            }
+            list.appendChild(a);
+        };
+        const addGroup = (text) => {
+            const g = document.createElement('div');
+            g.className = 'mb-sl-scope-group';
+            g.textContent = text;
+            list.appendChild(g);
+        };
+
+        if (facet.kind === 'category') {
+            const curCat = params.get('category') || 'all';
+            // Only the collection has an "all" list (its entry page's own
+            // filter links use it); the bootleg lists have none.
+            if (path === '/collection.php') {
+                addOpt('All categories', _slScopeHref({ category: 'all' }), curCat === 'all', null, 'all');
+            }
+            const defs = _SL_CATEGORY_GROUPS[path] || [];
+            const groups = defs.map(([name]) => [name, []]);
+            const more = [];
+            facet.options.forEach(o => {
+                const i = defs.findIndex(([, takes]) => takes(o.category));
+                (i >= 0 ? groups[i][1] : more).push(o);
+            });
+            groups.push(['More', more]);
+            groups.forEach(([name, opts]) => {
+                if (opts.length === 0) return;
+                addGroup(name);
+                opts.forEach(o => addOpt(o.label, _slScopeHref({ category: o.category }), o.category === curCat, o.icon, o.category));
+            });
+            const ruler = _slBuildEraRuler(facet, curCat, counts);
+            if (ruler) {
+                pop.classList.add('mb-sl-scope-pop-wide');
+                pop.appendChild(ruler);
+            }
+        } else {
+            // One entry per option: a table filter after the fetch, a link
+            // before it. The Format menu is the formats guide too: entries
+            // grouped Audio / Video / Print, each with its guide line.
+            const chosen = handoff ? _slTableChoice(handoff) : null;
+            const addOption = o => {
+                const fmt = o.set.f_format !== undefined ? _SL_FORMATS.find(f => f.code === o.set.f_format) : null;
+                const sub = fmt ? `${fmt.abbr} · ${fmt.text}${fmt.guide ? '' : ' (not in the site\'s guide)'}` : '';
+                if (handoff) {
+                    addOpt(o.label, () => _slApplyTableFilter(handoff, _slHandoffValues(handoff, o.set), o.label),
+                        chosen === o.label, o.icon, undefined, sub);
+                } else {
+                    addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }), cur.option === o, o.icon, undefined, sub);
+                }
+            };
+            if (handoff) addOpt('Any', () => _slApplyTableFilter(handoff, [], ''), chosen === null, null);
+            else addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
+            if (facet.keys.includes('f_format')) {
+                const groupOf = o => _SL_FORMATS.find(f => f.code === o.set.f_format)?.group || 'More';
+                ['Audio', 'Video', 'Print', 'More'].forEach(g => {
+                    const opts = facet.options.filter(o => groupOf(o) === g);
+                    if (opts.length === 0) return;
+                    addGroup(g);
+                    opts.forEach(addOption);
+                });
+            } else {
+                facet.options.forEach(addOption);
+            }
+        }
+
+        const optCount = list.querySelectorAll('.mb-sl-scope-opt').length;
+        if (optCount > 12) {
+            const q = document.createElement('input');
+            q.type = 'search';
+            q.className = 'mb-sl-scope-search';
+            q.placeholder = `Search ${facet.options.length} ${facet.label.toLowerCase()} entries…`;
+            q.setAttribute('aria-label', `Search ${facet.label}`);
+            q.addEventListener('input', () => {
+                const needle = q.value.trim().toLowerCase();
+                list.querySelectorAll('.mb-sl-scope-opt').forEach(a => {
+                    a.hidden = needle !== '' && !a.textContent.toLowerCase().includes(needle);
+                });
+                // A group header stays only while one of its entries does.
+                list.querySelectorAll('.mb-sl-scope-group').forEach(g => {
+                    let n = g.nextElementSibling;
+                    let any = false;
+                    for (; n && !n.matches('.mb-sl-scope-group'); n = n.nextElementSibling) {
+                        if (!n.hidden) { any = true; break; }
+                    }
+                    g.hidden = !any;
+                });
+            });
+            q.addEventListener('keydown', e => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                list.querySelector('.mb-sl-scope-opt:not([hidden])')?.click();
+            });
+            pop.appendChild(q);
+        }
+        pop.appendChild(list);
+    }
+
+    /**
+     * Fills the scope-bar pull-down for the year range: two year pickers
+     * over the slider's own span and an Apply link whose `href` follows them,
+     * plus a link that drops the year filter when one is set.
+     *
+     * @param {HTMLElement}     pop     - The empty panel.
+     * @param {object}          facet   - The range facet from `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {void}
+     */
+    function _slFillScopeRange(pop, facet, params) {
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
+        const chosen = handoff ? _slTableChoice(handoff) : null;
+        const tableSpan = chosen && chosen.match(/^(\d{4})–(\d{4})$/);
+        const [curFrom, curTo] = tableSpan ? [Number(tableSpan[1]), Number(tableSpan[2])]
+            : (params.get('f_range') || `${facet.min},${facet.max}`).split(',').map(Number);
+        const mkSelect = (id, value, aria) => {
+            const s = document.createElement('select');
+            s.id = id;
+            s.setAttribute('aria-label', aria);
+            for (let y = facet.min; y <= facet.max; y++) {
+                const o = document.createElement('option');
+                o.value = String(y);
+                o.textContent = String(y);
+                s.appendChild(o);
+            }
+            s.value = String(value);
+            return s;
+        };
+        const from = mkSelect('mb-sl-year-from', curFrom || facet.min, 'From year');
+        const to = mkSelect('mb-sl-year-to', curTo || facet.max, 'To year');
+        // A link before the fetch; a button that filters the table after it.
+        const apply = document.createElement(handoff ? 'button' : 'a');
+        apply.className = 'mb-sl-scope-apply';
+        apply.textContent = 'Apply';
+        const span = () => {
+            let a = Number(from.value), b = Number(to.value);
+            if (a > b) [a, b] = [b, a];
+            return [a, b];
+        };
+        const sync = () => {
+            if (handoff) return;
+            const [a, b] = span();
+            apply.href = (a === facet.min && b === facet.max)
+                ? _slScopeHref({ clear: ['f_range'] })
+                : _slScopeHref({ set: { f_range: `${a},${b}` } });
+        };
+        if (handoff) {
+            apply.type = 'button';
+            apply.addEventListener('click', () => {
+                const [a, b] = span();
+                _slCloseScopePop(true);
+                if (a === facet.min && b === facet.max) _slApplyTableFilter(handoff, [], '');
+                else _slApplyTableFilter(handoff, _slHandoffValues(handoff, { f_range: `${a},${b}` }), `${a}–${b}`);
+            });
+        }
+        from.addEventListener('change', sync);
+        to.addEventListener('change', sync);
+        sync();
+
+        const caption = document.createElement('div');
+        caption.className = 'mb-sl-scope-group';
+        caption.textContent = 'Original year of release';
+        const row = document.createElement('div');
+        row.className = 'mb-sl-scope-years';
+        const dash = document.createElement('span');
+        dash.textContent = '–';
+        row.append(from, dash, to);
+        const foot = document.createElement('div');
+        foot.className = 'mb-sl-scope-foot';
+        if (handoff && chosen) {
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'mb-sl-scope-opt';
+            reset.textContent = 'Any year';
+            reset.addEventListener('click', () => {
+                _slCloseScopePop(true);
+                _slApplyTableFilter(handoff, [], '');
+            });
+            foot.appendChild(reset);
+        } else if (params.has('f_range')) {
+            const reset = document.createElement('a');
+            reset.className = 'mb-sl-scope-opt';
+            reset.href = _slScopeHref({ clear: ['f_range'] });
+            reset.textContent = 'Any year';
+            foot.appendChild(reset);
+        }
+        foot.appendChild(apply);
+        pop.append(caption, row, foot);
+    }
+
+    /**
+     * Places the open scope-bar pull-down under its button, inside the
+     * window, or closes it when the button has left the window (scrolled
+     * away with Sticky Page Headers off).
+     *
+     * @returns {void}
+     */
+    function _slPlaceScopePop() {
+        if (!_slScopePop) return;
+        const { pop, btn } = _slScopePop;
+        const r = btn.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) {
+            _slCloseScopePop();
+            return;
+        }
+        // A fixed panel cannot be scrolled into view, so it must FIT: below
+        // the button when there is room, else above it when there is more
+        // room there, and never taller than the space it opens into (it
+        // scrolls inside). Hanging past the window's bottom, its lower
+        // entries were unreachable once the bar sat low on the screen.
+        const below = window.innerHeight - r.bottom - 12;
+        const above = r.top - 12;
+        const up = below < 240 && above > below;
+        pop.style.maxHeight = `${Math.max(120, Math.round(up ? above : below))}px`;
+        if (up) {
+            pop.style.top = '';
+            pop.style.bottom = `${Math.round(window.innerHeight - r.top + 4)}px`;
+        } else {
+            pop.style.bottom = '';
+            pop.style.top = `${Math.round(r.bottom + 4)}px`;
+        }
+        pop.style.left = `${Math.round(Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)))}px`;
+    }
+
+    /**
+     * Opens (or, for its own button, closes) a scope-bar pull-down. The panel
+     * is appended to `<body>` with `position: fixed` under its button, so no
+     * pinned (sticky) ancestor's stacking context or the table's sticky
+     * header can cover it; scrolling or resizing the window moves it along
+     * (`_slPlaceScopePop()`).
+     *
+     * @param {HTMLButtonElement} btn     - The facet's button in the bar.
+     * @param {object}            facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams}   params  - The page's query.
+     * @returns {void}
+     */
+    function _slToggleScopePop(btn, facet, params) {
+        if (_slScopePop && _slScopePop.btn === btn) {
+            _slCloseScopePop();
+            return;
+        }
+        _slCloseScopePop();
+        const pop = document.createElement('div');
+        pop.className = 'mb-sl-scope-pop';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', facet.label);
+        if (facet.kind === 'range') _slFillScopeRange(pop, facet, params);
+        else if (facet.kind === 'recent') _slFillScopeRecent(pop, facet.search);
+        else _slFillScopeList(pop, facet, params);
+        document.body.appendChild(pop);
+        btn.setAttribute('aria-expanded', 'true');
+        _slScopePop = { pop, btn };
+        _slPlaceScopePop();
+        (pop.querySelector('input, select') || pop.querySelector('.mb-sl-cur') ||
+            pop.querySelector('a'))?.focus();
+    }
+
+    /**
+     * Wires the document-level behaviour every scope-bar pull-down shares,
+     * once: a press outside the open panel and its button closes it; Escape
+     * closes it and returns focus to the button; ArrowDown/ArrowUp move
+     * between the visible entries; scrolling or resizing the window moves
+     * it along with its button, since a `position: fixed` panel would
+     * otherwise drift off it.
+     *
+     * @returns {void}
+     */
+    function _slWireScopePopEvents() {
+        if (document._mbSlScopeWired) return;
+        document._mbSlScopeWired = true;
+        document.addEventListener('mousedown', e => {
+            if (_slScopePop && !_slScopePop.pop.contains(e.target) && !_slScopePop.btn.contains(e.target)) {
+                _slCloseScopePop();
+            }
+        }, true);
+        document.addEventListener('keydown', e => {
+            if (!_slScopePop) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                _slCloseScopePop(true);
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            if (!_slScopePop.pop.contains(document.activeElement) ||
+                document.activeElement.tagName === 'SELECT') return;
+            const opts = Array.from(_slScopePop.pop.querySelectorAll('a[href]:not([hidden]), button.mb-sl-scope-opt:not([hidden])'));
+            if (opts.length === 0) return;
+            e.preventDefault();
+            const i = opts.indexOf(document.activeElement);
+            const next = e.key === 'ArrowDown' ? (i + 1) % opts.length : (i <= 0 ? opts.length - 1 : i - 1);
+            opts[next].focus();
+        }, true);
+        window.addEventListener('scroll', e => {
+            if (_slScopePop && !(_slScopePop.pop.contains(e.target))) _slPlaceScopePop();
+        }, true);
+        window.addEventListener('resize', () => _slPlaceScopePop());
+    }
+
+    // --- The bootleg search box (part of the compact bar) -------------------
+    // The bootleg lists offer four separate GET forms (date, title, version,
+    // public info), each with its own Go button, each sending its field as
+    // the category (`?f_date=…&cmd=list&category=f_date`). The server takes
+    // ONE of them at a time: f_title=born&f_version=soundboard returns the
+    // same 73 rows as f_title=born (probed live, 2026-10-05). So the bar
+    // keeps one field per search, behind one box with a field switch. The
+    // site's date check, checkForm(), reads `form.filter_date` while the input
+    // is `f_date`, so it throws and never runs; and f_date matches FULL dates
+    // only (1975-08-15 → 21 rows; 1975-08 and 1975 → none). The box reads the
+    // dates people type, says when a day does not exist, and turns a partial
+    // date into a pointer to the era list that holds it.
+
+    /**
+     * GM storage key of the recent bootleg searches: newest first, at most
+     * `_SL_RECENT_SEARCH_MAX`, as `[{ field, q }]`. Recorded when a search
+     * result page is opened with the bar on (`_slRecordRecentSearch()`), so a
+     * search started anywhere (the site's own forms, a bookmark) counts. A
+     * convenience, not a setting: not in the config export.
+     * @type {string}
+     */
+    const _SL_RECENT_SEARCH_KEY = 'mb_sa_sl_recent_searches';
+
+    /**
+     * How many recent searches are kept.
+     * @type {number}
+     */
+    const _SL_RECENT_SEARCH_MAX = 8;
+
+    /**
+     * Reads the page's search forms: every GET form whose `category` hidden
+     * input names its own `f_*` text field (the bootleg lists' four), in page
+     * order, with the label from its "Filter by …" caption and the elements
+     * to hide once the bar stands in for them.
+     *
+     * @param {Document} [doc=document]
+     * @returns {?{fields: Array<{param: string, label: string, placeholder: string}>, hide: Element[]}}
+     *   `null` when the page has no such forms.
+     */
+    function _slReadSearchForms(doc = document) {
+        const fields = [];
+        const forms = [];
+        doc.querySelectorAll('form').forEach(form => {
+            if (form.closest('.navbar, footer')) return;
+            const cat = form.querySelector('input[type="hidden"][name="category"]')?.value || '';
+            const input = cat.startsWith('f_') ? form.querySelector(`input[type="text"][name="${cat}"]`) : null;
+            if (!input) return;
+            const caption = form.parentElement?.querySelector('strong')?.textContent.replace(/\s+/g, ' ').trim() || cat;
+            const label = caption.replace(/^Filter by\s+/i, '').replace(/^./, c => c.toUpperCase());
+            fields.push({ param: cat, label, placeholder: input.getAttribute('placeholder') || '' });
+            forms.push(form);
+        });
+        if (fields.length === 0) return null;
+        // The four forms share one Bootstrap row in one .container; hide that
+        // box when it holds them all, else each form's own column.
+        const box = forms[0].closest('.container');
+        const hide = (box && forms.every(f => box.contains(f)))
+            ? [box] : forms.map(f => f.parentElement);
+        return { fields, hide };
+    }
+
+    /**
+     * Reads a date the way people type it, for the bootleg date search.
+     * Full dates: `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+     * `Aug 15, 1975`, `15.08.1975`. Partial: `1975-08`, `Aug 1975`,
+     * `August 1975`, `1975`. Slash forms are refused: `08/09/1975` is a
+     * different day in the US and in Europe.
+     *
+     * @param {string} text
+     * @returns {?{kind: ('full'|'partial'|'invalid'), iso?: string, y?: number, m?: number}}
+     *   `full` with `iso`; `partial` with `y` (and `m`); `invalid` for a day
+     *   the calendar does not have; `null` when the text is not a date.
+     */
+    function _slReadSearchDate(text) {
+        const t = String(text || '').trim().toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ');
+        const month = s => {
+            const i = _SL_MONTH_NAMES.findIndex(n => n === s || (s.length >= 3 && n.startsWith(s)));
+            return i >= 0 ? i + 1 : 0;
+        };
+        const pad = n => String(n).padStart(2, '0');
+        const full = (y, m, d) => {
+            const dt = new Date(Date.UTC(y, m - 1, d));
+            return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d)
+                ? { kind: 'full', iso: `${y}-${pad(m)}-${pad(d)}` } : { kind: 'invalid' };
+        };
+        let m;
+        if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return full(+m[1], +m[2], +m[3]);
+        if ((m = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return full(+m[3], +m[2], +m[1]);
+        if ((m = t.match(/^(\d{1,2}) ([a-z]+) (\d{4})$/)) && month(m[2])) return full(+m[3], month(m[2]), +m[1]);
+        if ((m = t.match(/^([a-z]+) (\d{1,2}) (\d{4})$/)) && month(m[1])) return full(+m[3], month(m[1]), +m[2]);
+        if ((m = t.match(/^(\d{4})-(\d{1,2})$/)) && +m[2] >= 1 && +m[2] <= 12) return { kind: 'partial', y: +m[1], m: +m[2] };
+        if ((m = t.match(/^([a-z]+) (\d{4})$/)) && month(m[1])) return { kind: 'partial', y: +m[2], m: month(m[1]) };
+        if ((m = t.match(/^(19[6-9]\d|20\d\d)$/))) return { kind: 'partial', y: +m[1] };
+        return null;
+    }
+
+    /**
+     * The URL of one bootleg search: the list script with `cmd=list`, the
+     * field as the category, and the query — nothing of the current page's
+     * query is kept, since a search never combines with anything.
+     *
+     * @param {string} param  - The field, e.g. 'f_title'.
+     * @param {string} q      - The query (an ISO date for 'f_date').
+     * @returns {string} Absolute URL.
+     */
+    function _slSearchHref(param, q) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set('cmd', 'list');
+        url.searchParams.set('category', param);
+        url.searchParams.set(param, q);
+        return url.href;
+    }
+
+    /**
+     * Reads the recent searches (`_SL_RECENT_SEARCH_KEY`).
+     *
+     * @returns {Array<{field: string, q: string}>} Never null.
+     */
+    function _slReadRecentSearches() {
+        try {
+            const v = GM_getValue(_SL_RECENT_SEARCH_KEY, []);
+            return Array.isArray(v) ? v.filter(e => e && typeof e.field === 'string' && typeof e.q === 'string') : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * Records this page's search, when it is a bootleg search result page
+     * (`category=f_*` with that parameter set), at the head of the recent
+     * list: an earlier identical entry moves up instead of repeating.
+     *
+     * @returns {?{field: string, q: string}} The recorded search, or `null`.
+     */
+    function _slRecordRecentSearch() {
+        const params = new URL(window.location.href).searchParams;
+        const field = params.get('category') || '';
+        const q = field.startsWith('f_') ? (params.get(field) || '').trim() : '';
+        if (params.get('cmd') !== 'list' || !q) return null;
+        const entry = { field, q };
+        const list = [entry].concat(_slReadRecentSearches().filter(e => !(e.field === field && e.q === q)))
+            .slice(0, _SL_RECENT_SEARCH_MAX);
+        GM_setValue(_SL_RECENT_SEARCH_KEY, list);
+        return entry;
+    }
+
+    /**
+     * Fills the Recent pull-down: one link per recent search ("Title: born"),
+     * the page's own search marked, and a button that forgets them all.
+     *
+     * @param {HTMLElement} pop     - The empty panel.
+     * @param {object}      search  - From `_slReadSearchForms()`.
+     * @returns {void}
+     */
+    function _slFillScopeRecent(pop, search) {
+        const params = new URL(window.location.href).searchParams;
+        const list = document.createElement('div');
+        list.className = 'mb-sl-scope-list';
+        const recent = _slReadRecentSearches();
+        recent.forEach(({ field, q }) => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-scope-opt';
+            a.href = _slSearchHref(field, q);
+            if (params.get('category') === field && params.get(field) === q) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            const label = search.fields.find(f => f.param === field)?.label || field;
+            const span = document.createElement('span');
+            span.textContent = `${label}: ${q}`;
+            a.appendChild(span);
+            list.appendChild(a);
+        });
+        if (recent.length === 0) {
+            const none = document.createElement('div');
+            none.className = 'mb-sl-scope-group';
+            none.textContent = 'No searches yet';
+            list.appendChild(none);
+        }
+        pop.appendChild(list);
+        if (recent.length) {
+            const foot = document.createElement('div');
+            foot.className = 'mb-sl-scope-foot';
+            const forget = document.createElement('button');
+            forget.type = 'button';
+            forget.className = 'mb-sl-scope-forget';
+            forget.textContent = 'Forget these searches';
+            forget.addEventListener('click', () => {
+                GM_setValue(_SL_RECENT_SEARCH_KEY, []);
+                _slCloseScopePop(true);
+            });
+            foot.appendChild(forget);
+            pop.appendChild(foot);
+        }
+    }
+
+    /**
+     * Builds the bootleg search box for the compact bar: a field switch (Auto
+     * plus one button per search form), one input and a Search link whose
+     * `href` follows what is typed, and a message line under the bar. Auto
+     * searches a date when the text reads as one (`_slReadSearchDate()`),
+     * else titles. A day that does not exist, or a non-date in Date mode,
+     * leaves Search disabled and says why; a partial date offers the era
+     * list that holds it and a title search instead. On a search result
+     * page the box opens with that search. Enter follows Search.
+     *
+     * @param {object}  search     - From `_slReadSearchForms()`.
+     * @param {?object} catFacet   - The Category facet (for the era lists), or null.
+     * @returns {{group: HTMLElement, msg: HTMLElement}} The box and its message line.
+     */
+    function _slBuildSearchBox(search, catFacet) {
+        const params = new URL(window.location.href).searchParams;
+        const curCat = params.get('category') || '';
+        const curField = search.fields.find(f => f.param === curCat);
+        let field = curField ? curField.param : 'auto';
+
+        const group = document.createElement('span');
+        group.className = 'mb-sl-search';
+        group.setAttribute('role', 'search');
+        const seg = document.createElement('span');
+        seg.className = 'mb-sl-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Search in');
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.id = 'mb-sl-search-input';
+        input.className = 'mb-sl-search-input';
+        input.setAttribute('aria-label', 'Search bootlegs');
+        input.value = curField ? (params.get(curField.param) || '') : '';
+        const go = document.createElement('a');
+        go.className = 'mb-sl-search-go';
+        go.setAttribute('role', 'button');
+        go.textContent = 'Search';
+        const msg = document.createElement('div');
+        msg.className = 'mb-sl-search-msg';
+        msg.setAttribute('aria-live', 'polite');
+
+        const eras = (catFacet?.options || [])
+            .map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        const say = (...parts) => {
+            msg.replaceChildren(...parts);
+            msg.hidden = parts.length === 0;
+        };
+        const link = (text, href) => {
+            const a = document.createElement('a');
+            a.href = href;
+            a.textContent = text;
+            return a;
+        };
+        const setGo = href => {
+            if (href) {
+                go.href = href;
+                go.removeAttribute('aria-disabled');
+            } else {
+                go.removeAttribute('href');
+                go.setAttribute('aria-disabled', 'true');
+            }
+        };
+        const update = () => {
+            const q = input.value.trim();
+            const placeholders = { auto: 'Date or title: 1975-08-15, 15 Aug 1975, Born…', f_date: '1975-08-15 or 15 Aug 1975' };
+            input.placeholder = placeholders[field] || search.fields.find(f => f.param === field)?.placeholder || '';
+            if (!q) {
+                setGo(null);
+                say();
+                return;
+            }
+            const d = _slReadSearchDate(q);
+            const asDate = field === 'f_date' || (field === 'auto' && d && search.fields.some(f => f.param === 'f_date'));
+            if (!asDate) {
+                const param = field === 'auto' ? (search.fields.find(f => f.param === 'f_title') || search.fields[0]).param : field;
+                setGo(_slSearchHref(param, q));
+                say();
+                return;
+            }
+            if (!d) {
+                setGo(null);
+                say(document.createTextNode('Type a full date such as 1975-08-15 or 15 Aug 1975.'));
+            } else if (d.kind === 'invalid') {
+                setGo(null);
+                say(document.createTextNode('That day does not exist.'));
+            } else if (d.kind === 'full') {
+                setGo(_slSearchHref('f_date', d.iso));
+                say(...(d.iso === q ? [] : [document.createTextNode(`Searching the date ${d.iso}.`)]));
+            } else {
+                setGo(null);
+                const when = d.m ? `${d.y}-${String(d.m).padStart(2, '0')}` : String(d.y);
+                const era = eras.find(e => d.y >= e.span.from && d.y <= e.span.to);
+                const parts = [document.createTextNode('The site finds full dates only. ')];
+                if (era) {
+                    parts.push(document.createTextNode('Open '), link(era.o.label, _slScopeHref({ category: era.o.category })),
+                        document.createTextNode(` and filter its First date column for ${when}, or `));
+                } else {
+                    parts.push(document.createTextNode('You can '));
+                }
+                const titles = search.fields.find(f => f.param === 'f_title');
+                if (titles) parts.push(link(`search titles for “${q}”`, _slSearchHref('f_title', q)));
+                parts.push(document.createTextNode('.'));
+                say(...parts);
+            }
+        };
+
+        [{ param: 'auto', label: 'Auto' }].concat(search.fields).forEach(f => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-sl-seg-btn';
+            b.dataset.mbSlField = f.param;
+            b.textContent = f.label;
+            b.setAttribute('aria-pressed', String(f.param === field));
+            b.addEventListener('click', () => {
+                field = f.param;
+                seg.querySelectorAll('.mb-sl-seg-btn').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+                update();
+                input.focus();
+            });
+            seg.appendChild(b);
+        });
+        input.addEventListener('input', update);
+        input.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (go.hasAttribute('href')) go.click();
+        });
+        group.append(seg, input, go);
+        update();
+        return { group, msg };
+    }
+
+    /**
+     * The installed bar's facets (each with its `btn`), the page's query and
+     * the chip container — what `_slRenderScopeState()` redraws from.
+     * @type {?{facets: object[], params: URLSearchParams, chips: HTMLElement}}
+     */
+    let _slScopeState = null;
+
+    /**
+     * Set while a bar redraw is queued for the next frame, so a burst of
+     * value-set changes (Clear all touches every column) redraws once.
+     * @type {boolean}
+     */
+    let _slScopeRenderQueued = false;
+
+    /**
+     * Redraws the bar's state: each button's value (a table filter the bar
+     * can name wins over the page's query), its "set" styling, and the chips —
+     * one link chip per filter in the query (its × reloads without it), one
+     * 📊 chip per filtered hand-off column (its × clears that column), and
+     * "Clear all" when there are two or more. Called at install and whenever
+     * a 📊 value set changes.
+     *
+     * @returns {void}
+     */
+    function _slRenderScopeState() {
+        const st = _slScopeState;
+        if (!st) return;
+        const urlChips = [];
+        const tableChips = [];
+        st.facets.forEach(facet => {
+            const cur = _slFacetCurrent(facet, st.params);
+            const h = _slHandoff(facet);
+            const tableLabel = h ? _slTableChoice(h) : null;
+            facet.btn.querySelector('.mb-sl-scope-v').textContent = tableLabel ?? cur.label;
+            facet.btn.classList.toggle('mb-sl-set', cur.active || tableLabel !== null);
+            facet.btn.classList.toggle('mb-sl-set-table', tableLabel !== null);
+            if (cur.active) urlChips.push({ text: `${facet.label}: ${cur.label}`, keys: facet.keys });
+            if (tableLabel !== null) tableChips.push({ text: `${facet.label}: ${tableLabel}`, h });
+        });
+
+        st.chips.replaceChildren();
+        urlChips.forEach(({ text, keys }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip';
+            chip.textContent = text;
+            const x = document.createElement('a');
+            x.href = _slScopeHref({ clear: keys });
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            chip.appendChild(x);
+            st.chips.appendChild(chip);
+        });
+        tableChips.forEach(({ text, h }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip mb-sl-scope-chip-table';
+            chip.textContent = text;
+            const mark = document.createElement('span');
+            mark.className = 'mb-sl-scope-chip-mark';
+            mark.textContent = '📊';
+            _setTip(mark, `Filters the loaded table by its ${h.column} column`);
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            x.addEventListener('click', () => _slApplyTableFilter(h, [], ''));
+            chip.append(mark, x);
+            st.chips.appendChild(chip);
+        });
+        if (urlChips.length + tableChips.length > 1) {
+            // A query filter can only go by reloading, which also drops every
+            // table filter; with table filters alone, clear them in place.
+            const all = document.createElement(urlChips.length ? 'a' : 'button');
+            all.className = 'mb-sl-scope-clear';
+            all.textContent = 'Clear all';
+            if (urlChips.length) {
+                all.href = _slScopeHref({ clear: urlChips.flatMap(c => c.keys) });
+            } else {
+                all.type = 'button';
+                all.addEventListener('click', () => tableChips.forEach(({ h }) => _slApplyTableFilter(h, [], '')));
+            }
+            st.chips.appendChild(all);
+        }
+        st.chips.hidden = st.chips.childElementCount === 0;
+    }
+
+    /**
+     * Installs the compact category/filter bar on a springsteenlyrics.com
+     * list (`sa_sl_compact_nav`): one pull-down per wall of category/filter
+     * links, then — where the page has the bootleg search forms — the search
+     * box (`_slBuildSearchBox()`) and a Recent pull-down, then a chip per
+     * active filter with a × that removes only that filter, and "Clear all"
+     * when two or more are set. Inserted where the first wall (or the search
+     * forms) was, so it sits in `.project-detail` under the toolbar `<h1>`
+     * and Sticky Page Headers pins it like the walls before it; everything it
+     * stands in for gets `mb-sl-nav-hidden` and stays in the DOM. A no-op
+     * when it is already installed or the page has neither walls nor forms.
+     *
+     * @returns {?HTMLElement} The bar, or `null` when nothing was installed.
+     */
+    function _slInstallScopeBar() {
+        if (document.querySelector('.mb-sl-scope')) return null;
+        const facets = _slReadNavFacets();
+        const search = _slReadSearchForms();
+        if (facets.length === 0 && !search) {
+            Lib.debug('init', '_slInstallScopeBar: no category/filter walls or search forms on this page — nothing to fold.');
+            return null;
+        }
+        const params = new URL(window.location.href).searchParams;
+        const bar = document.createElement('div');
+        bar.className = 'mb-sl-scope';
+        bar.setAttribute('role', 'toolbar');
+        bar.setAttribute('aria-label', 'Category and filters');
+        facets.forEach(facet => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-sl-scope-btn';
+            btn.dataset.mbSlFacet = facet.keys.join('+');
+            btn.setAttribute('aria-haspopup', 'dialog');
+            btn.setAttribute('aria-expanded', 'false');
+            const k = document.createElement('span');
+            k.className = 'mb-sl-scope-k';
+            k.textContent = `${facet.label}:`;
+            const v = document.createElement('span');
+            v.className = 'mb-sl-scope-v';
+            const caret = document.createElement('span');
+            caret.className = 'mb-sl-scope-k';
+            caret.textContent = '▾';
+            btn.append(k, v, caret);
+            btn.addEventListener('click', () => _slToggleScopePop(btn, facet, params));
+            bar.appendChild(btn);
+            facet.btn = btn;
+        });
+
+        let searchMsg = null;
+        if (search) {
+            const box = _slBuildSearchBox(search, facets.find(f => f.kind === 'category') || null);
+            bar.appendChild(box.group);
+            searchMsg = box.msg;
+            const recent = { kind: 'recent', label: 'Recent', keys: ['recent'], search };
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-sl-scope-btn';
+            btn.dataset.mbSlFacet = 'recent';
+            btn.setAttribute('aria-haspopup', 'dialog');
+            btn.setAttribute('aria-expanded', 'false');
+            const k = document.createElement('span');
+            k.className = 'mb-sl-scope-k';
+            k.textContent = 'Recent:';
+            const v = document.createElement('span');
+            v.className = 'mb-sl-scope-v';
+            v.textContent = String(_slReadRecentSearches().length);
+            const caret = document.createElement('span');
+            caret.className = 'mb-sl-scope-k';
+            caret.textContent = '▾';
+            btn.append(k, v, caret);
+            btn.addEventListener('click', () => _slToggleScopePop(btn, recent, params));
+            bar.appendChild(btn);
+        }
+
+        const chips = document.createElement('span');
+        chips.className = 'mb-sl-scope-chips';
+        bar.appendChild(chips);
+        if (searchMsg) bar.appendChild(searchMsg);
+        _slScopeState = { facets, params, chips };
+        _slRenderScopeState();
+        // A 📊 value set changed anywhere — the bar's own choice, the column's
+        // ✕, the 📊 dropdown, Clear all — redraws the bar's buttons and chips.
+        // Filtered to that one attribute, so the observer costs nothing on
+        // any other mutation.
+        new MutationObserver(() => {
+            if (_slScopeRenderQueued) return;
+            _slScopeRenderQueued = true;
+            requestAnimationFrame(() => {
+                _slScopeRenderQueued = false;
+                _slRenderScopeState();
+            });
+        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-mb-uniq-values'] });
+
+        const first = facets.length ? facets[0].hide[0] : search.hide[0];
+        first.parentNode.insertBefore(bar, first);
+        facets.forEach(f => f.hide.forEach(el => el.classList.add('mb-sl-nav-hidden')));
+        if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));
+        _slWireScopePopEvents();
+        Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ` +
+            `${search ? search.fields.length : 0} search form(s), ${chips.childElementCount} chip(s).`);
+        return bar;
     }
 
     /**
@@ -18821,17 +20855,18 @@
 
         // --- springsteenlyrics.com -------------------------------------------
         // Not MusicBrainz at all: Bruce Springsteen collection and bootleg
-        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination. Opt-in
+        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination (the
+        // collection entry page: `&pg=N`, via `pageParam`). Opt-in
         // via `sa_enable_springsteenlyrics`, and only ever considered on that
         // host — the `host` key is read by the detection loop, which skips every
         // definition whose host does not match, so none of the broad
-        // MusicBrainz matchers above can claim an SL path and these two can
+        // MusicBrainz matchers above can claim an SL path and these can
         // never match on MusicBrainz. `slCardsToTable` turns the cards into the
         // `table.tbl` the whole pipeline expects; see applySlCardsToTable() and
         // docs/claude/springsteenlyrics.md. Page count needs no hook:
         // determineMaxPageFromDOM()'s no-"Next" branch takes the highest
-        // `page=` link, and SL's "»" always points at the last page (checked
-        // live on 2026-10-04, see DEBUG-NOTES.md).
+        // page-parameter link, and SL's "»" always points at the last page
+        // (checked live on 2026-10-04 and 2026-10-05, see DEBUG-NOTES.md).
         {
             type: 'sl-collection',
             host: 'springsteenlyrics.com',
@@ -18839,7 +20874,29 @@
             buttons: [ { label: 'Show all items of this collection list', shortLabel: 'Items' } ],
             features: {
                 slCardsToTable: 'collection',
-                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The collection's entry page, "Latest additions": every item of the
+        // whole collection, newest first (5365 items in 54 pages on
+        // 2026-10-05). Same cards as a category list, but it paginates with
+        // `cmd=intro&category=all&pg=N` — `page=N` is ignored there and
+        // returns page 1 again (checked live) — hence `pageParam: 'pg'`.
+        // `cmd` is absent on the bare `/collection.php`; an item page always
+        // carries `item=`.
+        {
+            type: 'sl-collection-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/collection.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [ { label: 'Show all latest additions', shortLabel: 'Items' } ],
+            features: {
+                slCardsToTable: 'collection',
+                pageParam: 'pg',
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         },
@@ -18853,7 +20910,26 @@
                 // `align: ':'` is what makes _sortColumnKind() sort it as a
                 // duration (_parseDurationToMs() accepts minutes above 59, so
                 // "129:33.23" sorts after "61:58.22").
-                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]
+                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The bootleg landing page (`bootlegs.php`, bare or `cmd=intro`): the
+        // category buttons, the four search forms and a "Statistics" block,
+        // but no item cards, so nothing to fetch — no button. It exists for
+        // the compact bar alone (`slNavOnly`): with `sa_sl_compact_nav` off
+        // the init block exits quietly right after detection, leaving the
+        // page untouched. Its Statistics counts are deliberately not read
+        // (they drift from the lists' own totals; docs/claude/springsteenlyrics.md).
+        {
+            type: 'sl-bootlegs-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/bootlegs.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [],
+            features: {
+                slNavOnly: true
             },
             tableMode: 'single'
         }
@@ -22902,6 +24978,25 @@
     }
 
     /**
+     * Tells whether `el` is floated and spans its parent's whole content box
+     * — a grid column used as a plain block (Bootstrap's `.col-sm-12`), as
+     * opposed to a narrow float beside other content. `_sphContentBodies()`
+     * descends into such a float instead of offering it as a body, since
+     * `_sphIsEligible()` never pins a float. A hidden float has no width and
+     * is not one.
+     *
+     * @param {Element} el - Candidate element.
+     * @returns {boolean}
+     */
+    function _sphIsFullWidthFloat(el) {
+        const parent = el.parentElement;
+        if (!parent || getComputedStyle(el).float === 'none') return false;
+        const pcs = getComputedStyle(parent);
+        const contentWidth = parent.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
+        return contentWidth > 0 && el.getBoundingClientRect().width >= contentWidth - 1;
+    }
+
+    /**
      * Returns every block of page content that is not a data table, so that
      * all of it stays in view while a wide table is scrolled sideways: the
      * content of expanded sections (Credits, Annotation, Relationships, the
@@ -22917,6 +25012,15 @@
      *   - an element CONTAINING a `table.tbl` (`#content`, a `<form>` around
      *     the table) is descended into; it is never pinned itself, so the
      *     table inside keeps scrolling;
+     *   - a floated element as wide as its parent's content box (a Bootstrap
+     *     `.col-sm-12` grid column, see `_sphIsFullWidthFloat()`) is descended
+     *     into too: `_sphIsEligible()` never pins a float, so pushed as a
+     *     body it would scroll away with everything in it. On
+     *     springsteenlyrics.com's "book"/"memorabilia" lists the site's stray
+     *     `</div>`s close the column holding the toolbar `<h1>` and the
+     *     category buttons before the list starts, leaving that floated
+     *     column beside the table (checked live, 2026-10-05). A NARROW float
+     *     (a right-floated box) is still pushed as a body, i.e. left alone;
      *   - anything else is a body, pinned as a whole. A bar inside it (a
      *     section's `<h2>` in `div.wikipedia-extract`, the Credits
      *     `Release` / `Release group` h3s) is dropped by the nesting rule in
@@ -22956,7 +25060,7 @@
                 if (el === sidebar || el.matches('table.tbl')) continue;
                 // #content is always a container, also before any table is
                 // rendered: pinned whole it would be capped to the viewport.
-                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);
+                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);
                 else bodies.push(el);
             }
         }
@@ -23679,10 +25783,13 @@
      * @returns {void}
      */
     function initStickyPageHeaders() {
-        // Without a MusicBrainz `#page`, `_sphCollectTargets()` pins every
-        // direct <body> child — on springsteenlyrics.com that is the site's
-        // own navbar and footer. The feature is MusicBrainz-layout-only.
-        if (_isSlHost) return;
+        // Also runs on springsteenlyrics.com. With no MusicBrainz `#page`,
+        // `_sphCollectTargets()` pins every direct <body> child that holds no
+        // table — the site's top bar, navbar, breadcrumb and footer — and
+        // `_sphContentBodies()` walks down from <body> to the list table,
+        // pinning the toolbar h1, the category/filter blocks and the list h2
+        // beside it. That is everything above the table, which is wanted
+        // there (see docs/claude/springsteenlyrics.md).
         if (!_sph.initialized) {
             _sphEnsureStyle();
             if (typeof ResizeObserver === 'function') {
@@ -42239,6 +44346,15 @@ a { color: #1565c0; }`;
         }
     }
 
+    // A navigation-only page (the springsteenlyrics.com bootleg landing page)
+    // has nothing for the script to do without the compact bar: stop here,
+    // before any toolbar or heading is added, and say so at info level rather
+    // than letting the required-elements check below log an error.
+    if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {
+        Lib.info('init', `${pageType}: navigation-only page and the compact bar (sa_sl_compact_nav) is off — nothing to do.`);
+        return;
+    }
+
     // 2. Locate Header
     // Refactored to handle "Search" pages (generic h1) and typical entity headers
     let headerContainer = document.querySelector('.artistheader h1') ||
@@ -42270,6 +44386,21 @@ a { color: #1565c0; }`;
     // definitions only, like the user-edits fallback above.
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
+        // The compact category/filter bar (sa_sl_compact_nav), on the
+        // collection and bootleg lists and the bootleg landing page. This
+        // list's exact count (and, on a bootleg search result, the search) is
+        // recorded first, so the bar's own menus already show it.
+        // A navigation-only page has no table: the 📦 Data and 🛠 View menus
+        // (and the divider that separates them from fetch buttons it does not
+        // have) are hidden by this class; ⚙️ and ❓ stay.
+        if (baseDefinition.features?.slNavOnly) document.body.classList.add('mb-sa-sl-nav-only');
+        if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&
+            (['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable) ||
+             baseDefinition.features?.slNavOnly)) {
+            _slRecordListCount();
+            _slRecordRecentSearch();
+            _slInstallScopeBar();
+        }
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -58363,11 +60494,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Returns the name of the query parameter that selects a result page on
+     * the current pageType: `features.pageParam` of the active definition,
+     * else MusicBrainz's `page`. Only springsteenlyrics.com's collection
+     * entry page sets it (`pg` — that page ignores `page=N`). Read by
+     * `determineMaxPageFromDOM()` and by the single-table fetch loop, the two
+     * places a non-MusicBrainz page can reach; the MusicBrainz-only paths
+     * (`fetchMaxPageGeneric()`, the artist-releasegroups pre-fetch pass) keep
+     * `page`.
+     *
+     * @returns {string}
+     */
+    function _pageParamName() {
+        return activeDefinition?.features?.pageParam || 'page';
+    }
+
+    /**
      * Determines the maximum page number by parsing the pagination UI on the current page
+     * (the page number is read from the `_pageParamName()` query parameter of each link).
      * @returns {number} The maximum page number found, defaults to 1 if no pagination is present
      */
     function determineMaxPageFromDOM() {
         let maxPage = 1;
+        const pageParam = _pageParamName();
 
         Lib.debug('fetch', 'Context: Standard pagination. Parsing "ul.pagination" from current page.');
         const pagination = document.querySelector('ul.pagination');
@@ -58376,7 +60525,7 @@ a { color: #1565c0; }`;
             const nextIdx = links.findIndex(a => a.textContent.trim() === 'Next');
             if (nextIdx > 0) {
                 const urlObj = new URL(links[nextIdx - 1].href, window.location.origin);
-                const p = urlObj.searchParams.get('page');
+                const p = urlObj.searchParams.get(pageParam);
                 if (p) {
                     maxPage = parseInt(p, 10);
                     Lib.debug('fetch', `determineMaxPageFromDOM: Found "Next" link. Extracted page: ${maxPage}`);
@@ -58384,7 +60533,7 @@ a { color: #1565c0; }`;
             } else if (links.length > 0) {
                 const pageNumbers = links
                       .map(a => {
-                          const p = new URL(a.href, window.location.origin).searchParams.get('page');
+                          const p = new URL(a.href, window.location.origin).searchParams.get(pageParam);
                           return p ? parseInt(p, 10) : 1;
                       })
                       .filter(num => !isNaN(num));
@@ -59617,7 +61766,9 @@ a { color: #1565c0; }`;
         let totalRenderingTime;
 
         const currentUrlParams = new URLSearchParams(window.location.search);
-        const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);
+        // Same parameter the loop below sets: on a `pageParam` page, reading
+        // `page` would call `?pg=3` "page 1" and reuse its live cards as page 1.
+        const currentPageNum = parseInt(currentUrlParams.get(_pageParamName()) || '1', 10);
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
@@ -59650,7 +61801,7 @@ a { color: #1565c0; }`;
 
                 // Initialize fetchUrl from the full current URL to preserve Search parameters (query, type, etc.)
                 const fetchUrl = new URL(window.location.href);
-                fetchUrl.searchParams.set('page', p.toString());
+                fetchUrl.searchParams.set(_pageParamName(), p.toString());
 
                 // ── virtualPath support ───────────────────────────────────────
                 // When the clicked button carries a virtualPath value (e.g.

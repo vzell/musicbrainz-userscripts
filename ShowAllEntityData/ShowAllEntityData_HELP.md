@@ -1087,8 +1087,9 @@ an import brings your deletions back.
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
-- **Not MusicBrainz:** the **springsteenlyrics.com** collection and bootleg
-  lists — off until you switch them on, see
+- **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
+  category and the entry page) and bootleg lists — off until you switch them
+  on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1300,24 +1301,120 @@ bootleg lists*. Settings are shared, so you can switch it on from a MusicBrainz
 page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
 off, the script leaves that site's pages untouched.
 
-Once on, every **collection list** (`collection.php?cmd=list…`) and every
-**bootleg list** (`bootlegs.php?cmd=list…`) — with any format,
-country, date, title or other filter you picked on the site — gets a heading
-with the usual toolbar and one action button: **Items** on a collection list,
-**Bootlegs** on a bootleg list. Pressing it fetches every page of that list
-(100 items each), turns the item cards into one table, and gives you the usual
-filters, sorting, column controls, export and Save/Load.
+Once on, every **collection list** (`collection.php?cmd=list…`, any
+category), the collection's **entry page** (`collection.php`, "Latest
+additions") and every **bootleg list** (`bootlegs.php?cmd=list…`) — with any
+format, country, date, title or other filter you picked on the site — gets a
+heading with the usual toolbar and one action button: **Items** on a
+collection list or the entry page, **Bootlegs** on a bootleg list. Pressing it
+fetches every page of that list (100 items each), turns the item cards into
+one table, and gives you the usual filters, sorting, column controls, export
+and Save/Load.
 
-**Known limitation:** on collection lists only the *Official albums* category
-works so far; the other collection categories are not yet supported. Bootleg
-lists work with any filter.
+The entry page holds the whole collection (over 5000 items in more than 50
+pages), so the usual "many pages" and "many rows" questions come up before it
+loads everything.
+
+When the table is wider than the window, **Title** stays in view as the
+sticky column, and — with *Enable Sticky Page Headers* (📌 Table stickiness,
+on by default) — everything above the table stays where it is while you
+scroll sideways: the site's header and breadcrumb, the toolbar, the category
+and filter buttons and the list's heading bar.
+
+**A compact category and filter bar** (off by default): ⚙️ Settings → *🎸
+springsteenlyrics.com* → *Compact category and filter bar on
+springsteenlyrics.com lists*. On a collection list the site's rows of
+category, format, country, album, year and copies buttons become one row of
+pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
+▾*, and so on. On a bootleg list the category buttons become a *Category* menu,
+and the four search forms become one search box (see below).
+
+The bar also works on the **bootleg main page** (`bootlegs.php`), which lists
+no items itself. There it offers *Category: Choose a list ▾*, with the era
+timeline, plus the search box and *Recent*. The page has nothing to load, so
+it gets no action button, and the toolbar keeps only ⚙️ and ❓. With the bar
+switched off, the script leaves that page alone.
+
+- Each menu offers exactly what that page's own buttons offer, and the current
+  choice has a ✓. The Category menu is grouped (Audio, Video and Print &
+  memorabilia for the collection; Live shows, Other audio and Video for the
+  bootlegs).
+- The Category menu shows each category's **exact number of items** once you
+  have opened that list with the bar on. It is read from the list's own
+  "Showing items … of N" line and kept from then on. A category you have not
+  opened yet shows no number; nothing is estimated.
+- On a bootleg list the Category menu starts with a **timeline of the
+  live-show eras** from 1967 on. Each bar spans its era's years, and its height
+  shows how many recordings there are per year. An era you have not opened yet
+  is drawn dashed with a "?". The current era is outlined, and clicking a bar
+  opens that era.
+- Long menus (Category, Country, Album) have a search box: type part of a
+  name, then Enter to go to the first match. The arrow keys move through the
+  list, and Escape closes it.
+- **Filters combine.** Choosing a country keeps the format you already chose,
+  and choosing another format replaces it. Every choice starts again at the
+  first page of the list. Changing the category keeps your filters, except the
+  album, which only belongs to *Official Albums*.
+- *Year* offers a from/to pair of years instead of the site's slider; press
+  *Apply*.
+- Each filter in use is shown as a chip after the menus. Its **×** removes just
+  that filter; *Clear all* removes them all.
+
+**The bootleg search box** stands in for the site's four forms (date, title,
+version, public info). The site searches one of them at a time, so the box
+does too. Pick the field with *Auto · Date · Title · Version · Public info*,
+type, and press Enter or *Search*.
+
+- *Auto* searches the date when what you typed is one, and titles otherwise.
+- Dates can be typed as `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+  `Aug 15, 1975` or `15.08.1975`. Slash dates such as `08/09/1975` are not read
+  as dates, because they mean different days in the US and in Europe.
+- A day that does not exist (`1975-02-30`) is pointed out, and *Search* stays
+  off.
+- The site finds **full dates only**: a month or a year (`1975-08`, `Aug 1975`,
+  `1975`) finds nothing there. The box says so and offers the era list that
+  covers it, where you can filter the *First date* column once the table is
+  loaded, or a title search for what you typed instead.
+- On a search's result page the box shows that search, so you can refine it.
+- *Recent* lists your last eight searches, newest first, wherever you started
+  them, including the site's own forms. *Forget these searches* empties it.
+
+**The Format menu is also the formats guide.** Its entries are grouped into
+Audio, Video and Print, and each has a second line with the guide's
+abbreviation and meaning, e.g. *Cassette tape*, then *MC · Music Cassette
+tape*. The search box matches those lines too, so typing `mc` finds the
+cassette. Formats the site's own guide leaves out (Flexi-disc, NT Cassette,
+Betamax, Betacam SP, U-matic, Blu-ray-R, Print) are explained as well, marked
+*(not in the site's guide)*. The site's "Formats guide" panel is hidden along
+with the format buttons.
+
+**Once the table is loaded**, *Country*, *Year*, *Copies* and *Format* filter
+the **loaded table** instead of reloading the page. They work like that
+column's 📊 pick: the table narrows at once, and the chip is marked 📊. The
+chip's **×** (or the column's own ✕) removes just that filter, and with only
+table filters active, *Clear all* clears them in place.
+
+- *Format* files an item under its **first** medium, as the site does:
+  "CD + 2xDVD" counts as a CD, and "VHS + CD" as a VHS.
+- *Album* and *Category* still open another list. Each menu says at the top
+  which kind it is.
+- A filter that the list was fetched with (for example *Country: USA* in the
+  address) can only be changed by reloading, because the table holds nothing
+  else.
+
+The site's own buttons and forms are only hidden, so switching the setting off
+brings them back. A choice that opens another list is an ordinary link:
+middle-click opens it in a new tab, and with a table loaded you are asked
+first, as usual.
 
 The columns come from what each card shows — no item page is opened:
 
 - **Collection:** Cover, Title, Version, Label, Cat. no., Format, Country,
   Release date, Original year, Copies. The site's *Label (Cat #)* and *Release
   date (Original year)* are split in two. *Copies* is 1 unless the card says
-  "I have N copies".
+  "I have N copies". Hovering a *Format* cell explains each medium in it from
+  the formats guide (e.g. "4xCD + 2xBlu-ray": CD ×4 and Blu-ray ×2), and names
+  the format the site files the item under, which is its first medium.
 - **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
   Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
   1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those

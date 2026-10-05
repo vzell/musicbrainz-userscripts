@@ -5,7 +5,7 @@
 // the script unconditionally — so nothing else in the suite would notice a
 // broken pattern. This reads the header the way Tampermonkey does (a value
 // wrapped in slashes is a regular expression) and checks the
-// springsteenlyrics.com line admits exactly the list pages, while every
+// springsteenlyrics.com lines admit exactly the list pages, while every
 // MusicBrainz sample still matches.
 
 const fs = require('fs');
@@ -32,7 +32,7 @@ function includePatterns() {
 const injected = (url) => includePatterns().some((re) => re.test(url));
 
 test.describe('@include coverage', () => {
-    test('springsteenlyrics.com: every list page, and only list pages', () => {
+    test('springsteenlyrics.com: every list page and both entry pages, and nothing else', () => {
         const lists = [
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i',
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i&page=4',
@@ -43,12 +43,29 @@ test.describe('@include coverage', () => {
             // The site's own filter forms put cmd=list after another parameter.
             'https://springsteenlyrics.com/bootlegs.php?f_date=1975-08-15&cmd=list&category=f_date',
             'https://springsteenlyrics.com/bootlegs.php?f_title=Born&cmd=list&category=f_title#top',
+            // The collection entry page ("Latest additions") and its own
+            // pagination, which uses cmd=intro and pg= (its "»" link puts pg
+            // first).
+            'https://springsteenlyrics.com/collection.php',
+            'https://www.springsteenlyrics.com/collection.php#top',
+            'https://springsteenlyrics.com/collection.php?cmd=intro',
+            'https://springsteenlyrics.com/collection.php?cmd=intro&category=all&pg=2',
+            'https://springsteenlyrics.com/collection.php?pg=54&cmd=intro',
+            'https://springsteenlyrics.com/collection.php?pg=2',
+            // The bootleg landing page: no item cards, but the compact bar
+            // (sa_sl_compact_nav) folds its category buttons and search forms.
+            'https://springsteenlyrics.com/bootlegs.php',
+            'https://www.springsteenlyrics.com/bootlegs.php#top',
+            'https://springsteenlyrics.com/bootlegs.php?cmd=intro',
         ];
         const others = [
             'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
             'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
-            'https://springsteenlyrics.com/collection.php',
-            'https://springsteenlyrics.com/bootlegs.php?cmd=intro',
+            'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
+            'https://springsteenlyrics.com/bootlegs.php?pg=2',
+            'https://springsteenlyrics.com/collection.php?cmd=introx',
+            'https://springsteenlyrics.com/collection.php?xcmd=intro',
+            'https://springsteenlyrics.com/collection.php?item=10265&category=all',
             'https://springsteenlyrics.com/collection.php?cmd=listing',
             'https://springsteenlyrics.com/collection.php?xcmd=list',
             'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=a',
