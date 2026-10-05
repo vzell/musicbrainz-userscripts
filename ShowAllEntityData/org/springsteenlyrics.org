@@ -129,7 +129,7 @@ category, any =f_*= filter); list cards only, no item detail pages fetched.
 - Possible follow-ups, not done: per-item detail pages (track lists);
   cross-checking the row total against "Showing items … of N"; lyrics pages.
 
-** analyze
+** DONE analyze
 
 1.)
 
@@ -193,6 +193,7 @@ Decided (2026-10-05):
 - Category counts are EXACT: record the "Showing items … of N" total of each
   list as it is visited (GM storage), never the landing page's drifting
   Statistics numbers.
+
 
 ** TODO add detail page support
 
