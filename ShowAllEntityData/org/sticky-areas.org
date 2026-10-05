@@ -134,3 +134,90 @@ live in the sidebar, which is never pinned. If you've turned off the setting tha
 table, sections left below it would be pinned too. Say if you want that narrowed.
 
 ** TODO go after the remaining ~0.7 s
+
+** DONE when scrolling to the right, all the sticky parts behave correctly, except the sticky column moves to the right browser
+
+1.)
+
+On e.g. multi-table PT - https://musicbrainz.org/release/52c6808b-037d-47d5-b0c7-17331c9d36cd
+
+#+begin_example
+@debug/MT-final.html - raw final HTML - [Image 3]
+@debug/MT-final-scrolled.html - raw final HTML, scrolled to the right until - [Image 4]
+#+end_example
+
+when scrolling to the right, all the sticky parts behave correctly, except the sticky column moves to the right browser
+window and attaches there, instead of attaching aligned to the indented h3 header line.
+
+Can this be achieved, otherwise it looks a little ugly, see [Image 4]
+
+2.)
+
+The same effect on single-table PTs, e.g. https://musicbrainz.org/isrc/USSM19500019
+
+#+begin_example
+@debug/MT-final.html - raw final HTML - [Image 5]
+@debug/MT-final-scrolled.html - raw final HTML, scrolled to the right until - [Image 6]
+#+end_example
+
+when scrolling to the right, all the sticky parts behave correctly, except the sticky column moves to the right browser
+window and attaches there, instead of attaching aligned to the h2 header line.
+
+Can this be achieved, otherwise it looks a little ugly, see [Image 6]
+
+#+begin_example
+● Yes, the sticky column can be aligned with the bars. It's implemented on feature/sticky-col-align, but I've stopped before committing: performance measurements show a possible slowdown, and the plan said to
+  check with you first.
+
+  What changed: when the page scrolls sideways, the sticky column now stops at its table's own left edge instead of the window edge. On release 52c6808b… that is the same 1.5em indent as the h3 bar above it;
+  on isrc/USSM19500019 it lines up with the h2. The strip to the left of the column is painted in the page colour, so columns scrolling past don't show through it. Where another column comes first ("#" before
+  "Title"), that strip is only painted once the column has stopped, otherwise it would cover "#" before you scroll. With "Enable Sticky Page Headers" off, nothing changes.
+
+  Tests:
+  - 4 new specs in sticky-page-headers.spec.js; the whole file (22 tests) passes.
+  - 6 new planted defects in scripts/mutations/sticky-page-headers.json, all caught. One is the code as it is on main, so the new specs do fail without the fix.
+  - Lint is within its baseline and audit-docs.py passes.
+  - I have not run the full suite (npm run test:full) yet.
+
+  Performance: I compared main and the branch on artist-events (4,174 rows) in three sessions on this laptop:
+  - After the table renders: probably about 200 ms more main-thread work, roughly 15–20%. The branch was higher in 15 of 18 paired rounds, median +213 ms.
+  - Sorting and scrolling: no measurable difference.
+  - Cause: not found. One session pointed at the strip painting. The next contradicted it: a variant that paints nothing until you scroll was just as slow. On this machine the noise is as large as the effect —
+    main alone ranged from 922 to 1,517 ms.
+
+  The numbers and method are in tests/MEASUREMENTS.org; the DEBUG-NOTES entry, WIP changelog and HELP are updated.
+
+  How do you want to go on?
+  1. Accept the possible ~200 ms after render (paid once per render on very large tables). I then run the full suite, commit and push the branch, and you test it in the browser.
+  2. Let me isolate the cost first, using Chrome traces rather than wall-clock runs, the way the earlier 249 ms was found.
+  3. Ship the alignment without the painted strip. Columns would then show through a ~20–40 px strip left of the docked column while you scroll.
+#+end_example
+
+** bug
+
+[Image #8] [Image #9] The end out come looks good, image 8, but when the sticky column is not the first C, that one
+still renders visible until the sticky attaches. Additionally there are stray lines stetching to the left at the
+beginning and end of each table @debug/stray-lines.html
+
+#+begin_example
+● I've fixed both problems: "#" no longer shows left of the bar's line, and the stray lines are gone. The work is committed as fddfe5b and pushed to feature/sticky-col-align, but not merged.
+
+  1. "#" visible until the sticky column docks. The columns in front of the sticky one now stop at the same line too, one layer underneath it. "#" stays at the h3 line and "Title" slides over it, instead of "#" sliding into the strip on the left. This only happens when each of
+  those columns is no wider than the sticky column. A wider one would stay visible to the right of it for good, so such a table keeps the old behaviour.
+
+  2. Stray lines. These come from MusicBrainz's own CSS: table.tbl has a top and bottom border. With this script's table layout, that border belongs to the table itself rather than to any cell, so nothing covered it as the table scrolled. While a table is aligned, that border now
+  moves onto the first header row and the last body row, where it is covered. The table's height doesn't change.
+
+  Why my tests missed both: they checked positions and style values, which were all correct while the defects were on screen. Also, the test pages load without MusicBrainz's stylesheet, so the border lines never appeared there. The tests now add the relevant part of that
+  stylesheet and take a screenshot of the strip left of the table. It must be plain page background both before the column docks and at the far right. Taking either fix out makes them fail.
+
+  Test results:
+  - The sticky-header test file passes: 22 tests.
+  - All 27 planted defects in its list are caught. One older entry no longer matched the code on main either; I repointed it.
+  - The full suite: 1,015 passed, 1 failed (artist-recordings-ms-batch, "partly-failed run"). That test fails intermittently with main's version of the script as well (1 of 8 runs), so it isn't caused by this change.
+
+  Still open: the ~200 ms of extra work after a table renders, measured earlier, is unresolved. The two fixes add a little more on top, and that is not re-measured. It's recorded in tests/MEASUREMENTS.org.
+
+  To try it, re-import the script in Tampermonkey and scroll right on release 52c6808b… and isrc/USSM19500019. Tell me when you want it merged.
+#+end_example
+
