@@ -624,6 +624,20 @@ Specs: `tests/fixtures/rich-tooltips-liner.spec.js` and the Liner notes case in
 `touch-tooltip.mobile.spec.js`; mutations in
 `scripts/mutations/rich-tooltips-liner.json`.
 
+**The artwork card's `'Annotation'` entry is the one rich-HTML row.** A
+`tooltipColumns` entry named `'Annotation'` goes through
+`_artTooltipAnnotation()`, never `_artTooltipCellText()`. That path flattens
+every line break, cuts a one-link annotation down to the link text, and a
+plain clone would carry the cell's collapsed state with it: the clamp class
+and the `display:none` of collapsed nested wiki `<h2>` sections. The card
+widens to 600px for it. `#mb-art-bigbox-tooltip` is a singleton, so BOTH hover
+handlers (strip and inline thumbnail) reset `maxWidth` to 380px before they
+render. The card cannot scroll, so both handlers call
+`_fitArtTooltipToViewport()` between `display = 'block'` and their position
+measurement. It shortens the `.mb-tt-annotation` block and shows its "… (more
+in the cell)" foot. Spec: `tests/fixtures/search-annotation-tooltip.spec.js`;
+mutations: `scripts/mutations/annotation-tooltip.json`.
+
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 
 On a touch device a tap fires *compatibility* mouse events: `mouseover`,

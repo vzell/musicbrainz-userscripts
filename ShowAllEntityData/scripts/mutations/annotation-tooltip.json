@@ -1,0 +1,80 @@
+[
+  {
+    "name": "the 'Annotation' tooltipColumns entry falls through to the generic cell text",
+    "why": "Without its own branch the Annotation is read by _artTooltipCellText(): one flattened line, and only the link text when the annotation has exactly one link. The card still shows something, so nothing looks broken at a glance.",
+    "edits": [
+      {
+        "find": "                } else if (_colName === 'Annotation') {",
+        "replace": "                } else if (_colName === '__no_such_column__') {"
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "keeps the text around the link",
+    "expect": "fail"
+  },
+  {
+    "name": "the clone keeps the inline display:none of a collapsed wiki sub-section",
+    "why": "_rewireNestedTableH2Toggles() collapses every nested <h2> section inside the cell by default. Copying that state into the card hides exactly the part the user asked to see in full.",
+    "edits": [
+      {
+        "find": "            el.style.removeProperty('display');",
+        "replace": "            void el;"
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "complete while the cell is clamped",
+    "expect": "fail"
+  },
+  {
+    "name": "filter highlights are copied into the card",
+    "why": "The cell's highlight spans would be cloned with it, so the card would show the table's filter marks.",
+    "edits": [
+      {
+        "find": "        block.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el => el.replaceWith(...el.childNodes));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "filter highlights in the cell",
+    "expect": "fail"
+  },
+  {
+    "name": "the bigbox card is not fitted to the window",
+    "why": "The card has pointer-events:none and cannot scroll, so a long annotation runs off the bottom of the window with no hint that more exists.",
+    "edits": [
+      {
+        "find": "                            _tip.style.display = 'block';\n                            _fitArtTooltipToViewport(_tip);",
+        "replace": "                            _tip.style.display = 'block';"
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "cut to the window",
+    "expect": "fail"
+  },
+  {
+    "name": "the singleton card keeps the 600px width of the previous Annotation card",
+    "why": "The tooltip div is shared by every artwork hover; without the per-hover reset one Annotation card leaves every later card wide.",
+    "edits": [
+      {
+        "find": "                            // Singleton card: undo a previous Annotation card's widening.\n                            _tip.style.maxWidth = '380px';",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "does not outlive",
+    "expect": "fail"
+  },
+  {
+    "name": "the inline-thumbnail card is not fitted to the window",
+    "why": "The inline thumbnail has its own positioning code, so the strip's fit call does not cover it: a long annotation would run off the bottom of the window from the Name cell's thumbnail.",
+    "edits": [
+      {
+        "find": "            _tip.style.display = 'block';\n            _fitArtTooltipToViewport(_tip);",
+        "replace": "            _tip.style.display = 'block';"
+      }
+    ],
+    "spec": "tests/fixtures/search-annotation-tooltip.spec.js",
+    "grep": "inline thumbnail card is cut to the window",
+    "expect": "fail"
+  }
+]
