@@ -3188,3 +3188,47 @@ costs nothing where there are none to pin.
 
 *Read as: unchanged against the entry above (on 1166–1284, off 147–148 there,
 within the spread).*
+
+* 2026-10-05 — sticky column docks at its table's left (branch feature/sticky-col-align), artist-events (vzell-lap)
+
+Scratch harness (not committed): one Chromium, a fresh context per sample,
+the committed =artist-events.json.gz= disk fixture, viewport 1600x900, arms
+round-robin with the order reversed every round. Each arm's userscript is a
+frozen copy, injected by wrapping =page.addScriptTag=. The real file was
+never touched. "long tasks" = the sum of =longtask= entries in the 2 s after
+=waitForRenderComplete()=. "sort" = settled sort (Date ▲) after that settle.
+"scroll" = long tasks in the 1 s after scrolling to the far right. Every
+branch sample was checked: engaged, and the table stamped
+(=data-mb-sph-col-left=).
+
+** artist-events, single-table, 4174 rows — medians, ms
+
+| Session (UTC 2026-10-05)    | Arm                                   | long tasks after render | sort (settled) | scroll |
+|-----------------------------+---------------------------------------+-------------------------+----------------+--------|
+| 02:04–02:17, 7 rounds       | =main=                                |                    1019 |          12636 |    511 |
+|                             | branch                                |                    1406 |          11132 |    556 |
+| 02:17–02:33, 5 rounds       | =main=                                |                    1369 |          10122 |    465 |
+|                             | branch                                |                    1388 |          10776 |    477 |
+|                             | branch, no box-shadow rule            |                    1081 |          10818 |    467 |
+|                             | branch, no left rule                  |                    1212 |          11073 |    578 |
+| 02:34–02:50, 6 rounds       | =main=                                |                    1325 |          11667 |    460 |
+|                             | branch                                |                    1507 |          11321 |    898 |
+|                             | branch, mask only once scrollX > 0    |                    1535 |          13598 |    492 |
+
+*Read as:* the long tasks after render are probably somewhat higher on the
+branch. Paired within each round (branch minus =main=, all 18 rounds), the
+median difference is +213 ms, and the branch is higher in 15 of 18 rounds.
+That is roughly +15–20 %. *Not attributed:* the no-shadow arm suggested the
+mask, but the next session's "mask only once scrolled" arm paints no shadow
+at scrollX 0 and was just as high. Here the noise is as large as the effect:
+=main= alone ranges from 922 to 1517 ms, depending on where it runs in the
+round. Sort shows no difference. The scroll-column median for session 3
+(898) comes from two outliers (2217, 1134) in one arm, and the other sessions
+show no difference. Flagged to the user before going on, per the performance
+gate.
+
+*Not re-measured:* the follow-up fixes ("#" docking under the sticky column,
+MB's table border moved onto the edge cells) came after these runs. On
+artist-events they add a restyle of the cells before the sticky one, and one
+relayout when the border moves. Measure again before merging if the open
+question above is pursued.

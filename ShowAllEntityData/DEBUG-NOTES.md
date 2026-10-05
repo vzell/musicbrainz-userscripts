@@ -18531,3 +18531,77 @@ real found answer retitled), because no real one exists for these events.
 `scripts/mutations/event-colours-rg-tooltip.json`: 13 entries. Item 4's
 spec and mutations were updated for the tint (E1) and the per-gid preview
 cache.
+
+## 2026-10-05 — the sticky column docks at the window edge, left of its pinned bar (branch feature/sticky-col-align)
+
+**Symptom** (user, `org/sticky-areas.org`): scrolled to the right, every pinned
+bar stays put, but the sticky column docks at the window's left edge instead
+of in line with the bar above its table. Multi-table: release
+`52c6808b-037d-47d5-b0c7-17331c9d36cd`, h3 "1 - 7" Vinyl" (snapshots
+`debug/MT-final.html`, `debug/MT-final-scrolled.html`). Single-table:
+`isrc/USSM19500019` (`debug/ST-final.html`, `debug/ST-final-scrolled.html`).
+
+**Cause.** `applyStickyColumn()` pins its cells at an inline `left: 0px`
+(`_leftOffset()` always returns 0). The sticky page headers pin every bar at
+its own natural left (`--mb-sph-left`, 38px for that h3 and 16px for the ISRC
+h2 in the snapshots). The table there carries the same `margin-left: 1.5em` as
+its h3, so the column slid the whole indent further left than its bar.
+
+**Fix.** While `html.mb-sph-on` is set, the column docks at its TABLE's
+natural left. `_sphMeasureStickyCols()` reads it in the refresh pass's read
+phase. `_sphApplyStickyCols()` stamps the table with `data-mb-sph-col-left`,
+and `_sphEnsureColRule()` adds one rule pair per distinct value: an
+`!important` `left` that beats the inline `left: 0`, and a `box-shadow` that
+masks the gutter to the column's left.
+- The table's left, not the bar's. With `left` greater than the cell's
+  natural position, sticky shifts the cell at scrollX 0, onto the next column.
+  On the real page the two agree. In the bare fixture they differ by about
+  4px, because each 1.5em resolves against its own font size.
+- An attribute plus a generated rule, not a custom property on the table. An
+  inherited property restyles the whole table subtree, which is the 249 ms
+  recalc removed from `<html>` on 2026-10-02. These selectors have
+  `.mb-sticky-col` as their subject, so a stamp restyles only the sticky
+  cells.
+- A box-shadow mask, because both pseudo-elements of a `td` are taken (the
+  E-chips use `::before`, finding/flag glyphs use `::after`).
+- `.mb-sph-col-docked` gates the mask (`_sphUpdateColDocked()`, called from
+  the refresh pass and the existing scroll listener). With "#" before "Title"
+  the column docks only at scrollX ≥ P, the width of "#". An unconditional
+  mask covered the right L px of "#" and its header buttons at scrollX 0.
+  The first version accepted a transient here: for 0 < scrollX < P, "#"
+  slid through the gutter. The user's browser check rejected that (see the
+  follow-up below).
+
+**Tests.** `sticky-page-headers.spec.js` gets a new describe with 4 tests:
+single-table docking at the table's natural left (the bare fixture gets a
+24px `#content` indent, or 0 and "the table's left" could not be told
+apart), multi-table per sub-table, "#" then "Title" (undocked and unmasked at
+0 and at P/2, docked and masked past P, in line with its h3 bar, released on
+scrolling back), and the setting off (still `left: 0`). The
+`scripts/mutations/sticky-page-headers.json` list gets 6 entries, all caught.
+
+**Follow-up, same day: two defects found by the user in a real browser.**
+1. *"#" still visible in the gutter until "Title" docks* (the accepted
+   transient). Fixed: the cells before the sticky one also dock at L
+   (`data-mb-sph-col-pre` = the sticky cell's `cellIndex`, rule
+   `:nth-child(-n+k)`), at z-index 0 under the sticky column's 1/101, and
+   mask the gutter all the time. "#" holds at the bar's line and "Title"
+   slides over it. A column only docks if it is no wider than the sticky
+   column. A wider one would stick out to the right of it for good, so that
+   table falls back to the transient.
+2. *Stray lines at the top and bottom of each table, stretching left*
+   (`debug/stray-lines.html`). MusicBrainz's `table.tbl` carries
+   `border-top/bottom: solid 1px @dark-border` (musicbrainz-server
+   `root/static/styles/layout.less`). Under this script's
+   `border-collapse: separate` that border belongs to the TABLE box,
+   outside every cell, so no cell mask can cover it. Fixed: while aligned,
+   the table's border widths go to 0 and the same border goes on the first
+   header row's and last body row's cells, where the masks cover it. The
+   height is unchanged. The border is captured from the first table before
+   any stamp (`_sph.colBorder`).
+The fixtures have no MB stylesheet, so neither defect reproduced in them
+until the spec injected the relevant `layout.less` excerpt (`MB_TBL_CSS`).
+Both are now asserted on PIXELS: a screenshot of the gutter strip, decoded
+through a canvas, must be pure page background at P/2 and at the far right.
+The earlier tests asserted positions and computed styles, and passed while
+both defects were on screen.

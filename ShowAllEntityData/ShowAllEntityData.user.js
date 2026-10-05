@@ -1288,7 +1288,8 @@
                          'sub-table bar, the content of every expanded section above the data ' +
                          '(e.g. Credits, Annotation) and the footer — pinned in place while a wide table is ' +
                          'scrolled horizontally, the page-level counterpart of \'Enable Sticky ' +
-                         'Columns\'. Only engages while the page really overflows horizontally; ' +
+                         'Columns\'; the sticky column then docks aligned with the h2/h3 bar above ' +
+                         'its table instead of at the window edge. Only engages while the page really overflows horizontally; ' +
                          'stays inert while the sidebar is expanded and columns are not ' +
                          'auto-resized (the native sidebar would otherwise be pushed off-screen).'
         },
@@ -22517,6 +22518,24 @@
     //      itself ignores transforms (_sphContentExtent()), so engaging can
     //      never feed back into the decision to engage.
     //
+    // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
+    // pins its cells at `left: 0`, which made the column dock at the window
+    // edge while the h2/h3 bar above it docked at its own, indented left. Each
+    // table carrying a sticky column therefore gets `data-mb-sph-col-left`
+    // (its natural left, L) and one generated rule per distinct L moves its
+    // sticky cells to `left: L` (see _sphApplyStickyCols()). The gutter that
+    // opens to the left of the docked column is masked with a `box-shadow` in
+    // the page colour, but only once the column has actually docked
+    // (`.mb-sph-col-docked`, _sphUpdateColDocked()): with columns before the
+    // sticky one ("#" before "Title") the mask would otherwise cover them at
+    // scrollX 0. Those columns dock at L as well, underneath the sticky one
+    // (`data-mb-sph-col-pre`), and mask the gutter themselves until it has
+    // docked over them, so nothing ever slides past the bar's line. MB's own
+    // top/bottom border of `table.tbl` is moved onto the edge cells, where
+    // the masks cover it. An attribute + per-value rule rather than a custom property on
+    // the table, because an inherited custom property restyles the whole
+    // table subtree, while these selectors invalidate only the sticky cells.
+    //
     // Natively sticky elements are pinned too — notably the header of
     // jesus2099's "mb. STICKY HEADER" userstyle (`html > body > div.header {
     // position: sticky; top: 0; z-index: 1 }`): only `left`/`max-width` are
@@ -22582,6 +22601,14 @@
      *   widths:         WeakMap<Element, number>
      *                                     - last border-box width the observer reported per element
      *   passes:         number            - refresh passes run so far (read by the test hook only)
+     *   colTables:      Array<{table: HTMLTableElement, p: number}>
+     *                                     - tables whose sticky column is aligned, with the scrollX
+     *                                       at which that column docks (see _sphMeasureStickyCols())
+     *   colStyle:       ?HTMLStyleElement - holds one generated rule pair per distinct left offset
+     *   colRules:       Set<string>       - left offsets that already have their rule pair
+     *   colGutterBg:    string            - page colour of the gutter mask, read with the first rule
+     *   colBorder:      ?{top: number, topC: string, bottom: number, bottomC: string}
+     *                                     - MB's table.tbl top/bottom border, captured before the first stamp
      * }}
      */
     const _sph = {
@@ -22593,7 +22620,12 @@
         targets:     new Set(),
         native:      new WeakMap(),
         widths:      new WeakMap(),
-        passes:      0
+        passes:      0,
+        colTables:   [],
+        colStyle:    null,
+        colRules:    new Set(),
+        colGutterBg: '#ffffff',
+        colBorder:   null
     };
 
     /**
@@ -23027,6 +23059,238 @@
     }
 
     /**
+     * Read phase of the sticky-column alignment: measures every rendered
+     * `table.tbl` that carries a sticky column (`.mb-sticky-col` in its first
+     * header row), outside `#sidebar` and not nested in another table.
+     *
+     *   left = the table's natural left in document px (its border-box left
+     *          plus its left border), the offset its sticky column docks at;
+     *   p    = how far the page must scroll before that column docks, i.e.
+     *          the widths of the columns before it ("#" before "Title"). Read
+     *          from the right edge of the nearest rendered header cell BEFORE
+     *          the sticky one, never from the sticky cell itself, whose rect
+     *          moves once it has docked;
+     *   pre  = how many cells precede the sticky one (its `cellIndex`). Those
+     *          columns dock at `left` too, underneath the sticky one, so they
+     *          never slide into the gutter while the sticky column is still
+     *          on its way (see `_sphEnsureColRules()`). 0 when any of them is
+     *          rendered wider than the sticky column: it would stick out to
+     *          the right of it for good, and the scrolling columns would pass
+     *          underneath that sliver.
+     *
+     * The table itself is never pinned, so its rect is natural geometry at
+     * any scroll position (same reasoning as the parent rects in
+     * `_sphRefresh()`). The first call also captures the top/bottom table
+     * border (`_sph.colBorder`), before any stamp has moved it.
+     *
+     * @param {number} scrollX - `window.scrollX` of the current pass.
+     * @returns {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>}
+     *   One entry per table; `left` is already formatted for the attribute.
+     */
+    function _sphMeasureStickyCols(scrollX) {
+        const sidebar = document.getElementById('sidebar');
+        const out = [];
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const sticky = table.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
+            if (!sticky) return;
+            if (sidebar && sidebar.contains(table)) return;
+            if (table.parentElement && table.parentElement.closest('table')) return;
+            if (table.getClientRects().length === 0) return;
+            if (!_sph.colBorder && !table.dataset.mbSphColLeft) {
+                const cs = getComputedStyle(table);
+                _sph.colBorder = {
+                    top:    cs.borderTopStyle === 'none' ? 0 : (parseFloat(cs.borderTopWidth) || 0),
+                    topC:   cs.borderTopColor,
+                    bottom: cs.borderBottomStyle === 'none' ? 0 : (parseFloat(cs.borderBottomWidth) || 0),
+                    bottomC: cs.borderBottomColor
+                };
+            }
+            const tr = table.getBoundingClientRect();
+            const innerLeft = tr.left + table.clientLeft;
+            const stickyW = sticky.getBoundingClientRect().width;
+            let p = 0;
+            let pre = sticky.cellIndex;
+            for (let c = sticky.previousElementSibling; c; c = c.previousElementSibling) {
+                if (c.getClientRects().length === 0) continue;
+                const r = c.getBoundingClientRect();
+                if (!p) p = Math.max(0, r.right - innerLeft);
+                if (r.width > stickyW + 0.5) pre = 0;
+            }
+            const left = Math.max(0, _sphFloor2(innerLeft + scrollX));
+            out.push({ table, left: String(left), p, pre: p > 0 ? pre : 0 });
+        });
+        return out;
+    }
+
+    /**
+     * Background colour of the page behind the tables, used to mask the
+     * gutter to the left of a docked sticky column: the first non-transparent
+     * background of `#page`, `<body>`, `<html>`, else white.
+     *
+     * @returns {string} A CSS colour.
+     */
+    function _sphGutterBg() {
+        for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+            if (!el) continue;
+            const bg = getComputedStyle(el).backgroundColor;
+            if (bg && bg !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
+        }
+        return '#ffffff';
+    }
+
+    /**
+     * Appends rules to the generated sticky-column stylesheet, creating it on
+     * first use. On creation it also adds the rules shared by every aligned
+     * table: MusicBrainz's `table.tbl { border-top / border-bottom }` is moved
+     * onto the first header row's and the last body row's cells. Under
+     * `border-collapse: separate` that border belongs to the TABLE box,
+     * outside every cell, so no cell's mask can cover it, and it stretched
+     * into the gutter as a stray line at the top and bottom of each table.
+     * Inside the cells it is covered like any cell border. The widths stay
+     * the same, so the table's height does not change.
+     *
+     * @param {string[]} rules - Complete CSS rules.
+     * @returns {void}
+     */
+    function _sphAddColRules(rules) {
+        if (!_sph.colStyle) {
+            _sph.colStyle = GM_addStyle('/* sticky column alignment: rules per left offset */');
+            _sph.colStyle.id = 'mb-sph-col-style';
+            _sph.colGutterBg = _sphGutterBg();
+            const b = _sph.colBorder || { top: 0, bottom: 0 };
+            const any = 'html.mb-sph-on table.tbl[data-mb-sph-col-left]';
+            const shared = [];
+            if (b.top > 0) {
+                shared.push(`${any} { border-top-width: 0 !important; }`,
+                    `${any} > thead > tr:first-child > * { border-top: ${b.top}px solid ${b.topC} !important; }`);
+            }
+            if (b.bottom > 0) {
+                shared.push(`${any} { border-bottom-width: 0 !important; }`,
+                    `${any} > tbody:last-of-type > tr:last-child > * { border-bottom: ${b.bottom}px solid ${b.bottomC} !important; }`);
+            }
+            rules = shared.concat(rules);
+        }
+        const sheet = _sph.colStyle.sheet;
+        rules.forEach(rule => {
+            try {
+                sheet.insertRule(rule, sheet.cssRules.length);
+            } catch (err) {
+                _sph.colStyle.appendChild(document.createTextNode(`\n${rule}`));
+            }
+        });
+    }
+
+    /**
+     * Makes sure the rules for one left offset (and, when columns precede the
+     * sticky one, for that count) exist in the generated stylesheet:
+     *
+     *   - the sticky cells of every table stamped with that offset dock at
+     *     `left: <offset>`;
+     *   - while the table is `.mb-sph-col-docked`, they mask the gutter to
+     *     their left;
+     *   - with `pre` > 0 the first `pre` cells of every row dock at the same
+     *     offset, one layer below the sticky column (z-index 0 against its 1
+     *     and 101), and mask the gutter all the time. "#" then stays at the
+     *     bar's line while "Title" slides over it, instead of sliding into
+     *     the gutter. Their mask is harmless at scrollX 0, where they sit at
+     *     their natural place and the gutter is page margin.
+     *
+     * Rules are only ever added, once per distinct offset / count (a page
+     * normally has one or two). Their subjects are cells of the sticky
+     * column or of the columns before it, so stamping a table restyles only
+     * those cells, not the whole table. `!important` beats the inline
+     * `left: 0px` of `applyStickyColumn()`, which stays the value whenever
+     * `html.mb-sph-on` is not set. The mask is a `box-shadow` because both
+     * pseudo-elements of a `td` are already in use (E-chips, finding glyphs);
+     * `table.tbl` is `border-collapse: separate` (`applyStickyHeaders()`), so
+     * cell shadows paint, inside the cell's own stacking context and hence
+     * over the scrolling cells. Two shadows, at the full and the half offset,
+     * so a column at least half as wide as the gutter still covers all of it.
+     *
+     * @param {string} left - Offset in px, as stamped in `data-mb-sph-col-left`.
+     * @param {number} pre  - Cells before the sticky one, 0 for none (see
+     *   `_sphMeasureStickyCols()`).
+     * @returns {void}
+     */
+    function _sphEnsureColRules(left, pre) {
+        const sel  = `html.mb-sph-on table.tbl[data-mb-sph-col-left="${left}"]`;
+        const half = _sphFloor2(parseFloat(left) / 2);
+        const mask = () => `-${left}px 0 0 0 ${_sph.colGutterBg}, -${half}px 0 0 0 ${_sph.colGutterBg}`;
+        if (!_sph.colRules.has(left)) {
+            const cells = ' > * > tr > .mb-sticky-col';
+            _sphAddColRules([
+                `${sel}${cells} { left: ${left}px !important; }`,
+                `${sel}.mb-sph-col-docked${cells} { box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(left);
+        }
+        const key = `${left}|${pre}`;
+        if (pre > 0 && !_sph.colRules.has(key)) {
+            _sphAddColRules([
+                `${sel}[data-mb-sph-col-pre="${pre}"] > * > tr > :nth-child(-n+${pre}) ` +
+                `{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(key);
+        }
+    }
+
+    /**
+     * Write phase of the sticky-column alignment: stamps each measured table
+     * with its offset and its count of docking columns before the sticky one
+     * (only on change), drops the stamps from tables that are no longer
+     * measured but still shown, and refreshes the docked state. A hidden
+     * (collapsed) table keeps its stamps, so it is right again the moment it
+     * is shown.
+     *
+     * @param {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>} cols
+     *   Output of `_sphMeasureStickyCols()`.
+     * @returns {void}
+     */
+    function _sphApplyStickyCols(cols) {
+        const keep = new Set(cols.map(c => c.table));
+        _sph.colTables.forEach(({ table }) => {
+            if (keep.has(table) || (table.isConnected && table.getClientRects().length === 0)) return;
+            delete table.dataset.mbSphColLeft;
+            delete table.dataset.mbSphColPre;
+            table.classList.remove('mb-sph-col-docked');
+        });
+        cols.forEach(({ table, left, pre }) => {
+            _sphEnsureColRules(left, pre);
+            if (table.dataset.mbSphColLeft !== left) table.dataset.mbSphColLeft = left;
+            const preStr = pre > 0 ? String(pre) : undefined;
+            if (table.dataset.mbSphColPre !== preStr) {
+                if (preStr) table.dataset.mbSphColPre = preStr;
+                else delete table.dataset.mbSphColPre;
+            }
+        });
+        _sph.colTables = cols.map(({ table, p }) => ({ table, p }));
+        _sphUpdateColDocked();
+    }
+
+    /**
+     * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
+     * docked (`scrollX >= p`), which switches its gutter mask on; writes only
+     * when the state flips. With `p = 0` (sticky column first) the class is
+     * always on, harmless at scrollX 0 where the gutter is empty page margin.
+     * With `p > 0` the sticky column's mask, L px to its left, would cover
+     * the still visible part of the columns before it ("#") until it has
+     * docked over them; meanwhile those columns mask the gutter themselves
+     * (see `_sphEnsureColRules()`). Called from every refresh pass and from the scroll listener
+     * while the feature is engaged: one compare per table per scroll event.
+     *
+     * @returns {void}
+     */
+    function _sphUpdateColDocked() {
+        const scrollX = window.scrollX;
+        _sph.colTables.forEach(({ table, p }) => {
+            const docked = scrollX >= p - 0.5;
+            if (table.classList.contains('mb-sph-col-docked') !== docked) {
+                table.classList.toggle('mb-sph-col-docked', docked);
+            }
+        });
+    }
+
+    /**
      * One refresh pass: decides whether the feature must be engaged, and if
      * so (re)collects the targets and (re)computes their offsets.
      *
@@ -23140,6 +23404,7 @@
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
                 return { el, baseZ, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
             });
+            const cols = _sphMeasureStickyCols(scrollX);
 
             // ── Write phase ─────────────────────────────────────────────────
             plans.forEach(({ el, baseZ, left, width }) => {
@@ -23151,6 +23416,7 @@
                 if (el.classList.contains('mb-sph-chrome') !== baseZ) el.classList.toggle('mb-sph-chrome', baseZ);
             });
             _sph.targets = next;
+            _sphApplyStickyCols(cols);
 
             if (engaging) {
                 Lib.debug('ui', `Sticky page headers: engaged for ${plans.length} element(s)`);
@@ -23231,7 +23497,9 @@
      * Idempotent: the first call installs the stylesheet, a ResizeObserver
      * (html, body, #page, #content, #sidebar, every `table.tbl`), a `resize`
      * listener and a passive `scroll` listener (fallback: engages on the first
-     * horizontal scroll should no observer have noticed the overflow); every
+     * horizontal scroll should no observer have noticed the overflow; while
+     * engaged it only flips each aligned table's docked state, see
+     * `_sphUpdateColDocked()`); every
      * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
      * pick up their new h2/h3 bars.
      *
@@ -23249,7 +23517,11 @@
             }
             window.addEventListener('resize', scheduleStickyPageHeadersRefresh, { passive: true });
             window.addEventListener('scroll', () => {
-                if (!_sph.active && window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                if (!_sph.active) {
+                    if (window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                } else if (_sph.colTables.length) {
+                    _sphUpdateColDocked();
+                }
             }, { passive: true });
             _sph.initialized = true;
             Lib.debug('ui', 'Sticky page headers enabled - page chrome stays pinned while scrolling horizontally');
@@ -23585,6 +23857,14 @@
          * A non-zero `left` offset is only needed when multiple preceding columns
          * are ALSO sticky (so each one stacks behind the next).  This script uses
          * a single sticky column per table, so `left: 0` is always correct.
+         *
+         * Exception: while sticky page headers are engaged (`html.mb-sph-on`),
+         * a stylesheet rule overrides this inline value with the TABLE's own
+         * natural left, so the column docks aligned with the pinned h2/h3 bar
+         * above it (see `_sphApplyStickyCols()`). That brings no ghosting back:
+         * the offset is the table's own left, not the preceding columns'
+         * widths, so the gap it leaves is page gutter, which is masked once
+         * the column has docked.
          *
          * @returns {number} always 0
          */

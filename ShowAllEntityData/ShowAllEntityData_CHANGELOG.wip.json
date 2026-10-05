@@ -1,0 +1,14 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Scrolling a wide table sideways now stops the sticky column in line with the h2 or h3 bar above its table, not at the window's left edge. On an indented sub-table, such as a release's \"1 - 7\" Vinyl\" tracklist, it used to slide past the bar's left edge. Nothing scrolls into the strip to the left of it any more: no columns passing by, and no ends of the table's top and bottom border lines. Where another column comes first, such as \"#\" before \"Title\", that column now stays at the same line and \"Title\" slides over it, instead of \"#\" sliding into the strip. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers, which is on by default."
+        ]
+      }
+    ]
+  }
+]

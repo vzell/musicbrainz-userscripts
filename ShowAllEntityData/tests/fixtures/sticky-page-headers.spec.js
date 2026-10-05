@@ -831,3 +831,249 @@ test.describe('sticky page headers — multi-table page', () => {
         expectPinned(before, await measure(page, sels));
     });
 });
+
+test.describe('sticky page headers — the sticky column docks in line with its bars', () => {
+    // applyStickyColumn() pins its cells at `left: 0`, while every h2/h3 bar
+    // is pinned at its own natural left. So the column docked at the window
+    // edge, left of the (indented) bar above its table (release 52c6808b…,
+    // isrc/USSM19500019). While the feature is engaged the column now docks
+    // at its TABLE's natural left, and the gutter left of it is masked once
+    // it has docked. The guarantee pinned here is the docking POSITION, read
+    // after a real scroll — not "the cell is still visible", which the old
+    // `left: 0` met as well.
+
+    const RELEASE_URL = 'https://musicbrainz.org/release/1d404e1d-fcb6-3a52-b478-e706e893c897';
+    const RELEASE_SHELL = path.join(__dirname, '..', 'snapshots', 'release-tracks', 'raw.html');
+
+    /**
+     * Geometry of every rendered table with a sticky column: the table's own
+     * left (its natural left only while scrollX is 0), the sticky header and
+     * first body cell's left, the nearest preceding h2/h3 bar's left, the
+     * docked class and the sticky header cell's box-shadow.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<Array<{tableLeft: number, thLeft: number, tdLeft: number,
+     *   tableRight: number, barLeft: number, docked: boolean, shadow: string, p: number}>>}
+     */
+    const stickyGeom = (page) => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+        .filter((t) => t.getClientRects().length > 0
+            && t.querySelector(':scope > thead > tr:first-child > .mb-sticky-col'))
+        .map((t) => {
+            const th = t.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
+            const td = t.querySelector(':scope > tbody > tr > td.mb-sticky-col');
+            let bar = null;
+            for (let el = t.previousElementSibling; el && !bar; el = el.previousElementSibling) {
+                if (/^H[23]$/.test(el.tagName)) bar = el;
+            }
+            const prev = th.previousElementSibling;
+            return {
+                tableLeft: t.getBoundingClientRect().left + t.clientLeft,
+                tableRight: t.getBoundingClientRect().right,
+                thLeft: th.getBoundingClientRect().left,
+                tdLeft: td ? td.getBoundingClientRect().left : NaN,
+                barLeft: bar ? bar.getBoundingClientRect().left : NaN,
+                docked: t.classList.contains('mb-sph-col-docked'),
+                shadow: getComputedStyle(th).boxShadow,
+                p: prev ? prev.getBoundingClientRect().right - (t.getBoundingClientRect().left + t.clientLeft) : 0,
+            };
+        }));
+
+    // MusicBrainz's own table.tbl rules that matter here (musicbrainz-server
+    // root/static/styles/layout.less): a top and bottom border on the TABLE
+    // box, and a background on thead. The bare fixtures load without that
+    // stylesheet, and it is exactly what drew the stray lines into the
+    // gutter (debug/stray-lines.html).
+    const MB_TBL_CSS = 'table.tbl { border-top: solid 1px #999; border-bottom: solid 1px #999; } '
+        + 'table.tbl > thead { background: #c8c8c8; } '
+        + '#content { padding-left: 24px !important; }';
+
+    /**
+     * Counts the pixels in the gutter beside the first table with a sticky
+     * column that differ from the page background: the strip from the
+     * window's left edge to just short of the docking offset, from 3 px above
+     * the table to 3 px below it. This is what the user sees: a column
+     * sliding through the gutter, or a border line stretching into it, both
+     * show up here, whatever CSS produced them. Decoded through a canvas in
+     * the page, so no PNG library is needed.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @returns {Promise<{bad: number, total: number, sample: number[]}>}
+     */
+    async function gutterDirt(page) {
+        const box = await page.evaluate(() => {
+            const t = Array.from(document.querySelectorAll('table.tbl'))
+                .find((x) => x.dataset.mbSphColLeft && x.getClientRects().length > 0);
+            const r = t.getBoundingClientRect();
+            return {
+                x: 0,
+                y: Math.max(0, Math.floor(r.top) - 3),
+                width: Math.floor(parseFloat(t.dataset.mbSphColLeft)) - 2,
+                height: Math.ceil(r.height) + 6,
+            };
+        });
+        expect(box.width, 'premise: a gutter wide enough to inspect').toBeGreaterThan(10);
+        const png = await page.screenshot({ clip: box });
+        return page.evaluate(async (b64) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${b64}`;
+            await img.decode();
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const ctx = c.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const d = ctx.getImageData(0, 0, c.width, c.height).data;
+            let bad = 0;
+            let sample = [];
+            for (let i = 0; i < d.length; i += 4) {
+                if (Math.abs(d[i] - 255) + Math.abs(d[i + 1] - 255) + Math.abs(d[i + 2] - 255) > 6) {
+                    if (!bad) sample = [i / 4 % c.width, Math.floor(i / 4 / c.width), d[i], d[i + 1], d[i + 2]];
+                    bad++;
+                }
+            }
+            return { bad, total: d.length / 4, sample };
+        }, png.toString('base64'));
+    }
+
+    /**
+     * Scrolls the window to `x` and waits one frame for sticky offsets.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} x
+     * @returns {Promise<number>} the resulting scrollX
+     */
+    async function scrollToX(page, x) {
+        await page.evaluate((v) => window.scrollTo(v, window.scrollY), x);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r())));
+        return page.evaluate(() => window.scrollX);
+    }
+
+    test('single-table: docks at the table\'s own left, masked, not at the window edge', async ({ page }) => {
+        // The bare fixture has no MB stylesheet, so #content has no indent of
+        // its own; give it one, or "docks at the table's left" and "docks at
+        // 0" would be the same number.
+        await openSeries(page, { css: MB_TBL_CSS });
+        await waitEngaged(page);
+        const before = await stickyGeom(page);
+        expect(before, 'premise: one table with a sticky column').toHaveLength(1);
+        expect(before[0].tableLeft, 'premise: the table is indented').toBeGreaterThan(10);
+
+        const scrollX = await scrollToRightEnd(page);
+        expect(scrollX).toBeGreaterThan(1000);
+        const after = await stickyGeom(page);
+        expect(after[0].tableLeft, 'premise: the table itself scrolled').toBeLessThan(before[0].tableLeft - 900);
+        expect(Math.abs(after[0].thLeft - before[0].tableLeft), 'sticky th docks at the table\'s natural left')
+            .toBeLessThanOrEqual(1);
+        expect(Math.abs(after[0].tdLeft - before[0].tableLeft), 'sticky td docks at the table\'s natural left')
+            .toBeLessThanOrEqual(1);
+        expect(after[0].docked).toBe(true);
+        const left = await page.evaluate(() => document.querySelector('table.tbl').dataset.mbSphColLeft);
+        expect(after[0].shadow, 'the gutter left of the docked column is masked').toContain(`-${left}px 0px 0px 0px`);
+        // What the user sees: no cell content and no stray table border line
+        // in the strip left of the docked column.
+        const dirt = await gutterDirt(page);
+        expect(dirt.bad, `gutter pixels that are not page background (first: ${dirt.sample})`).toBe(0);
+    });
+
+    test('multi-table: every sub-table\'s sticky column docks at its own table\'s left', async ({ page }) => {
+        await page.setViewportSize({ width: 700, height: 800 });
+        await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true });
+        await page.addStyleTag({ content: '#content { padding-left: 24px !important; }' });
+        await page.click('button[data-label="Show Ratings for User"]');
+        await waitForRenderComplete(page);
+        const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .some((t) => t.getClientRects().length === 0));
+        if (await anyHidden()) await page.locator('.mb-master-toggle').first().click();
+        await expect.poll(anyHidden, { message: 'every sub-table expanded' }).toBe(false);
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+
+        const before = await stickyGeom(page);
+        expect(before.length, 'premise: several sub-tables with a sticky column').toBeGreaterThanOrEqual(5);
+        expect(before.every((g) => g.tableLeft > 10), 'premise: the tables are indented').toBe(true);
+        await scrollToRightEnd(page);
+        // A sticky cell cannot leave its table, so a narrow sub-table that
+        // scrolled out of view entirely takes its column with it. Judge the
+        // ones still reaching past their docking point, and that did scroll.
+        const after = await stickyGeom(page);
+        const judged = after
+            .map((g, i) => ({ ...g, natural: before[i].tableLeft }))
+            .filter((g) => g.tableLeft < g.natural - 200 && g.tableRight > g.natural + 300);
+        expect(judged.length, 'premise: some sub-tables scrolled under their sticky column').toBeGreaterThan(0);
+        const off = judged
+            .map((g) => ({ th: g.thLeft, td: g.tdLeft, natural: g.natural }))
+            .filter((g) => Math.abs(g.th - g.natural) > 1 || Math.abs(g.td - g.natural) > 1);
+        expect(off, 'sticky cells not docked at their table\'s natural left').toEqual([]);
+    });
+
+    test('a column after another one ("#" then "Title"): nothing slides into the gutter, before or after it docks', async ({ page }) => {
+        await page.setViewportSize(VIEWPORT);
+        await loadUserscriptPage(page, {
+            url: RELEASE_URL,
+            fixtureFile: RELEASE_SHELL,
+            testMode: true,
+            settingsOverride: { sa_enable_release_tracks: true },
+        });
+        await page.addStyleTag({ content: MB_TBL_CSS });
+        await page.route(`${RELEASE_URL}?**`, (r) => r.fulfill({ path: RELEASE_SHELL, contentType: 'text/html' }));
+        await page.$eval('button[data-label="Show all Tracks for Release"]', (b) => b.click());
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+
+        const at0 = (await stickyGeom(page))[0];
+        expect(at0.p, 'premise: a column precedes the sticky one').toBeGreaterThan(20);
+        // release-tracks indents each sub-table like its h3 bar (both
+        // margin-left: 1.5em, the layout of the reported release 52c6808b…);
+        // they differ by a few px only through the em of each font size.
+        expect(Math.abs(at0.barLeft - at0.tableLeft), 'premise: table indented like its h3 bar')
+            .toBeLessThan(8);
+        // At scrollX 0 a mask L px wide would sit over the "#" column.
+        expect(at0.docked).toBe(false);
+        expect(at0.shadow).toBe('none');
+
+        const s1 = await scrollToX(page, Math.round(at0.p / 2));
+        expect(s1, 'premise: the page scrolled less than "#" is wide').toBeLessThan(at0.p);
+        const mid = (await stickyGeom(page))[0];
+        expect(mid.docked, 'not docked yet, so the sticky column does not mask yet').toBe(false);
+        // "#" docks at the bar's line instead of sliding into the gutter; the
+        // sticky column is on its way over it.
+        const hashLeft = await page.evaluate(() => document.querySelector('table.tbl')
+            .querySelector(':scope > thead > tr:first-child > th').getBoundingClientRect().left);
+        expect(Math.abs(hashLeft - at0.tableLeft), '"#" holds at the table\'s natural left').toBeLessThanOrEqual(1);
+        expect(mid.thLeft, 'premise: the sticky column has not docked yet').toBeGreaterThan(at0.tableLeft + 5);
+        const dirtMid = await gutterDirt(page);
+        expect(dirtMid.bad, `gutter pixels before docking (first: ${dirtMid.sample})`).toBe(0);
+
+        const s2 = await scrollToX(page, Math.round(at0.p) + 200);
+        expect(s2).toBeGreaterThan(at0.p);
+        const docked = (await stickyGeom(page))[0];
+        expect(docked.docked).toBe(true);
+        expect(docked.shadow).not.toBe('none');
+        expect(Math.abs(docked.thLeft - at0.tableLeft), 'docks at the table\'s natural left').toBeLessThanOrEqual(1);
+        // In line with the pinned h3 bar: the same offset from it as before
+        // scrolling (the old left: 0 put it ~tableLeft px further left).
+        expect(Math.abs((docked.barLeft - docked.thLeft) - (at0.barLeft - at0.tableLeft)),
+            'keeps its alignment with the pinned h3 bar').toBeLessThanOrEqual(1);
+        expect(Math.abs((docked.barLeft - docked.tdLeft) - (at0.barLeft - at0.tableLeft))).toBeLessThanOrEqual(1);
+        await scrollToRightEnd(page);
+        const dirtEnd = await gutterDirt(page);
+        expect(dirtEnd.bad, `gutter pixels at the far right (first: ${dirtEnd.sample})`).toBe(0);
+
+        await scrollToX(page, 0);
+        expect((await stickyGeom(page))[0].docked, 'scrolling back takes the mask off again').toBe(false);
+    });
+
+    test('with sticky page headers off the column keeps docking at the window edge', async ({ page }) => {
+        await openSeries(page, {
+            settingsOverride: { sa_enable_sticky_page_headers: false },
+            css: '#content { padding-left: 24px !important; }',
+        });
+        const before = await stickyGeom(page);
+        expect(before[0].tableLeft, 'premise: the table is indented').toBeGreaterThan(10);
+        await scrollToRightEnd(page);
+        const after = await stickyGeom(page);
+        expect(Math.abs(after[0].thLeft), 'previous behaviour: left 0').toBeLessThanOrEqual(1);
+        expect(after[0].shadow).toBe('none');
+    });
+});

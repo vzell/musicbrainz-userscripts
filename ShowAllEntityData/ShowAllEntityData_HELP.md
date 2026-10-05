@@ -666,7 +666,12 @@ around it in place: the MusicBrainz top header, the entity
 header with its action bar, the tabs and every h2/h3 bar stay where they are
 instead of scrolling off to the left, and so does the content of any section
 you have expanded above the table, such as Credits or the Annotation
-(*Enable Sticky Page Headers* in 📌 Table stickiness). This only engages while the page really is wider than the window.
+(*Enable Sticky Page Headers* in 📌 Table stickiness). The sticky column then
+stops in line with the h2 or h3 bar above its table, not at the window's left
+edge, and nothing scrolls into the strip to its left. A column in front of it,
+such as "#" before "Title", stays at that line too, and the sticky column
+slides over it.
+This only engages while the page really is wider than the window.
 It stays off while the sidebar is expanded and columns are not auto-resized,
 because widening the page would push the sidebar off-screen. On a phone or
 tablet it is off unless you also tick *Sticky Page Headers on touch devices*

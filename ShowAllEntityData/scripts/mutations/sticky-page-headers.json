@@ -99,8 +99,8 @@
     "why": "Whole-feature kill switch: every positive test must notice.",
     "edits": [
       {
-        "find": "    function initStickyPageHeaders() {\n        if (!_sph.initialized) {",
-        "replace": "    function initStickyPageHeaders() {\n        return;\n        if (!_sph.initialized) {"
+        "find": "        if (_isSlHost) return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();",
+        "replace": "        if (_isSlHost) return;\n        return;\n        if (!_sph.initialized) {\n            _sphEnsureStyle();"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -260,6 +260,110 @@
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "never pinned|bare table.details",
+    "expect": "fail"
+  },
+  {
+    "name": "sticky column alignment never applied (the pre-fix state)",
+    "why": "Drops the write phase of the alignment, which is exactly main before this change: the column keeps applyStickyColumn()'s inline left: 0 and docks at the window edge, left of its bar.",
+    "edits": [
+      {
+        "find": "            _sphApplyStickyCols(cols);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "docks at the table's own left|docks at its own table's left|nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "sticky column alignment never applied, multi-table spec alone",
+    "why": "The pre-fix state, judged by the multi-table spec on its own: every sub-table's column docks at the window edge, not at its own table's left.",
+    "edits": [
+      {
+        "find": "            _sphApplyStickyCols(cols);\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "docks at its own table's left",
+    "expect": "fail"
+  },
+  {
+    "name": "the left rule is not generated",
+    "why": "Tables are stamped and docked/masked, but no rule moves the sticky cells: they stay at left: 0. Pins the position, not just the stamp.",
+    "edits": [
+      {
+        "find": "                `${sel}${cells} { left: ${left}px !important; }`,\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "docks at the table's own left|docks at its own table's left",
+    "expect": "fail"
+  },
+  {
+    "name": "the docked state ignores the columns before the sticky one",
+    "why": "Masks the gutter from scrollX 0 on, which with \"#\" before \"Title\" paints over the right part of the \"#\" column and its header buttons.",
+    "edits": [
+      {
+        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "replace": "            const docked = true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "the docked column is never masked",
+    "why": "The column docks in the right place, but the gutter to its left shows the cells scrolling past.",
+    "edits": [
+      {
+        "find": "            const docked = scrollX >= p - 0.5;\n",
+        "replace": "            const docked = false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "docks at the table's own left|nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "the scroll listener no longer updates the docked state",
+    "why": "Only refresh passes flip the class; scrolling alone (no width change) then never docks or undocks a column with columns before it.",
+    "edits": [
+      {
+        "find": "                } else if (_sph.colTables.length) {\n                    _sphUpdateColDocked();\n                }\n",
+        "replace": "                }\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "the columns before the sticky one no longer dock",
+    "why": "Without the pre rule, \"#\" scrolls on into the gutter until \"Title\" has docked over it, the transient the user reported (Image 9). Only the pixel check at P/2 and the \"#\" position see it.",
+    "edits": [
+      {
+        "find": "        if (pre > 0 && !_sph.colRules.has(key)) {\n",
+        "replace": "        if (false && pre > 0 && !_sph.colRules.has(key)) {\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "nothing slides into the gutter",
+    "expect": "fail"
+  },
+  {
+    "name": "MB's table border stays on the table box",
+    "why": "The table.tbl top/bottom border lies outside every cell under border-collapse: separate, so no mask covers it: the stray lines of debug/stray-lines.html. Only the gutter pixel checks see it.",
+    "edits": [
+      {
+        "find": "            const b = _sph.colBorder || { top: 0, bottom: 0 };\n",
+        "replace": "            const b = { top: 0, bottom: 0 };\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "docks at the table's own left|nothing slides into the gutter",
     "expect": "fail"
   }
 ]
