@@ -19133,3 +19133,74 @@ fails as expected.
   recorded passes (the two host-comparison guards above). `sl-support.json`
   is all OK after the grep fix.
 - Live `jl-list.spec.js` (`@extended`): the whole real page, 6.3 s.
+
+## 2026-10-06 — brucespringsteen.it: the record database as a third foreign host (branch feature/bs-support)
+
+`org/springsteen.it.org`: two buttons, Unofficial and Official, every format
+checkbox ticked, and the records as a table. It is opt-in
+(`sa_enable_brucespringsteen`), and it works in its own tab only. Design and
+rules: docs/claude/brucespringsteen.md.
+
+**The site (curl probes, 2026-10-06):**
+
+- **Page:** `DB/records.aspx` is one ASP.NET page per query. `tipe=-1|-2`
+  is followed by the ticked format codes 0–11.
+- **Frameset:** it is the 222 px left frame `sommario` of `Blegsdx.htm`
+  (default `tipe=-1,4`, LP only). The site's own "APPLY FILTER" writes
+  `parent.sommario`, so standalone it does nothing.
+- **Charset:** the server sends `charset=utf-8` and the bytes are UTF-8,
+  while the page's meta tag says windows-1252. `fetchHtml()`'s `res.text()`
+  is right, and nothing in the fetch path changed. The trap is the fixtures:
+  served as plain `text/html`, the meta tag wins and "…" becomes "â€¦". So
+  `bsFixture.js` sends the charset, and the spec pins that a "…" title
+  survives.
+- **Record shapes:** official records differ from unofficial ones. They name
+  a country, not a label, may carry PROMO, and have `Catalogue` instead of
+  `Mx`. Two unofficial records have neither an Mx line nor a `</b>`.
+
+**Design point:** the rows never come from the live page. Both buttons carry
+`params`, so page 1 is always fetched with every format of the kind. The live
+page, typically showing the frameset's LP list, gets only an empty table, and
+its own records are removed. `non_paginated` avoids the extra max-page fetch.
+The base definition's `bsRecordsToTable: true` is what Load from Disk runs
+with.
+
+**Not a bug: a second press reloads the page.** It is the generic second-fetch
+rule (fetch-and-render-pipeline.md). A spec that pressed Unofficial and then
+Official measured an empty table, because the injected script does not
+survive the reload. It was removed, and HELP says to press again after the
+reload.
+
+**A false alarm worth remembering:** the user's first browser test showed no
+table — the fetched page converted (1878 rows), but "Abort: #tbody container
+not found".
+
+- **Cause:** the userscript had been re-imported into Tampermonkey while
+  `bs-support.json` was mutating the working copy in place.
+- **Evidence:** the log lacks BOTH the converter's "live page — … removed"
+  debug line and its "no records found" warning, one of which the click-time
+  call always logs. The screenshot shows the Unofficial radio ticked on the
+  Official page, so the click-time tick ran and only the line after it was
+  missing. That is exactly mutation 8, "the live page gets no table to render
+  into". The browser logs in UTC; local time was CEST.
+- **Check:** after the run restored the file (hash verified), the live
+  `@extended` spec passed both buttons against the real site.
+- **Rule:** never re-import while a mutation-check run is in progress
+  (memory note, now with a real instance).
+
+**Mutation anchors shared between hosts:**
+
+- `jl-support.json`'s "the Title link keeps the site's frame target" grepped
+  `link.target = '_blank';`. That line now also exists in `_bsBuildRow()`,
+  so its find matched twice and the run reported ERROR. It now includes the
+  following `link.textContent = title;`.
+- `sl-support.json`'s navigation-guard entry follows the
+  `(_isSlHost || _isBsHost)` text.
+
+**Results:**
+
+- `bs-records.spec.js`: 14 tests.
+- `bs-support.json`: 21 entries, 20 failing as expected and 1 recorded pass
+  (the onload re-tick; the harness injects after load).
+- SL and JL specs: 84 pass.
+- Live `bs-records.spec.js`: both buttons, 6.5 s.

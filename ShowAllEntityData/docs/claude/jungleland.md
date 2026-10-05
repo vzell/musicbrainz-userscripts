@@ -48,7 +48,9 @@ the springsteenlyrics one, before anything visible, for the same reason:
    Tampermonkey also runs the script in the 25 % frame. Decided 2026-10-05:
    only a list.htm opened as its own tab is converted.
 
-`const _foreignHost` (`'springsteenlyrics.com'`, `'jungleland.it'` or `null`)
+`const _foreignHost` (`'springsteenlyrics.com'`, `'jungleland.it'`, since
+2026-10-06 also `'brucespringsteen.it'` — docs/claude/brucespringsteen.md —
+or `null`)
 replaced the detection loop's `Boolean(def.host) !== _isSlHost`. With two
 foreign hosts, "has a host" is not enough: a definition must name THIS
 one. No spec can see the difference today, because no SL matcher claims
@@ -125,7 +127,8 @@ so the render-decision dialog appears. That is expected, just as on SL's
   (borders, padding, header background, zebra), split out of
   `_ensureSlStyle()` on 2026-10-06 and keyed on
   `body:is(.mb-sa-host-sl, .mb-sa-host-jl)` inside `:where()`. A further
-  host extends that `:is()` list rather than copying the block.
+  host extends that `:is()` list rather than copying the block, as
+  brucespringsteen.it did (`.mb-sa-host-bs`).
 - **`_ensureJlStyle()`** adds only the injected headings, `.mb-jl-hidden`,
   and a guard against the site's `A:hover { font-weight: bold }`, which
   would reflow a table row under the pointer.
