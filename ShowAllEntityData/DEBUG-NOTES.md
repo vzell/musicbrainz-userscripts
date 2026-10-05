@@ -18605,3 +18605,113 @@ Both are now asserted on PIXELS: a screenshot of the gutter strip, decoded
 through a canvas, must be pure page background at P/2 and at the far right.
 The earlier tests asserted positions and computed styles, and passed while
 both defects were on screen.
+
+## 2026-10-05 — sticky page headers leave content behind; a narrow table scrolls away (branch feature/sticky-col-align)
+
+Reported in `org/sticky-bugs.org` with nine snapshots in `debug/`
+(`big-image-strip-not-docking.html`, `wikipedia-overwritten-come-together.html`,
+`aliases.html`, `credits.html`, `artist-subscriptions.html`,
+`user-ratings.html`, `search-pages.html`, `ISRCs.html`, `top-CD-stubs.html`).
+
+Root causes, read off the snapshots:
+
+1. *Big-image strip at the window edge* (artist/b3c01c39…/releases).
+   `_sphSectionBodies()` skipped `.mb-caa-bigbox`/`.mb-eaa-bigbox` by name.
+2. *Wikipedia licence note drawn over "Continue reading"* (work/bcd490e5…).
+   The section body of `h2.wikipedia` is three siblings: the extract `<div>`,
+   an inline `<a>` and an inline `<small>`. Each was pinned on its own at the
+   parent's content edge (`--mb-sph-left: 19.99px` on both), so once scrolled
+   the `<small>` sat on top of the `<a>`. An inline box's natural left is not
+   its parent's content edge, so it can never be pinned that way.
+3. *Intro text, forms and the status line scroll away* (3b/3c, 4a–e). The
+   DATA h2's section was excluded wholesale (`.mb-row-count-stat` test), so
+   "An alias is …", "vzell is subscribed to:" + `<ul>`, `div.searchform`,
+   `p.pageselector-results` were never candidates. `#mb-status-displays-wrapper`
+   is inserted right after the `<h1>`. Inside an entity header (`p.subheader`
+   in `div.*header`) it rides along. After a BARE `<h1>` (user pages, ISRC,
+   search) it is a sibling that nothing collected.
+4. *Credits table scrolls away* (artist/70248960…/aliases, Credits). Live
+   probe (`tests/support/probe-sph-aliases.js`, petri, 2034 px with classic
+   scrollbars): the table is 906 px wide, and its sticky "Name" column IS the
+   table, so it has no room to travel; a sticky cell never leaves its table.
+   The page overflows only by ~120 px, from the collapsed sidebar's table cell
+   beside the auto-resized `#page` (`#page` right 2142 against clientWidth
+   2019), so a 123 px scroll took the whole table with it (column at −103).
+5. *Aliases table docks at the window edge* (3b). NOT reproduced. On fddfe5b,
+   fresh page, logged in, at 2000 px and at 2034 px with scrollbars, the
+   table is stamped (`data-mb-sph-col-left="20"`) and the column docks at
+   20 px. `debug/aliases.html` has no `#mb-sph-col-style` at all, so no
+   engaged pass ever saw that table with its sticky column. The user
+   re-checked on the new build (2026-10-05): it docks. Cause unknown; most
+   likely a build that predated fddfe5b was still loaded when the snapshot
+   was taken.
+
+Found while testing, and not in the report:
+
+6. *The docked state is lost after a refresh pass while scrolled* (fddfe5b).
+   `_sphMeasureStickyCols()` read the docking point `p` from the right edge
+   of the header cell before the sticky one. Since the follow-up that docks
+   "#" under the sticky column, that cell moves with the scroll too, so a pass
+   at scrollX 4672 read p ≈ 4712 instead of 40, and `.mb-sph-col-docked` (the
+   gutter mask) went off. fddfe5b's own spec "single-table: docks at the
+   table's own left" fails deterministically on petri with fddfe5b's own
+   userscript (3/3). On vzell-lap no pass happened to land after the scroll.
+   Fixed: p is the sum of the preceding cells' WIDTHS, which sticky never
+   changes. A new test forces a pass while scrolled.
+
+Fixes:
+
+- `_sphSectionBodies()` is replaced by `_sphContentBodies()`, a walk of
+  `#page`. It skips `table.tbl`, descends into anything that contains one (and
+  always into `#content`), and pins everything else WHOLE. A wrapper like
+  `div.wikipedia-extract`, `div.annotation` or `#bottom-credits` is therefore
+  one target, and its h2/inline content rides along inside it.
+  `_sphIsEligible()` never pins an inline-level body on its own.
+- `_sphFitsTable()`: a top-level `table.tbl` that fits into the room a bar at
+  its place would get is pinned whole (class `mb-sph-table`, no max-width).
+  It is skipped by the column alignment, never raised by hover/focus (its
+  rows would cover a vertically sticky MB header), and counted in
+  `_sphContentExtent()` at its natural right (`--mb-sph-left` + width), since
+  its rect travels with the scroll.
+- `removeSelectors` drops MB's logged-in-only "Add a new alias" `<p>` on
+  `artist-aliases` and `entity-aliases`.
+
+A known limit of the whole-wrapper rule, as for section bodies before it: a
+pinned body is capped to the viewport. If unbreakable content in one (a wide
+image, a long `<pre>`) were the ONLY thing making the page overflow, capping
+it would remove the overflow, the feature would disengage, the cap would come
+off, and so on. No MusicBrainz page is known to do that.
+
+Petri re-measurement of fddfe5b (item 5 of the report): `tests/MEASUREMENTS.org`,
+same date.
+
+Follow-up from the user's live check (`debug/big-picture-stripe-indent-bug.html`,
+user/vzell/ratings): on a multi-table page the pinned strip sat at 16 px
+while its h3 bar and table sat at 34 px. Pinning was right; the strip itself
+had no indent. `renderGroupedTable()` sets `margin-left: 1.5em` inline on
+every sub-table to match `.mb-toggle-h3`, and `_artInitBigPics()` rebuilt
+the strip's `cssText` without it, so it was flush with the h2 even unscrolled.
+The strip now copies its table's inline `margin-left`. A single-table page has
+none, so nothing changes there.
+
+Also seen while running the suite: `release-tracks-ms-length(-overflow).spec.js`
+read the ⏱ toggle's `title` right after clicking it. While the pointer rests
+on a `[data-mb-tip]` element, `_setTip()`'s engine keeps that text in
+`data-mb-tip-saved` and `title` is empty. The specs only passed because, on
+the old build, something above the table grew by ~27 px after the click and
+moved the button out from under the pointer. The specs now read the tooltip
+text from wherever it lives.
+
+Live sweep (`tests/support/probe-sph-unpinned.js`, 1400 px, every reported
+page plus every `tests/pagetypes.json` pageType, stopped after 3 pages each):
+nothing left behind, except on edit/notes-received. There MB puts
+`<span class="new-notes-alert-checkbox"><p>…</p></span>` straight into
+`#content`, between the `<h1>` and the filter `<form>`. That is an inline
+element beside the data table, the case `_sphContentBodies()` had assumed
+no page has. It is alone on its line, so its natural left is the parent's
+edge. `_sphAloneOnLine()` now lets such an element be pinned. Pinned as an
+inline box it still scrolled: Chromium's sticky on an inline box does not
+carry the block-in-inline `<p>` along. While pinned it is `display: block`
+(`.mb-sph-inline`, no `!important`, so an inline `display: none` still wins).
+Its native display is captured on first sight with position and z-index
+(`_sphNativeStyle()`), so the class cannot feed back into the decision.

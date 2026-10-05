@@ -1,5 +1,27 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Scrolling a wide table sideways no longer leaves page content behind under the pinned bars. The big cover-art strip above a table now stays in line with its h2 or h3 bar; while the page is scrolled it wraps to the window's width. The same goes for the text and forms above a table (an alias page's introduction, \"is subscribed to:\" and its list, a search form, \"Found … results\"), and for the \"Loaded … Fetching …\" status line on pages whose title has no entity header, such as ratings, ISRC and search pages. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers.",
+          "On pages with several sub-tables, such as a user's ratings, the big cover-art strip is now indented under its h3 bar like the table below it, instead of starting at the h2's edge.",
+          "On a work's page, the Wikipedia licence note no longer covers the \"Continue reading at Wikipedia...\" link while a wide table is scrolled sideways.",
+          "The sticky column no longer loses its docked look after the page refreshes its layout while scrolled to the right (for example after resizing the window). Columns could then show through in the strip to its left until you scrolled back. This came with WIP.1."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A table that fits in the window now stays completely in place while the page scrolls sideways, like the bars. This covers an artist's one-column \"Artist credits\" list, or a short sub-table next to wide ones on a ratings page. Before, such a table scrolled out of view, sticky column included.",
+          "The \"Add a new alias\" link is removed from the consolidated Aliases pages of artists and all other entities."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-05",
     "sections": [

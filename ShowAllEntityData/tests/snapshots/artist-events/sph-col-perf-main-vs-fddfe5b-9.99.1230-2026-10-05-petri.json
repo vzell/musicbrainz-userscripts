@@ -1,0 +1,257 @@
+{
+  "harness": "tests/support/capture-sph-col-perf.js",
+  "page": {
+    "pageType": "artist-events",
+    "tableMode": "single",
+    "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/events",
+    "fixture": "tests/fixtures/saved-data/artist-events.json.gz"
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 900
+  },
+  "rounds": 9,
+  "arms": [
+    {
+      "label": "main",
+      "ref": "main",
+      "commit": "45f3584ae9c835d25eb19afbc72893652b508696",
+      "version": "9.99.1230+2026-10-05"
+    },
+    {
+      "label": "branch",
+      "ref": "fddfe5b",
+      "commit": "fddfe5bd1586dfb1064bfe87f9165869790bdaf2",
+      "version": "9.99.1230+2026-10-05"
+    }
+  ],
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 33.5,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 21.3
+    },
+    "claudeSinceBoot": true
+  },
+  "startedAt": "2026-10-05T11:18:47.262Z",
+  "finishedAt": "2026-10-05T11:26:52.119Z",
+  "summary": {
+    "main": {
+      "engaged": 9,
+      "stamped": 0,
+      "n": 9,
+      "longAfterRender": {
+        "median": 975
+      },
+      "sort": {
+        "median": 5832
+      },
+      "quietWait": {
+        "median": 4541
+      },
+      "scroll": {
+        "median": 0
+      }
+    },
+    "branch": {
+      "engaged": 9,
+      "stamped": 9,
+      "n": 9,
+      "longAfterRender": {
+        "median": 1086,
+        "pairedMedianDiff": 198,
+        "higherInRounds": 7
+      },
+      "sort": {
+        "median": 5982,
+        "pairedMedianDiff": 150,
+        "higherInRounds": 6
+      },
+      "quietWait": {
+        "median": 4524,
+        "pairedMedianDiff": 484,
+        "higherInRounds": 5
+      },
+      "scroll": {
+        "median": 54,
+        "pairedMedianDiff": 52,
+        "higherInRounds": 6
+      }
+    }
+  },
+  "samples": {
+    "main": [
+      {
+        "round": 1,
+        "longAfterRender": 869,
+        "sort": 5848,
+        "quietWait": 6092,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 2,
+        "longAfterRender": 725,
+        "sort": 6266,
+        "quietWait": 3460,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 3,
+        "longAfterRender": 975,
+        "sort": 4508,
+        "quietWait": 4885,
+        "scroll": 101,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 4,
+        "longAfterRender": 886,
+        "sort": 5631,
+        "quietWait": 6878,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 5,
+        "longAfterRender": 922,
+        "sort": 5832,
+        "quietWait": 3537,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 6,
+        "longAfterRender": 1191,
+        "sort": 5915,
+        "quietWait": 3669,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 7,
+        "longAfterRender": 1007,
+        "sort": 6131,
+        "quietWait": 3430,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 8,
+        "longAfterRender": 1099,
+        "sort": 5753,
+        "quietWait": 6887,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false
+      },
+      {
+        "round": 9,
+        "longAfterRender": 1001,
+        "sort": 5724,
+        "quietWait": 4541,
+        "scroll": 143,
+        "engaged": true,
+        "stamped": false
+      }
+    ],
+    "branch": [
+      {
+        "round": 1,
+        "longAfterRender": 1067,
+        "sort": 5051,
+        "quietWait": 7571,
+        "scroll": 54,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 2,
+        "longAfterRender": 1026,
+        "sort": 5594,
+        "quietWait": 4524,
+        "scroll": 94,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 3,
+        "longAfterRender": 1235,
+        "sort": 6236,
+        "quietWait": 3500,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 4,
+        "longAfterRender": 1170,
+        "sort": 5672,
+        "quietWait": 4885,
+        "scroll": 144,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 5,
+        "longAfterRender": 1086,
+        "sort": 5982,
+        "quietWait": 6105,
+        "scroll": 93,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 6,
+        "longAfterRender": 1255,
+        "sort": 6469,
+        "quietWait": 5180,
+        "scroll": 52,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 7,
+        "longAfterRender": 1237,
+        "sort": 6524,
+        "quietWait": 3914,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 8,
+        "longAfterRender": 1073,
+        "sort": 5634,
+        "quietWait": 4410,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true
+      },
+      {
+        "round": 9,
+        "longAfterRender": 952,
+        "sort": 6475,
+        "quietWait": 4441,
+        "scroll": 144,
+        "engaged": true,
+        "stamped": true
+      }
+    ]
+  }
+}

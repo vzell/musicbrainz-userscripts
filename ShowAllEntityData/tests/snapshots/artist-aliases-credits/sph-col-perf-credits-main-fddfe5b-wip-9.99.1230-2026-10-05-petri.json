@@ -1,0 +1,341 @@
+{
+  "harness": "tests/support/capture-sph-col-perf.js",
+  "page": {
+    "pageType": "artist-aliases",
+    "tableMode": "single",
+    "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases",
+    "fixture": null
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 900
+  },
+  "rounds": 7,
+  "arms": [
+    {
+      "label": "main",
+      "ref": "main",
+      "commit": "45f3584ae9c835d25eb19afbc72893652b508696",
+      "version": "9.99.1230+2026-10-05"
+    },
+    {
+      "label": "fddfe5b",
+      "ref": "fddfe5b",
+      "commit": "fddfe5bd1586dfb1064bfe87f9165869790bdaf2",
+      "version": "9.99.1230+2026-10-05"
+    },
+    {
+      "label": "head",
+      "ref": "WORKTREE",
+      "commit": null,
+      "version": "9.99.1230+2026-10-05"
+    }
+  ],
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 34.8,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 22.6
+    },
+    "claudeSinceBoot": true
+  },
+  "startedAt": "2026-10-05T12:45:16.916Z",
+  "finishedAt": "2026-10-05T12:47:36.547Z",
+  "summary": {
+    "main": {
+      "engaged": 7,
+      "stamped": 0,
+      "pinnedTable": 0,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0
+      },
+      "sort": {
+        "median": 343
+      },
+      "quietWait": {
+        "median": 803
+      },
+      "scroll": {
+        "median": 0
+      }
+    },
+    "fddfe5b": {
+      "engaged": 7,
+      "stamped": 7,
+      "pinnedTable": 0,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      },
+      "sort": {
+        "median": 345,
+        "pairedMedianDiff": -3,
+        "higherInRounds": 2
+      },
+      "quietWait": {
+        "median": 803,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 2
+      },
+      "scroll": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      }
+    },
+    "head": {
+      "engaged": 7,
+      "stamped": 0,
+      "pinnedTable": 7,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      },
+      "sort": {
+        "median": 401,
+        "pairedMedianDiff": 58,
+        "higherInRounds": 7
+      },
+      "quietWait": {
+        "median": 803,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      },
+      "scroll": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      }
+    }
+  },
+  "samples": {
+    "main": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 348,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 350,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 337,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 334,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 343,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 341,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 350,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      }
+    ],
+    "fddfe5b": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 355,
+        "quietWait": 805,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 345,
+        "quietWait": 804,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 334,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 370,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 333,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 340,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 346,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      }
+    ],
+    "head": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 407,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 402,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 382,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 392,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 401,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 415,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 401,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      }
+    ]
+  }
+}

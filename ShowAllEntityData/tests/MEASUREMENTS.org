@@ -3232,3 +3232,105 @@ MB's table border moved onto the edge cells) came after these runs. On
 artist-events they add a restyle of the cells before the sticky one, and one
 relayout when the border moves. Measure again before merging if the open
 question above is pursued.
+
+* 2026-10-05 — sticky column docks at its table's left, re-measured (branch feature/sticky-col-align), artist-events (petri)
+
+The vzell-lap entry above, repeated on petri (24 CPUs, 31 GB) as
+org/sticky-bugs.org item 5 asked. Its harness was scratch and never
+committed; it is rebuilt and committed now as
+=tests/support/capture-sph-col-perf.js=, to the spec recorded above (one
+Chromium, fresh context per sample, =artist-events.json.gz= disk fixture with
+the live page shell, 1600x900, arms round-robin with the order reversed every
+round, frozen userscript copies injected by wrapping =page.addScriptTag=).
+One deliberate deviation: before the "scroll" bracket the harness now waits
+until no long task has run for 1 s. Without that wait the sort's tail work
+(header counts, render tail) landed in the scroll second on BOTH arms, ~3 s
+of long tasks each in a plumbing run, so "scroll" is not the same metric as
+vzell-lap's; =quietWait= records how long that tail took. Raw samples:
+=tests/snapshots/artist-events/sph-col-perf-main-vs-fddfe5b-9.99.1230-2026-10-05-petri.json=.
+
+Arms: =main= (9.99.1230) and =fddfe5b= — which, unlike the vzell-lap runs,
+INCLUDES the follow-ups ("#" docking under the sticky column, the table
+border on the edge cells). UTC 2026-10-05 11:18:47–11:26:52, 9 rounds.
+Engaged 9/9 on both arms, stamped 9/9 on fddfe5b, 0/9 on main (no column
+alignment there).
+
+** artist-events, single-table, 4174 rows — medians, ms
+
+| Arm       | long tasks after render | sort (settled) | quietWait | scroll |
+|-----------+-------------------------+----------------+-----------+--------|
+| =main=    |                     975 |           5832 |      4541 |      0 |
+| =fddfe5b= |                    1086 |           5982 |      4524 |     54 |
+
+| Paired (fddfe5b − main), 9 rounds | median Δ | fddfe5b higher in |
+|-----------------------------------+----------+-------------------|
+| long tasks after render           |     +198 |               7/9 |
+| sort (settled)                    |     +150 |               6/9 |
+| quietWait                         |     +484 |               5/9 |
+| scroll                            |      +52 |               6/9 |
+
+*Read as:* the vzell-lap finding holds on petri, with the follow-ups
+included: about +200 ms (+20 %) of long tasks in the 2 s after render, the
+branch higher in most rounds (vzell-lap: +213 ms, 15/18). Still not
+attributed to one rule. Sort and quietWait show no difference beyond their
+spread (5/9 and 6/9 rounds). The scroll second is near idle on both arms once
+the sort's tail is excluded; the branch's ~50 ms there is not attributed.
+
+* 2026-10-05 — sticky page headers: content bodies, narrow tables pinned whole (branch feature/sticky-col-align, uncommitted WIP.2), petri
+
+Same harness as the entry above (=tests/support/capture-sph-col-perf.js=),
+petri, every arm in one session. "head" is the working tree with WIP.2
+(content walk, tables pinned whole, docking-point fix, strip indent, inline
+bodies).
+
+** artist-events, single-table, 4174 rows (disk fixture) — UTC 12:31:11–12:42:57, 9 rounds
+
+Raw: =tests/snapshots/artist-events/sph-col-perf-main-fddfe5b-wip-9.99.1230-2026-10-05-petri.json=.
+
+| Arm       | long tasks after render | sort (settled) | quietWait | scroll |
+|-----------+-------------------------+----------------+-----------+--------|
+| =main=    |                    1117 |           5731 |      3525 |      0 |
+| =fddfe5b= |                    1095 |           5562 |      4687 |    101 |
+| head      |                    1075 |           5485 |      4593 |    119 |
+
+| Paired, 9 rounds  | fddfe5b − main | higher | head − fddfe5b | higher |
+|-------------------+----------------+--------+----------------+--------|
+| long tasks        |            −33 |    3/9 |             −8 |    4/9 |
+| sort (settled)    |           −169 |    4/9 |           +134 |    5/9 |
+| quietWait         |          +1164 |    7/9 |           −238 |    3/9 |
+| scroll            |            +58 |    7/9 |             +2 |    5/9 |
+
+*Read as:* WIP.2 adds nothing measurable on this page: head and fddfe5b are
+indistinguishable on every metric, as expected, since its one table is wider
+than the window and is never pinned whole. The "long tasks after render"
+difference of the session above (+198, 7/9) did not recur in this one (−33,
+3/9), so it is within session-to-session spread. *Flag, from fddfe5b, not
+WIP.2:* quietWait, the time from the sort's settled status until the main
+thread has been quiet for 1 s, is higher with the column alignment in both
+sessions: +484 ms in 5/9 rounds there, +1164 ms in 7/9 here (main 3.4–4.5 s,
+fddfe5b 4.3–7.4 s). Not attributed.
+
+** artist aliases → Artist credits, 521 rows, one visible column (live) — narrow table pinned whole
+
+Fetched live (outside every bracket), auto-resize on, 1600x900. This table
+fits the window, so WIP.2 pins it whole (=mb-sph-table=, 7/7); on =main= and
+=fddfe5b= it is not pinned. Long tasks after render and on scroll were 0 on
+every arm; the page is small.
+
+| Session (UTC 2026-10-05) | Arm                          | sort (settled), median ms | head − main |   higher |
+|--------------------------+------------------------------+---------------------------+-------------+----------|
+| 12:43–12:45, 7 rounds    | =main= / head                |                 339 / 398 |         +59 |      7/7 |
+| 12:45–12:47, 7 rounds    | =main= / =fddfe5b= / head    |           343 / 345 / 401 |         +58 |      7/7 |
+| 12:47–12:50, 7 rounds    | =main= / head / head, no fit |           340 / 407 / 337 | +67 / −4    | 7/7, 3/7 |
+
+"head, no fit" is the working tree with =_sphFitsTable()= returning false
+(=file:= arm), i.e. WIP.2 without whole-table pinning.
+
+*Read as:* pinning a table whole costs about +60 ms per sort on a 521-row
+table (+17–20 %), in every round of three sessions; fddfe5b alone and WIP.2
+without the pinning cost nothing. Raw:
+=tests/snapshots/artist-aliases-credits/sph-col-perf-credits-*-petri.json=
+(sessions 2 and 3; session 1's file was overwritten by session 2's run and
+not kept — its numbers are copied from the console).
+Flagged to the user before going on, per the performance gate. Whether the
+cost grows with the row count was not measured.

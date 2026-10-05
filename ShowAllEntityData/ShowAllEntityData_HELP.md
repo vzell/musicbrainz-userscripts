@@ -664,13 +664,19 @@ header needs.
 **Scrolling a wide table sideways** keeps the first (sticky) column and the page
 around it in place: the MusicBrainz top header, the entity
 header with its action bar, the tabs and every h2/h3 bar stay where they are
-instead of scrolling off to the left, and so does the content of any section
-you have expanded above the table, such as Credits or the Annotation
+instead of scrolling off to the left, and so does everything else on the page
+that is not a wide table: any section you have expanded, such as Credits, the
+Annotation or the Wikipedia extract; the text and forms above the table, such
+as an alias page's introduction or a search form; the "Loaded … Fetching …"
+status line; and the big cover-art strips above a table, which wrap to the
+window's width meanwhile
 (*Enable Sticky Page Headers* in 📌 Table stickiness). The sticky column then
 stops in line with the h2 or h3 bar above its table, not at the window's left
 edge, and nothing scrolls into the strip to its left. A column in front of it,
 such as "#" before "Title", stays at that line too, and the sticky column
-slides over it.
+slides over it. A table that fits in the window, such as an artist's
+one-column "Artist credits" or a short sub-table next to wide ones, stays
+completely in place while the page scrolls, like the bars.
 This only engages while the page really is wider than the window.
 It stays off while the sidebar is expanded and columns are not auto-resized,
 because widening the page would push the sidebar off-screen. On a phone or

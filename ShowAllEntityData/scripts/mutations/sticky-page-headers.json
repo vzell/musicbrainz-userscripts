@@ -31,11 +31,28 @@
   },
   {
     "name": "h3 sub-table bars are no longer collected",
-    "why": "Only h2 bars are pinned; the multi-table page is the only place h3 bars exist in this spec.",
+    "why": "KNOWN OVERLAP, recorded rather than hidden: since _sphContentBodies() walks #page, an h3 bar outside a pinned wrapper is also collected as a content body, so dropping h3 from the bar query alone changes nothing on the multi-table page. The next entry plants both.",
     "edits": [
       {
         "find": "(page || document.body).querySelectorAll('h2, h3')",
         "replace": "(page || document.body).querySelectorAll('h2')"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "every h3 sub-table bar",
+    "expect": "pass"
+  },
+  {
+    "name": "h3 sub-table bars are collected by neither path",
+    "why": "Only h2 bars are pinned, and no content body is collected: the h3 sub-table bars of a multi-table page scroll away.",
+    "edits": [
+      {
+        "find": "(page || document.body).querySelectorAll('h2, h3')",
+        "replace": "(page || document.body).querySelectorAll('h2')"
+      },
+      {
+        "find": "        _sphContentBodies().forEach(el => add(el, false, 'body'));\n",
+        "replace": ""
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -86,8 +103,8 @@
     "why": "Once marked, an element's live position is this feature's sticky, so a plain MB header reads as natively sticky on the second pass and loses SPH_Z_CHROME (106).",
     "edits": [
       {
-        "find": "        return nat || { position: cs.position, zIndex: cs.zIndex };",
-        "replace": "        return { position: cs.position, zIndex: cs.zIndex };"
+        "find": "        return nat || { position: cs.position, zIndex: cs.zIndex, display: cs.display };",
+        "replace": "        return { position: cs.position, zIndex: cs.zIndex, display: cs.display };"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -164,8 +181,8 @@
     "why": "The ported rule before WIP.4: plain :focus-within. The global filter is focused after every render, so the data h2 sat at z-index 107 and painted over a vertically sticky MB header.",
     "edits": [
       {
-        "find": "html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
-        "replace": "html.mb-sph-on .mb-sph-target:focus-within {"
+        "find": "html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
+        "replace": "html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within {"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
@@ -177,7 +194,7 @@
     "why": "Over-correction guard: dropping the focus raise altogether would pass the text-field half; the focused-button positive control must catch it.",
     "edits": [
       {
-        "find": "html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
+        "find": "html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within:not(:has(:is(input[type=\"search\"], input[type=\"text\"], input:not([type]), textarea):focus)) {",
         "replace": "html.mb-sph-on .mb-sph-target:not(*) {"
       }
     ],
@@ -212,46 +229,55 @@
     "expect": "fail"
   },
   {
-    "name": "section bodies are not collected",
-    "why": "The content of an expanded Credits / Annotation / Relationships section scrolls away under its pinned bar again: the state the feature shipped in (reported 2026-10-03, release 5cf63c93-...).",
+    "name": "content bodies are not collected",
+    "why": "Only bars are pinned again: expanded sections, the data section's intro text, the status line after a bare h1, the big-image strips and the Wikipedia extract all scroll away under their pinned bars (org/sticky-bugs.org 1, 2, 3b/3c, 4).",
     "edits": [
       {
-        "find": "        _sphSectionBodies().forEach(el => add(el, false, true));\n",
+        "find": "        _sphContentBodies().forEach(el => add(el, false, 'body'));\n",
         "replace": ""
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
-    "grep": "expanding Credits pins its content",
+    "grep": "expanding Credits pins its content|big-image strip|Wikipedia extract|status line after a bare h1|intro text stays put",
     "expect": "fail"
   },
   {
-    "name": "hidden section bodies are not observed",
-    "why": "Expanding a collapsed section changes no other observed WIDTH, so the width-only gate lets nothing through and the newly shown body is only pinned by whatever pass happens next (a resize, a horizontal scroll from scrollX 0). The expand test polls without scrolling or resizing.",
+    "name": "hidden content bodies are not observed",
+    "why": "Showing a hidden body changes no other observed WIDTH, so the width-only gate lets nothing through and the shown body is only pinned by whatever pass happens next. Whole wrappers make most sections ride inside an already pinned target, and expanding the series Relationships happens to change another observed width; a big-image strip shown after the pass that saw it hidden is the case that depends on this alone.",
     "edits": [
       {
-        "find": "        roots.concat(tables, _sphSectionBodies()).forEach(el => {",
+        "find": "        roots.concat(tables, _sphContentBodies()).forEach(el => {",
         "replace": "        roots.concat(tables).forEach(el => {"
       }
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
-    "grep": "expanding Credits pins its content",
+    "grep": "strip shown later",
     "expect": "fail"
   },
   {
-    "name": "every table.tbl guard on section bodies is removed",
-    "why": "Three guards keep data tables scrolling: the data h2 is skipped, a sibling that is/contains table.tbl is skipped, and _sphIsEligible() rejects one for a body. They back each other up, so removing one alone is invisible BY DESIGN; removing all three must pin a data table (series-releases: its table.tbl follows the data h2 directly).",
+    "name": "a big-image strip is built without its table's indent",
+    "why": "The user-reported glitch (debug/big-picture-stripe-indent-bug.html): on a multi-table page the strip sits flush with the h2 while its h3 bar and table are indented 1.5em, and Sticky Page Headers pins it there.",
     "edits": [
       {
-        "find": "            if (h2.querySelector('.mb-row-count-stat')) return;\n",
-        "replace": ""
+        "find": "                                   (table.style.marginLeft ? ' margin-left:' + table.style.marginLeft + ';' : '');",
+        "replace": "                                   '';"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "real big-image strip is indented",
+    "expect": "fail"
+  },
+  {
+    "name": "every table.tbl guard on content bodies is removed",
+    "why": "The walk skips a table.tbl, descends into anything containing one, and _sphIsEligible() rejects a body that is or contains one. Together they keep data tables scrolling; removing all of them makes #content a body, pinned and capped with its tables inside.",
+    "edits": [
+      {
+        "find": "                if (el === sidebar || el.matches('table.tbl')) continue;\n",
+        "replace": "                if (el === sidebar) continue;\n"
       },
       {
-        "find": "                if (el.matches('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox')) continue;\n",
-        "replace": ""
-      },
-      {
-        "find": "                if (el.querySelector('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox, h2')) continue;\n",
-        "replace": "                if (el.querySelector('h2')) continue;\n"
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n                else bodies.push(el);\n",
+        "replace": "                bodies.push(el);\n"
       },
       {
         "find": "            if (el.matches('table.tbl') || el.querySelector('table.tbl')) return false;\n",
@@ -260,6 +286,153 @@
     ],
     "spec": "tests/fixtures/sticky-page-headers.spec.js",
     "grep": "never pinned|bare table.details",
+    "expect": "fail"
+  },
+  {
+    "name": "a section wrapper holding an h2 is descended into again",
+    "why": "The pre-fix shape of bug 2: div.wikipedia-extract is walked into instead of pinned whole, so its h2, body, link and licence note are candidates of their own. The inline guard then keeps the link and the note unpinned, so the extract no longer stays put as a whole.",
+    "edits": [
+      {
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n",
+        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2')) walk(el);\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "Wikipedia extract",
+    "expect": "fail"
+  },
+  {
+    "name": "inline-level bodies may be pinned on their own",
+    "why": "Inline siblings sharing a line, directly in #content beside the data table, are pinned one by one again: both stick at the parent's edge, the second drawn over the first.",
+    "edits": [
+      {
+        "find": "        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "inline siblings sharing one do not overlap",
+    "expect": "fail"
+  },
+  {
+    "name": "an inline element is never pinned on its own",
+    "why": "edit/notes-received's alert checkbox <span>, alone on its line directly in #content, scrolls away again.",
+    "edits": [
+      {
+        "find": "        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;\n",
+        "replace": "        if (kind === 'body' && nat.display.startsWith('inline')) return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "inline element alone on its line",
+    "expect": "fail"
+  },
+  {
+    "name": "a pinned inline element stays inline",
+    "why": "Sticky on an inline box does not carry the block inside it (the <p> of the notes-received <span>) along in Chromium: the content scrolls away under a pinned, empty inline box.",
+    "edits": [
+      {
+        "find": "            html.mb-sph-on .mb-sph-target.mb-sph-inline {\n                display: block;\n            }\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "inline element alone on its line",
+    "expect": "fail"
+  },
+  {
+    "name": "inline siblings are pinned one by one (bug 2 as reported)",
+    "why": "Both halves of the old behaviour: the wrapper is walked into AND inline elements are pinned on their own, each at the wrapper's left edge, so the licence <small> is drawn over the 'Continue reading' <a> once scrolled.",
+    "edits": [
+      {
+        "find": "                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);\n",
+        "replace": "                if (el.id === 'content' || el.querySelector('table.tbl, h2')) walk(el);\n"
+      },
+      {
+        "find": "        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "Wikipedia extract",
+    "expect": "fail"
+  },
+  {
+    "name": "a data table that fits is never pinned whole",
+    "why": "A narrow table scrolls out of view with its sticky column again, since a sticky cell cannot leave its table (bug 3c: the one-column Artist credits table).",
+    "edits": [
+      {
+        "find": "        return tableWidth > 0 && tableWidth <= room + 0.5;\n",
+        "replace": "        return false;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "narrow sub-tables are pinned whole|Show all Artist Credits",
+    "expect": "fail"
+  },
+  {
+    "name": "every data table is pinned whole",
+    "why": "A table wider than the window, pinned whole, cannot be scrolled at all: its right part is out of reach.",
+    "edits": [
+      {
+        "find": "        return tableWidth > 0 && tableWidth <= room + 0.5;\n",
+        "replace": "        return true;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "narrow sub-tables are pinned whole|never pinned",
+    "expect": "fail"
+  },
+  {
+    "name": "a table pinned whole is also measured for column docking",
+    "why": "Its column gets a docking stamp it does not need, measured from a rect that moves with the scroll.",
+    "edits": [
+      {
+        "find": "            if (!sticky || pinned.has(table)) return;\n",
+        "replace": "            if (!sticky) return;\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "narrow sub-tables are pinned whole",
+    "expect": "fail"
+  },
+  {
+    "name": "a table pinned whole is raised by hover again",
+    "why": "The pointer rests on a pinned table most of the time; raised to z-index 107 its rows paint over a vertically sticky MB header (\"mb. STICKY HEADER\" userstyle) as they scroll under it.",
+    "edits": [
+      {
+        "find": "            html.mb-sph-on .mb-sph-target:not(.mb-sph-table):hover {",
+        "replace": "            html.mb-sph-on .mb-sph-target:hover {"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "not raised over a vertically sticky MB header",
+    "expect": "fail"
+  },
+  {
+    "name": "the alias pages' add-alias link is no longer removed",
+    "why": "org/sticky-bugs.org 3a: MB's 'Add a new alias' <p> stays on the rendered page.",
+    "edits": [
+      {
+        "find": "                // Same \"Add a new alias\" <p> as on 'entity-aliases'.\n                removeSelectors: ['#content > p:has(> a[href$=\"/add-alias\"])']\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "Add a new alias",
+    "expect": "fail"
+  },
+  {
+    "name": "the docking point is read from a cell's position again",
+    "why": "fddfe5b read p from the right edge of the cell before the sticky one, which docks too. A pass that runs while scrolled reads p as scrollX + its width, and the docked class and the gutter mask go off.",
+    "edits": [
+      {
+        "find": "                const w = c.getBoundingClientRect().width;\n                p += w;\n",
+        "replace": "                const r = c.getBoundingClientRect();\n                const w = r.width;\n                if (!p) p = Math.max(0, r.right - innerLeft);\n"
+      }
+    ],
+    "spec": "tests/fixtures/sticky-page-headers.spec.js",
+    "grep": "refresh pass while scrolled keeps the column docked",
     "expect": "fail"
   },
   {

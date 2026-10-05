@@ -647,24 +647,34 @@ test.describe('sticky page headers — expanded section bodies', () => {
     }
 
     /**
-     * Whether any data table, or an ancestor of one, is pinned.
+     * Whether a data table that does NOT fit in the window, or an ancestor
+     * of any data table, is pinned. A table that fits is pinned whole on
+     * purpose (`_sphFitsTable()`); one that does not has to keep scrolling,
+     * and a pinned ancestor would cap it to the viewport.
      *
      * @param {import('@playwright/test').Page} page
      * @returns {Promise<boolean>}
      */
     const dataTablePinned = (page) => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
-        .some((t) => !!t.closest('.mb-sph-target')));
+        .some((t) => !!(t.parentElement && t.parentElement.closest('.mb-sph-target'))
+            || (t.classList.contains('mb-sph-target')
+                && t.getBoundingClientRect().width > document.documentElement.clientWidth)));
 
     /**
-     * Whether an element is a pin target itself.
+     * Whether an element is shown and pinned: a pin target itself, or
+     * carried by a pinned ancestor. Since `_sphContentBodies()` pins any
+     * container without a data table as a whole, a section wrapper such as
+     * `#bottom-credits` or `div.annotation` is the target and its content
+     * rides along inside it. A collapsed (hidden) element is never "shown
+     * and pinned", so the collapsed premises below still mean something.
      *
      * @param {import('@playwright/test').Page} page
      * @param {string} sel
      * @returns {Promise<boolean>}
      */
-    const isTarget = (page, sel) => page.evaluate((s) => {
+    const isPinned = (page, sel) => page.evaluate((s) => {
         const el = document.querySelector(s);
-        return !!el && el.classList.contains('mb-sph-target');
+        return !!el && el.getClientRects().length > 0 && !!el.closest('.mb-sph-target');
     }, sel);
 
     test('expanding Credits pins its content, and its Release / Release group bars ride along', async ({ page }) => {
@@ -679,14 +689,14 @@ test.describe('sticky page headers — expanded section bodies', () => {
                 && (credits.compareDocumentPosition(tracklist) & Node.DOCUMENT_POSITION_FOLLOWING));
         });
         expect(order, 'premise: Credits is relocated above the Tracklist (data) h2').toBe(true);
-        expect(await isTarget(page, '#release-relationships'), 'premise: collapsed, not pinned').toBe(false);
+        expect(await isPinned(page, '#release-relationships'), 'premise: collapsed, not pinned').toBe(false);
 
         // A real click on the bar; nothing else (no scroll, no resize) may
         // be needed for the pass that pins the newly shown content.
         await page.locator('#bottom-credits > h2').click();
-        await expect.poll(() => isTarget(page, '#release-relationships'),
-            { message: 'expanding must schedule the pass that pins the body' }).toBe(true);
-        await expect.poll(() => isTarget(page, '#release-group-relationships')).toBe(true);
+        await expect.poll(() => isPinned(page, '#release-relationships'),
+            { message: 'the expanded body is pinned, itself or inside its pinned section wrapper' }).toBe(true);
+        await expect.poll(() => isPinned(page, '#release-group-relationships')).toBe(true);
 
         const sels = ['#release-relationships', '#release-group-relationships'];
         const bars = ['#bottom-credits h3.mb-credits-toggle-h3'];
@@ -696,12 +706,12 @@ test.describe('sticky page headers — expanded section bodies', () => {
         await scrollToRightEnd(page);
         expectPinned(before, await measure(page, sels));
         expectPinned(barsBefore, await measure(page, bars));
-        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+        expect(await dataTablePinned(page), 'no data table wider than the window is ever pinned').toBe(false);
 
         // Collapsing again releases the bodies on the next pass.
         await page.evaluate(() => window.scrollTo(0, window.scrollY));
         await page.locator('#bottom-credits > h2').click();
-        await expect.poll(() => isTarget(page, '#release-relationships')).toBe(false);
+        await expect.poll(() => isPinned(page, '#release-relationships')).toBe(false);
     });
 
     test('Credits Release / Release group h3 bars are indented like the data sub-table h3', async ({ page }) => {
@@ -737,12 +747,13 @@ test.describe('sticky page headers — expanded section bodies', () => {
 
     test('an Annotation with a wiki "== … ==" heading pins its whole text, the heading bar riding along', async ({ page }) => {
         // MusicBrainz renders the wiki heading as an <h2> inside
-        // div.annotation-body. _sphSectionBodies() skips a body that contains
-        // an h2, so the body was never pinned; its heading and the paragraph
-        // after it were pinned on their own, but a sticky box cannot leave
-        // its (unpinned) containing block, so they slid away with it, and the
-        // paragraphs before the heading were not collected at all. The
-        // heading is an h3 bar now, so the body is pinned as a whole.
+        // div.annotation-body. _sphSectionBodies() (since replaced by
+        // _sphContentBodies()) skipped a body that contained an h2, so the
+        // body was never pinned; its heading and the paragraph after it were
+        // pinned on their own, but a sticky box cannot leave its (unpinned)
+        // containing block, so they slid away with it, and the paragraphs
+        // before the heading were not collected at all. The heading is an h3
+        // bar now, and the whole div.annotation is pinned as one body.
         const ANN_URL = 'https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3fd';
         const ANN_SHELL = path.join(__dirname, 'release-tracks-multirow-instruments.html');
         await page.setViewportSize(VIEWPORT);
@@ -759,9 +770,9 @@ test.describe('sticky page headers — expanded section bodies', () => {
         await waitEngaged(page);
 
         const sel = 'div.annotation-body';
-        expect(await isTarget(page, sel), 'premise: collapsed, not pinned').toBe(false);
+        expect(await isPinned(page, sel), 'premise: collapsed, not pinned').toBe(false);
         await page.locator('h2.annotation').click();
-        await expect.poll(() => isTarget(page, sel),
+        await expect.poll(() => isPinned(page, sel),
             { message: 'expanding Annotation must pin its body' }).toBe(true);
 
         const inner = ['div.annotation-body h3', 'div.annotation-body > p'];
@@ -773,31 +784,31 @@ test.describe('sticky page headers — expanded section bodies', () => {
         await scrollToRightEnd(page);
         expectPinned(before, await measure(page, [sel]));
         expectPinned(innerBefore, await measure(page, inner));
-        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+        expect(await dataTablePinned(page), 'no data table wider than the window is ever pinned').toBe(false);
     });
 
     test('a section whose body is a bare table.details (series Relationships) pins that table', async ({ page }) => {
         await openSeries(page, { settingsOverride: { sa_auto_resize_columns: false } });
         await waitEngaged(page);
         const sel = 'h2.relationships + table.details';
-        expect(await isTarget(page, sel), 'premise: collapsed, not pinned').toBe(false);
+        expect(await isPinned(page, sel), 'premise: collapsed, not pinned').toBe(false);
 
         await page.locator('h2.relationships').click();
-        await expect.poll(() => isTarget(page, sel)).toBe(true);
+        await expect.poll(() => isPinned(page, sel)).toBe(true);
         const before = await measure(page, [sel]);
         expect(before.items).toHaveLength(1);
         await scrollToRightEnd(page);
         expectPinned(before, await measure(page, [sel]));
-        expect(await dataTablePinned(page), 'no data table is ever pinned').toBe(false);
+        expect(await dataTablePinned(page), 'no data table wider than the window is ever pinned').toBe(false);
     });
 
-    test('with every section expanded, the data h2\'s own tables are still never pinned', async ({ page }) => {
+    test('with every section expanded, a data table wider than the window is still never pinned', async ({ page }) => {
         await openRelease(page);
         await waitEngaged(page);
         await page.evaluate(() => document.querySelectorAll('h2').forEach((h) => {
             if (h._mbToggle && !h.closest('#sidebar')) h._mbToggle(true);
         }));
-        await expect.poll(() => isTarget(page, '#release-relationships')).toBe(true);
+        await expect.poll(() => isPinned(page, '#release-relationships')).toBe(true);
         expect(await dataTablePinned(page)).toBe(false);
         // The data section's sub-table bars are pinned as bars, as before.
         expect(await page.evaluate(() => Array.from(document.querySelectorAll('h3.mb-toggle-h3'))
@@ -829,6 +840,460 @@ test.describe('sticky page headers — multi-table page', () => {
             'premise: one h3 bar per entity group').toBeGreaterThanOrEqual(5);
         await scrollToRightEnd(page);
         expectPinned(before, await measure(page, sels));
+    });
+});
+
+test.describe('sticky page headers — every block of content that is not a wide data table', () => {
+    // org/sticky-bugs.org: only bars and the bodies of NON-data h2 sections
+    // used to be pinned. So everything else in the page content scrolled
+    // away under its pinned bar: the CAA/EAA big-image strip (bug 1), the
+    // data section's intro text and forms (3b/3c, 4a-e), and the status line
+    // when it follows a bare <h1> (4b-d). Inline siblings were pinned one by
+    // one at the same left, so the Wikipedia extract's licence note was drawn
+    // over its "Continue reading" link (bug 2). A narrow data table scrolled
+    // out of view with its sticky column, because a sticky cell cannot leave
+    // its table (3c). Each test is geometric, like the rest of this file.
+
+    /**
+     * Opens the user-ratings fixture (multi-table) at `width` and expands
+     * every sub-table.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} width - Viewport width.
+     * @returns {Promise<void>}
+     */
+    async function openRatings(page, width) {
+        await page.setViewportSize({ width, height: 800 });
+        await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true });
+        await page.addStyleTag({ content: '#content, #page { padding-left: 24px !important; }' });
+        await page.click('button[data-label="Show Ratings for User"]');
+        await waitForRenderComplete(page);
+        const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .some((t) => t.getClientRects().length === 0));
+        if (await anyHidden()) await page.locator('.mb-master-toggle').first().click();
+        await expect.poll(anyHidden, { message: 'every sub-table expanded' }).toBe(false);
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+    }
+
+    /**
+     * Inserts a CAA-style big-image strip (the markup `_artInitBigPics()`
+     * builds: a wrapping flex row of thumbnails) right before `tableSel`,
+     * then has the feature re-collect, as showing a real strip does through
+     * its observed width. The fixtures run with CAA off
+     * (`FIXTURE_SETTINGS_OVERRIDE`), so the strip is built here.
+     *
+     * @param {import('@playwright/test').Page} page
+     * @param {number} tableIndex - Which `table.tbl` the strip belongs to.
+     * @returns {Promise<void>}
+     */
+    async function insertStrip(page, tableIndex) {
+        const passes = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        await page.evaluate((i) => {
+            const table = document.querySelectorAll('table.tbl')[i];
+            const box = document.createElement('div');
+            box.className = 'mb-caa-bigbox';
+            box.id = `mb-caa-bigbox-${i}`;
+            box.dataset.caaVisible = 'true';
+            box.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0px; min-height: 0px;';
+            for (let k = 0; k < 40; k++) {
+                const img = document.createElement('div');
+                img.style.cssText = 'width: 120px; height: 120px; background: #8a6;';
+                box.appendChild(img);
+            }
+            table.before(box);
+            window.dispatchEvent(new Event('resize'));
+        }, tableIndex);
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses()))
+            .toBeGreaterThan(passes);
+    }
+
+    test('single-table: the big-image strip above the table stays put', async ({ page }) => {
+        await openSeries(page, { css: '#content { padding-left: 24px !important; }' });
+        await waitEngaged(page);
+        await insertStrip(page, 0);
+        await expect.poll(() => page.evaluate(() =>
+            document.querySelector('.mb-caa-bigbox').classList.contains('mb-sph-target'))).toBe(true);
+        const sels = ['.mb-caa-bigbox', '#content h2'];
+        const before = await measure(page, sels);
+        expect(before.items.length, 'premise: the strip and the h2 bars').toBeGreaterThanOrEqual(2);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+        // It is pinned at the line of the bar above it, not at the window edge.
+        const lefts = await page.evaluate(() => ({
+            strip: document.querySelector('.mb-caa-bigbox').getBoundingClientRect().left,
+            bar: Array.from(document.querySelectorAll('#content h2'))
+                .find((h) => h.querySelector('.mb-row-count-stat')).getBoundingClientRect().left,
+        }));
+        expect(Math.abs(lefts.strip - lefts.bar), 'the strip docks in line with its h2 bar').toBeLessThanOrEqual(1);
+    });
+
+    test('multi-table: a big-image strip between an h3 bar and its table stays put', async ({ page }) => {
+        await openRatings(page, 700);
+        // The widest sub-table, so its h3 bar, strip and table all exist and
+        // the table keeps scrolling.
+        const idx = await page.evaluate(() => {
+            const ts = Array.from(document.querySelectorAll('table.tbl'));
+            return ts.indexOf(ts.slice().sort((a, b) => b.getBoundingClientRect().width
+                - a.getBoundingClientRect().width)[0]);
+        });
+        await insertStrip(page, idx);
+        await expect.poll(() => page.evaluate(() =>
+            document.querySelector('.mb-caa-bigbox').classList.contains('mb-sph-target'))).toBe(true);
+        const sels = ['.mb-caa-bigbox', 'h3.mb-toggle-h3'];
+        const before = await measure(page, sels);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+    });
+
+    test('multi-table: a real big-image strip is indented like its h3 bar, before and after scrolling', async ({ page }) => {
+        // _artInitBigPics() builds the strip right before its table. On a
+        // multi-table page every sub-table and h3 bar is indented 1.5em, and
+        // the strip used to be built without that indent: it sat flush with
+        // the h2, and Sticky Page Headers pinned it there (user report,
+        // debug/big-picture-stripe-indent-bug.html). CAA on here; the GM stub
+        // answers every image with a 404, but the strip is built regardless.
+        await page.setViewportSize({ width: 1300, height: 800 });
+        await loadUserscriptPage(page, {
+            url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true,
+            settingsOverride: { sa_enable_caa_pics: true, sa_art_idb_enable: false },
+        });
+        await page.click('button[data-label="Show Ratings for User"]');
+        await waitForRenderComplete(page);
+        const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .some((t) => t.getClientRects().length === 0));
+        if (await anyHidden()) await page.locator('.mb-master-toggle').first().click();
+        await expect.poll(anyHidden, { message: 'every sub-table expanded' }).toBe(false);
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+        // With every image a 404 the builder leaves the strip empty and
+        // possibly hidden; its box is what carries the indent, so show it
+        // (as its toggle button would) and let the feature re-collect.
+        await expect.poll(() => page.evaluate(() => document.querySelectorAll('.mb-caa-bigbox').length),
+            { message: 'premise: _artInitBigPics() built a strip' }).toBeGreaterThan(0);
+        const passes = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        await page.evaluate(() => {
+            document.querySelectorAll('.mb-caa-bigbox').forEach((b) => {
+                b.style.display = 'flex';
+                b.style.minHeight = '40px';
+            });
+            window.dispatchEvent(new Event('resize'));
+        });
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses())).toBeGreaterThan(passes);
+        // Compared with the strip's own TABLE, not the h3: both are indented
+        // 1.5em of the same font size, while the bare fixture (no MB
+        // stylesheet) gives the h3 a larger font, so its 1.5em is wider.
+        // Live, MB's stylesheet puts all three on one line (34 px in the
+        // reported snapshot).
+        const offsets = () => page.evaluate(() => Array.from(document.querySelectorAll('.mb-caa-bigbox'))
+            .filter((b) => b.getClientRects().length > 0)
+            .map((b) => {
+                const table = b.nextElementSibling;
+                return {
+                    strip: b.getBoundingClientRect().left,
+                    parent: b.parentElement.getBoundingClientRect().left,
+                    table: table.getBoundingClientRect().left,
+                };
+            }));
+        const at0 = await offsets();
+        expect(at0.length, 'premise: a rendered big-image strip').toBeGreaterThan(0);
+        expect(at0.every((o) => o.table - o.parent > 10), 'premise: the sub-table is indented').toBe(true);
+        expect(at0.every((o) => Math.abs(o.strip - o.table) <= 1),
+            `strips indented like their table at scrollX 0: ${JSON.stringify(at0)}`).toBe(true);
+        expect(await scrollToRightEnd(page), 'premise: the page scrolls').toBeGreaterThan(500);
+        const end = await offsets();
+        expect(end.every((o, i) => Math.abs(o.strip - at0[i].strip) <= 1),
+            `strips still at that line when scrolled: ${JSON.stringify(end)}`).toBe(true);
+    });
+
+    test('Wikipedia extract: "Continue reading" and the licence note stay in place and apart', async ({ page }) => {
+        // MB's own markup (debug/wikipedia-overwritten-come-together.html),
+        // loaded into the page by MB's JS after load; the bare fixture has
+        // none, so it is added before the render.
+        await openSeries(page, {
+            css: '#content { padding-left: 24px !important; }',
+            beforeRender: (p) => p.evaluate(() => {
+                const div = document.createElement('div');
+                div.className = 'wikipedia-extract';
+                div.id = 'mb-test-wiki';
+                div.innerHTML = '<h2 class="wikipedia">Wikipedia</h2>'
+                    + '<div class="wikipedia-extract-body wikipedia-extract-collapse"><p>"Come Together" is a song '
+                    + 'by the English rock band the Beatles.</p></div>'
+                    + '<a href="https://en.wikipedia.org/wiki/Come_Together">Continue reading at Wikipedia...</a> '
+                    + '<small>Wikipedia content provided under the terms of the '
+                    + '<a href="https://creativecommons.org/licenses/by-sa/3.0/">Creative Commons BY-SA license</a></small>';
+                document.querySelector('#content > .tabs').after(div);
+            }),
+        });
+        await waitEngaged(page);
+        const read = () => page.evaluate(() => {
+            const a = document.querySelector('#mb-test-wiki > a').getBoundingClientRect();
+            const s = document.querySelector('#mb-test-wiki > small').getBoundingClientRect();
+            return { aLeft: a.left, aRight: a.right, sLeft: s.left, sTop: s.top, aTop: a.top };
+        });
+        const before = await measure(page, ['#mb-test-wiki']);
+        expect(before.items).toHaveLength(1);
+        const at0 = await read();
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, ['#mb-test-wiki']));
+        const end = await read();
+        expect(end.sLeft, 'the licence note still starts after the link').toBeGreaterThanOrEqual(end.aRight - 1);
+        expect(end.aLeft - at0.aLeft, 'the link did not move').toBeCloseTo(0, 0);
+        expect(end.sLeft - at0.sLeft, 'the licence note did not move').toBeCloseTo(0, 0);
+    });
+
+    test('an inline element alone on its line beside the table stays put; inline siblings sharing one do not overlap', async ({ page }) => {
+        // edit/notes-received (found by tests/support/probe-sph-unpinned.js):
+        // MB puts <span class="new-notes-alert-checkbox"><p>…</p></span>
+        // straight into #content between the h1 and the filter form. #content
+        // holds the data table, so it is walked into, and its inline child
+        // has to be pinned on its own. Markup copied from
+        // tests/snapshots/notes-received/raw.html; the two inline siblings
+        // after it are the shape that must NOT be pinned one by one (bug 2).
+        await openSeries(page, {
+            css: '#content { padding-left: 24px !important; }',
+            beforeRender: (p) => p.evaluate(() => {
+                const tabs = document.querySelector('#content > .tabs');
+                tabs.insertAdjacentHTML('afterend', '<span class="new-notes-alert-checkbox"><p><label>'
+                    + '<input id="alert-new-edit-notes" type="checkbox" checked> Show me an alert whenever I '
+                    + 'receive a new edit note.</label></p></span><form><input type="text"></form>'
+                    + '<a id="mb-test-inl-a" href="#">first inline</a> <small id="mb-test-inl-s">second inline</small>'
+                    + '<div>a block after them</div>');
+            }),
+        });
+        await waitEngaged(page);
+        const sels = ['span.new-notes-alert-checkbox'];
+        const before = await measure(page, sels);
+        expect(before.items, 'premise: the span is rendered').toHaveLength(1);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+        const overlap = await page.evaluate(() => {
+            const a = document.getElementById('mb-test-inl-a').getBoundingClientRect();
+            const s = document.getElementById('mb-test-inl-s').getBoundingClientRect();
+            return { aRight: a.right, sLeft: s.left, sameLine: a.top < s.bottom && s.top < a.bottom };
+        });
+        expect(overlap.sameLine, 'premise: the two inline siblings share a line').toBe(true);
+        expect(overlap.sLeft, 'the second inline sibling is not drawn over the first').toBeGreaterThanOrEqual(overlap.aRight - 1);
+    });
+
+    test('search page: the status line after a bare h1 inside #content stays put', async ({ page }) => {
+        const SEARCH_URL = 'https://musicbrainz.org/search?query=roulette&type=recording&method=indexed';
+        const SEARCH_SHELL = path.join(__dirname, 'search-recordings-continuation.html');
+        await page.setViewportSize({ width: 700, height: 800 });
+        await loadUserscriptPage(page, { url: SEARCH_URL, fixtureFile: SEARCH_SHELL, testMode: true });
+        await page.route('https://musicbrainz.org/search**', (r) =>
+            r.fulfill({ path: SEARCH_SHELL, contentType: 'text/html' }));
+        await page.addStyleTag({ content: '#content { padding-left: 24px !important; }' });
+        await page.click('button[data-label="Show all Search Results for Recordings"]');
+        await waitForRenderComplete(page, { waitForAutoResize: false });
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+        const sels = ['#mb-status-displays-wrapper', '#content > h1'];
+        const before = await measure(page, sels);
+        expect(before.items.map((it) => it.key.replace(/\[\d+\]$/, '')).sort(),
+            'premise: both are rendered').toEqual(sels.slice().sort());
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+    });
+
+    test('a bare h1\'s status line stays put; narrow sub-tables are pinned whole, wide ones scroll', async ({ page }) => {
+        await openRatings(page, 1300);
+        const kinds = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl')).map((t) => ({
+            width: t.getBoundingClientRect().width,
+            left: t.getBoundingClientRect().left,
+            pinned: t.classList.contains('mb-sph-target') && t.classList.contains('mb-sph-table'),
+            stamped: !!t.dataset.mbSphColLeft,
+        })));
+        const at0 = await kinds();
+        const vw = (await overflow(page)).clientWidth;
+        const narrow = at0.filter((t) => t.left + t.width < vw - 30);
+        const wide = at0.filter((t) => t.left + t.width > vw + 30);
+        expect(narrow.length, 'premise: a sub-table that fits').toBeGreaterThan(0);
+        expect(wide.length, 'premise: a sub-table wider than the window').toBeGreaterThan(0);
+        expect(narrow.every((t) => t.pinned), 'every sub-table that fits is pinned whole').toBe(true);
+        expect(wide.some((t) => t.pinned), 'no wider one is pinned').toBe(false);
+        expect(narrow.some((t) => t.stamped), 'a pinned table\'s column is not docked as well').toBe(false);
+
+        const sels = ['#page > #mb-status-displays-wrapper'];
+        const before = await measure(page, sels);
+        // The fixture was saved with the script's own wrapper already in it,
+        // so the page carries two; both have to stay put.
+        expect(before.items.length, 'premise: the status line follows the bare h1').toBeGreaterThan(0);
+        await scrollToRightEnd(page);
+        expectPinned(before, await measure(page, sels));
+        const end = await kinds();
+        const moved = end.map((t, i) => ({ i, d: t.left - at0[i].left, pinned: at0[i].pinned }));
+        expect(moved.filter((m) => m.pinned && Math.abs(m.d) > 1), 'pinned tables that moved').toEqual([]);
+        expect(moved.filter((m) => !m.pinned).every((m) => m.d < -100), 'premise: the wide ones scrolled').toBe(true);
+    });
+
+    test('a big-image strip shown later is pinned without any other trigger', async ({ page }) => {
+        // Showing a strip (the CAA toggle) changes no other observed WIDTH:
+        // only observing the hidden strip itself lets its 0 → W change
+        // through the width gate and schedule the pass that pins it.
+        await openSeries(page, { css: '#content { padding-left: 24px !important; }' });
+        await waitEngaged(page);
+        await insertStrip(page, 0);
+        await expect.poll(() => page.evaluate(() =>
+            document.querySelector('.mb-caa-bigbox').classList.contains('mb-sph-target'))).toBe(true);
+        // Hide it and let a pass see it hidden, so it is unmarked.
+        const p1 = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        await page.evaluate(() => { document.querySelector('.mb-caa-bigbox').style.display = 'none'; });
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses())).toBeGreaterThan(p1);
+        await expect.poll(() => page.evaluate(() =>
+            document.querySelector('.mb-caa-bigbox').classList.contains('mb-sph-target')),
+        { message: 'premise: unmarked while hidden' }).toBe(false);
+        // Show it again: no resize, no scroll.
+        await page.evaluate(() => { document.querySelector('.mb-caa-bigbox').style.display = 'flex'; });
+        await expect.poll(() => page.evaluate(() =>
+            document.querySelector('.mb-caa-bigbox').classList.contains('mb-sph-target')),
+        { message: 'the shown strip is pinned by the pass its own width change scheduled' }).toBe(true);
+    });
+
+    test('a table pinned whole is not raised over a vertically sticky MB header while hovered', async ({ page }) => {
+        // Every other pinned element is raised to z-index 107 while hovered,
+        // so in-place popups escape its stacking context. A pinned TABLE is
+        // left out: the pointer rests on it most of the time, and its rows
+        // would then paint over a vertically sticky header ("mb. STICKY
+        // HEADER" userstyle) as they scroll under it.
+        await page.setViewportSize({ width: 1300, height: 800 });
+        await loadUserscriptPage(page, { url: RATINGS_URL, fixtureFile: RATINGS_SHELL, testMode: true });
+        await page.addStyleTag({ content: 'html > body > div.header { position: sticky; top: 0; z-index: 1; '
+            + 'height: 40px; background: #eee; } #content, #page { padding-left: 24px !important; } '
+            + '#page { padding-bottom: 1500px !important; }' });
+        // This saved fixture has no MB top header; a stand-in, in place
+        // before the feature first sees the page (it keeps an element's own
+        // position and z-index from first sight).
+        await page.evaluate(() => {
+            const hdr = document.createElement('div');
+            hdr.className = 'header';
+            hdr.textContent = 'MusicBrainz';
+            document.body.prepend(hdr);
+        });
+        await page.$eval('button[data-label="Show Ratings for User"]', (b) => b.click());
+        await waitForRenderComplete(page);
+        const anyHidden = () => page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .some((t) => t.getClientRects().length === 0));
+        if (await anyHidden()) await page.locator('.mb-master-toggle').first().click();
+        await expect.poll(anyHidden, { message: 'every sub-table expanded' }).toBe(false);
+        await settleFocusAndPointer(page);
+        await waitEngaged(page);
+        await expect.poll(() => page.evaluate(() => !!document.querySelector('table.tbl.mb-sph-table')),
+            { message: 'premise: a table pinned whole' }).toBe(true);
+
+        // Scroll the pinned table's body rows up under the stuck header.
+        const geo = await page.evaluate(async () => {
+            // The pinned table with the most rows, so rows reach below the header.
+            const t = Array.from(document.querySelectorAll('table.tbl.mb-sph-table'))
+                .sort((a, b) => b.rows.length - a.rows.length)[0];
+            t.dataset.mbTestHover = '1';
+            const hdr = document.querySelector('body > div.header');
+            const row = t.querySelector(':scope > tbody > tr:first-child');
+            const hh = hdr.getBoundingClientRect().height;
+            window.scrollTo(0, row.getBoundingClientRect().top + window.scrollY - hh / 2);
+            await new Promise((r) => requestAnimationFrame(() => r()));
+            const tr = t.getBoundingClientRect();
+            return { x: tr.left + 30, headerMidY: hh / 2, headerBottom: hdr.getBoundingClientRect().bottom,
+                tableTop: tr.top, tableBottom: tr.bottom };
+        });
+        expect(geo.tableTop, 'premise: the table reaches up under the header').toBeLessThan(geo.headerMidY);
+        expect(geo.tableBottom, 'premise: part of the table is below the header')
+            .toBeGreaterThan(geo.headerBottom + 4);
+        await page.mouse.move(geo.x, Math.min(geo.tableBottom - 2, geo.headerBottom + 4));
+        const probe = await page.evaluate(({ x, y }) => {
+            const t = document.querySelector('table[data-mb-test-hover]');
+            const hit = document.elementFromPoint(x, y);
+            return {
+                hovered: t.matches(':hover'),
+                hitHeader: !!(hit && hit.closest('body > div.header')),
+                hitTable: !!(hit && t.contains(hit)),
+            };
+        }, { x: geo.x, y: geo.headerMidY });
+        expect(probe.hovered, 'premise: the pointer is on the table').toBe(true);
+        expect(probe, 'the stuck header paints over the hovered table')
+            .toMatchObject({ hitHeader: true, hitTable: false });
+    });
+
+    for (const [label, tableSel] of [
+        ['Show all Aliases for Artist', 'table.tbl:not(.artist-credits)'],
+        ['Show all Artist Credits for Artist', 'table.tbl.artist-credits'],
+    ]) {
+        test(`artist aliases page (${label}): the intro text stays put, the table's first column stays at its line, `
+            + '"Add a new alias" is gone', async ({ page }) => {
+            const ALIASES_URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases';
+            const ALIASES_SHELL = path.join(__dirname, 'artist-aliases-springsteen.html');
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await loadUserscriptPage(page, { url: ALIASES_URL, fixtureFile: ALIASES_SHELL, testMode: true });
+            await page.route(`${ALIASES_URL}?**`, (r) => r.fulfill({ path: ALIASES_SHELL, contentType: 'text/html' }));
+            // Live, the page overflows by ~120 px even with the 906 px Credits
+            // table: MB's stylesheet makes #page a table whose collapsed
+            // sidebar cell sits beside the auto-resized content. The bare
+            // fixture has neither, so #content is widened by hand; the indent
+            // separates "at its line" from "at the window edge".
+            await page.addStyleTag({ content: '#content { min-width: 2600px !important; } '
+                + '#content { padding-left: 24px !important; }' });
+            // MB renders this link for logged-in editors only, so the
+            // logged-out fixture lacks it; same markup, same place.
+            await page.evaluate(() => {
+                const p = document.createElement('p');
+                p.innerHTML = '<a href="/artist/70248960-cb53-4ea4-943a-edb18f7d336f/add-alias">Add a new alias</a>';
+                document.getElementById('content').appendChild(p);
+            });
+            await page.$eval(`button[data-label="${label}"]`, (b) => b.click());
+            await waitForRenderComplete(page, { waitForAutoResize: false });
+            await settleFocusAndPointer(page);
+            await waitEngaged(page);
+
+            expect(await page.locator('a[href$="/add-alias"]').count(), '"Add a new alias" is removed').toBe(0);
+            const geom = () => page.evaluate((sel) => {
+                const t = document.querySelector(sel);
+                const th = t.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
+                const intro = t.previousElementSibling;
+                return {
+                    th: th.getBoundingClientRect().left,
+                    intro: intro.tagName === 'P' ? intro.getBoundingClientRect().left : NaN,
+                };
+            }, tableSel);
+            const at0 = await geom();
+            expect(at0.intro, 'premise: the intro <p> right above the table').not.toBeNaN();
+            const scrollX = await scrollToRightEnd(page);
+            expect(scrollX, 'premise: the page scrolls further than the table\'s indent').toBeGreaterThan(300);
+            const end = await geom();
+            expect(Math.abs(end.intro - at0.intro), 'the intro text did not move').toBeLessThanOrEqual(1);
+            expect(Math.abs(end.th - at0.th), 'the first column stays at its line').toBeLessThanOrEqual(1);
+        });
+    }
+
+    test('a pinned table that grows wider while scrolled is measured at its natural place', async ({ page }) => {
+        // A property check, not a guard of its own: a table pinned whole has
+        // a rect that travels with the scroll, and in the pass where it has
+        // just outgrown the window _sphContentExtent() still reads that rect.
+        // Sticky never moves it past its containing block, so the extent and
+        // with it every bar's width must come out as at scrollX 0. A natural-
+        // geometry special case for this was tried and taken out again: its
+        // mutation changed nothing (2026-10-05).
+        await openRatings(page, 1300);
+        const maxw = () => page.evaluate(() => document.querySelector('#page > h1').style.getPropertyValue('--mb-sph-maxw'));
+        const idx = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl'))
+            .findIndex((t) => t.classList.contains('mb-sph-table')));
+        expect(idx, 'premise: a table pinned whole').toBeGreaterThanOrEqual(0);
+        await scrollToRightEnd(page);
+        const passes = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        // Wider than the window, but well short of the widest table.
+        await page.evaluate((i) => {
+            const t = document.querySelectorAll('table.tbl')[i];
+            t.style.minWidth = `${document.documentElement.clientWidth + 150}px`;
+        }, idx);
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses())).toBeGreaterThan(passes);
+        await expect.poll(() => page.evaluate((i) =>
+            document.querySelectorAll('table.tbl')[i].classList.contains('mb-sph-table'), idx)).toBe(false);
+        const scrolled = await maxw();
+        // The same pass again at scrollX 0, where every rect is natural.
+        await page.evaluate(() => window.scrollTo(0, window.scrollY));
+        const p2 = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses())).toBeGreaterThan(p2);
+        expect(scrolled, 'bar width computed while scrolled equals the one at scrollX 0').toBe(await maxw());
     });
 });
 
@@ -1062,6 +1527,27 @@ test.describe('sticky page headers — the sticky column docks in line with its 
 
         await scrollToX(page, 0);
         expect((await stickyGeom(page))[0].docked, 'scrolling back takes the mask off again').toBe(false);
+    });
+
+    test('a refresh pass while scrolled keeps the column docked and masked', async ({ page }) => {
+        // The docking point p is the width of the columns before the sticky
+        // one ("#" here). It used to be read from the right edge of "#",
+        // which docks too: a pass that ran while the page was scrolled read
+        // p ≈ scrollX + 40, so the docked class and the gutter mask went off.
+        // On petri the settle-based test above hit that by timing alone
+        // (2026-10-05); this one forces the pass.
+        await openSeries(page, { css: MB_TBL_CSS });
+        await waitEngaged(page);
+        const at0 = (await stickyGeom(page))[0];
+        expect(at0.p, 'premise: a column precedes the sticky one').toBeGreaterThan(10);
+        await scrollToRightEnd(page);
+        expect((await stickyGeom(page))[0].docked, 'premise: docked after scrolling').toBe(true);
+        const passes = await page.evaluate(() => window.__saTest.sphRefreshPasses());
+        await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+        await expect.poll(() => page.evaluate(() => window.__saTest.sphRefreshPasses())).toBeGreaterThan(passes);
+        const after = (await stickyGeom(page))[0];
+        expect(after.docked, 'still docked after a pass at the far right').toBe(true);
+        expect(after.shadow).not.toBe('none');
     });
 
     test('with sticky page headers off the column keeps docking at the window edge', async ({ page }) => {
