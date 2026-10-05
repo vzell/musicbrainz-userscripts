@@ -18980,3 +18980,33 @@ rests on, so nobody "simplifies" them away:
 
 Tests: `sl-scope-bar.spec.js` 23 (8 new), mutations 23 (22 fail as expected, 1
 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bar filters a loaded table; a fixed pull-down hung off-screen (branch feature/sl-scope-bar)
+
+Part 4 of the bar. Country, Year and Copies now filter the loaded table through
+`applyUniqValueSet()`; Format, Album and Category navigate (user's decision,
+2026-10-05: exact mappings only). Design in `docs/claude/springsteenlyrics.md`,
+"After the fetch".
+
+**Defect found by the new specs, in the part-1 code.** `_slPlaceScopePop()` always
+put the `position: fixed` panel under its button. After a render the page had
+scrolled (the global filter takes focus), the bar sat low, and the Country list
+ran past the window's bottom. Playwright reported "element is outside of the
+viewport" and timed out on every entry below the edge. That was not a test
+artefact: a fixed panel cannot be scrolled into view by the page, so a real user
+could not reach those entries either. Live testing missed it because the bar sat
+high whenever a menu was opened there. The fix opens the panel upwards when
+there is more room above and caps its height to the room it opens into
+(`overflow-y: auto` on the panel). It is pinned by "a pull-down opened low on the
+screen fits in the window" and a two-edit mutation.
+
+Two smaller things:
+
+- `_slLoadedTable()` checks for a column filter row before reading
+  `isLoaded`/`allRows`: the bar is built at init, above those `let`s.
+- The Category menu's note first said "This list was fetched with this filter",
+  because the category is always in the query. The category now has its own
+  note.
+
+Tests: `sl-scope-bar.spec.js` 31 (8 new), mutations 29 (28 fail as expected, 1
+recorded pass).

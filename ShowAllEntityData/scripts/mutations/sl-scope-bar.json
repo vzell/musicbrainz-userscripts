@@ -297,5 +297,87 @@
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
     "grep": "newest eight",
     "expect": "fail"
+  },
+  {
+    "name": "after the fetch nothing filters the table",
+    "why": "The hand-off itself: without it every choice reloads the page and throws the loaded table away.",
+    "edits": [
+      {
+        "find": "        return idx >= 0 ? { table, idx, column } : null;",
+        "replace": "        return null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Country filters the table in place",
+    "expect": "fail"
+  },
+  {
+    "name": "a filter the list was fetched with is offered as a table filter",
+    "why": "With f_country=USA in the query the table holds only USA rows; another country as a table filter shows nothing, when only a reload can widen the list.",
+    "edits": [
+      {
+        "find": "        if (facet.keys.some(k => params.has(k))) return null;\n        const table = _slLoadedTable();",
+        "replace": "        const table = _slLoadedTable();"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "still reloads: the table holds only that value",
+    "expect": "fail"
+  },
+  {
+    "name": "the bar does not follow a column cleared elsewhere",
+    "why": "Cleared with the column's own ✕, the bar would still show the country and its chip.",
+    "edits": [
+      {
+        "find": "        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-mb-uniq-values'] });",
+        "replace": "        });"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "own ✕ updates the bar",
+    "expect": "fail"
+  },
+  {
+    "name": "a choice nothing matches clears the column instead",
+    "why": "An empty value set means \"no filter\" to applyUniqValueSet(): a year range with no items would show EVERY row.",
+    "edits": [
+      {
+        "find": "        return hit.length ? hit : [`∅ no ${h.column.toLowerCase()} matches`];",
+        "replace": "        return hit;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "not an unfiltered one",
+    "expect": "fail"
+  },
+  {
+    "name": "two table filters get a reloading Clear all",
+    "why": "With only table filters active there is nothing in the query to drop; a reload would just refetch the same list.",
+    "edits": [
+      {
+        "find": "            const all = document.createElement(urlChips.length ? 'a' : 'button');",
+        "replace": "            const all = document.createElement('a');"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "in-place Clear all",
+    "expect": "fail"
+  },
+  {
+    "name": "a pull-down near the window's bottom hangs past it",
+    "why": "A fixed panel cannot be scrolled into view; its lower entries were out of reach once the bar sat low.",
+    "edits": [
+      {
+        "find": "        const up = below < 240 && above > below;",
+        "replace": "        const up = false;"
+      },
+      {
+        "find": "        pop.style.maxHeight = `${Math.max(120, Math.round(up ? above : below))}px`;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "fits in the window",
+    "expect": "fail"
   }
 ]

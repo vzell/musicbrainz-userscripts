@@ -1373,9 +1373,20 @@ type, and press Enter or *Search*.
 - *Recent* lists your last eight searches, newest first, wherever you started
   them, including the site's own forms. *Forget these searches* empties it.
 
+**Once the table is loaded**, *Country*, *Year* and *Copies* filter the
+**loaded table** instead of reloading the page. They work like that column's 📊
+pick: the table narrows at once, and the chip is marked 📊. The chip's **×** (or
+the column's own ✕) removes just that filter, and with only table filters
+active, *Clear all* clears them in place. *Format*, *Album* and *Category* still
+open another list, because the site's format names are not the text in the
+Format column. Each menu says at the top which kind it is. A filter that the
+list was fetched with (for example *Country: USA* in the address) can only be
+changed by reloading, because the table holds nothing else.
+
 The site's own buttons and forms are only hidden, so switching the setting off
-brings them back. Every choice is an ordinary link: middle-click opens it in a
-new tab, and with a table loaded you are asked first, as usual.
+brings them back. A choice that opens another list is an ordinary link:
+middle-click opens it in a new tab, and with a table loaded you are asked
+first, as usual.
 
 The columns come from what each card shows — no item page is opened:
 

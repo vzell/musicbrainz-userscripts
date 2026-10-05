@@ -332,6 +332,51 @@ from the site's own forms or a bookmark counts too, and a search that never
 navigated does not. The same search opened again moves to the front instead
 of repeating. A cache, not in the config export.
 
+### After the fetch: the bar filters the loaded table — `_slHandoff()`
+
+Decided 2026-10-05: once a list is loaded, a facet whose values ARE a column's
+cell values filters that column instead of reloading. They are listed in
+`_SL_TABLE_FILTER_COLUMNS`: `f_country` → Country, `f_range` → Original year,
+`f_nbcopies`/`f_multi` → Copies. **Format does not map**: the site's codes and
+chip labels (`12i`, `12" vinyl`) are not the cells' free text (`LP`, `2xLP`,
+`4x12" + 7"`). It joins once the formats glossary maps codes to cell text.
+**Album** has no column, and **Category** is another list, so these keep
+navigating. Every menu says which kind it is (`_slAddScopeNote()`).
+
+Rules, each pinned by a mutation:
+
+- **Through `applyUniqValueSet()`, the 📊 dropdown's own exact-value path**,
+  never a typed filter. So the AND with a typed filter, the cache keys, the
+  highlight and the status lines all hold unchanged
+  (`filter-and-cache-invariants.md`). Values come from ALL loaded rows
+  (`_slColumnValues()` over `allRows`), not only the visible ones.
+- **A facet the query already carries does NOT hand off** (`f_country=USA` in
+  the URL): the server narrowed the fetch, so the table holds only USA, and
+  only a reload can widen it.
+- **Nothing in range is an empty TABLE, not a cleared filter.** An empty value
+  set means "no filter" to `applyUniqValueSet()`, so `_slHandoffValues()`
+  returns a value no cell holds (`∅ no … matches`).
+- **The bar follows the column, both ways.** The bar's label for a choice is
+  kept on the input (`data-mb-sl-bar-label`/`-values`) and believed only while
+  `mbUniqValues` still equals what the bar wrote. Otherwise a 📊 pick is
+  summarised. A `MutationObserver` filtered to `data-mb-uniq-values` (one rAF
+  redraw per burst) catches the column's ✕, the 📊 dropdown and Clear all.
+- **TDZ**: the bar is built at init, long before `let isLoaded`/`allRows`.
+  `_slLoadedTable()` tests for a column filter row FIRST, and none exists
+  before a render.
+- **Clear all** is a link (reload) while the query holds filters, and a button
+  clearing the table filters in place when only those are active.
+
+**A pull-down must fit the window** (`_slPlaceScopePop()`). It is
+`position: fixed`, so the page cannot scroll it into view. It opens upwards
+when there is more room above, and is capped to the room it opens into. The
+hand-off specs found this: after a render the bar sat low and the Country
+list hung past the window, with its last entries unreachable.
+
+Cost: one choice reads one column of every loaded row once (about 5,400
+`getCleanColumnText()` calls on the entry page). That happens on the click, not
+on the filter, sort or render path.
+
 ## Tests
 
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
@@ -341,7 +386,7 @@ of repeating. A cache, not in the config export.
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
-| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. Mutations: `scripts/mutations/sl-scope-bar.json` |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 

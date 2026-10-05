@@ -524,3 +524,200 @@ test.describe('sl compact bar: the bootleg search box', () => {
         await expect(page.locator('.mb-sl-search, .mb-sl-scope-btn[data-mb-sl-facet="recent"]')).toHaveCount(0);
     });
 });
+
+// After the fetch: Country, the year range and Copies filter the LOADED table
+// (decided 2026-10-05); Format, Album and Category keep navigating, and each
+// menu says which it does. The filter goes through applyUniqValueSet(), the
+// 📊 dropdown's exact-value path. What is pinned: the rows the table shows
+// (computed from the loaded rows, never a literal), that the URL does not
+// change, and that the bar's buttons and chips follow the column filter both
+// ways — set from the bar, and cleared from the column's own ✕.
+
+const { renderedSlRows } = require('../support/slFixture');
+const { waitForRenderComplete } = require('../support/browser');
+
+/**
+ * Loads an SL list with the bar on and renders its table.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} kind
+ * @param {object} [opts]  Extra loadSlListPage options (e.g. `url`).
+ * @returns {Promise<Array<Object<string, string>>>} Every row of the full table.
+ */
+async function loadAndRender(page, kind, opts = {}) {
+    const { spec } = await loadSlListPage(page, { kind, settingsOverride: ON, ...opts });
+    await page.$eval(`button[data-label="${spec.button}"]`, (b) => b.click());
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    return renderedSlRows(page);
+}
+
+/**
+ * Clicks the open menu's entry whose label is exactly `text`.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} text
+ * @returns {Promise<void>}
+ */
+async function pick(page, text) {
+    const esc = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await page.locator('.mb-sl-scope-pop .mb-sl-scope-opt', { hasText: new RegExp(`^\\s*${esc}\\s*$`) }).click();
+}
+
+/**
+ * Polls until the table shows exactly `n` rows, then returns them.
+ * @param {import('@playwright/test').Page} page
+ * @param {number} n
+ * @returns {Promise<Array<Object<string, string>>>}
+ */
+async function rowsSettleAt(page, n) {
+    await expect.poll(async () => (await renderedSlRows(page)).length, { timeout: 10000 }).toBe(n);
+    return renderedSlRows(page);
+}
+
+test.describe('sl compact bar: after the fetch, filtering the loaded table', () => {
+    test('Country filters the table in place; the bar shows it as a 📊 chip', async ({ page }) => {
+        const all = await loadAndRender(page, 'sampler');
+        const url = page.url();
+        const entries = await openMenu(page, 'f_country');
+        await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note-table')).toContainText('Filters the loaded table');
+        // Buttons, not links: nothing navigates.
+        expect(await page.$$eval('.mb-sl-scope-pop a.mb-sl-scope-opt', (as) => as.length)).toBe(0);
+        const inTable = new Set(all.map((r) => r.Country));
+        const country = entries.map((e) => e.text).find((t) => t !== 'Any' && inTable.has(t));
+        expect(country, 'premise: a country offered by the wall is in the table').toBeTruthy();
+        const expected = all.filter((r) => r.Country === country).length;
+        expect(expected, 'premise: it narrows').toBeLessThan(all.length);
+
+        await pick(page, country);
+        const shown = await rowsSettleAt(page, expected);
+        expect(shown.every((r) => r.Country === country)).toBe(true);
+        expect(page.url(), 'no reload').toBe(url);
+        expect((await barButtons(page)).find((b) => b.facet === 'f_country')).toMatchObject({ value: country, set: true });
+        const chips = await page.$$eval('.mb-sl-scope-chip-table', (cs) => cs.map((c) => c.firstChild.textContent));
+        expect(chips).toEqual([`Country: ${country}`]);
+        // The menu now marks the choice.
+        const again = await openMenu(page, 'f_country');
+        expect(again.filter((e) => e.cur).map((e) => e.text)).toEqual([country]);
+        await page.keyboard.press('Escape');
+
+        // The chip's × clears the column, in place.
+        await page.click('.mb-sl-scope-chip-table > button');
+        await rowsSettleAt(page, all.length);
+        expect((await barButtons(page)).find((b) => b.facet === 'f_country')).toMatchObject({ value: 'Any', set: false });
+        await expect(page.locator('.mb-sl-scope-chip')).toHaveCount(0);
+    });
+
+    test('clearing the column with its own ✕ updates the bar', async ({ page }) => {
+        const all = await loadAndRender(page, 'sampler');
+        const entries = await openMenu(page, 'f_country');
+        const inTable = new Set(all.map((r) => r.Country));
+        const country = entries.map((e) => e.text).find((t) => t !== 'Any' && inTable.has(t));
+        await pick(page, country);
+        await rowsSettleAt(page, all.filter((r) => r.Country === country).length);
+
+        await page.evaluate(() => {
+            const idx = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+                .findIndex((th) => (th.dataset.colName || th.textContent).trim().startsWith('Country'));
+            document.querySelector(`.mb-col-filter-input[data-col-idx="${idx}"]`)
+                .parentElement.querySelector('.mb-col-filter-clear').click();
+        });
+        await rowsSettleAt(page, all.length);
+        await expect.poll(async () => (await barButtons(page)).find((b) => b.facet === 'f_country').value).toBe('Any');
+        await expect(page.locator('.mb-sl-scope-chip')).toHaveCount(0);
+    });
+
+    test('Year and Copies filter the table; two table chips get an in-place Clear all', async ({ page }) => {
+        const all = await loadAndRender(page, 'sampler');
+        const years = all.map((r) => Number(r['Original year'])).filter((n) => n > 0).sort((a, b) => a - b);
+        const [a, b] = [years[Math.floor(years.length / 4)], years[Math.floor(years.length / 2)]];
+        const expectedYears = all.filter((r) => Number(r['Original year']) >= a && Number(r['Original year']) <= b).length;
+        expect(expectedYears, 'premise: the range narrows').toBeLessThan(all.length);
+
+        await page.click('.mb-sl-scope-btn[data-mb-sl-facet="f_range"]');
+        await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note-table')).toBeVisible();
+        await page.selectOption('#mb-sl-year-from', String(a));
+        await page.selectOption('#mb-sl-year-to', String(b));
+        expect(await page.$eval('.mb-sl-scope-apply', (el) => el.tagName)).toBe('BUTTON');
+        await page.click('.mb-sl-scope-apply');
+        const shown = await rowsSettleAt(page, expectedYears);
+        expect(shown.every((r) => Number(r['Original year']) >= a && Number(r['Original year']) <= b)).toBe(true);
+        expect((await barButtons(page)).find((x) => x.facet === 'f_range').value).toBe(`${a}–${b}`);
+
+        // Copies "= 1" on top: the two column filters AND.
+        await openMenu(page, 'f_multi+f_nbcopies');
+        await pick(page, 'Nb. of copies = 1');
+        const both = all.filter((r) => Number(r['Original year']) >= a && Number(r['Original year']) <= b && r.Copies === '1').length;
+        await rowsSettleAt(page, both);
+
+        expect(await page.$eval('.mb-sl-scope-clear', (el) => el.tagName), 'table filters clear in place').toBe('BUTTON');
+        await page.click('.mb-sl-scope-clear');
+        await rowsSettleAt(page, all.length);
+        await expect(page.locator('.mb-sl-scope-chip')).toHaveCount(0);
+    });
+
+    test('Format and Category still navigate after the fetch, and say they reload', async ({ page }) => {
+        await loadAndRender(page, 'sampler');
+        for (const [facet, note] of [
+            ['f_format', 'Reloads the page and replaces the loaded table.'],
+            ['category', 'Opens another list and replaces the loaded table.'],
+        ]) {
+            await openMenu(page, facet);
+            await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note')).toHaveText(note);
+            expect(await page.$$eval('.mb-sl-scope-pop button.mb-sl-scope-opt', (bs) => bs.length), facet).toBe(0);
+            await page.keyboard.press('Escape');
+        }
+    });
+
+    test('a filter the list was fetched with still reloads: the table holds only that value', async ({ page }) => {
+        await loadAndRender(page, 'collection', {
+            url: 'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i&f_country=USA',
+        });
+        const entries = await openMenu(page, 'f_country');
+        await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note')).toHaveText(
+            'This list was fetched with this filter, so changing it reloads the page and replaces the loaded table.');
+        expect(entries.every((e) => e.href), 'links').toBe(true);
+    });
+
+    test('before the fetch the menus navigate and carry no note', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'sampler', settingsOverride: ON });
+        const entries = await openMenu(page, 'f_country');
+        await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-note')).toHaveCount(0);
+        expect(entries.every((e) => e.href)).toBe(true);
+    });
+
+    test('a choice nothing in the table matches shows an empty table, not an unfiltered one', async ({ page }) => {
+        const all = await loadAndRender(page, 'sampler');
+        const have = new Set(all.map((r) => Number(r['Original year'])));
+        let gap = 1974;
+        while (have.has(gap)) gap++;
+        await page.click('.mb-sl-scope-btn[data-mb-sl-facet="f_range"]');
+        await page.selectOption('#mb-sl-year-from', String(gap));
+        await page.selectOption('#mb-sl-year-to', String(gap));
+        await page.click('.mb-sl-scope-apply');
+        await rowsSettleAt(page, 0);
+        expect((await barButtons(page)).find((b) => b.facet === 'f_range').value).toBe(`${gap}–${gap}`);
+    });
+});
+
+// A pull-down is `position: fixed`, so the page cannot scroll it into view:
+// it has to fit in the window wherever the bar sits. Found by the hand-off
+// specs: after a render the bar sat low, and the Country list ran past the
+// window's bottom with its lower entries out of reach.
+test('a pull-down opened low on the screen fits in the window', async ({ page }) => {
+    await page.setViewportSize({ width: 1000, height: 420 });
+    await loadSlListPage(page, { kind: 'collection-intro', settingsOverride: ON });
+    await page.evaluate(() => {
+        const btn = document.querySelector('.mb-sl-scope-btn[data-mb-sl-facet="f_country"]');
+        window.scrollBy(0, btn.getBoundingClientRect().bottom - (window.innerHeight - 30));
+    });
+    const before = await page.$eval('.mb-sl-scope-btn[data-mb-sl-facet="f_country"]', (b) => b.getBoundingClientRect().bottom);
+    expect(before, 'premise: the button sits near the bottom').toBeGreaterThan(330);
+    await page.$eval('.mb-sl-scope-btn[data-mb-sl-facet="f_country"]', (b) => b.click());
+    const r = await page.$eval('.mb-sl-scope-pop', (p) => {
+        const b = p.getBoundingClientRect();
+        return { top: b.top, bottom: b.bottom, h: window.innerHeight };
+    });
+    expect(r.top, 'inside the window').toBeGreaterThanOrEqual(0);
+    expect(r.bottom, 'inside the window').toBeLessThanOrEqual(r.h);
+    // And its last entry is reachable by scrolling the panel itself.
+    await page.locator('.mb-sl-scope-pop .mb-sl-scope-opt').last().scrollIntoViewIfNeeded();
+    await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-opt').last()).toBeInViewport();
+});

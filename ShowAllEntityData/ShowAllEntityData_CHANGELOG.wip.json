@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.5",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: once a list is loaded, the compact bar's Country, Year and Copies menus filter the loaded table instead of reloading the page, like a pick in that column's 📊 menu. The chip shows 📊, its × removes just that filter, and the bar follows the column when you clear it there instead. Format, Album and Category still open another list, and each menu says at the top which kind it is. A filter the list was fetched with still needs a reload, because the table holds nothing else."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: a compact-bar menu opened while the bar sat low on the screen ran past the bottom of the window, and its last entries could not be reached. Menus now open upwards when there is more room above, and scroll inside when they are taller than the space they have."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.4",
     "date": "2026-10-05",
     "sections": [

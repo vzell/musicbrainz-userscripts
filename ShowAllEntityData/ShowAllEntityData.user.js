@@ -9244,6 +9244,8 @@
                 font-size: 13px;
                 line-height: 1.3;
                 text-align: left;
+                overflow-y: auto;
+                box-sizing: border-box;
             }
             body.mb-sa-host-sl .mb-sl-scope-search {
                 width: 100%;
@@ -9441,6 +9443,58 @@
             }
             body.mb-sa-host-sl .mb-sl-search-msg[hidden] {
                 display: none;
+            }
+            /* After the fetch: entries that filter the loaded table are
+               buttons; the note heading a menu says which kind it holds. */
+            body.mb-sa-host-sl button.mb-sl-scope-opt {
+                width: 100%;
+                border: 0;
+                background: none;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note {
+                margin: 0 0 6px;
+                padding: 4px 6px;
+                border-radius: 4px;
+                background: #fbefd9;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note.mb-sl-scope-note-table {
+                background: #dff2e6;
+                color: #1b5e20;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chips[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button {
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                padding: 0;
+                border: 0;
+                border-radius: 50%;
+                background: none;
+                color: inherit;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button:hover {
+                background: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip-mark {
+                font-size: 11px;
+            }
+            body.mb-sa-host-sl button.mb-sl-scope-clear {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                text-decoration: underline;
+                font: inherit;
             }
             body.mb-sa-host-sl .mb-sl-scope-forget {
                 border: 0;
@@ -9820,6 +9874,200 @@
         if (refocus) btn.focus();
     }
 
+    // --- After the fetch: the bar filters the loaded table ------------------
+    // Once a list is loaded, a server filter would reload the page and throw
+    // the table away, while the same narrowing is a column filter away. So a
+    // facet whose values ARE a column's cell values filters the table instead
+    // (decided 2026-10-05): Country, the year range and Copies. Format does
+    // not map — the site's codes (12i, "12\" vinyl") are not the cells' text
+    // (LP, 2xLP, 4x12" + 7") — and Album has no column, so those, and the
+    // Category, keep navigating, and the menu says which kind it is. Filtering
+    // goes through applyUniqValueSet(), the 📊 dropdown's own exact-value
+    // path, so every cache and highlight rule of that path holds unchanged.
+
+    /**
+     * The table column each table-filterable bar parameter narrows.
+     * @type {Object<string, string>}
+     */
+    const _SL_TABLE_FILTER_COLUMNS = {
+        f_country: 'Country',
+        f_range: 'Original year',
+        f_nbcopies: 'Copies',
+        f_multi: 'Copies'
+    };
+
+    /**
+     * The loaded springsteenlyrics.com table, or `null` before one is
+     * rendered. The filter-row test comes FIRST on purpose: this runs from
+     * the bar, which is built at init, long before `isLoaded`/`allRows` are
+     * declared further down the script — reading them then would throw (TDZ).
+     * No table has a column filter row until a render, which is after both.
+     *
+     * @returns {?HTMLTableElement}
+     */
+    function _slLoadedTable() {
+        const table = document.querySelector('table.mb-sl-table');
+        if (!table || !table.querySelector('thead tr.mb-col-filter-row')) return null;
+        return (isLoaded && allRows.length > 0) ? table : null;
+    }
+
+    /**
+     * Tells whether a facet filters the loaded table instead of navigating:
+     * every key maps to the same column (`_SL_TABLE_FILTER_COLUMNS`), a table
+     * is loaded with that column, and the page's query does NOT already carry
+     * the facet — then the server narrowed the fetch and the table holds only
+     * that value, so only a reload can widen it.
+     *
+     * @param {object} facet  - From `_slReadNavFacets()`.
+     * @returns {?{table: HTMLTableElement, idx: number, column: string}}
+     */
+    function _slHandoff(facet) {
+        if (facet.kind !== 'links' && facet.kind !== 'range') return null;
+        const cols = new Set(facet.keys.map(k => _SL_TABLE_FILTER_COLUMNS[k]));
+        if (cols.size !== 1 || cols.has(undefined)) return null;
+        const params = new URL(window.location.href).searchParams;
+        if (facet.keys.some(k => params.has(k))) return null;
+        const table = _slLoadedTable();
+        if (!table) return null;
+        const column = [...cols][0];
+        const idx = _findColIdxByName(table, column);
+        return idx >= 0 ? { table, idx, column } : null;
+    }
+
+    /**
+     * The distinct, non-empty cell texts of one column over ALL loaded rows
+     * (`allRows`), not only those a filter leaves visible.
+     *
+     * @param {number} idx  - Column index.
+     * @returns {string[]}
+     */
+    function _slColumnValues(idx) {
+        const seen = new Set();
+        allRows.forEach(r => {
+            const cell = r.cells && r.cells[idx];
+            const t = cell ? getCleanColumnText(cell).trim() : '';
+            if (t) seen.add(t);
+        });
+        return Array.from(seen);
+    }
+
+    /**
+     * The column values one bar choice stands for: a country by its name
+     * (matched case-blind against the column, so the site's chip label and
+     * the cards' text may differ in case); "Copies = N" as N; "Duplicates"
+     * as every count of 2 or more; a year range as every year in it the
+     * column holds. When nothing in the table qualifies, a value no cell
+     * holds is returned, so the filter shows an empty table rather than
+     * silently clearing itself (an empty set means "no filter").
+     *
+     * @param {{idx: number, column: string}} h  - From `_slHandoff()`.
+     * @param {Object<string, string>} set        - The choice's parameters.
+     * @returns {string[]}
+     */
+    function _slHandoffValues(h, set) {
+        const vals = _slColumnValues(h.idx);
+        let hit = [];
+        if (set.f_country !== undefined) {
+            const want = set.f_country.toLowerCase();
+            hit = vals.filter(v => v.toLowerCase() === want);
+        } else if (set.f_nbcopies !== undefined) {
+            hit = vals.filter(v => Number(v) === Number(set.f_nbcopies));
+        } else if (set.f_multi !== undefined) {
+            hit = vals.filter(v => Number(v) >= 2);
+        } else if (set.f_range !== undefined) {
+            const [a, b] = set.f_range.split(',').map(Number);
+            hit = vals.filter(v => Number(v) >= a && Number(v) <= b);
+        }
+        return hit.length ? hit : [`∅ no ${h.column.toLowerCase()} matches`];
+    }
+
+    /**
+     * The column filter `<input>` of a hand-off column.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?HTMLInputElement}
+     */
+    function _slHandoffInput(h) {
+        return h.table.querySelector(`thead tr.mb-col-filter-row .mb-col-filter-input[data-col-idx="${h.idx}"]`);
+    }
+
+    /**
+     * What a hand-off column is filtered to, as the bar should name it: the
+     * bar's own label while the column still holds exactly the value set the
+     * bar wrote, else a summary of whatever value set the 📊 dropdown left
+     * there, else `null` (no value set; a typed column filter is not the
+     * bar's to show).
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?string}
+     */
+    function _slTableChoice(h) {
+        const input = _slHandoffInput(h);
+        const vs = input?.dataset.mbUniqValues;
+        if (!vs) return null;
+        if (input.dataset.mbSlBarValues === vs && input.dataset.mbSlBarLabel) return input.dataset.mbSlBarLabel;
+        try {
+            const arr = JSON.parse(vs);
+            return arr.length <= 3 ? arr.join(', ') : `${arr.length} values`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Narrows (or, with an empty `values`, clears) a hand-off column through
+     * `applyUniqValueSet()`, remembers the bar's label for it, and redraws
+     * the bar.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @param {string[]} values  - From `_slHandoffValues()`, or `[]` to clear.
+     * @param {string}   label   - What the bar calls the choice.
+     * @returns {void}
+     */
+    function _slApplyTableFilter(h, values, label) {
+        applyUniqValueSet(values, h.table, h.idx);
+        const input = _slHandoffInput(h);
+        if (input) {
+            if (values.length) {
+                input.dataset.mbSlBarLabel = label;
+                input.dataset.mbSlBarValues = input.dataset.mbUniqValues || '';
+            } else {
+                delete input.dataset.mbSlBarLabel;
+                delete input.dataset.mbSlBarValues;
+            }
+        }
+        _slRenderScopeState();
+    }
+
+    /**
+     * Heads a pull-down with what its entries do once a table is loaded:
+     * filter that table (a hand-off facet), or reload the page and replace
+     * it. Says nothing before a table is loaded, when every entry navigates.
+     *
+     * @param {HTMLElement} pop      - The panel being filled.
+     * @param {object}      facet    - From `_slReadNavFacets()`.
+     * @param {?object}     handoff  - From `_slHandoff()`.
+     * @returns {void}
+     */
+    function _slAddScopeNote(pop, facet, handoff) {
+        let text = '';
+        if (handoff) {
+            text = `Filters the loaded table by its ${handoff.column} column; nothing is reloaded.`;
+        } else if (_slLoadedTable()) {
+            const carried = facet.kind !== 'category' &&
+                facet.keys.some(k => new URL(window.location.href).searchParams.has(k));
+            text = facet.kind === 'category' ? 'Opens another list and replaces the loaded table.'
+                : carried ? 'This list was fetched with this filter, so changing it reloads the page and replaces the loaded table.'
+                    : 'Reloads the page and replaces the loaded table.';
+        }
+        if (!text) return;
+        const note = document.createElement('div');
+        note.className = 'mb-sl-scope-note';
+        note.classList.toggle('mb-sl-scope-note-table', Boolean(handoff));
+        note.textContent = text;
+        pop.appendChild(note);
+    }
+
     /**
      * Reads a bootleg era out of a category label: "Live 1967-1974" → 1967 to
      * 1974, "Live 2005" → 2005 to 2005.
@@ -9930,12 +10178,23 @@
         const cur = _slFacetCurrent(facet, params);
         const path = window.location.pathname;
         const counts = facet.kind === 'category' ? _slReadListCounts() : {};
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
         const list = document.createElement('div');
         list.className = 'mb-sl-scope-list';
-        const addOpt = (label, href, isCur, icon, category) => {
-            const a = document.createElement('a');
+        // `target`: an href (navigates), or a function (filters the table).
+        const addOpt = (label, target, isCur, icon, category) => {
+            const a = document.createElement(typeof target === 'function' ? 'button' : 'a');
             a.className = 'mb-sl-scope-opt';
-            a.href = href;
+            if (typeof target === 'function') {
+                a.type = 'button';
+                a.addEventListener('click', () => {
+                    _slCloseScopePop(true);
+                    target();
+                });
+            } else {
+                a.href = target;
+            }
             if (isCur) {
                 a.classList.add('mb-sl-cur');
                 a.setAttribute('aria-current', 'true');
@@ -9986,6 +10245,12 @@
                 pop.classList.add('mb-sl-scope-pop-wide');
                 pop.appendChild(ruler);
             }
+        } else if (handoff) {
+            const chosen = _slTableChoice(handoff);
+            addOpt('Any', () => _slApplyTableFilter(handoff, [], ''), chosen === null, null);
+            facet.options.forEach(o => addOpt(o.label,
+                () => _slApplyTableFilter(handoff, _slHandoffValues(handoff, o.set), o.label),
+                chosen === o.label, o.icon));
         } else {
             addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
             facet.options.forEach(o => addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }),
@@ -10035,7 +10300,12 @@
      * @returns {void}
      */
     function _slFillScopeRange(pop, facet, params) {
-        const [curFrom, curTo] = (params.get('f_range') || `${facet.min},${facet.max}`).split(',').map(Number);
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
+        const chosen = handoff ? _slTableChoice(handoff) : null;
+        const tableSpan = chosen && chosen.match(/^(\d{4})–(\d{4})$/);
+        const [curFrom, curTo] = tableSpan ? [Number(tableSpan[1]), Number(tableSpan[2])]
+            : (params.get('f_range') || `${facet.min},${facet.max}`).split(',').map(Number);
         const mkSelect = (id, value, aria) => {
             const s = document.createElement('select');
             s.id = id;
@@ -10051,16 +10321,31 @@
         };
         const from = mkSelect('mb-sl-year-from', curFrom || facet.min, 'From year');
         const to = mkSelect('mb-sl-year-to', curTo || facet.max, 'To year');
-        const apply = document.createElement('a');
+        // A link before the fetch; a button that filters the table after it.
+        const apply = document.createElement(handoff ? 'button' : 'a');
         apply.className = 'mb-sl-scope-apply';
         apply.textContent = 'Apply';
-        const sync = () => {
+        const span = () => {
             let a = Number(from.value), b = Number(to.value);
             if (a > b) [a, b] = [b, a];
+            return [a, b];
+        };
+        const sync = () => {
+            if (handoff) return;
+            const [a, b] = span();
             apply.href = (a === facet.min && b === facet.max)
                 ? _slScopeHref({ clear: ['f_range'] })
                 : _slScopeHref({ set: { f_range: `${a},${b}` } });
         };
+        if (handoff) {
+            apply.type = 'button';
+            apply.addEventListener('click', () => {
+                const [a, b] = span();
+                _slCloseScopePop(true);
+                if (a === facet.min && b === facet.max) _slApplyTableFilter(handoff, [], '');
+                else _slApplyTableFilter(handoff, _slHandoffValues(handoff, { f_range: `${a},${b}` }), `${a}–${b}`);
+            });
+        }
         from.addEventListener('change', sync);
         to.addEventListener('change', sync);
         sync();
@@ -10075,7 +10360,17 @@
         row.append(from, dash, to);
         const foot = document.createElement('div');
         foot.className = 'mb-sl-scope-foot';
-        if (params.has('f_range')) {
+        if (handoff && chosen) {
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'mb-sl-scope-opt';
+            reset.textContent = 'Any year';
+            reset.addEventListener('click', () => {
+                _slCloseScopePop(true);
+                _slApplyTableFilter(handoff, [], '');
+            });
+            foot.appendChild(reset);
+        } else if (params.has('f_range')) {
             const reset = document.createElement('a');
             reset.className = 'mb-sl-scope-opt';
             reset.href = _slScopeHref({ clear: ['f_range'] });
@@ -10101,7 +10396,22 @@
             _slCloseScopePop();
             return;
         }
-        pop.style.top = `${Math.round(r.bottom + 4)}px`;
+        // A fixed panel cannot be scrolled into view, so it must FIT: below
+        // the button when there is room, else above it when there is more
+        // room there, and never taller than the space it opens into (it
+        // scrolls inside). Hanging past the window's bottom, its lower
+        // entries were unreachable once the bar sat low on the screen.
+        const below = window.innerHeight - r.bottom - 12;
+        const above = r.top - 12;
+        const up = below < 240 && above > below;
+        pop.style.maxHeight = `${Math.max(120, Math.round(up ? above : below))}px`;
+        if (up) {
+            pop.style.top = '';
+            pop.style.bottom = `${Math.round(window.innerHeight - r.top + 4)}px`;
+        } else {
+            pop.style.bottom = '';
+            pop.style.top = `${Math.round(r.bottom + 4)}px`;
+        }
         pop.style.left = `${Math.round(Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)))}px`;
     }
 
@@ -10166,7 +10476,7 @@
             if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
             if (!_slScopePop.pop.contains(document.activeElement) ||
                 document.activeElement.tagName === 'SELECT') return;
-            const opts = Array.from(_slScopePop.pop.querySelectorAll('a[href]:not([hidden])'));
+            const opts = Array.from(_slScopePop.pop.querySelectorAll('a[href]:not([hidden]), button.mb-sl-scope-opt:not([hidden])'));
             if (opts.length === 0) return;
             e.preventDefault();
             const i = opts.indexOf(document.activeElement);
@@ -10508,6 +10818,91 @@
     }
 
     /**
+     * The installed bar's facets (each with its `btn`), the page's query and
+     * the chip container — what `_slRenderScopeState()` redraws from.
+     * @type {?{facets: object[], params: URLSearchParams, chips: HTMLElement}}
+     */
+    let _slScopeState = null;
+
+    /**
+     * Set while a bar redraw is queued for the next frame, so a burst of
+     * value-set changes (Clear all touches every column) redraws once.
+     * @type {boolean}
+     */
+    let _slScopeRenderQueued = false;
+
+    /**
+     * Redraws the bar's state: each button's value (a table filter the bar
+     * can name wins over the page's query), its "set" styling, and the chips —
+     * one link chip per filter in the query (its × reloads without it), one
+     * 📊 chip per filtered hand-off column (its × clears that column), and
+     * "Clear all" when there are two or more. Called at install and whenever
+     * a 📊 value set changes.
+     *
+     * @returns {void}
+     */
+    function _slRenderScopeState() {
+        const st = _slScopeState;
+        if (!st) return;
+        const urlChips = [];
+        const tableChips = [];
+        st.facets.forEach(facet => {
+            const cur = _slFacetCurrent(facet, st.params);
+            const h = _slHandoff(facet);
+            const tableLabel = h ? _slTableChoice(h) : null;
+            facet.btn.querySelector('.mb-sl-scope-v').textContent = tableLabel ?? cur.label;
+            facet.btn.classList.toggle('mb-sl-set', cur.active || tableLabel !== null);
+            facet.btn.classList.toggle('mb-sl-set-table', tableLabel !== null);
+            if (cur.active) urlChips.push({ text: `${facet.label}: ${cur.label}`, keys: facet.keys });
+            if (tableLabel !== null) tableChips.push({ text: `${facet.label}: ${tableLabel}`, h });
+        });
+
+        st.chips.replaceChildren();
+        urlChips.forEach(({ text, keys }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip';
+            chip.textContent = text;
+            const x = document.createElement('a');
+            x.href = _slScopeHref({ clear: keys });
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            chip.appendChild(x);
+            st.chips.appendChild(chip);
+        });
+        tableChips.forEach(({ text, h }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip mb-sl-scope-chip-table';
+            chip.textContent = text;
+            const mark = document.createElement('span');
+            mark.className = 'mb-sl-scope-chip-mark';
+            mark.textContent = '📊';
+            _setTip(mark, `Filters the loaded table by its ${h.column} column`);
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            x.addEventListener('click', () => _slApplyTableFilter(h, [], ''));
+            chip.append(mark, x);
+            st.chips.appendChild(chip);
+        });
+        if (urlChips.length + tableChips.length > 1) {
+            // A query filter can only go by reloading, which also drops every
+            // table filter; with table filters alone, clear them in place.
+            const all = document.createElement(urlChips.length ? 'a' : 'button');
+            all.className = 'mb-sl-scope-clear';
+            all.textContent = 'Clear all';
+            if (urlChips.length) {
+                all.href = _slScopeHref({ clear: urlChips.flatMap(c => c.keys) });
+            } else {
+                all.type = 'button';
+                all.addEventListener('click', () => tableChips.forEach(({ h }) => _slApplyTableFilter(h, [], '')));
+            }
+            st.chips.appendChild(all);
+        }
+        st.chips.hidden = st.chips.childElementCount === 0;
+    }
+
+    /**
      * Installs the compact category/filter bar on a springsteenlyrics.com
      * list (`sa_sl_compact_nav`): one pull-down per wall of category/filter
      * links, then — where the page has the bootleg search forms — the search
@@ -10534,13 +10929,10 @@
         bar.className = 'mb-sl-scope';
         bar.setAttribute('role', 'toolbar');
         bar.setAttribute('aria-label', 'Category and filters');
-        const active = [];
         facets.forEach(facet => {
-            const cur = _slFacetCurrent(facet, params);
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'mb-sl-scope-btn';
-            if (cur.active) btn.classList.add('mb-sl-set');
             btn.dataset.mbSlFacet = facet.keys.join('+');
             btn.setAttribute('aria-haspopup', 'dialog');
             btn.setAttribute('aria-expanded', 'false');
@@ -10549,14 +10941,13 @@
             k.textContent = `${facet.label}:`;
             const v = document.createElement('span');
             v.className = 'mb-sl-scope-v';
-            v.textContent = cur.label;
             const caret = document.createElement('span');
             caret.className = 'mb-sl-scope-k';
             caret.textContent = '▾';
             btn.append(k, v, caret);
             btn.addEventListener('click', () => _slToggleScopePop(btn, facet, params));
             bar.appendChild(btn);
-            if (cur.active) active.push({ text: `${facet.label}: ${cur.label}`, keys: facet.keys });
+            facet.btn = btn;
         });
 
         let searchMsg = null;
@@ -10585,31 +10976,24 @@
             bar.appendChild(btn);
         }
 
-        if (active.length) {
-            const chips = document.createElement('span');
-            chips.className = 'mb-sl-scope-chips';
-            active.forEach(({ text, keys }) => {
-                const chip = document.createElement('span');
-                chip.className = 'mb-sl-scope-chip';
-                chip.textContent = text;
-                const x = document.createElement('a');
-                x.href = _slScopeHref({ clear: keys });
-                x.textContent = '×';
-                x.setAttribute('aria-label', `Remove ${text}`);
-                chip.appendChild(x);
-                chips.appendChild(chip);
-            });
-            if (active.length > 1) {
-                const all = document.createElement('a');
-                all.className = 'mb-sl-scope-clear';
-                all.href = _slScopeHref({ clear: active.flatMap(a => a.keys) });
-                all.textContent = 'Clear all';
-                chips.appendChild(all);
-            }
-            bar.appendChild(chips);
-        }
-
+        const chips = document.createElement('span');
+        chips.className = 'mb-sl-scope-chips';
+        bar.appendChild(chips);
         if (searchMsg) bar.appendChild(searchMsg);
+        _slScopeState = { facets, params, chips };
+        _slRenderScopeState();
+        // A 📊 value set changed anywhere — the bar's own choice, the column's
+        // ✕, the 📊 dropdown, Clear all — redraws the bar's buttons and chips.
+        // Filtered to that one attribute, so the observer costs nothing on
+        // any other mutation.
+        new MutationObserver(() => {
+            if (_slScopeRenderQueued) return;
+            _slScopeRenderQueued = true;
+            requestAnimationFrame(() => {
+                _slScopeRenderQueued = false;
+                _slRenderScopeState();
+            });
+        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-mb-uniq-values'] });
 
         const first = facets.length ? facets[0].hide[0] : search.hide[0];
         first.parentNode.insertBefore(bar, first);
@@ -10617,7 +11001,7 @@
         if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));
         _slWireScopePopEvents();
         Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ` +
-            `${search ? search.fields.length : 0} search form(s), ${active.length} active filter(s).`);
+            `${search ? search.fields.length : 0} search form(s), ${chips.childElementCount} chip(s).`);
         return bar;
     }
 
