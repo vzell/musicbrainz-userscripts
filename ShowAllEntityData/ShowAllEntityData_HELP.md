@@ -1326,8 +1326,8 @@ springsteenlyrics.com* → *Compact category and filter bar on
 springsteenlyrics.com lists*. On a collection list the site's rows of
 category, format, country, album, year and copies buttons become one row of
 pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
-▾*, and so on. On a bootleg list the category buttons become a *Category* menu
-(the search boxes stay as they are).
+▾*, and so on. On a bootleg list the category buttons become a *Category* menu,
+and the four search forms become one search box (see below).
 
 - Each menu offers exactly what that page's own buttons offer, and the current
   choice has a ✓. The Category menu is grouped (Audio, Video and Print &
@@ -1354,9 +1354,28 @@ pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
 - Each filter in use is shown as a chip after the menus. Its **×** removes just
   that filter; *Clear all* removes them all.
 
-The site's own buttons are only hidden, so switching the setting off brings
-them back. Every choice is an ordinary link: middle-click opens it in a new
-tab, and with a table loaded you are asked first, as usual.
+**The bootleg search box** stands in for the site's four forms (date, title,
+version, public info). The site searches one of them at a time, so the box
+does too. Pick the field with *Auto · Date · Title · Version · Public info*,
+type, and press Enter or *Search*.
+
+- *Auto* searches the date when what you typed is one, and titles otherwise.
+- Dates can be typed as `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+  `Aug 15, 1975` or `15.08.1975`. Slash dates such as `08/09/1975` are not read
+  as dates, because they mean different days in the US and in Europe.
+- A day that does not exist (`1975-02-30`) is pointed out, and *Search* stays
+  off.
+- The site finds **full dates only**: a month or a year (`1975-08`, `Aug 1975`,
+  `1975`) finds nothing there. The box says so and offers the era list that
+  covers it, where you can filter the *First date* column once the table is
+  loaded, or a title search for what you typed instead.
+- On a search's result page the box shows that search, so you can refine it.
+- *Recent* lists your last eight searches, newest first, wherever you started
+  them, including the site's own forms. *Forget these searches* empties it.
+
+The site's own buttons and forms are only hidden, so switching the setting off
+brings them back. Every choice is an ordinary link: middle-click opens it in a
+new tab, and with a table loaded you are asked first, as usual.
 
 The columns come from what each card shows — no item page is opened:
 

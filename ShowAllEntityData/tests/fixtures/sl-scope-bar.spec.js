@@ -302,14 +302,18 @@ function eraBars(page) {
 }
 
 test.describe('sl compact bar: bootleg lists and recorded counts', () => {
-    test('bootlegs: one Category menu, the buttons hidden, the search forms left alone', async ({ page }) => {
+    test('bootlegs: a Category menu, the search box and Recent; buttons and forms hidden', async ({ page }) => {
         await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
         expect(await barButtons(page)).toEqual([
             { facet: 'category', key: 'Category:', value: 'Live 1967-1974', set: false },
+            { facet: 'recent', key: 'Recent:', value: '0', set: false },
         ]);
         expect(await page.$$eval('.element-buttons.mb-sl-nav-hidden a.btn', (as) => as.length)).toBe(21);
-        // The four filter forms are the next change's; they stay as they are.
-        await expect(page.locator('#filter_bootlegs_date')).toBeVisible();
+        // The four search forms are folded into the box: hidden, not removed.
+        expect(await page.$$eval('form[id^="filter_bootlegs_"]', (fs) => fs.map((f) => f.getClientRects().length)))
+            .toEqual([0, 0, 0, 0]);
+        expect(await page.$$eval('.mb-sl-seg-btn', (bs) => bs.map((b) => b.textContent)))
+            .toEqual(['Auto', 'Date', 'Title', 'Version', 'Public info']);
     });
 
     test('a whole list records its exact count; the menu shows it', async ({ page }) => {
@@ -379,5 +383,144 @@ test.describe('sl compact bar: bootleg lists and recorded counts', () => {
         await loadSlListPage(page, { kind: 'collection', settingsOverride: ON });
         expect((await storedCounts(page))['/collection.php?category=album'], 'album with f_format=12i is not the album total')
             .toBeUndefined();
+    });
+});
+
+// The bootleg search box: one box for the site's four forms.
+//
+// The server takes ONE search field at a time and the field is the category
+// (`?cmd=list&category=f_date&f_date=…`); f_date matches full dates only
+// (probed live 2026-10-05: 1975-08-15 → 21, 1975-08 and 1975 → 0), and the
+// site's own date check never runs. What is pinned here is what the box does
+// with what a person types: which URL Search leads to, when Search is
+// disabled, and what the message line says. The URL is asserted on Search's
+// `href`, and one test follows it end to end.
+
+const RECENT_KEY = 'mb_sa_sl_recent_searches';
+
+/**
+ * Types into the search box (after picking a field, if given) and reads the
+ * result: Search's target query (null when disabled) and the message line.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} text
+ * @param {string} [field]  The field button's label, e.g. 'Date'.
+ * @returns {Promise<{q: ?Object<string, string>, disabled: boolean, msg: string, links: Array<{text: string, q: Object<string, string>}>}>}
+ */
+async function typeSearch(page, text, field) {
+    if (field) await page.click(`.mb-sl-seg-btn:text-is("${field}")`);
+    await page.fill('#mb-sl-search-input', text);
+    return page.evaluate(() => {
+        const go = document.querySelector('.mb-sl-search-go');
+        const msg = document.querySelector('.mb-sl-search-msg');
+        const q = (href) => Object.fromEntries(new URL(href).searchParams);
+        return {
+            q: go.hasAttribute('href') ? q(go.href) : null,
+            disabled: go.getAttribute('aria-disabled') === 'true',
+            msg: msg.hidden ? '' : msg.textContent,
+            links: Array.from(msg.querySelectorAll('a')).map((a) => ({ text: a.textContent, q: q(a.href) })),
+        };
+    });
+}
+
+test.describe('sl compact bar: the bootleg search box', () => {
+    test('Auto: a date in any common form searches that date; anything else, titles', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        const date = { cmd: 'list', category: 'f_date', f_date: '1975-08-15' };
+        expect(await typeSearch(page, '1975-08-15')).toMatchObject({ q: date, msg: '' });
+        for (const typed of ['15 Aug 1975', '15 August 1975', 'Aug 15, 1975', '15.08.1975', '  15 aug 1975 ']) {
+            const r = await typeSearch(page, typed);
+            expect(r.q, typed).toEqual(date);
+            expect(r.msg, typed).toBe('Searching the date 1975-08-15.');
+        }
+        expect(await typeSearch(page, 'Born To Run')).toMatchObject({
+            q: { cmd: 'list', category: 'f_title', f_title: 'Born To Run' }, msg: '',
+        });
+        // A slash date reads differently in the US and Europe: not a date.
+        expect((await typeSearch(page, '08/09/1975')).q).toEqual({ cmd: 'list', category: 'f_title', f_title: '08/09/1975' });
+    });
+
+    test('a day that does not exist, or a non-date as a Date, disables Search and says why', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        for (const typed of ['1975-02-30', '31 Feb 1975', '31.04.1980']) {
+            expect(await typeSearch(page, typed), typed)
+                .toMatchObject({ q: null, disabled: true, msg: 'That day does not exist.' });
+        }
+        expect(await typeSearch(page, 'Born', 'Date')).toMatchObject({
+            q: null, disabled: true, msg: 'Type a full date such as 1975-08-15 or 15 Aug 1975.',
+        });
+        expect((await typeSearch(page, '')).disabled, 'empty: nothing to search').toBe(true);
+    });
+
+    test('a partial date points to its era list and offers a title search', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        for (const [typed, when] of [['1975-08', '1975-08'], ['Aug 1975', '1975-08'], ['August 1975', '1975-08'], ['1975', '1975']]) {
+            const r = await typeSearch(page, typed);
+            expect(r.q, `${typed}: the site would answer with nothing`).toBeNull();
+            expect(r.msg, typed).toBe(`The site finds full dates only. Open Live 1975-1977 and filter its First date column for ${when}, or search titles for “${typed}”.`);
+            expect(r.links, typed).toEqual([
+                { text: 'Live 1975-1977', q: { cmd: 'list', category: 'aud_live1975' } },
+                { text: `search titles for “${typed}”`, q: { cmd: 'list', category: 'f_title', f_title: typed } },
+            ]);
+        }
+    });
+
+    test('a field picked by hand searches that field', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        expect((await typeSearch(page, 'soundboard', 'Version')).q)
+            .toEqual({ cmd: 'list', category: 'f_version', f_version: 'soundboard' });
+        expect((await typeSearch(page, '1975-08-15', 'Public info')).q, 'a date typed into another field stays text')
+            .toEqual({ cmd: 'list', category: 'f_publicinfo', f_publicinfo: '1975-08-15' });
+        expect(await page.$$eval('.mb-sl-seg-btn[aria-pressed="true"]', (bs) => bs.map((b) => b.textContent)))
+            .toEqual(['Public info']);
+    });
+
+    test('Enter follows Search', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs', settingsOverride: ON });
+        await page.fill('#mb-sl-search-input', '15 Aug 1975');
+        await Promise.all([
+            page.waitForURL((u) => u.searchParams.get('category') === 'f_date'),
+            page.press('#mb-sl-search-input', 'Enter'),
+        ]);
+        expect(query(page.url())).toEqual({ cmd: 'list', category: 'f_date', f_date: '1975-08-15' });
+    });
+
+    test('a search result page: the box holds that search, and Recent records it once', async ({ page }) => {
+        const older = [{ field: 'f_date', q: '1978-07-07' }, { field: 'f_title', q: 'born' }, { field: 'f_version', q: 'sbd' }];
+        await loadSlListPage(page, {
+            kind: 'bootlegs',
+            url: 'https://springsteenlyrics.com/bootlegs.php?f_title=born&cmd=list&category=f_title',
+            settingsOverride: { ...ON, [RECENT_KEY]: older },
+        });
+        await expect(page.locator('#mb-sl-search-input')).toHaveValue('born');
+        expect(await page.$$eval('.mb-sl-seg-btn[aria-pressed="true"]', (bs) => bs.map((b) => b.textContent))).toEqual(['Title']);
+        // Moved to the front, not repeated.
+        const stored = await page.evaluate((k) => window.__gmValues[k], RECENT_KEY);
+        expect(stored).toEqual([older[1], older[0], older[2]]);
+        expect((await barButtons(page)).find((b) => b.facet === 'recent').value).toBe('3');
+
+        const entries = await openMenu(page, 'recent');
+        expect(entries.map((e) => [e.text, e.cur])).toEqual([['Title: born', true], ['Date: 1978-07-07', false], ['Version: sbd', false]]);
+        expect(query(entries[1].href)).toEqual({ cmd: 'list', category: 'f_date', f_date: '1978-07-07' });
+
+        await page.click('.mb-sl-scope-forget');
+        await expect(page.locator('.mb-sl-scope-pop')).toHaveCount(0);
+        expect(await page.evaluate((k) => window.__gmValues[k], RECENT_KEY)).toEqual([]);
+    });
+
+    test('Recent keeps the newest eight', async ({ page }) => {
+        const eight = Array.from({ length: 8 }, (_, i) => ({ field: 'f_title', q: `t${i}` }));
+        await loadSlListPage(page, {
+            kind: 'bootlegs',
+            url: 'https://springsteenlyrics.com/bootlegs.php?f_date=1975-08-15&cmd=list&category=f_date',
+            settingsOverride: { ...ON, [RECENT_KEY]: eight },
+        });
+        const stored = await page.evaluate((k) => window.__gmValues[k], RECENT_KEY);
+        expect(stored).toEqual([{ field: 'f_date', q: '1975-08-15' }, ...eight.slice(0, 7)]);
+    });
+
+    test('collection pages have no search forms, so no search box', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'collection', settingsOverride: ON });
+        await expect(page.locator('.mb-sl-scope')).toHaveCount(1);
+        await expect(page.locator('.mb-sl-search, .mb-sl-scope-btn[data-mb-sl-facet="recent"]')).toHaveCount(0);
     });
 });

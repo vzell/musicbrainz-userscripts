@@ -193,5 +193,109 @@
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
     "grep": "records its exact count; the menu shows it",
     "expect": "fail"
+  },
+  {
+    "name": "the search forms are not hidden",
+    "why": "The box stands in for the four forms; left visible they still take their pinned row above the list.",
+    "edits": [
+      {
+        "find": "        if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "buttons and forms hidden",
+    "expect": "fail"
+  },
+  {
+    "name": "Auto never reads a date",
+    "why": "Auto is what makes one box do: a typed date must search the date field, not titles.",
+    "edits": [
+      {
+        "find": "            const asDate = field === 'f_date' || (field === 'auto' && d && search.fields.some(f => f.param === 'f_date'));",
+        "replace": "            const asDate = field === 'f_date';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a date in any common form",
+    "expect": "fail"
+  },
+  {
+    "name": "a day the calendar does not have is accepted",
+    "why": "Without the check 1975-02-30 becomes a search the server answers with nothing, which is exactly the silent empty list the site's dead checkForm() gives.",
+    "edits": [
+      {
+        "find": "            return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d)",
+        "replace": "            return true"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "a day that does not exist",
+    "expect": "fail"
+  },
+  {
+    "name": "a partial date finds no era",
+    "why": "The site cannot search a month; the era list that holds it is the useful answer.",
+    "edits": [
+      {
+        "find": "                const era = eras.find(e => d.y >= e.span.from && d.y <= e.span.to);",
+        "replace": "                const era = null;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "points to its era list",
+    "expect": "fail"
+  },
+  {
+    "name": "Enter does not search",
+    "why": "The site's forms submit on Enter; the box must too.",
+    "edits": [
+      {
+        "find": "            if (go.hasAttribute('href')) go.click();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Enter follows Search",
+    "expect": "fail"
+  },
+  {
+    "name": "a search result page opens with an empty box",
+    "why": "Refining a search starts from the search you are looking at.",
+    "edits": [
+      {
+        "find": "        input.value = curField ? (params.get(curField.param) || '') : '';",
+        "replace": "        input.value = '';"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "the box holds that search",
+    "expect": "fail"
+  },
+  {
+    "name": "Recent repeats a search instead of moving it up",
+    "why": "Opening the same search twice would fill the eight slots with copies.",
+    "edits": [
+      {
+        "find": "        const list = [entry].concat(_slReadRecentSearches().filter(e => !(e.field === field && e.q === q)))",
+        "replace": "        const list = [entry].concat(_slReadRecentSearches())"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "Recent records it once",
+    "expect": "fail"
+  },
+  {
+    "name": "Recent grows without bound",
+    "why": "A menu of every search ever made is not a recent list.",
+    "edits": [
+      {
+        "find": "            .slice(0, _SL_RECENT_SEARCH_MAX);",
+        "replace": "            ;"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "newest eight",
+    "expect": "fail"
   }
 ]

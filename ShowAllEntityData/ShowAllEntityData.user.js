@@ -3696,8 +3696,10 @@
                          'chips you can remove one by one. The Category menu marks the current ' +
                          'list and shows each category\'s exact item count once you have ' +
                          'opened it; on the bootleg lists it starts with a timeline of the ' +
-                         'live-show eras. The site\'s own buttons are only hidden, so turning ' +
-                         'this off brings them back unchanged.'
+                         'live-show eras. The bootleg lists\' four search forms become one ' +
+                         'search box that reads dates the way you type them, plus a menu of ' +
+                         'recent searches. The site\'s own buttons and forms are only hidden, ' +
+                         'so turning this off brings them back unchanged.'
         }
 
     };
@@ -9375,6 +9377,79 @@
             body.mb-sa-host-sl .mb-sl-era-axis > span.mb-sl-era-axis-end {
                 right: 0;
             }
+            /* The bootleg search box: a field switch, one input, Search. The
+               message line takes a row of its own under the bar. */
+            body.mb-sa-host-sl .mb-sl-search {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg {
+                display: inline-flex;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn {
+                height: 26px;
+                padding: 0 9px;
+                border: 0;
+                border-left: 1px solid #b0bec5;
+                background: #eceff1;
+                color: #263238;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn:first-child {
+                border-left: 0;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn[aria-pressed="true"] {
+                background: #2b4a7b;
+                color: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-search-input {
+                width: 260px;
+                max-width: 100%;
+                height: 28px;
+                padding: 0 8px;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                box-sizing: border-box;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go {
+                display: inline-flex;
+                align-items: center;
+                height: 28px;
+                padding: 0 14px;
+                border-radius: 6px;
+                background: #2b4a7b;
+                color: #fff;
+                font-weight: bold;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go[aria-disabled="true"] {
+                background: #b0bec5;
+                cursor: default;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg {
+                flex-basis: 100%;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-forget {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                padding: 4px 6px;
+                font-size: 12px;
+            }
         `);
         style.id = 'mb-sl-style';
     }
@@ -10053,6 +10128,7 @@
         pop.setAttribute('role', 'dialog');
         pop.setAttribute('aria-label', facet.label);
         if (facet.kind === 'range') _slFillScopeRange(pop, facet, params);
+        else if (facet.kind === 'recent') _slFillScopeRecent(pop, facet.search);
         else _slFillScopeList(pop, facet, params);
         document.body.appendChild(pop);
         btn.setAttribute('aria-expanded', 'true');
@@ -10103,24 +10179,354 @@
         window.addEventListener('resize', () => _slPlaceScopePop());
     }
 
+    // --- The bootleg search box (part of the compact bar) -------------------
+    // The bootleg lists offer four separate GET forms (date, title, version,
+    // public info), each with its own Go button, each sending its field as
+    // the category (`?f_date=…&cmd=list&category=f_date`). The server takes
+    // ONE of them at a time: f_title=born&f_version=soundboard returns the
+    // same 73 rows as f_title=born (probed live, 2026-10-05). So the bar
+    // keeps one field per search, behind one box with a field switch. The
+    // site's date check, checkForm(), reads `form.filter_date` while the input
+    // is `f_date`, so it throws and never runs; and f_date matches FULL dates
+    // only (1975-08-15 → 21 rows; 1975-08 and 1975 → none). The box reads the
+    // dates people type, says when a day does not exist, and turns a partial
+    // date into a pointer to the era list that holds it.
+
+    /**
+     * GM storage key of the recent bootleg searches: newest first, at most
+     * `_SL_RECENT_SEARCH_MAX`, as `[{ field, q }]`. Recorded when a search
+     * result page is opened with the bar on (`_slRecordRecentSearch()`), so a
+     * search started anywhere (the site's own forms, a bookmark) counts. A
+     * convenience, not a setting: not in the config export.
+     * @type {string}
+     */
+    const _SL_RECENT_SEARCH_KEY = 'mb_sa_sl_recent_searches';
+
+    /**
+     * How many recent searches are kept.
+     * @type {number}
+     */
+    const _SL_RECENT_SEARCH_MAX = 8;
+
+    /**
+     * Reads the page's search forms: every GET form whose `category` hidden
+     * input names its own `f_*` text field (the bootleg lists' four), in page
+     * order, with the label from its "Filter by …" caption and the elements
+     * to hide once the bar stands in for them.
+     *
+     * @param {Document} [doc=document]
+     * @returns {?{fields: Array<{param: string, label: string, placeholder: string}>, hide: Element[]}}
+     *   `null` when the page has no such forms.
+     */
+    function _slReadSearchForms(doc = document) {
+        const fields = [];
+        const forms = [];
+        doc.querySelectorAll('form').forEach(form => {
+            if (form.closest('.navbar, footer')) return;
+            const cat = form.querySelector('input[type="hidden"][name="category"]')?.value || '';
+            const input = cat.startsWith('f_') ? form.querySelector(`input[type="text"][name="${cat}"]`) : null;
+            if (!input) return;
+            const caption = form.parentElement?.querySelector('strong')?.textContent.replace(/\s+/g, ' ').trim() || cat;
+            const label = caption.replace(/^Filter by\s+/i, '').replace(/^./, c => c.toUpperCase());
+            fields.push({ param: cat, label, placeholder: input.getAttribute('placeholder') || '' });
+            forms.push(form);
+        });
+        if (fields.length === 0) return null;
+        // The four forms share one Bootstrap row in one .container; hide that
+        // box when it holds them all, else each form's own column.
+        const box = forms[0].closest('.container');
+        const hide = (box && forms.every(f => box.contains(f)))
+            ? [box] : forms.map(f => f.parentElement);
+        return { fields, hide };
+    }
+
+    /**
+     * Reads a date the way people type it, for the bootleg date search.
+     * Full dates: `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+     * `Aug 15, 1975`, `15.08.1975`. Partial: `1975-08`, `Aug 1975`,
+     * `August 1975`, `1975`. Slash forms are refused: `08/09/1975` is a
+     * different day in the US and in Europe.
+     *
+     * @param {string} text
+     * @returns {?{kind: ('full'|'partial'|'invalid'), iso?: string, y?: number, m?: number}}
+     *   `full` with `iso`; `partial` with `y` (and `m`); `invalid` for a day
+     *   the calendar does not have; `null` when the text is not a date.
+     */
+    function _slReadSearchDate(text) {
+        const t = String(text || '').trim().toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ');
+        const month = s => {
+            const i = _SL_MONTH_NAMES.findIndex(n => n === s || (s.length >= 3 && n.startsWith(s)));
+            return i >= 0 ? i + 1 : 0;
+        };
+        const pad = n => String(n).padStart(2, '0');
+        const full = (y, m, d) => {
+            const dt = new Date(Date.UTC(y, m - 1, d));
+            return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d)
+                ? { kind: 'full', iso: `${y}-${pad(m)}-${pad(d)}` } : { kind: 'invalid' };
+        };
+        let m;
+        if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return full(+m[1], +m[2], +m[3]);
+        if ((m = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return full(+m[3], +m[2], +m[1]);
+        if ((m = t.match(/^(\d{1,2}) ([a-z]+) (\d{4})$/)) && month(m[2])) return full(+m[3], month(m[2]), +m[1]);
+        if ((m = t.match(/^([a-z]+) (\d{1,2}) (\d{4})$/)) && month(m[1])) return full(+m[3], month(m[1]), +m[2]);
+        if ((m = t.match(/^(\d{4})-(\d{1,2})$/)) && +m[2] >= 1 && +m[2] <= 12) return { kind: 'partial', y: +m[1], m: +m[2] };
+        if ((m = t.match(/^([a-z]+) (\d{4})$/)) && month(m[1])) return { kind: 'partial', y: +m[2], m: month(m[1]) };
+        if ((m = t.match(/^(19[6-9]\d|20\d\d)$/))) return { kind: 'partial', y: +m[1] };
+        return null;
+    }
+
+    /**
+     * The URL of one bootleg search: the list script with `cmd=list`, the
+     * field as the category, and the query — nothing of the current page's
+     * query is kept, since a search never combines with anything.
+     *
+     * @param {string} param  - The field, e.g. 'f_title'.
+     * @param {string} q      - The query (an ISO date for 'f_date').
+     * @returns {string} Absolute URL.
+     */
+    function _slSearchHref(param, q) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set('cmd', 'list');
+        url.searchParams.set('category', param);
+        url.searchParams.set(param, q);
+        return url.href;
+    }
+
+    /**
+     * Reads the recent searches (`_SL_RECENT_SEARCH_KEY`).
+     *
+     * @returns {Array<{field: string, q: string}>} Never null.
+     */
+    function _slReadRecentSearches() {
+        try {
+            const v = GM_getValue(_SL_RECENT_SEARCH_KEY, []);
+            return Array.isArray(v) ? v.filter(e => e && typeof e.field === 'string' && typeof e.q === 'string') : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * Records this page's search, when it is a bootleg search result page
+     * (`category=f_*` with that parameter set), at the head of the recent
+     * list: an earlier identical entry moves up instead of repeating.
+     *
+     * @returns {?{field: string, q: string}} The recorded search, or `null`.
+     */
+    function _slRecordRecentSearch() {
+        const params = new URL(window.location.href).searchParams;
+        const field = params.get('category') || '';
+        const q = field.startsWith('f_') ? (params.get(field) || '').trim() : '';
+        if (params.get('cmd') !== 'list' || !q) return null;
+        const entry = { field, q };
+        const list = [entry].concat(_slReadRecentSearches().filter(e => !(e.field === field && e.q === q)))
+            .slice(0, _SL_RECENT_SEARCH_MAX);
+        GM_setValue(_SL_RECENT_SEARCH_KEY, list);
+        return entry;
+    }
+
+    /**
+     * Fills the Recent pull-down: one link per recent search ("Title: born"),
+     * the page's own search marked, and a button that forgets them all.
+     *
+     * @param {HTMLElement} pop     - The empty panel.
+     * @param {object}      search  - From `_slReadSearchForms()`.
+     * @returns {void}
+     */
+    function _slFillScopeRecent(pop, search) {
+        const params = new URL(window.location.href).searchParams;
+        const list = document.createElement('div');
+        list.className = 'mb-sl-scope-list';
+        const recent = _slReadRecentSearches();
+        recent.forEach(({ field, q }) => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-scope-opt';
+            a.href = _slSearchHref(field, q);
+            if (params.get('category') === field && params.get(field) === q) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            const label = search.fields.find(f => f.param === field)?.label || field;
+            const span = document.createElement('span');
+            span.textContent = `${label}: ${q}`;
+            a.appendChild(span);
+            list.appendChild(a);
+        });
+        if (recent.length === 0) {
+            const none = document.createElement('div');
+            none.className = 'mb-sl-scope-group';
+            none.textContent = 'No searches yet';
+            list.appendChild(none);
+        }
+        pop.appendChild(list);
+        if (recent.length) {
+            const foot = document.createElement('div');
+            foot.className = 'mb-sl-scope-foot';
+            const forget = document.createElement('button');
+            forget.type = 'button';
+            forget.className = 'mb-sl-scope-forget';
+            forget.textContent = 'Forget these searches';
+            forget.addEventListener('click', () => {
+                GM_setValue(_SL_RECENT_SEARCH_KEY, []);
+                _slCloseScopePop(true);
+            });
+            foot.appendChild(forget);
+            pop.appendChild(foot);
+        }
+    }
+
+    /**
+     * Builds the bootleg search box for the compact bar: a field switch (Auto
+     * plus one button per search form), one input and a Search link whose
+     * `href` follows what is typed, and a message line under the bar. Auto
+     * searches a date when the text reads as one (`_slReadSearchDate()`),
+     * else titles. A day that does not exist, or a non-date in Date mode,
+     * leaves Search disabled and says why; a partial date offers the era
+     * list that holds it and a title search instead. On a search result
+     * page the box opens with that search. Enter follows Search.
+     *
+     * @param {object}  search     - From `_slReadSearchForms()`.
+     * @param {?object} catFacet   - The Category facet (for the era lists), or null.
+     * @returns {{group: HTMLElement, msg: HTMLElement}} The box and its message line.
+     */
+    function _slBuildSearchBox(search, catFacet) {
+        const params = new URL(window.location.href).searchParams;
+        const curCat = params.get('category') || '';
+        const curField = search.fields.find(f => f.param === curCat);
+        let field = curField ? curField.param : 'auto';
+
+        const group = document.createElement('span');
+        group.className = 'mb-sl-search';
+        group.setAttribute('role', 'search');
+        const seg = document.createElement('span');
+        seg.className = 'mb-sl-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Search in');
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.id = 'mb-sl-search-input';
+        input.className = 'mb-sl-search-input';
+        input.setAttribute('aria-label', 'Search bootlegs');
+        input.value = curField ? (params.get(curField.param) || '') : '';
+        const go = document.createElement('a');
+        go.className = 'mb-sl-search-go';
+        go.setAttribute('role', 'button');
+        go.textContent = 'Search';
+        const msg = document.createElement('div');
+        msg.className = 'mb-sl-search-msg';
+        msg.setAttribute('aria-live', 'polite');
+
+        const eras = (catFacet?.options || [])
+            .map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        const say = (...parts) => {
+            msg.replaceChildren(...parts);
+            msg.hidden = parts.length === 0;
+        };
+        const link = (text, href) => {
+            const a = document.createElement('a');
+            a.href = href;
+            a.textContent = text;
+            return a;
+        };
+        const setGo = href => {
+            if (href) {
+                go.href = href;
+                go.removeAttribute('aria-disabled');
+            } else {
+                go.removeAttribute('href');
+                go.setAttribute('aria-disabled', 'true');
+            }
+        };
+        const update = () => {
+            const q = input.value.trim();
+            const placeholders = { auto: 'Date or title: 1975-08-15, 15 Aug 1975, Born…', f_date: '1975-08-15 or 15 Aug 1975' };
+            input.placeholder = placeholders[field] || search.fields.find(f => f.param === field)?.placeholder || '';
+            if (!q) {
+                setGo(null);
+                say();
+                return;
+            }
+            const d = _slReadSearchDate(q);
+            const asDate = field === 'f_date' || (field === 'auto' && d && search.fields.some(f => f.param === 'f_date'));
+            if (!asDate) {
+                const param = field === 'auto' ? (search.fields.find(f => f.param === 'f_title') || search.fields[0]).param : field;
+                setGo(_slSearchHref(param, q));
+                say();
+                return;
+            }
+            if (!d) {
+                setGo(null);
+                say(document.createTextNode('Type a full date such as 1975-08-15 or 15 Aug 1975.'));
+            } else if (d.kind === 'invalid') {
+                setGo(null);
+                say(document.createTextNode('That day does not exist.'));
+            } else if (d.kind === 'full') {
+                setGo(_slSearchHref('f_date', d.iso));
+                say(...(d.iso === q ? [] : [document.createTextNode(`Searching the date ${d.iso}.`)]));
+            } else {
+                setGo(null);
+                const when = d.m ? `${d.y}-${String(d.m).padStart(2, '0')}` : String(d.y);
+                const era = eras.find(e => d.y >= e.span.from && d.y <= e.span.to);
+                const parts = [document.createTextNode('The site finds full dates only. ')];
+                if (era) {
+                    parts.push(document.createTextNode('Open '), link(era.o.label, _slScopeHref({ category: era.o.category })),
+                        document.createTextNode(` and filter its First date column for ${when}, or `));
+                } else {
+                    parts.push(document.createTextNode('You can '));
+                }
+                const titles = search.fields.find(f => f.param === 'f_title');
+                if (titles) parts.push(link(`search titles for “${q}”`, _slSearchHref('f_title', q)));
+                parts.push(document.createTextNode('.'));
+                say(...parts);
+            }
+        };
+
+        [{ param: 'auto', label: 'Auto' }].concat(search.fields).forEach(f => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-sl-seg-btn';
+            b.dataset.mbSlField = f.param;
+            b.textContent = f.label;
+            b.setAttribute('aria-pressed', String(f.param === field));
+            b.addEventListener('click', () => {
+                field = f.param;
+                seg.querySelectorAll('.mb-sl-seg-btn').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+                update();
+                input.focus();
+            });
+            seg.appendChild(b);
+        });
+        input.addEventListener('input', update);
+        input.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (go.hasAttribute('href')) go.click();
+        });
+        group.append(seg, input, go);
+        update();
+        return { group, msg };
+    }
+
     /**
      * Installs the compact category/filter bar on a springsteenlyrics.com
-     * collection page (`sa_sl_compact_nav`): one pull-down per wall of
-     * category/filter links, then a chip per active filter with a × that
-     * removes only that filter, and "Clear all" when two or more are set.
-     * Inserted where the first wall was, so it sits in `.project-detail`
-     * under the toolbar `<h1>` and Sticky Page Headers pins it like the
-     * walls before it; the walls it stands in for get `mb-sl-nav-hidden`
-     * and stay in the DOM. A no-op when it is already installed or the page
-     * has no walls.
+     * list (`sa_sl_compact_nav`): one pull-down per wall of category/filter
+     * links, then — where the page has the bootleg search forms — the search
+     * box (`_slBuildSearchBox()`) and a Recent pull-down, then a chip per
+     * active filter with a × that removes only that filter, and "Clear all"
+     * when two or more are set. Inserted where the first wall (or the search
+     * forms) was, so it sits in `.project-detail` under the toolbar `<h1>`
+     * and Sticky Page Headers pins it like the walls before it; everything it
+     * stands in for gets `mb-sl-nav-hidden` and stays in the DOM. A no-op
+     * when it is already installed or the page has neither walls nor forms.
      *
      * @returns {?HTMLElement} The bar, or `null` when nothing was installed.
      */
     function _slInstallScopeBar() {
         if (document.querySelector('.mb-sl-scope')) return null;
         const facets = _slReadNavFacets();
-        if (facets.length === 0) {
-            Lib.debug('init', '_slInstallScopeBar: no category/filter walls on this page — nothing to fold.');
+        const search = _slReadSearchForms();
+        if (facets.length === 0 && !search) {
+            Lib.debug('init', '_slInstallScopeBar: no category/filter walls or search forms on this page — nothing to fold.');
             return null;
         }
         const params = new URL(window.location.href).searchParams;
@@ -10153,6 +10559,32 @@
             if (cur.active) active.push({ text: `${facet.label}: ${cur.label}`, keys: facet.keys });
         });
 
+        let searchMsg = null;
+        if (search) {
+            const box = _slBuildSearchBox(search, facets.find(f => f.kind === 'category') || null);
+            bar.appendChild(box.group);
+            searchMsg = box.msg;
+            const recent = { kind: 'recent', label: 'Recent', keys: ['recent'], search };
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-sl-scope-btn';
+            btn.dataset.mbSlFacet = 'recent';
+            btn.setAttribute('aria-haspopup', 'dialog');
+            btn.setAttribute('aria-expanded', 'false');
+            const k = document.createElement('span');
+            k.className = 'mb-sl-scope-k';
+            k.textContent = 'Recent:';
+            const v = document.createElement('span');
+            v.className = 'mb-sl-scope-v';
+            v.textContent = String(_slReadRecentSearches().length);
+            const caret = document.createElement('span');
+            caret.className = 'mb-sl-scope-k';
+            caret.textContent = '▾';
+            btn.append(k, v, caret);
+            btn.addEventListener('click', () => _slToggleScopePop(btn, recent, params));
+            bar.appendChild(btn);
+        }
+
         if (active.length) {
             const chips = document.createElement('span');
             chips.className = 'mb-sl-scope-chips';
@@ -10177,11 +10609,15 @@
             bar.appendChild(chips);
         }
 
-        const first = facets[0].hide[0];
+        if (searchMsg) bar.appendChild(searchMsg);
+
+        const first = facets.length ? facets[0].hide[0] : search.hide[0];
         first.parentNode.insertBefore(bar, first);
         facets.forEach(f => f.hide.forEach(el => el.classList.add('mb-sl-nav-hidden')));
+        if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));
         _slWireScopePopEvents();
-        Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ${active.length} active filter(s).`);
+        Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ` +
+            `${search ? search.fields.length : 0} search form(s), ${active.length} active filter(s).`);
         return bar;
     }
 
@@ -43381,11 +43817,13 @@ a { color: #1565c0; }`;
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
         // The compact category/filter bar (sa_sl_compact_nav), on the
-        // collection and bootleg lists. This list's exact count is recorded
-        // first, so its own Category menu already shows it.
+        // collection and bootleg lists. This list's exact count (and, on a
+        // bootleg search result, the search) is recorded first, so the bar's
+        // own menus already show it.
         if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&
             ['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable)) {
             _slRecordListCount();
+            _slRecordRecentSearch();
             _slInstallScopeBar();
         }
     }

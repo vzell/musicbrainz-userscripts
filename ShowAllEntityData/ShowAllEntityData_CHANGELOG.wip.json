@@ -1,5 +1,18 @@
 [
   {
+    "version": "WIP.4",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: with the compact bar (WIP.2) on, the bootleg lists' four search forms (date, title, version, public info) become one search box with a field switch: Auto, Date, Title, Version, Public info. Auto searches the date when you type one and titles otherwise. Dates can be typed as 1975-08-15, 15 Aug 1975, Aug 15, 1975 or 15.08.1975. A day that does not exist is pointed out instead of returning an empty list. The site finds full dates only, so for a month or a year (1975-08, Aug 1975, 1975) the box offers the era list that covers it and a title search instead. On a search's result page the box shows that search.",
+          "springsteenlyrics.com: a Recent menu beside the search box lists your last eight bootleg searches, including ones started from the site's own forms, and can forget them."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.3",
     "date": "2026-10-05",
     "sections": [

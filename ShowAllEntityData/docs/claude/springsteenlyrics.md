@@ -211,8 +211,9 @@ pushed back at the far right — plain `position: sticky`, on any host.
 
 Behind its own setting, `sa_sl_compact_nav` (default **off**; needs
 `sa_enable_springsteenlyrics`), on the collection and bootleg list pageTypes
-(`slCardsToTable` `'collection'`/`'bootlegs'`; on the bootleg lists only the
-category wall is folded, since the four search forms are not links). Design
+(`slCardsToTable` `'collection'`/`'bootlegs'`; on the bootleg lists the
+category wall becomes the Category menu and the four search forms the search
+box, see "The bootleg search box" below). Design
 study and the decisions behind it: `org/springsteenlyrics.org`, `** analyze`.
 Called from the init block right after `_slPrepareLivePage()`, after
 `_slRecordListCount()`.
@@ -292,6 +293,45 @@ visited shows no number and a dashed "?" bar. The bootleg landing page's
 totals (544 vs 487 for Live 1975-1977). The key is a cache, not a setting, so
 it is not in the config export. It is written only while the bar is on.
 
+### The bootleg search box — `_slBuildSearchBox()`
+
+The bootleg lists' four GET forms (date, title, version, public info) each
+send their field AS the category: `?f_date=…&cmd=list&category=f_date`.
+`_slReadSearchForms()` finds them by exactly that shape (a hidden
+`category=f_X` beside a text input named `f_X`), so the box reads its fields
+and labels from the page, and hides the forms' shared `.container`.
+
+What the live probe (2026-10-05) fixed in the design:
+
+- **One field per search.** `f_title=born&f_version=soundboard` returns the same
+  73 rows as `f_title=born`; the server reads the category's field only. So the
+  box is a field switch (Auto plus one button per form) over ONE input, and
+  `_slSearchHref()` builds the URL from scratch (path, `cmd=list`, the field as
+  category, the query), keeping nothing of the current query.
+- **`f_date` matches full dates only** (1975-08-15 → 21 rows; 1975-08 and 1975
+  → 0). `_slReadSearchDate()` returns `full` (normalised to ISO), `partial`
+  (year, or year and month), `invalid` (a day the calendar lacks) or `null`.
+  A partial date leaves Search off and links the era list that holds the year
+  (`_slParseEra()` over the Category facet's options) plus a title search. Slash
+  forms are deliberately not dates: `08/09/1975` is August or September
+  depending on who typed it.
+- **The site's own check is dead.** `checkForm()` reads `form.filter_date`,
+  the input is `f_date`, so it throws and the form submits anyway. The box
+  validates before Search gets an `href`.
+
+Auto = date when `_slReadSearchDate()` sees one (full or partial), else
+titles. A field picked by hand takes the text as it is (a date typed into
+Public info stays text). Search is an `<a href>` that follows the input, like
+every other choice; Enter clicks it, so the navigation guard still applies.
+Disabled = no `href` plus `aria-disabled`.
+
+**Recent searches** (`mb_sa_sl_recent_searches`, newest first, at most
+eight, `[{field, q}]`) are recorded by `_slRecordRecentSearch()` when a search
+RESULT page opens with the bar on, not on submit. That way a search started
+from the site's own forms or a bookmark counts too, and a search that never
+navigated does not. The same search opened again moves to the front instead
+of repeating. A cache, not in the config export.
+
 ## Tests
 
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
@@ -301,7 +341,7 @@ it is not in the config export. It is written only while the bar is on.
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
-| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Mutations: `scripts/mutations/sl-scope-bar.json` |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 

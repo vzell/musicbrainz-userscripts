@@ -18960,3 +18960,23 @@ Part 2 of the bar. Notes for whoever touches it next:
 
 Tests: `sl-scope-bar.spec.js` 15 (5 new), the sticky spec gains a bootleg shape
 with the bar on (7), mutations 15 (14 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: one search box for the bootleg forms (branch feature/sl-scope-bar)
+
+Part 3 of the bar. No defect was found; the notes are the facts the design
+rests on, so nobody "simplifies" them away:
+
+- **The server reads one search field, the one named by `category`.**
+  `f_title=born&f_version=soundboard` = `f_title=born` (73 rows each). A box that
+  combined fields would promise something the site ignores.
+- **`f_date` needs a full date** (1975-08-15 → 21; 1975-08, 1975 → 0), and
+  `checkForm()` is dead (`form.filter_date` vs the `f_date` input), so a
+  malformed date silently lists nothing on the site itself.
+- **Recent is recorded on the RESULT page, not on submit.** Recording on
+  submit would miss the site's own forms and bookmarks, and would record a
+  search whose navigation the guard cancelled.
+- **Lint caught one `expect(await page.inputValue(...))`**; it is now
+  `toHaveValue()`, and the mutation that empties the box still fails it.
+
+Tests: `sl-scope-bar.spec.js` 23 (8 new), mutations 23 (22 fail as expected, 1
+recorded pass).
