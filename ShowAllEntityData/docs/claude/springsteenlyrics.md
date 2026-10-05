@@ -1,6 +1,6 @@
 <!-- Written on branch sl-support (org/springsteenlyrics.org), extended on feature/sl-all-categories. This file is the authority for its topic; CLAUDE.md keeps only the doc-map row. -->
 
-# springsteenlyrics.com: the one non-MusicBrainz host
+# springsteenlyrics.com: the first non-MusicBrainz host
 
 ShowAllEntityData also runs on springsteenlyrics.com's paginated list pages —
 the **collection** (`collection.php?cmd=list…`) and the **bootleg** lists
@@ -29,11 +29,14 @@ The library's own Tampermonkey menu items are registered earlier still, so the
 setting can be switched on from the SL page itself; settings are per-script GM
 storage, so MusicBrainz and SL share them.
 
-Three places read `_isSlHost` after that, and each says why:
+Three places read `_isSlHost` after that, and each says why. Since
+2026-10-06 there is a second foreign host, jungleland.it
+(docs/claude/jungleland.md), so the detection loop compares through
+`_foreignHost`, the host's name or `null`, rather than `_isSlHost` itself:
 
 | Where                                | Why                                                                                                                                           |
 |--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| the `pageDefinitions` detection loop | `if (Boolean(def.host) !== _isSlHost) continue;` — a definition with a `host` belongs to that site alone, and on SL only those are considered |
+| the `pageDefinitions` detection loop | `if ((def.host || null) !== _foreignHost) continue;` — a definition with a `host` belongs to that site alone, and on SL only those are considered |
 | `performClutterCleanup()`            | every target is MusicBrainz furniture; some removals (any `<details>` with >5 images, any 700px div) would hit unrelated content              |
 | `initNavigationGuard()`              | every SL page is one PHP script told apart by its query string, so there only a HASH-only change is "the same page"                           |
 
@@ -152,8 +155,11 @@ check it as MusicBrainz text.
 
 MusicBrainz's site CSS is what normally styles `table.tbl` (borders, padding,
 header background, the `tr.even` zebra that `applyZebraStriping()` only toggles
-classes for). On SL none of it exists, so `_ensureSlStyle()` supplies a minimal
-equivalent. **Every table rule is wrapped in `:where()`** so it carries almost
+classes for). On SL none of it exists, so a minimal equivalent is supplied —
+since 2026-10-06 by `_ensureForeignTableStyle()`, which `_ensureSlStyle()`
+calls first and which jungleland.it shares (keyed on
+`body:is(.mb-sa-host-sl, .mb-sa-host-jl)`; a further host extends that list).
+**Every table rule is wrapped in `:where()`** so it carries almost
 no specificity and any of the script's own styling (sticky header colours,
 finding tints, hover, highlights) still wins. The sticky `<thead>` is offset by
 `--mb-sl-navbar-h`: the site's `jquery.sticky` navbar turns `position: fixed`

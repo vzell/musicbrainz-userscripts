@@ -1,0 +1,114 @@
+[
+    {
+        "name": "the opt-in gate never stops the script",
+        "why": "jungleland.it support is opt-in (sa_enable_jungleland, default off). Without the gate the script would put its toolbar on the site's page with the setting off; the spec must see a heading and toolbar appear.",
+        "edits": [{ "find": "if (_isJlHost && Lib.settings.sa_enable_jungleland !== true) {", "replace": "if (false) {" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "with the setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "the frame gate never stops the script",
+        "why": "list.htm is normally the 25 % left frame of artwork.htm, and the header has no @noframes. Without the frame gate the script injects its toolbar into that frame; the spec must see it.",
+        "edits": [{ "find": "if (_isJlHost && window.top !== window) {", "replace": "if (false) {" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "inside the artwork.htm frameset",
+        "expect": "fail"
+    },
+    {
+        "name": "no <h1> is injected for the toolbar",
+        "why": "The page has no heading at all; without the injected <h1> the init block stops at the required-elements check and no button is offered.",
+        "edits": [{ "find": "        headerContainer = _jlPrepareLivePage();", "replace": "        headerContainer = null;" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "with the setting on",
+        "expect": "fail"
+    },
+    {
+        "name": "the date stays in the title",
+        "why": "Every dated entry ends in (YYYY-MM-DD); not matching it leaves the date in Title and empties Date. The spec reads titles without their date.",
+        "edits": [{ "find": "        const m = t.match(/^(.*?)\\s*\\((\\d{4})-(\\d{2})-(\\d{2})\\)$/);", "replace": "        const m = null;" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "the date is cut off the title",
+        "expect": "fail"
+    },
+    {
+        "name": "Year from the section heading, not from the date",
+        "why": "A dated entry under 'others' must get its date's year; taking the section gives it 'others'. The spec pins the Köln row's 2007 and Year == the date's year for every dated row.",
+        "edits": [{ "find": "date: `${m[2]}-${m[3]}-${m[4]}`, year: m[2] };", "replace": "date: `${m[2]}-${m[3]}-${m[4]}`, year: section || '' };" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "the date is cut off the title",
+        "expect": "fail"
+    },
+    {
+        "name": "the Title link keeps the site's frame target",
+        "why": "Standalone there is no inferioredx1 frame; each click would open (or reuse) a window of that name instead of a plain new tab. The spec pins target=_blank on every row.",
+        "edits": [{ "find": "        link.target = '_blank';", "replace": "        link.target = item.anchor.target;" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "the date is cut off the title",
+        "expect": "fail"
+    },
+    {
+        "name": "the plain list is left behind under the table",
+        "why": "Every entry <p> and year heading <p> has to go once the table holds them, or the page shows each bootleg twice.",
+        "edits": [{ "find": "        doomed.forEach(el => el.remove());", "replace": "" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "fail"
+    },
+    {
+        "name": "the dead jump menu stays visible",
+        "why": "Its anchors are removed with the year headings, so the menu would jump nowhere; it is hidden (not removed).",
+        "edits": [{ "find": "                form.classList.add('mb-jl-hidden');", "replace": "" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "fail"
+    },
+    {
+        "name": "no <h2> before the table",
+        "why": "updateH2Count() anchors the count and filter bar to the last <h2> before the table; the page has none of its own.",
+        "edits": [{ "find": "                h2.className = 'mb-jl-list-heading';", "replace": "                h2.className = 'mb-jl-list-heading-x';" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "fail"
+    },
+    {
+        "name": "the shared table look is not installed on jungleland.it",
+        "why": "The site has no MusicBrainz CSS; without _ensureForeignTableStyle() the table has no borders or padding.",
+        "edits": [{ "find": "    function _ensureJlStyle() {\n        _ensureForeignTableStyle();", "replace": "    function _ensureJlStyle() {" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "fail"
+    },
+    {
+        "name": "the converter is not called on Load from Disk",
+        "why": "After a reload the live page holds the plain list again; without the converter the disk path renders into a shell it fabricates, and the list stays.",
+        "edits": [{ "find": "            // And for jungleland.it: the reloaded list is plain links again.\n            if (activeDefinition.features?.jlListToTable) {", "replace": "            if (false) {" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "a reopened list renders in place",
+        "expect": "fail"
+    },
+    {
+        "name": "the detection loop compares 'has a host' instead of WHICH host",
+        "why": "With a boolean comparison every non-MusicBrainz definition is considered on both foreign hosts. No springsteenlyrics matcher claims /html/list.htm and the jungleland one does not claim an SL path, so nothing observable changes today: a guard for the next broad matcher, recorded honestly as invisible.",
+        "edits": [{ "find": "        if ((def.host || null) !== _foreignHost) continue;", "replace": "        if (Boolean(def.host) !== (_isSlHost || _isJlHost)) continue;" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "pass"
+    },
+    {
+        "name": "the detection loop ignores the host",
+        "why": "Without the host comparison every MusicBrainz matcher is tried on jungleland.it too, before jl-list (it sits last). Checked 2026-10-06: none of them claims /html/list.htm, so detection gives the same answer and the spec cannot see it. Recorded honestly; the guard exists for the next broad path.includes() matcher.",
+        "edits": [{ "find": "        if ((def.host || null) !== _foreignHost) continue;\n", "replace": "" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "every entry becomes one row",
+        "expect": "pass"
+    },
+    {
+        "name": "the @include line is missing",
+        "why": "Tampermonkey would never inject the script on list.htm; the fixture harness injects unconditionally, so only the regex spec can see it.",
+        "edits": [{ "find": "// @include      /^https?:\\/\\/(?:www\\.)?jungleland\\.it\\/html\\/list\\.htm(?:[?#].*)?$/\n", "replace": "" }],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "jungleland.it: list.htm",
+        "expect": "fail"
+    }
+]

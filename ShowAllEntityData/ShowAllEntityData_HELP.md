@@ -1032,6 +1032,7 @@ you automatically.
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
+| 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 
 </details>
 
@@ -1088,8 +1089,8 @@ an import brings your deletions back.
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
-  category and the entry page) and bootleg lists — off until you switch them
-  on, see
+  category and the entry page) and bootleg lists, and the **jungleland.it**
+  bootleg artwork list — each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1424,6 +1425,39 @@ The columns come from what each card shows — no item page is opened:
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.
+
+</details>
+
+<details>
+<summary>jungleland.it bootleg artwork list</summary>
+
+Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+→ *🌴 jungleland.it* → *Enable on the jungleland.it bootleg artwork list*.
+Settings are shared, so you can switch it on from a MusicBrainz page or from
+the Tampermonkey menu on jungleland.it itself. While it is off, the script
+leaves that site's pages untouched.
+
+It works on the list page **opened in its own tab**:
+`https://www.jungleland.it/html/list.htm`. On the site's usual two-frame view
+(`artwork.htm`), the list is the narrow left frame, and the script leaves it
+as it is. To use the script, open the list address above on its own.
+
+Once on, the page gets a heading with the usual toolbar and one action
+button, **Bootlegs**. Pressing it turns the whole list into one table with
+three columns:
+
+- **Title:** the bootleg's title, without the date the site appends to it.
+  It links to that bootleg's artwork page, which opens in a new tab.
+- **Date:** that date as `1975-08-15`, so sorting it is chronological. It is
+  empty for the undated entries the site files under "Others".
+- **Year:** the date's year. Filter or pick from its 📊 list to see one year,
+  which is the job the site's "Choose the year" menu did. That menu is hidden
+  once the table is there.
+
+The list holds over 6,000 bootlegs, more than the default *Large Dataset
+Threshold* (5000 rows), so the "many rows" question comes up before the table
+is shown.
+Everything is on that one page; nothing is fetched.
 
 </details>
 

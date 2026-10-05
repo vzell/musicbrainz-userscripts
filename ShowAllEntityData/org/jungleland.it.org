@@ -1,0 +1,107 @@
+* jungleland
+
+Give the website https://www.jungleland.it/html/list.htm the same
+treatment as what we've done with the springsteenylrics.com
+website, albeit not so complex
+
+1.)
+
+Parse the URL @debug/jungleland.it.html and extract the bootleg
+title and year, then let our userscript handle the rest. No need
+to do some other fancy stuff in the beginning
+
+2.)
+
+The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
+
+** Answer (2026-10-06, branch =feature/jl-support=)
+
+Done as the opt-in pageType =jl-list=. The new setting is
+=sa_enable_jungleland= (⚙️ → 🌴 JUNGLELAND.IT), default OFF. Details:
+=docs/claude/jungleland.md=, and the dated entry in =DEBUG-NOTES.md=.
+
+- One button, "Bootlegs", turns the list's links into Title / Date / Year.
+  - The trailing =(YYYY-MM-DD)= is cut off the title.
+  - Year comes from the date. The undated "others" entries have none.
+  - Links open the artwork page in a new tab.
+  - Nothing is fetched; the list is one page.
+- Decided on 2026-10-05: list.htm is normally the narrow left frame of
+  =artwork.htm=, and the script stays out of that frame. It works on
+  list.htm opened as its own tab.
+- Shared with springsteenlyrics.com:
+  - the detection loop's host comparison (=_foreignHost=);
+  - the table CSS (=_ensureForeignTableStyle()=).
+- Tests:
+  - =tests/fixtures/jl-list.spec.js=, with its fixture built by
+    =scripts/build-jl-fixtures.py=;
+  - one =@include= test;
+  - =scripts/mutations/jl-support.json=;
+  - the live =@extended= spec =tests/live/jl-list.spec.js=, which covers the
+    whole real page.
+
+Give the website https://www.brucespringsteen.it the same
+treatment as what we've done with the https://www.jungleland.it/html/list.htm
+website, albeit not so complex
+
+1.)
+
+Parse the URL https://www.brucespringsteen.it
+
+2.)
+
+generate two action buttons "Unofficial" and "Official"
+
+a.)
+
+for both cases make sure that all checkboxes are checked, before someone clicks the buttons
+
+#+begin_example
+<tr>
+    <td width="50%"><font size="2">
+      <input type="checkbox" name="C0" value="0">Album<br>
+      <input type="checkbox" name="C1" value="1">Vinyl 7 in.<br>
+      <input type="checkbox" name="C2" value="2">CD<br>
+      <input type="checkbox" name="C3" value="3">miniCD 3in.<br>
+      <input type="checkbox" name="C4" value="4">Vinyl LP<br>
+      <input type="checkbox" name="C5" value="5">Tape
+      </font></td>
+    <td width="50%"><font size="2">
+      <input type="checkbox" name="C6" value="6">Vinyl 12 in.<br>
+      <input type="checkbox" name="C7" value="7">VHS<br>
+ 	  <input type="checkbox" name="C8" value="8">CD-R<br>
+      <input type="checkbox" name="C9" value="9">DVD<br>
+      <input type="checkbox" name="C10" value="10">miniCD 5in.<br>
+      <input type="checkbox" name="C11" value="11">VA Album
+      </font></td>
+  </tr>
+#+end_example
+
+b.)
+
+Our userscript should take over and render the data in a tabular format.
+
+So e.g.
+
+The data
+
+#+begin_example
+<p><b>2 CD-R (Anubis Records) <br>
+<a href="detrec.aspx?code=CR1AD1">1001 AMERICAN DREAMS</a><br>
+Mx:2211/12</b><br>
+</p>
+#+end_example
+
+should be rendered in the following columns
+
+#+begin_example
+Title: 1001 AMERICAN DREAMS
+Matrix: 2211/12
+Format: 2 CD-R
+Label: Anubis Records
+Code: CR1AD1
+#+end_example
+
+2.)
+
+The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
+

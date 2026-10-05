@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "ca8b2d19fef6b5c721fab87ee7c7567dc8f05b12",
-    "revisions_walked": 756
+    "head": "d80a55466d61d472394597bf353a40f1347775f8",
+    "revisions_walked": 763
   },
   "changes": [
     {
@@ -624,6 +624,7 @@
     "sa_edits_color_zebra_odd": "#ffffff",
     "sa_edits_color_zebra_even": "#f2f2f2",
     "sa_enable_springsteenlyrics": false,
-    "sa_sl_compact_nav": false
+    "sa_sl_compact_nav": false,
+    "sa_enable_jungleland": false
   }
 }

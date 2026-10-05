@@ -2,7 +2,7 @@
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
 // @version      9.99.1241+2026-10-05
-// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists.
+// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, and the jungleland.it bootleg artwork list.
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -21,6 +21,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -3701,6 +3702,29 @@
                          'search box that reads dates the way you type them, plus a menu of ' +
                          'recent searches. The site\'s own buttons and forms are only hidden, ' +
                          'so turning this off brings them back unchanged.'
+        },
+
+        // ============================================================
+        // JUNGLELAND.IT SECTION
+        // ============================================================
+        divider_jungleland: {
+            type: 'divider',
+            label: '🌴 JUNGLELAND.IT'
+        },
+
+        sa_enable_jungleland: {
+            label: 'Enable on the jungleland.it bootleg artwork list',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
+                         'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
+                         'that turns the long list of links into one filterable, sortable table ' +
+                         'with Title, Date and Year columns. It works only when list.htm is ' +
+                         'opened in its own tab: inside the site\'s two-frame view ' +
+                         '(artwork.htm) the narrow left frame is left as it is. No item page is ' +
+                         'fetched. When off, the script exits on that site before touching the ' +
+                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
+                         'from either site.'
         }
 
     };
@@ -4631,15 +4655,38 @@
     /**
      * True when this page is on springsteenlyrics.com rather than MusicBrainz.
      *
-     * The only non-MusicBrainz host the script runs on (see the last two
-     * `@include` lines and docs/claude/springsteenlyrics.md). It is read by the
-     * opt-in gate just below, by the page-type detection loop (which only
-     * considers definitions whose `host` matches) and by the few
+     * One of the two non-MusicBrainz hosts the script runs on (see the
+     * springsteenlyrics `@include` lines and docs/claude/springsteenlyrics.md;
+     * the other is jungleland.it, `_isJlHost`). It is read by the opt-in gate
+     * just below, through `_foreignHost` by the page-type detection loop
+     * (which only considers definitions whose `host` matches) and by the few
      * MusicBrainz-shaped helpers that must stand down or adapt there
      * (`performClutterCleanup()`, `initNavigationGuard()`).
      * @type {boolean}
      */
     const _isSlHost = /(^|\.)springsteenlyrics\.com$/.test(window.location.hostname);
+
+    /**
+     * True when this page is on jungleland.it rather than MusicBrainz.
+     *
+     * The second non-MusicBrainz host (its `@include` line and
+     * docs/claude/jungleland.md): one static list page, `html/list.htm`. Read
+     * by its own opt-in and frame gates just below, through `_foreignHost` by
+     * the detection loop, and by `performClutterCleanup()`.
+     * @type {boolean}
+     */
+    const _isJlHost = /(^|\.)jungleland\.it$/.test(window.location.hostname);
+
+    /**
+     * The non-MusicBrainz host this page is on, as the `host` key of its
+     * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
+     *
+     * The detection loop compares a definition's `host` with this, so a
+     * definition belongs to exactly one site and a MusicBrainz page only ever
+     * considers the definitions without one.
+     * @type {?string}
+     */
+    const _foreignHost = _isSlHost ? 'springsteenlyrics.com' : (_isJlHost ? 'jungleland.it' : null);
 
     // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
     // default off), so a published MusicBrainz script never changes another
@@ -4649,6 +4696,22 @@
     // still be switched on from this very page.
     if (_isSlHost && Lib.settings.sa_enable_springsteenlyrics !== true) {
         Lib.info('init', 'springsteenlyrics.com support is off (sa_enable_springsteenlyrics) — nothing to do.');
+        return;
+    }
+
+    // jungleland.it support is opt-in the same way (`sa_enable_jungleland`,
+    // default off), and gated as early for the same reason. Its list.htm is
+    // normally the narrow (25 %) left frame of the site's artwork.htm
+    // frameset, and the header has no `@noframes`, so Tampermonkey runs the
+    // script in that frame too: a 6,000-row table squeezed into a quarter of
+    // the window helps no one, so only a list.htm opened as its own tab is
+    // converted (decided 2026-10-05; docs/claude/jungleland.md).
+    if (_isJlHost && Lib.settings.sa_enable_jungleland !== true) {
+        Lib.info('init', 'jungleland.it support is off (sa_enable_jungleland) — nothing to do.');
+        return;
+    }
+    if (_isJlHost && window.top !== window) {
+        Lib.info('init', 'jungleland.it: this list is inside the artwork.htm frameset — open list.htm in its own tab to get the table. Nothing to do here.');
         return;
     }
 
@@ -4687,7 +4750,7 @@
     const params = currentUrl.searchParams;
     const isFilteredRelationshipPage = params.has('link_type_id');
 
-    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on ${_isSlHost ? 'springsteenlyrics.com' : 'MusicBrainz'} page: ${currentUrl}`);
+    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on ${_foreignHost || 'MusicBrainz'} page: ${currentUrl}`);
     Lib.debug('init', `URL: ${currentUrl}`);
     Lib.debug('init', `URL basepath: ${basePath}`);
     Lib.debug('init', `URL path: ${path}`);
@@ -9179,16 +9242,57 @@
     }
 
     /**
+     * Installs the minimal `table.tbl` look shared by the non-MusicBrainz
+     * hosts (springsteenlyrics.com, jungleland.it), once per document.
+     *
+     * MusicBrainz's own site CSS is what normally gives `table.tbl` its
+     * borders, padding, header background and the `tr.even` zebra stripe
+     * that `applyZebraStriping()` merely toggles classes for; neither site
+     * has any of it. The rules are scoped to the hosts' body classes
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`) and sit inside `:where()` so they
+     * carry almost no specificity: any of this script's own table styling
+     * (sticky header colours, finding tints, hover, highlights) still wins
+     * wherever it applies. A further host extends the `:is()` list here
+     * rather than copying the block.
+     *
+     * @returns {void}
+     */
+    function _ensureForeignTableStyle() {
+        if (document.getElementById('mb-foreign-table-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) {
+                border-collapse: collapse;
+                background: #fff;
+                font-size: 13px;
+                margin: 6px 0;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) td {
+                border: 1px solid #ddd;
+                padding: 3px 6px;
+                vertical-align: top;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) thead th {
+                background-color: #e8e8e8;
+                text-align: left;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl) table.tbl) tr.even > td {
+                background-color: #f2f2f2;
+            }
+        `);
+        style.id = 'mb-foreign-table-style';
+    }
+
+    /**
      * Installs the springsteenlyrics.com stylesheet, once per document.
      *
      * MusicBrainz's own site CSS is what normally gives `table.tbl` its
      * borders, padding, header background and the `tr.even` zebra stripe that
      * `applyZebraStriping()` merely toggles classes for; none of it exists on
-     * springsteenlyrics.com, so this supplies a minimal equivalent. Every rule
-     * is scoped to `body.mb-sa-host-sl`, and the table rules sit inside
-     * `:where()` so they carry almost no specificity: any of this script's
-     * own table styling (sticky header colours, finding tints, hover,
-     * highlights) still wins wherever it applies. The sticky `<thead>` is
+     * springsteenlyrics.com, so `_ensureForeignTableStyle()` (shared with
+     * jungleland.it, and installed first) supplies a minimal equivalent.
+     * Every rule here is scoped to `body.mb-sa-host-sl`. The sticky `<thead>` is
      * pushed down by the site's own sticky navbar height
      * (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), which turns
      * `position: fixed` once the page is scrolled and would otherwise cover
@@ -9206,6 +9310,7 @@
      * @returns {void}
      */
     function _ensureSlStyle() {
+        _ensureForeignTableStyle();
         if (document.getElementById('mb-sl-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
@@ -9225,25 +9330,6 @@
             body.mb-sa-host-sl .container.mb-sl-wide .container:not(.mb-sl-wide) {
                 margin-left: 0;
                 margin-right: 0;
-            }
-            :where(body.mb-sa-host-sl table.tbl) {
-                border-collapse: collapse;
-                background: #fff;
-                font-size: 13px;
-                margin: 6px 0;
-            }
-            :where(body.mb-sa-host-sl table.tbl) th,
-            :where(body.mb-sa-host-sl table.tbl) td {
-                border: 1px solid #ddd;
-                padding: 3px 6px;
-                vertical-align: top;
-            }
-            :where(body.mb-sa-host-sl table.tbl) thead th {
-                background-color: #e8e8e8;
-                text-align: left;
-            }
-            :where(body.mb-sa-host-sl table.tbl) tr.even > td {
-                background-color: #f2f2f2;
             }
             body.mb-sa-host-sl table.tbl thead {
                 top: var(--mb-sl-navbar-h, 0px);
@@ -11162,6 +11248,267 @@
         Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ` +
             `${search ? search.fields.length : 0} search form(s), ${chips.childElementCount} chip(s).`);
         return bar;
+    }
+
+    // -------------------------------------------------------------------------
+    // jungleland.it: the bootleg artwork list (html/list.htm)
+    // -------------------------------------------------------------------------
+    // One static FrontPage page: a year jump menu, then one anchor heading per
+    // year (`<a name="1975">`, then `<a name="others">` for the undated rest),
+    // each followed by one `<p>` per bootleg holding a single link,
+    // `<a target="inferioredx1" href="19750815.htm">The way it was(1975-08-15)</a>`.
+    // The link's target is the right-hand frame of the site's artwork.htm
+    // frameset; the script only runs on list.htm opened as its own tab (see
+    // the frame gate at the top), where that frame does not exist. See
+    // docs/claude/jungleland.md.
+
+    /**
+     * Column headers of the jungleland.it table, in order.
+     * @type {string[]}
+     */
+    const _JL_HEADERS = ['Title', 'Date', 'Year'];
+
+    /**
+     * Splits one jungleland.it list entry into its table fields.
+     *
+     * Every entry under a year heading ends in its show date, `(YYYY-MM-DD)`,
+     * glued to the title ("The way it was(1975-08-15)") or after a space
+     * ("Magic In The Köln Night (2007-12-13)", filed under "others"). The
+     * date is cut off the title; anything else in the title, such as the
+     * site's own "(Version 2)" for a re-issue, stays as written.
+     *
+     * Year is the date's year when there is a date, else the section the
+     * entry sits under when that is a year, else empty — so the undated
+     * "others" entries have no Year, and a dated one among them still gets
+     * its own.
+     *
+     * @param {string}  text      The link's text.
+     * @param {string}  [section] The `name` of the anchor heading above it ("1975", "others", or '').
+     * @returns {{title: string, date: string, year: string}} The fields; `date` is ISO or ''.
+     */
+    function _jlParseItem(text, section) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        const m = t.match(/^(.*?)\s*\((\d{4})-(\d{2})-(\d{2})\)$/);
+        if (!m) {
+            return { title: t, date: '', year: /^\d{4}$/.test(section || '') ? section : '' };
+        }
+        return { title: m[1].trim() || t, date: `${m[2]}-${m[3]}-${m[4]}`, year: m[2] };
+    }
+
+    /**
+     * Finds the list's entries, each with the section heading it sits under.
+     *
+     * One `querySelectorAll()` over the anchor headings and the entry links
+     * together, which yields them in document order, so the last heading seen
+     * is the entry's section. Only `<a name>`s that are a year or "others"
+     * count as headings (the page also has two `<a name="TOP">`). Links
+     * already inside a converted table are skipped.
+     *
+     * @param {Document} docContext The document to read.
+     * @returns {Array<{anchor: HTMLAnchorElement, section: string}>} The entries, in page order.
+     */
+    function _jlCollectItems(docContext) {
+        const items = [];
+        let section = '';
+        docContext.querySelectorAll('a[name], a[target="inferioredx1"][href]').forEach(a => {
+            if (a.closest('table.mb-jl-table')) return;
+            if (a.hasAttribute('name')) {
+                const name = a.getAttribute('name');
+                if (/^(?:\d{4}|others)$/.test(name)) section = name;
+                return;
+            }
+            items.push({ anchor: a, section });
+        });
+        return items;
+    }
+
+    /**
+     * Builds one table row (Title, Date, Year) for a jungleland.it entry.
+     *
+     * The Title cell links to the entry's artwork page by its resolved
+     * absolute URL, in a new tab: standalone there is no `inferioredx1`
+     * frame for the site's own target to name.
+     *
+     * @param {{anchor: HTMLAnchorElement, section: string}} item  One entry from `_jlCollectItems()`.
+     * @param {Document}                                      docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _jlBuildRow(item, docContext) {
+        const { title, date, year } = _jlParseItem(item.anchor.textContent, item.section);
+        const tr = docContext.createElement('tr');
+        const titleTd = docContext.createElement('td');
+        const link = docContext.createElement('a');
+        link.href = item.anchor.href;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = title;
+        titleTd.appendChild(link);
+        tr.appendChild(titleTd);
+        [date, year].forEach(value => {
+            const td = docContext.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts the jungleland.it list's links into a `<table class="tbl">`,
+     * so the standard fetch / filter / sort pipeline can process it like any
+     * MusicBrainz table — the counterpart of `applySlCardsToTable()` for the
+     * pageType carrying `features.jlListToTable`.
+     *
+     * Called from the same three places as the other converters: the
+     * click-time pre-processing block of `startFetchingProcess()` (live page),
+     * the pagination loop for a fetched page (`doc !== document`; never
+     * reached today, the list has one page) and
+     * `_hydrateAndRenderFromSnapshotData()` for Load from Disk, where the
+     * reloaded page holds the plain list again. Idempotent: a page with no
+     * entries left is a no-op.
+     *
+     * The table takes the place of the first year heading; every entry `<p>`
+     * and every year-heading `<p>` is removed. On the live document it also
+     * inserts `<h2 class="mb-jl-list-heading">` before the table, where
+     * `updateH2Count()`'s "last h2 before the table" lookup anchors the row
+     * count and filter bar, and hides (does not remove) the year jump menu
+     * with its caption and rule: its anchors are gone, and the Year column
+     * does its job.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyJlListToTable(def, docContext = document) {
+        if (!def?.features?.jlListToTable) return;
+        const items = _jlCollectItems(docContext);
+        if (items.length === 0) {
+            // Said out loud, like applySlCardsToTable(): a silent no-op would
+            // render "0 rows" with nothing in the log to say why. A page this
+            // function already converted is the one legitimate case.
+            if (!docContext.querySelector('table.mb-jl-table')) {
+                Lib.warn('init', `applyJlListToTable: no list entries found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href]').length} link(s) in the document, none with target="inferioredx1") — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-jl-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _JL_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        items.forEach(item => tbody.appendChild(_jlBuildRow(item, docContext)));
+        table.appendChild(tbody);
+
+        const headings = Array.from(docContext.querySelectorAll('a[name]'))
+            .filter(a => /^(?:\d{4}|others)$/.test(a.getAttribute('name')));
+        const firstAnchor = headings[0] || items[0].anchor;
+        const insertPoint = firstAnchor.closest('p') || firstAnchor;
+        insertPoint.parentNode.insertBefore(table, insertPoint);
+
+        const doomed = new Set();
+        items.forEach(item => doomed.add(item.anchor.closest('p') || item.anchor));
+        headings.forEach(a => doomed.add(a.closest('p') || a));
+        doomed.forEach(el => el.remove());
+
+        if (docContext === document) {
+            if (!document.querySelector('h2.mb-jl-list-heading')) {
+                const h2 = document.createElement('h2');
+                h2.className = 'mb-jl-list-heading';
+                h2.textContent = 'Bootlegs';
+                table.parentNode.insertBefore(h2, table);
+            }
+            const form = document.querySelector('form[name="theForm"]');
+            if (form) {
+                form.classList.add('mb-jl-hidden');
+                const before = form.previousElementSibling;
+                if (before?.tagName === 'P' && /choose the year/i.test(before.textContent)) before.classList.add('mb-jl-hidden');
+                const after = form.nextElementSibling;
+                if (after?.tagName === 'P' && /^=+$/.test(after.textContent.trim())) after.classList.add('mb-jl-hidden');
+            }
+        }
+
+        Lib.debug('init', `applyJlListToTable: converted ${tbody.rows.length} list entr${tbody.rows.length === 1 ? 'y' : 'ies'} → table.`);
+    }
+
+    /**
+     * Installs the jungleland.it stylesheet, once per document.
+     *
+     * The table itself is styled by `_ensureForeignTableStyle()`, shared with
+     * springsteenlyrics.com; this adds only what is jungleland's own: the
+     * injected `<h1>`/`<h2>` (the page has no heading to inherit a look from),
+     * the hidden jump menu, and a guard against the site's
+     * `A:hover { font-weight: bold }`, which would reflow a table row under
+     * the pointer. Every rule is scoped to `body.mb-sa-host-jl`.
+     *
+     * @returns {void}
+     */
+    function _ensureJlStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-jl-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-jl h1.mb-jl-h1 {
+                font-family: Arial, sans-serif;
+                font-size: 24px;
+                margin: 8px 0 12px;
+                line-height: 1.4;
+            }
+            body.mb-sa-host-jl h2.mb-jl-list-heading {
+                font-family: Arial, sans-serif;
+                font-size: 18px;
+                margin: 10px 0;
+            }
+            body.mb-sa-host-jl .mb-jl-hidden {
+                display: none !important;
+            }
+            body.mb-sa-host-jl table.mb-jl-table {
+                font-family: Arial, sans-serif;
+            }
+            body.mb-sa-host-jl table.mb-jl-table a:hover {
+                font-weight: inherit;
+            }
+        `);
+        style.id = 'mb-jl-style';
+    }
+
+    /**
+     * Prepares the jungleland.it list page at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it right after that
+     * lookup, for the jungleland.it definition only): the page has no heading
+     * of any kind, and the script needs an `<h1>` to hold its toolbar. Inserts
+     * `<h1 class="mb-jl-h1">` as the first child of `<body>`, its text in a
+     * `<bdi>` so the init-time entity name capture (`_cachedEntityName`, used
+     * for file names) reads it like a MusicBrainz h1.
+     *
+     * Also tags `<body>` with `mb-sa-host-jl` (the scope of every jungleland
+     * style rule) and installs `_ensureJlStyle()`. Nothing else on the page
+     * changes until the user presses the "Show all" button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _jlPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-jl-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+
+        document.body.classList.add('mb-sa-host-jl');
+        _ensureJlStyle();
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-jl-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = 'jungleland.it — Bootleg artwork list';
+        h1.appendChild(bdi);
+        document.body.insertBefore(h1, document.body.firstChild);
+        return h1;
     }
 
     /**
@@ -20930,6 +21277,28 @@
             buttons: [],
             features: {
                 slNavOnly: true
+            },
+            tableMode: 'single'
+        },
+
+        // --- jungleland.it ---------------------------------------------------
+        // Not MusicBrainz either: the jungleland.it bootleg ARTWORK list,
+        // one static page (`html/list.htm`, about 6,300 links under one anchor
+        // heading per year plus "others"), no pagination, so
+        // determineMaxPageFromDOM() finds no widget and the fetch loop reuses
+        // the live document — no request. Opt-in via `sa_enable_jungleland`,
+        // and only when list.htm is its own tab (not the artwork.htm frame).
+        // `jlListToTable` turns the links into the `table.tbl` the pipeline
+        // expects; see applyJlListToTable() and docs/claude/jungleland.md.
+        {
+            type: 'jl-list',
+            host: 'jungleland.it',
+            match: (path) => path === '/html/list.htm',
+            buttons: [ { label: 'Show all bootlegs of this list', shortLabel: 'Bootlegs' } ],
+            features: {
+                jlListToTable: true,
+                integerColumns: [ { sourceColumn: 'Year', align: 'C' } ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         }
@@ -44332,9 +44701,10 @@ a { color: #1565c0; }`;
         // A definition with a `host` belongs to that site alone, and on a
         // non-MusicBrainz host only such definitions are considered — so the
         // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
-        // can never claim a springsteenlyrics.com path, and the SL ones can
-        // never match on MusicBrainz.
-        if (Boolean(def.host) !== _isSlHost) continue;
+        // can never claim a springsteenlyrics.com or jungleland.it path, and
+        // those sites' definitions can never match on MusicBrainz (or on each
+        // other's host).
+        if ((def.host || null) !== _foreignHost) continue;
         if (def.match(path, params)) {
             pageType = def.type;
             baseDefinition = def;   // Save the base reference
@@ -44401,6 +44771,10 @@ a { color: #1565c0; }`;
             _slRecordRecentSearch();
             _slInstallScopeBar();
         }
+    } else if (baseDefinition?.host === 'jungleland.it') {
+        // jungleland.it's list has no heading at all either — see
+        // _jlPrepareLivePage().
+        headerContainer = _jlPrepareLivePage();
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -51924,7 +52298,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost) return;
+        if (_isSlHost || _isJlHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -61554,6 +61928,13 @@ a { color: #1565c0; }`;
             applySlCardsToTable(activeDefinition);
         }
 
+        // ── jlListToTable pre-processing ─────────────────────────────────────
+        // The jungleland.it list ('jl-list'): its plain links become a
+        // <table class="tbl"> — see applyJlListToTable's JSDoc.
+        if (activeDefinition.features?.jlListToTable) {
+            applyJlListToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -61968,6 +62349,12 @@ a { color: #1565c0; }`;
                 // springsteenlyrics.com page is raw cards, never converted.
                 if (doc !== document && activeDefinition.features?.slCardsToTable) {
                     applySlCardsToTable(activeDefinition, doc);
+                }
+                // Same for jungleland.it — not reached today (its list is one
+                // page, so the live document is reused), kept so a second
+                // page could never arrive unconverted.
+                if (doc !== document && activeDefinition.features?.jlListToTable) {
+                    applyJlListToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -87325,6 +87712,10 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.slCardsToTable) {
                 applySlCardsToTable(activeDefinition);
             }
+            // And for jungleland.it: the reloaded list is plain links again.
+            if (activeDefinition.features?.jlListToTable) {
+                applyJlListToTable(activeDefinition);
+            }
 
             // Restore table headers if they were saved
             if (data.headers && data.headers.length > 0) {
@@ -100975,6 +101366,19 @@ a { color: #1565c0; }`;
              */
             slFirstIsoDate(text) {
                 return _slFirstIsoDate(text);
+            },
+
+            /**
+             * Thin wrapper around `_jlParseItem()` — the jungleland.it list
+             * entry parser, exposed so a spec can pin title shapes the
+             * fixture happens not to contain.
+             *
+             * @param {string} text      A list entry's link text.
+             * @param {string} [section] The anchor heading above it ("1975", "others").
+             * @returns {{title: string, date: string, year: string}} The parsed fields.
+             */
+            jlParseItem(text, section) {
+                return _jlParseItem(text, section);
             },
 
             /**

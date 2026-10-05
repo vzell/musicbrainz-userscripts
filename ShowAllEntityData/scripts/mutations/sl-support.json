@@ -138,7 +138,7 @@
     "why": "Recorded honestly as a guard no spec can see today: no MusicBrainz matcher claims /collection.php or /bootlegs.php, and no MusicBrainz URL reaches the SL matchers, so detection gives the same answer without it. It exists for the NEXT broad MusicBrainz matcher (several are bare path.includes() checks).",
     "edits": [
       {
-        "find": "        if (Boolean(def.host) !== _isSlHost) continue;\n",
+        "find": "        if ((def.host || null) !== _foreignHost) continue;\n",
         "replace": ""
       }
     ],
@@ -234,7 +234,7 @@
       }
     ],
     "spec": "tests/fixtures/sl-include-regex.spec.js",
-    "grep": "every list page, and only list pages",
+    "grep": "springsteenlyrics.com: every list page",
     "expect": "fail"
   },
   {
