@@ -18531,3 +18531,226 @@ real found answer retitled), because no real one exists for these events.
 `scripts/mutations/event-colours-rg-tooltip.json`: 13 entries. Item 4's
 spec and mutations were updated for the tint (E1) and the per-gid preview
 cache.
+
+## 2026-10-05 — the sticky column docks at the window edge, left of its pinned bar (branch feature/sticky-col-align)
+
+**Symptom** (user, `org/sticky-areas.org`): scrolled to the right, every pinned
+bar stays put, but the sticky column docks at the window's left edge instead
+of in line with the bar above its table. Multi-table: release
+`52c6808b-037d-47d5-b0c7-17331c9d36cd`, h3 "1 - 7" Vinyl" (snapshots
+`debug/MT-final.html`, `debug/MT-final-scrolled.html`). Single-table:
+`isrc/USSM19500019` (`debug/ST-final.html`, `debug/ST-final-scrolled.html`).
+
+**Cause.** `applyStickyColumn()` pins its cells at an inline `left: 0px`
+(`_leftOffset()` always returns 0). The sticky page headers pin every bar at
+its own natural left (`--mb-sph-left`, 38px for that h3 and 16px for the ISRC
+h2 in the snapshots). The table there carries the same `margin-left: 1.5em` as
+its h3, so the column slid the whole indent further left than its bar.
+
+**Fix.** While `html.mb-sph-on` is set, the column docks at its TABLE's
+natural left. `_sphMeasureStickyCols()` reads it in the refresh pass's read
+phase. `_sphApplyStickyCols()` stamps the table with `data-mb-sph-col-left`,
+and `_sphEnsureColRule()` adds one rule pair per distinct value: an
+`!important` `left` that beats the inline `left: 0`, and a `box-shadow` that
+masks the gutter to the column's left.
+- The table's left, not the bar's. With `left` greater than the cell's
+  natural position, sticky shifts the cell at scrollX 0, onto the next column.
+  On the real page the two agree. In the bare fixture they differ by about
+  4px, because each 1.5em resolves against its own font size.
+- An attribute plus a generated rule, not a custom property on the table. An
+  inherited property restyles the whole table subtree, which is the 249 ms
+  recalc removed from `<html>` on 2026-10-02. These selectors have
+  `.mb-sticky-col` as their subject, so a stamp restyles only the sticky
+  cells.
+- A box-shadow mask, because both pseudo-elements of a `td` are taken (the
+  E-chips use `::before`, finding/flag glyphs use `::after`).
+- `.mb-sph-col-docked` gates the mask (`_sphUpdateColDocked()`, called from
+  the refresh pass and the existing scroll listener). With "#" before "Title"
+  the column docks only at scrollX ≥ P, the width of "#". An unconditional
+  mask covered the right L px of "#" and its header buttons at scrollX 0.
+  The first version accepted a transient here: for 0 < scrollX < P, "#"
+  slid through the gutter. The user's browser check rejected that (see the
+  follow-up below).
+
+**Tests.** `sticky-page-headers.spec.js` gets a new describe with 4 tests:
+single-table docking at the table's natural left (the bare fixture gets a
+24px `#content` indent, or 0 and "the table's left" could not be told
+apart), multi-table per sub-table, "#" then "Title" (undocked and unmasked at
+0 and at P/2, docked and masked past P, in line with its h3 bar, released on
+scrolling back), and the setting off (still `left: 0`). The
+`scripts/mutations/sticky-page-headers.json` list gets 6 entries, all caught.
+
+**Follow-up, same day: two defects found by the user in a real browser.**
+1. *"#" still visible in the gutter until "Title" docks* (the accepted
+   transient). Fixed: the cells before the sticky one also dock at L
+   (`data-mb-sph-col-pre` = the sticky cell's `cellIndex`, rule
+   `:nth-child(-n+k)`), at z-index 0 under the sticky column's 1/101, and
+   mask the gutter all the time. "#" holds at the bar's line and "Title"
+   slides over it. A column only docks if it is no wider than the sticky
+   column. A wider one would stick out to the right of it for good, so that
+   table falls back to the transient.
+2. *Stray lines at the top and bottom of each table, stretching left*
+   (`debug/stray-lines.html`). MusicBrainz's `table.tbl` carries
+   `border-top/bottom: solid 1px @dark-border` (musicbrainz-server
+   `root/static/styles/layout.less`). Under this script's
+   `border-collapse: separate` that border belongs to the TABLE box,
+   outside every cell, so no cell mask can cover it. Fixed: while aligned,
+   the table's border widths go to 0 and the same border goes on the first
+   header row's and last body row's cells, where the masks cover it. The
+   height is unchanged. The border is captured from the first table before
+   any stamp (`_sph.colBorder`).
+The fixtures have no MB stylesheet, so neither defect reproduced in them
+until the spec injected the relevant `layout.less` excerpt (`MB_TBL_CSS`).
+Both are now asserted on PIXELS: a screenshot of the gutter strip, decoded
+through a canvas, must be pure page background at P/2 and at the far right.
+The earlier tests asserted positions and computed styles, and passed while
+both defects were on screen.
+
+## 2026-10-05 — sticky page headers leave content behind; a narrow table scrolls away (branch feature/sticky-col-align)
+
+Reported in `org/sticky-bugs.org` with nine snapshots in `debug/`
+(`big-image-strip-not-docking.html`, `wikipedia-overwritten-come-together.html`,
+`aliases.html`, `credits.html`, `artist-subscriptions.html`,
+`user-ratings.html`, `search-pages.html`, `ISRCs.html`, `top-CD-stubs.html`).
+
+Root causes, read off the snapshots:
+
+1. *Big-image strip at the window edge* (artist/b3c01c39…/releases).
+   `_sphSectionBodies()` skipped `.mb-caa-bigbox`/`.mb-eaa-bigbox` by name.
+2. *Wikipedia licence note drawn over "Continue reading"* (work/bcd490e5…).
+   The section body of `h2.wikipedia` is three siblings: the extract `<div>`,
+   an inline `<a>` and an inline `<small>`. Each was pinned on its own at the
+   parent's content edge (`--mb-sph-left: 19.99px` on both), so once scrolled
+   the `<small>` sat on top of the `<a>`. An inline box's natural left is not
+   its parent's content edge, so it can never be pinned that way.
+3. *Intro text, forms and the status line scroll away* (3b/3c, 4a–e). The
+   DATA h2's section was excluded wholesale (`.mb-row-count-stat` test), so
+   "An alias is …", "vzell is subscribed to:" + `<ul>`, `div.searchform`,
+   `p.pageselector-results` were never candidates. `#mb-status-displays-wrapper`
+   is inserted right after the `<h1>`. Inside an entity header (`p.subheader`
+   in `div.*header`) it rides along. After a BARE `<h1>` (user pages, ISRC,
+   search) it is a sibling that nothing collected.
+4. *Credits table scrolls away* (artist/70248960…/aliases, Credits). Live
+   probe (`tests/support/probe-sph-aliases.js`, petri, 2034 px with classic
+   scrollbars): the table is 906 px wide, and its sticky "Name" column IS the
+   table, so it has no room to travel; a sticky cell never leaves its table.
+   The page overflows only by ~120 px, from the collapsed sidebar's table cell
+   beside the auto-resized `#page` (`#page` right 2142 against clientWidth
+   2019), so a 123 px scroll took the whole table with it (column at −103).
+5. *Aliases table docks at the window edge* (3b). NOT reproduced. On fddfe5b,
+   fresh page, logged in, at 2000 px and at 2034 px with scrollbars, the
+   table is stamped (`data-mb-sph-col-left="20"`) and the column docks at
+   20 px. `debug/aliases.html` has no `#mb-sph-col-style` at all, so no
+   engaged pass ever saw that table with its sticky column. The user
+   re-checked on the new build (2026-10-05): it docks. Cause unknown; most
+   likely a build that predated fddfe5b was still loaded when the snapshot
+   was taken.
+
+Found while testing, and not in the report:
+
+6. *The docked state is lost after a refresh pass while scrolled* (fddfe5b).
+   `_sphMeasureStickyCols()` read the docking point `p` from the right edge
+   of the header cell before the sticky one. Since the follow-up that docks
+   "#" under the sticky column, that cell moves with the scroll too, so a pass
+   at scrollX 4672 read p ≈ 4712 instead of 40, and `.mb-sph-col-docked` (the
+   gutter mask) went off. fddfe5b's own spec "single-table: docks at the
+   table's own left" fails deterministically on petri with fddfe5b's own
+   userscript (3/3). On vzell-lap no pass happened to land after the scroll.
+   Fixed: p is the sum of the preceding cells' WIDTHS, which sticky never
+   changes. A new test forces a pass while scrolled.
+
+Fixes:
+
+- `_sphSectionBodies()` is replaced by `_sphContentBodies()`, a walk of
+  `#page`. It skips `table.tbl`, descends into anything that contains one (and
+  always into `#content`), and pins everything else WHOLE. A wrapper like
+  `div.wikipedia-extract`, `div.annotation` or `#bottom-credits` is therefore
+  one target, and its h2/inline content rides along inside it.
+  `_sphIsEligible()` never pins an inline-level body on its own.
+- `_sphFitsTable()`: a top-level `table.tbl` that fits into the room a bar at
+  its place would get is pinned whole (class `mb-sph-table`, no max-width).
+  It is skipped by the column alignment, never raised by hover/focus (its
+  rows would cover a vertically sticky MB header), and counted in
+  `_sphContentExtent()` at its natural right (`--mb-sph-left` + width), since
+  its rect travels with the scroll.
+- `removeSelectors` drops MB's logged-in-only "Add a new alias" `<p>` on
+  `artist-aliases` and `entity-aliases`.
+
+A known limit of the whole-wrapper rule, as for section bodies before it: a
+pinned body is capped to the viewport. If unbreakable content in one (a wide
+image, a long `<pre>`) were the ONLY thing making the page overflow, capping
+it would remove the overflow, the feature would disengage, the cap would come
+off, and so on. No MusicBrainz page is known to do that.
+
+Petri re-measurement of fddfe5b (item 5 of the report): `tests/MEASUREMENTS.org`,
+same date.
+
+Follow-up from the user's live check (`debug/big-picture-stripe-indent-bug.html`,
+user/vzell/ratings): on a multi-table page the pinned strip sat at 16 px
+while its h3 bar and table sat at 34 px. Pinning was right; the strip itself
+had no indent. `renderGroupedTable()` sets `margin-left: 1.5em` inline on
+every sub-table to match `.mb-toggle-h3`, and `_artInitBigPics()` rebuilt
+the strip's `cssText` without it, so it was flush with the h2 even unscrolled.
+The strip now copies its table's inline `margin-left`. A single-table page has
+none, so nothing changes there.
+
+Also seen while running the suite: `release-tracks-ms-length(-overflow).spec.js`
+read the ⏱ toggle's `title` right after clicking it. While the pointer rests
+on a `[data-mb-tip]` element, `_setTip()`'s engine keeps that text in
+`data-mb-tip-saved` and `title` is empty. The specs only passed because, on
+the old build, something above the table grew by ~27 px after the click and
+moved the button out from under the pointer. The specs now read the tooltip
+text from wherever it lives.
+
+Live sweep (`tests/support/probe-sph-unpinned.js`, 1400 px, every reported
+page plus every `tests/pagetypes.json` pageType, stopped after 3 pages each):
+nothing left behind, except on edit/notes-received. There MB puts
+`<span class="new-notes-alert-checkbox"><p>…</p></span>` straight into
+`#content`, between the `<h1>` and the filter `<form>`. That is an inline
+element beside the data table, the case `_sphContentBodies()` had assumed
+no page has. It is alone on its line, so its natural left is the parent's
+edge. `_sphAloneOnLine()` now lets such an element be pinned. Pinned as an
+inline box it still scrolled: Chromium's sticky on an inline box does not
+carry the block-in-inline `<p>` along. While pinned it is `display: block`
+(`.mb-sph-inline`, no `!important`, so an inline `display: none` still wins).
+Its native display is captured on first sight with position and z-index
+(`_sphNativeStyle()`), so the class cannot feed back into the decision.
+
+## 2026-10-05 — MB header menus drawn behind the pinned entity header (branch feature/sticky-col-align)
+
+Reported on release/9d451257-ebce-44ec-aad8-b48609bfaf7a with a screenshot and
+`debug/mb-native-menu-bug.html` (taken with the Editing menu open): the menu
+opens, but the release header (h1 + ISRC / Tracks / Data / View / WARNING)
+paints over its top rows. MB's menus are `li[tabindex=-1]` opened by click
+(focus) or hover, so an open menu leaves `div.header` at 106 (`.mb-sph-chrome`)
+or 107 (`SPH_Z_RAISED`, via `:hover`/`:focus-within`).
+
+Two causes, both in `_sphEnsureStyle()`:
+
+1. *The entity header was raised for good.* The open-popup rule matched
+   `[style*="position: absolute"][style*="display: block"]`, and
+   `#mb-fetch-progress-fill` in the h1 toolbar keeps exactly that inline style
+   after every fetch, inside `#mb-fetch-progress-wrap` (`display: none`),
+   which CSS cannot see. So `.releaseheader` sat at 107 at all times — the
+   snapshot has it as the only match. At 107 against the header's 106/107 it
+   wins (a tie goes to DOM order, and the content comes after the header).
+   Fix: the rule also requires an inline `z-index`, which a real in-place
+   popup has (the filter-history dropdown: `z-index: 20001`).
+2. *A tie even without (1).* Menu opened by click (header 107 through
+   `:focus-within`), pointer then resting on the title bar beside it (bar 107
+   through `:hover`): same tie, same loser. Fix: the raise rules read
+   `var(--mb-sph-z-raised, 107)`, and `body > .mb-sph-target` sets it to 108
+   (`SPH_Z_CHROME_RAISED`). A custom property because a plain override rule
+   cannot out-rank the focus rule's specificity (its `:not(:has(…))`).
+   Registered `inherits: false` like the other three.
+
+Why no test saw it: the "no base z-index" assertion only covered
+`#content h2`, never the entity header, which is the one bar holding the
+progress fill. It now covers `.seriesheader` (with a premise that the fill is
+inside it, styled like a popup), and a new spec opens the header's Editing
+menu, rests the pointer on the entity header beside it and hit-tests the
+overlap. The fixture has neither MB's CSS nor its JS, so the test places the
+submenu itself — out of flow FIRST: unstyled, the submenu is part of the
+header's height, and taking it out shifted the entity header up by 235 px
+between measuring and placing. Both guards are in
+`scripts/mutations/sticky-page-headers.json`.

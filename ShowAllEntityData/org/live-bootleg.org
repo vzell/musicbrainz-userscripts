@@ -97,7 +97,7 @@ c.)
 If there are rows with event data but the RG title doesn't follow the live style guide, flag the RG name itself with a
 warning icon in the above "span" and tell with a rich HTML tooltip
 
-** new feature
+** DONE new feature
 
 1.)
 

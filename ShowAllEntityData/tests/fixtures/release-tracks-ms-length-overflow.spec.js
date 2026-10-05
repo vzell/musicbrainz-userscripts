@@ -167,7 +167,9 @@ test.describe('release-tracks: embedded-payload backfill via WS2', () => {
             '4:50.160', '3:11.666', '3:01.800', '6:30.506', '4:30', '4:31', '3:19', '9:34',
         ]);
 
-        const title = await firstToggle(page).getAttribute('title');
+        // The tooltip text: in data-mb-tip-saved while the pointer still
+        // rests on the button after the click (see _setTip()).
+        const title = await firstToggle(page).evaluate((b) => b.title || b.dataset.mbTipSaved || '');
         expect(title).toContain('HTTP 503');
     });
 

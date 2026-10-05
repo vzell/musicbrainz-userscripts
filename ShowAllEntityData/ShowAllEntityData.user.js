@@ -1285,10 +1285,13 @@
             default: true,
             description: 'Keep the page chrome — the MusicBrainz top header, the h1 entity header ' +
                          'with the action bar, the tabs, every h2 section bar and every h3 ' +
-                         'sub-table bar, the content of every expanded section above the data ' +
-                         '(e.g. Credits, Annotation) and the footer — pinned in place while a wide table is ' +
+                         'sub-table bar, everything else that is not a wide table (expanded sections ' +
+                         'such as Credits or Annotation, the text and forms above a table, the status ' +
+                         'line, the cover-art strips) and the footer — pinned in place while a wide table is ' +
                          'scrolled horizontally, the page-level counterpart of \'Enable Sticky ' +
-                         'Columns\'. Only engages while the page really overflows horizontally; ' +
+                         'Columns\'; the sticky column then docks aligned with the h2/h3 bar above ' +
+                         'its table instead of at the window edge, and a table that fits in the window ' +
+                         'stays in place as a whole. Only engages while the page really overflows horizontally; ' +
                          'stays inert while the sidebar is expanded and columns are not ' +
                          'auto-resized (the native sidebar would otherwise be pushed off-screen).'
         },
@@ -17739,7 +17742,10 @@
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                     { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
+                ],
+                // MB's "Add a new alias" link (a bare <p> in #content): an
+                // editing shortcut that duplicates the Edit tab's own action.
+                removeSelectors: ['#content > p:has(> a[href$="/add-alias"])']
             },
             tableMode: 'single'
         },
@@ -18458,7 +18464,9 @@
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                     { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
+                ],
+                // Same "Add a new alias" <p> as on 'entity-aliases'.
+                removeSelectors: ['#content > p:has(> a[href$="/add-alias"])']
             },
         },
         {
@@ -22483,9 +22491,12 @@
     // scrolling is deliberately kept on the window so the vertical sticky thead
     // keeps working), the MusicBrainz top header, the h1 entity header with the
     // action bar, the tabs, every h2 section bar and every h3 sub-table bar stay
-    // where they are instead of scrolling off to the left — and so does the
-    // CONTENT of every expanded non-data h2 section (Credits, Annotation,
-    // Relationships; see _sphSectionBodies()), while the data tables scroll.
+    // where they are instead of scrolling off to the left — and so does every
+    // other block of page content: expanded sections (Credits, Annotation,
+    // Relationships, the Wikipedia extract), the data section's intro text and
+    // forms, the status line, the CAA/EAA big-image strips (see
+    // _sphContentBodies()). Only the data tables scroll, and a data table
+    // narrow enough to fit is pinned whole as well (_sphFitsTable()).
     //
     // Mechanism — plain CSS `position: sticky; left: <natural offset>`, NOT a
     // scroll listener + transform: sticky is resolved by the compositor, so it
@@ -22517,6 +22528,24 @@
     //      itself ignores transforms (_sphContentExtent()), so engaging can
     //      never feed back into the decision to engage.
     //
+    // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
+    // pins its cells at `left: 0`, which made the column dock at the window
+    // edge while the h2/h3 bar above it docked at its own, indented left. Each
+    // table carrying a sticky column therefore gets `data-mb-sph-col-left`
+    // (its natural left, L) and one generated rule per distinct L moves its
+    // sticky cells to `left: L` (see _sphApplyStickyCols()). The gutter that
+    // opens to the left of the docked column is masked with a `box-shadow` in
+    // the page colour, but only once the column has actually docked
+    // (`.mb-sph-col-docked`, _sphUpdateColDocked()): with columns before the
+    // sticky one ("#" before "Title") the mask would otherwise cover them at
+    // scrollX 0. Those columns dock at L as well, underneath the sticky one
+    // (`data-mb-sph-col-pre`), and mask the gutter themselves until it has
+    // docked over them, so nothing ever slides past the bar's line. MB's own
+    // top/bottom border of `table.tbl` is moved onto the edge cells, where
+    // the masks cover it. An attribute + per-value rule rather than a custom property on
+    // the table, because an inherited custom property restyles the whole
+    // table subtree, while these selectors invalidate only the sticky cells.
+    //
     // Natively sticky elements are pinned too — notably the header of
     // jesus2099's "mb. STICKY HEADER" userstyle (`html > body > div.header {
     // position: sticky; top: 0; z-index: 1 }`): only `left`/`max-width` are
@@ -22528,7 +22557,16 @@
     // sticky thead (100), the sticky sidebar (105) and every other bar while it
     // is hovered, contains focus or holds an open popup. Focus resting in a
     // text field does not count: the global filter is focused after every
-    // render, which would otherwise keep the data h2 raised. Otherwise the native
+    // render, which would otherwise keep the data h2 raised. An "open popup"
+    // is an inline display:block + position:absolute element that also has an
+    // inline z-index: without that last part the h1 toolbar's fetch progress
+    // fill (display:block; position:absolute, permanently, inside a hidden
+    // wrapper) kept the entity header raised at all times, and it painted
+    // over MusicBrainz's own header menus. A raised BODY-LEVEL element (the
+    // MB header with an open menu) goes one higher still (SPH_Z_CHROME_RAISED),
+    // because equal z-indexes resolve by DOM order and the content bars come
+    // later: a menu opened by click, with the pointer then resting on the
+    // title bar beside it, was covered by that hovered bar. Otherwise the native
     // stacking is left alone: content bars get NO base z-index (a vertically
     // sticky header keeps covering the bars scrolling under it), and only a
     // non-positioned, z-index:auto body-level element (the plain MB header)
@@ -22562,6 +22600,8 @@
     const SPH_Z_CHROME = 106;
     /** z-index of a hovered / focus-containing / popup-holding pinned element: above sticky thead (100) and sidebar (105). */
     const SPH_Z_RAISED = 107;
+    /** z-index of a raised BODY-LEVEL pinned element (MB header, banners, footer): one above SPH_Z_RAISED, so an open MB header menu beats a raised content bar instead of tying with it (a tie goes to the later element in DOM order, i.e. the content bar). */
+    const SPH_Z_CHROME_RAISED = 108;
     /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
@@ -22582,6 +22622,14 @@
      *   widths:         WeakMap<Element, number>
      *                                     - last border-box width the observer reported per element
      *   passes:         number            - refresh passes run so far (read by the test hook only)
+     *   colTables:      Array<{table: HTMLTableElement, p: number}>
+     *                                     - tables whose sticky column is aligned, with the scrollX
+     *                                       at which that column docks (see _sphMeasureStickyCols())
+     *   colStyle:       ?HTMLStyleElement - holds one generated rule pair per distinct left offset
+     *   colRules:       Set<string>       - left offsets that already have their rule pair
+     *   colGutterBg:    string            - page colour of the gutter mask, read with the first rule
+     *   colBorder:      ?{top: number, topC: string, bottom: number, bottomC: string}
+     *                                     - MB's table.tbl top/bottom border, captured before the first stamp
      * }}
      */
     const _sph = {
@@ -22593,7 +22641,12 @@
         targets:     new Set(),
         native:      new WeakMap(),
         widths:      new WeakMap(),
-        passes:      0
+        passes:      0,
+        colTables:   [],
+        colStyle:    null,
+        colRules:    new Set(),
+        colGutterBg: '#ffffff',
+        colBorder:   null
     };
 
     /**
@@ -22633,6 +22686,7 @@
             @property --mb-sph-body-native-minw { syntax: '*'; inherits: false; }
             @property --mb-sph-left { syntax: '*'; inherits: false; }
             @property --mb-sph-maxw { syntax: '*'; inherits: false; }
+            @property --mb-sph-z-raised { syntax: '*'; inherits: false; }
             /* Widen <body> to the scrolled content so its direct children
                (MB header, banners, footer) have room to stay pinned. Margins
                and box model are pinned down so the widening cannot feed back
@@ -22656,9 +22710,18 @@
             html.mb-sph-on .mb-sph-target.mb-sph-chrome {
                 z-index: ${SPH_Z_CHROME};
             }
-            /* Must follow the rule above: equal specificity, wins by order. */
-            html.mb-sph-on .mb-sph-target:hover {
-                z-index: ${SPH_Z_RAISED};
+            /* An inline body alone on its line, pinned on its own: sticky
+               does not carry a block inside an inline box along. Without
+               !important, so an inline display: none still hides it. */
+            html.mb-sph-on .mb-sph-target.mb-sph-inline {
+                display: block;
+            }
+            /* Must follow the rule above. A table pinned whole is never raised
+               by hover or focus: the pointer rests on it all the time, and its
+               rows would then paint over a vertically sticky MB header. Its
+               menus (the 📊 panel and the like) live on body anyway. */
+            html.mb-sph-on .mb-sph-target:not(.mb-sph-table):hover {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Focus raises too (a menu opened by click or keyboard keeps its
                bar on top after the pointer leaves), but NOT while focus merely
@@ -22667,15 +22730,28 @@
                sticky MB header until focus moves. A text field's own popup
                (the filter-history dropdown) is caught by the popup rule
                below. Separate rule: a browser without :has() drops only it. */
-            html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
-                z-index: ${SPH_Z_RAISED};
+            html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Open in-place popup (e.g. the filter-history dropdown, whose
-               inline cssText serializes as "display: block; position: absolute")
-               while neither hovered nor focused. Separate rule on purpose: a
+               inline cssText serializes as "display: block; position: absolute;
+               … z-index: 20001") while neither hovered nor focused. The z-index
+               is part of the test: the h1 toolbar's fetch progress fill is
+               display:block + position:absolute for good, inside a hidden
+               wrapper, and without it the entity header stayed raised and
+               painted over the MB header's menus. Separate rule on purpose: a
                browser without :has() drops only this rule, not the one above. */
-            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"]) {
-                z-index: ${SPH_Z_RAISED};
+            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
+            }
+            /* The level the three raise rules above use. Body-level chrome
+               (the MB header and its menus) is raised one higher than a
+               content bar, so the two never tie: a tie goes to the later
+               element in DOM order, which is always the content bar. A
+               custom property rather than a fourth z-index rule, because a
+               plain override could not out-rank the focus rule's specificity. */
+            html.mb-sph-on body > .mb-sph-target {
+                --mb-sph-z-raised: ${SPH_Z_CHROME_RAISED};
             }
         `);
         style.id = 'mb-sticky-page-headers-style';
@@ -22705,32 +22781,34 @@
      * @returns {void}
      */
     function _sphUnmark(el) {
-        el.classList.remove('mb-sph-target', 'mb-sph-chrome');
+        el.classList.remove('mb-sph-target', 'mb-sph-chrome', 'mb-sph-table', 'mb-sph-inline');
         el.style.removeProperty('--mb-sph-left');
         el.style.removeProperty('--mb-sph-maxw');
     }
 
     /**
-     * Returns an element's OWN `position` and `z-index`, i.e. the values it
-     * has without this feature's rules.
+     * Returns an element's OWN `position`, `z-index` and `display`, i.e. the
+     * values it has without this feature's rules.
      *
      * Captured from the computed style the first time the element is seen
      * unmarked, and cached: once marked, its computed `position` is this
      * feature's `sticky` and its z-index may be `SPH_Z_CHROME`, so the live
      * values can no longer tell a static MB header from one made sticky by
-     * the "mb. STICKY HEADER" userstyle.
+     * the "mb. STICKY HEADER" userstyle; and an inline body pinned on its own
+     * is displayed as a block (`.mb-sph-inline`), which must not make it look
+     * block-level to the next pass.
      *
      * @param {HTMLElement}         el - Element to inspect.
      * @param {CSSStyleDeclaration} cs - Its live computed style.
-     * @returns {{position: string, zIndex: string}} The element's own values.
+     * @returns {{position: string, zIndex: string, display: string}} The element's own values.
      */
     function _sphNativeStyle(el, cs) {
         let nat = _sph.native.get(el);
         if (!nat && !el.classList.contains('mb-sph-target')) {
-            nat = { position: cs.position, zIndex: cs.zIndex };
+            nat = { position: cs.position, zIndex: cs.zIndex, display: cs.display };
             _sph.native.set(el, nat);
         }
-        return nat || { position: cs.position, zIndex: cs.zIndex };
+        return nat || { position: cs.position, zIndex: cs.zIndex, display: cs.display };
     }
 
     /**
@@ -22739,31 +22817,39 @@
      * Rejected are: non-rendering tags; anything inside `#sidebar` or inside a
      * table (e.g. wiki `h2.mb-toggle-h2` sub-headings in Annotation cells);
      * anything CONTAINING a table (capping its width would squeeze the table) —
-     * except for a section body (`isBody`, see `_sphSectionBodies()`), where
-     * only a data table (`table.tbl`) is ruled out: a `table.details` holding
-     * Credits URLs or relationships is exactly the content that has to stay
-     * in view, and capping it to the viewport only lets its text wrap;
-     * elements that are not rendered at all (`display:none` on itself or an
+     * except for a content body (`kind` `'body'`, see `_sphContentBodies()`),
+     * where only a data table (`table.tbl`) is ruled out: a `table.details`
+     * holding Credits URLs or relationships is exactly the content that has
+     * to stay in view, and capping it to the viewport only lets its text
+     * wrap — and except for a data table that fits (`kind` `'table'`, see
+     * `_sphFitsTable()`), which is pinned whole; elements that are not
+     * rendered at all (`display:none` on itself or an
      * ancestor — they get picked up by a later refresh once shown); floated
-     * elements; and elements whose own position (see `_sphNativeStyle()`) is
+     * elements; inline-level bodies (`display: inline…`) that share their line
+     * with other inline content (`_sphAloneOnLine()`), whose natural left is
+     * not their parent's content edge, so two of them on one line were
+     * pinned on top of each other; and elements whose own position (see `_sphNativeStyle()`) is
      * `absolute`/`fixed` (overlays, menus, tooltips, the sidebar toggle
      * handle). Natively `sticky` elements ARE accepted — e.g. the header of
      * the "mb. STICKY HEADER" userstyle, which sticks vertically; this feature
      * only adds `left`, so both directions work together.
      *
-     * @param {Element}      el       - Candidate element.
-     * @param {?HTMLElement} sidebar  - The native `#sidebar`, if present.
-     * @param {boolean}      [isBody] - `true` for a section body from
-     *   `_sphSectionBodies()`, which may contain (or be) a non-data table.
+     * @param {Element}      el      - Candidate element.
+     * @param {?HTMLElement} sidebar - The native `#sidebar`, if present.
+     * @param {('bar'|'body'|'table')} [kind] - `'body'` for a content body
+     *   from `_sphContentBodies()`, which may contain (or be) a non-data
+     *   table; `'table'` for a data table; a bar or header otherwise.
      * @returns {boolean} `true` when the element can safely be pinned.
      */
-    function _sphIsEligible(el, sidebar, isBody) {
+    function _sphIsEligible(el, sidebar, kind) {
         if (!(el instanceof HTMLElement)) return false;
         if (/^(SCRIPT|STYLE|LINK|META|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return false;
         if (sidebar && sidebar.contains(el)) return false;
         // The PARENT's ancestry: a section body may itself be a <table>.
         if (el.parentElement && el.parentElement.closest('table')) return false;
-        if (isBody) {
+        if (kind === 'table') {
+            if (!el.matches('table.tbl')) return false;
+        } else if (kind === 'body') {
             if (el.matches('table.tbl') || el.querySelector('table.tbl')) return false;
         } else if (el.querySelector('table')) {
             return false;
@@ -22771,46 +22857,107 @@
         if (el.getClientRects().length === 0) return false;
 
         const cs  = getComputedStyle(el);
-        const pos = _sphNativeStyle(el, cs).position;
-        if (pos !== 'static' && pos !== 'relative' && pos !== 'sticky') return false;
+        const nat = _sphNativeStyle(el, cs);
+        if (nat.position !== 'static' && nat.position !== 'relative' && nat.position !== 'sticky') return false;
         if (cs.float !== 'none') return false;
+        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;
         return true;
     }
 
     /**
-     * Returns the bodies of every non-data h2 section in the page content —
-     * for each `<h2>` the element siblings that follow it up to the next
-     * `<h2>`, i.e. exactly what `makeH2sCollapsible()` shows and hides — so
-     * that an expanded section (Credits, Annotation, Relationships, …) stays
-     * in view while a wide table is scrolled sideways, not just its bar.
+     * Tells whether an inline-level element sits on a line of its own: the
+     * nearest sibling node on either side, skipping comments and whitespace,
+     * is missing or a block-level element. Then its natural left IS its
+     * parent's content edge, and it can be pinned there like a block, e.g.
+     * MB's `<span class="new-notes-alert-checkbox"><p>…</p></span>` between the
+     * `<h1>` and the filter `<form>` of edit/notes-received, a direct child of
+     * `#content` beside the data table (found by
+     * `tests/support/probe-sph-unpinned.js`, 2026-10-05). Two inline siblings
+     * sharing a line, like the Wikipedia extract's "Continue reading" `<a>` and
+     * licence `<small>`, are never pinned on their own: both would stick at
+     * that edge, one over the other.
      *
-     * Left out: h2s inside a table or `#sidebar`; the DATA h2 (the one holding
-     * `.mb-row-count-stat`, the same test `makeH2sCollapsible()` and
-     * `_relocateTrailingH2Sections()` use), whose body is the data tables and
-     * their artwork strips, which must keep scrolling (its h3 bars are pinned
-     * as bars); and any sibling that is or contains a `table.tbl`, a CAA/EAA
-     * big-image strip or another `<h2>` (a wrapper around a later section).
+     * One that is alone on its line is displayed as a block while pinned
+     * (`.mb-sph-inline`): sticky on an inline box does not carry a block
+     * inside it (the `<p>` of that `<span>`) along in Chromium, so the
+     * content scrolled away under a pinned, empty inline box. Alone on its
+     * line, the block box takes the same place.
+     *
+     * @param {Element} el - An inline-level candidate body.
+     * @returns {boolean} `true` when nothing inline shares its line.
+     */
+    function _sphAloneOnLine(el) {
+        for (const dir of ['previousSibling', 'nextSibling']) {
+            let n = el[dir];
+            while (n && (n.nodeType === Node.COMMENT_NODE
+                || (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()))) n = n[dir];
+            if (!n) continue;
+            if (n.nodeType !== Node.ELEMENT_NODE) return false;
+            if (n.classList.contains('mb-sph-inline') || getComputedStyle(n).display.startsWith('inline')) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Returns every block of page content that is not a data table, so that
+     * all of it stays in view while a wide table is scrolled sideways: the
+     * content of expanded sections (Credits, Annotation, Relationships, the
+     * Wikipedia extract), the intro text and forms of the DATA section ("An
+     * alias is …", "vzell is subscribed to:" and its list, a search form,
+     * "Found 270,077 results"), the status line after a bare `<h1>`
+     * (`#mb-status-displays-wrapper`) and the CAA/EAA big-image strips.
+     *
+     * Walks the children of `#page` (else `<body>`), skipping `#sidebar`:
+     *   - a `table.tbl` is a data table: never a body, never descended into
+     *     (`_sphCollectTargets()` pins it whole only when it fits, see
+     *     `_sphFitsTable()`);
+     *   - an element CONTAINING a `table.tbl` (`#content`, a `<form>` around
+     *     the table) is descended into; it is never pinned itself, so the
+     *     table inside keeps scrolling;
+     *   - anything else is a body, pinned as a whole. A bar inside it (a
+     *     section's `<h2>` in `div.wikipedia-extract`, the Credits
+     *     `Release` / `Release group` h3s) is dropped by the nesting rule in
+     *     `_sphCollectTargets()` and rides along with it.
+     *
+     * Pinning a container whole is what keeps inline content apart: the
+     * Wikipedia extract's "Continue reading at Wikipedia..." `<a>` and its
+     * licence `<small>` were once pinned one by one, both at the container's
+     * left edge, so the second was drawn over the first. An inline-level
+     * element is therefore pinned on its own only when nothing inline shares
+     * its line (`_sphAloneOnLine()`, e.g. edit/notes-received's alert
+     * checkbox `<span>` beside the data table). Inline siblings sharing a line,
+     * or a bare text node, directly beside a data table in a container that
+     * has to be descended into keep scrolling: they have no box of their own
+     * at the parent's edge. None is known on MusicBrainz pages.
      *
      * Hidden (collapsed) bodies are included on purpose: `_sphSyncObserved()`
-     * observes them, so expanding a section — a 0 → W width change that
-     * `_sphOnResize()` lets through — schedules the pass that pins it.
-     * `_sphIsEligible()` keeps them out of the targets while hidden.
+     * observes them, so expanding a section or showing a strip — a 0 → W
+     * width change that `_sphOnResize()` lets through — schedules the pass
+     * that pins it. `_sphIsEligible()` keeps them out of the targets while
+     * hidden.
      *
-     * @returns {HTMLElement[]} Section bodies, in document order.
+     * @returns {HTMLElement[]} Content bodies, in document order.
      */
-    function _sphSectionBodies() {
+    function _sphContentBodies() {
         const root    = document.getElementById('page') || document.body;
         const sidebar = document.getElementById('sidebar');
         const bodies  = [];
-        root.querySelectorAll('h2').forEach(h2 => {
-            if (h2.closest('table') || (sidebar && sidebar.contains(h2))) return;
-            if (h2.querySelector('.mb-row-count-stat')) return;
-            for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
-                if (el.matches('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox')) continue;
-                if (el.querySelector('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox, h2')) continue;
-                bodies.push(el);
+        /**
+         * Collects the bodies among one container's children.
+         *
+         * @param {Element} parent - A container holding a data table.
+         * @returns {void}
+         */
+        function walk(parent) {
+            for (const el of Array.from(parent.children)) {
+                if (el === sidebar || el.matches('table.tbl')) continue;
+                // #content is always a container, also before any table is
+                // rendered: pinned whole it would be capped to the viewport.
+                if (el.id === 'content' || el.querySelector('table.tbl')) walk(el);
+                else bodies.push(el);
             }
-        });
+        }
+        walk(root);
         return bodies;
     }
 
@@ -22830,16 +22977,19 @@
      *   - every rendered `<h2>` / `<h3>` below `#page` (section bars incl.
      *     `.mb-toggle-h2`, sub-table bars `.mb-toggle-h3`, Credits sub-bars
      *     `.mb-credits-toggle-h3`);
-     *   - every rendered section body from `_sphSectionBodies()`. A bar
+     *   - every rendered content body from `_sphContentBodies()`. A bar
      *     inside a pinned body (the Credits `Release` / `Release group` h3s)
-     *     is then dropped by the nesting rule below and rides along with it.
+     *     is then dropped by the nesting rule below and rides along with it;
+     *   - every rendered top-level data table (`table.tbl`), flagged `table`:
+     *     `_sphRefresh()` pins it whole only if it fits (`_sphFitsTable()`).
      *
      * Each candidate passes `_sphIsEligible()`; a candidate nested inside
      * another candidate is dropped (nested sticky boxes would have no room to
      * travel inside their already-clamped parent anyway).
      *
-     * @returns {Array<{el: HTMLElement, chrome: boolean}>} Targets to pin;
-     *   `chrome` is `true` for body-level elements.
+     * @returns {Array<{el: HTMLElement, chrome: boolean, table: boolean}>}
+     *   Candidates to pin; `chrome` is `true` for body-level elements,
+     *   `table` for a data table.
      */
     function _sphCollectTargets() {
         const page    = document.getElementById('page');
@@ -22851,15 +23001,15 @@
         /**
          * Registers one candidate if it is eligible and not yet registered.
          *
-         * @param {Element} el       - Candidate element.
-         * @param {boolean} chrome   - `true` for direct children of `<body>`.
-         * @param {boolean} [isBody] - `true` for a section body.
+         * @param {Element} el     - Candidate element.
+         * @param {boolean} chrome - `true` for direct children of `<body>`.
+         * @param {('bar'|'body'|'table')} [kind] - See `_sphIsEligible()`.
          * @returns {void}
          */
-        function add(el, chrome, isBody) {
-            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar, isBody)) return;
+        function add(el, chrome, kind) {
+            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar, kind)) return;
             seen.add(el);
-            found.push({ el, chrome });
+            found.push({ el, chrome, table: kind === 'table' });
         }
 
         for (const el of Array.from(document.body.children)) {
@@ -22878,7 +23028,8 @@
         });
 
         (page || document.body).querySelectorAll('h2, h3').forEach(el => add(el, false));
-        _sphSectionBodies().forEach(el => add(el, false, true));
+        _sphContentBodies().forEach(el => add(el, false, 'body'));
+        document.querySelectorAll('table.tbl').forEach(el => add(el, false, 'table'));
 
         return found.filter(({ el }) => {
             for (let p = el.parentElement; p; p = p.parentElement) {
@@ -22902,6 +23053,14 @@
      * rendered `table.tbl` are taken — layout boxes only, which transforms
      * never move. Tables are included because without auto-resize a wide
      * table overflows `#content`/`#page` rather than widening them.
+     *
+     * A table pinned whole (`_sphFitsTable()`) is counted by its rect too,
+     * although that rect travels with the scroll: a sticky box never moves
+     * past its containing block, so a stuck table's right edge stays within
+     * its parent's, which the content extending past the window keeps at
+     * least that wide. It therefore never reports more than the true extent
+     * (checked 2026-10-05: computing its natural right from `--mb-sph-left`
+     * instead changed no measurement, see `scripts/mutations/`).
      *
      * @returns {number} Right edge of the content in document px (0 if none).
      */
@@ -22960,8 +23119,8 @@
      * Tables must be watched individually because a table growing wider
      * (manual column drag, column visibility, density) does not necessarily
      * resize `<body>`/`#page` while those still have their normal width.
-     * Every section body from `_sphSectionBodies()` is watched too, hidden
-     * ones included: expanding a collapsed section changes no other observed
+     * Every content body from `_sphContentBodies()` is watched too, hidden
+     * ones included: expanding a collapsed section or showing a strip changes no other observed
      * WIDTH, so without this nothing would schedule the pass that pins it.
      * Elements already observed are never re-observed (a second `observe()`
      * would queue a fresh initial notification and turn refresh → observe →
@@ -22982,7 +23141,7 @@
                        document.getElementById('page'), document.getElementById('content'),
                        document.getElementById('sidebar')];
         const tables = Array.from(document.querySelectorAll('table.tbl'));
-        roots.concat(tables, _sphSectionBodies()).forEach(el => {
+        roots.concat(tables, _sphContentBodies()).forEach(el => {
             if (el && !_sph.observed.has(el)) {
                 ro.observe(el);
                 _sph.observed.add(el);
@@ -23024,6 +23183,271 @@
     function _sphViewportWidth() {
         const cw = document.documentElement.clientWidth;
         return _isTouchPrimaryDevice() ? Math.max(cw, window.innerWidth || 0) : cw;
+    }
+
+    /**
+     * Tells whether a data table is narrow enough to be pinned whole, like a
+     * bar: its border-box width fits into the room a pinned bar at the same
+     * place would get (viewport − its natural left − the right gutter − its
+     * margin-right, see `_sphRefresh()`).
+     *
+     * A wide table keeps scrolling, with its sticky column docked at the
+     * table's left (`_sphApplyStickyCols()`). A narrow one cannot do that:
+     * a sticky cell never leaves its table, so once the page has scrolled
+     * further than the table is wide the whole table, its sticky column
+     * included, is gone — e.g. an artist's one-column "Artist credits" table
+     * (1009 px) on a page made wider by something else, or a narrow
+     * user-ratings sub-table next to wide ones. Pinned whole it stays where
+     * it is, together with the bar above it. It is never capped
+     * (`--mb-sph-maxw: none`), so pinning it cannot change its layout.
+     *
+     * @param {number} tableWidth - The table's border-box width, px.
+     * @param {number} room       - Width available to it while pinned, px.
+     * @returns {boolean} `true` when the table is pinned whole.
+     */
+    function _sphFitsTable(tableWidth, room) {
+        return tableWidth > 0 && tableWidth <= room + 0.5;
+    }
+
+    /**
+     * Read phase of the sticky-column alignment: measures every rendered
+     * `table.tbl` that carries a sticky column (`.mb-sticky-col` in its first
+     * header row), outside `#sidebar` and not nested in another table.
+     *
+     *   left = the table's natural left in document px (its border-box left
+     *          plus its left border), the offset its sticky column docks at;
+     *   p    = how far the page must scroll before that column docks, i.e.
+     *          the widths of the columns before it ("#" before "Title"):
+     *          the SUM of the rendered header cells' widths before the
+     *          sticky one (`border-spacing` is 0 on these tables). Never a
+     *          position: the sticky cell's rect moves once it has docked,
+     *          and so do the cells before it, which dock as well (`pre`).
+     *          Reading the right edge of "#" in a pass that ran while the
+     *          page was scrolled gave p ≈ scrollX + 40 instead of 40, so the
+     *          docked state (and with it the gutter mask) went off until the
+     *          next pass at scrollX 0;
+     *   pre  = how many cells precede the sticky one (its `cellIndex`). Those
+     *          columns dock at `left` too, underneath the sticky one, so they
+     *          never slide into the gutter while the sticky column is still
+     *          on its way (see `_sphEnsureColRules()`). 0 when any of them is
+     *          rendered wider than the sticky column: it would stick out to
+     *          the right of it for good, and the scrolling columns would pass
+     *          underneath that sliver.
+     *
+     * A measured table is never pinned itself (pinned ones are skipped, see
+     * `pinned`), so its rect is natural geometry at
+     * any scroll position (same reasoning as the parent rects in
+     * `_sphRefresh()`). The first call also captures the top/bottom table
+     * border (`_sph.colBorder`), before any stamp has moved it.
+     *
+     * @param {number} scrollX - `window.scrollX` of the current pass.
+     * @param {Set<Element>} pinned - This pass's targets: a table pinned
+     *   whole (`_sphFitsTable()`) is left out, it does not scroll, so its
+     *   column has nothing to dock against, and its rect moves with the scroll.
+     * @returns {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>}
+     *   One entry per table; `left` is already formatted for the attribute.
+     */
+    function _sphMeasureStickyCols(scrollX, pinned) {
+        const sidebar = document.getElementById('sidebar');
+        const out = [];
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const sticky = table.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
+            if (!sticky || pinned.has(table)) return;
+            if (sidebar && sidebar.contains(table)) return;
+            if (table.parentElement && table.parentElement.closest('table')) return;
+            if (table.getClientRects().length === 0) return;
+            if (!_sph.colBorder && !table.dataset.mbSphColLeft) {
+                const cs = getComputedStyle(table);
+                _sph.colBorder = {
+                    top:    cs.borderTopStyle === 'none' ? 0 : (parseFloat(cs.borderTopWidth) || 0),
+                    topC:   cs.borderTopColor,
+                    bottom: cs.borderBottomStyle === 'none' ? 0 : (parseFloat(cs.borderBottomWidth) || 0),
+                    bottomC: cs.borderBottomColor
+                };
+            }
+            const tr = table.getBoundingClientRect();
+            const innerLeft = tr.left + table.clientLeft;
+            const stickyW = sticky.getBoundingClientRect().width;
+            let p = 0;
+            let pre = sticky.cellIndex;
+            for (let c = sticky.previousElementSibling; c; c = c.previousElementSibling) {
+                if (c.getClientRects().length === 0) continue;
+                const w = c.getBoundingClientRect().width;
+                p += w;
+                if (w > stickyW + 0.5) pre = 0;
+            }
+            const left = Math.max(0, _sphFloor2(innerLeft + scrollX));
+            out.push({ table, left: String(left), p, pre: p > 0 ? pre : 0 });
+        });
+        return out;
+    }
+
+    /**
+     * Background colour of the page behind the tables, used to mask the
+     * gutter to the left of a docked sticky column: the first non-transparent
+     * background of `#page`, `<body>`, `<html>`, else white.
+     *
+     * @returns {string} A CSS colour.
+     */
+    function _sphGutterBg() {
+        for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+            if (!el) continue;
+            const bg = getComputedStyle(el).backgroundColor;
+            if (bg && bg !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
+        }
+        return '#ffffff';
+    }
+
+    /**
+     * Appends rules to the generated sticky-column stylesheet, creating it on
+     * first use. On creation it also adds the rules shared by every aligned
+     * table: MusicBrainz's `table.tbl { border-top / border-bottom }` is moved
+     * onto the first header row's and the last body row's cells. Under
+     * `border-collapse: separate` that border belongs to the TABLE box,
+     * outside every cell, so no cell's mask can cover it, and it stretched
+     * into the gutter as a stray line at the top and bottom of each table.
+     * Inside the cells it is covered like any cell border. The widths stay
+     * the same, so the table's height does not change.
+     *
+     * @param {string[]} rules - Complete CSS rules.
+     * @returns {void}
+     */
+    function _sphAddColRules(rules) {
+        if (!_sph.colStyle) {
+            _sph.colStyle = GM_addStyle('/* sticky column alignment: rules per left offset */');
+            _sph.colStyle.id = 'mb-sph-col-style';
+            _sph.colGutterBg = _sphGutterBg();
+            const b = _sph.colBorder || { top: 0, bottom: 0 };
+            const any = 'html.mb-sph-on table.tbl[data-mb-sph-col-left]';
+            const shared = [];
+            if (b.top > 0) {
+                shared.push(`${any} { border-top-width: 0 !important; }`,
+                    `${any} > thead > tr:first-child > * { border-top: ${b.top}px solid ${b.topC} !important; }`);
+            }
+            if (b.bottom > 0) {
+                shared.push(`${any} { border-bottom-width: 0 !important; }`,
+                    `${any} > tbody:last-of-type > tr:last-child > * { border-bottom: ${b.bottom}px solid ${b.bottomC} !important; }`);
+            }
+            rules = shared.concat(rules);
+        }
+        const sheet = _sph.colStyle.sheet;
+        rules.forEach(rule => {
+            try {
+                sheet.insertRule(rule, sheet.cssRules.length);
+            } catch (err) {
+                _sph.colStyle.appendChild(document.createTextNode(`\n${rule}`));
+            }
+        });
+    }
+
+    /**
+     * Makes sure the rules for one left offset (and, when columns precede the
+     * sticky one, for that count) exist in the generated stylesheet:
+     *
+     *   - the sticky cells of every table stamped with that offset dock at
+     *     `left: <offset>`;
+     *   - while the table is `.mb-sph-col-docked`, they mask the gutter to
+     *     their left;
+     *   - with `pre` > 0 the first `pre` cells of every row dock at the same
+     *     offset, one layer below the sticky column (z-index 0 against its 1
+     *     and 101), and mask the gutter all the time. "#" then stays at the
+     *     bar's line while "Title" slides over it, instead of sliding into
+     *     the gutter. Their mask is harmless at scrollX 0, where they sit at
+     *     their natural place and the gutter is page margin.
+     *
+     * Rules are only ever added, once per distinct offset / count (a page
+     * normally has one or two). Their subjects are cells of the sticky
+     * column or of the columns before it, so stamping a table restyles only
+     * those cells, not the whole table. `!important` beats the inline
+     * `left: 0px` of `applyStickyColumn()`, which stays the value whenever
+     * `html.mb-sph-on` is not set. The mask is a `box-shadow` because both
+     * pseudo-elements of a `td` are already in use (E-chips, finding glyphs);
+     * `table.tbl` is `border-collapse: separate` (`applyStickyHeaders()`), so
+     * cell shadows paint, inside the cell's own stacking context and hence
+     * over the scrolling cells. Two shadows, at the full and the half offset,
+     * so a column at least half as wide as the gutter still covers all of it.
+     *
+     * @param {string} left - Offset in px, as stamped in `data-mb-sph-col-left`.
+     * @param {number} pre  - Cells before the sticky one, 0 for none (see
+     *   `_sphMeasureStickyCols()`).
+     * @returns {void}
+     */
+    function _sphEnsureColRules(left, pre) {
+        const sel  = `html.mb-sph-on table.tbl[data-mb-sph-col-left="${left}"]`;
+        const half = _sphFloor2(parseFloat(left) / 2);
+        const mask = () => `-${left}px 0 0 0 ${_sph.colGutterBg}, -${half}px 0 0 0 ${_sph.colGutterBg}`;
+        if (!_sph.colRules.has(left)) {
+            const cells = ' > * > tr > .mb-sticky-col';
+            _sphAddColRules([
+                `${sel}${cells} { left: ${left}px !important; }`,
+                `${sel}.mb-sph-col-docked${cells} { box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(left);
+        }
+        const key = `${left}|${pre}`;
+        if (pre > 0 && !_sph.colRules.has(key)) {
+            _sphAddColRules([
+                `${sel}[data-mb-sph-col-pre="${pre}"] > * > tr > :nth-child(-n+${pre}) ` +
+                `{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(key);
+        }
+    }
+
+    /**
+     * Write phase of the sticky-column alignment: stamps each measured table
+     * with its offset and its count of docking columns before the sticky one
+     * (only on change), drops the stamps from tables that are no longer
+     * measured but still shown, and refreshes the docked state. A hidden
+     * (collapsed) table keeps its stamps, so it is right again the moment it
+     * is shown.
+     *
+     * @param {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>} cols
+     *   Output of `_sphMeasureStickyCols()`.
+     * @returns {void}
+     */
+    function _sphApplyStickyCols(cols) {
+        const keep = new Set(cols.map(c => c.table));
+        _sph.colTables.forEach(({ table }) => {
+            if (keep.has(table) || (table.isConnected && table.getClientRects().length === 0)) return;
+            delete table.dataset.mbSphColLeft;
+            delete table.dataset.mbSphColPre;
+            table.classList.remove('mb-sph-col-docked');
+        });
+        cols.forEach(({ table, left, pre }) => {
+            _sphEnsureColRules(left, pre);
+            if (table.dataset.mbSphColLeft !== left) table.dataset.mbSphColLeft = left;
+            const preStr = pre > 0 ? String(pre) : undefined;
+            if (table.dataset.mbSphColPre !== preStr) {
+                if (preStr) table.dataset.mbSphColPre = preStr;
+                else delete table.dataset.mbSphColPre;
+            }
+        });
+        _sph.colTables = cols.map(({ table, p }) => ({ table, p }));
+        _sphUpdateColDocked();
+    }
+
+    /**
+     * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
+     * docked (`scrollX >= p`), which switches its gutter mask on; writes only
+     * when the state flips. With `p = 0` (sticky column first) the class is
+     * always on, harmless at scrollX 0 where the gutter is empty page margin.
+     * With `p > 0` the sticky column's mask, L px to its left, would cover
+     * the still visible part of the columns before it ("#") until it has
+     * docked over them; meanwhile those columns mask the gutter themselves
+     * (see `_sphEnsureColRules()`). Called from every refresh pass and from the scroll listener
+     * while the feature is engaged: one compare per table per scroll event.
+     *
+     * @returns {void}
+     */
+    function _sphUpdateColDocked() {
+        const scrollX = window.scrollX;
+        _sph.colTables.forEach(({ table, p }) => {
+            const docked = scrollX >= p - 0.5;
+            if (table.classList.contains('mb-sph-col-docked') !== docked) {
+                table.classList.toggle('mb-sph-col-docked', docked);
+            }
+        });
     }
 
     /**
@@ -23110,12 +23534,10 @@
             const extentNow = engaging ? _sphContentExtent() : extent;
 
             const targets = _sphCollectTargets();
-            const next = new Set(targets.map(t => t.el));
-            _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
 
             // ── Read phase ──────────────────────────────────────────────────
             const scrollX = window.scrollX;
-            const plans = targets.map(({ el, chrome }) => {
+            const plans = targets.map(({ el, chrome, table }) => {
                 const parent = el.parentElement || body;
                 const pcs = getComputedStyle(parent);
                 const pr  = parent.getBoundingClientRect();
@@ -23129,7 +23551,14 @@
                 // Sticky keeps the MARGIN box inside the containing block, so the
                 // element's own margin-right (plain MB header: 16px) must come off
                 // too, or it widens by that much and is pushed back at max scroll.
-                let width = Math.max(SPH_MIN_WIDTH_PX, vw - left - gutter - (parseFloat(cs.marginRight) || 0));
+                const room = vw - left - gutter - (parseFloat(cs.marginRight) || 0);
+                if (table) {
+                    // Never capped: pinned whole while it fits, else left to
+                    // scroll with its sticky column docked.
+                    if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
+                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null };
+                }
+                let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
                              (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
@@ -23138,19 +23567,26 @@
                 // (see the section comment); a natively sticky / z-indexed
                 // element keeps its own.
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
-                return { el, baseZ, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
-            });
+                const inline = nat.display.startsWith('inline');
+                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+            }).filter(Boolean);
+            const next = new Set(plans.map(p => p.el));
+            const cols = _sphMeasureStickyCols(scrollX, next);
 
             // ── Write phase ─────────────────────────────────────────────────
-            plans.forEach(({ el, baseZ, left, width }) => {
+            _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
+            plans.forEach(({ el, baseZ, table, inline, left, width }) => {
                 _sphSetVar(el, '--mb-sph-left', `${left}px`);
-                _sphSetVar(el, '--mb-sph-maxw', `${width}px`);
+                _sphSetVar(el, '--mb-sph-maxw', width === null ? 'none' : `${width}px`);
                 // classList.add()/toggle() rewrite the class attribute even when
                 // nothing changes (DOM "update steps") — only write on change.
                 if (!el.classList.contains('mb-sph-target')) el.classList.add('mb-sph-target');
                 if (el.classList.contains('mb-sph-chrome') !== baseZ) el.classList.toggle('mb-sph-chrome', baseZ);
+                if (el.classList.contains('mb-sph-table') !== table) el.classList.toggle('mb-sph-table', table);
+                if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
+            _sphApplyStickyCols(cols);
 
             if (engaging) {
                 Lib.debug('ui', `Sticky page headers: engaged for ${plans.length} element(s)`);
@@ -23231,7 +23667,9 @@
      * Idempotent: the first call installs the stylesheet, a ResizeObserver
      * (html, body, #page, #content, #sidebar, every `table.tbl`), a `resize`
      * listener and a passive `scroll` listener (fallback: engages on the first
-     * horizontal scroll should no observer have noticed the overflow); every
+     * horizontal scroll should no observer have noticed the overflow; while
+     * engaged it only flips each aligned table's docked state, see
+     * `_sphUpdateColDocked()`); every
      * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
      * pick up their new h2/h3 bars.
      *
@@ -23249,7 +23687,11 @@
             }
             window.addEventListener('resize', scheduleStickyPageHeadersRefresh, { passive: true });
             window.addEventListener('scroll', () => {
-                if (!_sph.active && window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                if (!_sph.active) {
+                    if (window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                } else if (_sph.colTables.length) {
+                    _sphUpdateColDocked();
+                }
             }, { passive: true });
             _sph.initialized = true;
             Lib.debug('ui', 'Sticky page headers enabled - page chrome stays pinned while scrolling horizontally');
@@ -23585,6 +24027,14 @@
          * A non-zero `left` offset is only needed when multiple preceding columns
          * are ALSO sticky (so each one stacks behind the next).  This script uses
          * a single sticky column per table, so `left: 0` is always correct.
+         *
+         * Exception: while sticky page headers are engaged (`html.mb-sph-on`),
+         * a stylesheet rule overrides this inline value with the TABLE's own
+         * natural left, so the column docks aligned with the pinned h2/h3 bar
+         * above it (see `_sphApplyStickyCols()`). That brings no ghosting back:
+         * the offset is the table's own left, not the preceding columns'
+         * widths, so the gap it leaves is page gutter, which is masked once
+         * the column has docked.
          *
          * @returns {number} always 0
          */
@@ -76440,8 +76890,9 @@ a { color: #1565c0; }`;
      * `div.annotation > div.annotation-body`. Left as an h2 it is mistaken for
      * a page-level section everywhere h2s are walked: `makeH2sCollapsible()`
      * gives it the h2 colour, the page-wide Ctrl+Click / `Ctrl+2` set and a
-     * collapsed default, and `_sphSectionBodies()` refuses to pin a body that
-     * contains an h2 — so the whole annotation text scrolled away sideways
+     * collapsed default, and `_sphSectionBodies()` (since replaced by
+     * `_sphContentBodies()`, which pins such a body whole) refused to pin a body that
+     * contained an h2 — so the whole annotation text scrolled away sideways
      * (the heading and its paragraph were pinned on their own, but a sticky
      * box cannot leave its unpinned containing block). As an h3 the body is
      * pinned as a whole and the bar rides along inside it.
@@ -91725,8 +92176,14 @@ a { color: #1565c0; }`;
         // elements in place, then recreates fresh h3/table pairs alongside them).
         table.parentNode.insertBefore(box, table);
 
+        // Indented like its table: renderGroupedTable() gives every sub-table
+        // the h3 bar's margin-left (1.5em), and a strip without it sat flush
+        // with the h2 while the bar above it and the table below were
+        // indented — pinned that way, too, by Sticky Page Headers, which pins
+        // the strip at its natural left (org/sticky-bugs.org, 2026-10-05).
         box.style.cssText       = 'display:' + (currentlyVisible ? 'flex' : 'none') +
-                                   '; flex-wrap:wrap; gap:4px; padding:4px 0 4px 0; min-height:0;';
+                                   '; flex-wrap:wrap; gap:4px; padding:4px 0 4px 0; min-height:0;' +
+                                   (table.style.marginLeft ? ' margin-left:' + table.style.marginLeft + ';' : '');
         box.dataset[ctx.visAttr] = currentlyVisible ? 'true' : 'false';
 
         // ── Discography-view guard ────────────────────────────────────────────

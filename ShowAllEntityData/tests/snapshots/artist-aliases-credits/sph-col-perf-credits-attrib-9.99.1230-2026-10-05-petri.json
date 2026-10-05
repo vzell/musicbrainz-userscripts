@@ -1,0 +1,341 @@
+{
+  "harness": "tests/support/capture-sph-col-perf.js",
+  "page": {
+    "pageType": "artist-aliases",
+    "tableMode": "single",
+    "url": "https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f/aliases",
+    "fixture": null
+  },
+  "viewport": {
+    "width": 1600,
+    "height": 900
+  },
+  "rounds": 7,
+  "arms": [
+    {
+      "label": "main",
+      "ref": "main",
+      "commit": "45f3584ae9c835d25eb19afbc72893652b508696",
+      "version": "9.99.1230+2026-10-05"
+    },
+    {
+      "label": "head",
+      "ref": "WORKTREE",
+      "commit": null,
+      "version": "9.99.1230+2026-10-05"
+    },
+    {
+      "label": "nofit",
+      "ref": "file:/tmp/claude-1002/-home-vzell-git-musicbrainz-userscripts-ShowAllEntityData/56a1a13c-fd0f-4e86-b06b-47f5704f3fb4/scratchpad/nofit.user.js",
+      "commit": null,
+      "version": "9.99.1230+2026-10-05"
+    }
+  ],
+  "machine": {
+    "hostname": "petri",
+    "platform": "linux",
+    "release": "6.18.40.1-microsoft-standard-WSL2",
+    "cpus": 24,
+    "totalMemGb": 31,
+    "node": "v24.16.0",
+    "playwright": "1.62.1",
+    "uptimeHours": 34.9,
+    "claudeResident": {
+      "count": 1,
+      "oldestSessionHours": 22.7
+    },
+    "claudeSinceBoot": true
+  },
+  "startedAt": "2026-10-05T12:47:56.996Z",
+  "finishedAt": "2026-10-05T12:50:17.522Z",
+  "summary": {
+    "main": {
+      "engaged": 7,
+      "stamped": 0,
+      "pinnedTable": 0,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0
+      },
+      "sort": {
+        "median": 340
+      },
+      "quietWait": {
+        "median": 803
+      },
+      "scroll": {
+        "median": 0
+      }
+    },
+    "head": {
+      "engaged": 7,
+      "stamped": 0,
+      "pinnedTable": 7,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      },
+      "sort": {
+        "median": 407,
+        "pairedMedianDiff": 67,
+        "higherInRounds": 7
+      },
+      "quietWait": {
+        "median": 803,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 2
+      },
+      "scroll": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      }
+    },
+    "nofit": {
+      "engaged": 7,
+      "stamped": 7,
+      "pinnedTable": 0,
+      "n": 7,
+      "longAfterRender": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      },
+      "sort": {
+        "median": 337,
+        "pairedMedianDiff": -4,
+        "higherInRounds": 3
+      },
+      "quietWait": {
+        "median": 803,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 1
+      },
+      "scroll": {
+        "median": 0,
+        "pairedMedianDiff": 0,
+        "higherInRounds": 0
+      }
+    }
+  },
+  "samples": {
+    "main": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 357,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 336,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 340,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 341,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 333,
+        "quietWait": 804,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 340,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 348,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": false
+      }
+    ],
+    "head": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 388,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 409,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 407,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 415,
+        "quietWait": 804,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 400,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 409,
+        "quietWait": 806,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 389,
+        "quietWait": 802,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": false,
+        "pinnedTable": true
+      }
+    ],
+    "nofit": [
+      {
+        "round": 1,
+        "longAfterRender": 0,
+        "sort": 334,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 2,
+        "longAfterRender": 0,
+        "sort": 374,
+        "quietWait": 804,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 3,
+        "longAfterRender": 0,
+        "sort": 360,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 4,
+        "longAfterRender": 0,
+        "sort": 329,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 5,
+        "longAfterRender": 0,
+        "sort": 351,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 6,
+        "longAfterRender": 0,
+        "sort": 336,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      },
+      {
+        "round": 7,
+        "longAfterRender": 0,
+        "sort": 337,
+        "quietWait": 803,
+        "scroll": 0,
+        "engaged": true,
+        "stamped": true,
+        "pinnedTable": false
+      }
+    ]
+  }
+}
