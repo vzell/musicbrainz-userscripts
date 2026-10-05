@@ -1,8 +1,7 @@
-* springsteen.it
+* brucespringsteen.it
 
-Give the website https://www.brucespringsteen.it the same
-treatment as what we've done with the https://www.jungleland.it/html/list.htm
-website, albeit not so complex
+Give the website https://www.brucespringsteen.it (https://brucespringsteen.it redirects) the same treatment as what
+we've done with the https://www.jungleland.it/html/list.htm website, albeit not so complex
 
 1.)
 
