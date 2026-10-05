@@ -207,6 +207,59 @@ pushed back at the far right — plain `position: sticky`, on any host.
 - The entry page's 54 pages and 5365 rows trip ⚠️ High Page Count and the
   render-decision dialog at the default thresholds — expected, not a bug.
 
+## The compact category/filter bar — `_slInstallScopeBar()`
+
+Behind its own setting, `sa_sl_compact_nav` (default **off**; needs
+`sa_enable_springsteenlyrics`), on the collection pageTypes only
+(`slCardsToTable: 'collection'`; the bootleg lists are a later change). Design
+study and the decisions behind it: `org/springsteenlyrics.org`, `** analyze`.
+Called from the init block right after `_slPrepareLivePage()`.
+
+**It reads the walls, it never lists them.** `_slReadNavFacets()` turns every
+`.element-buttons` block of same-page links into a facet: links that set no
+`f_*` parameter are the Category facet, the rest one facet per wall. The year
+slider is a form and becomes a range facet (`_slReadYearSpan()`: the inline
+rSlider `values:`, else the rendered `.rs-scale`, else 1973 to this year). So a
+category's own option set (8 formats on album, 26 on the entry page; the
+country list shrinks under a format filter) is what its menu shows, and a
+category the site adds appears by itself. Only the Category GROUPING is a
+list (`_SL_CATEGORY_GROUPS`; an unknown key lands under "More").
+
+**The site's links already combine filters, and that shaped the reader.**
+On a filtered page (checked in the fixtures, 2026-10-05):
+
+- every link of the OTHER walls carries the active filter (`f_format=12i` on
+  every country, album and copies link);
+- the active entry of a wall is red (`label-danger`) and its href DROPS its own
+  filter, so a click removes it.
+
+So a wall's keys are the `f_*` parameters NOT carried, with the page's own
+value, by every one of its links, and the red entry's value comes from the
+page's query, not its href. Take every `f_*` as the wall's and the walls merge
+into one Format menu; read the red entry from its href and the bar shows
+`12i` instead of `12" vinyl`. Both are pinned by mutations. The live probe
+(15 GETs) also showed the server combines any mix of `f_format`, `f_country`,
+`f_range` and the category (album 1315 → 12i 539 → plus USA 125).
+
+**Targets come from one builder, `_slScopeHref()`**: the page parameter
+dropped (`page`, `pg`), `cmd=list`, `category=all` on the entry page (its own
+filter links say the same), then the change. A category change keeps every
+filter except `_SL_CATEGORY_SPECIFIC_PARAMS` (`f_date_main` names an
+album title).
+
+**Every choice is a plain `<a href>`**, never `location.href =`, so
+`initNavigationGuard()`'s anchor guard asks before a loaded table is lost, and
+middle-click works. The pull-down is appended to `<body>`, `position: fixed`,
+so no pinned ancestor's stacking context or the sticky `<thead>` covers it.
+**It follows its button on scroll instead of closing**
+(`_slPlaceScopePop()`): opening it can scroll the page itself, and
+close-on-scroll shut every menu as it opened. That is pinned by a mutation.
+
+The walls are only hidden (`mb-sl-nav-hidden`, `display: none`), which also
+takes them out of Sticky Page Headers: `_sphIsEligible()` skips an element with
+no client rects. The bar sits where the first wall was, in `.project-detail`,
+and is pinned like the walls before it.
+
 ## Tests
 
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
@@ -215,7 +268,8 @@ pushed back at the far right — plain `position: sticky`, on any host.
 | `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
-| `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left                                                                   |
+| `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 

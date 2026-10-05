@@ -2,11 +2,11 @@
   "_meta": {
     "generated_by": "scripts/dump-config-defaults.py",
     "purpose": "Generated artifact. NOTHING in the userscript reads this file. See org/config-handling.org Item 4.",
-    "script_version": "9.99.1230+2026-10-05",
-    "schema_entries": 329,
+    "script_version": "9.99.1234+2026-10-05",
+    "schema_entries": 330,
     "sections": 41,
-    "settings": 288,
-    "settings_with_default": 283,
+    "settings": 289,
+    "settings_with_default": 284,
     "settings_without_default": [
       "sa_default_hidden_columns",
       "sa_rel_other_db_classes",
@@ -15,7 +15,7 @@
       "sa_unicode_char_picker_mappings"
     ],
     "types": {
-      "checkbox": 132,
+      "checkbox": 133,
       "color_picker": 62,
       "number": 42,
       "divider": 41,
@@ -428,6 +428,7 @@
     "sa_shortcut_toggle_h3": "Shortcut: Toggle h3 Headers",
     "sa_shortcut_unicode_chars": "Shortcut: Unicode Character Picker",
     "sa_sidebar_collapsed": "Start with sidebar collapsed",
+    "sa_sl_compact_nav": "Compact category and filter bar on springsteenlyrics.com collection pages",
     "sa_sort_chunk_size": "Sort chunk size",
     "sa_stats_panel_max_height": "Statistics panel max height (vh)",
     "sa_stats_panel_width": "Statistics panel max width (px)",
@@ -714,6 +715,7 @@
     "sa_shortcut_toggle_h3": "Ctrl+3",
     "sa_shortcut_unicode_chars": "Ctrl+U",
     "sa_sidebar_collapsed": true,
+    "sa_sl_compact_nav": false,
     "sa_sort_chunk_size": 5000,
     "sa_stats_panel_max_height": 82,
     "sa_stats_panel_width": 860,

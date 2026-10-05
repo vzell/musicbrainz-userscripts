@@ -66,14 +66,28 @@ const MUST_PIN = [
 ];
 
 /**
+ * With the compact category/filter bar on (sa_sl_compact_nav), the bar
+ * stands in for the walls of links and the year slider, which are hidden:
+ * the bar is what must stay put.
+ * @type {string[]}
+ */
+const MUST_PIN_COMPACT = [
+    '.breadcrumb-wrap',
+    'h1.mb-sl-h1',
+    '.mb-sl-scope',
+    'h2.mb-sl-list-heading',
+];
+
+/**
  * Opens one SL fixture at VIEWPORT with BOOTSTRAP_CSS and renders the table.
  * @param {import('@playwright/test').Page} page
  * @param {string} kind
+ * @param {Object<string, *>} [settingsOverride={}]
  * @returns {Promise<void>}
  */
-async function openSl(page, kind) {
+async function openSl(page, kind, settingsOverride = {}) {
     await page.setViewportSize(VIEWPORT);
-    const { spec } = await loadSlListPage(page, { kind });
+    const { spec } = await loadSlListPage(page, { kind, settingsOverride });
     await page.addStyleTag({ content: BOOTSTRAP_CSS });
     // Through the DOM: a pinned bar can sit over the button for the hit-test.
     await page.$eval(`button[data-label="${spec.button}"]`, (b) => b.click());
@@ -131,13 +145,18 @@ const YEAR_FILTER = '.container:not(.mb-sl-wide):has(#f_range)';
 // memorabilia: a second stray `</div>` also closes the FLOATED `.col-sm-12`
 // holding `.project-detail`, so the walk has to descend into a full-width
 // float (_sphIsFullWidthFloat()) to reach the toolbar <h1> and the buttons.
-for (const [kind, sels] of [
-    ['collection', MUST_PIN],
-    ['sampler', [...MUST_PIN, YEAR_FILTER]],
-    ['memorabilia', [...MUST_PIN, YEAR_FILTER]],
+// Each shape runs twice: with the site's walls of links, and with the compact
+// bar (sa_sl_compact_nav) folding them, which must be pinned the same way.
+for (const [kind, sels, settings, tag] of [
+    ['collection', MUST_PIN, {}, ''],
+    ['sampler', [...MUST_PIN, YEAR_FILTER], {}, ''],
+    ['memorabilia', [...MUST_PIN, YEAR_FILTER], {}, ''],
+    ['collection', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
+    ['sampler', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
+    ['memorabilia', MUST_PIN_COMPACT, { sa_sl_compact_nav: true }, ' (compact bar)'],
 ]) {
-    test(`${kind}: everything above the table stays put, and Title docks at the table's left`, async ({ page }) => {
-        await openSl(page, kind);
+    test(`${kind}${tag}: everything above the table stays put, and Title docks at the table's left`, async ({ page }) => {
+        await openSl(page, kind, settings);
         const before = await geometry(page, sels);
         expect(before.scrollX).toBe(0);
         expect(before.stickyName, 'the sticky column is Title').toMatch(/^Title/);

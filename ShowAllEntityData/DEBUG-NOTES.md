@@ -18909,3 +18909,31 @@ now logs a warning when it finds no cards and no table it converted earlier
 (`sl-collection-intro.spec.js`: the warning fires; a normal conversion stays
 quiet; `sl-host.spec.js`: a second Load from Disk onto a rendered page stays
 quiet). Two more mutation entries cover it, both caught.
+
+## 2026-10-05 — springsteenlyrics.com: the compact category/filter bar reads the site's walls (branch feature/sl-scope-bar)
+
+New feature, `sa_sl_compact_nav` (default off): `_slInstallScopeBar()` folds
+the collection's walls of category/filter links into one row of pull-downs.
+Design study: `org/springsteenlyrics.org`, `** analyze`. Two things found while
+building it, both now in `docs/claude/springsteenlyrics.md`:
+
+1. **The site's links already combine filters on a filtered page.** The design
+   study was done on unfiltered snapshots, where every chip carries exactly one
+   `f_*`, and concluded the site "never offers" combining. The fixture
+   `sl-collection-page1.html` is album with `f_format=12i`, and there every
+   country, album and copies link also carries `f_format=12i`, and the active
+   format chip is `label-danger` with an href WITHOUT `f_format` (a click
+   removes it). The first reader took every `f_*` of a wall as its own: the
+   walls after Format merged into one "Format" menu showing `12i`. Now a wall's
+   keys are the `f_*` not carried with the page's own value by all of its
+   links, and the red entry's value is read from the page's query.
+2. **Closing the pull-down on scroll shut it the moment it opened.** Playwright
+   scrolls a target into view before clicking, and the scroll event arrives
+   after the click handler has opened the panel; a real user's focus or
+   scroll-into-view does the same. `_slPlaceScopePop()` now moves the panel
+   with its button and closes it only when the button has left the window.
+
+Tests: `tests/fixtures/sl-scope-bar.spec.js` (10), the three
+`sl-sticky-headers.spec.js` shapes again with the bar on (6 tests in total, 3 new),
+`scripts/mutations/sl-scope-bar.json` (8 entries, all caught, including both
+findings above).

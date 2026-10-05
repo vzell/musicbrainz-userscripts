@@ -1321,6 +1321,31 @@ on by default) — everything above the table stays where it is while you
 scroll sideways: the site's header and breadcrumb, the toolbar, the category
 and filter buttons and the list's heading bar.
 
+**A compact category and filter bar** (collection pages; off by default): ⚙️
+Settings → *🎸 springsteenlyrics.com* → *Compact category and filter bar on
+springsteenlyrics.com collection pages*. The site's rows of category, format,
+country, album, year and copies buttons become one row of pull-down menus
+above the list: *Category: Official Albums ▾*, *Format: Any ▾*, and so on.
+
+- Each menu offers exactly what that page's own buttons offer, and the current
+  choice has a ✓. The Category menu is grouped into Audio, Video and Print &
+  memorabilia.
+- Long menus (Category, Country, Album) have a search box: type part of a
+  name, then Enter to go to the first match. The arrow keys move through the
+  list, and Escape closes it.
+- **Filters combine.** Choosing a country keeps the format you already chose,
+  and choosing another format replaces it. Every choice starts again at the
+  first page of the list. Changing the category keeps your filters, except the
+  album, which only belongs to *Official Albums*.
+- *Year* offers a from/to pair of years instead of the site's slider; press
+  *Apply*.
+- Each filter in use is shown as a chip after the menus. Its **×** removes just
+  that filter; *Clear all* removes them all.
+
+The site's own buttons are only hidden, so switching the setting off brings
+them back. Every choice is an ordinary link: middle-click opens it in a new
+tab, and with a table loaded you are asked first, as usual.
+
 The columns come from what each card shows — no item page is opened:
 
 - **Collection:** Cover, Title, Version, Label, Cat. no., Format, Country,

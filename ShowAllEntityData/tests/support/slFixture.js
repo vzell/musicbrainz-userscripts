@@ -86,18 +86,21 @@ const SL_KINDS = {
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `enabled` seeds `sa_enable_springsteenlyrics` (default `true`; the
  *   setting itself defaults to OFF). `startPage` (default 1) opens the list
  *   on that page: its file is the live document, at the list URL with the
- *   kind's page parameter set.
+ *   kind's page parameter set. `url` (default: the kind's own) serves the
+ *   same fixture at another URL of that list, e.g. with an extra filter in
+ *   its query — what the userscript reads from `location` changes, the page
+ *   does not.
  * @returns {Promise<{ requests: string[], spec: object }>} Every request URL the
  *   page made from the moment of loading (for "no MusicBrainz call" checks),
  *   and the kind's {@link SL_KINDS} entry.
  */
-async function loadSlListPage(page, { kind, enabled = true, settingsOverride = {}, startPage = 1 }) {
+async function loadSlListPage(page, { kind, enabled = true, settingsOverride = {}, startPage = 1, url = null }) {
     const spec = SL_KINDS[kind];
-    const startUrl = new URL(spec.url);
+    const startUrl = new URL(url || spec.url);
     if (startPage !== 1) startUrl.searchParams.set(spec.pageParam, String(startPage));
     const requests = [];
     page.on('request', (req) => requests.push(req.url()));

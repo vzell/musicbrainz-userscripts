@@ -18,7 +18,7 @@ They all look like paginated pages which describe Bruce Springsteen releases
 
 Both URL are rendered unauthenticated
 
-** TODO on collections ONLY "Official albums" works
+** DONE on collections ONLY "Official albums" works
 
 Currently our userscript doesn't work on the SpringsteenLyrics.com collection entry page
 https://www.springsteenlyrics.com/collection.php, see @debug/sl-collection-initial.html
@@ -106,9 +106,7 @@ Still to do: your real-browser check under Tampermonkey (sampler, book, the
 entry page, bootlegs aud_inter, scrolled sideways and with the navbar fixed),
 then the merge — flip this TODO to DONE then.
 
-** TODO add detail page support
-
-** Answer (2026-10-04, branch =sl-support=)
+** DONE Answer (2026-10-04, branch =sl-support=)
 
 Yes — implemented as two opt-in pageTypes, =sl-collection= and =sl-bootlegs=,
 behind the new setting =sa_enable_springsteenlyrics= (default OFF). Scope as
@@ -130,4 +128,71 @@ category, any =f_*= filter); list cards only, no item detail pages fetched.
   WIP.1, version bump, HELP re-read) — flip this TODO to DONE then.
 - Possible follow-ups, not done: per-item detail pages (track lists);
   cross-checking the row total against "Showing items … of N"; lyrics pages.
+
+** analyze
+
+1.)
+
+Analyze the current structure of the following pages
+
+#+begin_example
+https://www.springsteenlyrics.com/collection.php - @debug/sl-collection.html
+https://www.springsteenlyrics.com/collection.php?cmd=list&category=album - @debug/sl-collection-category.html
+https://www.springsteenlyrics.com/bootlegs.php - should also be supported by our userscript with an @include directive too - @debug/sl-bootleg.html
+https://www.springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1992 - @debug/sl-bootleg-date-range.html
+#+end_example
+
+and make some suggestions with nice rich HTML based mockups to represent the current button based "list by" and "filter
+by" sections at the top of the page (maybe with pull down-menus)
+
+2.)
+
+Also offer suggestions for better integration of the curretn format section @debug/sl-format.html
+
+3.)
+
+Also offer a better interface for the bootleg prefilter stuff at @debug/sl-bootleg-filter-dialog.html
+
+*** Answer (2026-10-05, branch =feature/sl-all-categories=, no code change)
+
+Interactive mockups (private Artifact):
+https://claude.ai/artifact/NYiaHNnv5y4HnCM5qAb6g6
+
+Live probe (15 read-only GETs, 2026-10-05):
+- Collection filters COMBINE on the server: album 1315 → =f_format=12i= 539
+  → plus =f_country=USA= 125; =category=all&f_range=1980,1985= 1076 → plus
+  =f_format=12i= 346. Correction (found while building the bar): on a
+  FILTERED page the site's own links carry the active filter along, and the
+  active chip is red (=label-danger=) with an href that removes it. The
+  snapshots analysed above were all unfiltered.
+- Bootleg filters do NOT combine: =f_title=born= and
+  =f_title=born&f_version=soundboard= both give 73; =category=aud_live1975&f_date=…=
+  ignores the date (487). =f_date= needs a full date: =1975-08-15= → 21,
+  =1975-08= and =1975= → 0.
+- The bootleg date form's =checkForm()= reads =form.filter_date=, but the input
+  is =f_date=, so the check throws and never runs.
+- Bootleg list pages mark no category as current, and the Statistics counts
+  drift from list totals (544 vs 487 for Live 1975-1977).
+
+Recommendation, in order:
+1. A one-line scope bar on collection pages (searchable Category / Format /
+   Country / Album / Year / Copies combo boxes), built from the page's own
+   =.element-buttons= links, which stay in the DOM hidden by a class.
+2. A grouped category picker with a current mark; an era ruler for bootlegs.
+3. After a fetch, the same controls set column filters instead of reloading.
+4. One bootleg search box that picks the field and normalises dates.
+5. =bootlegs.php= via =@include=: navigation and search only, plus harvesting
+   the Statistics counts. Defer "show all bootlegs" (~7,300 rows, ~82 pages).
+6. Formats: one merged glossary in the Format menu, Liner-notes tooltips on
+   cells, then a Media/Units column extractor.
+
+Decided (2026-10-05):
+- Compact navigation is a SETTING (new =sa_*= key, under the
+  springsteenlyrics divider), not always on.
+- Option B (scope bar) on bootleg list pages too, not the toolbar menus.
+- Category counts are EXACT: record the "Showing items … of N" total of each
+  list as it is visited (GM storage), never the landing page's drifting
+  Statistics numbers.
+
+** TODO add detail page support
 

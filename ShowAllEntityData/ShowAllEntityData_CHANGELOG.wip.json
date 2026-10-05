@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com: a new setting, \"Compact category and filter bar on springsteenlyrics.com collection pages\" (off by default), replaces the collection's rows of category, format, country, album, year and copies buttons with one row of pull-down menus above the list. Each menu offers what that page's own buttons offer and marks the current choice. Long menus have a search box, and the menus work with the keyboard. Filters combine: choosing a country keeps the format you already chose. Each filter in use is shown as a chip whose × removes just that filter. The site's own buttons are only hidden, so switching the setting off brings them back."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-05",
     "sections": [
