@@ -379,5 +379,70 @@
     "spec": "tests/fixtures/sl-scope-bar.spec.js",
     "grep": "fits in the window",
     "expect": "fail"
+  },
+  {
+    "name": "the bootleg landing page is touched with the bar off",
+    "why": "The landing page has nothing to consolidate; with sa_sl_compact_nav off the script would still inject a heading and a toolbar with nothing to do, on a page the user only enabled the lists for.",
+    "edits": [
+      {
+        "find": "    if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {",
+        "replace": "    if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar off, the page is left alone",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page's @include line no longer matches",
+    "why": "The fixture harness injects unconditionally; only the @include spec notices a pattern Tampermonkey would never match.",
+    "edits": [
+      {
+        "find": "bootlegs\\.php(?:\\?(?:[^#]*&)?cmd=intro",
+        "replace": "bootlegs\\.phpXX(?:\\?(?:[^#]*&)?cmd=intro"
+      }
+    ],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "both entry pages",
+    "expect": "fail"
+  },
+  {
+    "name": "the bar is not installed on a navigation-only page",
+    "why": "The landing page is supported for the bar alone.",
+    "edits": [
+      {
+        "find": "             baseDefinition.features?.slNavOnly)) {",
+        "replace": "             false)) {"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page keeps the Data and View menus",
+    "why": "Without a table they act on nothing, and the divider leads a toolbar with no fetch button.",
+    "edits": [
+      {
+        "find": "        if (baseDefinition.features?.slNavOnly) document.body.classList.add('mb-sa-sl-nav-only');",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
+  },
+  {
+    "name": "the landing page's Category reads \"All categories\"",
+    "why": "The bootleg lists have no \"all\" list; the landing page shows none and should invite a choice.",
+    "edits": [
+      {
+        "find": "!params.get('category') && window.location.pathname === '/bootlegs.php' ? 'Choose a list'",
+        "replace": "false ? 'Choose a list'"
+      }
+    ],
+    "spec": "tests/fixtures/sl-scope-bar.spec.js",
+    "grep": "with the bar on: Category, the search box and Recent",
+    "expect": "fail"
   }
 ]

@@ -20,6 +20,7 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -9153,6 +9154,13 @@
                 width: auto;
                 max-width: none;
             }
+            /* A navigation-only page (the bootleg landing page) has no table,
+               so no Data or View menu, and no divider before them. */
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-button-divider-initial,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-data-menu-btn,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-view-menu-btn {
+                display: none !important;
+            }
             /* The compact category/filter bar (sa_sl_compact_nav): the walls it
                folds stay in the DOM, hidden. */
             body.mb-sa-host-sl .mb-sl-nav-hidden {
@@ -9833,11 +9841,14 @@
         if (facet.kind === 'category') {
             const cat = params.get('category') || 'all';
             const option = facet.options.find(o => o.category === cat) || null;
-            // Not one of the wall's categories: "all", or a bootleg search
-            // (category=f_title…), whose list heading ("SHOWS BY TITLE")
-            // says what the page is.
-            const fallback = cat === 'all' ? 'All categories'
-                : (_slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || cat);
+            // Not one of the wall's categories: "all" (the collection entry
+            // page has no category and lists everything), none at all on the
+            // bootleg landing page (which lists nothing), or a bootleg search
+            // (category=f_title…), whose list heading ("SHOWS BY TITLE") says
+            // what the page is.
+            const fallback = !params.get('category') && window.location.pathname === '/bootlegs.php' ? 'Choose a list'
+                : cat === 'all' ? 'All categories'
+                    : (_slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || cat);
             return { active: false, label: option ? option.label : fallback, option };
         }
         if (facet.kind === 'range') {
@@ -20753,6 +20764,24 @@
                 // "129:33.23" sorts after "61:58.22").
                 integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],
                 stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The bootleg landing page (`bootlegs.php`, bare or `cmd=intro`): the
+        // category buttons, the four search forms and a "Statistics" block,
+        // but no item cards, so nothing to fetch — no button. It exists for
+        // the compact bar alone (`slNavOnly`): with `sa_sl_compact_nav` off
+        // the init block exits quietly right after detection, leaving the
+        // page untouched. Its Statistics counts are deliberately not read
+        // (they drift from the lists' own totals; docs/claude/springsteenlyrics.md).
+        {
+            type: 'sl-bootlegs-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/bootlegs.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [],
+            features: {
+                slNavOnly: true
             },
             tableMode: 'single'
         }
@@ -44169,6 +44198,15 @@ a { color: #1565c0; }`;
         }
     }
 
+    // A navigation-only page (the springsteenlyrics.com bootleg landing page)
+    // has nothing for the script to do without the compact bar: stop here,
+    // before any toolbar or heading is added, and say so at info level rather
+    // than letting the required-elements check below log an error.
+    if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {
+        Lib.info('init', `${pageType}: navigation-only page and the compact bar (sa_sl_compact_nav) is off — nothing to do.`);
+        return;
+    }
+
     // 2. Locate Header
     // Refactored to handle "Search" pages (generic h1) and typical entity headers
     let headerContainer = document.querySelector('.artistheader h1') ||
@@ -44201,11 +44239,16 @@ a { color: #1565c0; }`;
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
         // The compact category/filter bar (sa_sl_compact_nav), on the
-        // collection and bootleg lists. This list's exact count (and, on a
-        // bootleg search result, the search) is recorded first, so the bar's
-        // own menus already show it.
+        // collection and bootleg lists and the bootleg landing page. This
+        // list's exact count (and, on a bootleg search result, the search) is
+        // recorded first, so the bar's own menus already show it.
+        // A navigation-only page has no table: the 📦 Data and 🛠 View menus
+        // (and the divider that separates them from fetch buttons it does not
+        // have) are hidden by this class; ⚙️ and ❓ stay.
+        if (baseDefinition.features?.slNavOnly) document.body.classList.add('mb-sa-sl-nav-only');
         if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&
-            ['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable)) {
+            (['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable) ||
+             baseDefinition.features?.slNavOnly)) {
             _slRecordListCount();
             _slRecordRecentSearch();
             _slInstallScopeBar();

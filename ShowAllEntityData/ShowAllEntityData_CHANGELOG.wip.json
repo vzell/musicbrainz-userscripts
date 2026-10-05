@@ -1,5 +1,17 @@
 [
   {
+    "version": "WIP.6",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact category and filter bar (WIP.2) now also runs on the bootleg main page, bootlegs.php. There it offers the Category menu with the era timeline (WIP.3), the bootleg search box and Recent (WIP.4). The page lists no items itself, so it gets no action button, and the toolbar keeps only ⚙️ and ❓. With the bar switched off, the script leaves that page alone."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.5",
     "date": "2026-10-05",
     "sections": [

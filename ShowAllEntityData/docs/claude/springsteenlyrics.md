@@ -9,7 +9,10 @@ pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
 page `collection.php` ("Latest additions", every item, `pg=` pagination) as
 `sl-collection-intro`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
-is used; no item detail page is fetched.
+is used; no item detail page is fetched. The bootleg landing page
+`bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
+compact bar, and only while `sa_sl_compact_nav` is on as well — see "The
+bootleg landing page" below.
 
 Those pages are not MusicBrainz in any way the script normally relies on: no
 `table.tbl`, no `div#content`, no `<h1>` or `<h2>`, no MusicBrainz stylesheet,
@@ -43,15 +46,16 @@ claims `/collection.php`, and no MusicBrainz URL reaches the SL matchers. It is
 recorded as `"expect": "pass"` in `scripts/mutations/sl-support.json` and
 exists for the next broad `path.includes()` matcher.
 
-**The two `@include` lines are the real outer gate**, and the fixture harness
+**The three `@include` lines are the real outer gate**, and the fixture harness
 never evaluates them (`loadPage.js` injects unconditionally), so
 `tests/fixtures/sl-include-regex.spec.js` reads the header and checks it:
-every list page and the collection entry page in; item pages, the bootleg
-intro page (it has no cards), `lyrics.php` and look-alike hosts out. `cmd=list`
-is matched anywhere in the query, because the site's own filter forms submit
-`?f_date=…&cmd=list&category=f_date`. The second line admits `collection.php`
-bare, with `cmd=intro` anywhere in the query, or with only `pg=N` (the entry
-page's "»" link is `?pg=54&cmd=intro`).
+every list page and both entry pages in; item pages, `lyrics.php` and
+look-alike hosts out. `cmd=list` is matched anywhere in the query, because the
+site's own filter forms submit `?f_date=…&cmd=list&category=f_date`. The
+second line admits `collection.php` bare, with `cmd=intro` anywhere in the
+query, or with only `pg=N` (the entry page's "»" link is `?pg=54&cmd=intro`).
+The third admits `bootlegs.php` bare or with `cmd=intro` (added 2026-10-05 for
+the compact bar; it was deliberately excluded before, having no cards).
 
 ## The toolbar anchor — `_slPrepareLivePage()`
 
@@ -377,6 +381,37 @@ Cost: one choice reads one column of every loaded row once (about 5,400
 `getCleanColumnText()` calls on the entry page). That happens on the click, not
 on the filter, sort or render path.
 
+### The bootleg landing page — `sl-bootlegs-intro`, `features.slNavOnly`
+
+`bootlegs.php` (bare or `cmd=intro`) has the 21 category buttons, the four
+search forms and a "Statistics" block, but no item cards. The pageType has
+`buttons: []` (the init loop renders none; nothing guards against an empty
+list, and nothing needs to), and `slNavOnly: true`, which does three things:
+
+- **With `sa_sl_compact_nav` off, the init block returns right after
+  detection**, before `_slPrepareLivePage()`, the toolbar or `mb-sa-host-sl`,
+  and logs at info level. A skipped definition would instead have reached the
+  required-elements check and logged an ERROR. Enabling the springsteenlyrics
+  support alone must not change a page it has nothing to do on.
+- **The bar is installed** (the init gate admits `slNavOnly` beside
+  `slCardsToTable`): Category, the search box and Recent. With no category in
+  the query, the Category button reads "Choose a list"; the bootleg lists have
+  no "all" list, and no entry is current.
+- **`body.mb-sa-sl-nav-only` hides `#mb-button-divider-initial`, 📦 Data and 🛠
+  View**: with no table they act on nothing, and the divider would open a
+  toolbar with no fetch button. ⚙️ and ❓ stay.
+
+Nothing is recorded there: `_slRecordListCount()` needs `cmd=list`, and the
+Statistics counts are not read (decided 2026-10-05: they drift from the lists'
+own totals). "Show all bootlegs" (every category into one table, about 7,300
+rows from about 82 pages) was offered as a further level and deliberately left
+out.
+
+The fixture `sl-bootlegs-intro-page1.html` is generated from
+`debug/sl-bootleg.html` through `build-sl-fixtures.py`'s `PLAIN_TARGETS`: the
+same sanitising (shared `sanitise()`), no splitting. Re-running the script
+leaves the other fixtures byte-identical.
+
 ## Tests
 
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
@@ -386,14 +421,15 @@ on the filter, sort or render path.
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
-| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Mutations: `scripts/mutations/sl-scope-bar.json` |
+| `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
 | `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
 logged-out snapshots in `debug/` into two 50-card pages each (rewriting only
 the pagination widget, `page=` or `pg=`), keeps two whole categories
-(sampler, memorabilia, curl captures) as one widget-less page each, and strips
+(sampler, memorabilia, curl captures) as one widget-less page each, writes the
+card-less bootleg landing page whole (`PLAIN_TARGETS`), and strips
 scripts, `<link>`s, inline background images and jquery.sticky's inline
 navbar-wrapper height (without the site CSS the unstyled navbar spilled out of
 it over the toolbar once pinned).

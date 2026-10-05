@@ -32,7 +32,7 @@ function includePatterns() {
 const injected = (url) => includePatterns().some((re) => re.test(url));
 
 test.describe('@include coverage', () => {
-    test('springsteenlyrics.com: every list page, and only list pages', () => {
+    test('springsteenlyrics.com: every list page and both entry pages, and nothing else', () => {
         const lists = [
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i',
             'https://springsteenlyrics.com/collection.php?cmd=list&category=album&f_format=12i&page=4',
@@ -52,13 +52,17 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/collection.php?cmd=intro&category=all&pg=2',
             'https://springsteenlyrics.com/collection.php?pg=54&cmd=intro',
             'https://springsteenlyrics.com/collection.php?pg=2',
+            // The bootleg landing page: no item cards, but the compact bar
+            // (sa_sl_compact_nav) folds its category buttons and search forms.
+            'https://springsteenlyrics.com/bootlegs.php',
+            'https://www.springsteenlyrics.com/bootlegs.php#top',
+            'https://springsteenlyrics.com/bootlegs.php?cmd=intro',
         ];
         const others = [
             'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
             'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
-            // The bootleg entry page has no item cards.
-            'https://springsteenlyrics.com/bootlegs.php',
-            'https://springsteenlyrics.com/bootlegs.php?cmd=intro',
+            'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
+            'https://springsteenlyrics.com/bootlegs.php?pg=2',
             'https://springsteenlyrics.com/collection.php?cmd=introx',
             'https://springsteenlyrics.com/collection.php?xcmd=intro',
             'https://springsteenlyrics.com/collection.php?item=10265&category=all',

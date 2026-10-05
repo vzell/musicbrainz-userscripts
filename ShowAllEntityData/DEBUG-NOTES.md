@@ -19010,3 +19010,31 @@ Two smaller things:
 
 Tests: `sl-scope-bar.spec.js` 31 (8 new), mutations 29 (28 fail as expected, 1
 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bootleg landing page, for the compact bar only (branch feature/sl-scope-bar)
+
+Part 5 of the bar: `bootlegs.php` is now `@include`d, as pageType
+`sl-bootlegs-intro` with `buttons: []` and `features.slNavOnly`. Three things a
+future reader should not undo:
+
+- **The quiet exit is not the same as no match.** Skipping the definition when
+  `sa_sl_compact_nav` is off would leave `pageType` empty, and the
+  required-elements check would log "Required elements not found.
+  Terminating." at ERROR level on every visit. The init block now returns right
+  after detection with an info line, before any heading, toolbar or body class.
+  The spec checks that the page is untouched AND that the console shows no
+  script error.
+- **The toolbar probe found a leading `|` and two menus with nothing to act
+  on** (📦 Data, 🛠 View): with no fetch buttons the divider leads the bar. They
+  are hidden by `body.mb-sa-sl-nav-only`; ⚙️❓ stay. Found with a throwaway
+  probe spec (deleted), now pinned in the landing test.
+- **`build-sl-fixtures.py` gained `PLAIN_TARGETS`**: the card-less page goes
+  through the same `sanitise()`, unsplit. The refactor regenerated the five
+  existing fixtures byte-identical (no diff in `git status`).
+
+`sl-include-regex.spec.js` used to assert the landing page was EXCLUDED; it now
+asserts it is included (bare, `#top`, `cmd=intro`), while `cmd=introx` and
+`pg=2` stay out.
+
+Tests: `sl-scope-bar.spec.js` 35 (4 new), the `@include` spec flipped,
+mutations 34 (33 fail as expected, 1 recorded pass).

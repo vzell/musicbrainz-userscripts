@@ -32,7 +32,7 @@ const FIXTURE_DIR = path.join(__dirname, '..', 'fixtures');
  * files, the label of the pageType's one "Show all" button, the query
  * parameter that selects a page, and which `cmd` values (`null`: absent)
  * the list's own fetches carry.
- * @type {Object<string, {url: string, pathname: string, pages: string[], button: string, pageParam: string, cmds: Array<?string>}>}
+ * @type {Object<string, {url: string, pathname: string, pages: string[], button: ?string, pageParam: string, cmds: Array<?string>}>}
  */
 const SL_KINDS = {
     collection: {
@@ -80,13 +80,24 @@ const SL_KINDS = {
         pageParam: 'page',
         cmds: ['list'],
     },
+    // The bootleg landing page: no cards, so no button and nothing fetched.
+    // No `cmds`: nothing is served after the load, so a followed link is
+    // aborted by the catch-all — specs assert on its href instead.
+    'bootlegs-intro': {
+        url: 'https://springsteenlyrics.com/bootlegs.php',
+        pathname: '/bootlegs.php',
+        pages: ['sl-bootlegs-intro-page1.html'].map((f) => path.join(FIXTURE_DIR, f)),
+        button: null,
+        pageParam: 'page',
+        cmds: [],
+    },
 };
 
 /**
  * Loads one SL list fixture with the userscript injected.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
+ * @param {{ kind: ('collection'|'collection-intro'|'sampler'|'memorabilia'|'bootlegs'|'bootlegs-intro'), enabled?: boolean, settingsOverride?: Object<string, *>, startPage?: number, url?: string }} opts
  *   `enabled` seeds `sa_enable_springsteenlyrics` (default `true`; the
  *   setting itself defaults to OFF). `startPage` (default 1) opens the list
  *   on that page: its file is the live document, at the list URL with the

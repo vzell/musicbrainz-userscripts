@@ -721,3 +721,78 @@ test('a pull-down opened low on the screen fits in the window', async ({ page })
     await page.locator('.mb-sl-scope-pop .mb-sl-scope-opt').last().scrollIntoViewIfNeeded();
     await expect(page.locator('.mb-sl-scope-pop .mb-sl-scope-opt').last()).toBeInViewport();
 });
+
+// The bootleg landing page (bootlegs.php): no item cards, so no fetch button;
+// it is supported for the compact bar alone. With the bar off the script must
+// stop before touching the page — the springsteenlyrics.com support being on
+// is not enough. Its "Statistics" counts are deliberately not read (they drift
+// from the lists' own totals), so nothing is recorded here.
+
+/**
+ * Collects console errors from the moment it is called.
+ * @param {import('@playwright/test').Page} page
+ * @returns {string[]} Filled as errors arrive.
+ */
+function consoleErrors(page) {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(String(e)));
+    return errors;
+}
+
+test.describe('sl compact bar: the bootleg landing page', () => {
+    test('with the bar off, the page is left alone', async ({ page }) => {
+        const errors = consoleErrors(page);
+        await loadSlListPage(page, { kind: 'bootlegs-intro' });
+        await expect(page.locator('#filter_bootlegs_date')).toBeVisible();
+        await expect(page.locator('h1.mb-sl-h1, .mb-sl-scope, #mb-show-all-controls-container, .mb-sl-nav-hidden')).toHaveCount(0);
+        expect(await page.evaluate(() => document.body.classList.contains('mb-sa-host-sl'))).toBe(false);
+        expect(errors.filter((e) => /VZ-|ShowAllEntityData|Uncaught/.test(e))).toEqual([]);
+    });
+
+    test('with the bar on: Category, the search box and Recent; no fetch button', async ({ page }) => {
+        const errors = consoleErrors(page);
+        await loadSlListPage(page, { kind: 'bootlegs-intro', settingsOverride: ON });
+        await expect(page.locator('h1.mb-sl-h1 > bdi')).toHaveText('Bootlegs');
+        expect(await barButtons(page)).toEqual([
+            { facet: 'category', key: 'Category:', value: 'Choose a list', set: false },
+            { facet: 'recent', key: 'Recent:', value: '0', set: false },
+        ]);
+        await expect(page.locator('#mb-sl-search-input')).toBeVisible();
+        expect(await page.$$eval('form[id^="filter_bootlegs_"]', (fs) => fs.map((f) => f.getClientRects().length)))
+            .toEqual([0, 0, 0, 0]);
+        expect(await page.$$eval('.element-buttons.mb-sl-nav-hidden a.btn', (as) => as.length)).toBe(21);
+        await expect(page.locator('#mb-show-all-controls-container button[data-label]'), 'nothing to fetch').toHaveCount(0);
+        // No table, so no Data/View menus and no divider; ⚙️ and ❓ stay.
+        for (const sel of ['#mb-button-divider-initial', '#mb-data-menu-btn', '#mb-view-menu-btn']) {
+            await expect(page.locator(sel), sel).toBeHidden();
+        }
+        await expect(page.locator('#mb-settings-btn')).toBeVisible();
+        await expect(page.locator('#mb-app-help-btn')).toBeVisible();
+        // The page's own content below stays.
+        await expect(page.locator('h3.heading', { hasText: 'Statistics' })).toBeVisible();
+        expect(errors.filter((e) => /VZ-|ShowAllEntityData|Uncaught/.test(e))).toEqual([]);
+        expect(Object.keys(await storedCounts(page)), 'the drifting Statistics are not recorded').toEqual([]);
+    });
+
+    test('the Category menu: the era timeline and lists, none current', async ({ page }) => {
+        await loadSlListPage(page, {
+            kind: 'bootlegs-intro',
+            settingsOverride: { ...ON, ...seedCounts('/bootlegs.php', { aud_live1984: 713 }) },
+        });
+        const entries = await openMenu(page, 'category');
+        expect(entries.filter((e) => e.cur)).toEqual([]);
+        expect(entries).toHaveLength(21);
+        expect(query(entries.find((e) => e.text === 'Live 1992-1994').href)).toEqual({ cmd: 'list', category: 'aud_live1992' });
+        const bars = await eraBars(page);
+        expect(bars).toHaveLength(16);
+        expect(bars.filter((b) => b.cur)).toEqual([]);
+        expect(bars.filter((b) => !b.unknown).map((b) => [b.cat, b.n])).toEqual([['aud_live1984', '713']]);
+    });
+
+    test('the search box searches from here', async ({ page }) => {
+        await loadSlListPage(page, { kind: 'bootlegs-intro', settingsOverride: ON });
+        expect((await typeSearch(page, '15 Aug 1975')).q).toEqual({ cmd: 'list', category: 'f_date', f_date: '1975-08-15' });
+        expect((await typeSearch(page, 'Born')).q).toEqual({ cmd: 'list', category: 'f_title', f_title: 'Born' });
+    });
+});

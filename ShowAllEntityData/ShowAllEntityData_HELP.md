@@ -1329,6 +1329,12 @@ pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
 ▾*, and so on. On a bootleg list the category buttons become a *Category* menu,
 and the four search forms become one search box (see below).
 
+The bar also works on the **bootleg main page** (`bootlegs.php`), which lists
+no items itself. There it offers *Category: Choose a list ▾*, with the era
+timeline, plus the search box and *Recent*. The page has nothing to load, so
+it gets no action button, and the toolbar keeps only ⚙️ and ❓. With the bar
+switched off, the script leaves that page alone.
+
 - Each menu offers exactly what that page's own buttons offer, and the current
   choice has a ✓. The Category menu is grouped (Audio, Video and Print &
   memorabilia for the collection; Live shows, Other audio and Video for the
