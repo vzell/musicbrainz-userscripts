@@ -1248,3 +1248,26 @@ after a render could jump to the global filter. Test:
 timeout before the userscript is injected: environmental. And
 colvis-clean-column-names.spec.js's label click outside the viewport, fixed on
 =fix/colvis-spec-viewport=.)
+
+* DONE "Annotation" search pages need richer HTML tooltips
+
+"Annotation" search pages
+e.g. https://musicbrainz.org/search?query=Barcode+and+other+i&type=annotation&limit=25&method=indexed need richer HTML
+tooltips when hovering over an image in the big picture image stripe
+
+1.)
+
+Currently whe only have the value of the "Name" column, see [Image #3]
+I additionally want the following columns, someting like
+
+#+begin_example
+                    tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Annotation' ],
+#+end_example
+
+2.)
+
+The value for the "Annotation" C should be the FULL uncollapsed value, even if the column(s) is/are currently collapsed
+
+#+begin_example
+@debug/search-annotation-tooltip.html - full final rendered page of above URL, filtered by just one row
+#+end_example
