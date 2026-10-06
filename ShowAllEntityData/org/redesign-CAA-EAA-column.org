@@ -1,5 +1,4 @@
 * TODO redesign the CAA/EAA column and it's image display
-
 ** Request (original)
 
 Redesign the CAA/EAA column and it's image display e.g. on
@@ -33,8 +32,41 @@ specifically - Full-screen viewer section
 Only write the plan/followups in this file, do not implement yet. Implementation will be down on another machine, so the
 plan needs to survive
 
+** Bug (followup)
+
+Two bugs:
+
+1.)
+
+a.)
+
+After the latest fix, see the raw HTML at @debug/MGV-CAA-bug.html and screenshot [Image #4] for a minimal case, the cache
+hint glyph and image count wrap below the CAA icon instead of behind as
+
+#+begin_example
+<span class="mb-art-cache-hint-col-wrap"><span class="mb-art-cache-hint-col" data-mb-tip="" title="Network fetch">🔵</span><span class="mb-caa-count-badge" data-mb-tip="" title="6 images found for this release / release-group" data-mbtt-fn="art-sum">6</span></span>
+#+end_example
+
+b.)
+
+The multi-row cell glyph, which the latest fix was supposed to fix, is completely gone. I want it to be there, because
+of the number of multi-row cells it shows in front of it. Additionally it should just delegate the button click to the
+"<span>▶</span>" in the '<span class="mb-caa-col-hdr-btn"' and the toggle state to by synchronized with it
+
+2.)
+
+A much bigger example is belog, where the CAA column addditionally has the warning icon attached
+
+#+begin_example
+https://musicbrainz.org/artist/84c38d3a-3400-4c28-b988-90558bb6fae0/releases - [Image #5] - @debug/BoDeans-CAA-bug-inclusive-warning.html
+#+end_example
+
 ** Status
 
+- 2026-10-06: *implemented* on branch =feature/caa-eaa-redesign= as one WIP
+  entry (WIP.1): P0 (probe), B1/B2, D1, C1/C2, A2 and the two findings. D2
+  stays later, A1 out. Not merged. See DEBUG-NOTES.md 2026-10-06 "CAA/EAA
+  column redesign" and docs/claude/artwork-caa-eaa.md.
 - 2026-10-04: design only. Nothing in =ShowAllEntityData.user.js= changed; no
   version bump, no changelog or WIP entry. The WIP changelog starts with P0.
 - Branch: =design/caa-eaa-redesign= (this file plus the mockup page). Not merged.
@@ -128,15 +160,27 @@ C1 and D1 make art that is already downloaded actually visible: today the
 expanded cell fetches 250 px images and shows them at 18 px. D2 follows once D1
 has settled, and A3 stays out.
 
-*** DECIDE (open for the user)
-- [ ] Default expanded-cell layout: =list= (today) vs =grid= (C1) vs =grouped= (C2).
-- [ ] Does D1 replace the hover preview on image rows, or sit beside it (hover =
-      preview, click = viewer)? The mockup does the latter.
-- [ ] D2 in the first release, or later?
-- [ ] Viewer image size: 1200 (proposed default) or original. The original can
-      be many MB; 1200 is what the archive pre-renders.
-- [ ] A1 at all? Only worth it if cards 2–3 load on hover.
-- [ ] Should "no Front image" / "no Medium image" become findings (⚠️ menu)?
+*** DECIDED (2026-10-06, by the user)
+- [X] Default expanded-cell layout: *=grid= (C1)*; =list= and =grouped= (C2)
+      stay selectable as a layout toggle. A typed filter such as "Medi" (a type
+      prefix) or "outs" (a comment substring) must still filter the row AND be
+      highlighted on the tile, and in the hover cards / the viewer's info panel.
+- [X] D1 sits *beside* the hover preview: hover = preview, click = viewer.
+- [X] D2: *later*, not in the first release.
+- [X] Viewer image size: *1200* default, =original= selectable.
+- [X] A1: *no*.
+- [X] "no Front image" / "no Medium image" become *findings* (⚠️ menu):
+  - no Front: only releases that HAVE art, none typed Front and none
+    =front:true=; a release with no art at all is not flagged.
+  - no Medium: only releases with art AND a physical format (skip Digital
+    Media / empty / unknown; the format list is configurable).
+- [X] *Everything is configurable*: every piece gets its own setting.
+
+Implementation plan (one branch =feature/caa-eaa-redesign=, phases as WIP
+entries): P0 probe → P1 B1/B2 cards → P2 D1 column viewer (reuses the existing
+=#mb-art-viewer=, grep =// ── Artwork viewer (R5)=) → P3 C1 grid default + C2
+toggle → P4 A2 chips → P5 the two findings (first finding on async data: needs a
+per-row re-stamp once art arrives; =stampFindings()= runs before it).
 
 ** Invariants the implementation must keep
 
@@ -204,7 +248,7 @@ with =scripts/mutation-check.py= and a =scripts/mutations/*.json= list), a HELP
 resync, and =python3 scripts/lint-summary.py --check=. New settings get a
 =configSchema= entry and a =scripts/dump-config-defaults.py= run.
 
-*** TODO P0 — explain the =data-li-big-src= size mismatch (F0)
+*** DONE P0 — explain the =data-li-big-src= size mismatch (F0)
 In the snapshot, =data-li-big-src= has the =-500.jpg= size and a =//= prefix for
 Born Again, Berlin ’96, Old Habits and I Am the Real Bob Dylan. For Berlin Night
 it has =-250.jpg= and =https:=. =sa_caa_big_img_size= defaults to 250, so one
@@ -219,7 +263,7 @@ two cache tiers (IDB record vs fresh fetch), feeding it.
   attribute. The viewer itself should derive sizes from =imagesCache= rather
   than trusting the stamped attribute.
 
-*** TODO P1 — B1/B2 rich tooltips
+*** DONE P1 — B1/B2 rich tooltips
 - One liner-card renderer for "release art summary" (B1) and "one image" (B2);
   P2 reuses it as the viewer's info panel.
 - B1 on hover of the icon and the count badge (the =span.caa-icon= anchor and
@@ -232,7 +276,7 @@ two cache tiers (IDB record vs fresh fetch), feeding it.
   per image with the right types and comments. Mutation: drop delegation and
   wire per element, which must fail after the re-render.
 
-*** TODO P2 — D1 viewer
+*** DONE P2 — D1 viewer
 - New =_artViewer*= family: a singleton overlay, opened by delegation from the
   icon, the cell thumbnails and the strip images, keyed by entity path + image
   index. Navigation spans the VISIBLE rows of the current table, so filtered
@@ -247,15 +291,15 @@ two cache tiers (IDB record vs fresh fetch), feeding it.
   - =*.mobile.spec.js= for tap and swipe
   - focus returns to the opener on Esc
 
-*** TODO P3 — C1/C2 expanded layouts
-- =sa_caa_cell_layout= (=list|grid|grouped=), default =list= until DECIDE
-  above is settled.
+*** DONE P3 — C1/C2 expanded layouts
+- =sa_caa_cell_layout= (=list|grid|grouped=), default =grid= (decided
+  2026-10-06).
 - Rebuild branch and first-build branch both honour it.
 - Specs: per layout, a type filter highlights inside the tile; the 📊 artType /
   artComment counts are unchanged versus =list=; expanded state survives a sort
   on a multi table.
 
-*** TODO P4 — A2 type-coverage chips
+*** DONE P4 — A2 type-coverage chips
 - Counts from =imagesCache=, rendered only after enrichment (deferred like the
   count badge). Text kept out of filter/sort (see invariants).
 - Optional: "no Front image" as a =FINDINGS= entry via the =add-finding= skill.

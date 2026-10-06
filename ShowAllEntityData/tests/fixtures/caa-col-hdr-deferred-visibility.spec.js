@@ -176,6 +176,10 @@ test.describe('per-image art <li> hover preview and type-badge tooltip', () => {
     // would show up in the DOM or in any existing assertion. The <li> keeps
     // its thumbnail, its badge and its comment either way — only hovering
     // reveals whether it is still wired.
+    //
+    // Since the B2 image card (org/redesign-CAA-EAA-column.org) this is the
+    // `sa_caa_tip_image: false` path; the card itself is pinned by
+    // tests/fixtures/caa-column-redesign.spec.js.
     test('hovering a per-image thumbnail opens the preview popup and the type tooltip', async ({ page }) => {
         await loadUserscriptPage(page, {
             url: ARTIST_EVENTS_URL,
@@ -185,6 +189,7 @@ test.describe('per-image art <li> hover preview and type-badge tooltip', () => {
                 sa_enable_caa_pics: true,
                 sa_art_idb_enable: false,
                 sa_caa_hover_preview: true,
+                sa_caa_tip_image: false,
             },
         });
         await routeEventArtArchive(page, 0);

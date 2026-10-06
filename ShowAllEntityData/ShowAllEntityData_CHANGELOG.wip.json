@@ -1,0 +1,57 @@
+[
+  {
+    "version": "WIP.2",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "CAA/EAA column: the header's ▶N▤ button (the number of multi-row cells) is there from the first render — it used to appear only after a filter or sort, and then did nothing. It is now a second handle on the ▶ of the column's ▶🖼 artwork button: a click expands or collapses every artwork cell, and the two always show the same state. The h2/h3 \"expand all multi-row cells\" buttons still leave artwork cells alone (opening them all would load every thumbnail on the page).",
+          "CAA/EAA column: the cache hint and the image count stay beside the artwork icon. Next to the new type chips they had dropped below it in a narrow column (the chips now move to the next line instead)."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "caa-column-redesign.spec.js: two tests on the BoDeans artist-releases disk fixture (the reported page) — the ▶N▤ button without a re-render, with its count and both directions of the sync, and the summary line in a 150 px column; scripts/mutations/caa-column-redesign.json: four entries."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "WIP.1",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "CAA/EAA column: an expanded cell shows its images as a grid of tiles (the 250 px thumbnails it already loads, at 64 px instead of 18 px), with the types and comment on each tile and ★ on the archive's main front. A \"grouped\" layout puts the tiles under each image's first type (\"Medium ×3\"); \"list\" is the original layout. The new ▦ button in the column header switches every table at once. A filter such as \"Medi\" or \"outs\" still finds the row and marks the match on the tile, which is outlined as well.",
+          "CAA/EAA column: type chips after the image count — one letter chip per artwork type (F, B, Sp, M, Bk, T; for EAA Poster, Banner, Schedule, Setlist, Ticket), filled with a count when the release has that type, hollow when not, ⏳ for pending images. The letters are not text, so a filter never matches them.",
+          "CAA/EAA column: hovering the artwork icon or the image count shows the release's artwork card — a tile per image, the type tally, pending images and the images a filter matches, marked. Hovering one image of an expanded cell shows one card instead of the separate preview and type box: preview, types and comment (with the filter's marks), \"Image 6 of 10 · Medium 2 of 3\", main front/back, the archive's sizes and the archive id.",
+          "CAA/EAA column: clicking an image of an expanded cell, or the artwork icon (the main front), opens the full-screen artwork viewer. ← → at the last/first image continue into the next/previous row and Shift+← → change rows, through the rows the filters leave visible; the info panel carries the cell's filter marks. Ctrl/Shift/middle click keeps the link.",
+          "Artwork viewer (the column and the release/event page sections): ↑ ↓ and the mouse wheel zoom (toward the pointer), 0 fits, the zoom level is kept from image to image and remembered; P runs a slideshow that any key or click stops. The large image is the 1200 px one or, by setting, the original file. Records older than the archive's 1200 px key list only small/large; the viewer now asks for their 1200 px file anyway (the archive serves it) and falls back to the 500 px one.",
+          "⚠️ WARNING findings \"Artwork has no Front image\" (a release with artwork, none typed Front and no main front; a release without artwork is not counted) and \"Physical release artwork has no Medium image\" (any Format but Digital Media). They are the first findings known only after the artwork has loaded: each row is re-stamped once its record is in, so the menu counts grow while the CAA column loads."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "The tooltip engine (_initStatTooltip()) takes [data-mbtt-fn] elements: card HTML built at hover time by _mbttResolve(), so it reflects the current cache and filter and survives cloneNode(true) without per-element listeners. The image row's type pill style is a CSS class (.mb-caa-type-pill) instead of an inline style."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "New settings (⚙️ → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY): cell layout, ▦ button, tile size, tiles per line, both cards, tiles in the release card, image card preview size, marking filter matches in the cards and the viewer, viewer from the column and from the icon, viewer image size, crossing rows, keeping the zoom, slideshow interval, CAA and EAA chip types. ⚠️ FINDINGS: the two artwork findings, their tints and the formats that count as non-physical."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "scripts/probe-caa-thumbnail-keys.py (org/redesign-CAA-EAA-column.org P0): the 250/500 mix in data-li-big-src comes from two record shapes — older records list only small/large over http:, newer ones 250/500/1200 over https: — and the archive serves -1200.jpg for the older ones too (HEAD 200 on all four).",
+          "New tests/fixtures/caa-column-redesign.spec.js (15 tests) and .mobile.spec.js (tap and swipe), with tests/support/caaColumnFixture.js; scripts/mutations/caa-column-redesign.json (22 mutations). caa-col-hdr-deferred-visibility.spec.js and touch-tooltip.mobile.spec.js pin the old preview/type-box path with sa_caa_tip_image off."
+        ]
+      }
+    ]
+  }
+]

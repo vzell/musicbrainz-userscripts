@@ -614,6 +614,8 @@ filter with a ✕ to remove it.
 | ⚠️     | Track name differs from recording name (jesus2099's "≠" marker) | Release tracklist: Title                    |
 | ⚠️     | 🟠 Release has low data quality                                 | Release / Title columns                     |
 | ⚠️     | Invalid ISRC / ISWC / barcode format                            | ISRCs, ISWC, Barcode                        |
+| ⚠️     | Artwork has no Front image (releases with artwork only)         | CAA                                         |
+| ⚠️     | Physical release artwork has no Medium image                    | CAA (needs a Format column)                 |
 | ⚠️     | Pending edits                                                   | any column                                  |
 | ⚠️     | Live credit without a date                                      | Release tracklist: credit columns           |
 | ❌    | Track and recording length far apart                            | Release tracklist: Length, Recording length |
@@ -765,6 +767,61 @@ IndexedDB with a configurable TTL and size.
 
 **Sizes and concurrency** — small and big fetch sizes (250 / 500 / 1200), a
 maximum display height, and a request concurrency limit — are all settings.
+
+</details>
+
+<details>
+<summary>The CAA/EAA cell: tiles, type chips, cards and the viewer</summary>
+
+**Type chips.** After the image count, each cell shows one small letter chip
+per artwork type — **F**ront, **B**ack, **Sp**ine, **M**edium, **B**oo**k**let,
+**T**ray by default: filled when the release has an image of that type (with a
+small number when it has several), hollow when it has none, and ⏳ when an
+image is waiting for approval. So a collapsed cell already tells "front, back
+and medium, no booklet". EAA cells use the event types (Poster, Banner,
+Schedule, Setlist, Ticket). The letters are not text: a filter for "B" never
+matches them.
+
+**Expanded cell layouts.** Expanding a cell (▶) shows its images as a
+**grid** of tiles by default, with the types and comment on each tile and ★ on
+the archive's main front. **Grouped** puts the tiles under each image's first
+type ("Medium ×3"); **list** is the original one-line-per-image layout. The
+**▦** button in the column header switches all tables at once. Filtering is
+the same in every layout: a filter such as "Medi" or "outs" still finds the
+row, and the matching text is marked on the tile, which is outlined as well
+(the caption is cut to one line).
+
+**Expanding a whole column.** The ▶ of the artwork button at the left of the
+column header (▶🖼) expands or collapses every artwork cell of that table. The
+**▶N▤** button at the right of the header — N is the number of artwork cells
+— does exactly the same, and always shows the same state. The "expand all
+multi-row cells" buttons in the section headings leave artwork cells alone,
+since opening all of them would load every thumbnail on the page.
+
+**Cards.** Hovering the artwork icon or the image count shows a card with the
+release's whole artwork: a tile per image (★ main front), a tally of the types,
+pending images, and — while a filter matches — the images it matches, marked
+the same way. Hovering one image of an expanded cell shows its card: the
+preview, its types and comment, its position ("Image 6 of 10 · Medium 2 of 3"),
+main front/back, the sizes the archive has and its archive id.
+
+**The viewer.** Click an image of an expanded cell — or the artwork icon,
+which opens the main front — to open the full-screen viewer (the one the
+release page's **Cover art** section uses, see *Release tracklists* under
+*Page-specific behaviour*). From a column it goes beyond one release: **← →**
+at the last/first image continue into the next/previous row, and
+**Shift+← →** jump between rows. Only the rows the filters leave visible are
+stepped through. Ctrl-click (or middle-click) the icon to follow the link
+instead.
+
+**Settings** (⚙️ → 🖼️ CAA/EAA ILLUSTRATED DISCOGRAPHY): the layout, tile size
+and tiles per line, the ▦ button, both cards (and how many tiles the release
+card shows, and the preview size), marking filter matches in the cards, the
+viewer from the column and from the icon, the viewer's image size (**1200**,
+or the **original** file, which can be many MB), crossing into the next row,
+keeping the zoom level, the slideshow interval, and the chip types with their
+letters. None of these makes a request of its own: everything is read from the
+artwork records the column has already loaded.
 
 </details>
 
@@ -1152,9 +1209,14 @@ thumbnail, to open the archive page or the image in a new tab as before. The
 thumbnail shows at once and the 1200 px image replaces it when it arrives; the
 panel on the right lists the types, comment, position, main front/back,
 approval, the edit that added it and links to every size. Keys: **← →** step
-(wrapping at the ends), **Home / End**, **Z** or a click zooms 2× (the image
-follows the mouse), **G** grid, **I** info panel, **O** original in a new tab,
-**Esc** closes (from a grid opened with G: back to the image). On a touch
+(wrapping at the ends; opened from a CAA/EAA column they continue into the
+next row, and **Shift+← →** change rows), **Home / End**, **↑ ↓** or the mouse
+wheel zoom in and out (toward the pointer), **0** fits, **Z** or a click
+toggles 2× (the image follows the mouse), **P** starts or stops a slideshow,
+**G** grid, **I** info panel, **O** original in a new tab, **Esc** closes (from
+a grid opened with G: back to the image). The zoom level is kept from image to
+image and remembered for next time; the large image is the 1200 px one, or the
+original file (both settings). On a touch
 screen, tap to open and swipe sideways to step. While the viewer is open the
 page's own shortcuts are paused. It costs one request per render
 — none when the record is already cached from a CAA column, none when the tab

@@ -107,6 +107,32 @@ apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,
 whose `findingCounts` come from these attributes: the stamp invalidates each
 table's uniq cache.
 
+## Findings on data that arrives later: the artwork findings
+
+`art-no-front` and `art-no-medium` (org/redesign-CAA-EAA-column.org) are the
+first findings whose input is not in the page: the archive record, which
+arrives AFTER `stampFindings()` ran. The rules for any such finding:
+
+- **`test()` reads the data, not the decoration.** `_artFindingImages()` takes
+  the entity path from the cell's NATIVE anchor (a master row keeps it) and
+  looks it up in `CAA_CTX.imagesCache`. Not loaded, or no image → false: a
+  release with no artwork is not flagged, and nothing is flagged on a guess.
+  Because the stamp reads the cache, `stampFindings()` itself already gets
+  every record that was cached before it ran (IDB, a re-fetch).
+- **A per-row re-stamp, not another `stampFindings()`.**
+  `_artBuildMultiRowArtCell()` (both branches) queues the row;
+  `_artFlushFindingsRestamp()` re-runs `_stampFindingRow()` on each queued live
+  row AND its master row, 150 ms later in one batch. A full pass per record
+  would be O(rows) per row.
+- **Only a CHANGED stamp goes on** — gen bump, the touched tables' 📊 caches,
+  `updateFilterButtonsVisibility()` (the menus), and `runFilter()` only while
+  an artwork finding is filtering. That condition is what stops a loop:
+  `runFilter()` re-clones the rows, the clones re-enrich from the cache and
+  queue themselves again, and their stamps then come out unchanged.
+- A row the active filter removed is never enriched, so it is stamped only
+  once its art loads in some later view. The menu count therefore grows while
+  the CAA column loads; its tip says so.
+
 ## Counting: `_findingRowTally()` and the stamp generation
 
 The menus count ROWS (a length mismatch marks two cells of one track), over the

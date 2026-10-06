@@ -1,0 +1,289 @@
+[
+  {
+    "name": "the grid applies to a collapsed cell too",
+    "why": "The tile grid is for an EXPANDED cell; on a collapsed one the grid's fixed columns would widen every row of the table. The :has() condition is what keeps it to expanded cells.",
+    "edits": [
+      {
+        "find": "        html[data-mb-art-layout=\"grid\"] ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*=\"display: none\"])),\n        html[data-mb-art-layout=\"grouped\"] ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*=\"display: none\"])) {\n            display: grid;",
+        "replace": "        html[data-mb-art-layout=\"grid\"] ul.mb-caa-art-ul,\n        html[data-mb-art-layout=\"grouped\"] ul.mb-caa-art-ul {\n            display: grid;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "grid is the default",
+    "expect": "fail"
+  },
+  {
+    "name": "the image card is not hooked on the image",
+    "why": "B2 is shown by the delegated tooltip engine from the li's data-mbtt-fn; without it there is no card at all (and, the card replacing them, no preview either).",
+    "edits": [
+      {
+        "find": "            li.dataset.mbttFn = 'art-img';",
+        "replace": "            void li;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "B2: hovering an image",
+    "expect": "fail"
+  },
+  {
+    "name": "the image card shows plain pills, not the cell's marked ones",
+    "why": "The card copies the cell's own pill nodes so they carry the filter highlight; rebuilding them from text loses the \"Medi\" mark.",
+    "edits": [
+      {
+        "find": "        const pills = Array.from(li.querySelectorAll('.mb-caa-type-badge > span')).map(p => _artCardCopy(p, 'mb-tt-pill')).join(' ');",
+        "replace": "        const pills = Array.from(li.querySelectorAll('.mb-caa-type-badge > span')).map(p => `<span class=\"mb-tt-pill\">${_rgEsc(p.textContent)}</span>`).join(' ');"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "B2: hovering an image",
+    "expect": "fail"
+  },
+  {
+    "name": "the release card is not hooked on the icon and count",
+    "why": "B1 rides on data-mbtt-fn=art-sum stamped by _artDecorateArtCell(); without it the icon keeps its plain \"16 images\" tooltip.",
+    "edits": [
+      {
+        "find": "            .forEach(el => { if (el) el.dataset.mbttFn = 'art-sum'; });",
+        "replace": "            .forEach(el => { void el; });"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "B1: the icon shows",
+    "expect": "fail"
+  },
+  {
+    "name": "chip letters are text",
+    "why": "The letters must be CSS content: as text they reach the filter text, so a typed \"Bk\" would match every release.",
+    "edits": [
+      {
+        "find": "            chip.dataset.mbChip = abbr;",
+        "replace": "            chip.dataset.mbChip = abbr;\n            chip.textContent = abbr;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "chips: filled, hollow",
+    "expect": "fail"
+  },
+  {
+    "name": "EAA cells take the CAA chip vocabulary",
+    "why": "The chip types come from the cell's ctx; an EAA cell must show Poster/Banner/…, not Front/Back/….",
+    "edits": [
+      {
+        "find": "        const raw = ctx.key === 'eaa' ? Lib.settings.sa_eaa_chip_types : Lib.settings.sa_caa_chip_types;",
+        "replace": "        const raw = Lib.settings.sa_caa_chip_types;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "EAA cells use the EAA chip vocabulary",
+    "expect": "fail"
+  },
+  {
+    "name": "the grouped layout does not stamp group headers",
+    "why": "Without the per-image group data, grouped is just the grid: no headers, archive order.",
+    "edits": [
+      {
+        "find": "            if (g.hdr) li.dataset.mbArtGrpHdr = g.hdr;",
+        "replace": "            if (g.hdr) void g;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "the layout is CSS only",
+    "expect": "fail"
+  },
+  {
+    "name": "← → at the end of a row wrap instead of crossing rows",
+    "why": "Opened from the column, → on the last image must go on to the next visible row (sa_art_viewer_cross_rows).",
+    "edits": [
+      {
+        "find": "            _artViewerGroupStep(d, d > 0 ? 'first' : 'last')) return;",
+        "replace": "            false) return;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "D1: a click opens the viewer",
+    "expect": "fail"
+  },
+  {
+    "name": "Shift+← → step images instead of rows",
+    "why": "Shift+arrows must change rows; without the branch they fall through to the plain step.",
+    "edits": [
+      {
+        "find": "        } else if ((k === 'ArrowRight' || k === 'ArrowLeft') && e.shiftKey) {",
+        "replace": "        } else if ((k === 'ArrowRight' || k === 'ArrowLeft') && e.shiftKey && false) {"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "steps the VISIBLE rows",
+    "expect": "fail"
+  },
+  {
+    "name": "the column click listens on the document, after the navigation guard",
+    "why": "initNavigationGuard()'s anchor guard is a document capture listener registered first; a document listener of ours runs after it, so a plain icon click asks \"leave the page?\" instead of opening the viewer.",
+    "edits": [
+      {
+        "find": "        window.addEventListener('click', _artColumnViewerOnClick, true);",
+        "replace": "        document.addEventListener('click', _artColumnViewerOnClick, true);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "a plain icon click is the viewer's",
+    "expect": "fail"
+  },
+  {
+    "name": "a Ctrl-click on the icon opens the viewer too",
+    "why": "Any modifier must leave the link to the browser.",
+    "edits": [
+      {
+        "find": "        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;\n        if (!e.target.closest) return;",
+        "replace": "        if (e.button !== 0) return;\n        if (!e.target.closest) return;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "a plain icon click is the viewer's",
+    "expect": "fail"
+  },
+  {
+    "name": "an older record is loaded at its 500 px large size",
+    "why": "Records without a 1200 key still have the 1200 px file (probe-caa-thumbnail-keys.py); the viewer must ask for it.",
+    "edits": [
+      {
+        "find": "        else if (t.large && /-500\\.jpg$/.test(t.large)) out.push(t.large.replace(/-500\\.jpg$/, '-1200.jpg'));",
+        "replace": "        else if (false) out.push(t.large);"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "an older record without a 1200 key",
+    "expect": "fail"
+  },
+  {
+    "name": "no fallback when the 1200 px file fails",
+    "why": "A failed 1200 must fall back to the 500 px large, not leave the thumbnail with an error note.",
+    "edits": [
+      {
+        "find": "        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u)), Promise.reject(new Error('no url')));",
+        "replace": "        return urls.length ? _artViewerLoad(urls[0]) : Promise.reject(new Error('no url'));"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "an older record without a 1200 key",
+    "expect": "fail"
+  },
+  {
+    "name": "a step resets the zoom although it should be kept",
+    "why": "With sa_art_viewer_remember_zoom on (the default) the zoom stays from image to image.",
+    "edits": [
+      {
+        "find": "        if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;\n        st.zoomLevel = 1;",
+        "replace": "        st.zoomLevel = 1;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "zooms and the zoom is kept",
+    "expect": "fail"
+  },
+  {
+    "name": "the artwork findings are never re-stamped",
+    "why": "stampFindings() runs before the artwork arrives; only the per-row re-stamp can count the two artwork findings.",
+    "edits": [
+      {
+        "find": "        _artQueueFindingsRestamp(artCell);\n",
+        "replace": "\n"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "findings: no Front / no Medium",
+    "expect": "fail"
+  },
+  {
+    "name": "a release without artwork counts as no Front image",
+    "why": "Defensive today, and recorded as such: a release whose record is empty never builds a multi-row cell, so _artQueueFindingsRestamp() never queues its row, and stampFindings() runs before any record (session or IDB) is read — a second press reloads the page. The guard is what keeps a later full stamp (should one ever run with the cache filled) from flagging releases without artwork, which the 2026-10-06 decision excludes.",
+    "edits": [
+      {
+        "find": "        return Array.isArray(images) && images.length ? images : null;",
+        "replace": "        return Array.isArray(images) ? images : null;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "findings: no Front / no Medium",
+    "expect": "pass"
+  },
+  {
+    "name": "a digital release counts as missing a Medium image",
+    "why": "\"No Medium image\" only applies to physical formats; Digital Media is skipped.",
+    "edits": [
+      {
+        "find": "                return !!im && !!fmt && _artIsPhysicalFormat(fmt.textContent) &&",
+        "replace": "                return !!im && !!fmt &&"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "findings: no Front / no Medium",
+    "expect": "fail"
+  },
+  {
+    "name": "a tap on a tile does not open the viewer",
+    "why": "On a phone the tile tap is the only way in (no hover).",
+    "edits": [
+      {
+        "find": "        let li = e.target.closest('li.mb-caa-art-li-image');",
+        "replace": "        let li = null;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "a tap on a tile opens the viewer",
+    "expect": "fail"
+  },
+  {
+    "name": "the CAA column gets no ▶N▤ proxy",
+    "why": "initCollapsableColumns() places none on an art column; without the art code's proxy the multi-row count and its handle are gone (reported 2026-10-06).",
+    "edits": [
+      {
+        "find": "            _artEnsureColCollapseProxy(th);\n            _artInitColumnViewer();",
+        "replace": "            _artInitColumnViewer();"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "is there from the first render",
+    "expect": "fail"
+  },
+  {
+    "name": "a ▶N▤ proxy click is not forwarded to the ▶🖼 button",
+    "why": "The proxy is a second handle on the ▶🖼 button's ▶; without the forward a click does nothing.",
+    "edits": [
+      {
+        "find": "        if (glyph) glyph.click();",
+        "replace": "        void glyph;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "is there from the first render",
+    "expect": "fail"
+  },
+  {
+    "name": "the ▶N▤ proxy does not follow the ▶🖼 button",
+    "why": "Toggled from the ▶🖼 button, the proxy must show the same state.",
+    "edits": [
+      {
+        "find": "        const th = btn.closest('th');\n        if (th) _artSyncColCollapseProxy(th);",
+        "replace": "        void btn;"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "is there from the first render",
+    "expect": "fail"
+  },
+  {
+    "name": "the summary line neither wraps nor keeps its wrapper's width",
+    "why": "Next to the type chips the prose wrapper div shrank to the icon's width and the cache hint + count dropped below the icon (debug/MGV-CAA-bug.html). Either rule alone cures it (flex-wrap moves the chips down before anything shrinks), so the defect is both gone.",
+    "edits": [
+      {
+        "find": "        li.mb-caa-art-li-summary {\n            flex-wrap: wrap;\n        }\n        li.mb-caa-art-li-summary > .mb-text-clamp-marker {\n            flex: 0 0 auto;\n            white-space: nowrap;\n        }",
+        "replace": "        li.mb-caa-art-li-summary {\n        }"
+      }
+    ],
+    "spec": "tests/fixtures/caa-column-redesign.spec.js",
+    "grep": "stay beside the icon",
+    "expect": "fail"
+  }
+]

@@ -376,3 +376,75 @@ and `release-tracks-cover-art.mobile.spec.js`; mutation lists
 `release-tracks-cover-art.json`, `-p2.json`, `-p3.json` and `-p4.json`. The
 event page: `event-overview-art.spec.js`, `event-overview-art.mobile.spec.js`,
 mutation list `event-overview.json`.
+
+## The CAA/EAA column redesign: tiles, chips, cards, the column viewer
+
+`org/redesign-CAA-EAA-column.org` (A2, B1/B2, C1/C2, D1; decided 2026-10-06).
+Grep `// ── CAA/EAA column redesign` for the code. Rules that fail silently:
+
+- **The tiles ARE the image `<li>`s.** Grid and grouped are pure CSS on
+  `html[data-mb-art-layout]` (`_artApplyCellLayout()`), so
+  `.mb-caa-type-badge > span`, `.mb-caa-art-comment`, `_findCellListItems()`,
+  the collapse machinery, the has-match tint and `_artHighlightImageLi()` see
+  the same markup in every layout. A switch rebuilds nothing. **Never add a
+  header `<li>`** for the grouped layout: `_findCellListItems()` and the art
+  sync attributes count `:scope > li`. Group headers are
+  `data-mb-art-grp-hdr` drawn by `::before`, the order a `--mb-art-gorder`
+  custom property (both stamped by `_artDecorateArtCell()`, both branches of
+  `_artBuildMultiRowArtCell()`).
+- **The grid applies only while the cell is expanded**: the selector is
+  `ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*="display: none"]))`.
+  Expansion is inline `display` set by several paths, so this reads the
+  outcome rather than one button's state. Without it every collapsed cell
+  takes the grid's fixed width.
+- **The type pill is `.mb-caa-type-pill`, not an inline style** — the tile
+  layouts restyle it, and an inline style always wins.
+- **Chip letters and group headers are CSS content, never text.** A chip with
+  a text node would put "Bk"/"Sp" into `getCleanColumnText()`.
+  `.mb-caa-type-chips` is in `_CLEAN_STRIP_SEL` as a second line of defence.
+  The vocabulary comes from the ctx (`_artChipTypes()`: `sa_caa_chip_types` /
+  `sa_eaa_chip_types`), and is also the grouped layout's group order.
+- **Cards are `[data-mbtt-fn]`, resolved at hover time** by `_mbttResolve()`
+  inside `_initStatTooltip()`: `art-sum` (B1, on the icon, its anchor and the
+  count) and `art-img` (B2, on the image `<li>`; replaces
+  `_artWireImageLi()`'s two boxes while `sa_caa_tip_image` is on). Built at
+  hover time so they read the cache and the active filter as they are NOW;
+  the attribute survives `cloneNode(true)`. **Filter marks are copied, not
+  recomputed**: `_artCardCopy()` clones the cell's own pill/comment nodes,
+  which `_artHighlightImageLi()` already marked — the viewer's info panel does
+  the same through `opts.liFor`. A second highlight path would drift.
+- **The column click listens on `window` capture**, like the tab click above:
+  the icon is a link and the navigation guard's document-capture listener
+  would ask "leave the page?" first. Tile and ▦ clicks go the same way; ▦ in
+  capture also keeps a header click from sorting. A plain left click only.
+- **The viewer steps the VISIBLE rows** (`_artColumnViewerRows()`: the live
+  tbody, which `runFilter()` empties of rejected rows) with art in the cache,
+  wrapping. `_artViewerStep()` crosses into the next row at either end only
+  when `opts.onGroupStep` is given and `sa_art_viewer_cross_rows` is on; the
+  release/event sections pass none and keep wrapping.
+- **Old records**: `_artViewerBigUrls()` derives `-1200.jpg` from a `-500.jpg`
+  `large` (probe: served, HEAD 200) and `_artViewerLoadFirst()` falls back to
+  `large`. Register a spec's 404 route BEFORE the viewer opens — it preloads
+  the neighbours, and a file the browser already has never fails.
+- **The artwork findings are the first on async data** — see
+  docs/claude/findings.md.
+- **Fixtures**: `span.caa-icon` is 0×0 without MusicBrainz's (scrubbed)
+  stylesheet; `tests/support/caaColumnFixture.js` adds the size so it can be
+  hovered and clicked. Column filter inputs are read-only until a trusted
+  interaction: click, then `pressSequentially`; clear with ✕.
+
+Covered by `caa-column-redesign.spec.js`, `caa-column-redesign.mobile.spec.js`
+(setup in `tests/support/caaColumnFixture.js`); mutation list
+`caa-column-redesign.json`. `caa-col-hdr-deferred-visibility.spec.js` pins the
+old preview + type box with `sa_caa_tip_image` off.
+
+**The CAA/EAA column's ▶N▤ is a proxy owned by the art code**
+(`_artEnsureColCollapseProxy()`), not `initCollapsableColumns()`'s button:
+that pass runs before any art cell exists, and art cells have no
+`.mb-cell-collapse-toggle` to drive. The proxy forwards to ▶🖼's ▶ and mirrors
+its state; its count class is `.mb-art-col-collapse-count` so
+`_updateAllColHeaderCounts()`'s per-row-set cache cannot overwrite it; the
+h2/h3 expand-all controls skip it through `_COLLAPSE_HDR_BTN_SEL` (expanding
+every art cell would load every thumbnail). **li-0 must wrap**: the first
+render's prose marker div holds the icon, hint and count, and as a shrinkable
+flex item beside the chips it collapsed to the icon's width.
