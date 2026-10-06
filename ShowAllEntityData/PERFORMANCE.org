@@ -2613,6 +2613,12 @@ findings menus that replaced the buttons count through ~_findingRowTally()~,
 which IS such a "writer into captured rows" case — ~stampFindings()~ stamps at
 the render tail — and so carries the invalidation this one never needed: a
 stamp generation (~_findingStampGen~) beside the array and its length.
+*Since branch ~feature/caa-eaa-redesign~ (2026-10-06)* the generation also moves
+while the CAA column loads: ~_artFlushFindingsRestamp()~ re-stamps the rows
+whose artwork record just arrived (the two artwork findings) and bumps it once
+per 150 ms batch — only when a stamp actually changed. So during artwork
+loading the next tally walks the source rows once per changed batch; once the
+artwork has settled, a filter pass again walks none.
 
 *The step's "~8 300" was exact, and multi-table pages paid more than it said.*
 On a multi-table page ~_pendingEditsGroups()~ ran TWICE per pass — the second

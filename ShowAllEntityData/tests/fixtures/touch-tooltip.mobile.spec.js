@@ -241,6 +241,11 @@ test.describe('hover tooltips on a touch device', () => {
         await expect(tip).toContainText('settings manager');
     });
 
+    // The pre-redesign preview popup + type box: since the B2 image card
+    // (org/redesign-CAA-EAA-column.org) that is the `sa_caa_tip_image: false`
+    // path, and the viewer is off so the tap stays a plain tap. The card and
+    // the tap-opens-the-viewer behaviour are pinned by
+    // caa-column-redesign.mobile.spec.js.
     test('tapping a per-image artwork thumbnail opens neither the preview popup nor the type tooltip', async ({ page }) => {
         await loadUserscriptPage(page, {
             url: ARTIST_EVENTS_URL,
@@ -250,6 +255,8 @@ test.describe('hover tooltips on a touch device', () => {
                 sa_enable_caa_pics: true,
                 sa_art_idb_enable: false,
                 sa_caa_hover_preview: true,
+                sa_caa_tip_image: false,
+                sa_caa_column_viewer: false,
             },
         });
         await routeEventArtArchive(page);

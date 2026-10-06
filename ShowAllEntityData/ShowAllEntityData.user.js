@@ -2295,6 +2295,49 @@
                          'credit itself is shown either way.'
         },
 
+        sa_findings_no_front_image: {
+            label: 'Find releases whose artwork has no Front image',
+            type: 'checkbox',
+            default: true,
+            description: 'A release in a CAA column that HAS artwork, but no image typed Front and no main front, ' +
+                         'is a WARNING ("No Front image"). A release with no artwork at all is not. Known once ' +
+                         'the release\'s artwork has loaded (the CAA/EAA Illustrated Discography must be on); ' +
+                         'the ⚠️ menu counts grow while the artwork loads.'
+        },
+
+        sa_findings_tint_no_front_image: {
+            label: 'Highlight releases without a Front image as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the CAA cell light yellow with a ⚠️ when its release has artwork but no Front image.'
+        },
+
+        sa_findings_no_medium_image: {
+            label: 'Find physical releases whose artwork has no Medium image',
+            type: 'checkbox',
+            default: true,
+            description: 'A release in a CAA column that HAS artwork, a physical format (any Format other than ' +
+                         'those listed below, and not empty) and no image typed Medium is a WARNING ("No Medium ' +
+                         'image"). Needs a Format column on the page; known once the artwork has loaded.'
+        },
+
+        sa_findings_tint_no_medium_image: {
+            label: 'Highlight physical releases without a Medium image as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Tint the CAA cell light yellow with a ⚠️ when its physical release has artwork but no ' +
+                         'Medium image.'
+        },
+
+        sa_findings_nonphysical_formats: {
+            label: 'Formats that have no medium to photograph',
+            type: 'text',
+            default: 'Digital Media',
+            description: 'Comma-separated release formats, matched case-insensitively, that "No Medium image" ' +
+                         'skips. A Format such as "2×CD + Digital Media" still counts as physical, because one ' +
+                         'of its parts is. A release whose Format is empty or "(unknown)" is skipped too.'
+        },
+
         // ============================================================
         // RELEASE TRACKLIST SECTION
         // Consolidates the native per-medium tracklist(s) on a release page
@@ -3071,6 +3114,186 @@
                          'floating popup showing the full image at the big-picture strip size ' +
                          '(sa_caa_big_img_size). The popup is positioned to the right of the thumbnail ' +
                          '(or to the left when near the viewport edge) and disappears on mouse-out.'
+        },
+
+        // --- CAA/EAA column redesign (org/redesign-CAA-EAA-column.org) ---
+        // None of these adds a request to the archive: every card, layout and
+        // chip reads the archive record already in ctx.imagesCache.
+
+        sa_caa_cell_layout: {
+            label: 'Expanded CAA/EAA cell layout (grid / grouped / list)',
+            type: 'text',
+            default: 'grid',
+            description: 'How the images of an expanded CAA/EAA cell are laid out. "grid": a contact sheet of ' +
+                         'square tiles with the image types and comment on the tile and ★ on the main front. ' +
+                         '"grouped": the same tiles, grouped under each image\'s first type ("Medium ×3"). ' +
+                         '"list": one line per image with an 18 px thumbnail (the original layout). ' +
+                         'Filtering and the 📊 counts are the same in all three. The column-header ▦ button ' +
+                         'switches between them and remembers that choice until this setting is changed.'
+        },
+
+        sa_caa_cell_layout_toggle: {
+            label: 'Show the ▦ layout button in CAA/EAA column headers',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a small ▦ button to every CAA/EAA column header that cycles the expanded cell ' +
+                         'layout grid → grouped → list, for every table on the page at once.'
+        },
+
+        sa_caa_cell_tile_size: {
+            label: 'CAA/EAA cell tile size (px)',
+            type: 'number',
+            default: 64,
+            min: 32,
+            max: 250,
+            description: 'Edge length of one tile in the "grid" and "grouped" cell layouts. The tiles show the ' +
+                         '250 px thumbnails the cell already loads, so a larger size costs no request.'
+        },
+
+        sa_caa_cell_grid_cols: {
+            label: 'CAA/EAA cell tiles per line',
+            type: 'number',
+            default: 4,
+            min: 1,
+            max: 12,
+            description: 'How many tiles one line of an expanded cell holds before it wraps ("grid" and ' +
+                         '"grouped" layouts). A cell with fewer images is only as wide as its images.'
+        },
+
+        sa_caa_tip_summary: {
+            label: 'Rich artwork card on the CAA/EAA icon and count',
+            type: 'checkbox',
+            default: true,
+            description: 'Hovering the artwork icon or the image count of a CAA/EAA cell shows a card with the ' +
+                         'release\'s whole artwork: every image as a small tile (★ on the main front), a tally ' +
+                         'of the image types, pending and untyped images, and — while a filter matches — the ' +
+                         'images it matches, highlighted. Replaces the plain "N images" tooltip and the icon\'s ' +
+                         'front-image preview while it shows.'
+        },
+
+        sa_caa_tip_summary_tiles: {
+            label: 'Tiles shown in the artwork card',
+            type: 'number',
+            default: 12,
+            min: 1,
+            max: 60,
+            description: 'The artwork card shows at most this many image tiles and a "+N" for the rest.'
+        },
+
+        sa_caa_tip_image: {
+            label: 'Rich card on each image of an expanded CAA/EAA cell',
+            type: 'checkbox',
+            default: true,
+            description: 'Hovering one image of an expanded CAA/EAA cell shows one card with its preview (when ' +
+                         '"Enable hover preview of artwork" is on), its types and comment, its position ("6 of ' +
+                         '10", "Medium 2 of 3"), whether it is the main front/back, the sizes the archive has ' +
+                         'and its archive id. Off: the separate preview popup and the small types/comment box.'
+        },
+
+        sa_caa_tip_image_size: {
+            label: 'Preview size in the image card (px)',
+            type: 'number',
+            default: 200,
+            min: 80,
+            max: 600,
+            description: 'Display size of the preview inside the image card. The image shown is the one the ' +
+                         'hover preview already loads ("Big CAA/EAA image fetch size").'
+        },
+
+        sa_caa_tip_highlight: {
+            label: 'Mark filter matches inside the artwork cards and the viewer',
+            type: 'checkbox',
+            default: true,
+            description: 'While a global, column or sub-table filter matches an image\'s type or comment ("Medi" ' +
+                         'in "Medium", "outs" in "outside"), the artwork cards and the viewer\'s info panel mark ' +
+                         'the match the same way the cell does.'
+        },
+
+        sa_caa_column_viewer: {
+            label: 'Click a CAA/EAA cell image to open the artwork viewer',
+            type: 'checkbox',
+            default: true,
+            description: 'A plain click on an image of an expanded CAA/EAA cell opens the full-screen artwork ' +
+                         'viewer at that image (hover still shows the preview). ← → step through the images ' +
+                         'and on into the neighbouring rows, Shift+← → jump to the previous/next row, G shows ' +
+                         'a grid, I the info panel, Esc closes. Only the rows the filters leave visible are ' +
+                         'stepped through. Ctrl/Shift/middle click keeps the link.'
+        },
+
+        sa_caa_viewer_icon_click: {
+            label: 'Clicking the CAA/EAA icon opens the viewer too',
+            type: 'checkbox',
+            default: true,
+            description: 'With the viewer on, a plain click on the artwork icon of a CAA/EAA cell opens the ' +
+                         'viewer at the main front instead of following the link to the cover-art page. ' +
+                         'Ctrl/Shift/middle click still follows the link.'
+        },
+
+        sa_art_viewer_size: {
+            label: 'Artwork viewer image size (1200 / original)',
+            type: 'text',
+            default: '1200',
+            description: 'The image the artwork viewer loads after showing the thumbnail at once. "1200": the ' +
+                         'archive\'s 1200 px rendition (records older than the archive\'s 1200 px renditions ' +
+                         'list only small/large; the viewer asks for the 1200 px file all the same, which the ' +
+                         'archive serves, and falls back to the 500 px one). "original": the uploaded file, ' +
+                         'which can be many MB. Applies to every viewer: the CAA/EAA column, the release ' +
+                         'page\'s Cover art section and the event page\'s Event art section.'
+        },
+
+        sa_art_viewer_cross_rows: {
+            label: 'Viewer: ← → continue into the neighbouring row',
+            type: 'checkbox',
+            default: true,
+            description: 'In the viewer opened from a CAA/EAA column, → on the last image of a row goes on to ' +
+                         'the first image of the next visible row, and ← on the first image back to the last ' +
+                         'image of the previous one. Off: ← → wrap within the row (Shift+← → still change rows).'
+        },
+
+        sa_art_viewer_remember_zoom: {
+            label: 'Viewer: keep the zoom level',
+            type: 'checkbox',
+            default: true,
+            description: 'The viewer zooms with ↑ ↓ or the mouse wheel (toward the pointer), 0 fits, Z or a click ' +
+                         'toggles 2×. When on, the zoom level stays when stepping to the next image and is ' +
+                         'remembered for the next time the viewer opens. Off: every image starts fitted.'
+        },
+
+        sa_art_viewer_slideshow_secs: {
+            label: 'Viewer: slideshow interval (seconds)',
+            type: 'number',
+            default: 4,
+            min: 1,
+            max: 60,
+            description: 'P starts and stops a slideshow in the viewer, stepping to the next image after this ' +
+                         'many seconds. Any key or click stops it.'
+        },
+
+        sa_caa_type_chips: {
+            label: 'Show artwork type chips in CAA/EAA cells',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds a row of small letter chips after the image count of every CAA/EAA cell, one per ' +
+                         'type listed below: filled when the release has an image of that type (with a small ' +
+                         'number when it has several), hollow when it has none, and ⏳ when an image is pending ' +
+                         'approval. So a collapsed cell already says "front, back and medium, no booklet". The ' +
+                         'letters are not text, so a filter for "B" or "M" never matches them.'
+        },
+
+        sa_caa_chip_types: {
+            label: 'CAA type chips (Type=Letters, …)',
+            type: 'text',
+            default: 'Front=F, Back=B, Spine=Sp, Medium=M, Booklet=Bk, Tray=T',
+            description: 'The Cover Art Archive types the chips show, in order, each with the letters it shows ' +
+                         'as. A type without "=Letters" shows its first two letters. Also the group order of ' +
+                         'the "grouped" cell layout; types not listed follow in the order they appear.'
+        },
+
+        sa_eaa_chip_types: {
+            label: 'EAA type chips (Type=Letters, …)',
+            type: 'text',
+            default: 'Poster=P, Banner=Bn, Schedule=Sc, Setlist=Sl, Ticket=T',
+            description: 'The same as "CAA type chips", for the Event Art Archive\'s types in EAA columns.'
         },
 
         // ============================================================
@@ -28652,7 +28875,7 @@
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
 
-            const hdrBtns = Array.from(table.querySelectorAll('.mb-col-collapse-hdr-btn'));
+            const hdrBtns = Array.from(table.querySelectorAll(_COLLAPSE_HDR_BTN_SEL));
             if (hdrBtns.length === 0) return;
 
             // ▶ = some/all collapsed → expand all; ◀ = all expanded → collapse all.
@@ -28704,6 +28927,15 @@
      *
      * IMPORTANT: keep this list in sync whenever a new highlight class is introduced.
      */
+    /**
+     * The column-header ▶N▤ buttons the "expand/collapse ALL multi-row cells"
+     * controls (h3 and h2) drive and count: every one except the CAA/EAA
+     * column's proxy (`_artEnsureColCollapseProxy()`). Those controls never
+     * opened art cells, and expanding every art cell of a page would load
+     * every thumbnail on it; the proxy acts only for its own column.
+     */
+    const _COLLAPSE_HDR_BTN_SEL = '.mb-col-collapse-hdr-btn:not([data-mb-art-proxy])';
+
     const _COLLAPSE_MATCH_SEL =
         '.mb-global-filter-highlight, ' +
         '.mb-column-filter-highlight, ' +
@@ -31467,6 +31699,37 @@
             test: cell => { const p = _findCellBarcodeParts(cell)[0]; return !!p && !p.valid; },
             tint: _findingTintSetting('sa_findings_tint_barcode'),
         },
+        // The two artwork findings (org/redesign-CAA-EAA-column.org) are the
+        // first to rest on data that arrives AFTER stampFindings() ran: the
+        // archive record. test() reads it from CAA_CTX.imagesCache by the
+        // cell's native anchor (a master row keeps that too), and
+        // _artQueueFindingsRestamp() re-stamps each row once its record is in.
+        {
+            id: 'art-no-front', level: 'warn', glyph: '🖼️', scope: 'cell',
+            label: 'Artwork has no Front image',
+            tip: 'A release in the CAA column has artwork, but no image typed Front and no main front. A release with no artwork at all is not counted. Known once its artwork has loaded, so the count grows while the CAA column loads.',
+            enabled: () => Lib.settings.sa_findings_no_front_image !== false && !!Lib.settings.sa_enable_caa_pics,
+            cols: name => name === CAA_CTX.column,
+            test: cell => {
+                const im = _artFindingImages(cell);
+                return !!im && !im.some(x => x.front || (x.types || []).includes('Front'));
+            },
+            tint: _findingTintSetting('sa_findings_tint_no_front_image'),
+        },
+        {
+            id: 'art-no-medium', level: 'warn', glyph: '💿', scope: 'cell',
+            label: 'Physical release artwork has no Medium image',
+            tip: 'A release in the CAA column with a physical Format (not Digital Media, see ⚙️ Settings → ⚠️ FINDINGS) has artwork, but no image typed Medium. Known once its artwork has loaded.',
+            enabled: () => Lib.settings.sa_findings_no_medium_image !== false && !!Lib.settings.sa_enable_caa_pics,
+            cols: (name, plan) => name === CAA_CTX.column && plan.formatIdx >= 0,
+            test: (cell, row, plan) => {
+                const im = _artFindingImages(cell);
+                const fmt = row.cells[plan.formatIdx];
+                return !!im && !!fmt && _artIsPhysicalFormat(fmt.textContent) &&
+                    !im.some(x => (x.types || []).includes('Medium'));
+            },
+            tint: _findingTintSetting('sa_findings_tint_no_medium_image'),
+        },
         {
             id: 'pending', level: 'warn', glyph: '⏳', scope: 'row',
             label: 'Pending edits',
@@ -31643,10 +31906,11 @@
      * @returns {{byCol: Map<number, object[]>, rowWide: object[], recOfIdx: number,
      *            titleInfo: function(string): boolean, eventName: function(string): boolean,
      *            recComment: function(string): ?string, recPlainIdx: number,
-     *            eventStateIdx: number, nameOf: function(number): string}}
+     *            eventStateIdx: number, formatIdx: number, nameOf: function(number): string}}
      *   `recComment` is `_recCommentColumnKind()`; `recPlainIdx` the first
      *   plain recording comment column ("Disambiguation"), `-1` if none;
-     *   `eventStateIdx` the "Event-State" column, `-1` if none.
+     *   `eventStateIdx` the "Event-State" column, `-1` if none; `formatIdx`
+     *   the "Format" column (for `art-no-medium`), `-1` if none.
      */
     function _findingPlanForTable(table) {
         const count = table.querySelectorAll('thead tr:first-child th').length;
@@ -31664,6 +31928,7 @@
             recComment: name => _recCommentColumnKind(name),
             recPlainIdx: names.findIndex(n => plainCols.has(n)),
             eventStateIdx: names.indexOf('Event-State'),
+            formatIdx: names.indexOf('Format'),
             nameOf: i => names[i] || '',
         };
         _activeFindings().forEach(f => {
@@ -35241,7 +35506,7 @@
         if (!btn) return;
 
         // Collect per-column header toggle buttons that currently exist in this table.
-        const hdrBtns = Array.from(table.querySelectorAll('.mb-col-collapse-hdr-btn'));
+        const hdrBtns = Array.from(table.querySelectorAll(_COLLAPSE_HDR_BTN_SEL));
 
         if (hdrBtns.length === 0) {
             // No multi-row cells visible → hide button and clear any stale tint.
@@ -48840,6 +49105,227 @@ a { color: #1565c0; }`;
             font-size: 0.75em;
             white-space: nowrap;
         }
+        /* One image type inside .mb-caa-type-badge. Was an inline style;
+           a class lets the tile layouts below restyle it. font-size 0.85em
+           matches li.mb-caa-art-li-image, so the pill reads at the size of
+           the .mb-caa-art-comment next to it. */
+        .mb-caa-type-pill {
+            display: inline-block;
+            background: #c8c8c8;
+            color: #222;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 0.85em;
+            font-weight: 600;
+            line-height: 1.5;
+            white-space: nowrap;
+            cursor: default;
+        }
+        /* li-0 of an art cell: the icon, its cache hint and the image count stay
+           on one line. On a first render the cell is still plain and gets the
+           prose wrapper (.mb-text-clamp-marker, a div), which the art build
+           then moves into li-0 as ONE flex item: next to the type chips it
+           shrank to its min-content width, the icon's, and the hint + count
+           dropped below the icon. It keeps its own width now; the chips wrap
+           to the next line when the cell is too narrow for both. */
+        li.mb-caa-art-li-summary {
+            flex-wrap: wrap;
+        }
+        li.mb-caa-art-li-summary > .mb-text-clamp-marker {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+        /* ── CAA / EAA cell tile layouts (org/redesign-CAA-EAA-column.org C1, C2)
+           Keyed on html[data-mb-art-layout], which _artApplyCellLayout() sets;
+           the list layout is the rules above, untouched. The tiles ARE the
+           image li elements, so every selector the filters, the 📊 counts and
+           the highlights use keeps matching. A cell turns into a grid only
+           while one of its images is shown (expanded): a collapsed cell keeps
+           its old width. --mb-art-tile comes from sa_caa_cell_tile_size,
+           --mb-art-cols per cell from _artDecorateArtCell(). */
+        html[data-mb-art-layout="grid"] ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*="display: none"])),
+        html[data-mb-art-layout="grouped"] ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*="display: none"])) {
+            display: grid;
+            grid-template-columns: repeat(var(--mb-art-cols, 4), var(--mb-art-tile, 64px));
+            gap: 4px;
+        }
+        /* Room above every tile line for a group header (::before below). */
+        html[data-mb-art-layout="grouped"] ul.mb-caa-art-ul:has(> li.mb-caa-art-li-image:not([style*="display: none"])) {
+            row-gap: 18px;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-summary,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-summary {
+            grid-column: 1 / -1;
+            order: -1;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image {
+            position: relative;
+            display: block;
+            width: var(--mb-art-tile, 64px);
+            height: var(--mb-art-tile, 64px);
+            padding: 0;
+            border-radius: 2px;
+            background: #dddddd;
+            font-size: 9.5px;
+            line-height: 1.15;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image img,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image img {
+            width: 100%;
+            height: 100%;
+            border-radius: 2px;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-type-badge,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-type-badge,
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-art-comment,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-art-comment {
+            position: absolute;
+            left: 0;
+            right: 0;
+            padding: 0 3px;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-type-badge,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-type-badge {
+            bottom: 0;
+            padding-top: 10px;
+            padding-bottom: 1px;
+            border-radius: 0 0 2px 2px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-art-comment,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-art-comment {
+            bottom: 12px;
+            text-shadow: 0 0 2px #000000, 0 0 2px #000000;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-type-pill,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-type-pill {
+            display: inline;
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            font-size: inherit;
+            line-height: inherit;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image .mb-caa-art-pending,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image .mb-caa-art-pending {
+            position: absolute;
+            top: 1px;
+            right: 2px;
+            font-size: 11px;
+        }
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-main::after,
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-main::after {
+            content: "★";
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            color: #ffc94d;
+            font-size: 11px;
+            text-shadow: 0 0 2px #000000;
+        }
+        /* A tile whose caption holds a filter match is outlined as well: the
+           caption is cut to one line, which may hide the marked text. */
+        html[data-mb-art-layout="grid"] li.mb-caa-art-li-image:has(.mb-global-filter-highlight, .mb-column-filter-highlight, .mb-subtable-filter-highlight, .mb-pre-filter-highlight),
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image:has(.mb-global-filter-highlight, .mb-column-filter-highlight, .mb-subtable-filter-highlight, .mb-pre-filter-highlight) {
+            outline: 2px solid #f0a35e;
+            outline-offset: 0;
+        }
+        /* grouped: tiles in group order, each group starting a new line under
+           a header that is CSS content, never text (so it never filters). */
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image {
+            order: var(--mb-art-gorder, 0);
+        }
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image[data-mb-art-grp-hdr] {
+            grid-column-start: 1;
+        }
+        html[data-mb-art-layout="grouped"] li.mb-caa-art-li-image[data-mb-art-grp-hdr]::before {
+            content: attr(data-mb-art-grp-hdr);
+            position: absolute;
+            top: -14px;
+            left: 0;
+            white-space: nowrap;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #444444;
+        }
+        html[data-mb-art-colviewer] li.mb-caa-art-li-image,
+        html[data-mb-art-colviewer] li.mb-caa-art-li-image .mb-caa-type-pill {
+            cursor: zoom-in;
+        }
+        /* ── Type-coverage chips (A2), after the image count. The letters are
+           CSS content from data-mb-chip, never text: a filter for "B" must
+           not match them (and .mb-caa-type-chips is in _CLEAN_STRIP_SEL). */
+        .mb-caa-type-chips {
+            display: inline-flex;
+            gap: 2px;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+        .mb-caa-type-chip {
+            display: inline-block;
+            min-width: 11px;
+            padding: 0 2px;
+            border: 1px solid #9fa5c9;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 12px;
+            text-align: center;
+            color: #9fa5c9;
+            background: transparent;
+            white-space: nowrap;
+        }
+        .mb-caa-type-chip::before { content: attr(data-mb-chip); }
+        .mb-caa-type-chip[data-mb-chip-on] { background: #3949ab; border-color: #3949ab; color: #ffffff; }
+        .mb-caa-type-chip[data-mb-chip-n]::after {
+            content: attr(data-mb-chip-n);
+            font-size: 7px;
+            vertical-align: super;
+            margin-left: 1px;
+        }
+        .mb-caa-type-chip[data-mb-chip-pending] { border-color: #b45309; color: #b45309; }
+        /* ── Artwork cards (B1 release summary, B2 one image) in #mb-stat-tooltip. */
+        #mb-stat-tooltip .mb-art-card-tiles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            max-width: 300px;
+            margin: 4px 0;
+        }
+        #mb-stat-tooltip .mb-art-card-tile { position: relative; width: 56px; height: 56px; }
+        #mb-stat-tooltip .mb-art-card-tile img {
+            display: block;
+            width: 56px;
+            height: 56px;
+            object-fit: cover;
+            border-radius: 2px;
+            background: #dddddd;
+        }
+        #mb-stat-tooltip .mb-art-card-tile.mb-art-card-main::after {
+            content: "★";
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            color: #ffc94d;
+            font-size: 11px;
+            text-shadow: 0 0 2px #000000;
+        }
+        #mb-stat-tooltip .mb-art-card-tile.mb-art-card-hit img { outline: 2px solid #f0a35e; outline-offset: -2px; }
+        #mb-stat-tooltip .mb-art-card-more { align-self: center; font-size: 11px; padding: 0 4px; }
+        #mb-stat-tooltip .mb-art-card-preview {
+            display: block;
+            width: var(--mb-art-card-size, 200px);
+            height: var(--mb-art-card-size, 200px);
+            object-fit: contain;
+            margin: 4px 0;
+            background: #efe6d4;
+        }
         .mb-toggle-h2:hover {
             color: #222;
             background-color: ${Lib.settings.sa_ui_h2_hover_bg || '#f99f50'};
@@ -49623,7 +50109,8 @@ a { color: #1565c0; }`;
            piece of INFORMATION in this control, was the smallest thing in it.
            Inherits the button's cursor / user-select so it behaves as part of
            the same clickable unit. */
-        .mb-col-collapse-count {
+        .mb-col-collapse-count,
+        .mb-art-col-collapse-count {
             font-size: 0.92em;
             font-weight: bold;
             vertical-align: baseline;
@@ -49681,6 +50168,7 @@ a { color: #1565c0; }`;
            could. It also makes these read as pressable before they are
            hovered, which bare text at 60% never did. */
         .mb-caa-col-hdr-btn,
+        .mb-caa-layout-hdr-btn,
         .mb-ms-col-hdr-btn,
         .mb-picard-col-hdr-btn,
         .mb-rel-col-hdr-btn,
@@ -49706,6 +50194,7 @@ a { color: #1565c0; }`;
             white-space: nowrap;
         }
         .mb-caa-col-hdr-btn:hover,
+        .mb-caa-layout-hdr-btn:hover,
         .mb-ms-col-hdr-btn:hover,
         .mb-picard-col-hdr-btn:hover,
         .mb-rel-col-hdr-btn:hover,
@@ -49717,6 +50206,7 @@ a { color: #1565c0; }`;
             border-color: var(--mb-hdr-pill-border-hover);
         }
         .mb-caa-col-hdr-btn:focus-visible,
+        .mb-caa-layout-hdr-btn:focus-visible,
         .mb-ms-col-hdr-btn:focus-visible,
         .mb-picard-col-hdr-btn:focus-visible,
         .mb-rel-col-hdr-btn:focus-visible,
@@ -49964,6 +50454,17 @@ a { color: #1565c0; }`;
             gap: 3px;
             margin-right: 0;
         }
+        /* The expanded-cell layout switch (org/redesign-CAA-EAA-column.org
+           C1/C2), right after the CAA/EAA button. Its glyph is generated
+           content keyed on the page-wide layout, never element text, for the
+           same reason as .mb-re-col-hdr-btn's: this th's textContent names
+           the column. Hidden while the CAA/EAA button still waits for the
+           first image (_artRevealCaaColHeaderButtons()). */
+        .mb-caa-layout-hdr-btn { margin-left: 3px; }
+        .mb-caa-layout-hdr-btn::before { content: "▦"; }
+        html[data-mb-art-layout="grouped"] .mb-caa-layout-hdr-btn::before { content: "▥"; }
+        html[data-mb-art-layout="list"] .mb-caa-layout-hdr-btn::before { content: "☰"; }
+        .mb-caa-col-hdr-btn[data-mb-caa-col-hdr-ready="0"] + .mb-caa-layout-hdr-btn { display: none; }
 
         /* Per-column millisecond precision toggle in the "Length" column
            header: ▶⏱ shows seconds (more precision available), ▼⏱ shows
@@ -54053,6 +54554,7 @@ a { color: #1565c0; }`;
 
         let _target = null;     // element whose card is shown or pending
         let _own = false;       // _target is a data-mb-tip element (not data-mbtt)
+        let _fnShown = false;   // _target's card came from a data-mbtt-fn resolver
         let _dismissed = false; // a mousedown hid the card for this hover
         let _showTimer = 0;
         let _lastMove = null;   // latest mouse event, for positioning after the delay
@@ -54096,6 +54598,7 @@ a { color: #1565c0; }`;
             _tip.style.display = 'none';
             const el = _target;
             _target = null;
+            _fnShown = false;
             _dismissed = false;
             if (!el) return;
             // Restore the element's own native title, and any h2/h3 ancestor's.
@@ -54119,17 +54622,27 @@ a { color: #1565c0; }`;
         };
 
         document.addEventListener('mouseover', (e) => {
-            const el = e.target.closest('[data-mbtt], [title], [data-mb-tip-saved]');
+            const el = e.target.closest('[data-mbtt], [data-mbtt-fn], [title], [data-mb-tip-saved]');
             if (el === _target && _own) return; // still inside the same element
+            // A resolver card is built once per hover: re-building it on every
+            // child crossed would reload its images and flicker.
+            if (el && el === _target && _fnShown) return;
             // A tap: no mouseout would ever hide it again.
             if (_isTouchCompatMouseEvent(e)) return;
-            if (el && el.dataset.mbtt) {
+            // [data-mbtt-fn]: HTML built NOW by _mbttResolve() — it depends on
+            // state that changes after the element was built (the artwork
+            // cache, the active filter). null = nothing to show, and the
+            // element's plain title (if any) is used as usual.
+            const fnHtml = el && el.dataset.mbttFn ? _mbttResolve(el) : null;
+            if (el && (el.dataset.mbtt || fnHtml)) {
                 if (_target && _target !== el) _hide();
                 _target = el;
                 _own = false;
-                _tip.innerHTML = el.dataset.mbtt;
+                _fnShown = !!fnHtml;
+                _tip.innerHTML = fnHtml || el.dataset.mbtt;
                 _tip.style.display = 'block';
                 _positionTip(e);
+                if (fnHtml) _mbttAfterShow(el, _tip);
                 // Suppress the element's own native title (action buttons) and any
                 // h2/h3 ancestor's (row-count stat) while our tooltip is visible,
                 // so the browser doesn't overlay both tooltips simultaneously.
@@ -54179,6 +54692,12 @@ a { color: #1565c0; }`;
         }, true);
 
         document.addEventListener('mousedown', () => {
+            // A resolver card's click usually opens something (the artwork
+            // viewer) that would otherwise sit under it.
+            if (_target && _fnShown) {
+                _tip.style.display = 'none';
+                return;
+            }
             if (!_target || !_own) return;
             clearTimeout(_showTimer);
             _tip.style.display = 'none';
@@ -54758,6 +55277,11 @@ a { color: #1565c0; }`;
         '.mb-art-cache-hint-inline,.mb-art-cache-hint-col-wrap,' +
         '.mb-art-cache-hint-col,.mb-caa-count-badge,.mb-eaa-count-badge,' +
         '.mb-caa-art-li-image,.artwork-icon,.caa-icon,.icon,' +
+        // .mb-caa-type-chips: the A2 type-coverage chips after the image
+        // count (_artRenderTypeChips()). Their letters are CSS content, so
+        // there is no text to leak today; listed so that stays true if a
+        // chip ever gains a text node.
+        '.mb-caa-type-chips,' +
         // .mb-inline-art-sort-key carries the invisible sentinel text
         // 'caa-inline-yes' / 'caa-inline-no' (stamped by _artSetInlineSortKey).
         // It MUST be stripped here so that ordinary text filter strings (e.g. "nl"
@@ -56260,6 +56784,24 @@ a { color: #1565c0; }`;
      * in common with a release's. Same TDZ placement as the key above.
      */
     const MB_EVENT_ART_LAYOUT_KEY = 'mb_sa_event_art_layout';
+
+    /**
+     * GM storage key for the artwork viewer's remembered zoom level (a number
+     * from 1 to `_ART_VIEWER_ZOOM_MAX`), written only while
+     * `sa_art_viewer_remember_zoom` is on. Runtime UI state like the layout
+     * keys above, so carried by the config export's workspace block. Same TDZ
+     * placement.
+     */
+    const MB_ART_VIEWER_ZOOM_KEY = 'mb_sa_art_viewer_zoom';
+
+    /**
+     * GM storage key for the CAA/EAA column's expanded-cell layout as last
+     * picked with the column-header ▦ button: `{v, from}`, the layout and the
+     * `sa_caa_cell_layout` value it overrode. Honoured only while that
+     * setting still has the `from` value, so changing the setting in ⚙️
+     * Settings wins again (`_artCellLayout()`). Same TDZ placement.
+     */
+    const MB_ART_CELL_LAYOUT_KEY = 'mb_sa_art_cell_layout';
 
     /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
@@ -77914,7 +78456,7 @@ a { color: #1565c0; }`;
 
         // Collect all per-column header toggle buttons across every sub-table.
         const allHdrBtns = Array.from(
-            document.querySelectorAll('table.tbl .mb-col-collapse-hdr-btn')
+            document.querySelectorAll('table.tbl ' + _COLLAPSE_HDR_BTN_SEL)
         );
 
         if (allHdrBtns.length === 0) {
@@ -79347,7 +79889,15 @@ a { color: #1565c0; }`;
                 );
             });
 
-            if (hdrFlex) {
+            // A CAA/EAA column's ▶N▤ belongs to the art code
+            // (_artEnsureColCollapseProxy(), built beside the ▶🖼 button): its
+            // cells have no .mb-cell-collapse-toggle for this button to drive,
+            // and on the first render none of them is built yet, so this pass
+            // would never place one at all.
+            const _artOwnsCollapseBtn = colName === CAA_CTX.column || colName === EAA_CTX.column;
+            if (_artOwnsCollapseBtn) {
+                // nothing placed; not in collapseHdrBtns either
+            } else if (hdrFlex) {
                 const uniqWrap = hdrFlex.querySelector('.mb-col-uniq-wrap');
                 if (uniqWrap) {
                     // The collapse button takes over the right-push role:
@@ -79363,7 +79913,7 @@ a { color: #1565c0; }`;
                 th.appendChild(collapseHdrBtn); // fallback: no flex wrapper
             }
 
-            collapseHdrBtns.push(collapseHdrBtn);
+            if (!_artOwnsCollapseBtn) collapseHdrBtns.push(collapseHdrBtn);
             if (_anyCellStartedExpanded) anyCellInAnyColumnStartedExpanded = true;
 
             // ── Uniform reserved toggle space across the whole column ─────────
@@ -83070,6 +83620,11 @@ a { color: #1565c0; }`;
             group: 'eventart',
             label: 'Event page Event art layout',
             keys: [MB_EVENT_ART_LAYOUT_KEY],
+        },
+        {
+            group: 'artviewer',
+            label: 'Artwork viewer zoom level and CAA/EAA cell layout',
+            keys: [MB_ART_VIEWER_ZOOM_KEY, MB_ART_CELL_LAYOUT_KEY],
         },
         {
             group: 'dialog',
@@ -93164,6 +93719,11 @@ a { color: #1565c0; }`;
         if (!Lib.settings.sa_caa_hover_preview) return;
         // Called from mouseenter handlers: a tap would leave it up for good.
         if (_isTouchCompatMouseEvent()) return;
+        // The CAA/EAA cell's icon shows the release artwork card instead
+        // (B1), which carries the front among its tiles: a preview beside it
+        // would be a second box over the same pointer.
+        if (triggerEl && triggerEl.closest && triggerEl.closest('[data-mbtt-fn="art-sum"]') &&
+            _artCardSummaryAvailable(triggerEl)) return;
         const div = _ensureArtHoverPreviewDiv();
         _positionArtHoverPreview(div, triggerEl);
         div.style.display = 'block';
@@ -94173,6 +94733,14 @@ a { color: #1565c0; }`;
 
         img.addEventListener('error', function() { this.style.display = 'none'; });
 
+        // The rich image card (B2, org/redesign-CAA-EAA-column.org) replaces
+        // both floating boxes below. It is shown by the delegated tooltip
+        // engine from this one attribute, so a clone needs no re-wiring.
+        if (Lib.settings.sa_caa_tip_image) {
+            li.dataset.mbttFn = 'art-img';
+            return;
+        }
+
         // ── Hover preview + HTML badge tooltip wiring ────────────────────────
         // Both the hover-preview popup and the type-badge tooltip are anchored
         // to the same img.mouseenter event so they always appear and disappear
@@ -94273,14 +94841,21 @@ a { color: #1565c0; }`;
      * toggle controls its visibility.  Protocol-relative URLs (`//`) are used
      * so the element works on both http and https pages.
      *
+     * `data-mb-art-i` records the image's index in the archive record, which
+     * is how the artwork cards and the viewer find it again from a clone
+     * (org/redesign-CAA-EAA-column.org); `mb-caa-art-li-main` marks the
+     * archive's main front (`front: true`), which the tile layouts star.
+     *
      * @param   {Object} imgData  One image entry from the archive `images[]` array.
      *   Expected fields: id, types[], front, back, comment, approved, image,
      *   thumbnails.{250,500,1200,small,large}
+     * @param   {number} [index=0] The image's index in that array.
      * @returns {HTMLLIElement}
      */
-    function _artBuildImageLi(imgData) {
+    function _artBuildImageLi(imgData, index = 0) {
         const li = document.createElement('li');
-        li.className = 'mb-caa-art-li mb-caa-art-li-image';
+        li.className = 'mb-caa-art-li mb-caa-art-li-image' + (imgData.front ? ' mb-caa-art-li-main' : '');
+        li.dataset.mbArtI = String(index);
         li.style.display = 'none'; // collapsed by default
 
         // ── Thumbnail ─────────────────────────────────────────────────────────
@@ -94358,15 +94933,9 @@ a { color: #1565c0; }`;
                 badgeWrap.appendChild(document.createTextNode(' / '));
             }
             const pill = document.createElement('span');
-            // font-size: 0.85em — matches li.mb-caa-art-li-image's own
-            // font-size (its .mb-caa-type-badge parent no longer shrinks
-            // further, see that class's own comment), so this pill reads at
-            // the same size as the unstyled .mb-caa-art-comment span right
-            // next to it, instead of noticeably smaller.
-            pill.style.cssText =
-                'display:inline-block; background:#c8c8c8; color:#222;' +
-                ' border-radius:3px; padding:1px 5px; font-size:0.85em;' +
-                ' font-weight:600; line-height:1.5; white-space:nowrap; cursor:default;';
+            // The look is the .mb-caa-type-pill CSS rule (it was an inline
+            // style, which the tile layouts could not restyle).
+            pill.className = 'mb-caa-type-pill';
             pill.textContent = t;
             badgeWrap.appendChild(pill);
         });
@@ -95206,8 +95775,8 @@ a { color: #1565c0; }`;
 
             const lis = Array.from(existingUl.querySelectorAll(':scope > li'));
             lis.slice(1).forEach(li => li.remove());
-            images.forEach(img => {
-                const _imageLi = _artBuildImageLi(img);
+            images.forEach((img, imgIdx) => {
+                const _imageLi = _artBuildImageLi(img, imgIdx);
                 _artHighlightImageLi(_imageLi, _artColIdx);
                 existingUl.appendChild(_imageLi);
             });
@@ -95292,8 +95861,8 @@ a { color: #1565c0; }`;
 
             // li-1..N: one per image, initially hidden — made visible
             // immediately below when this cell was already expanded.
-            images.forEach(img => {
-                const _imageLi = _artBuildImageLi(img);
+            images.forEach((img, imgIdx) => {
+                const _imageLi = _artBuildImageLi(img, imgIdx);
                 _artHighlightImageLi(_imageLi, _artColIdx);
                 if (startExpanded) _imageLi.style.display = '';
                 ul.appendChild(_imageLi);
@@ -95335,6 +95904,12 @@ a { color: #1565c0; }`;
             const table = artCell.closest('table');
             if (table) ensureCollapseDelegate(table);
         }
+
+        // Both branches: the tile layouts' per-image data, the type chips and
+        // the B1 card hook (org/redesign-CAA-EAA-column.org), then the
+        // artwork findings, which can only be known now that the record is in.
+        _artDecorateArtCell(ctx, artCell, images);
+        _artQueueFindingsRestamp(artCell);
 
         artCell.dataset[ctx.multiBuiltAttr] = '1';
         if (Lib.settings.sa_enable_art_fetch_debug_logging) {
@@ -97149,14 +97724,51 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * An image's large URL (1200, or `large` on older records), protocol-relative.
+     * An image's large URL, protocol-relative: the first of
+     * `_artViewerBigUrls()`.
      *
      * @param   {Object} im
      * @returns {string}
      */
     function _artViewerBigUrl(im) {
+        return _artViewerBigUrls(im)[0];
+    }
+
+    /**
+     * The URLs the viewer tries for an image's large rendition, best first;
+     * `_artViewerRender()` falls through them when one fails to load.
+     *
+     * `sa_art_viewer_size` "original" → the uploaded file. Otherwise 1200: the
+     * record's own `1200` key, or — on an older record that lists only
+     * `small`/`large` — the `-1200.jpg` sibling of its `-500.jpg` `large`
+     * URL, which the archive serves all the same
+     * (`scripts/probe-caa-thumbnail-keys.py`, 2026-10-06: HEAD 200 image/jpeg
+     * on all four such releases of release group fa9c43a7), then `large`.
+     *
+     * @param   {Object} im
+     * @returns {string[]} Never empty.
+     */
+    function _artViewerBigUrls(im) {
         const t = im.thumbnails || {};
-        return (t['1200'] || t.large || im.image || _artViewerThumbUrl(im)).replace(/^http:/, '');
+        const out = [];
+        if (String(Lib.settings.sa_art_viewer_size ?? '1200').trim().toLowerCase() === 'original' && im.image) out.push(im.image);
+        if (t['1200']) out.push(t['1200']);
+        else if (t.large && /-500\.jpg$/.test(t.large)) out.push(t.large.replace(/-500\.jpg$/, '-1200.jpg'));
+        if (t.large) out.push(t.large);
+        if (im.image) out.push(im.image);
+        out.push(_artViewerThumbUrl(im));
+        return [...new Set(out.filter(Boolean).map(u => u.replace(/^http:/, '')))];
+    }
+
+    /**
+     * `_artViewerLoad()` over a list of URLs: resolves with the first that
+     * loads, rejects when none does.
+     *
+     * @param   {string[]} urls
+     * @returns {Promise<string>}
+     */
+    function _artViewerLoadFirst(urls) {
+        return urls.reduce((p, u) => p.catch(() => _artViewerLoad(u)), Promise.reject(new Error('no url')));
     }
 
     /**
@@ -97217,7 +97829,8 @@ a { color: #1565c0; }`;
                 font-weight: 600;
                 font-size: 15px;
             }
-            #mb-art-viewer .mb-artv-pos { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-pos,
+            #mb-art-viewer .mb-artv-rowpos { color: #9c978c; font-variant-numeric: tabular-nums; }
             #mb-art-viewer .mb-artv-btn {
                 background: #17191e;
                 border: 1px solid #2b2e35;
@@ -97363,9 +97976,21 @@ a { color: #1565c0; }`;
      * @param   {boolean}   [opts.grid=false]   Start in grid mode (the tab click does).
      * @param   {?Element}  [opts.opener=null]  Focus returns here on close.
      * @param   {string}    [opts.title='']     Shown in the bar.
+     * @param   {?function(number): ?{entityPath: string, list: number[], title: string, rowPos: {k: number, n: number}, liFor: ?function(number): ?Element}} [opts.onGroupStep=null]
+     *   The CAA/EAA column's neighbouring rows (`_artColumnViewerGroup()`):
+     *   called with +1/-1, answers the next/previous row's images, or null
+     *   when there is none. Shift+← → always use it; ← → at either end of
+     *   the list use it while `sa_art_viewer_cross_rows` is on, and wrap
+     *   otherwise (or when it is not given — the release/event sections).
+     * @param   {?{k: number, n: number}} [opts.rowPos=null] This row's position
+     *   among those rows, for the bar.
+     * @param   {?function(number): ?Element} [opts.liFor=null] The live cell
+     *   `<li>` of an image index, whose type badge and comment carry the
+     *   filter highlights the info panel copies (`sa_caa_tip_highlight`).
      * @returns {void}
      */
-    function _artViewerOpen(ctx, entityPath, indices, start, { grid = false, opener = null, title = '' } = {}) {
+    function _artViewerOpen(ctx, entityPath, indices, start,
+                            { grid = false, opener = null, title = '', onGroupStep = null, rowPos = null, liFor = null } = {}) {
         const images = ctx.imagesCache.get(entityPath) || [];
         const list = (indices && indices.length ? indices : images.map((_, i) => i)).filter(i => images[i]);
         if (!list.length) return;
@@ -97381,15 +98006,20 @@ a { color: #1565c0; }`;
             root.addEventListener('mousemove', _artViewerOnMouseMove);
             root.addEventListener('pointerdown', _artViewerOnPointerDown);
             root.addEventListener('pointerup', _artViewerOnPointerUp);
+            root.addEventListener('wheel', _artViewerOnWheel, { passive: false });
             document.body.appendChild(root);
         }
         root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
         const prevOverflow = _artViewerState ? _artViewerState.prevOverflow : document.documentElement.style.overflow;
+        if (_artViewerState) _artViewerStopSlideshow(_artViewerState);
+        const zoomLevel = _artViewerRememberedZoom();
         _artViewerState = {
             ctx, entityPath, images, list,
             i: list.includes(start) ? start : list[0],
-            grid, gridStart: grid, info: true, zoom: false,
+            grid, gridStart: grid, info: true,
+            zoom: zoomLevel > 1, zoomLevel, origin: '',
             opener, title, prevOverflow,
+            onGroupStep, rowPos, liFor, slideshow: 0,
             swipeX: null, swipeAt: 0, gen: 0,
         };
         document.documentElement.style.overflow = 'hidden';
@@ -97408,6 +98038,7 @@ a { color: #1565c0; }`;
     function _artViewerClose() {
         const st = _artViewerState;
         if (!st) return;
+        _artViewerStopSlideshow(st);
         _artViewerState = null;
         window.removeEventListener('keydown', _artViewerOnKey, true);
         const root = document.getElementById('mb-art-viewer');
@@ -97420,7 +98051,10 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Steps within the list, wrapping at both ends.
+     * Steps within the list. At either end it continues into the
+     * neighbouring row when the viewer was opened from a CAA/EAA column and
+     * `sa_art_viewer_cross_rows` is on (`_artViewerGroupStep()`), and wraps
+     * otherwise.
      *
      * @param   {number} d +1 or -1.
      * @returns {void}
@@ -97429,9 +98063,136 @@ a { color: #1565c0; }`;
         const st = _artViewerState;
         if (!st) return;
         const k = st.list.indexOf(st.i);
+        const atEnd = d > 0 ? k === st.list.length - 1 : k === 0;
+        if (atEnd && st.onGroupStep && Lib.settings.sa_art_viewer_cross_rows !== false &&
+            _artViewerGroupStep(d, d > 0 ? 'first' : 'last')) return;
         st.i = st.list[(k + d + st.list.length) % st.list.length];
-        st.zoom = false;
+        _artViewerResetZoomOnStep(st);
         _artViewerRender();
+    }
+
+    /**
+     * Moves the viewer to the next/previous row of the CAA/EAA column it was
+     * opened from (`opts.onGroupStep`), in place: same overlay, same opener,
+     * same zoom rule as a step.
+     *
+     * @param   {number} d      +1 or -1.
+     * @param   {('first'|'last')} [at='first'] Which image of that row to show.
+     * @returns {boolean} False when there is no such row (nothing changed).
+     */
+    function _artViewerGroupStep(d, at = 'first') {
+        const st = _artViewerState;
+        if (!st || !st.onGroupStep) return false;
+        const g = st.onGroupStep(d);
+        if (!g) return false;
+        const images = st.ctx.imagesCache.get(g.entityPath) || [];
+        const list = (g.list && g.list.length ? g.list : images.map((_, i) => i)).filter(i => images[i]);
+        if (!list.length) return false;
+        st.entityPath = g.entityPath;
+        st.images = images;
+        st.list = list;
+        st.i = at === 'last' ? list[list.length - 1] : list[0];
+        st.title = g.title || '';
+        st.rowPos = g.rowPos || null;
+        st.liFor = g.liFor || null;
+        _artViewerResetZoomOnStep(st);
+        _artViewerRender();
+        return true;
+    }
+
+    /**
+     * After a step: keep the zoom when `sa_art_viewer_remember_zoom` is on
+     * (Art Station's behaviour), fit the image otherwise (the viewer's
+     * original behaviour).
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {void}
+     */
+    function _artViewerResetZoomOnStep(st) {
+        if (Lib.settings.sa_art_viewer_remember_zoom !== false) return;
+        st.zoomLevel = 1;
+        st.zoom = false;
+        st.origin = '';
+    }
+
+    /** Most the viewer zooms in (↑, the wheel). */
+    const _ART_VIEWER_ZOOM_MAX = 6;
+
+    /**
+     * The zoom level the viewer opens with: the remembered one while
+     * `sa_art_viewer_remember_zoom` is on, else 1 (fit).
+     *
+     * @returns {number} 1 to `_ART_VIEWER_ZOOM_MAX`.
+     */
+    function _artViewerRememberedZoom() {
+        if (Lib.settings.sa_art_viewer_remember_zoom === false) return 1;
+        let z;
+        try { z = Number(GM_getValue(MB_ART_VIEWER_ZOOM_KEY, 1)); } catch (_) { z = 1; }
+        return Number.isFinite(z) && z >= 1 && z <= _ART_VIEWER_ZOOM_MAX ? z : 1;
+    }
+
+    /**
+     * Sets the zoom level without re-rendering (the loaded image stays),
+     * toward `clientX/clientY` when given, and remembers it.
+     *
+     * @param   {number}  level
+     * @param   {?number} [clientX]
+     * @param   {?number} [clientY]
+     * @returns {void}
+     */
+    function _artViewerSetZoom(level, clientX = null, clientY = null) {
+        const st = _artViewerState;
+        const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
+        if (!st || !stage) return;
+        st.zoomLevel = Math.min(_ART_VIEWER_ZOOM_MAX, Math.max(1, Math.round(level * 4) / 4));
+        st.zoom = st.zoomLevel > 1;
+        if (!st.zoom) st.origin = '';
+        else if (clientX !== null && clientY !== null) {
+            const r = stage.getBoundingClientRect();
+            st.origin = `${((clientX - r.left) / r.width) * 100}% ${((clientY - r.top) / r.height) * 100}%`;
+        }
+        stage.classList.toggle('mb-artv-zoomed', st.zoom);
+        const img = stage.querySelector('.mb-artv-img');
+        if (img) {
+            img.style.transform = st.zoom ? `scale(${st.zoomLevel})` : '';
+            img.style.transformOrigin = st.origin;
+        }
+        if (Lib.settings.sa_art_viewer_remember_zoom !== false) {
+            try { GM_setValue(MB_ART_VIEWER_ZOOM_KEY, st.zoomLevel); } catch (_) { /* storage unavailable */ }
+        }
+    }
+
+    /**
+     * Starts or stops the slideshow (P): a step every
+     * `sa_art_viewer_slideshow_secs` seconds, through the rows too when the
+     * viewer can cross them.
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleSlideshow() {
+        const st = _artViewerState;
+        if (!st) return;
+        if (st.slideshow) { _artViewerStopSlideshow(st); _artViewerRender(); return; }
+        const s = Lib.settings.sa_art_viewer_slideshow_secs;
+        const secs = (typeof s === 'number' && s >= 1) ? s : 4;
+        st.slideshow = setInterval(() => {
+            if (_artViewerState !== st) { clearInterval(st.slideshow); return; }
+            _artViewerStep(1);
+        }, secs * 1000);
+        _artViewerRender();
+    }
+
+    /**
+     * Stops a running slideshow.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {void}
+     */
+    function _artViewerStopSlideshow(st) {
+        if (st && st.slideshow) {
+            clearInterval(st.slideshow);
+            st.slideshow = 0;
+        }
     }
 
     /**
@@ -97479,9 +98240,29 @@ a { color: #1565c0; }`;
         panel.appendChild(_artvEl('div', 'mb-tt-title', im.front ? '★ Main front' : types.join(' / ')));
         const pills = _artvEl('div', 'mb-tt-body');
         pills.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
-        types.forEach(t => pills.appendChild(_artvEl('span', 'mb-tt-pill', t)));
+        // Opened from a CAA/EAA cell: copy that cell's own type pills and
+        // comment, which carry the active filter's highlights (the same marks
+        // the cell shows, so the two can never disagree).
+        const li = (st.liFor && Lib.settings.sa_caa_tip_highlight !== false) ? st.liFor(st.i) : null;
+        const liPills = li ? Array.from(li.querySelectorAll('.mb-caa-type-badge > span')) : [];
+        const liComment = li ? li.querySelector('.mb-caa-art-comment') : null;
+        if (liPills.length) {
+            liPills.forEach(p => {
+                const c = p.cloneNode(true);
+                c.className = 'mb-tt-pill';
+                pills.appendChild(c);
+            });
+        } else {
+            types.forEach(t => pills.appendChild(_artvEl('span', 'mb-tt-pill', t)));
+        }
         panel.appendChild(pills);
-        panel.appendChild(im.comment ? _artvEl('div', 'mb-tt-comment', `“${im.comment}”`) : _artvEl('div', 'mb-tt-dim', 'No comment'));
+        if (im.comment && liComment) {
+            const c = _artvEl('div', 'mb-tt-comment');
+            c.append('“', ...Array.from(liComment.cloneNode(true).childNodes), '”');
+            panel.appendChild(c);
+        } else {
+            panel.appendChild(im.comment ? _artvEl('div', 'mb-tt-comment', `“${im.comment}”`) : _artvEl('div', 'mb-tt-dim', 'No comment'));
+        }
         panel.appendChild(_artvEl('div', 'mb-tt-rule'));
         const dl = document.createElement('dl');
         const row = (k, v) => {
@@ -97519,7 +98300,9 @@ a { color: #1565c0; }`;
                 sizes.appendChild(a);
             });
         panel.appendChild(sizes);
-        panel.appendChild(_artvEl('div', 'mb-tt-foot', '← → step · Z zoom · G grid · I info · O original · Esc close'));
+        panel.appendChild(_artvEl('div', 'mb-tt-foot',
+            '← → step' + (st.onGroupStep ? ' · Shift+← → row' : '') +
+            ' · ↑ ↓ wheel zoom · 0 fit · Z 2× · P slideshow · G grid · I info · O original · Esc close'));
         return panel;
     }
 
@@ -97540,10 +98323,14 @@ a { color: #1565c0; }`;
 
         const bar = _artvEl('div', 'mb-artv-bar');
         bar.appendChild(_artvEl('span', 'mb-artv-title', st.title || `${st.ctx.column} artwork`));
+        // Opened from a CAA/EAA column: which row of the visible ones, in its
+        // own span so the image position keeps its "k / N" form.
+        if (st.rowPos) bar.appendChild(_artvEl('span', 'mb-artv-rowpos', `row ${st.rowPos.k} of ${st.rowPos.n}`));
         bar.appendChild(_artvEl('span', 'mb-artv-pos',
             st.grid ? `${st.list.length} image${st.list.length === 1 ? '' : 's'}` : `${st.list.indexOf(st.i) + 1} / ${st.list.length}`));
         bar.appendChild(_artvBtn('grid', 'Grid (G)', st.grid));
         if (!st.grid) bar.appendChild(_artvBtn('info', 'Info (I)', st.info));
+        if (!st.grid) bar.appendChild(_artvBtn('slideshow', 'Slideshow (P)', !!st.slideshow));
         const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
         orig.href = (im.image || _artViewerBigUrl(im)).replace(/^http:/, '');
         orig.target = '_blank';
@@ -97593,7 +98380,10 @@ a { color: #1565c0; }`;
         img.draggable = false;
         img.src = _artViewerThumbUrl(im);
         img.dataset.artvSize = 'thumb';
-        if (st.zoom) img.style.transform = 'scale(2)';
+        if (st.zoom) {
+            img.style.transform = `scale(${st.zoomLevel})`;
+            img.style.transformOrigin = st.origin || '';
+        }
         stage.appendChild(img);
         const note = _artvEl('div', 'mb-artv-note', 'Showing the thumbnail; loading the large image…');
         stage.appendChild(note);
@@ -97622,8 +98412,10 @@ a { color: #1565c0; }`;
         if (cur && typeof cur.scrollIntoView === 'function') cur.scrollIntoView({ block: 'nearest', inline: 'center' });
 
         const gen = ++st.gen;
-        const bigUrl = _artViewerBigUrl(im);
-        _artViewerLoad(bigUrl).then(src => {
+        // Every large candidate but the thumbnail already shown, best first:
+        // a failed 1200 falls back to the 500 px `large`.
+        const bigUrls = _artViewerBigUrls(im).filter(u => u !== img.getAttribute('src'));
+        _artViewerLoadFirst(bigUrls).then(src => {
             if (_artViewerState !== st || st.gen !== gen || !img.isConnected) return;
             img.src = src;
             img.dataset.artvSize = 'big';
@@ -97636,26 +98428,37 @@ a { color: #1565c0; }`;
         const k = st.list.indexOf(st.i);
         [st.list[(k + 1) % st.list.length], st.list[(k - 1 + st.list.length) % st.list.length]]
             .filter(j => j !== st.i)
-            .forEach(j => { _artViewerLoad(_artViewerBigUrl(st.images[j])).catch(() => {}); });
+            .forEach(j => {
+                const x = st.images[j];
+                _artViewerLoadFirst(_artViewerBigUrls(x).filter(u => u !== _artViewerThumbUrl(x))).catch(() => {});
+            });
         close.focus({ preventScroll: true });
     }
 
     /**
-     * Toggles 2× zoom without re-rendering (the loaded image stays).
+     * Toggles between fit and 2× zoom without re-rendering (the loaded image
+     * stays); from any other zoom level it fits.
      *
      * @returns {void}
      */
     function _artViewerToggleZoom() {
         const st = _artViewerState;
-        const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
-        if (!st || !stage) return;
-        st.zoom = !st.zoom;
-        stage.classList.toggle('mb-artv-zoomed', st.zoom);
-        const img = stage.querySelector('.mb-artv-img');
-        if (img) {
-            img.style.transform = st.zoom ? 'scale(2)' : '';
-            if (!st.zoom) img.style.transformOrigin = '';
-        }
+        if (!st) return;
+        _artViewerSetZoom(st.zoom ? 1 : 2);
+    }
+
+    /**
+     * The mouse wheel over the stage zooms toward the pointer (one wheel
+     * notch = a quarter step), instead of scrolling the page behind.
+     *
+     * @param   {WheelEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnWheel(e) {
+        const st = _artViewerState;
+        if (!st || st.grid || !e.target.closest('.mb-artv-stage')) return;
+        e.preventDefault();
+        _artViewerSetZoom(st.zoomLevel * (e.deltaY < 0 ? 1.25 : 0.8), e.clientX, e.clientY);
     }
 
     /**
@@ -97685,6 +98488,11 @@ a { color: #1565c0; }`;
         }
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         const k = e.key;
+        // Any key but P itself stops a running slideshow (and still acts).
+        if (st.slideshow && k !== 'p' && k !== 'P' && k !== 'Shift') {
+            _artViewerStopSlideshow(st);
+            if (k !== 'Escape') _artViewerRender();
+        }
         let handled = true;
         if (k === 'Escape') {
             if (st.grid && !st.gridStart) {
@@ -97700,13 +98508,23 @@ a { color: #1565c0; }`;
             } else {
                 handled = false;
             }
+        } else if ((k === 'ArrowRight' || k === 'ArrowLeft') && e.shiftKey) {
+            // Shift+← →: the previous/next row of the CAA/EAA column, when
+            // there is one (a no-op in the release/event sections).
+            _artViewerGroupStep(k === 'ArrowRight' ? 1 : -1);
         } else if (k === 'ArrowRight') {
             _artViewerStep(1);
         } else if (k === 'ArrowLeft') {
             _artViewerStep(-1);
+        } else if (k === 'ArrowUp' || k === 'ArrowDown') {
+            _artViewerSetZoom(st.zoomLevel + (k === 'ArrowUp' ? 0.5 : -0.5));
+        } else if (k === '0') {
+            _artViewerSetZoom(1);
+        } else if (k === 'p' || k === 'P') {
+            _artViewerToggleSlideshow();
         } else if (k === 'Home' || k === 'End') {
             st.i = k === 'Home' ? st.list[0] : st.list[st.list.length - 1];
-            st.zoom = false;
+            _artViewerResetZoomOnStep(st);
             _artViewerRender();
         } else if (k === 'z' || k === 'Z') {
             _artViewerToggleZoom();
@@ -97742,17 +98560,23 @@ a { color: #1565c0; }`;
             return;
         }
         const go = e.target.closest('[data-artv-go]');
+        const b = go ? null : e.target.closest('[data-artv]');
+        const action = b ? b.dataset.artv : null;
+        // Any click but the slideshow button itself stops a running slideshow.
+        if (st.slideshow && action !== 'slideshow') {
+            _artViewerStopSlideshow(st);
+            if (!go && !b) _artViewerRender();
+        }
         if (go) {
             st.i = Number(go.dataset.artvGo);
             st.grid = false;
-            st.zoom = false;
+            _artViewerResetZoomOnStep(st);
             _artViewerRender();
             return;
         }
-        const b = e.target.closest('[data-artv]');
         if (!b) return;
-        const action = b.dataset.artv;
-        if (action === 'close') _artViewerClose();
+        if (action === 'slideshow') _artViewerToggleSlideshow();
+        else if (action === 'close') _artViewerClose();
         else if (action === 'grid') { st.grid = !st.grid; _artViewerRender(); }
         else if (action === 'info') { st.info = !st.info; _artViewerRender(); }
         else if (action === 'prev') _artViewerStep(-1);
@@ -97773,8 +98597,8 @@ a { color: #1565c0; }`;
         const img = stage && stage.querySelector('.mb-artv-img');
         if (!img) return;
         const r = stage.getBoundingClientRect();
-        img.style.transformOrigin =
-            `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+        st.origin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+        img.style.transformOrigin = st.origin;
     }
 
     /**
@@ -97805,6 +98629,825 @@ a { color: #1565c0; }`;
             st.swipeAt = performance.now();
             _artViewerStep(dx < 0 ? 1 : -1);
         }
+    }
+
+    // ── CAA/EAA column redesign (org/redesign-CAA-EAA-column.org) ───────────
+    //
+    // A2 type chips, B1/B2 artwork cards, the C1/C2 tile layouts, the D1
+    // viewer opened from the column, and the two artwork findings. All of it
+    // reads the archive record already in ctx.imagesCache: none of it adds a
+    // request. Everything that has to survive cloneNode(true) is a data
+    // attribute read by ONE delegated listener (_artColumnViewerOnClick()) or
+    // by the delegated tooltip engine (_mbttResolve()), never a per-element
+    // listener.
+
+    /** The expanded-cell layouts, in the order the ▦ button cycles them. */
+    const _ART_CELL_LAYOUTS = ['grid', 'grouped', 'list'];
+
+    /**
+     * A numeric setting, or `fallback` when it is missing, not a number or
+     * below `min` (never `||`: 0 is a value).
+     *
+     * @param   {string} key
+     * @param   {number} fallback
+     * @param   {number} [min=0]
+     * @returns {number}
+     */
+    function _artNumSetting(key, fallback, min = 0) {
+        const v = Number(Lib.settings[key]);
+        return Number.isFinite(v) && v >= min ? v : fallback;
+    }
+
+    /**
+     * `sa_caa_cell_layout`, validated.
+     *
+     * @returns {('grid'|'grouped'|'list')}
+     */
+    function _artCellLayoutSetting() {
+        const v = String(Lib.settings.sa_caa_cell_layout ?? 'grid').trim().toLowerCase();
+        return _ART_CELL_LAYOUTS.includes(v) ? v : 'grid';
+    }
+
+    /**
+     * The expanded-cell layout in force: the one last picked with the ▦
+     * button (`MB_ART_CELL_LAYOUT_KEY`) while the setting still has the value
+     * it overrode, else the setting.
+     *
+     * @returns {('grid'|'grouped'|'list')}
+     */
+    function _artCellLayout() {
+        const base = _artCellLayoutSetting();
+        let picked;
+        try { picked = GM_getValue(MB_ART_CELL_LAYOUT_KEY, null); } catch (_) { picked = null; }
+        if (picked && picked.from === base && _ART_CELL_LAYOUTS.includes(picked.v)) return picked.v;
+        return base;
+    }
+
+    /**
+     * Puts the page-wide cell state onto `<html>`, which the tile CSS keys
+     * on: `data-mb-art-layout`, `data-mb-art-colviewer` (the zoom-in cursor)
+     * and the `--mb-art-tile` / `--mb-art-card-size` sizes. Cheap and
+     * idempotent; called whenever a cell is built.
+     *
+     * @returns {void}
+     */
+    function _artApplyCellLayout() {
+        const html = document.documentElement;
+        const layout = _artCellLayout();
+        if (html.dataset.mbArtLayout !== layout) html.dataset.mbArtLayout = layout;
+        if (Lib.settings.sa_caa_column_viewer !== false) html.dataset.mbArtColviewer = '1';
+        else delete html.dataset.mbArtColviewer;
+        const tile = `${_artNumSetting('sa_caa_cell_tile_size', 64, 16)}px`;
+        if (html.style.getPropertyValue('--mb-art-tile') !== tile) html.style.setProperty('--mb-art-tile', tile);
+        const card = `${_artNumSetting('sa_caa_tip_image_size', 200, 40)}px`;
+        if (html.style.getPropertyValue('--mb-art-card-size') !== card) html.style.setProperty('--mb-art-card-size', card);
+    }
+
+    /**
+     * The ▦ button: grid → grouped → list → grid, for every table at once.
+     * Pure CSS on `<html>`, so no cell is rebuilt.
+     *
+     * @returns {void}
+     */
+    function _artCycleCellLayout() {
+        const cur = _artCellLayout();
+        const next = _ART_CELL_LAYOUTS[(_ART_CELL_LAYOUTS.indexOf(cur) + 1) % _ART_CELL_LAYOUTS.length];
+        try { GM_setValue(MB_ART_CELL_LAYOUT_KEY, { v: next, from: _artCellLayoutSetting() }); } catch (_) { /* storage unavailable */ }
+        _artApplyCellLayout();
+        Lib.debug('caa', `_artCycleCellLayout(): ${cur} → ${next}`);
+    }
+
+    /**
+     * The chip vocabulary of a context: `sa_caa_chip_types` /
+     * `sa_eaa_chip_types` parsed from "Type=Letters, Type, …". Also the group
+     * order of the grouped layout.
+     *
+     * @param   {ArtCtx} ctx
+     * @returns {Array<{type: string, abbr: string}>}
+     */
+    function _artChipTypes(ctx) {
+        const raw = ctx.key === 'eaa' ? Lib.settings.sa_eaa_chip_types : Lib.settings.sa_caa_chip_types;
+        return String(raw ?? '').split(',').map(s => s.trim()).filter(Boolean).map(s => {
+            const [type, abbr] = s.split('=').map(x => (x || '').trim());
+            return { type, abbr: abbr || type.slice(0, 2) };
+        }).filter(c => c.type);
+    }
+
+    /**
+     * Group order of a record's images for the grouped layout: by first type,
+     * the chip vocabulary's types first in its order, then the others in the
+     * order they first appear, untyped last; archive order within a group.
+     *
+     * @param   {ArtCtx}   ctx
+     * @param   {Object[]} images
+     * @returns {Array<{order: number, hdr: ?string}>} Per image index: its CSS
+     *   `order`, and the group header on the first image of each group.
+     */
+    function _artGroupPlan(ctx, images) {
+        const vocab = _artChipTypes(ctx).map(c => c.type);
+        const firstOf = im => (Array.isArray(im.types) && im.types[0]) || '(no type)';
+        const seen = [];
+        images.forEach(im => { const t = firstOf(im); if (!seen.includes(t)) seen.push(t); });
+        const rank = t => {
+            if (t === '(no type)') return 10000;
+            const v = vocab.indexOf(t);
+            return v >= 0 ? v : vocab.length + seen.indexOf(t);
+        };
+        const counts = new Map();
+        images.forEach(im => counts.set(firstOf(im), (counts.get(firstOf(im)) || 0) + 1));
+        const done = new Set();
+        return images.map((im, i) => {
+            const t = firstOf(im);
+            const hdr = done.has(t) ? null : `${t} ×${counts.get(t)}`;
+            done.add(t);
+            return { order: rank(t) * 1000 + i, hdr };
+        });
+    }
+
+    /**
+     * The art context, anchor and entity path of a CAA/EAA cell — the same
+     * derivation as `_artEnrichIcon()`, so it is the `imagesCache` key.
+     *
+     * @param   {?HTMLTableCellElement} td
+     * @returns {?{ctx: ArtCtx, anchor: HTMLAnchorElement, path: string}}
+     */
+    function _artCtxOfCell(td) {
+        if (!td) return null;
+        const a = td.querySelector(`a[href$="${CAA_CTX.artSuffix}"], a[href$="${EAA_CTX.artSuffix}"]`);
+        if (!a) return null;
+        const href = a.getAttribute('href') || '';
+        const ctx = href.endsWith(CAA_CTX.artSuffix) ? CAA_CTX : EAA_CTX;
+        const path = a.getAttribute('ref') || href.replace(new RegExp(ctx.artSuffix + '$'), '');
+        return { ctx, anchor: a, path };
+    }
+
+    /**
+     * Per-cell decoration after `_artBuildMultiRowArtCell()` (both its
+     * branches): the tile layouts' per-image data (`--mb-art-cols` on the
+     * list, `--mb-art-gorder` and the group header on each image), the A2
+     * chips, and the B1 card hook on the icon and the count.
+     *
+     * @param   {ArtCtx}               ctx
+     * @param   {HTMLTableCellElement} artCell
+     * @param   {Object[]}             images
+     * @returns {void}
+     */
+    function _artDecorateArtCell(ctx, artCell, images) {
+        _artApplyCellLayout();
+        const ul = artCell.querySelector(':scope > ul.mb-caa-art-ul');
+        if (!ul) return;
+        ul.style.setProperty('--mb-art-cols', String(Math.max(1, Math.min(images.length, _artNumSetting('sa_caa_cell_grid_cols', 4, 1)))));
+        const plan = _artGroupPlan(ctx, images);
+        ul.querySelectorAll(':scope > li.mb-caa-art-li-image').forEach(li => {
+            const g = plan[Number(li.dataset.mbArtI)];
+            if (!g) return;
+            li.style.setProperty('--mb-art-gorder', String(g.order));
+            if (g.hdr) li.dataset.mbArtGrpHdr = g.hdr;
+            else delete li.dataset.mbArtGrpHdr;
+        });
+        _artQueueColCollapseProxySync(artCell);
+        const li0 = ul.querySelector(':scope > li.mb-caa-art-li-summary');
+        if (!li0) return;
+        _artRenderTypeChips(ctx, li0, images);
+        const a = li0.querySelector(`a[href$="${ctx.artSuffix}"]`);
+        [a, a && a.querySelector('span.caa-icon, span.eaa-icon, span.artwork-icon'), li0.querySelector('.' + ctx.badgeClass)]
+            .forEach(el => { if (el) el.dataset.mbttFn = 'art-sum'; });
+    }
+
+    /**
+     * A2: the type-coverage chips after the image count, replacing any a
+     * clone carried. One chip per vocabulary type — filled with a repeat
+     * count when the record has it, hollow when not — plus ⏳ when an image
+     * is pending. The letters are `data-mb-chip`, drawn by CSS.
+     *
+     * @param   {ArtCtx}        ctx
+     * @param   {HTMLLIElement} li0     The cell's summary `<li>`.
+     * @param   {Object[]}      images
+     * @returns {void}
+     */
+    function _artRenderTypeChips(ctx, li0, images) {
+        li0.querySelectorAll('.mb-caa-type-chips').forEach(n => n.remove());
+        if (Lib.settings.sa_caa_type_chips === false) return;
+        const vocab = _artChipTypes(ctx);
+        if (!vocab.length) return;
+        const wrap = document.createElement('span');
+        wrap.className = 'mb-caa-type-chips';
+        const tip = [];
+        vocab.forEach(({ type, abbr }) => {
+            const n = images.filter(im => (im.types || []).includes(type)).length;
+            const chip = document.createElement('span');
+            chip.className = 'mb-caa-type-chip';
+            chip.dataset.mbChip = abbr;
+            chip.dataset.mbChipType = type;
+            if (n) chip.dataset.mbChipOn = '';
+            if (n > 1) chip.dataset.mbChipN = String(n);
+            wrap.appendChild(chip);
+            tip.push(n ? `${type}${n > 1 ? ` ×${n}` : ''}` : `no ${type}`);
+        });
+        const pending = images.filter(im => im.approved === false).length;
+        if (pending) {
+            const chip = document.createElement('span');
+            chip.className = 'mb-caa-type-chip';
+            chip.dataset.mbChip = '⏳';
+            chip.dataset.mbChipPending = '';
+            if (pending > 1) chip.dataset.mbChipN = String(pending);
+            wrap.appendChild(chip);
+            tip.push(`${pending} pending approval`);
+        }
+        _setTip(wrap, tip.join(' · '));
+        li0.appendChild(wrap);
+    }
+
+    /**
+     * The order a cell shows its images in: the image `<li>`s' archive
+     * indices, sorted into group order while the grouped layout is on — the
+     * order the viewer steps through.
+     *
+     * @param   {ArtCtx}               ctx
+     * @param   {HTMLTableCellElement} td
+     * @param   {Object[]}             images
+     * @returns {number[]}
+     */
+    function _artCellImageOrder(ctx, td, images) {
+        let order = Array.from(td.querySelectorAll('li.mb-caa-art-li-image[data-mb-art-i]'))
+            .map(li => Number(li.dataset.mbArtI)).filter(i => images[i]);
+        if (!order.length) order = images.map((_, i) => i);
+        if (_artCellLayout() === 'grouped') {
+            const plan = _artGroupPlan(ctx, images);
+            order.sort((x, y) => plan[x].order - plan[y].order);
+        }
+        return order;
+    }
+
+    // ── The CAA/EAA column's ▶N▤ (multi-row cells) header button ────────────
+
+    /**
+     * Ensures a CAA/EAA column header carries its ▶N▤ button: the generic
+     * `.mb-col-collapse-hdr-btn` look and classes (so the header-text strip
+     * lists, the Ctrl+O shortcut and the CSS treat it as one), marked
+     * `data-mb-art-proxy`. `initCollapsableColumns()` places none on these
+     * columns (it would drive `.mb-cell-collapse-toggle`, which art cells do
+     * not have, and on the first render no art cell exists for it to count),
+     * and its cleanup pass removes this one, so it is (re)built here, beside
+     * the ▶🖼 button, on every pass of `_artInitCaaColHeaderToggle()`.
+     *
+     * A click is forwarded to the ▶🖼 button's ▶ (`_artColumnViewerOnClick()`),
+     * and the state shown is that button's (`_artSyncColCollapseProxy()`). Its
+     * count span is `.mb-art-col-collapse-count`, not `.mb-col-collapse-count`,
+     * so `_updateAllColHeaderCounts()`'s cache — which can hold a count taken
+     * before the artwork arrived — never overwrites it.
+     *
+     * @param   {HTMLTableCellElement} th The CAA/EAA column header.
+     * @returns {void}
+     */
+    function _artEnsureColCollapseProxy(th) {
+        const hdrFlex = th.querySelector('.mb-col-hdr-flex');
+        if (!hdrFlex) return;
+        if (!hdrFlex.querySelector('.mb-col-collapse-hdr-btn[data-mb-art-proxy]')) {
+            const p = document.createElement('span');
+            p.className = 'mb-col-collapse-hdr-btn';
+            p.dataset.mbArtProxy = '';
+            p.dataset.colIndex = String(th.cellIndex);
+            p.setAttribute('role', 'button');
+            p.tabIndex = 0;
+            const glyph = document.createElement('span');
+            glyph.className = 'mb-col-collapse-glyph';
+            const count = document.createElement('span');
+            count.className = 'mb-art-col-collapse-count';
+            const rack = document.createElement('span');
+            rack.className = 'mb-col-collapse-rack';
+            rack.textContent = '▤';
+            p.append(glyph, count, rack);
+            // Same place as initCollapsableColumns() puts the generic one:
+            // it takes over the right-push role from the 📊 wrapper.
+            const uniqWrap = hdrFlex.querySelector('.mb-col-uniq-wrap');
+            p.style.marginLeft = 'auto';
+            if (uniqWrap) {
+                uniqWrap.style.marginLeft = '';
+                hdrFlex.insertBefore(p, uniqWrap);
+            } else {
+                hdrFlex.appendChild(p);
+            }
+        }
+        _artSyncColCollapseProxy(th);
+    }
+
+    /**
+     * Brings a CAA/EAA column's ▶N▤ proxy up to date: ▶/▼ and
+     * `aria-expanded` from the ▶🖼 button's `data-caa-col-hdr-state`, the
+     * count from the column's art cells (each has a `[data-caa-expand-btn]`),
+     * hidden while there is none.
+     *
+     * @param   {HTMLTableCellElement} th
+     * @returns {void}
+     */
+    function _artSyncColCollapseProxy(th) {
+        const p = th.querySelector('.mb-col-collapse-hdr-btn[data-mb-art-proxy]');
+        const caaBtn = th.querySelector('.mb-caa-col-hdr-btn');
+        const table = th.closest('table');
+        if (!p || !caaBtn || !table || !table.tBodies[0]) return;
+        const n = table.tBodies[0].querySelectorAll('[data-caa-expand-btn]').length;
+        const expanded = caaBtn.dataset.caaColHdrState === 'expanded';
+        p.querySelector('.mb-col-collapse-glyph').textContent = expanded ? '▼' : '▶';
+        p.querySelector('.mb-art-col-collapse-count').textContent = String(n);
+        p.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        p.setAttribute('aria-label', expanded ? 'Collapse every artwork cell in this column'
+            : 'Expand every artwork cell in this column');
+        _setTip(p, `${expanded ? 'Collapse' : 'Expand'} all ${n} multi-row artwork cells in this column ` +
+            '(the same as the ▶ of the artwork button at the left of this header)');
+        p.style.display = n ? '' : 'none';
+    }
+
+    /**
+     * Schedules `_artSyncColCollapseProxy()` for the table of an art cell
+     * just built — once per table per frame, since a page builds its cells
+     * one by one as the records arrive.
+     *
+     * @param   {HTMLTableCellElement} artCell
+     * @returns {void}
+     */
+    function _artQueueColCollapseProxySync(artCell) {
+        const table = artCell.closest('table');
+        const th = table && table.tHead && table.tHead.rows[0] && table.tHead.rows[0].cells[artCell.cellIndex];
+        if (!th || !th.querySelector('.mb-col-collapse-hdr-btn[data-mb-art-proxy]')) return;
+        if (!_artQueueColCollapseProxySync.pending) _artQueueColCollapseProxySync.pending = new Set();
+        const pending = _artQueueColCollapseProxySync.pending;
+        if (pending.has(th)) return;
+        pending.add(th);
+        requestAnimationFrame(() => {
+            pending.delete(th);
+            if (th.isConnected) _artSyncColCollapseProxy(th);
+        });
+    }
+
+    // ── B1/B2 artwork cards ──────────────────────────────────────────────────
+
+    /**
+     * Resolves a `[data-mbtt-fn]` element's card for `_initStatTooltip()`,
+     * at hover time.
+     *
+     * @param   {HTMLElement} el
+     * @returns {?string} Card HTML, or null for "no card" (the element's
+     *   plain tooltip, if any, is used instead).
+     */
+    function _mbttResolve(el) {
+        try {
+            switch (el.dataset.mbttFn) {
+                case 'art-sum': return _artCardSummaryHtml(el);
+                case 'art-img': return _artCardImageHtml(el);
+                default: return null;
+            }
+        } catch (err) {
+            Lib.warn('caa', '_mbttResolve(): card failed', err);
+            return null;
+        }
+    }
+
+    /**
+     * Runs after a resolver card is shown: the image card swaps its preview
+     * from the thumbnail (already loaded, shown at once) to the hover
+     * preview's image, through the same cache as the hover preview.
+     *
+     * @param   {HTMLElement} el
+     * @param   {HTMLElement} tip `#mb-stat-tooltip`.
+     * @returns {void}
+     */
+    function _mbttAfterShow(el, tip) {
+        if (el.dataset.mbttFn !== 'art-img') return;
+        const img = tip.querySelector('img.mb-art-card-preview[data-mb-art-big]');
+        if (!img) return;
+        const big = img.dataset.mbArtBig;
+        _artViewerLoad(big).then(src => {
+            if (img.isConnected && tip.style.display === 'block') img.src = src;
+        }).catch(() => { /* the thumbnail stays */ });
+    }
+
+    /**
+     * Serialises a cell node for a card: a copy whose filter highlights stay
+     * when `sa_caa_tip_highlight` is on and are unwrapped when it is off.
+     *
+     * @param   {Element} node
+     * @param   {string}  [cls] Class to give the copy (`mb-tt-pill` for a type pill).
+     * @returns {string}  The copy's outerHTML.
+     */
+    function _artCardCopy(node, cls) {
+        const c = node.cloneNode(true);
+        if (cls) c.className = cls;
+        if (Lib.settings.sa_caa_tip_highlight === false) {
+            c.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(n => n.replaceWith(document.createTextNode(n.textContent)));
+        }
+        return c.outerHTML;
+    }
+
+    /**
+     * The entity name a row shows for `path`, for card and viewer titles.
+     *
+     * @param   {?HTMLTableRowElement} tr
+     * @param   {string}               path
+     * @returns {string}
+     */
+    function _artRowTitle(tr, path) {
+        if (!tr) return '';
+        const a = Array.from(tr.querySelectorAll('a[href]')).find(x => {
+            const h = x.getAttribute('href') || '';
+            return h === path || h.endsWith(path);
+        });
+        return a ? a.textContent.replace(/\s+/g, ' ').trim() : '';
+    }
+
+    /**
+     * Whether the B1 card has something to show for a cell element: the
+     * setting is on and the cell's record is cached with at least one image.
+     *
+     * @param   {HTMLElement} el Inside a CAA/EAA cell.
+     * @returns {boolean}
+     */
+    function _artCardSummaryAvailable(el) {
+        if (Lib.settings.sa_caa_tip_summary === false) return false;
+        const c = _artCtxOfCell(el.closest('td'));
+        const images = c && c.ctx.imagesCache.get(c.path);
+        return !!(images && images.length);
+    }
+
+    /**
+     * B1: the release (or event) artwork card on a cell's icon and count —
+     * every image as a tile (★ main front, outlined while it holds a filter
+     * match), the type tally, pending/untyped counts, and the images the
+     * active filter matches, marked as in the cell.
+     *
+     * @param   {HTMLElement} el The icon, its anchor or the count badge.
+     * @returns {?string}
+     */
+    function _artCardSummaryHtml(el) {
+        if (!_artCardSummaryAvailable(el)) return null;
+        const td = el.closest('td');
+        const { ctx, path } = _artCtxOfCell(td);
+        const images = ctx.imagesCache.get(path);
+        const order = _artCellImageOrder(ctx, td, images);
+        const liOf = i => td.querySelector(`li.mb-caa-art-li-image[data-mb-art-i="${i}"]`);
+        const hit = i => { const li = liOf(i); return !!(li && li.querySelector(_COLLAPSE_MATCH_SEL)); };
+        const title = _artRowTitle(td.closest('tr'), path) || `${ctx.column} artwork`;
+        const max = Math.round(_artNumSetting('sa_caa_tip_summary_tiles', 12, 1));
+        const tiles = order.slice(0, max).map(i => {
+            const im = images[i];
+            const cls = 'mb-art-card-tile' + (im.front ? ' mb-art-card-main' : '') +
+                (Lib.settings.sa_caa_tip_highlight !== false && hit(i) ? ' mb-art-card-hit' : '');
+            return `<span class="${cls}"><img src="${_rgEsc(_artViewerThumbUrl(im))}" alt="" loading="lazy"></span>`;
+        }).join('') + (order.length > max ? `<span class="mb-art-card-more">+${order.length - max}</span>` : '');
+        const tally = new Map();
+        images.forEach(im => ((im.types && im.types.length) ? im.types : ['(no type)'])
+            .forEach(t => tally.set(t, (tally.get(t) || 0) + 1)));
+        const pills = Array.from(tally).map(([t, n]) => `<span class="mb-tt-pill">${_rgEsc(t)}${n > 1 ? ` ×${n}` : ''}</span>`).join(' ');
+        const facts = [
+            images.some(im => im.front) ? '★ main front' : 'no main front',
+            ...(ctx.key === 'caa' ? [images.some(im => im.back) ? 'main back' : 'no main back'] : []),
+            ...(images.some(im => im.approved === false) ? [`${images.filter(im => im.approved === false).length} pending approval`] : []),
+        ].join(' · ');
+        let matches = '';
+        if (Lib.settings.sa_caa_tip_highlight !== false) {
+            const rows = order.filter(hit).map(i => {
+                const li = liOf(i);
+                const badge = li.querySelector('.mb-caa-type-badge');
+                const comment = li.querySelector('.mb-caa-art-comment');
+                return `<div class="mb-tt-body">${i + 1}. ${badge ? Array.from(badge.querySelectorAll(':scope > span')).map(p => _artCardCopy(p, 'mb-tt-pill')).join(' ') : ''}` +
+                    `${comment ? ' ' + _artCardCopy(comment, 'mb-tt-comment') : ''}</div>`;
+            });
+            if (rows.length) matches = `<div class="mb-tt-rule"></div><div class="mb-tt-dim">Filter matches ${rows.length} of ${images.length}:</div>${rows.join('')}`;
+        }
+        const foot = Lib.settings.sa_caa_column_viewer !== false
+            ? (Lib.settings.sa_caa_viewer_icon_click !== false ? 'Click: viewer · Ctrl-click: the artwork page' : 'Click an image of the expanded cell: viewer')
+            : '';
+        return `<div style="max-width:310px;">` +
+            `<div class="mb-tt-title">${_rgEsc(title)}</div>` +
+            `<div class="mb-tt-dim">${images.length} image${images.length === 1 ? '' : 's'} · ${_rgEsc(facts)}</div>` +
+            `<div class="mb-art-card-tiles">${tiles}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
+            matches +
+            (foot ? `<div class="mb-tt-foot">${_rgEsc(foot)}</div>` : '') +
+            `</div>`;
+    }
+
+    /**
+     * B2: the card of one image of an expanded cell — the hover preview (when
+     * `sa_caa_hover_preview` is on; the thumbnail first, then the preview's
+     * own image), its type pills and comment copied from the cell (so they
+     * carry the filter's marks), its position, main front/back, the sizes
+     * the archive lists and its archive id.
+     *
+     * @param   {HTMLLIElement} li `li.mb-caa-art-li-image`.
+     * @returns {?string}
+     */
+    function _artCardImageHtml(li) {
+        const td = li.closest('td');
+        const c = _artCtxOfCell(td);
+        const images = c && c.ctx.imagesCache.get(c.path);
+        const i = Number(li.dataset.mbArtI);
+        const im = images && images[i];
+        if (!im) return null;
+        const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
+        const sameType = images.filter(x => (x.types || []).includes(types[0]));
+        const where = `Image ${i + 1} of ${images.length}` +
+            (sameType.length > 1 ? ` · ${types[0]} ${sameType.indexOf(im) + 1} of ${sameType.length}` : '') +
+            (im.approved === false ? ' · pending approval' : '');
+        const main = [`Main front: ${im.front ? 'yes' : 'no'}`,
+            ...(typeof im.back === 'boolean' ? [`Main back: ${im.back ? 'yes' : 'no'}`] : [])].join(' · ');
+        const t = im.thumbnails || {};
+        const sizes = ['250', '500', '1200'].filter(k => t[k]);
+        if (!sizes.length) ['small', 'large'].forEach(k => { if (t[k]) sizes.push(k); });
+        if (im.image) sizes.push('original');
+        const ids = [`Sizes: ${sizes.join(' · ')}`, im.id ? `archive id ${im.id}` : null].filter(Boolean).join(' · ');
+        const pills = Array.from(li.querySelectorAll('.mb-caa-type-badge > span')).map(p => _artCardCopy(p, 'mb-tt-pill')).join(' ');
+        const comment = li.querySelector('.mb-caa-art-comment');
+        const big = li.dataset.liBigSrc || '';
+        const preview = (Lib.settings.sa_caa_hover_preview && big)
+            ? `<img class="mb-art-card-preview" src="${_rgEsc(_artViewerThumbUrl(im))}" data-mb-art-big="${_rgEsc(big)}" alt="">`
+            : '';
+        const foot = Lib.settings.sa_caa_column_viewer !== false ? 'Click: viewer' : '';
+        return `<div style="max-width:${_artNumSetting('sa_caa_tip_image_size', 200, 40) + 20}px;min-width:200px;">` +
+            `<div class="mb-tt-title">${im.front ? '★ Main front' : _rgEsc(types.join(' / '))}</div>` +
+            preview +
+            `<div class="mb-tt-body" style="display:flex;gap:4px;flex-wrap:wrap;">${pills}</div>` +
+            (comment ? `<div class="mb-tt-comment">${_artCardCopy(comment)}</div>` : '') +
+            `<div class="mb-tt-rule"></div>` +
+            `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
+            `<div class="mb-tt-dim">${_rgEsc(main)}</div>` +
+            `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` +
+            (foot ? `<div class="mb-tt-foot">${foot}</div>` : '') +
+            `</div>`;
+    }
+
+    // ── D1: the viewer, opened from a CAA/EAA cell ───────────────────────────
+
+    /**
+     * Installs, once, the page-level listeners of the CAA/EAA column: the
+     * click that opens the viewer from a cell image or icon, and the ▦ layout
+     * button (click, Enter, Space). Delegated, so clones need nothing.
+     *
+     * The click listens on WINDOW in the capture phase, like
+     * `_releaseArtOnTabClick()`: the icon is a link, and
+     * `initNavigationGuard()`'s anchor guard listens on the document's
+     * capture phase — it would ask "leave the page?" before this ever ran.
+     * Capture also keeps a header click on ▦ from sorting the column.
+     *
+     * @returns {void}
+     */
+    function _artInitColumnViewer() {
+        _artApplyCellLayout();
+        if (_artInitColumnViewer.done) return;
+        _artInitColumnViewer.done = true;
+        window.addEventListener('click', _artColumnViewerOnClick, true);
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const t = e.target && e.target.closest ? e.target : null;
+            const lb = t && t.closest('.mb-caa-layout-hdr-btn');
+            const proxy = t && t.closest('.mb-col-collapse-hdr-btn[data-mb-art-proxy]');
+            if (!lb && !proxy) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (lb) _artCycleCellLayout();
+            else _artClickColCollapseProxy(proxy);
+        }, true);
+    }
+
+    /**
+     * The ▶N▤ proxy's action: a click on the ▶ of the ▶🖼 button in the same
+     * header (as asked: the one control, two handles).
+     *
+     * @param   {HTMLElement} proxy
+     * @returns {void}
+     */
+    function _artClickColCollapseProxy(proxy) {
+        const th = proxy.closest('th');
+        const caaBtn = th && th.querySelector('.mb-caa-col-hdr-btn');
+        const glyph = caaBtn && caaBtn.querySelector(':scope > span');
+        if (glyph) glyph.click();
+    }
+
+    /**
+     * The delegated click: the ▦ layout button, or — with
+     * `sa_caa_column_viewer` on — a plain left click on an image of an
+     * expanded cell (that image) or, with `sa_caa_viewer_icon_click`, on the
+     * cell's artwork icon (the main front). Any modifier, or another button,
+     * keeps the native link.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artColumnViewerOnClick(e) {
+        // The column's ▶N▤ proxy: forwarded to the ▶ of the ▶🖼 button,
+        // whose own handler toggles every art cell and syncs the proxy back.
+        const proxy = e.target.closest && e.target.closest('.mb-col-collapse-hdr-btn[data-mb-art-proxy]');
+        if (proxy) {
+            e.preventDefault();
+            e.stopPropagation();
+            _artClickColCollapseProxy(proxy);
+            return;
+        }
+        const lb = e.target.closest && e.target.closest('.mb-caa-layout-hdr-btn');
+        if (lb) {
+            e.preventDefault();
+            e.stopPropagation();
+            _artCycleCellLayout();
+            return;
+        }
+        if (Lib.settings.sa_caa_column_viewer === false) return;
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        if (!e.target.closest) return;
+        let li = e.target.closest('li.mb-caa-art-li-image');
+        let opener = li;
+        if (!li) {
+            if (Lib.settings.sa_caa_viewer_icon_click === false) return;
+            opener = e.target.closest(`li.mb-caa-art-li-summary a[href$="${CAA_CTX.artSuffix}"], ` +
+                                      `li.mb-caa-art-li-summary a[href$="${EAA_CTX.artSuffix}"]`);
+            if (!opener) return;
+        }
+        // The ⏳ "pending" tip and the like keep their own behaviour.
+        if (li && e.target.closest('a[href]')) return;
+        const td = opener.closest('td');
+        const table = td && td.closest('table.tbl');
+        const c = _artCtxOfCell(td);
+        const images = c && c.ctx.imagesCache.get(c.path);
+        if (!table || !images || !images.length) return;
+        e.preventDefault();
+        e.stopPropagation();
+        let start = li ? Number(li.dataset.mbArtI) : images.findIndex(im => im.front);
+        const nav = _artColumnViewerNav(table, c.ctx, td.cellIndex, td.closest('tr'));
+        const here = nav.current();
+        if (start < 0 || !images[start]) start = here.list[0];
+        _hideArtHoverPreview();
+        const bb = document.getElementById('mb-art-bigbox-tooltip');
+        if (bb) bb.style.display = 'none';
+        _artViewerOpen(c.ctx, c.path, here.list, start, {
+            opener, title: here.title, rowPos: here.rowPos, liFor: here.liFor,
+            onGroupStep: d => nav.step(d),
+        });
+    }
+
+    /**
+     * The visible rows of `table` whose `colIdx` cell has artwork in the
+     * cache — what the viewer steps through. `runFilter()` removes the rows a
+     * filter rejects from the tbody, and a hidden row is skipped too.
+     *
+     * @param   {HTMLTableElement} table
+     * @param   {ArtCtx}           ctx
+     * @param   {number}           colIdx
+     * @returns {HTMLTableRowElement[]}
+     */
+    function _artColumnViewerRows(table, ctx, colIdx) {
+        const tb = table.tBodies[0];
+        if (!tb) return [];
+        return Array.from(tb.rows).filter(r => {
+            if (r.style.display === 'none') return false;
+            const c = _artCtxOfCell(r.cells[colIdx]);
+            if (!c || c.ctx !== ctx) return false;
+            const im = ctx.imagesCache.get(c.path);
+            return !!(im && im.length);
+        });
+    }
+
+    /**
+     * The viewer's row navigation for one CAA/EAA column: `current()`
+     * describes the row it was opened on, `step(±1)` moves to the
+     * next/previous visible row with artwork (wrapping) and describes it,
+     * or answers null when there is no other row.
+     *
+     * @param   {HTMLTableElement}    table
+     * @param   {ArtCtx}              ctx
+     * @param   {number}              colIdx
+     * @param   {HTMLTableRowElement} tr
+     * @returns {{current: function(): object, step: function(number): ?object}}
+     */
+    function _artColumnViewerNav(table, ctx, colIdx, tr) {
+        let cur = tr;
+        const describe = (row, rows) => {
+            const td = row.cells[colIdx];
+            const c = _artCtxOfCell(td);
+            const images = ctx.imagesCache.get(c.path) || [];
+            return {
+                entityPath: c.path,
+                list: _artCellImageOrder(ctx, td, images),
+                title: _artRowTitle(row, c.path),
+                rowPos: { k: rows.indexOf(row) + 1, n: rows.length },
+                liFor: i => td.querySelector(`li.mb-caa-art-li-image[data-mb-art-i="${i}"]`),
+            };
+        };
+        return {
+            current: () => describe(cur, _artColumnViewerRows(table, ctx, colIdx)),
+            step: (d) => {
+                const rows = _artColumnViewerRows(table, ctx, colIdx);
+                let k = rows.indexOf(cur);
+                // Re-rendered meanwhile: find the row again by its index.
+                if (k < 0 && cur.dataset.mbRowIdx !== undefined) {
+                    k = rows.findIndex(r => r.dataset.mbRowIdx === cur.dataset.mbRowIdx);
+                }
+                if (k < 0 || rows.length < 2) return null;
+                cur = rows[(k + d + rows.length) % rows.length];
+                return describe(cur, rows);
+            },
+        };
+    }
+
+    // ── The artwork findings (no Front / no Medium image) ────────────────────
+
+    /**
+     * A CAA cell's release images for the artwork findings, from the cache —
+     * null when the cell is not a release's, the record is not loaded yet, or
+     * it has no image (a release without artwork is not flagged). Reads the
+     * native anchor, which a master row keeps too.
+     *
+     * @param   {HTMLTableCellElement} cell
+     * @returns {?Object[]}
+     */
+    function _artFindingImages(cell) {
+        const a = cell.querySelector(`a[href$="${CAA_CTX.artSuffix}"]`);
+        if (!a) return null;
+        const path = a.getAttribute('ref') || (a.getAttribute('href') || '').replace(new RegExp(CAA_CTX.artSuffix + '$'), '');
+        if (!/\/release\/[0-9a-f-]{36}$/.test(path)) return null;
+        const images = CAA_CTX.imagesCache.get(path);
+        return Array.isArray(images) && images.length ? images : null;
+    }
+
+    /**
+     * Whether a Format cell's text names a physical release: some part of
+     * "2×CD + Digital Media" that is neither empty, "(unknown)", nor one of
+     * `sa_findings_nonphysical_formats`.
+     *
+     * @param   {string} text
+     * @returns {boolean}
+     */
+    function _artIsPhysicalFormat(text) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        if (!t) return false;
+        const skip = new Set(String(Lib.settings.sa_findings_nonphysical_formats ?? 'Digital Media')
+            .split(',').map(s => s.trim().toLowerCase()).filter(Boolean));
+        return t.split(/\s*\+\s*/).some(part => {
+            const p = part.replace(/^\d+\s*[×x]\s*/i, '').trim().toLowerCase();
+            return !!p && p !== '-' && p !== '(unknown)' && p !== '[unknown]' && !skip.has(p);
+        });
+    }
+
+    /** The ids of the findings that need the artwork record. */
+    const _ART_FINDING_IDS = ['art-no-front', 'art-no-medium'];
+
+    /**
+     * Queues a re-stamp of the artwork findings for a cell's row. They can
+     * only be known once the archive record is in, which is after
+     * `stampFindings()` ran (it runs ONCE per fetch, before the artwork); the
+     * queue is flushed in batches by `_artFlushFindingsRestamp()`.
+     *
+     * @param   {HTMLTableCellElement} artCell
+     * @returns {void}
+     */
+    function _artQueueFindingsRestamp(artCell) {
+        if (!_ART_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && (!f.enabled || f.enabled()); })) return;
+        const tr = artCell.closest('tr');
+        if (!tr || !tr.isConnected) return;
+        if (!_artQueueFindingsRestamp.rows) _artQueueFindingsRestamp.rows = new Set();
+        _artQueueFindingsRestamp.rows.add(tr);
+        if (!_artQueueFindingsRestamp.timer) _artQueueFindingsRestamp.timer = setTimeout(_artFlushFindingsRestamp, 150);
+    }
+
+    /**
+     * Re-stamps the queued rows — each live row and its master row, so a
+     * multi-table re-render (which clones the master) keeps the stamp — with
+     * `_stampFindingRow()`, the same stamp `stampFindings()` writes.
+     *
+     * Only when a stamp actually CHANGED does it go on: bump
+     * `_findingStampGen` (the menu tally memo), drop the touched tables' 📊
+     * caches, refresh the menus, and re-run the filter if an artwork finding
+     * is filtering. That condition is what keeps this from looping: the
+     * re-render re-enriches its clones from the cache, which queues their
+     * rows again, and their stamps then come out unchanged.
+     *
+     * @returns {void}
+     */
+    function _artFlushFindingsRestamp() {
+        const rows = Array.from(_artQueueFindingsRestamp.rows || []).filter(r => r.isConnected);
+        _artQueueFindingsRestamp.rows = new Set();
+        _artQueueFindingsRestamp.timer = 0;
+        if (!rows.length) return;
+        const master = _buildMasterRowIndex();
+        const plans = new Map();
+        const touched = new Set();
+        const sig = r => Array.from(r.cells).map(td => `${td.dataset.mbFindings || ''}|${td.dataset.mbFinding || ''}`).join(';');
+        rows.forEach(tr => {
+            const table = tr.closest('table.tbl');
+            if (!table) return;
+            if (!plans.has(table)) plans.set(table, _findingPlanForTable(table));
+            const plan = plans.get(table);
+            const m = tr.dataset.mbRowIdx !== undefined ? master.get(tr.dataset.mbRowIdx) : null;
+            [tr, ...(m && m.row !== tr ? [m.row] : [])].forEach(r => {
+                const before = sig(r);
+                _stampFindingRow(r, plan);
+                if (sig(r) !== before) touched.add(table);
+            });
+        });
+        if (!touched.size) return;
+        _findingStampGen++;
+        touched.forEach(t => _invalidateUniqDropDataCacheForTable(t));
+        Lib.debug('filter', `_artFlushFindingsRestamp(): ${rows.length} row(s), ${touched.size} table(s) changed.`);
+        if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
+        if (_ART_FINDING_IDS.some(id => { const f = _FINDING_BY_ID.get(id); return f && _findingState(f) !== 'off'; })) runFilter();
     }
 
 
@@ -100595,6 +102238,21 @@ a { color: #1565c0; }`;
             }
 
             _updateCaaColHdrBtn(btn, anyExpanded, thumbSrc, ctx.key.toUpperCase());
+
+            // The ▦ expanded-cell layout switch, right after it. Clicks reach
+            // it through _artColumnViewerOnClick()'s document delegation, so a
+            // cloned header needs no re-wiring; the glyph is CSS content.
+            if (Lib.settings.sa_caa_cell_layout_toggle !== false && !th.querySelector('.mb-caa-layout-hdr-btn')) {
+                const lb = document.createElement('span');
+                lb.className = 'mb-caa-layout-hdr-btn';
+                lb.setAttribute('role', 'button');
+                lb.tabIndex = 0;
+                lb.setAttribute('aria-label', 'Expanded cell layout');
+                _setTip(lb, 'Expanded cell layout: grid → grouped by type → list (every table)');
+                btn.after(lb);
+            }
+            _artEnsureColCollapseProxy(th);
+            _artInitColumnViewer();
         });
 
         // ── Global CAA/EAA col-header toggle button (multi-table only) ────────
@@ -100847,6 +102505,9 @@ a { color: #1565c0; }`;
             img.src = thumbSrc || '';
             img.style.display = thumbSrc ? 'inline-block' : 'none';
         }
+        // The column's ▶N▤ proxy mirrors this button's state.
+        const th = btn.closest('th');
+        if (th) _artSyncColCollapseProxy(th);
     }
 
     /**
@@ -103789,6 +105450,26 @@ a { color: #1565c0; }`;
              */
             tipTextToHtml(text) {
                 return _tipTextToHtml(text);
+            },
+            /**
+             * The text a column filter matches a cell against
+             * (`getCleanColumnText()`, which appends a CAA/EAA cell's art
+             * search index), so a spec can pin what may and may not leak into
+             * it — the A2 chip letters, the grouped layout's headers.
+             *
+             * @param {HTMLElement} el
+             * @returns {string}
+             */
+            cleanColumnText(el) {
+                return getCleanColumnText(el);
+            },
+            /**
+             * The expanded CAA/EAA cell layout in force (`_artCellLayout()`).
+             *
+             * @returns {('grid'|'grouped'|'list')}
+             */
+            artCellLayout() {
+                return _artCellLayout();
             },
             /**
              * Returns `MEDIUM_FORMAT_VIDEO_CAPABLE` as plain `[id, {name, video}]`

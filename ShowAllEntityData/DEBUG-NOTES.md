@@ -19416,3 +19416,103 @@ is never prose).
 
 **Results:** `event-overview.spec.js` 7/7, `event-overview-setlist.spec.js`
 11/11; three WIP.2 mutation finds re-targeted, nine new entries.
+
+## 2026-10-06 — CAA/EAA column redesign: tiles, chips, cards, column viewer, artwork findings (branch feature/caa-eaa-redesign, WIP.1)
+
+org/redesign-CAA-EAA-column.org, decisions of 2026-10-06 (grid default, hover
+= preview / click = viewer, 1200 px, no A1, the two findings, everything a
+setting). docs/claude/artwork-caa-eaa.md "The CAA/EAA column redesign" has the
+rules; this is what was found on the way.
+
+**P0, the `data-li-big-src` 250/500 mix — explained by measurement.**
+`scripts/probe-caa-thumbnail-keys.py` on release group fa9c43a7: four of the
+five releases have OLD records (`thumbnails` = `small`, `large` only, every URL
+`http:`); Berlin Night has the full `250/500/1200/small/large` set over
+`https:`. `_artBuildImageLi()`'s ladder (`sa_caa_big_img_size` 250 → 1200 →
+large) therefore stamps `-250.jpg` for the new record and `//…-500.jpg`
+(`large`, `http:` stripped) for the old ones. Not two cache tiers. A HEAD on
+the derived `-1200.jpg` of each old record answered 200 image/jpeg, so the
+viewer asks for it (`_artViewerBigUrls()`) and falls back to `large`.
+
+**The navigation guard beats a document-capture listener.** A plain click on
+the cell's artwork icon (a link) never reached a `document` capture listener
+registered after `initNavigationGuard()`'s: the guard asks "leave the page?"
+and stops the event. Probed with a throwaway spec: a dispatched click reached
+window capture and nothing on the anchor, `dispatchEvent()` returned false,
+with the viewer setting off as well. The column click therefore listens on
+`window` capture, as `_releaseArtOnTabClick()` already did for the same reason.
+
+**The artwork findings need a re-stamp; zero-art rows never get one.**
+`stampFindings()` runs once per fetch, before any record is read (IDB reads are
+async, and a second press reloads the page). `_artQueueFindingsRestamp()` is
+called from `_artBuildMultiRowArtCell()`, which a record with no images never
+reaches — so "a release without artwork is not flagged" holds twice over, and
+its `_artFindingImages()` guard is recorded as `"expect": "pass"` in
+`scripts/mutations/caa-column-redesign.json` rather than claimed as tested.
+
+**Spec traps met.** The fixture shell's MusicBrainz CSS is scrubbed, so
+`span.caa-icon` is 0×0 (not hoverable); `caaColumnFixture.js` adds its size.
+Column filter inputs reject `fill()` (read-only until a trusted interaction):
+click + `pressSequentially`, clear with ✕. A 404 route for a viewer image must
+be registered before the viewer first opens: it preloads the neighbours, and a
+cached file never fails. On the phone emulation MusicBrainz's header overlays
+the master toggle; the fixture presses it through the DOM. A Playwright `-g`
+grep is a regex: "Shift+→" selected no test.
+
+**Results:** caa-column-redesign.spec.js 13/13, .mobile.spec.js 1/1,
+mutation list 18/18 as expected (17 fail, 1 recorded pass); the 24 related
+existing specs 176/176 after caa-col-hdr-deferred-visibility.spec.js pinned
+`sa_caa_tip_image: false` for the old preview + type box.
+
+`npm run test:full` (NB-3641, 2026-10-06 14:02–14:09 UTC): 1200 passed, 3
+failed — `touch-tooltip.mobile.spec.js` "tapping a per-image artwork thumbnail
+…" pinned the old preview + type box and now gets `sa_caa_tip_image: false`
+and `sa_caa_column_viewer: false` (the tap opened the viewer); the other two
+(`event-overview-setlist.spec.js:272`, `sticky-page-headers.spec.js:837`)
+passed on an isolated rerun — load flakes, not this change.
+
+## 2026-10-06 — CAA column: the header's ▶N▤ collapse-all button did nothing (branch feature/caa-eaa-redesign, WIP.2)
+
+Reported from a real browser on the BoDeans artist-releases page: the CAA
+column's `.mb-col-collapse-hdr-btn` ("▼20⊟") flipped its own glyph and nothing
+else. Same code on `main`, so not caused by the redesign. Root cause: the
+button's click handler in `initCollapsableColumns()` drives only
+`.mb-cell-collapse-toggle` per cell, and art cells have none by design — the
+same function skips them ("to avoid duplicate toggles") and their toggle is
+the `[data-caa-expand-btn]` in li-0, handled by `ensureCollapseDelegate()`.
+Fix: for a cell without the generic toggle, click its art button when its
+state differs (what the ▶🖼 `.mb-caa-col-hdr-btn` already does).
+
+The multi-table release-group fixture builds no ▶N▤ buttons at all, so the
+regression test uses the BoDeans disk fixture (single table, the reported
+page). Trap met while writing it: a test that waits only for the FIRST art
+cell clicks while 19 of 56 are still being built, and those stay collapsed —
+wait for all 56 and `waitForCaaEaaComplete()`. Mutation entry "the column's
+▶N▤ button ignores art cells" fails as expected.
+
+**Superseded the same day after a live check** (debug/MGV-CAA-bug.html,
+debug/BoDeans-CAA-bug-inclusive-warning.html). Two findings:
+
+- The ▶N▤ button was not merely inert — on a fresh render it is not there at
+  all: `initCollapsableColumns()` runs before any art cell exists, finds no
+  multi-row cell in the CAA column and places none; only a later re-render
+  (the first report's page had a filter on) built it. The column-header fix
+  above was therefore dead on arrival. Now `initCollapsableColumns()` places
+  none on a CAA/EAA column and the art code builds a proxy
+  (`.mb-col-collapse-hdr-btn[data-mb-art-proxy]`, `_artEnsureColCollapseProxy()`)
+  beside ▶🖼 on every `_artInitCaaColHeaderToggle()` pass: its click is a
+  click on ▶🖼's ▶ (window-capture, so the header never sorts), its state
+  mirrors ▶🖼 (`_updateCaaColHdrBtn()` → `_artSyncColCollapseProxy()`), its
+  count is the art cells (re-counted per frame as cells are built) in its own
+  `.mb-art-col-collapse-count` — `_updateAllColHeaderCounts()` caches per row
+  set and would write back a count taken before the artwork arrived. The h2/h3
+  "expand all multi-row cells" controls skip it (`_COLLAPSE_HDR_BTN_SEL`):
+  they never opened art cells, and doing so would load every thumbnail.
+- The hint + count wrapping under the icon was mine (the A2 chips). The cell's
+  first render wraps the still-plain CAA cell in the prose marker div; the art
+  build moves that div into li-0 as one flex item, which next to the chips
+  shrank to its min-content width (the icon). `flex-wrap: wrap` on li-0 alone
+  cures it; the div also keeps `flex: 0 0 auto; white-space: nowrap`. The
+  fixture only reproduces it in a narrow column, so the test pins the CAA
+  column to the reported 150 px (its <th> min-width), and the mutation has to
+  remove BOTH rules — removing one passed, correctly.
