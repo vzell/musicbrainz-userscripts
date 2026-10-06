@@ -1,0 +1,30 @@
+[
+  {
+    "name": "the browser-check script is not routed (back to the live server)",
+    "why": "Without the route musicbrainz.org answers the script, sometimes with an HTML page; the stub's marker header is what tells the two apart even on a lucky run.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "        await page.route(MB_BROWSER_CHECK_RE, (route) => route.fulfill({",
+        "replace": "        await page.route(/^x-never-matches:/, (route) => route.fulfill({"
+      }
+    ],
+    "spec": "tests/fixtures/harness-mb-static-script.spec.js",
+    "grep": "served by the harness stub",
+    "expect": "fail"
+  },
+  {
+    "name": "the stub is an empty script",
+    "why": "An empty stub still stops the HTML parse error but leaves #unsupported-browser in the DOM, which the real page never has in a supported browser.",
+    "file": "tests/support/loadPage.js",
+    "edits": [
+      {
+        "find": "            body: MB_BROWSER_CHECK_STUB,",
+        "replace": "            body: '',"
+      }
+    ],
+    "spec": "tests/fixtures/harness-mb-static-script.spec.js",
+    "grep": "removes the hidden unsupported-browser warning",
+    "expect": "fail"
+  }
+]

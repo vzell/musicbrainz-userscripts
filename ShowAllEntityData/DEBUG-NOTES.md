@@ -19204,3 +19204,61 @@ not found".
   (the onload re-tick; the harness injects after load).
 - SL and JL specs: 84 pass.
 - Live `bs-records.spec.js`: both buttons, 6.5 s.
+
+## 2026-10-06 — release-tracks: Cover art section (9.99.1244, branch feature/release-cover-art)
+
+Design and decisions: `org/CAA-release-tracks-handling.org` (mockup R1). After
+"Show all Tracks for Release" a `h2.mb-release-art-h2` "Cover art (N)" plus
+`div.mb-release-art-sec` is inserted before `h2.tracklist` in
+`startFetchingProcess()`'s render tail, BEFORE `makeH2sCollapsible()`, and
+opened with `_mbToggle(true)` after it.
+
+- **Probe** (`scripts/probe-caa-release-images.py`): every archive URL is
+  `http:`; a 0-image release is a 404; WS/2 `cover-art-archive.count` and the
+  tab text agree with `len(images)`. *Older records carry only the
+  `small`/`large` thumbnail keys* (release `a9a3b139-…`, the medley fixture's
+  own) — the tile falls back to them, pinned by a test and a mutation.
+- **Archive outage during the work:** coverartarchive.org answers 307 to
+  `archive.org/download/mbid-…/index.json`, and archive.org refused connections
+  for a while (curl too). The section showed "could not be reached" + ⟳ Retry,
+  as designed.
+- **`_artFetchEntityImages()`** is a NEW helper with `_artEnrichIcon()`'s three
+  tiers; `_artEnrichIcon()` itself was deliberately not rewired (table render
+  path) — an open follow-up.
+- **Fixture override grew to three settings** (`sa_enable_release_tracks_cover_art`
+  forced off, since the section fetches with plain `fetch()`); the two
+  settings-dialog specs' `PRISTINE` and five docs passages said "two".
+- Spec `release-tracks-cover-art.spec.js` (9 tests), mutation list
+  `release-tracks-cover-art.json` (10/10 caught).
+
+## 2026-10-06 — fixture harness: musicbrainz.org answers its own static script with HTML (branch fix/harness-mb-static)
+
+**Symptom:** the 9.99.1244 merge gate (`npm run test:full`) failed 3 tests,
+all in `search-annotation-tooltip.spec.js`, with a page error
+`Unexpected token '<'` that has no stack.
+
+**Not the branch:** repeated runs (`--repeat-each=6 --workers=12`) failed 24
+of 48 on the branch, then 0 of 48 on `main`, then 10 of 48 on `main` — the
+first `main` run was luck. A debug spec logging every script response found
+it: in exactly the failing runs, `https://musicbrainz.org/static/scripts/supported-browser-check.js`
+came back `200 text/html; charset=utf-8`. Fetched directly with curl it was
+JavaScript. MusicBrainz serves an HTML page for it under burst load.
+
+**Why it reached the network at all:** `loadUserscriptPage()` routes only the
+main document. Every saved MusicBrainz page references this script with a
+relative `/static/…` src, which resolves to musicbrainz.org itself (14
+fixture/snapshot files; no other musicbrainz.org script is referenced — the
+rest come from the static.metabrainz.org CDN, which answered correctly). Same
+class of problem as the 2026-10-01 archive.org thumbnail stall
+(`ARCHIVE_ORG_RE`).
+
+**Fix:** `MB_BROWSER_CHECK_RE` in `tests/support/loadPage.js` answers it
+locally with what the real script does in a supported browser (remove the
+hidden `#unsupported-browser` warning), marked `x-sa-fixture-stub`. An empty
+stub would also stop the error but leave a DOM the real page never has.
+
+**Results:** `search-annotation-tooltip.spec.js` 48/48 repeated runs.
+`harness-mb-static-script.spec.js` (2 tests) pins "the stub answered, not the
+network" by the marker header — "no page error" alone passes on every lucky
+run, which is how this hid — and the removed warning.
+`harness-mb-static-script.json`: 2/2 caught, both against `loadPage.js`.
