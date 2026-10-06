@@ -219,13 +219,43 @@ resync (=ShowAllEntityData_HELP.md=, release-tracks and CAA sections),
 =python3 scripts/lint-summary.py --check=, and =npm run test:full= before
 asking to merge. Never merge without the user's browser check.
 
-*** TODO P0 — probe and fixture
+*** DONE P0 — probe and fixture
 - 2026-10-06, branch =feature/release-cover-art=: probe written
   (=scripts/probe-caa-release-images.py=). Its first run could not reach the
   record: coverartarchive.org answers 307 → =archive.org/download/mbid-…/index.json=
   and archive.org refused connections at that moment (curl too). The 404 for
   the 0-image release (=5cf63c93-…=) and the WS/2 counts (16, 13, 0) were
-  recorded. *Re-run the probe and paste its output here before merging.*
+  recorded.
+- Re-run 2026-10-06 once the archive was back (=python3 scripts/probe-caa-release-images.py=):
+  #+begin_example
+  == release d0adda7e-86de-4aef-af95-ee7da122d175
+     archive HTTP 200; WS/2 HTTP 200, cover-art-archive.count = 16
+     record keys: ['images', 'release']
+     images: 16 (WS/2 count agrees: True)
+     image keys: {'approved': 16, 'back': 16, 'comment': 16, 'edit': 16, 'front': 16, 'id': 16, 'image': 16, 'thumbnails': 16, 'types': 16}
+     thumbnail keys: {'1200': 16, '250': 16, '500': 16, 'large': 16, 'small': 16}
+     URL schemes (image + thumbnails): {'http': 96}
+     types: {'Front': 1, 'Back': 1, 'Other': 3, 'Liner': 4, 'Medium': 4, 'Poster': 2, 'Sticker': 1}
+     front:true 1, Front-typed 1, back:true 1, approved:false 0, with comment 3
+  == release a9a3b139-cf22-4d28-801e-3f3d49521d0e
+     archive HTTP 200; WS/2 HTTP 200, cover-art-archive.count = 13
+     record keys: ['images', 'release']
+     images: 13 (WS/2 count agrees: True)
+     image keys: {'image': 13, 'id': 13, 'front': 13, 'thumbnails': 13, 'comment': 13, 'types': 13, 'approved': 13, 'back': 13, 'edit': 13}
+     thumbnail keys: {'small': 13, 'large': 13}
+     URL schemes (image + thumbnails): {'http': 39}
+     types: {'Front': 1, 'Booklet': 10, 'Tray': 1, 'Back': 1, 'Spine': 1}
+     front:true 1, Front-typed 1, back:true 1, approved:false 0, with comment 0
+  == release 5cf63c93-e27e-4d98-81bc-9aba8b6861a7
+     archive HTTP 404; WS/2 HTTP 200, cover-art-archive.count = 0
+     no record (expected for a release without artwork)
+  #+end_example
+  What the code depends on, confirmed: every URL the archive hands out is
+  =http:= (stripped to =//= like =_artBuildImageLi()=); a 0-image release is
+  a 404; the WS/2 count and the tab count agree with =len(images)=. *New
+  fact:* older records carry only the =small=/=large= thumbnail keys (the
+  medley fixture's own release), so the tile must fall back to them — it
+  does, and a spec test plus a mutation now pin it.
 - No new HTML fixture was needed: the spec uses the existing
   =release-tracks-medley.html= (tab "Cover art (13)") and
   =release-tracks-eti-keywords.html= (tab "Cover art (0)"), with the real
@@ -261,8 +291,8 @@ asking to merge. Never merge without the user's browser check.
     =mb-cover-art-*= working names above).
   - Setting =sa_enable_release_tracks_cover_art= (default on), added to
     =FIXTURE_SETTINGS_OVERRIDE=.
-  - Spec =tests/fixtures/release-tracks-cover-art.spec.js= (8 tests), mutation
-    list =scripts/mutations/release-tracks-cover-art.json= (9 defects, all
+  - Spec =tests/fixtures/release-tracks-cover-art.spec.js= (9 tests), mutation
+    list =scripts/mutations/release-tracks-cover-art.json= (10 defects, all
     caught).
   - Not done: Load-from-Disk does not build the section (it calls
     =makeH2sCollapsible()= on its own path); thumbnails use plain =<img src>=

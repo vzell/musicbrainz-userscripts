@@ -18,7 +18,7 @@
       {
         "label": "📝 Docs",
         "items": [
-          "scripts/probe-caa-release-images.py records the archive record shape the section relies on. Fixture spec tests/fixtures/release-tracks-cover-art.spec.js (8 tests) with mutation list scripts/mutations/release-tracks-cover-art.json (9 planted defects, all caught). FIXTURE_SETTINGS_OVERRIDE now also forces the new setting off, so fixture specs stay network-free."
+          "scripts/probe-caa-release-images.py records the archive record shape the section relies on. Fixture spec tests/fixtures/release-tracks-cover-art.spec.js (9 tests, including an older record that carries only the small/large thumbnail keys, as the probe found) with mutation list scripts/mutations/release-tracks-cover-art.json (10 planted defects, all caught). FIXTURE_SETTINGS_OVERRIDE now also forces the new setting off, so fixture specs stay network-free."
         ]
       }
     ]

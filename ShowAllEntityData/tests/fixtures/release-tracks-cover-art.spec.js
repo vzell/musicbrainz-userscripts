@@ -183,6 +183,24 @@ test.describe('release-tracks: Cover art section', () => {
         expect(hits()).toBe(1);
     });
 
+    test('an older record with only small/large thumbnails still gets tiles and the big link', async ({ page }) => {
+        // Probed 2026-10-06: release a9a3b139-… (this very fixture) answers with
+        // thumbnails {small, large} only — no 250/500/1200 keys.
+        const rec = JSON.parse(JSON.stringify(RECORD));
+        rec.images.forEach((im) => {
+            im.thumbnails = { small: im.thumbnails.small, large: im.thumbnails.large };
+        });
+        await openRelease(page, { respond: () => ({ body: rec }) });
+        await showAll(page);
+        await sectionSettled(page, 'ok');
+        const tile0 = await page.evaluate(() => {
+            const t = document.querySelector('figure.mb-release-art-tile[data-mb-art-i="0"]');
+            return { src: t.querySelector('img').getAttribute('src'), href: t.querySelector('a').getAttribute('href') };
+        });
+        expect(tile0.src).toBe('//coverartarchive.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/34698678836-250.jpg');
+        expect(tile0.href).toBe('//coverartarchive.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/34698678836-500.jpg');
+    });
+
     test('★ marks only the archive\'s main front, not every Front-typed image', async ({ page }) => {
         await openRelease(page);
         await showAll(page);

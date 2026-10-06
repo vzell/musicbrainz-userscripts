@@ -115,5 +115,18 @@
     "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
     "grep": "the setting off means",
     "expect": "fail"
+  },
+  {
+    "name": "tiles ignore the small/large thumbnail keys of older records",
+    "why": "Probed 2026-10-06: older archive records (release a9a3b139-...) carry thumbnails {small, large} only. Without the fallback the tile has no thumbnail and the link no big image.",
+    "edits": [
+      {
+        "find": "        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')",
+        "replace": "        const thumb = (thumbs['250'] || thumbs['500'] || imgData.image || '')"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "older record with only small/large",
+    "expect": "fail"
   }
 ]
