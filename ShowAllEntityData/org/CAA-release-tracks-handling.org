@@ -1,0 +1,292 @@
+* TODO add cover art to the 'release-tracks' PT
+** Request (original)
+
+We already have a branch "design/caa-eaa-redesign" for the redesign of the CAA/EAA column on specific PTs.
+
+1.)
+
+Create another branch for the design how the CAA images under the "Cover art (n)" tab of the PT 'release-tracks'
+e.g. https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/ can be displayed nicely without navigating to
+the direct URL https://musicbrainz.org/release/d0adda7e-86de-4aef-af95-ee7da122d175/cover-art
+
+2.)
+
+Show me some nice HTML based mockups before implementing something.
+
+3.)
+
+Add the plan to this file, so that I can actually do the real implementation in another Claude session on another host.
+
+** Status
+
+- 2026-10-06: design only. Nothing in =ShowAllEntityData.user.js= changed; no
+  version bump, no changelog or WIP entry. The WIP changelog starts with P1.
+- Branch: =design/caa-release-tracks= (this file plus the mockup page). Not
+  merged. Sibling of =design/caa-eaa-redesign=
+  (=org/redesign-CAA-EAA-column.org=, =org/redesign-CAA-EAA-mockups.html=),
+  whose look, liner card and viewer (D1 there) the mockups reuse.
+- Mockups: [[file:CAA-release-tracks-mockups.html]], a self-contained page. Open
+  it straight from disk in a browser. It hotlinks the 16 real thumbnails from
+  coverartarchive.org; every image falls back to a labelled tile when offline.
+- The same page is published as a private claude.ai artifact (thumbnails
+  inlined as =window.__EMBED=, since the artifact sandbox blocks outside
+  images): https://claude.ai/artifact/6rXJgsgxDFsj8RQ44xAtTA
+- Data set, probed 2026-10-06 from =coverartarchive.org/release/<mbid>= and
+  =/ws/2/release/<mbid>?inc=recordings+labels=: release
+  =d0adda7e-86de-4aef-af95-ee7da122d175=, Bruce Springsteen "Only the Strong
+  Survive: Covers Vol. 1" (black vinyl, lacquer cut version 3), 3 × 12" Vinyl,
+  15 tracks (A1–A5, B1–B5, C1–C5), Gatefold Cover. 16 images, all
+  =approved: true=, in archive order:
+  - Front 1 (=front: true=, the main front), Back 1 (=back: true=)
+  - Other 3: "opened gatefold cover, inside" / "… inside left" / "… inside right"
+  - Liner 4, Medium 4, Poster 2, Sticker 1 — all without comments
+  - Each image has =thumbnails= 250/500/1200 (+ =small=/=large= aliases).
+    No pixel dimensions, no file size.
+  - The release JSON's =cover-art-archive= block: count 16, front and back
+    true, darkened false. The "Cover art (16)" tab text carries the same count.
+
+** Current anatomy (grep anchors, no line numbers)
+
+- PageType: =type: 'release-tracks'= in =pageDefinitions=, gated by
+  =sa_enable_release_tracks= inside its =match()=; one button "Show all Tracks
+  for Release". No =addCAA=. *Today release-tracks does nothing with cover
+  art*: the sidebar =div.cover-art= and the "Cover art (n)" tab are untouched.
+- Native markup (see =debug/release-tracks-initial.html=, gitignored):
+  - Tabs: =ul.tabs > li > a[href$="/cover-art"]= with text "Cover art (11)".
+    The count is free to read, no request needed.
+  - Sidebar: =div.cover-art.present > a.artwork-image[href=//coverartarchive.org/release/<mbid>/<id>.jpg]=
+    holding =span.artwork-image[data-huge-thumbnail][data-large-thumbnail]=
+    (1200 / 500 URLs of the main front only).
+  - h2 order after render: (unnamed), =h2.tracklist=, =h2.release-information=,
+    =h2.additional-details=, =h2.labels=, … — all made collapsible.
+- CAA JSON fetch: only =_artEnrichIcon(ctx, anchor)=. It needs an =<a>=, reads
+  the entity path from it and stamps badges into the surrounding =<td>=.
+  Lookup order: =ctx.imagesCache= (=_caaImagesCache=, a Map keyed
+  ='/release/<mbid>'=) → =_artIdbGetMetadata(entityPath)= →
+  =fetch(ctx.apiHost + entityPath)= then =_artIdbPutMetadata()=. 404/410
+  (=_ART_MISS_STATUSES=) are cached as 0 and persisted; 429/5xx are cached as 0
+  for the session and recorded in =ctx.failedCache=. No automatic retry
+  (manual only: =_artRetryFailedAll()=, =_artRetryTable()=).
+- IndexedDB =vz-mb-saed-art-cache=: store =metadata= (key =entityPath=,
+  ={entityPath, count, images, storedAt}=, TTL =sa_art_idb_metadata_ttl_days=)
+  and store =images= (key =url=, TTL =sa_art_idb_image_ttl_days=), all behind
+  =sa_art_idb_enable=. *A release already seen in a CAA column (release-group,
+  label, artist releases …) is therefore a cache hit here, at 0 requests.*
+- Image bytes: =_artFetchCachedImage(url)= (memory → IDB → =_artGmFetchBlob=),
+  returns a =blob:= URL. Callable standalone.
+- Queue: =makeCaaQueue()= / =_artInitQueue()= / =_caaQueue=. It is null when
+  =sa_enable_caa_pics= is off and is cancelled and re-created on every render
+  pass. *The release gallery must not depend on it.*
+- Display helpers: =_showArtHoverPreview()= (singleton =#mb-art-hover-preview=,
+  gated by =sa_caa_hover_preview=), =_artBuildImageLi()= (table-cell row, not
+  reusable as a tile), =_rgPreviewHtml()= (the precedent for a =.mb-tt-liner=
+  card that carries an image). *No lightbox exists yet* — D1 of the CAA/EAA
+  study is unbuilt.
+- Sections: =makeH2sCollapsible()= runs at the end of the render, takes every
+  sibling up to the next =<h2>=, and starts every h2 collapsed except the one
+  holding =.mb-row-count-stat= (the tracklist's). A new h2 + panel inserted
+  *before* =h2.tracklist= and *before* that call is collapsible for free and
+  starts collapsed; =h2._mbToggle(true)= opens it. Keep the panel out of the
+  =.mb-caa-bigbox= classes (=_artRestoreBigboxesForTable=). No inline non-table
+  panel is inserted into =#content= anywhere today; =_updateMediumEventBadges()=
+  is the precedent for decorating a medium's h3.
+- Settings pattern: flat children of =sa_enable_release_tracks=, e.g.
+  =sa_enable_release_tracks_acoustid_column=,
+  =sa_enable_release_tracks_length_mismatch_flag=; runtime guard
+  =activeDefinition?.type !== 'release-tracks'=.
+
+** Mockup catalogue
+
+| ID | Placement                | Mockup                                                                                                                                                                   | Requests at page load | On demand                              | Verdict                            |
+|----+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+----------------------------------------+------------------------------------|
+| R0 | today                    | Sidebar main front; the tab navigates away                                                                                                                               |                     0 | page change                            | reference                          |
+| R1 | new h2 "Cover art (16)"  | Collapsible section above "Tracklist": contact sheet (~104 px tiles), caption = types + comment, ★ main front, type chips filter, layout switch Grid / By type / Spreads |         0 (collapsed) | 1 JSON (or 0 cached) + 16 lazy thumbs  | *recommended*                      |
+| R2 | filmstrip under the tabs | One scrolling row of 72 px thumbs                                                                                                                                        |                1 + 16 | -                                      | *not* recommended                  |
+| R3 | sidebar gallery          | 4-column grid under the sidebar front; hover swaps the big image and caption                                                                                             |                1 + 16 | -                                      | optional                           |
+| R4 | tab opens in place       | Plain click on "Cover art (16)" opens R5 in grid mode; Ctrl/Cmd/middle-click still navigate; small "here" marker on the tab                                              |                     0 | as R1                                  | *recommended* add-on               |
+| R5 | viewer                   | Lightbox: progressive 250 → 1200, liner-card info panel, filmstrip, grid mode, zoom, keys                                                                                |                     0 | 1200 px per image viewed, ±1 preloaded | *recommended*, shared with D1      |
+| R6 | spreads / booklet        | Third R1 layout: pairs "… left"/"… right" comments of one type into an opened spread; Liner/Booklet pages paged two at a time                                            |                     0 | as R1                                  | later, optional                    |
+| R7 | per-medium art           | Medium image as a 26 px thumb in each medium's h3; refuses when it cannot match (here: 4 Medium images, 3 media, no comments)                                            |                     1 | -                                      | later, only with explicit comments |
+
+R5's key map, as built in the mockup:
+- ← → step, wrapping at the ends; Home / End; touch: horizontal swipe
+- click or Z toggles 2× zoom, the zoomed image follows the mouse
+- G grid grouped by type (Esc from a grid opened via R4 closes; from a grid
+  entered with G it returns to the image)
+- I info panel, O original in a new tab, Esc close; focus returns to the opener
+
+Learned while building the mockup:
+- *The count is free.* "Cover art (16)" is in the tab text, so R1's collapsed
+  h2 can show the number without any request.
+- *Main front ≠ Front type.* Only one image has =front: true=; the ★ marker
+  must read that flag, not =types.includes('Front')= (same lesson as the
+  summary panel, see docs/claude/artwork-caa-eaa.md).
+- *Spread pairing works on this release* ("opened gatefold cover, inside left"
+  + "… inside right"), and "… inside" stays single. Liner pages have no
+  comments, so their order is archive order — fine, but nothing to verify it.
+- *Medium matching cannot work here*: 4 Medium images for 3 discs (probably
+  labels for 3 discs plus one extra side or sleeve), no comments. A rule that
+  matched by order would be wrong. Refusing visibly is the right default.
+- The viewer must be progressive (as in the CAA/EAA study): the 250 px thumb
+  is already loaded by the sheet; show it at once, swap on =load=.
+
+** Recommendation
+
+Ship *R1 + R5*, with *R4* as a small add-on. Nothing loads until the user
+asks, the JSON shares =_caaImagesCache= and the IDB =metadata= store with the
+CAA column, and the viewer is the component the CAA/EAA study already plans.
+R3, R6 and R7 can follow once that has settled. R2 stays out.
+
+*** DECIDED (2026-10-06, by the user)
+- [X] Ship *R1 + R5*, with *R4* as a small add-on. R2 out; R3, R6, R7 later.
+- [X] R1 starts *uncollapsed* (=h2._mbToggle(true)= after
+      =makeH2sCollapsible()=). Consequence for the budget below: the JSON
+      (or a cache hit) and the 250 px thumbs load on every render, not on
+      expand. Still 0 before the button is pressed.
+- [X] The section appears *only after "Show all Tracks for Release"* is
+      pressed — built inside the release-tracks render, before
+      =makeH2sCollapsible()=.
+- [X] R4: a plain left click on the "Cover art (n)" tab opens the viewer in
+      *grid mode* over the page instead of navigating; Ctrl/Cmd/Shift/middle
+      click keep navigating. Wired together with the section, i.e. after the
+      render.
+- [X] Position: above "Tracklist", as in the mockup.
+- [X] Viewer image size: *1200*.
+- [X] This branch builds the viewer first (=_artViewer*=, driven by =ctx= and
+      an image list); =design/caa-eaa-redesign= P2 reuses it.
+- [X] *EAA also*: the same section + viewer + tab click for event art
+      (=EAA_CTX=, =eventartarchive.org=, tab "Event art (n)"). Caveat: there is
+      NO pageType for the event overview page (=/event/<mbid>=) today — only
+      =event-tags= — so there is no "Show all" button to hang it off. Planned as
+      its own phase (P5) after the CAA side works; how it is triggered on
+      =/event/<mbid>= is decided then. Everything built in P1–P3 takes a =ctx=
+      so P5 is wiring, not new UI.
+
+*** Still open
+- [ ] R6 "Spreads" layout: later (default).
+
+** Request and performance budget
+
+- Per page view: 0 requests before "Show all Tracks for Release". After the
+  render (the section starts uncollapsed, as decided): 1 JSON request to
+  =coverartarchive.org/release/<mbid>= (no published rate limit, no batch
+  endpoint — see the root CLAUDE.md), or 0 on a =_caaImagesCache= / IDB hit.
+- Thumbnails: =loading="lazy"=, 250 px, only rendered while the section is open.
+  They go through =_artFetchCachedImage()= if IDB image caching is on.
+- Viewer: 1200 px only for the image being viewed, ±1 neighbour preloaded.
+- Off the hot path: the section is not a table, so filtering, sorting and
+  rendering of the tracklist are unaffected. Still capture one
+  =run-perf-comparison= on a release-tracks page with the section open vs
+  =main= in the same session, ratios only, because the render tail grows.
+
+** Invariants the implementation must keep
+
+- Opt-in: a new =sa_enable_release_tracks_cover_art= child (name to confirm)
+  in =configSchema=, then =scripts/dump-config-defaults.py=, and
+  =scripts/dump-default-history.py=. Guard with
+  =activeDefinition?.type !== 'release-tracks'=. Independent of
+  =sa_enable_caa_pics= (that one is about table columns) — but reuse its IDB.
+- *Do not let the section join the tracklist machinery*: not a =table.tbl=, no
+  =.mb-row-count-stat=, not counted by the GF, not toggled by
+  =.mb-master-toggle=, not touched by =renameH2ToH3= (it is inserted after the
+  pre-processing). Give it its own class (e.g. =h2.mb-cover-art-h2=,
+  =div.mb-cover-art-sec=).
+- Delegated listeners only, keyed on data attributes (=data-mb-art-i=, entity
+  path): the mockup has ONE document click listener. Hover cards via the
+  existing tooltip engine and =_setTip()=, rows as =.mb-tt-liner= classes
+  (=.mb-tt-title=, =-pill=, =-comment=, =-dim=, =-rule=, =-foot=), no inline
+  colours.
+- Touch: guard every hover with =_isTouchCompatMouseEvent()=; the viewer opens
+  on tap and steps on swipe; a =*.mobile.spec.js= covers it.
+- CSS: extend shared selector lists, never copy a block; *no backtick inside a
+  =GM_addStyle= comment*.
+- ★ reads =img.front=, never the Front type. Pending (=approved: false=) images
+  get the existing ⏳ treatment.
+- Empty states: 0 images (no tab count or "Cover art (0)"): no section at all.
+  =darkened: true= (archive hides the art): say so in the h2, no grid. JSON
+  failure (429/5xx): a retry link in the section, using the same
+  =ctx.failedCache= bookkeeping.
+- Third-party scripts: MusicBrainz and other userscripts decorate
+  =div.cover-art=; R1/R5 do not touch it (R3 would — another reason it is
+  optional).
+
+** Implementation phases
+
+Each phase is its own feature branch with =ShowAllEntityData_CHANGELOG.wip.json=
+entries, fixture specs that fail before the change and pass after it (verified
+with =scripts/mutation-check.py= and a =scripts/mutations/*.json= list), a HELP
+resync (=ShowAllEntityData_HELP.md=, release-tracks and CAA sections),
+=python3 scripts/lint-summary.py --check=, and =npm run test:full= before
+asking to merge. Never merge without the user's browser check.
+
+*** TODO P0 — probe and fixture
+- =scripts/probe-caa-release-images.py=: fetch the archive JSON for the example
+  release plus one with 0 images (expect 404), one =darkened= release and one
+  with a pending image; record keys, URL schemes (=http:= vs =https:=, =//=)
+  and status codes next to the code that will depend on them.
+- Fixture: a trimmed copy of the example release page under
+  =tests/fixtures/release-tracks-cover-art.html= (start from an existing
+  =release-tracks-*.html= fixture's shape), plus the JSON as a fixture file.
+- Stubbing as in =caa-artwork-summary.spec.js= /
+  =caa-metadata-transient-503.spec.js=: =page.route('https://coverartarchive.org/**')=
+  with a =META_RE= fulfil (=fulfill({status})=, never =abort()=); image bytes
+  via =window.__gmXhrResponses= (=tests/support/gmStubs.js=); IDB via
+  =tests/support/idbFixture.js=. Remember =FIXTURE_SETTINGS_OVERRIDE= forces
+  =sa_enable_caa_pics= off — the new feature must not need it.
+
+*** TODO P1 — shared fetch helper + R1 skeleton
+- Extract =_artFetchEntityImages(ctx, entityPath)= (working name) from
+  =_artEnrichIcon=: cache → IDB → fetch → persist, miss/failure bookkeeping.
+  =_artEnrichIcon= calls it, so the CAA column and the release section share
+  one code path. Mutation-check: the column specs must still pass.
+- Insert =h2.mb-cover-art-h2= "Cover art (N)" before =h2.tracklist= during the
+  release-tracks render, before =makeH2sCollapsible()=; N from the tab text.
+  Expanding triggers the fetch, once.
+- Specs: collapsed = 0 requests to =coverartarchive.org=; expanding = exactly 1;
+  second expand = 0; IDB hit = 0; 404 = no section / "no artwork" state;
+  503 = retry link; GF typing does not hide or count the section.
+
+*** TODO P2 — R1 contact sheet
+- Tiles (types, comment, ★ main front, ⏳ pending), type chips (filter), layout
+  switch Grid / By type. Liner-card hover through the tooltip engine.
+- Specs: 16 tiles in archive order; chip "Medium" leaves 4; ★ only on the
+  =front: true= image even when another image also has type Front (fixture:
+  add one); hover shows types + comment; touch shows no hover card.
+
+*** TODO P3 — R5 viewer (shared with D1)
+- =_artViewer*= singleton, opened by delegation with an image list + index;
+  progressive load via =_artFetchCachedImage()=; keys as above; R4 tab
+  interception (plain left click only).
+- Specs: key order = archive order; Esc returns focus to the opener; grid
+  mode; Ctrl-click on the tab is not intercepted; zero extra JSON requests;
+  mobile tap/swipe.
+
+*** TODO P4 — optional: R6 spreads, R3 sidebar, R7 per medium
+- R6 as a third R1 layout, pairing rule =/^(.*?)\s*\b(left|right)$/i= on
+  =comment=, same prefix and type; unpaired images stay single.
+- R7 only with explicit comment matches ("disc N", "CD N", "LP N", "side X")
+  or equal counts; otherwise the visible "not assigned" note.
+
+*** TODO P5 — EAA on the event page (decided: yes)
+- Same section, viewer and tab click with =EAA_CTX= (=eventartarchive.org=,
+  tab "Event art (n)", types such as Poster/Banner/Flyer/Ticket).
+- Needs a hook on =/event/<mbid>=, which has no pageType today (only
+  =event-tags=). Decide first: a new =event= pageType with its own button,
+  or a section independent of any button. Probe the EAA JSON shape first
+  (extend =scripts/probe-caa-release-images.py=).
+- Fixture: an event page with event art; specs mirror P1–P3 with =ctx= = EAA.
+
+** Follow-ups / open questions
+
+- Art Station interop: it lives on =/release/<mbid>/cover-art=, so R4 changes
+  how users reach it (Ctrl-click still does). Check
+  =tests/fixtures/live-userscripts/manifest.json=.
+- Downloads from the viewer (=GM_download=), named
+  =<NN> <types> <comment>.<ext>=, later if wanted.
+- Should "release has no Front image" / "Medium images ≠ media" become
+  findings (=add-finding= skill)? Probably not on a single-release page.
+- HELP: a new release-tracks subsection for the Cover art section and the
+  viewer's key map.
+- Snapshot registry: if the section changes the rendered page shape, refresh
+  the release-tracks baseline and note it under "Expected drift" in
+  =tests/snapshots/registry.org=.
