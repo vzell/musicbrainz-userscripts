@@ -345,7 +345,25 @@ CLOSED: [2026-10-06 Tue]
 - Branch =feature/release-cover-art-p2= (WIP.1); mutation list
   =scripts/mutations/release-tracks-cover-art-p2.json= (8/8 caught).
 
-*** TODO P3 — R5 viewer (shared with D1)
+*** DONE P3 — R5 viewer (shared with D1)
+CLOSED: [2026-10-06 Tue]
+- 2026-10-06, branch =feature/release-cover-art-p3= (WIP.1):
+  - [X] =_artViewer*= singleton =#mb-art-viewer=, opened with ctx + entity
+        path + index list (=_artViewerOpen()=); progressive load through
+        =_artViewerLoad()= (IDB cache when =sa_art_idb_enable=, else a plain
+        preload), ±1 neighbours preloaded; keys, zoom, grid, info, filmstrip,
+        swipe.
+  - [X] Keys from a WINDOW capture listener with =stopImmediatePropagation()=
+        (beats every document listener: Ctrl+M, shortcuts, the navigation
+        guard's Tab trap); Tab trapped inside; scroll locked; focus returns.
+  - [X] R4: =_releaseArtOnTabClick()= on window capture, ahead of
+        =initNavigationGuard()='s leave-page confirm; plain left click only.
+  - [X] Tile click opens the viewer over the tiles currently shown (chip +
+        grouping); Ctrl-click keeps the new-tab link.
+  - [X] Specs: =release-tracks-cover-art-viewer.spec.js= (8), mobile tap +
+        swipe; mutation list =release-tracks-cover-art-p3.json= (13/13).
+  - Not done: the CAA/EAA column (D1 of =design/caa-eaa-redesign=) does not
+    open this viewer yet — it is ready for it (ctx-driven).
 - =_artViewer*= singleton, opened by delegation with an image list + index;
   progressive load via =_artFetchCachedImage()=; keys as above; R4 tab
   interception (plain left click only).

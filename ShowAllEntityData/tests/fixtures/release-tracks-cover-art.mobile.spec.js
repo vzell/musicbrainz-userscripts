@@ -11,8 +11,8 @@
 // guarded handler from one that showed and hid it within the same tap.
 // Control: a real mouse hover in the same context still shows it.
 //
-// The tap lands on the caption, not the thumbnail, because the thumbnail is
-// still a target=_blank link until the viewer (P3) replaces it.
+// The tap lands on the caption: a tap on the thumbnail opens the viewer
+// (P3), which the second test covers — tap to open, swipe to step.
 
 const fs = require('fs');
 const path = require('path');
@@ -50,24 +50,33 @@ const watchShown = (page, ids) => page.evaluate((tipIds) => {
     });
 }, ids);
 
+/**
+ * Loads the medley fixture with the archive routed and waits for the sheet.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function openRelease(page) {
+    await loadUserscriptPage(page, {
+        url: URL, fixtureFile: FIXTURE, testMode: true,
+        settingsOverride: {
+            sa_enable_release_tracks: true,
+            sa_enable_release_tracks_cover_art: true,
+            sa_art_idb_enable: false,
+        },
+    });
+    await page.route('https://coverartarchive.org/**',
+        (route) => route.fulfill({ status: 404, headers: CORS, body: '' }));
+    await page.route(META_RE, (route) => route.fulfill({
+        status: 200, headers: CORS, contentType: 'application/json', body: RECORD,
+    }));
+    await page.locator('button[data-label="Show all Tracks for Release"]').evaluate((b) => b.click());
+    await waitForRenderComplete(page, { waitForAutoResize: false });
+    await page.locator('.mb-release-art-sec[data-mb-art-state="ok"]').waitFor({ state: 'attached', timeout: 15000 });
+}
+
 test.describe('release-tracks Cover art section on a touch device', () => {
     test('tapping a tile shows no hover card; a mouse hover still does', async ({ page }) => {
-        await loadUserscriptPage(page, {
-            url: URL, fixtureFile: FIXTURE, testMode: true,
-            settingsOverride: {
-                sa_enable_release_tracks: true,
-                sa_enable_release_tracks_cover_art: true,
-                sa_art_idb_enable: false,
-            },
-        });
-        await page.route('https://coverartarchive.org/**',
-            (route) => route.fulfill({ status: 404, headers: CORS, body: '' }));
-        await page.route(META_RE, (route) => route.fulfill({
-            status: 200, headers: CORS, contentType: 'application/json', body: RECORD,
-        }));
-        await page.locator('button[data-label="Show all Tracks for Release"]').evaluate((b) => b.click());
-        await waitForRenderComplete(page, { waitForAutoResize: false });
-        await page.locator('.mb-release-art-sec[data-mb-art-state="ok"]').waitFor({ state: 'attached', timeout: 15000 });
+        await openRelease(page);
 
         // The tracklist's container is far wider than the window on this page
         // (measured 8418 px): without a cap the sheet laid all 16 tiles out as
@@ -111,5 +120,31 @@ test.describe('release-tracks Cover art section on a touch device', () => {
             await expect(page.locator('#mb-stat-tooltip')).toBeVisible({ timeout: 200 });
         }).toPass({ timeout: 10000 });
         await expect(page.locator('#mb-stat-tooltip')).toContainText('6 of 16');
+    });
+
+    test('tapping a thumbnail opens the viewer; a horizontal swipe steps', async ({ page }) => {
+        await openRelease(page);
+        const thumb = page.locator('figure.mb-release-art-tile[data-mb-art-i="5"] > a');
+        await thumb.scrollIntoViewIfNeeded();
+        await thumb.tap();
+        const pos = page.locator('#mb-art-viewer .mb-artv-pos');
+        await expect(pos).toHaveText('6 / 16');
+
+        // No swipe precedent in the suite: dispatch the touch pointer pair the
+        // handler reads (pointerType 'touch', clientX), right-to-left = next.
+        const swipe = (fromX, toX) => page.evaluate(([a, b]) => {
+            const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
+            const r = stage.getBoundingClientRect();
+            const y = r.top + r.height / 2;
+            const opts = (x) => ({ bubbles: true, pointerType: 'touch', clientX: r.left + x, clientY: y, isPrimary: true });
+            stage.dispatchEvent(new PointerEvent('pointerdown', opts(a)));
+            stage.dispatchEvent(new PointerEvent('pointerup', opts(b)));
+        }, [fromX, toX]);
+        await swipe(250, 100);
+        await expect(pos).toHaveText('7 / 16');
+        await swipe(100, 250);
+        await expect(pos).toHaveText('6 / 16');
+        await swipe(150, 130);
+        await expect(pos, 'a 20 px move is not a swipe').toHaveText('6 / 16');
     });
 });

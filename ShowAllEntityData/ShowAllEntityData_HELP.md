@@ -1128,12 +1128,26 @@ at event, Recorded at place).
 Archive image of the release: its types, its comment, ★ on the archive's main
 front image (which is not necessarily every image typed Front), and ⏳ on an
 image still pending approval. Click its heading to collapse it like any other
-section; a thumbnail opens the 1200 px image. Hover a thumbnail for its card:
+section. Hover a thumbnail for its card:
 types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
 added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
 show only the images carrying that type — an image with two types counts for
 both — and **Grid / By type** groups the sheet under each image's first type.
-The layout is remembered, and travels with a config export. It costs one request per render
+The layout is remembered, and travels with a config export.
+
+**The viewer.** Click a thumbnail to open it full screen; it steps through the
+thumbnails currently shown, in their order, so a chip or **By type** applies.
+Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
+image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
+thumbnail, to open the archive page or the image in a new tab as before. The
+thumbnail shows at once and the 1200 px image replaces it when it arrives; the
+panel on the right lists the types, comment, position, main front/back,
+approval, the edit that added it and links to every size. Keys: **← →** step
+(wrapping at the ends), **Home / End**, **Z** or a click zooms 2× (the image
+follows the mouse), **G** grid, **I** info panel, **O** original in a new tab,
+**Esc** closes (from a grid opened with G: back to the image). On a touch
+screen, tap to open and swipe sideways to step. While the viewer is open the
+page's own shortcuts are paused. It costs one request per render
 — none when the record is already cached from a CAA column, none when the tab
 says "Cover art (0)" — and the global filter never hides it. "No images" and
 "could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
