@@ -7,7 +7,8 @@
 // wrapped in slashes is a regular expression) and checks the
 // springsteenlyrics.com lines admit exactly the list pages, the jungleland.it
 // line exactly its list.htm, the brucespringsteen.it line exactly its
-// DB/records.aspx, while every MusicBrainz sample still matches.
+// DB/records.aspx, the Brucebase line exactly its stats:songs, while every
+// MusicBrainz sample still matches.
 
 const fs = require('fs');
 const { test, expect } = require('../support/test');
@@ -143,6 +144,35 @@ test.describe('@include coverage', () => {
             'https://www.brucespringsteen.it.example.org/DB/records.aspx',
             'https://example.org/www.brucespringsteen.it/DB/records.aspx',
             'https://notbrucespringsteen.it/DB/records.aspx',
+        ];
+        expect(lists.filter((u) => !injected(u))).toEqual([]);
+        expect(others.filter((u) => injected(u))).toEqual([]);
+    });
+
+    test('brucebase.wikidot.com: stats:songs, and nothing else', () => {
+        const lists = [
+            'https://brucebase.wikidot.com/stats:songs',
+            'http://brucebase.wikidot.com/stats:songs',
+            'https://brucebase.wikidot.com/stats:songs/',
+            'https://brucebase.wikidot.com/stats:songs#toc0',
+            'https://brucebase.wikidot.com/stats:songs?x=1',
+        ];
+        const others = [
+            // The html-block iframe ON the songs page, under the same path:
+            // the reason the gate needs no frame check.
+            'https://brucebase.wikidot.com/stats:songs/html/01298c01639d867f841df8043cedc891cf11d8f0-13394405391053582404',
+            // The page's sibling lists, a song page, the stats index.
+            'https://brucebase.wikidot.com/stats:songs-by-album',
+            'https://brucebase.wikidot.com/stats:songs-list',
+            'https://brucebase.wikidot.com/stats:songs-count',
+            'https://brucebase.wikidot.com/song:1945',
+            'https://brucebase.wikidot.com/stats:statistics',
+            'https://brucebase.wikidot.com/',
+            // Another wiki on the same farm, and look-alike hosts.
+            'https://otherwiki.wikidot.com/stats:songs',
+            'https://www.brucebase.wikidot.com/stats:songs',
+            'https://brucebase.wikidot.com.example.org/stats:songs',
+            'https://example.org/brucebase.wikidot.com/stats:songs',
         ];
         expect(lists.filter((u) => !injected(u))).toEqual([]);
         expect(others.filter((u) => injected(u))).toEqual([]);

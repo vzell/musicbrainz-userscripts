@@ -1106,6 +1106,7 @@ you automatically.
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
 | 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
 | 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
+| 📚 Brucebase                                    | Switch on the Brucebase song list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                                           |
 
 </details>
 
@@ -1166,8 +1167,8 @@ an import brings your deletions back.
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
   category and the entry page), bootleg lists, CD and vinyl bootleg list
   and lyrics index, the **jungleland.it**
-  bootleg artwork list and the **brucespringsteen.it** record database —
-  each off until you switch it on, see
+  bootleg artwork list, the **brucespringsteen.it** record database and
+  the **Brucebase** song list — each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1752,6 +1753,35 @@ new tab.
 To switch from one kind to the other, press the other button. The page
 reloads first, as it does whenever a second list is loaded, so press it once
 more after the reload.
+
+</details>
+
+<details>
+<summary>Brucebase song list</summary>
+
+Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+→ *📚 Brucebase* → *Enable on the Brucebase song list*. Settings are shared,
+so you can switch it on from a MusicBrainz page or from the Tampermonkey menu
+on Brucebase itself. While it is off, the script leaves the wiki's pages
+untouched.
+
+It works on the wiki's list of every song Bruce Springsteen is known to have
+performed live or released: `https://brucebase.wikidot.com/stats:songs`. The
+page gets a heading with the usual toolbar and one action button, **Songs**.
+Pressing it turns the site's 28 letter tabs into one table with these
+columns:
+
+- **Title:** the song's title, as the wiki writes it. It links to that song's
+  page.
+- **Letter:** the tab the song is listed under: *0-9* or *A* to *Z*. Filter
+  or pick from its 📊 list to see one letter, which is the job the tabs did.
+
+Each song is one row. The wiki's *Alt.* tab lists the songs whose title starts
+with a subtitle, such as "(I Can't Get No) Satisfaction", a second time; they
+are not repeated, and keep the letter of their main title (*S*). The tabs are
+replaced by the table; the second set of tabs further down (News, Media,
+Released) stays as it was. Everything is on that one page; nothing is
+fetched.
 
 </details>
 

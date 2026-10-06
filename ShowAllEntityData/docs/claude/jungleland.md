@@ -49,8 +49,9 @@ the springsteenlyrics one, before anything visible, for the same reason:
    only a list.htm opened as its own tab is converted.
 
 `const _foreignHost` (`'springsteenlyrics.com'`, `'jungleland.it'`, since
-2026-10-06 also `'brucespringsteen.it'` — docs/claude/brucespringsteen.md —
-or `null`)
+2026-10-06 also `'brucespringsteen.it'` — docs/claude/brucespringsteen.md —,
+since 2026-10-07 `'brucebase.wikidot.com'` — docs/claude/brucebase.md — or
+`null`)
 replaced the detection loop's `Boolean(def.host) !== _isSlHost`. With two
 foreign hosts, "has a host" is not enough: a definition must name THIS
 one. No spec can see the difference today, because no SL matcher claims

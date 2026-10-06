@@ -24,6 +24,7 @@
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/lyrics\.php(?:\?(?:[^#]*&)?cmd=(?:intro|list)(?:&[^#]*)?)?(?:#.*)?$/
 // @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
 // @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
+// @include      /^https?:\/\/brucebase\.wikidot\.com\/stats:songs\/?(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -4117,6 +4118,27 @@
                          'fetched. When off, the script exits on that site before touching the ' +
                          'page. Settings are shared with MusicBrainz, so this can be switched on ' +
                          'from either site.'
+        },
+
+        // ============================================================
+        // BRUCEBASE SECTION
+        // ============================================================
+        divider_brucebase: {
+            type: 'divider',
+            label: '📚 BRUCEBASE'
+        },
+
+        sa_enable_brucebase: {
+            label: 'Enable on the Brucebase song list',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on the Brucebase wiki\'s ' +
+                         'song list (brucebase.wikidot.com/stats:songs) and offers a "Show all ' +
+                         'songs" button that turns the 28 letter tabs into one filterable, ' +
+                         'sortable table with Title and Letter columns, one row per song. No ' +
+                         'song page is fetched. When off, the script exits on that site before ' +
+                         'touching the page. Settings are shared with MusicBrainz, so this can be ' +
+                         'switched on from either site.'
         }
 
     };
@@ -5083,6 +5105,17 @@
     const _isBsHost = /(^|\.)brucespringsteen\.it$/.test(window.location.hostname);
 
     /**
+     * True when this page is on the Brucebase wiki rather than MusicBrainz.
+     *
+     * The fourth non-MusicBrainz host (its `@include` line and
+     * docs/claude/brucebase.md): the song list, `stats:songs`. Read by its
+     * own opt-in gate just below, through `_foreignHost` by the detection
+     * loop, and by `performClutterCleanup()`.
+     * @type {boolean}
+     */
+    const _isBbHost = /(^|\.)brucebase\.wikidot\.com$/.test(window.location.hostname);
+
+    /**
      * The non-MusicBrainz host this page is on, as the `host` key of its
      * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
      *
@@ -5094,6 +5127,7 @@
     const _foreignHost = _isSlHost ? 'springsteenlyrics.com'
         : _isJlHost ? 'jungleland.it'
         : _isBsHost ? 'brucespringsteen.it'
+        : _isBbHost ? 'brucebase.wikidot.com'
         : null;
 
     // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
@@ -5133,6 +5167,15 @@
     }
     if (_isBsHost && window.top !== window) {
         Lib.info('init', 'brucespringsteen.it: this list is inside the Blegsdx.htm frameset — open records.aspx in its own tab to get the table. Nothing to do here.');
+        return;
+    }
+
+    // Brucebase: opt-in (`sa_enable_brucebase`, default off), gated as early
+    // as the others. No frame gate: the site is not a frameset, and the one
+    // iframe on the page (an html-block at /stats:songs/html/<hash>) is kept
+    // out by the @include line (docs/claude/brucebase.md).
+    if (_isBbHost && Lib.settings.sa_enable_brucebase !== true) {
+        Lib.info('init', 'brucebase.wikidot.com support is off (sa_enable_brucebase) — nothing to do.');
         return;
     }
 
@@ -10059,14 +10102,15 @@
 
     /**
      * Installs the minimal `table.tbl` look shared by the non-MusicBrainz
-     * hosts (springsteenlyrics.com, jungleland.it, brucespringsteen.it),
+     * hosts (springsteenlyrics.com, jungleland.it, brucespringsteen.it,
+     * brucebase.wikidot.com),
      * once per document.
      *
      * MusicBrainz's own site CSS is what normally gives `table.tbl` its
      * borders, padding, header background and the `tr.even` zebra stripe
      * that `applyZebraStriping()` merely toggles classes for; neither site
      * has any of it. The rules are scoped to the hosts' body classes
-     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`) and sit inside `:where()` so they
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`, `mb-sa-host-bb`) and sit inside `:where()` so they
      * carry almost no specificity: any of this script's own table styling
      * (sticky header colours, finding tints, hover, highlights) still wins
      * wherever it applies. A further host extends the `:is()` list here
@@ -10078,23 +10122,23 @@
         if (document.getElementById('mb-foreign-table-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) {
                 border-collapse: collapse;
                 background: #fff;
                 font-size: 13px;
                 margin: 6px 0;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) th,
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) td {
                 border: 1px solid #ddd;
                 padding: 3px 6px;
                 vertical-align: top;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) thead th {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) thead th {
                 background-color: #e8e8e8;
                 text-align: left;
             }
-            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) tr.even > td {
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs, .mb-sa-host-bb) table.tbl) tr.even > td {
                 background-color: #f2f2f2;
             }
         `);
@@ -12683,6 +12727,259 @@
         bdi.textContent = 'brucespringsteen.it — Bootleg database';
         h1.appendChild(bdi);
         document.body.insertBefore(h1, document.body.firstChild);
+        return h1;
+    }
+
+    // --- Brucebase (brucebase.wikidot.com) -----------------------------------
+    // The wiki's song list, `stats:songs`: one static page whose songs sit in
+    // a YUI tabview, one tab per first letter. Opt-in via
+    // `sa_enable_brucebase`. See docs/claude/brucebase.md.
+
+    /**
+     * Column headers of the Brucebase song table, in order.
+     * @type {string[]}
+     */
+    const _BB_HEADERS = ['Title', 'Letter'];
+
+    /**
+     * Matches a letter tab's label on the Brucebase song list, `=- A -=`,
+     * capturing what sits between the markers.
+     * @type {RegExp}
+     */
+    const _BB_TAB_LABEL_RE = /^=-\s*(.*?)\s*-=$/;
+
+    /**
+     * Reads the letter out of one of the song list's tab labels.
+     *
+     * The tabs are labelled `=- 0-9 -=`, `=- A -=` … `=- Z -=` and
+     * `=- Alt. -=`; the letter is what sits between the markers. Any other
+     * label is returned trimmed, as written.
+     *
+     * @param {string} text A tab label's text.
+     * @returns {string} The letter ("0-9", "A", "Alt.").
+     */
+    function _bbParseTabLabel(text) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        const m = t.match(_BB_TAB_LABEL_RE);
+        return m ? m[1] : t;
+    }
+
+    /**
+     * Finds the song list's letter tabview.
+     *
+     * The page holds a second YUI tabview further down (News, Media,
+     * "Released (Not on Springsteen Album)"), and its last tab links songs
+     * too, so "any `/song:` link" is not the list. The letter tabview is the
+     * `div.yui-navset` whose every tab label has the `=- … -=` shape and
+     * which links at least one song.
+     *
+     * @param {Document} docContext The document to search.
+     * @returns {?HTMLElement} The tabview, or `null` when the page has none.
+     */
+    function _bbFindSongTabview(docContext) {
+        return Array.from(docContext.querySelectorAll('div.yui-navset')).find(nav => {
+            const labels = Array.from(nav.querySelectorAll(':scope > ul.yui-nav > li'));
+            return labels.length > 0 &&
+                labels.every(li => _BB_TAB_LABEL_RE.test(li.textContent.replace(/\s+/g, ' ').trim())) &&
+                nav.querySelector('a[href^="/song:"]') !== null;
+        }) || null;
+    }
+
+    /**
+     * Collects the songs of the letter tabview, each with the letter of the
+     * tab it is listed under.
+     *
+     * Tab label i belongs to the i-th panel of `.yui-content`. A song is
+     * kept once, by its link as written: the "Alt." tab repeats the songs
+     * whose title starts with a parenthesised subtitle ("(I Can't Get No)
+     * Satisfaction"), and since it is the last tab, the first sighting is the
+     * one under the song's own letter.
+     *
+     * @param {HTMLElement} tabview The tabview from `_bbFindSongTabview()`.
+     * @returns {Array<{anchor: HTMLAnchorElement, letter: string}>} The songs, in page order.
+     */
+    function _bbCollectItems(tabview) {
+        const labels = Array.from(tabview.querySelectorAll(':scope > ul.yui-nav > li'));
+        const panels = Array.from(tabview.querySelector(':scope > .yui-content')?.children || []);
+        const seen = new Set();
+        const items = [];
+        panels.forEach((panel, i) => {
+            const letter = labels[i] ? _bbParseTabLabel(labels[i].textContent) : '';
+            panel.querySelectorAll('li > a[href^="/song:"]').forEach(a => {
+                const key = a.getAttribute('href');
+                if (seen.has(key)) return;
+                seen.add(key);
+                items.push({ anchor: a, letter });
+            });
+        });
+        return items;
+    }
+
+    /**
+     * Builds one table row (Title, Letter) for a Brucebase song.
+     *
+     * The Title cell links to the song's page by its resolved absolute URL,
+     * in the same tab, as the site's own list does.
+     *
+     * @param {{anchor: HTMLAnchorElement, letter: string}} item       One song from `_bbCollectItems()`.
+     * @param {Document}                                    docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _bbBuildRow(item, docContext) {
+        const tr = docContext.createElement('tr');
+        const titleTd = docContext.createElement('td');
+        const link = docContext.createElement('a');
+        link.href = item.anchor.href;
+        link.textContent = item.anchor.textContent.replace(/\s+/g, ' ').trim();
+        titleTd.appendChild(link);
+        tr.appendChild(titleTd);
+        const letterTd = docContext.createElement('td');
+        letterTd.textContent = item.letter;
+        tr.appendChild(letterTd);
+        return tr;
+    }
+
+    /**
+     * Converts the Brucebase song list's letter tabs into a
+     * `<table class="tbl">`, so the standard fetch / filter / sort pipeline
+     * can process it like any MusicBrainz table — the counterpart of
+     * `applyJlListToTable()` for the pageType carrying
+     * `features.bbSongsToTable`.
+     *
+     * Called from the same three places as the other converters: the
+     * click-time pre-processing block of `startFetchingProcess()` (live page),
+     * the pagination loop for a fetched page (`doc !== document`; never
+     * reached today, the list has one page) and
+     * `_hydrateAndRenderFromSnapshotData()` for Load from Disk, where the
+     * reloaded page holds the tabs again. Idempotent: once the tabview is
+     * gone, a second call is a no-op.
+     *
+     * The table takes the tabview's place, and the tabview is removed, with
+     * the inline script after it that built the YUI widget on DOM ready (it
+     * has run). On the live document it also inserts
+     * `<h2 class="mb-bb-list-heading">` before the table, where
+     * `updateH2Count()`'s "last h2 before the table" lookup anchors the row
+     * count and filter bar. The second tabview further down is left alone.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBbSongsToTable(def, docContext = document) {
+        if (!def?.features?.bbSongsToTable) return;
+        const tabview = _bbFindSongTabview(docContext);
+        const items = tabview ? _bbCollectItems(tabview) : [];
+        if (items.length === 0) {
+            // Said out loud, like applyJlListToTable(): a silent no-op would
+            // render "0 rows" with nothing in the log to say why. A page this
+            // function already converted is the one legitimate case.
+            if (!docContext.querySelector('table.mb-bb-table')) {
+                Lib.warn('init', `applyBbSongsToTable: no song list found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href^="/song:"]').length} song link(s) in the document, ` +
+                    `${tabview ? 'none in the letter tabs' : 'no letter tabview'}) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bb-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BB_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        items.forEach(item => tbody.appendChild(_bbBuildRow(item, docContext)));
+        table.appendChild(tbody);
+
+        tabview.parentNode.insertBefore(table, tabview);
+        const next = tabview.nextElementSibling;
+        if (next?.tagName === 'SCRIPT' && /YAHOO\.widget\.TabView/.test(next.textContent)) next.remove();
+        tabview.remove();
+
+        if (docContext === document && !document.querySelector('h2.mb-bb-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bb-list-heading';
+            h2.textContent = 'Songs';
+            table.parentNode.insertBefore(h2, table);
+        }
+
+        Lib.debug('init', `applyBbSongsToTable: converted ${tbody.rows.length} song${tbody.rows.length === 1 ? '' : 's'} → table.`);
+    }
+
+    /**
+     * Installs the Brucebase stylesheet, once per document.
+     *
+     * The table itself is styled by `_ensureForeignTableStyle()`, shared with
+     * the other non-MusicBrainz hosts; this adds only the injected
+     * `<h1>`/`<h2>` and `.mb-bb-hidden`. Every rule is scoped to
+     * `body.mb-sa-host-bb`.
+     *
+     * @returns {void}
+     */
+    function _ensureBbStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-bb-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-bb h1.mb-bb-h1 {
+                font-size: 24px;
+                margin: 4px 0 10px;
+                line-height: 1.4;
+            }
+            body.mb-sa-host-bb h2.mb-bb-list-heading {
+                font-size: 18px;
+                margin: 10px 0;
+            }
+            body.mb-sa-host-bb .mb-bb-hidden {
+                display: none !important;
+            }
+        `);
+        style.id = 'mb-bb-style';
+    }
+
+    /**
+     * Prepares the Brucebase song list at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it right after that
+     * lookup, for the Brucebase definition only). The page's only `<h1>` is
+     * the wiki's name in the site header, and its title ("Songs") is a
+     * `div#page-title`. Inserts `<h1 class="mb-bb-h1">` in that title's place
+     * and hides (does not remove) the title; the `<h1>`'s text sits in a
+     * `<bdi>` so the init-time entity name capture (`_cachedEntityName`, used
+     * for file names) reads it like a MusicBrainz h1.
+     *
+     * Also tags `<body>` with `mb-sa-host-bb` (the scope of every Brucebase
+     * style rule) and installs `_ensureBbStyle()`. Nothing else on the page
+     * changes until the user presses the "Show all songs" button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _bbPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-bb-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+
+        document.body.classList.add('mb-sa-host-bb');
+        _ensureBbStyle();
+        const pageTitle = document.getElementById('page-title');
+        const title = pageTitle?.textContent.replace(/\s+/g, ' ').trim() || 'Songs';
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bb-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = `Brucebase — ${title}`;
+        h1.appendChild(bdi);
+        if (pageTitle) {
+            pageTitle.parentNode.insertBefore(h1, pageTitle);
+            pageTitle.classList.add('mb-bb-hidden');
+        } else {
+            const host = document.getElementById('page-content') || document.body;
+            host.insertBefore(h1, host.firstChild);
+        }
         return h1;
     }
 
@@ -23333,6 +23630,26 @@
                 // `true` here (Load from Disk runs with the base definition);
                 // each button narrows it to its own kind.
                 bsRecordsToTable: true,
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // --- brucebase.wikidot.com -------------------------------------------
+        // Not MusicBrainz either: the Brucebase wiki's song list
+        // (`stats:songs`), every song Bruce Springsteen has performed live or
+        // released, in one YUI tabview with a tab per first letter. One static
+        // page, no pagination, so the fetch loop reuses the live document —
+        // no request. Opt-in via `sa_enable_brucebase`. `bbSongsToTable`
+        // turns the tabs into the `table.tbl` the pipeline expects; see
+        // applyBbSongsToTable() and docs/claude/brucebase.md.
+        {
+            type: 'bb-songs',
+            host: 'brucebase.wikidot.com',
+            match: (path) => /^\/stats:songs\/?$/.test(path),
+            buttons: [ { label: 'Show all songs', shortLabel: 'Songs' } ],
+            features: {
+                bbSongsToTable: true,
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -46863,6 +47180,11 @@ a { color: #1565c0; }`;
     } else if (baseDefinition?.host === 'brucespringsteen.it') {
         // Nor has brucespringsteen.it's records.aspx — see _bsPrepareLivePage().
         headerContainer = _bsPrepareLivePage();
+    } else if (baseDefinition?.host === 'brucebase.wikidot.com') {
+        // Brucebase has an <h1>, but it is the wiki's site name in the page
+        // header, which the generic fallback above would pick — see
+        // _bbPrepareLivePage().
+        headerContainer = _bbPrepareLivePage();
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -54740,7 +55062,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost || _isJlHost || _isBsHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost || _isBbHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -64498,6 +64820,13 @@ a { color: #1565c0; }`;
             applyJlListToTable(activeDefinition);
         }
 
+        // ── bbSongsToTable pre-processing ────────────────────────────────────
+        // The Brucebase song list ('bb-songs'): its letter tabs become a
+        // <table class="tbl"> — see applyBbSongsToTable's JSDoc.
+        if (activeDefinition.features?.bbSongsToTable) {
+            applyBbSongsToTable(activeDefinition);
+        }
+
         // ── bsRecordsToTable pre-processing ──────────────────────────────────
         // brucespringsteen.it ('bs-records'): tick every format in the site's
         // form for the pressed kind, and give the live page an empty table to
@@ -64965,6 +65294,10 @@ a { color: #1565c0; }`;
                 // page could never arrive unconverted.
                 if (doc !== document && activeDefinition.features?.jlListToTable) {
                     applyJlListToTable(activeDefinition, doc);
+                }
+                // And for Brucebase, for the same reason.
+                if (doc !== document && activeDefinition.features?.bbSongsToTable) {
+                    applyBbSongsToTable(activeDefinition, doc);
                 }
                 // brucespringsteen.it: THE path — both buttons fetch page 1.
                 if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
@@ -90383,6 +90716,10 @@ a { color: #1565c0; }`;
             if (activeDefinition.features?.jlListToTable) {
                 applyJlListToTable(activeDefinition);
             }
+            // And for Brucebase: the reloaded page holds the letter tabs again.
+            if (activeDefinition.features?.bbSongsToTable) {
+                applyBbSongsToTable(activeDefinition);
+            }
             // And for brucespringsteen.it: the reloaded page holds the site's
             // record paragraphs again; an empty table takes their place.
             if (activeDefinition.features?.bsRecordsToTable) {
@@ -107639,6 +107976,17 @@ a { color: #1565c0; }`;
              */
             bsParseHead(text) {
                 return _bsParseHead(text);
+            },
+
+            /**
+             * Thin wrapper around `_bbParseTabLabel()` — reads the letter out
+             * of a Brucebase song-list tab label ("=- A -=" → "A").
+             *
+             * @param {string} text A tab label's text.
+             * @returns {string} The letter.
+             */
+            bbParseTabLabel(text) {
+                return _bbParseTabLabel(text);
             },
 
             /**
