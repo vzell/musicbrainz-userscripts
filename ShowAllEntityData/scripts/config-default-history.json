@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "6f8730fbeef45482664cf10588c6d391fcbf0eae",
-    "revisions_walked": 776
+    "head": "0e11431a78989e23473b155fae6b3d0bba859055",
+    "revisions_walked": 777
   },
   "changes": [
     {
@@ -563,6 +563,8 @@
     "sa_event_overview_relationships": true,
     "sa_event_overview_relationships_one_table": false,
     "sa_event_overview_related_series": true,
+    "sa_event_overview_setlist": true,
+    "sa_event_overview_setlist_one_table": false,
     "sa_enable_expand_rgs": true,
     "sa_enable_barcode_highlight": true,
     "sa_enable_barcode_validation": true,
