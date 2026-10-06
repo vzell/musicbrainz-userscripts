@@ -327,5 +327,189 @@
     "spec": "tests/fixtures/sl-host.spec.js",
     "grep": "a reopened list renders in place",
     "expect": "fail"
+  },
+  {
+    "name": "bootleg First date is not fed to dateParts",
+    "why": "sl-bootlegs splits its ISO First date with the MusicBrainz dateParts extractor; an unknown extractor name leaves DD/MM/YYYY/Day/Month empty on every row.",
+    "edits": [{ "find": "{ sourceColumn: 'First date', extractor: 'dateParts',", "replace": "{ sourceColumn: 'First date', extractor: 'datePartsOff'," }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "bootleg Location is not split",
+    "why": "Without a resolvable source column the four Place/Locality/Region/Country columns are never appended.",
+    "edits": [{ "find": "{ sourceColumn: 'Location',   extractor: 'splitLocationText',", "replace": "{ sourceColumn: 'Locationx',  extractor: 'splitLocationText'," }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "a US state leaves Country empty",
+    "why": "The site never writes a country after a US state; without filling it in, a Country filter misses every US show.",
+    "edits": [{ "find": "            out.country = lastRegionCountry;\n", "replace": "" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "several locations stay one",
+    "why": "A multi-show bootleg's \" - \"-joined locations must become one <li> per location in every output column, aligned.",
+    "edits": [{ "find": ".split(/\\s+-\\s+/).map(_parseLocationText);", "replace": ".split(/\\s+-\\s+XX/).map(_parseLocationText);" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "Place keeps only the first part",
+    "why": "A venue name with a comma in it (\"Studio A, The Power Station\") is everything before the city, comma-joined.",
+    "edits": [{ "find": "        out.place = parts.join(', ');", "replace": "        out.place = parts[0] || '';" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-part description becomes a Country",
+    "why": "\"Various Location\" / \"Studio / Live\" (brucelegs) are descriptions; taking the last part as Country would fill the Country column with them.",
+    "edits": [{ "find": "        } else if (parts.length === 0) {\n            out.place = last;\n            return out;\n        } else {", "replace": "        } else {" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "USA is kept as written",
+    "why": "One country, one Country value: \"USA\" must read as United States, which a bare state already fills in.",
+    "edits": [{ "find": "out.country = _LOCATION_TEXT_COUNTRY_ALIASES[last.toLowerCase()] || last;", "replace": "out.country = last;" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "the bootleg Show column stays empty",
+    "why": "\"27 Nov 1970 (early show)\" must put \"early show\" in Show.",
+    "edits": [{ "find": "            textCell(_slShowQualifier(fields['Date']));\n", "replace": "            textCell('');\n" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs has no column set",
+    "why": "applySlCardsToTable() returns early for a kind without _SL_HEADERS, so no table is built and nothing renders.",
+    "edits": [{ "find": "        brucelegs:  ['Cover',", "replace": "        brucelegsOff:  ['Cover'," }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "both pages become one table",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs Label and Cat # swapped",
+    "why": "The two are separate card lines here (not \"Label (Cat #)\" as on the collection); each must reach its own column.",
+    "edits": [{ "find": "            textCell(fields['Label'] || '');\n            textCell(fields['Cat #'] || '');\n", "replace": "            textCell(fields['Cat #'] || '');\n            textCell(fields['Label'] || '');\n" }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "card fields land in their own columns",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs First date is not fed to dateParts",
+    "why": "The date split must be declared on sl-brucelegs too, not only on sl-bootlegs.",
+    "edits": [{ "find": "slCardsToTable: 'brucelegs',\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'dateParts',", "replace": "slCardsToTable: 'brucelegs',\n                columnExtractors: [\n                    { sourceColumn: 'First date', extractor: 'datePartsOff'," }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "brucelegs ignores the show note in Location",
+    "why": "On brucelegs the note sits in Location (\"…, USA (Early Show)\"). None of the fixture's 100 cards has one, so the fixture spec cannot see this; tests/live/sl-lists.spec.js (\"show notes, dates and locations split on every row\", @extended) does. Recorded so the gap is known.",
+    "edits": [{ "find": "textCell(_slShowQualifier(fields['Date']) || _slShowQualifier(fields['Location']));", "replace": "textCell(_slShowQualifier(fields['Date']));" }],
+    "spec": "tests/fixtures/sl-brucelegs.spec.js",
+    "grep": "card fields land in their own columns",
+    "expect": "pass"
+  },
+  {
+    "name": "the @include line no longer admits brucelegs.php",
+    "why": "Tampermonkey would never inject the script on the CD and vinyl bootleg list; only the regex spec can see it.",
+    "edits": [{ "find": "springsteenlyrics\\.com\\/(?:collection|bootlegs|brucelegs)\\.php", "replace": "springsteenlyrics\\.com\\/(?:collection|bootlegs)\\.php" }],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "springsteenlyrics.com: every list page",
+    "expect": "fail"
+  },
+  {
+    "name": "pageKeys: the live page is matched by number, not key",
+    "why": "Started on letter=b, page 1 is \"(\"; matching by number reuses the live B list as page 1, so B appears first (and \"(\" never), while the request log can still look plausible.",
+    "edits": [{ "find": "                    const _isCurrentPage = pageKeys\n                        ? pageKeys[p - 1].key.toLowerCase() === currentPageKey\n                        : p === currentPageNum;", "replace": "                    const _isCurrentPage = p === currentPageNum;" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "from a letter page",
+    "expect": "fail"
+  },
+  {
+    "name": "pageKeys: the key order is reversed",
+    "why": "The keys are the page's own letter wall, in its order; the table must read ( then B.",
+    "edits": [{ "find": "            keys.push({ key, href: url.toString() });\n        });\n        return keys;", "replace": "            keys.push({ key, href: url.toString() });\n        });\n        return keys.reverse();" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "from the landing page",
+    "expect": "fail"
+  },
+  {
+    "name": "pageKeys: a page is fetched from the current URL, not its own link",
+    "why": "The landing page lyrics.php has no cmd=list; only the letter link itself names the list. Fetching the current URL loads the landing page again, with no song lines.",
+    "edits": [{ "find": "const fetchUrl = new URL(pageKeys ? pageKeys[p - 1].href : window.location.href);", "replace": "const fetchUrl = new URL(window.location.href);" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "from the landing page",
+    "expect": "fail"
+  },
+  {
+    "name": "pageKeys: a resume forgets the key list",
+    "why": "Without the interrupted run's keys the resume falls back to numbered pages of the current URL and never reaches the failed letter.",
+    "edits": [{ "find": "            pageKeys = resumeFrom.pageKeys || null;\n", "replace": "" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "resumes at that LETTER",
+    "expect": "fail"
+  },
+  {
+    "name": "lyrics landing page gets no table",
+    "why": "The landing page has no song lines; without the empty table there is nothing for the fetched letters to render into.",
+    "edits": [{ "find": "const wall = docContext === document && !heading ? docContext.querySelector('.project-detail .element-buttons') : null;", "replace": "const wall = null;" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "from the landing page",
+    "expect": "fail"
+  },
+  {
+    "name": "lyrics: the icon is ignored",
+    "why": "The plain bi-file-earmark icon means \"Lyrics not available\"; every line would read ✓.",
+    "edits": [{ "find": "const hasLyrics = !!icon && icon.classList.contains('bi-file-earmark-text');", "replace": "const hasLyrics = !!icon;" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "each line is split",
+    "expect": "fail"
+  },
+  {
+    "name": "lyrics: the FIRST possessive names the artist",
+    "why": "\"Manfred Mann's Earth Band's cover version\" is Manfred Mann's Earth Band, not Manfred Mann. This is the first draft's regex (lazy artist, any text before \"version\"), which the rendered fixture row caught. Making only the artist lazy is an equivalent mutant: the \"[word] version\" tail already forces the last possessive.",
+    "edits": [{ "find": "s.match(/^(.+)(?:'s|’s|'|’)\\s+((?:[\\w-]+\\s+)?version\\b.*)$/i)", "replace": "s.match(/^(.+?)(?:'s|’s|'|’)\\s+(.*\\bversion\\b.*)$/i)" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "_slLyricsParseVersion reads every bracket shape",
+    "expect": "fail"
+  },
+  {
+    "name": "lyrics: Show keeps a take number",
+    "why": "\"(take #2)\" is the No. column's, not a show.",
+    "edits": [{ "find": ".split(', ').filter(q => !/^take\\b/i.test(q)).join(', ');", "replace": ".split(', ').filter(Boolean).join(', ');" }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "_slLyricsParseVersion reads every bracket shape",
+    "expect": "fail"
+  },
+  {
+    "name": "lyrics Date is not fed to dateParts",
+    "why": "sl-lyrics must declare the date split itself.",
+    "edits": [{ "find": "pageKeys: { param: 'letter', selector: '.element-buttons a[href*=\"letter=\"]' },\n                columnExtractors: [\n                    { sourceColumn: 'Date', extractor: 'dateParts',", "replace": "pageKeys: { param: 'letter', selector: '.element-buttons a[href*=\"letter=\"]' },\n                columnExtractors: [\n                    { sourceColumn: 'Date', extractor: 'datePartsOff'," }],
+    "spec": "tests/fixtures/sl-lyrics.spec.js",
+    "grep": "Date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "the @include line no longer admits lyrics.php",
+    "why": "Tampermonkey would never inject the script on the lyrics index; only the regex spec can see it.",
+    "edits": [{ "find": "// @include      /^https?:\\/\\/(?:www\\.)?springsteenlyrics\\.com\\/lyrics\\.php(?:\\?(?:[^#]*&)?cmd=(?:intro|list)(?:&[^#]*)?)?(?:#.*)?$/\n", "replace": "" }],
+    "spec": "tests/fixtures/sl-include-regex.spec.js",
+    "grep": "springsteenlyrics.com: every list page",
+    "expect": "fail"
   }
 ]

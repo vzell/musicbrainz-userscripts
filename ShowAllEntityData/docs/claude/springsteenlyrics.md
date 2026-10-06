@@ -7,7 +7,9 @@ the **collection** (`collection.php?cmd=list…`) and the **bootleg** lists
 (`bootlegs.php?cmd=list…`), every category and every `f_*` filter — as the
 pageTypes `sl-collection` and `sl-bootlegs`, and on the collection's entry
 page `collection.php` ("Latest additions", every item, `pg=` pagination) as
-`sl-collection-intro`. It is **opt-in**:
+`sl-collection-intro`, on the **CD and vinyl bootleg** list
+(`brucelegs.php?cmd=list…`) as `sl-brucelegs`, and on the **lyrics index**
+(`lyrics.php`, one page per first letter) as `sl-lyrics`. It is **opt-in**:
 `sa_enable_springsteenlyrics`, default **off**. Only what each list card shows
 is used; no item detail page is fetched. The bootleg landing page
 `bootlegs.php` (`sl-bootlegs-intro`) has no cards; it is supported only for the
@@ -121,9 +123,30 @@ text after `glyphicon-option-vertical`).
 
 Columns (`_SL_HEADERS`):
 
-| sl-collection | sl-bootlegs |
-|---|---|
-| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Location, Format, Duration, Lossy, Artwork, Info file |
+| sl-collection | sl-bootlegs | sl-brucelegs |
+|---|---|---|
+| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) | Cover, Title, Version, Label, Cat. no., Date, First date, Show, Location, Format (+ the same nine extracted columns) |
+
+- **sl-brucelegs** (`brucelegs.php?cmd=list`, 402 cards on 2026-10-06, `page=N`):
+  - **Cards and fields.** It uses the same `div.blog-post` cards, so the same
+    converter applies with a third kind. Its fields are Label (often a
+    `f_label=` link) and Cat # on separate lines, then Date, Location and
+    Format. The sub-title is the pressing, so it goes in Version as on the
+    collection.
+  - **No flag columns.** "PDF available" and "artwork available" appear on
+    all 402 cards, so they carry nothing and get no column.
+  - **Dates.** The real shapes are `DD Mon YYYY` 169, `YYYY / YYYY` 170,
+    `YYYY` 59, `Mon YYYY` 2, and `Mon YYYY / Mon YYYY` 1, all read by
+    `_slFirstIsoDate()`.
+  - **Locations.** The shape that matters for `splitLocationText`: 221 of
+    402 Locations are one-part descriptions ("Various Location", "Studio /
+    Live", "Unknown location"), which go to Place. 137 end in "USA",
+    sometimes with a show note ("USA (Early Show)"). The Show column falls
+    back to that note, since Date never carries one here.
+  - **Tests and the compact bar.** No fixture card has such a note, so the
+    `@extended` live spec checks it on every real row, and the mutation is
+    recorded `"expect": "pass"`. The compact bar does not apply: the kind is
+    not in its gate's list.
 
 - **Label / Cat. no.** and **Release date / Original year** split the site's
   "Label (Cat #)" and "Release date (Original year)" at the LAST parenthesised
@@ -134,6 +157,47 @@ Columns (`_SL_HEADERS`):
   text ("16-17 Sep 1967", "16 Sep 1967, 30 Sep 1967", "Sep 1967",
   "30 Sep - 1 Oct 1967", "20 Sep 1969 (early show)") into ISO, so a text sort
   is chronological. Date keeps the site's text.
+- **Show**: `_slShowQualifier()` reads the parenthesised notes of the Date
+  text ("early show", "Today Show soundcheck"). Repeats collapse, and
+  different notes are comma-joined. The lyrics pages' Show column uses the
+  same reader.
+- **DD / MM / YYYY / Day / Month** (since 2026-10-06): the MusicBrainz
+  `dateParts` extractor, run on First date through `features.columnExtractors`.
+  Because First date is already ISO (or `YYYY-MM`, or `YYYY`), nothing
+  SL-specific is needed. The pipeline appends extracted columns at the END
+  of the row, not beside their source. That is how every MusicBrainz page
+  does it too.
+- **Place / Locality / Region / Country** (since 2026-10-06):
+  `ColumnDataExtractor.splitLocationText`. It is the plain-text sibling of
+  `splitLocation`, which cannot be used here because it routes
+  `/place/`/`/area/`/`.flag` LINKS and SL's Location is text.
+  `_parseLocationText()` reads one location from the end:
+  - The last part is a US state or Canadian province (Region, with its
+    Country filled in as `United States`/`Canada`), or else the Country.
+  - A state or province just before a Country is the Region.
+  - The next part back is the Locality, and the rest, comma-joined, is the
+    Place.
+  - A ONE-part location is a description and goes to Place ("Various
+    Location", "Studio / Live" on brucelegs).
+  - A parenthesised note is dropped ("USA (Early Show)").
+  - `USA`/`US`/`U.S.A.` read as `United States`
+    (`_LOCATION_TEXT_COUNTRY_ALIASES`).
+  - Several locations joined by ` - ` (the multi-show bootlegs) become
+    parallel `<ul><li>` lists, one item per location in every column. This
+    is the layout `splitLocation` uses for multi-row cells.
+
+  Survey of page 1 of all 21 bootleg categories (2,055 cards, 2026-10-06):
+
+  | Location shape | Cards |
+  |---|---|
+  | `Venue, City, ST` or `Venue, City, Country` | 1,763 |
+  | `–` | 243 |
+  | `City, ST` or `City, Country` | 27 |
+  | ` - ` joined | 20 |
+
+  In that sample, venue names contain `&` but never a comma. State codes and
+  names come from `_LOCATION_TEXT_REGION_CODES` plus the existing
+  `AREA_FLAG_REGION_SUBDIVISIONS`.
 - **Duration**: `integerColumns` `align: ':'`, which is what makes
   `_sortColumnKind()` sort it as a duration. The site's "–" (unknown) is written
   as MusicBrainz's **`?:??`**: `_buildSplitAlignWrap()` emits the separator even
@@ -216,6 +280,96 @@ pushed back at the far right — plain `position: sticky`, on any host.
   `?pg=54&cmd=intro` (2026-10-05).
 - The entry page's 54 pages and 5365 rows trip ⚠️ High Page Count and the
   render-decision dialog at the default thresholds — expected, not a bug.
+
+## The lyrics index — `sl-lyrics`, `features.pageKeys`, `applySlLyricsToTable()`
+
+Added 2026-10-06. The URLs are `lyrics.php?cmd=list&letter=X` and the landing
+page `lyrics.php` (bare or `cmd=intro`). A song page (`?song=`) and
+`cmd=songslistedbyrelease` are NOT this list, and the `@include` line and
+`match` both keep them out.
+
+**Survey** (all 32 letter pages, fetched once at 1 request/s):
+
+- **Letters:** there are 32 (`( 1 3 4 5 6 7 a…z`, no `x`), exactly the links
+  in `div.element-buttons a[href*="letter="]`. The `9`/`x` buttons sit inside
+  an HTML comment, which `querySelectorAll` does not see.
+- **Pages:** every letter is ONE page ("Showing items 1-N of N"; T, the
+  largest, has 514).
+- **Lines:** 3,552 lines and 1,336 distinct titles, with unique `song=`
+  slugs. The landing page's own `chartData` holds the same per-letter counts,
+  which the live spec compares against.
+- **Line shape:** one shape with no exceptions:
+  `<span class="monospaced"><i class="ICON"></i> <a href="lyrics.php?song=SLUG">TITLE</a> [BRACKET]</span><br>`.
+  - ICON `bi-file-earmark-text` (3,352) means lyrics are present. The plain
+    `bi-file-earmark` (200) means "Lyrics not available" (checked on
+    `song=babyme`). That gives the **Lyrics** column, ✓/✗.
+  - A line has 0 or 1 brackets, never 2 (312 have none).
+
+**Fetching by key: `features.pageKeys = { param, selector }`.** Nothing in the
+fetch loop fetched anything but `p = 1..maxPage`, and these pages have no
+number. `_readPageKeys()` reads the matching links of the LIVE page into
+`[{key, href}]`, in order and de-duplicated case-insensitively.
+`startFetchingProcess()` then works as follows:
+
+- **Page count:** `maxPage = keys.length`. This branch sits right after
+  `_isResume`, before every numbered branch. No links at all logs
+  `Lib.warn`.
+- **URL:** page p is `new URL(keys[p-1].href)`, the link ITSELF. The landing
+  page's own URL has no `cmd=list`, so "current URL + letter" would fetch
+  the landing page 32 times.
+- **Reusing the live page:** "is this the live page" compares
+  `keys[p-1].key` with the current URL's `letter`, not `p` with
+  `currentPageNum`. Started on `letter=b`, page 1 is `(`, and the live B
+  list is reused when the loop reaches `b`.
+- **Resume:** `_resumeState.pageKeys` carries the key list, so a resume's
+  `nextPage` indexes the same order.
+- **Progress:** the label reads "Loading H (9 of 32)".
+
+`p` stays a 1-based index, so the counters, the progress bar, `pagesPhrase`,
+the High Page Count dialog (32 < 50 never fires) and "page X of M failed"
+all work unchanged. No MusicBrainz pageType sets `pageKeys`, so every new
+branch is dead code there. The full fixture suite proves this.
+
+**The converter, `applySlLyricsToTable()`** is not `applySlCardsToTable()`:
+the rows are song lines, not cards. It runs at the same three call sites
+(live, fetched, Load from Disk).
+
+- **Finding lines:** lines are found from themselves (`span.monospaced` with a
+  `lyrics.php?song=` link, outside navbar, footer and tables).
+- **Letter:** comes from the page's own `Starting with "X"` heading, so a
+  fetched page needs no URL.
+- **Landing page:** it has no lines but has the letter wall. The LIVE landing
+  page gets an empty table plus `<h2 class="mb-sl-list-heading">All
+  lyrics</h2>` right after the wall, for the fetched letters to fill (the
+  `bs-records` precedent).
+- **Empty fetched page:** a fetched page without lines warns.
+
+**Columns** (`_SL_LYRICS_HEADERS`): Title, Lyrics, Version (the bracket
+verbatim), Type, Artist, Date, Show, No., Letter, then DD … Month from
+`dateParts` on Date. `_slLyricsParseVersion()` fills these from ordered
+rules. Survey counts:
+
+| Type | Rows | Type | Rows |
+|---|---|---|---|
+| Live | 1,792 | Studio | 61 |
+| Original | 337 | Rehearsal | 46 |
+| (none) | 312 | Handwritten | 30 |
+| Album | 254 | Outtake | 30 |
+| Official studio | 217 | Version | 20 |
+| Demo | 107 | Soundcheck | 14 |
+| Unofficial studio | 100 | Draft | 13 |
+| Cover | 93 | Other | about 35 |
+| Other artist album | 91 | | |
+
+- **Artist:** `Original X version` gives X. `X's [word] version` gives X, and
+  the LAST possessive wins ("Manfred Mann's Earth Band's cover version"). The
+  first draft took the first one, and the rendered fixture row caught it.
+- **Date:** `_slFirstIsoDate()` on ANY type. Live shapes: `DD Mon YYYY` 1,734;
+  `Mon YYYY` / `Month YYYY` about 50; `YYYY` 3; `DD Mon YYYY / DD Mon YYYY`
+  5 (first date kept); `18 Oct (early show) 1975` 1.
+- **Show:** `_slShowQualifier()` on Live or Soundcheck lines only, with a
+  "take #N" left out because it belongs in No.
+- **No.:** from `#N`, `version N` or `take N`.
 
 ## The compact category/filter bar — `_slInstallScopeBar()`
 
@@ -467,13 +621,15 @@ leaves the other fixtures byte-identical.
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
 |---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `tests/fixtures/sl-collection.spec.js`      | both pages in one table, exact headers, parsed fields (incl. a FETCHED-page card), item links, lazy thumbnails, Cat. no. text sort, Copies numeric sort, a column filter, zero MusicBrainz/CAA requests with CAA and Relationships switched back ON |
-| `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
+| `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, the DD…Month split agreeing with First date on every row, Show, Location split into Place/Locality/Region/Country (a multi-location card as aligned `<li>`s, every single-location row rebuilt from its parts), a Country filter, `_slFirstIsoDate()` / `_slShowQualifier()` / `splitLocationText` / `_slSplitTrailingParen()` shapes the fixtures lack |
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |
 | `tests/fixtures/sl-scope-bar.spec.js`       | the compact bar: off by default changes nothing; one menu per wall whose entries ARE the wall's links; walls hidden, not removed; the room above the list shrinks; choices keep the other filters and drop the page; category change drops the album; chips; Year range from the slider or the fallback; search, arrows, Escape, outside press; Enter navigates. Bootlegs: one Category menu, forms untouched; counts recorded for whole categories only (not a filtered list, not a search) and shown; the era timeline (one bar per era, chronological, width by span, height per year, unknown dashed); a search page labelled by its heading, a category change dropping the search. Search box: Auto reads five date forms and falls back to titles, slash dates stay text; impossible days and non-dates in Date mode disable Search with a reason; partial dates link their era and a title search; a hand-picked field; Enter navigates; a result page prefills the box; Recent moves a repeat to the front, keeps eight, forgets on request; no box on collection pages. After the fetch: Country, Year and Copies narrow the loaded table to the rows computed from it, no reload, chips and button follow both ways (incl. the column ✕), two table chips clear in place, Format and Category still navigate with their note, a filter carried in the URL still reloads, nothing-in-range shows an empty table; a pull-down opened low fits the window. Landing page: bar off leaves it untouched (no heading, toolbar or class, no error); bar on gives Category ("Choose a list"), search box and Recent, forms and buttons hidden, no fetch button, Data/View hidden, Statistics kept and not recorded; its Category menu has the era timeline with nothing current; its search box searches. Formats guide: the Format menu grouped Audio/Video/Print with a guide line per entry, found by abbreviation; the site panel hidden with the format wall and kept where there is none; every Format cell's tip (compound and counted texts); after the fetch Format filters by first medium ("CD + 2xDVD" is CD); Album and Category still navigate. Mutations: `scripts/mutations/sl-scope-bar.json` |
 | `tests/fixtures/sl-include-regex.spec.js`   | the `@include` header lines                                                                                                                                                                                                                         |
-| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967); Sticky Page Headers under the site's real CSS                                                                                       |
+| `tests/fixtures/sl-brucelegs.spec.js`       | the CD and vinyl bootleg columns across two pages, card fields (no sub-title, a label link, year and month spans), the DD…Month split at each date precision, Location split incl. a description in Place and "USA" as United States, YYYY numeric sort, a Country filter |
+| `tests/fixtures/sl-lyrics.spec.js`          | pageKeys: from the landing page every letter fetched by its OWN link (one request each), from a letter page that letter reused live and the order kept; a failed letter resumes at that letter with the rows kept; the line split (Lyrics ✓/✗, Type, Artist incl. the last possessive, Date, Show, No.), DD…Month at each precision, a Type filter, YYYY numeric sort; `_slLyricsParseVersion()` over 42 bracket shapes |
+| `tests/live/sl-lists.spec.js` (`@extended`) | real pagination: rows = the page's own "Showing items … of N" (album/12i, book, the entry page, aud_live1967, brucelegs); Sticky Page Headers under the site's real CSS; on every real brucelegs row: a Location show note reaches Show, no description or "USA" reaches Country, every dated row has YYYY; the whole lyrics index (32 letters) against the landing page's own per-letter `chartData`, with bounds on "Other" and undated Live lines |
 
 Fixtures are generated: `python3 scripts/build-sl-fixtures.py` splits three
 logged-out snapshots in `debug/` into two 50-card pages each (rewriting only

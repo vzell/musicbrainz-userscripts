@@ -110,5 +110,37 @@
         "spec": "tests/fixtures/sl-include-regex.spec.js",
         "grep": "jungleland.it: list.htm",
         "expect": "fail"
+    },
+    {
+        "name": "the Date column is not split",
+        "why": "jl-list feeds its ISO Date to the MusicBrainz dateParts extractor; without the columnExtractors entry DD/MM/YYYY/Day/Month never appear, and the split spec must miss them.",
+        "edits": [{ "find": "for an undated entry.\n                columnExtractors: [", "replace": "for an undated entry.\n                _columnExtractorsOff: [" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "Date is split into DD",
+        "expect": "fail"
+    },
+    {
+        "name": "Version ignores the _N suffix",
+        "why": "The issue number lives in the link's _N suffix (the title is sometimes cut off before its \"(Version N)\"); a reader that always says 1 must be caught.",
+        "edits": [{ "find": "        return m ? String(parseInt(m[1], 10)) : '1';\n", "replace": "        return '1';\n" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "Version comes from the link",
+        "expect": "fail"
+    },
+    {
+        "name": "Version is read from the resolved URL, not the written href",
+        "why": "The row builder passes getAttribute('href'). Reading anchor.href instead still ends in _N.htm, so the column is unchanged: recorded so the guard is known to be redundant, not missing.",
+        "edits": [{ "find": "[date, year, _jlVersionFromHref(item.anchor.getAttribute('href'))]", "replace": "[date, year, _jlVersionFromHref(item.anchor.href)]" }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "Version comes from the link",
+        "expect": "pass"
+    },
+    {
+        "name": "DD is not an integer column",
+        "why": "Checked 2026-10-06: DD still sorts as a number without its integerColumns entry, because the sort recognises all-digit cells by content; the entry only right-aligns the column. Recorded so the numeric order is known to rest on the sort, not on this entry.",
+        "edits": [{ "find": "{ sourceColumn: 'Version', align: 'R' },\n                    { sourceColumn: 'DD', align: 'R' }, ", "replace": "{ sourceColumn: 'Version', align: 'R' },\n                    " }],
+        "spec": "tests/fixtures/jl-list.spec.js",
+        "grep": "DD sorts as a number",
+        "expect": "pass"
     }
 ]

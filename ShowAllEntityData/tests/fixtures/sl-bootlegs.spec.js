@@ -13,7 +13,34 @@ const { loadSlListPage, renderedSlRows, renderedSlHeaders } = require('../suppor
 const { waitForRenderComplete } = require('../support/browser');
 const { waitForSortSettled, columnFilterInput } = require('../support/filterSortAssertions');
 
-const HEADERS = ['Cover', 'Title', 'Label', 'Date', 'First date', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file'];
+// The converter's twelve columns, then what the standard MusicBrainz
+// extractors append: dateParts on First date, splitLocationText on Location.
+const HEADERS = ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file',
+    'DD', 'MM', 'YYYY', 'Day', 'Month', 'Place', 'Locality', 'Region', 'Country'];
+
+/**
+ * Reads one rendered row's cells as their `<li>` texts (a multi-row cell) or
+ * plain text, by item number — `renderedSlRows()` flattens a list into one
+ * string, which cannot show that two locations stayed apart.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} item
+ * @param {string[]} cols
+ * @returns {Promise<Object<string, string|string[]>>}
+ */
+function rowCellsByItem(page, item, cols) {
+    return page.evaluate(([item, cols]) => {
+        const names = Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
+            .map((th) => th.dataset.colName || th.textContent.trim());
+        const tr = Array.from(document.querySelectorAll('table.tbl tbody tr'))
+            .find((r) => r.querySelector(`a[href*="item=${item}&"]`));
+        if (!tr) return null;
+        return Object.fromEntries(cols.map((c) => {
+            const td = tr.cells[names.indexOf(c)];
+            const lis = td ? td.querySelectorAll('li') : [];
+            return [c, lis.length ? Array.from(lis, (li) => li.textContent) : (td ? td.textContent.trim() : null)];
+        }));
+    }, [item, cols]);
+}
 
 /**
  * Clicks a column header's ▲ (ascending) or ▼ (descending) sort icon.
@@ -134,6 +161,61 @@ test.describe('sl-bootlegs (springsteenlyrics.com bootleg list)', () => {
         expect(dates[0]).toBe('1967-09-16');
     });
 
+    test('First date is split into DD / MM / YYYY / Day / Month, the show note into Show', async ({ page }) => {
+        const rows = await renderedSlRows(page);
+        const byItem = Object.fromEntries(rows.map((r) => [r._item, r]));
+
+        expect(byItem['4554']).toMatchObject({
+            'Show': '', 'DD': '16', 'MM': '9', 'YYYY': '1967', 'Day': 'Saturday', 'Month': 'September',
+        });
+        expect(byItem['6527']).toMatchObject({
+            'Date': '27 Nov 1970 (early show)', 'First date': '1970-11-27', 'Show': 'early show',
+            'DD': '27', 'MM': '11', 'YYYY': '1970', 'Day': 'Friday', 'Month': 'November',
+        });
+
+        // On every row the parts agree with First date, whatever its precision,
+        // and the weekday is there exactly when the date is complete.
+        const bad = rows.filter((r) => {
+            const [y, m, d] = (r['First date'] || '').split('-');
+            return (r.YYYY || '') !== (y || '') ||
+                (r.MM || '') !== (m ? String(Number(m)) : '') ||
+                (r.DD || '') !== (d ? String(Number(d)) : '') ||
+                !!r.Day !== !!d;
+        });
+        expect(bad.map((r) => `${r._item} ${r['First date']}`)).toEqual([]);
+    });
+
+    test('Location is split into Place / Locality / Region / Country', async ({ page }) => {
+        const cols = ['Location', 'Place', 'Locality', 'Region', 'Country'];
+        expect(await rowCellsByItem(page, '4554', cols)).toEqual({
+            Location: 'The Left Foot, Freehold, NJ',
+            Place: 'The Left Foot', Locality: 'Freehold', Region: 'NJ', Country: 'United States',
+        });
+        // Two shows' locations stay apart: one <li> per location, aligned.
+        expect(await rowCellsByItem(page, '6867', cols)).toEqual({
+            Location: 'The Matrix, San Francisco, CA - Newark State College, Union, NJ',
+            Place: ['The Matrix', 'Newark State College'], Locality: ['San Francisco', 'Union'],
+            Region: ['CA', 'NJ'], Country: ['United States', 'United States'],
+        });
+
+        // Every single-location row's parts, put back together, are its Location.
+        const rows = await renderedSlRows(page);
+        const bad = rows.filter((r) => !r.Location.includes(' - ') && r.Location !== '–' && r.Location !== '' &&
+            [r.Place, r.Locality, r.Region, r.Country === 'United States' || r.Country === 'Canada' ? '' : r.Country]
+                .filter(Boolean).join(', ') !== r.Location);
+        expect(bad.map((r) => `${r._item} ${r.Location}`)).toEqual([]);
+    });
+
+    test('a Country column filter keeps only that country', async ({ page }) => {
+        const input = columnFilterInput(page, HEADERS.indexOf('Country'));
+        await input.click();
+        await input.pressSequentially('United States');
+        await expect.poll(async () => {
+            const rows = await renderedSlRows(page);
+            return rows.length > 0 && rows.every((r) => r.Country.includes('United States'));
+        }, { timeout: 15000, message: 'only US shows remain' }).toBe(true);
+    });
+
     test('a column filter narrows the rows', async ({ page }) => {
         const input = columnFilterInput(page, HEADERS.indexOf('Location'));
         await input.click();
@@ -171,6 +253,77 @@ test.describe('sl-bootlegs parsers', () => {
             plain: '1967-09-16', dayRange: '1967-09-16', list: '1967-09-16', range: '1967-09-16',
             crossMonth: '1967-09-30', monthOnly: '1967-09', trailingNote: '1969-09-20',
             longMonth: '1975-09-03', yearOnly: '1975', nothing: '', notAMonth: '',
+        });
+    });
+
+    test('_slShowQualifier reads every show note the site writes', async ({ page }) => {
+        const out = await page.evaluate(() => {
+            const f = window.__saTest.slShowQualifier;
+            return [
+                f('27 Nov 1970 (early show)'),
+                f('30 Jul 2002 (Today Show soundcheck)'),
+                f('15 Aug 1975 (early show), 17 Oct 1975 (early show)'),
+                f('13 Aug 1975 (late show), 14 Aug 1975 (early show)'),
+                f('Live 18 Oct 1975 (early show) version'),
+                f('16 Sep 1967'),
+                f(''),
+            ];
+        });
+        expect(out).toEqual(['early show', 'Today Show soundcheck', 'early show', 'late show, early show', 'early show', '', '']);
+    });
+
+    test('splitLocationText reads every location shape the site writes', async ({ page }) => {
+        const out = await page.evaluate(() => {
+            const f = window.__saTest.splitLocationText;
+            return {
+                usVenue: f('Paramount Theatre, Asbury Park, NJ'),
+                abroad: f('Bellville Velodrome, Cape Town, South Africa'),
+                cityState: f('Holmdel, NJ'),
+                stateWritten: f('Holmdel, New Jersey'),
+                cityCountry: f('Montreal, Canada'),
+                province: f('Northlands Coliseum, Edmonton, Alberta'),
+                provinceAndCountry: f('Maple Leaf Gardens, Toronto, ON, Canada'),
+                dc: f('Capital Centre, Landover, MD'),
+                ampersand: f('Thomas & Mack Center, Las Vegas, NV'),
+                commaInVenue: f('Studio A, The Power Station, New York City, NY'),
+                // springsteenlyrics.com's CD and vinyl bootlegs (brucelegs.php).
+                usaWritten: f('The Spectrum, Philadelphia, Pennsylvania, USA'),
+                showNote: f('Brendan Byrne Arena, East Rutherford, New Jersey, USA (Early Show)'),
+                cityStateUsa: f('New York, New York, USA'),
+                description: f('Various Location'),
+                descriptionSlash: f('Studio / Live'),
+                unknown: f('–'),
+                empty: f(''),
+                three: f("D'Scene, South Amboy, NJ - The Upstage, Asbury Park, NJ - Palalottomatica, Rome, Italy"),
+            };
+        });
+        expect(out).toEqual({
+            usVenue: ['Paramount Theatre', 'Asbury Park', 'NJ', 'United States'],
+            abroad: ['Bellville Velodrome', 'Cape Town', '', 'South Africa'],
+            cityState: ['', 'Holmdel', 'NJ', 'United States'],
+            stateWritten: ['', 'Holmdel', 'New Jersey', 'United States'],
+            cityCountry: ['', 'Montreal', '', 'Canada'],
+            province: ['Northlands Coliseum', 'Edmonton', 'Alberta', 'Canada'],
+            provinceAndCountry: ['Maple Leaf Gardens', 'Toronto', 'ON', 'Canada'],
+            dc: ['Capital Centre', 'Landover', 'MD', 'United States'],
+            ampersand: ['Thomas & Mack Center', 'Las Vegas', 'NV', 'United States'],
+            commaInVenue: ['Studio A, The Power Station', 'New York City', 'NY', 'United States'],
+            usaWritten: ['The Spectrum', 'Philadelphia', 'Pennsylvania', 'United States'],
+            showNote: ['Brendan Byrne Arena', 'East Rutherford', 'New Jersey', 'United States'],
+            cityStateUsa: ['', 'New York', 'New York', 'United States'],
+            // One part is a description, never a country.
+            description: ['Various Location', '', '', ''],
+            descriptionSlash: ['Studio / Live', '', '', ''],
+            unknown: ['', '', '', ''],
+            empty: ['', '', '', ''],
+            three: [
+                ["D'Scene", 'The Upstage', 'Palalottomatica'],
+                ['South Amboy', 'Asbury Park', 'Rome'],
+                // A column with something in any location keeps an <li> per
+                // location, empty where that one has nothing.
+                ['NJ', 'NJ', ''],
+                ['United States', 'United States', 'Italy'],
+            ],
         });
     });
 

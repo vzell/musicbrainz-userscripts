@@ -101,11 +101,29 @@ How it works:
   - Year is the date's year, else a 4-digit section, else empty.
   - A date at the START of a title ("1978-09-19  30th Anniversary
     Rendition", under "others") stays part of the title.
-- **Rows** are Title / Date / Year.
+- **Rows** are Title / Date / Year / Version (`_JL_HEADERS`), and the
+  pipeline appends DD / MM / YYYY / Day / Month after them.
   - Title links to the resolved absolute href with `target="_blank"`: there
     is no `inferioredx1` frame in a standalone tab.
   - Date is ISO, so a text sort is chronological.
   - Year is an `integerColumns` entry (`align: 'C'`).
+  - **Version** comes from `_jlVersionFromHref()`, reading the href AS
+    WRITTEN (`getAttribute`): `…_N.htm` is N, any other `.htm` is 1. This
+    applies to named "others" pages too (`2009 TV Compilation DVD_3.htm`).
+    The title is not used, because the site cuts long titles off ("… (Versi").
+    Checked on 2026-10-06 against all 6,327 entries: no "(Version N)" title
+    disagrees. The title keeps its "(Version N)", as before.
+  - **DD … Month** come from the MusicBrainz `dateParts` extractor, run on
+    Date through `features.columnExtractors`. This is the first foreign-site
+    use of a `ColumnDataExtractor`. It works because the converter writes a
+    plain `table.tbl` before the header scan resolves `sourceColumn` by
+    name. YYYY duplicates Year on dated rows. Year is kept because it also
+    carries the heading's year for an undated entry (e.g. "Santiago, Spain -
+    AUGUST 2, 20092009-08-02 - DVD -" under 2009).
+  - DD sorts as a number even without its `integerColumns` entry (the sort
+    reads all-digit cells by content). The entry only aligns the column.
+    Recorded as an `"expect": "pass"` mutation in
+    `scripts/mutations/jl-support.json`.
 - **Placement:** the table takes the first year heading's place. Every entry
   `<p>` and year-heading `<p>` is removed.
 - **Live document only:**
@@ -137,7 +155,7 @@ so the render-decision dialog appears. That is expected, just as on SL's
 
 | Spec | Pins |
 |---|---|
-| `tests/fixtures/jl-list.spec.js` | setting off: untouched (log line as proof); setting on: only the `<h1>` toolbar; inside the artwork.htm frameset: untouched (log line); one row per fixture entry, exact headers, no entry or year heading left, `<h2>` before the table, jump menu hidden not removed, the shared table CSS applied; title/date/year parsing incl. "(Version N)", the dated Köln row under "others", an undated leading-space entry, `_blank` links; a Year column filter; Date sorts chronologically; zero MusicBrainz/CAA/EAA requests with CAA and Relationships back ON; Save → Load from Disk round trip (twice, the second without a warning); `_jlParseItem` shapes |
+| `tests/fixtures/jl-list.spec.js` | setting off: untouched (log line as proof); setting on: only the `<h1>` toolbar; inside the artwork.htm frameset: untouched (log line); one row per fixture entry, exact headers, no entry or year heading left, `<h2>` before the table, jump menu hidden not removed, the shared table CSS applied; title/date/year parsing incl. "(Version N)", the dated Köln row under "others", an undated leading-space entry, `_blank` links; the Date split into DD/MM/YYYY/Day/Month (empty when undated, consistent with Date on every row); Version from the link (a site-truncated title, a named "others" `_N` page, the `_N` count from the fixture's own links); DD sorts numerically; a Year column filter; Date sorts chronologically; zero MusicBrainz/CAA/EAA requests with CAA and Relationships back ON; Save → Load from Disk round trip (twice, the second without a warning); `_jlParseItem` and `_jlVersionFromHref` shapes |
 | `tests/fixtures/sl-include-regex.spec.js` | the `@include` line: list.htm in (http/https, www/bare, hash, query); artwork.htm, images.htm, item pages, the splash page and look-alike hosts out |
 | `tests/live/jl-list.spec.js` (`@extended`) | the whole real page: rows = its entry-link count, "Köln" decoded from windows-1252 and kept with its date |
 

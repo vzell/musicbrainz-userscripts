@@ -20,6 +20,39 @@ is what the ❓ button opens on GitHub; see docs/claude/toolbar-and-header-ui.md
 `PAGETYPES-TESTING-REFERENCE.org` (every pageType, its URL, its coverage plan),
 `DEBUG-NOTES.md` (dated root-cause log), `REFACTORING.org`, `FORUM.org`
 
+## Scope: one table engine, MusicBrainz first
+
+**The engine is source-agnostic.** Display, sorting, filtering, the 📊
+dropdown, column extraction and the rest work the same way whatever shape the
+data arrived in: a single native table, several grouped tables, or no table at
+all. Non-tabular sources (lists, cards, record pages) are turned into ordinary
+`table.tbl` rows at DOM pre-processing time (`applyListToTable`,
+`applySlCardsToTable()`, `applyJlListToTable()`, `applyBsRecordsToTable()`,
+…), and from there they go through the unchanged pipeline. So supporting a new
+source means writing a converter plus a `pageDefinitions` entry. It never means
+a parallel render, filter or sort path. If a feature only works for one source
+shape, treat that as a bug in the converter, not as something the engine needs
+a special case for.
+
+**MusicBrainz is the primary product; every other site is an add-on.**
+Besides musicbrainz.org the script supports a growing set of Bruce
+Springsteen sites (springsteenlyrics.com, jungleland.it, brucespringsteen.it;
+brucebase.wikidot.com and others are planned). The rules for each new one:
+
+- **Nothing may change for MusicBrainz.** Its behaviour, output and
+  performance stay the same. When a foreign-site change touches shared code
+  (the pipeline, the detection loop, shared CSS, settings), prove MusicBrainz
+  is unaffected with the MusicBrainz fixture suite, not just the new site's
+  specs. When in doubt, add a host-scoped branch instead of generalising
+  shared behaviour.
+- **Opt-in, off by default.** Each site gets its own `sa_enable_<site>`
+  checkbox with `default: false`. Its gate exits before anything visible
+  happens on that host, and its `pageDefinitions` entries carry `host:` so
+  that `_foreignHost` keeps them out of MusicBrainz detection, and keeps
+  MusicBrainz definitions out of the foreign site's detection.
+- **Own topic doc.** Each site gets a `docs/claude/<site>.md` and a row in the
+  doc map below.
+
 ## Abbreviations used in prompts
 
 When a prompt uses one of these abbreviations, read it with the full meaning
@@ -184,6 +217,10 @@ shape:
         // Pagination:
         pageParam: 'pg',              // query parameter naming the page (default 'page';
                                       // springsteenlyrics.com's collection entry page uses 'pg')
+        pageKeys: { param: 'letter', selector: '.element-buttons a[href*="letter="]' },
+                                      // pages named by KEY, not number: each matching link on
+                                      // the live page is one page, fetched by its own href
+                                      // (_readPageKeys(); springsteenlyrics.com's lyrics index)
 
         // Artwork:
         addCAA: true,

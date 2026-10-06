@@ -1,4 +1,4 @@
-* TODO add cover art to the 'release-tracks' PT
+* DONE add cover art to the 'release-tracks' PT
 ** Request (original)
 
 We already have a branch "design/caa-eaa-redesign" for the redesign of the CAA/EAA column on specific PTs.

@@ -1164,7 +1164,8 @@ an import brings your deletions back.
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
 - **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
-  category and the entry page) and bootleg lists, the **jungleland.it**
+  category and the entry page), bootleg lists, CD and vinyl bootleg list
+  and lyrics index, the **jungleland.it**
   bootleg artwork list and the **brucespringsteen.it** record database —
   each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
@@ -1487,7 +1488,7 @@ releases.
 </details>
 
 <details>
-<summary>springsteenlyrics.com collection and bootleg lists</summary>
+<summary>springsteenlyrics.com collection, bootleg and lyrics lists</summary>
 
 Not a MusicBrainz page at all, and **off until you switch it on**: ⚙️ Settings →
 *🎸 springsteenlyrics.com* → *Enable on springsteenlyrics.com collection and
@@ -1497,10 +1498,11 @@ off, the script leaves that site's pages untouched.
 
 Once on, every **collection list** (`collection.php?cmd=list…`, any
 category), the collection's **entry page** (`collection.php`, "Latest
-additions") and every **bootleg list** (`bootlegs.php?cmd=list…`) — with any
-format, country, date, title or other filter you picked on the site — gets a
-heading with the usual toolbar and one action button: **Items** on a
-collection list or the entry page, **Bootlegs** on a bootleg list. Pressing it
+additions"), every **bootleg list** (`bootlegs.php?cmd=list…`) and the **CD
+and vinyl bootleg list** (`brucelegs.php?cmd=list…`) — with any format,
+country, date, title, letter, label or other filter you picked on the site —
+gets a heading with the usual toolbar and one action button: **Items** on a
+collection list or the entry page, **Bootlegs** on either bootleg list. Pressing it
 fetches every page of that list (100 items each), turns the item cards into
 one table, and gives you the usual filters, sorting, column controls, export
 and Save/Load.
@@ -1609,12 +1611,60 @@ The columns come from what each card shows — no item page is opened:
   "I have N copies". Hovering a *Format* cell explains each medium in it from
   the formats guide (e.g. "4xCD + 2xBlu-ray": CD ×4 and Blu-ray ×2), and names
   the format the site files the item under, which is its first medium.
-- **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
-  Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
-  1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those
-  dates as `1967-09-16`, so sorting it is chronological. *Duration* sorts as a
+- **Bootlegs:** Cover, Title, Label, Date, First date, Show, Location, Format,
+  Duration, Lossy, Artwork, Info file, then DD, MM, YYYY, Day, Month and Place,
+  Locality, Region, Country. *Date* is the site's own text ("16-17 Sep 1967",
+  "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those dates as
+  `1967-09-16`, so sorting it is chronological. *Show* holds the note in
+  brackets after a date ("early show", "soundcheck"). *Duration* sorts as a
   time, and an unknown one (the site's "–") shows as `?:??` and stays last.
   *Lossy*, *Artwork* and *Info file* read "yes" when the card carries that note.
+  - **DD … Month** split *First date* into day, month, year, weekday and
+    month name: the same columns MusicBrainz event pages get. A list with a
+    year only fills YYYY alone.
+  - **Place … Country** split *Location* the way MusicBrainz event pages
+    split theirs: "Paramount Theatre, Asbury Park, NJ" gives Paramount
+    Theatre / Asbury Park / NJ / United States. The site writes no country
+    after a US state or Canadian province, so it is filled in, and "USA" is
+    written as United States, so one country has one value to filter on.
+    Region holds a state or province only. A bootleg of several shows gets
+    one line per show in each of the four columns, in the same order.
+- **CD and vinyl bootlegs:** Cover, Title, Version, Label, Cat. no., Date,
+  First date, Show, Location, Format, then the same DD … Month and Place …
+  Country columns as the bootleg lists. *Version* is the pressing ("Limited
+  Edition #200 copies numbered - Picture Disc"). The site's year spans
+  ("1981 / 1984") start *First date* at their first year. A location that
+  is only a description ("Various Location", "Studio / Live") stays whole in
+  *Place* and leaves the other three empty. A note such as "(Early Show)" at
+  the end of the location goes to *Show*. Every card says "PDF available"
+  and "artwork available", so those notes get no column.
+
+**The lyrics index** (`lyrics.php`, or any of its "Lyrics starting with"
+pages) gets one button, **Lyrics**. The site lists its songs one first letter
+per page. Pressing it fetches every letter, whichever page you start on, and
+turns the over 3,500 song lines into one table:
+
+- **Title** links to the song's lyrics page. **Lyrics** is ✓ when that page
+  has lyrics, and ✗ when the site's plain icon says it has none.
+- **Version** is the site's text in brackets, as written ("Live 30 Sep 1987
+  version", "Original Roy Orbison version"). It is also read into:
+  - **Type:** Live, Soundcheck, Original, Cover, Album, Other artist album,
+    Official studio, Unofficial studio, Studio, Demo, Rehearsal, Outtake,
+    Handwritten, Draft, Version or Other, and empty when there is no bracket.
+    Filter or pick one from its 📊 list, e.g. only the Live versions.
+  - **Artist:** the other artist, for "Original Roy Orbison version" or
+    "Patti Scialfa's album version".
+  - **Date:** any date in the text, as `1987-09-30`. A month or a year alone
+    stays as `1987-09` or `1987`.
+  - **Show:** the note in brackets of a live version, such as "early show".
+  - **No.:** the number of "version 2", "#3" or "take #1".
+- **Letter** is the first-letter page the song came from.
+- **DD, MM, YYYY, Day, Month** split *Date*, the same as on the bootleg
+  lists.
+
+While loading, the progress line names the letter it is on ("Loading H (9
+of 32)"). If one letter fails to load, "↻ Load remaining pages" carries on
+from that letter.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.
@@ -1637,7 +1687,7 @@ as it is. To use the script, open the list address above on its own.
 
 Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
-three columns:
+these columns:
 
 - **Title:** the bootleg's title, without the date the site appends to it.
   It links to that bootleg's artwork page, which opens in a new tab.
@@ -1646,6 +1696,17 @@ three columns:
 - **Year:** the date's year. Filter or pick from its 📊 list to see one year,
   which is the job the site's "Choose the year" menu did. That menu is hidden
   once the table is there.
+- **Version:** which issue of that show the entry is: 1 for the first, 2
+  for the site's "(Version 2)", and so on. It is read from the entry's
+  link, so it is right even where the site has cut a long title off before
+  its "(Version N)". Sort by it, or pick *1* from its 📊 list to see one
+  entry per show.
+- **DD, MM, YYYY, Day, Month:** the Date split into its parts, the same
+  columns MusicBrainz event pages get, with the weekday and the month's
+  name. Use them to find, say, every show on a Saturday, or every August
+  show across the years. They are empty where Date is empty. On dated rows
+  YYYY repeats Year; Year alone also carries the year heading of an entry
+  the site files there without a date.
 
 The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table

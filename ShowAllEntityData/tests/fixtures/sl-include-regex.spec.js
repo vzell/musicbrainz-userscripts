@@ -44,6 +44,19 @@ test.describe('@include coverage', () => {
             // The site's own filter forms put cmd=list after another parameter.
             'https://springsteenlyrics.com/bootlegs.php?f_date=1975-08-15&cmd=list&category=f_date',
             'https://springsteenlyrics.com/bootlegs.php?f_title=Born&cmd=list&category=f_title#top',
+            // The CD and vinyl bootlegs, with each of its filters.
+            'https://www.springsteenlyrics.com/brucelegs.php?cmd=list',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&page=3',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_letter=a',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_format=vinyl',
+            'https://springsteenlyrics.com/brucelegs.php?cmd=list&f_label=Good Ship Funke',
+            // The lyrics index: every letter page, and its landing page.
+            'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=a',
+            'https://www.springsteenlyrics.com/lyrics.php?cmd=list&letter=(',
+            'https://springsteenlyrics.com/lyrics.php?letter=b&cmd=list',
+            'https://springsteenlyrics.com/lyrics.php',
+            'https://springsteenlyrics.com/lyrics.php?cmd=intro',
+            'https://springsteenlyrics.com/lyrics.php#top',
             // The collection entry page ("Latest additions") and its own
             // pagination, which uses cmd=intro and pg= (its "»" link puts pg
             // first).
@@ -62,6 +75,8 @@ test.describe('@include coverage', () => {
         const others = [
             'https://springsteenlyrics.com/collection.php?item=9266&category=album&f_format=12i',
             'https://springsteenlyrics.com/bootlegs.php?item=4554&category=aud_live1967',
+            'https://springsteenlyrics.com/brucelegs.php?item=281&f_format=vinyl',
+            'https://springsteenlyrics.com/brucelegs.php',
             'https://springsteenlyrics.com/bootlegs.php?cmd=introx',
             'https://springsteenlyrics.com/bootlegs.php?pg=2',
             'https://springsteenlyrics.com/collection.php?cmd=introx',
@@ -69,7 +84,10 @@ test.describe('@include coverage', () => {
             'https://springsteenlyrics.com/collection.php?item=10265&category=all',
             'https://springsteenlyrics.com/collection.php?cmd=listing',
             'https://springsteenlyrics.com/collection.php?xcmd=list',
-            'https://springsteenlyrics.com/lyrics.php?cmd=list&letter=a',
+            // A song page, and the by-release listing, are not the index.
+            'https://springsteenlyrics.com/lyrics.php?song=babycomeback',
+            'https://springsteenlyrics.com/lyrics.php?cmd=songslistedbyrelease',
+            'https://springsteenlyrics.com/lyrics.php?cmd=listing',
             'https://springsteenlyrics.com/index.php',
             'https://springsteenlyrics.com.example.org/collection.php?cmd=list',
             'https://example.org/springsteenlyrics.com/collection.php?cmd=list',
