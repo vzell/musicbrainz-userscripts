@@ -277,3 +277,48 @@ not the correctness one, since re-arming an anchor whose entity is still cached
 produces no request. `__saTest.artFailedPaths(which)` exists because the set has
 no DOM surface once a filter has removed its rows, and because the 404/503
 distinction is invisible on screen: both render as a release with no artwork.
+
+## Release page Cover art section and the viewer
+
+`org/CAA-release-tracks-handling.org` (mockups R1, R4, R5). On release-tracks,
+after "Show all Tracks for Release", `_releaseArtInsertSection()` puts a
+"Cover art (N)" h2 + `div.mb-release-art-sec` before `h2.tracklist` in
+`startFetchingProcess()`'s render tail, BEFORE `makeH2sCollapsible()`, and opens
+it after. Setting `sa_enable_release_tracks_cover_art` (forced off in
+`FIXTURE_SETTINGS_OVERRIDE`).
+
+- **One record, one cache.** `_artFetchEntityImages(ctx, entityPath)` is the
+  table-free copy of `_artEnrichIcon()`'s three tiers with the same 404 vs
+  429/5xx bookkeeping, so the section and the CAA column share
+  `ctx.imagesCache` and the IDB `metadata` store. `_artEnrichIcon()` is not yet
+  rewired onto it (it is on the table render path — a separate, mutation-checked
+  step). The viewer reads `ctx.imagesCache` and makes NO request of its own.
+- **The ★ reads `front`**, never the Front type — same rule as the summary panel.
+- **Older records carry only `small`/`large` thumbnails** (probed 2026-10-06);
+  every URL picker falls back to them. Every archive URL is `http:` and is
+  stripped to `//`.
+- **The section is not a table.** Never cloned, so its one click listener on
+  the section survives every re-render; the hover card is `data-mbtt` on each
+  tile, shown by the shared tooltip engine (positioning, clamping and the tap
+  guard come free). The string has no whitespace between tags:
+  `#mb-stat-tooltip` is `white-space: pre-wrap`.
+- **Tiles must survive a failed thumbnail.** A 404 `<img>` renders alt text and
+  ignores `aspect-ratio`; the link box is the square and clips. The sheet is
+  capped at `calc(100vw - 32px)` because the tracklist container can be
+  thousands of px wide.
+- **The viewer owns every key while open, from `window` capture.** Everything
+  else that listens for keys does so on `document` (Ctrl+M,
+  `initKeyboardShortcuts()`, the navigation guard's Tab trap, the VZ_MBLibrary
+  dialogs), so a window-capture listener with `stopImmediatePropagation()` runs
+  first and stops them all; it also traps Tab itself. Registered on open,
+  removed on close. Viewer keys act only without Ctrl/Cmd/Alt, so browser
+  shortcuts keep their default.
+- **The tab click is intercepted on `window` capture too.** After a render,
+  `initNavigationGuard()`'s anchor guard (document capture) asks "leave this
+  page?" for any link to another path — before any handler further down could
+  act. Plain left click only; Ctrl/Cmd/Shift/Alt/middle clicks and a click
+  while nothing is loaded go their normal way (including that confirm).
+
+Covered by `release-tracks-cover-art.spec.js`, `release-tracks-cover-art-viewer.spec.js`
+and `release-tracks-cover-art.mobile.spec.js`; mutation lists
+`release-tracks-cover-art.json`, `-p2.json` and `-p3.json`.

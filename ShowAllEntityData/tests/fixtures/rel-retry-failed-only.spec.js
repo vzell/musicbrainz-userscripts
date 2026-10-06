@@ -137,7 +137,7 @@ test.describe('Relationships: retrying recovers the failures, not the whole tabl
         async ({ page }) => {
             test.setTimeout(180000);
             const failing = new Set();
-            const ws2 = await loadExpandedRelPage(page, failing);
+            await loadExpandedRelPage(page, failing);
             const mbids = await rowMbids(page);
             expect(mbids).toHaveLength(SERIES_ROWS);
 
@@ -151,6 +151,13 @@ test.describe('Relationships: retrying recovers the failures, not the whole tabl
             const settled = await shape(page);
             expect(settled.failed, 'three cells failed').toBe(3);
             expect(settled.done, 'the other nine loaded').toBe(SERIES_ROWS - 3);
+
+            // Single table (org/live-bootleg.org 1): with no global control row
+            // the page-wide ⚠⟳ sits in table 0's run, so a per-table ⚠⟳ for
+            // table 0 would be its identical twin in the same run.
+            await expect(page.locator(RETRY_FAILED)).toHaveText('⚠⟳ 3');
+            await expect(page.locator('[id^="mb-rel-retry-failed"]'),
+                'one ⚠⟳, not a page-wide and a per-table one side by side').toHaveCount(1);
 
             failing.clear();                         // the Web Service recovers
             const before = ws2b.length;

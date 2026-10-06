@@ -31,6 +31,7 @@ project skill `add-finding` (`.claude/skills/add-finding/SKILL.md`).
 | `enabled()` | Optional; the finding's own feature setting (`sa_enable_pending_edits_section`, `sa_enable_barcode_validation`). |
 | `cols(name, plan)` | Which columns are tested. `'*'` = every cell of a row that passes `rowGate()`. |
 | `test(cell, row, plan)` | The detector. |
+| `detail(cell, row, plan)` | Optional, cell scope: this cell's own text, appended to its tooltip line after the label (`rec-event-mismatch`/`rec-place-mismatch` name both values). Same source-row rule as `test()`. |
 | `tint(cell)` | Whether this finding paints. `false` for the families that already had CSS (length, video, no-work, live titles); the rest read their `sa_findings_tint_*` setting. |
 
 **`test()` reads SOURCE-row data, never post-render decoration.** The stamp
@@ -53,7 +54,12 @@ Recording comments add `plan.recComment(name)` (`_recCommentColumnKind()`:
 `'plain'`/`'link'`/`null`, read per cell via `_findingRecComment()`),
 `plan.recPlainIdx` (the row's "Disambiguation" cell, which `rec-date-*`
 compares with the "Recording date" cell they test and tint) and
-`plan.eventStateIdx` (for `event-state-missing` on Event-Country). The
+`plan.eventStateIdx` (for `event-state-missing` on Event-Country).
+`rec-event-mismatch`/`rec-place-mismatch` read the same `plan.recPlainIdx`
+through `_rowRecCommentEvent()` (only the full "<type>, DATE: Venue, …" form
+names an event and a venue) and compare it with the event/place names of the
+cell they test (`_findCellLinkedNames()`; a place's name is its `<bdi>`, the
+text before " in …"). The
 `rec-date-*` tint deliberately sits on the Recording date cell, not on the
 comment cell: that one may already carry `data-mb-live-flag`, which
 suppresses the generic tint.
@@ -80,6 +86,21 @@ generic `::after` selector carries a `:not()`, so it out-ranks the family's
 `data-mb-len-flag`, `data-mb-video-flag="mismatch"`, `data-mb-work-flag`,
 `data-mb-live-flag`; a new family attribute must be added to that check in
 `_writeFindingAttrs()` and to the track-target rule's `:not()` list.
+
+The same pass stamps each release-tracklist row's `data-mb-event-key`
+(`_eventKeyColsForTable()`/`_stampRowEventKey()`), which the h3 "🎪 N events"
+badge (`_updateMediumEventBadges()`, memoized on `_findingStampGen`) and the
+📊 "Event info - Events on this medium" section count (org/live-bootleg.org 3).
+
+Since item 4 the stamp runs in TWO passes, both through `_forEachStampRow()`
+(live row, master row, filtered-out owner rows): pass 1 writes every event
+key page-wide, `_computeMainEventCtx()` then decides the main event from the
+release group title in the page's JSON (by DATE, for a valid live title; the
+table's `data-mb-multi-event`, which the green "#" needs, only with 2+ dates on
+the page), and pass 2 writes `data-mb-main-event` before the
+findings, because `rg-title-mismatch` reads it. `_forEachStampRow()` reaches
+a live clone AND its master, so anything that COUNTS rows there must dedupe
+by `data-mb-row-idx` (`_computeMainEventCtx()` once counted 76 tracks for 38).
 
 Attributes only, so none of the "writing cell text after the render" duties
 apply (docs/claude/filter-and-cache-invariants.md) — except the 📊 cache,

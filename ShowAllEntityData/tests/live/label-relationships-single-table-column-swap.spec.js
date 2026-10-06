@@ -1,6 +1,5 @@
 'use strict';
 
-const path = require('path');
 const { test, expect } = require('../support/test');
 const { loadUserscriptPage, addRequiredLibs, MB_LIBRARY_PATH, USERSCRIPT_PATH } = require('../support/loadPage');
 const { collectPageErrors } = require('../support/liveAssertions');

@@ -105,7 +105,7 @@ function claudeSinceBoot(uptimeHours) {
  */
 function hostRuntimeState() {
     const uptimeHours = Math.round(os.uptime() / 360) / 10;
-    let claudeResident = null;
+    let claudeResident;
     try {
         const out = execSync('ps -C claude -o etimes=', {
             stdio: ['ignore', 'pipe', 'ignore'],

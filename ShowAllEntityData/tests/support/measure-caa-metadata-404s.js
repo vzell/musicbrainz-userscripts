@@ -116,7 +116,7 @@ async function measure(browser, t) {
     const page = await context.newPage();
     const startedAt = new Date().toISOString();
     const roots = new Map();          // root request URL -> { entity, status }
-    let lastChange = Date.now();
+    let lastChange;
 
     page.on('response', (resp) => {
         const req = resp.request();

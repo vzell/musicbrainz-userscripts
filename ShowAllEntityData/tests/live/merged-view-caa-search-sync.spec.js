@@ -335,7 +335,7 @@ test.describe('merged discography view: CAA search-text sync', { tag: '@extended
 
         // ── Filter that table's CAA column and look for the row ──────────────
         const caaColIdx = await page.evaluate((ti) => {
-            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             const table = document.querySelectorAll('table.tbl')[ti];
             if (!table) return -1;
             return Array.from(table.querySelectorAll('thead th')).findIndex((t) => strip(t.textContent) === 'CAA');

@@ -52,12 +52,19 @@ async function lengthValues(page) {
     });
 }
 
-/** Reads every millisecond toggle button's rendered state. */
+/**
+ * Reads every millisecond toggle button's rendered state. `title` is the
+ * tooltip text: while the pointer rests on a `[data-mb-tip]` element the
+ * "Liner notes" engine holds that text in `data-mb-tip-saved` and empties
+ * `title` (see `_setTip()`). Right after a click the pointer is still on the
+ * button; these tests used to pass only because a layout shift moved the
+ * button out from under it (2026-10-05).
+ */
 async function toggleState(page) {
     return page.evaluate(() => Array.from(document.querySelectorAll('.mb-ms-col-hdr-btn')).map((b) => ({
         glyph: b.textContent.trim(),
         pressed: b.getAttribute('aria-pressed'),
-        title: b.title,
+        title: b.title || b.dataset.mbTipSaved || '',
     })));
 }
 

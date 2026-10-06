@@ -59,12 +59,10 @@ const ARM = process.argv.includes('--arm=collapsed') ? 'collapsed' : 'expanded';
     let last = -1, stable = 0;
     const deadline = Date.now() + 60000;
     while (Date.now() < deadline && stable < 4) {
-        /* eslint-disable no-await-in-loop */
         const n = await page.locator('table.tbl tbody td.mb-rel-cell a').count();
         stable = (n === last && n > 0) ? stable + 1 : 0;
         last = n;
         await page.waitForTimeout(250);
-        /* eslint-enable no-await-in-loop */
     }
     console.log('icons rendered:', last);
 
@@ -116,14 +114,12 @@ const ARM = process.argv.includes('--arm=collapsed') ? 'collapsed' : 'expanded';
         });
         const hits = [];
         for (const m of mbids) {
-            /* eslint-disable no-await-in-loop */
             for (const et of ['release', 'release-group', 'label', 'work']) {
                 const rec = await new Promise((r) => {
                     const q = store().get(`${et}:${m}`); q.onsuccess = () => r(q.result);
                 });
                 if (rec) hits.push(`${et}:${m}`);
             }
-            /* eslint-enable no-await-in-loop */
         }
         db.close();
         return { version: db.version, count, someKeys, hits };

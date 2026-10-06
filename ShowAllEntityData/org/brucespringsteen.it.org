@@ -1,0 +1,107 @@
+* TODO brucespringsteen.it
+** DONE i
+
+Give the website https://www.brucespringsteen.it (https://brucespringsteen.it redirects) the same treatment as what
+we've done with the https://www.jungleland.it/html/list.htm website, albeit not so complex
+
+1.)
+
+Parse the URL https://www.brucespringsteen.it
+
+2.)
+
+generate two action buttons "Unofficial" and "Official"
+
+a.)
+
+for both cases make sure that all checkboxes are checked, before someone clicks the buttons
+
+#+begin_example
+<tr>
+    <td width="50%"><font size="2">
+      <input type="checkbox" name="C0" value="0">Album<br>
+      <input type="checkbox" name="C1" value="1">Vinyl 7 in.<br>
+      <input type="checkbox" name="C2" value="2">CD<br>
+      <input type="checkbox" name="C3" value="3">miniCD 3in.<br>
+      <input type="checkbox" name="C4" value="4">Vinyl LP<br>
+      <input type="checkbox" name="C5" value="5">Tape
+      </font></td>
+    <td width="50%"><font size="2">
+      <input type="checkbox" name="C6" value="6">Vinyl 12 in.<br>
+      <input type="checkbox" name="C7" value="7">VHS<br>
+ 	  <input type="checkbox" name="C8" value="8">CD-R<br>
+      <input type="checkbox" name="C9" value="9">DVD<br>
+      <input type="checkbox" name="C10" value="10">miniCD 5in.<br>
+      <input type="checkbox" name="C11" value="11">VA Album
+      </font></td>
+  </tr>
+#+end_example
+
+b.)
+
+Our userscript should take over and render the data in a tabular format.
+
+So e.g.
+
+The data
+
+#+begin_example
+<p><b>2 CD-R (Anubis Records) <br>
+<a href="detrec.aspx?code=CR1AD1">1001 AMERICAN DREAMS</a><br>
+Mx:2211/12</b><br>
+</p>
+#+end_example
+
+should be rendered in the following columns
+
+#+begin_example
+Title: 1001 AMERICAN DREAMS
+Matrix: 2211/12
+Format: 2 CD-R
+Label: Anubis Records
+Code: CR1AD1
+#+end_example
+
+2.)
+
+The whole feature should be configurable (default off, as the main userscript is normally used just with MusicBrainz)
+
+*** Answer (2026-10-06, branch =feature/bs-support=)
+
+Done as the opt-in pageType =bs-records=. The new setting is
+=sa_enable_brucespringsteen= (⚙️ → 💿 BRUCESPRINGSTEEN.IT), default OFF.
+Details: =docs/claude/brucespringsteen.md=, and the dated entry in
+=DEBUG-NOTES.md=.
+
+- It works on records.aspx opened as its own tab. It stays out of the 222 px
+  frame of =Blegsdx.htm=; decided 2026-10-06. The two all-formats lists:
+  - https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 (unofficial, 1878)
+  - https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0 (official, 1186)
+- 2.) Two buttons, *Unofficial* and *Official*. Each FETCHES its kind with
+  every format, whatever the page itself shows.
+- 2a.) Every format box is ticked when the page loads, and again on a press;
+  the press also selects the matching Unofficial/Official radio.
+- 2b.) The records become a table:
+  - Unofficial: Title, Matrix, Format, Label, Code, Notes.
+  - Official, whose records name a country, a catalogue number and PROMO
+    instead: Title, Catalogue, Format, Country, Promo, Code, Notes.
+  - Notes is the italic line, e.g. "Lower 'Bruce Springsteen' - Little
+    Steven Mix".
+  - The example record comes out as asked: Title 1001 AMERICAN DREAMS,
+    Matrix 2211/12, Format 2 CD-R, Label Anubis Records, Code CR1AD1.
+- Tests:
+  - =tests/fixtures/bs-records.spec.js= on three whole curl captures
+    (=scripts/build-bs-fixtures.py=);
+  - an =@include= test;
+  - =scripts/mutations/bs-support.json=;
+  - the live =@extended= spec =tests/live/bs-records.spec.js=.
+
+** DONE Test URLs for your browser check:
+
+#+begin_example
+- Unofficial: https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0
+- Official: https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0
+#+end_example
+
+** TODO add detail page handling, with tracklist and optionally covers
+

@@ -592,3 +592,50 @@ Rules that fail silently if broken:
 Spec: `release-tracks-track-target.spec.js`; mutations
 `scripts/mutations/release-tracks-track-target.json` (the `!important` entry is
 `expect: pass` — see its `why`).
+
+## Live recordings: credit dates, events per medium, event/place vs comment
+
+org/live-bootleg.org item 3. **Performer** joined the live-date check
+(`_liveDateCtx` passed to its `_buildCreditListTd()`), so six columns are
+checked now. Each row is stamped with `data-mb-event-key` in
+`stampFindings()`'s pass (first "Recorded at event" name, else the event its
+comment names, else "Recording date"); a medium with 2+ keys gets the
+"🎪 N events" h3 badge and the 📊 "Event info - Events on this medium"
+section on Disambiguation. `rec-event-mismatch`/`rec-place-mismatch` compare
+the comment with the event name and with the place name (= the venue, the
+location's first part). See docs/claude/findings.md.
+
+**Item 4: the release group decides the main event.** `initReleaseGroupLink()`
+(page init, and again at the end of every `stampFindings()`) rewrites the
+subheader's "see all versions" link from `release.releaseGroup` in the page's
+JSON (`_releaseGroupInfo()`, no request), loads its preview table with one
+WS/2 release browse on the first hover (`_rgPreviewLoad()`, kept only on
+success), and adds the 4c ⚠️. `data-mb-main-event="0"` greens the "#" cell
+(CSS placed before the track-target rule, which out-ranks it).
+`rg-title-mismatch` (⚠️) compares main-event tracks with
+`_rgTitlePartForDate()`. Spec `release-rg-main-event.spec.js`; probe
+`scripts/probe-rg-release-browse.py`.
+
+**Per-event tints and the "#" card (follow-up to item 4).** `_computeMainEventCtx()`
+numbers the events off the main one by date (`eventIdx`); `_stampMainEventRow()`
+writes `data-mb-event-idx`/`data-mb-event-tint` on the "#" CELL (its
+`::before` "E<n>" chip reads them with `attr()`, which cannot reach the row).
+Tints come from `_EVENT_TINTS`, which the CSS template also generates its
+rules from. The "#" card is wired ONCE, delegated (`initEventRgTooltip()`):
+a `pointerover` writes `data-mbtt` just before the engine's `mouseover`,
+and only that hover may START a lookup (`_eventRgCardHtml(td, true)`) — a
+repaint that restarted one looped forever on a 503 (caught by the spec).
+All requests share `_rgWsGet()`'s queue (≥1.1 s apart). A hit counts only
+when its title IS the event name: terms mode scores wrong concerts 100
+(`scripts/probe-rg-event-search.py`). Spec
+`release-event-colours-rg-tooltip.spec.js` on `release-tracks-brixton-night.html`.
+
+**Fixture trap: a freshly fetched release page re-renders itself.**
+`tests/fixtures/release-tracks-multi-event.html` came from
+`scripts/fetch-release-fixture.js`, so its `static.metabrainz.org` bundle
+hashes are CURRENT: loaded as a fixture, MusicBrainz's own release script
+downloads and re-renders the tracklist from JSON, discarding the recording
+comments `scripts/build-multi-event-fixture.py` put into the server markup.
+Older fixtures name bundles that no longer exist, which is the only reason
+they never hit this. `release-tracks-event-consistency.spec.js` aborts
+`static.metabrainz.org/**`; any spec on a newly fetched release page must too.

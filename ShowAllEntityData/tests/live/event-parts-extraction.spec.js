@@ -36,7 +36,7 @@ const SHOW_ALL_BUTTON = 'button[data-label="Show all Recordings for Work"]';
  */
 async function getEventCells(page, recordingId, columnNames) {
     const colIndexes = await page.evaluate((colNames) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         const headers = Array.from(document.querySelectorAll('table.tbl thead th'));
         return colNames.map((name) => headers.findIndex((t) => strip(t.textContent) === name));
     }, columnNames);

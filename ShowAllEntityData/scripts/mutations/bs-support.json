@@ -1,0 +1,173 @@
+[
+    {
+        "name": "the opt-in gate never stops the script",
+        "why": "brucespringsteen.it support is opt-in (sa_enable_brucespringsteen, default off). Without the gate the script puts its toolbar on the site's page and ticks its form with the setting off.",
+        "edits": [{ "find": "if (_isBsHost && Lib.settings.sa_enable_brucespringsteen !== true) {", "replace": "if (false) {" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "with the setting off",
+        "expect": "fail"
+    },
+    {
+        "name": "the frame gate never stops the script",
+        "why": "records.aspx is normally the 222 px left frame of Blegsdx.htm, and the header has no @noframes. Without the frame gate the script injects its toolbar there and ticks the frame's form.",
+        "edits": [{ "find": "if (_isBsHost && window.top !== window) {", "replace": "if (false) {" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "inside the Blegsdx.htm frameset",
+        "expect": "fail"
+    },
+    {
+        "name": "no <h1> is injected for the toolbar",
+        "why": "The page has no heading; without the injected <h1> the init block stops at the required-elements check and neither button is offered.",
+        "edits": [{ "find": "        headerContainer = _bsPrepareLivePage();", "replace": "        headerContainer = null;" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "with the setting on",
+        "expect": "fail"
+    },
+    {
+        "name": "the form's format boxes are not ticked at init",
+        "why": "The org file asks for every checkbox to be ticked before a button is pressed; the frameset's default list ticks Vinyl LP alone.",
+        "edits": [{ "find": "        _ensureBsStyle();\n        _bsCheckAllFormats();\n", "replace": "        _ensureBsStyle();\n" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "with the setting on",
+        "expect": "fail"
+    },
+    {
+        "name": "no second tick after the site's own onload",
+        "why": "Tampermonkey's document-idle can come before the page's onload=\"setup(...)\", which unticks the boxes again; the load listener re-ticks them. The fixture harness injects the script AFTER load (readyState is already 'complete', so the listener is never added), so no fixture spec can order the two: recorded honestly as invisible. Checked by hand in a real browser instead.",
+        "edits": [{ "find": "            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });", "replace": "" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "with the setting on",
+        "expect": "pass"
+    },
+    {
+        "name": "the pressed kind is not ticked at click time",
+        "why": "At click time the form is made to show what is fetched, including the Unofficial/Official radio; without it the radio stays on the page's own kind.",
+        "edits": [{ "find": "            _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);\n", "replace": "" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every official record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the fetched page is not converted",
+        "why": "Both buttons FETCH page 1; its records are the table's rows. Without the pagination-loop call site the fetched document has no table.tbl and the render has nothing to show.",
+        "edits": [{ "find": "                if (doc !== document && activeDefinition.features?.bsRecordsToTable) {\n                    applyBsRecordsToTable(activeDefinition, doc);\n                }", "replace": "" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every unofficial record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the live page gets no table to render into",
+        "why": "renderFinalTable() needs a table.tbl tbody in the live DOM; the site has none. Without the click-time conversion the render aborts.",
+        "edits": [{ "find": "            _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);\n            applyBsRecordsToTable(activeDefinition);\n", "replace": "            _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);\n" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every unofficial record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the live page's own records stay under the table",
+        "why": "The live page lists its own filter's records (the LP list); they must go once the table takes their place.",
+        "edits": [{ "find": "        records.forEach(p => p.remove());\n        furniture.forEach(el => el.remove());", "replace": "        furniture.forEach(el => el.remove());" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every unofficial record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the extra max-page request is made",
+        "why": "Without non_paginated, button params send the fetch through fetchMaxPageGeneric(), which loads the same 250 KB page once more only to find no pagination.",
+        "edits": [{ "find": "            match: (path) => path.toLowerCase() === '/db/records.aspx',\n            non_paginated: true,", "replace": "            match: (path) => path.toLowerCase() === '/db/records.aspx'," }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every unofficial record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the Official button carries the unofficial kind",
+        "why": "The kind picks both the fetched list (tipe=-2) and the column set; the official columns must follow the button.",
+        "edits": [{ "find": "                    features: { bsRecordsToTable: 'official' }", "replace": "                    features: { bsRecordsToTable: 'unofficial' }" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every official record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the Official button fetches the unofficial list",
+        "why": "tipe=-2 is what makes the server list official records.",
+        "edits": [{ "find": "                    params: { tipe: `-2,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' },", "replace": "                    params: { tipe: `-1,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' }," }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every official record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "PROMO is left in the country",
+        "why": "An official promo's head ends in a PROMO span; without the split the Country cell reads 'Germany) PROMO'-like text and Promo is never 'yes'.",
+        "edits": [{ "find": "        const pm = t.match(/^(.*?)\\s*\\bPROMO$/);", "replace": "        const pm = null;" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "country, catalogue number, promo flag",
+        "expect": "fail"
+    },
+    {
+        "name": "the format runs to the LAST parenthesis",
+        "why": "A label with its own parentheses ('UPC (?)') must stay whole; a greedy format group splits at its inner '('.",
+        "edits": [{ "find": "        const m = t.match(/^(.*?)\\s*\\((.*)\\)$/);\n        return m ? { format: m[1].trim(), party: m[2].trim(), promo }", "replace": "        const m = t.match(/^(.*)\\s*\\((.*)\\)$/);\n        return m ? { format: m[1].trim(), party: m[2].trim(), promo }" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "record fields land in their own columns",
+        "expect": "fail"
+    },
+    {
+        "name": "'Mx : ' with spaces is not read",
+        "why": "The site writes both 'Mx:' and 'Mx : ' (378 of 1876), and 'Catalogue:' and 'Catalogue : '.",
+        "edits": [{ "find": "        const numberMatch = collapse(after).match(/^(?:Mx|Catalogue)\\s*:\\s*(.*)$/i);", "replace": "        const numberMatch = collapse(after).match(/^(?:Mx|Catalogue):(.*)$/i);" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "record fields land in their own columns",
+        "expect": "fail"
+    },
+    {
+        "name": "the Title link keeps the site's base target",
+        "why": "Standalone there is no 'principale' frame; the page's <base target> would open each record in a window of that name. The spec pins target=_blank.",
+        "edits": [{ "find": "        link.target = '_blank';\n        link.rel = 'noopener';\n        link.textContent = r.title;", "replace": "        link.rel = 'noopener';\n        link.textContent = r.title;" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "record fields land in their own columns",
+        "expect": "fail"
+    },
+    {
+        "name": "the navigation guard ignores the query on brucespringsteen.it",
+        "why": "Every list is records.aspx?tipe=...; comparing the path only, a predefined-filter link would drop a loaded table without asking.",
+        "edits": [
+            { "find": "const currentBase = window.location.origin + window.location.pathname + ((_isSlHost || _isBsHost) ? window.location.search : '');", "replace": "const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');" },
+            { "find": "const targetBase  = targetUrl.origin  + targetUrl.pathname + ((_isSlHost || _isBsHost) ? targetUrl.search : '');", "replace": "const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');" }
+        ],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "predefined-filter link",
+        "expect": "fail"
+    },
+    {
+        "name": "Load from Disk does not convert (no base feature)",
+        "why": "Load from Disk runs with the base definition, not a button's; without bsRecordsToTable there the fresh page's records stay and the table is fabricated elsewhere.",
+        "edits": [{ "find": "                bsRecordsToTable: true,\n", "replace": "" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "a reopened Official list",
+        "expect": "fail"
+    },
+    {
+        "name": "the converter is not called on Load from Disk",
+        "why": "After a reload the live page holds the site's record paragraphs again.",
+        "edits": [{ "find": "            // And for brucespringsteen.it: the reloaded page holds the site's\n            // record paragraphs again; an empty table takes their place.\n            if (activeDefinition.features?.bsRecordsToTable) {", "replace": "            if (false) {" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "a reopened Official list",
+        "expect": "fail"
+    },
+    {
+        "name": "the shared table look is not installed on brucespringsteen.it",
+        "why": "The site has no MusicBrainz CSS; without _ensureForeignTableStyle() the table has no borders or padding.",
+        "edits": [{ "find": "    function _ensureBsStyle() {\n        _ensureForeignTableStyle();", "replace": "    function _ensureBsStyle() {" }],
+        "spec": "tests/fixtures/bs-records.spec.js",
+        "grep": "every unofficial record of every format",
+        "expect": "fail"
+    },
+    {
+        "name": "the @include line is missing",
+        "why": "Tampermonkey would never inject the script on records.aspx; only the regex spec can see it.",
+        "edits": [{ "find": "// @include      /^https?:\\/\\/(?:www\\.)?brucespringsteen\\.it\\/(?:DB|db)\\/records\\.aspx(?:[?#].*)?$/\n", "replace": "" }],
+        "spec": "tests/fixtures/sl-include-regex.spec.js",
+        "grep": "brucespringsteen.it: DB/records.aspx",
+        "expect": "fail"
+    }
+]

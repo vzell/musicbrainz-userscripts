@@ -1,0 +1,1469 @@
+{
+ "created": "2026-10-04T23:56:09.376Z",
+ "count": 107,
+ "offset": 0,
+ "release-groups": [
+  {
+   "id": "5810cbd9-2f68-4012-af24-adae55723961",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 100,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 4,
+   "title": "2005‐05‐28: Royal Albert Hall, London, England, UK",
+   "first-release-date": "2005-05",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "19732d13-d86a-4990-b9a5-92e0c6c05a7f",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "London, 28 May, 2005",
+     "status": "Bootleg"
+    },
+    {
+     "id": "c05906ba-a9fa-4bb5-81de-b48b999b3e55",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Devils & Dust Tour: Royal Albert Hall: London GBR: RAH2: May 28, 2005",
+     "status": "Bootleg"
+    },
+    {
+     "id": "d60e5434-7f53-4b3c-9c64-8889b331fb26",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Devils & Dust Tour: Royal Albert Hall: London GBR: RAH2: May 28, 2005",
+     "status": "Bootleg"
+    },
+    {
+     "id": "85fd6156-3549-46a7-8abd-26c06b0f1549",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Yabba‐Dabba‐Do",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    }
+   ]
+  },
+  {
+   "id": "3b1d7ff9-be9c-4616-909c-a5ddb7eaa185",
+   "type-id": "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+   "score": 100,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "2005‐05‐27/28: Royal Albert Hall, London, England, UK",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation",
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "dd2a21e1-0c00-3729-a7a0-de60b84eb5d1",
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "44877d1f-45f4-446b-9de5-1e9db39632fd",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at Royal Albert Hall 2005: Complete Two Nights Performance: May 27th and 28th",
+     "status": "Bootleg"
+    }
+   ]
+  },
+  {
+   "id": "dd68de0b-64b2-4239-bef6-a881b690ca0c",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 100,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 3,
+   "title": "2005‐05‐27: Royal Albert Hall, London, England, UK",
+   "first-release-date": "2005-05",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "e1ef3511-a80a-44bb-9fd8-3c93c70f62ab",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Devils & Dust Tour: Royal Albert Hall: London GBR: RAH1: May 27, 2005",
+     "status": "Bootleg"
+    },
+    {
+     "id": "da60adf2-2805-493e-a252-418704a22f95",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Long Time Comin’",
+     "status": "Bootleg"
+    },
+    {
+     "id": "8eb01490-04dd-4247-9c66-a49ebdef69b3",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Hotter Than Hell",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    }
+   ]
+  },
+  {
+   "id": "32430314-d05a-4089-9717-2978eacd5b44",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 8,
+   "title": "1985‐07‐04: Wembley Stadium, London, England, UK",
+   "first-release-date": "1985",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "a5d27604-cd15-4907-a59e-655daac045f7",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "4th of July",
+     "status": "Bootleg"
+    },
+    {
+     "id": "c89a3fde-09b8-49e5-aa81-6d75aef1932c",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Born on the Fourth of July",
+     "status": "Bootleg"
+    },
+    {
+     "id": "139f32f1-fa1a-4747-a3e4-c9ebe444fdb2",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Wembley 1985",
+     "status": "Bootleg"
+    },
+    {
+     "id": "4c3e0150-4359-4988-9b6a-36ce6e93f174",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Wembley Stadium",
+     "status": "Bootleg"
+    },
+    {
+     "id": "15816d49-dd5d-4f39-9c1d-c9c62634f473",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Independence Day: Wembley Stadium July 4 1985",
+     "status": "Bootleg"
+    },
+    {
+     "id": "e5738a23-87bb-4753-9934-f5eeb95ee97c",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Independence Day: Wembley Stadium July 4 1985",
+     "status": "Bootleg"
+    },
+    {
+     "id": "9b185d6c-f774-452f-b80e-174438d1a8e3",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Independence Night",
+     "status": "Bootleg"
+    },
+    {
+     "id": "4b37155c-4b18-4828-9f81-b9968674a97b",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Wembley 1985",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "pop"
+    }
+   ]
+  },
+  {
+   "id": "499a96d4-f934-34a8-a9f7-0636ff42ba6b",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "6dcbb473-025f-3f38-a3a5-8af35818c273",
+   "count": 1,
+   "title": "1996‐04‐24: Brixton Academy, London, England, UK",
+   "first-release-date": "1996",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "e384f062-85a3-4141-9122-0814d987cda3",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Brixton Night",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 3,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  },
+  {
+   "id": "33019afd-f41b-4c13-9d36-a8d942f12cb8",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "ab3af17a-f14a-3d68-98ae-52e335334432",
+   "count": 7,
+   "title": "2009‐06‐28: Hyde Park, London, England, UK",
+   "first-release-date": "2010",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "aliases": [
+       {
+        "sort-name": "The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "2776f037-400b-4d60-b161-4c74a3ef3a70",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "35dc7dde-9eab-4ee8-b6b9-d66e72e960bd",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "83c82840-dcfc-49a9-a2f4-1f8bc3698ce0",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "eb5ff3ce-3702-490c-9e4b-2c6b4a887a8a",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "4cb348ed-d5ef-4afb-8d88-bb7697495bd1",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "590a9886-665d-48d1-accd-21d3beea5380",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    },
+    {
+     "id": "21caf6e7-6993-4838-8076-26e09ae4a440",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "London Calling: Live in Hyde Park",
+     "status": "Official"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "folk rock"
+    },
+    {
+     "count": 1,
+     "name": "classic rock"
+    },
+    {
+     "count": 1,
+     "name": "arena rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  },
+  {
+   "id": "b36b721c-e7cc-4c3e-8bf1-d88c75a0665e",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "ab3af17a-f14a-3d68-98ae-52e335334432",
+   "count": 1,
+   "title": "2002‐10‐27: Wembley Arena, London, England, UK",
+   "first-release-date": "2002",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "aliases": [
+       {
+        "sort-name": "The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "101e0311-fb3d-4f83-8a58-58fe47a19dfa",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "London Night",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  },
+  {
+   "id": "8c28ab77-e511-422c-8fd4-d25a6989aff0",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "ab3af17a-f14a-3d68-98ae-52e335334432",
+   "count": 2,
+   "title": "2016‐06‐05: Wembley Stadium, London, England, UK",
+   "first-release-date": "2016-07-28",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "aliases": [
+       {
+        "sort-name": "The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "d9ba773d-68ee-44e4-8fd8-0f99cbf3abbf",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "2016‐06‐05: Wembley Stadium, London, England, UK",
+     "status": "Official"
+    },
+    {
+     "id": "d11bf409-56a4-4ff6-9e7a-d72ada6528a0",
+     "status-id": "4e304316-386d-3409-af2e-78857eec5cfe",
+     "title": "2016‐06‐05: Wembley Stadium, London, England, UK",
+     "status": "Official"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    }
+   ]
+  },
+  {
+   "id": "6229b08a-5adc-4ae8-859a-5ca1462bc5f1",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "ab3af17a-f14a-3d68-98ae-52e335334432",
+   "count": 13,
+   "title": "1975‐11‐18: Hammersmith Odeon, London, England, UK",
+   "first-release-date": "1976",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "aliases": [
+       {
+        "sort-name": "The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "6bc92567-56e5-4b07-8f87-6ac826aaf017",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "London Is Finally Ready",
+     "status": "Bootleg"
+    },
+    {
+     "id": "10bda94f-20eb-4b6c-bb5c-1e3335385e57",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "173ed5fb-4388-4c86-89f8-fadcdeee315a",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "57191276-f972-4dbe-a078-cd9bd7036284",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "bfb7bf5d-224a-4feb-9d76-c6cc5268ea39",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "e20f5ab2-bbc6-4d85-bf38-dea15e48e927",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon ©: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "08632d3d-b6b8-4560-8f09-8533f73e31d9",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon",
+     "status": "Bootleg"
+    },
+    {
+     "id": "1c4df244-2a9d-4801-85c0-77c3530c8259",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "64c50e39-2e3c-4202-a020-93e9d9fb872c",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "86843990-3cc8-43e3-87bd-176cdef80259",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon ©: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "b3dc9bd4-3d66-4653-891f-b38f596c5bf4",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "1d279e7c-8306-4ada-bba2-b96282f92158",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon: Nov. 18, 1975",
+     "status": "Bootleg"
+    },
+    {
+     "id": "75b13df8-87f7-46e6-b843-94e1a5c00999",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Live at the Hammersmith Odeon",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  },
+  {
+   "id": "cb65285e-200f-4ae4-8972-5ec991fa3443",
+   "type-id": "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0",
+   "score": 61,
+   "primary-type-id": "f529b476-6e62-324f-b0aa-1f3e33d313fc",
+   "artist-credit-id": "ab3af17a-f14a-3d68-98ae-52e335334432",
+   "count": 2,
+   "title": "1999‐05‐21: Earls Court, London, England, UK",
+   "first-release-date": "1999",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Live"
+   ],
+   "secondary-type-ids": [
+    "6fd474e2-6b58-3102-9d17-d6f7eb7da0a0"
+   ],
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Bruce Springsteen",
+     "artist": {
+      "id": "70248960-cb53-4ea4-943a-edb18f7d336f",
+      "name": "Bruce Springsteen",
+      "sort-name": "Springsteen, Bruce",
+      "aliases": [
+       {
+        "sort-name": "ブルース・スプリングスティーン",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "ブルース・スプリングスティーン",
+        "locale": "ja",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Boss, The",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "The Boss",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce",
+        "type-id": "894afba6-2816-3c24-8072-eadb66bd04bc",
+        "name": "Bruce Springsteen",
+        "locale": "en",
+        "type": "Artist name",
+        "primary": true,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springteen",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springteen",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Springsteen, Bruce Frederick Joseph",
+        "type-id": "d4dcd0c0-b341-3612-a332-c0ce797b25cf",
+        "name": "Bruce Frederick Joseph Springsteen",
+        "locale": null,
+        "type": "Legal name",
+        "primary": null,
+        "begin-date": "1949-09-23",
+        "end-date": null
+       }
+      ]
+     }
+    },
+    {
+     "name": "The E Street Band",
+     "artist": {
+      "id": "d6652e7b-33fe-49ef-8336-4c863b4f996f",
+      "name": "The E Street Band",
+      "sort-name": "E Street Band, The",
+      "aliases": [
+       {
+        "sort-name": "The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen and the E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen and the E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       },
+       {
+        "sort-name": "Bruce Springsteen & The E-Street Band",
+        "type-id": "1937e404-b981-3cb7-8151-4c86ebfc8d8e",
+        "name": "Bruce Springsteen & The E-Street Band",
+        "locale": null,
+        "type": "Search hint",
+        "primary": null,
+        "begin-date": null,
+        "end-date": null
+       }
+      ]
+     }
+    }
+   ],
+   "releases": [
+    {
+     "id": "0f8ae1ba-4ea6-4fc7-86b7-52f9de6c2322",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Earls Court Night",
+     "status": "Bootleg"
+    },
+    {
+     "id": "7044dd32-a887-4d39-8fd4-1b8adbbffabe",
+     "status-id": "1156806e-d06a-38bd-83f0-cf2284a808b9",
+     "title": "Earls Court Night",
+     "status": "Bootleg"
+    }
+   ],
+   "tags": [
+    {
+     "count": 1,
+     "name": "rock"
+    },
+    {
+     "count": 1,
+     "name": "arena rock"
+    },
+    {
+     "count": 1,
+     "name": "rock and roll"
+    }
+   ]
+  }
+ ]
+}

@@ -108,8 +108,9 @@ stay deleted. Same pattern and same reason as `vz-mb-colvis-touched-*`.
 only thing that declares its keys.** `schema_version` 2 added `workspace`
 beside `settings`: the pinned filter list, per-pageType *and per-sub-table*
 column visibility, filter history, the two panel geometries, the 📊 dropdown's
-section collapse, the settings dialog's own size/column widths/section
-collapse, and `vz-lib-prefs`. `configSchema` is what types the `settings` half;
+section collapse, the release page Cover art layout
+(`mb_sa_release_art_layout`, a bare string), the settings dialog's own
+size/column widths/section collapse, and `vz-lib-prefs`. `configSchema` is what types the `settings` half;
 these keys have nothing, so that registry is read by BOTH the exporter and the
 importer — one list, twice — because the `settings` half's two loops skipped
 different entry types for three months when each had its own (F3).
@@ -151,9 +152,10 @@ touching their stored state, so clearing it restores the user's own layout;
 mutations exist for both directions of getting that wrong.
 
 **A fixture profile is not a pristine profile.** `FIXTURE_SETTINGS_OVERRIDE`
-forces `sa_enable_caa_pics` and `sa_enable_relationships_column` OFF and both
-DEFAULT to true, so any test that counts "changed" settings is off by two
-unless it puts them back — `settings-dialog.spec.js`'s `PRISTINE` is what that
+forces `sa_enable_caa_pics`, `sa_enable_relationships_column` and
+`sa_enable_release_tracks_cover_art` OFF and all three DEFAULT to true, so
+any test that counts "changed" settings is off by three unless it puts them
+back — `settings-dialog.spec.js`'s `PRISTINE` is what that
 looks like. Related: **`data-section` holds the divider's schema KEY**
 (`divider_thresholds`), not its label; matching on the label finds nothing and
 reads as the feature being broken.

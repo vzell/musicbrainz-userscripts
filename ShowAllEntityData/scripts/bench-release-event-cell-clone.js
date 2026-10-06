@@ -41,7 +41,6 @@ const os = require('os');
 const { chromium } = require('playwright');
 
 const SAMPLES = 5;
-const median = (xs) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 (async () => {
     const cellCount = Number(process.argv[2] || 2000);

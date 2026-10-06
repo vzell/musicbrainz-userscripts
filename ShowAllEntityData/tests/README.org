@@ -93,6 +93,15 @@ subdomains whenever a =fixtureFile= is given (=ARCHIVE_ORG_RE=). It never
 matches =coverartarchive.org= or =eventartarchive.org=, so a spec's own mocks
 for those keep answering (=fixture-load-no-archive-org-wait.spec.js=).
 
+The second one is musicbrainz.org itself: every saved page loads
+=/static/scripts/supported-browser-check.js= from it, and under a parallel run
+the server sometimes answers with an HTML page, which Chromium reports as an
+uncaught =Unexpected token '<'= — failing any spec that asserts "no page
+errors" (=DEBUG-NOTES.md=, 2026-10-06). =loadUserscriptPage()= answers that
+script locally (=MB_BROWSER_CHECK_RE=) with what the real one does in a
+supported browser, marked with an =x-sa-fixture-stub= header
+(=harness-mb-static-script.spec.js=).
+
 *Live* specs drive real musicbrainz.org pages. They are slower, occasionally
 flaky through no fault of the code (MusicBrainz 503s under load, and the Cover
 Art Archive serves at roughly 1.2 requests/second), and some are login-gated.
@@ -536,6 +545,10 @@ from this directory still works for that one file.
 *Node.* =eslint-plugin-jsdoc= declares =node ^22.22.2 || >=24.15.0=; the
 =.nvmrc= version satisfies it. An older 24.x prints an =EBADENGINE= warning on
 =npm install= and has so far run fine.
+
+*"sh: 1: eslint: not found".* =node_modules/= is not tracked, so a checkout
+installed before ESLint joined the lockfile (fee0fd1) does not have it. Run
+=npm ci=.
 
 * Not a test: =npm run live-interop=
 

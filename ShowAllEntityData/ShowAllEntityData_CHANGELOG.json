@@ -1,5 +1,453 @@
 [
   {
+    "version": "9.99.1246",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release page Cover art section: a full-screen viewer. Clicking a thumbnail opens it at that image and steps through the thumbnails currently shown (chip filter and By type grouping apply); the thumbnail shows at once and the 1200 px image replaces it when loaded, with the two neighbours preloaded. Info panel (types, comment, position, main front/back, approval, edit link, every size), filmstrip, grid mode grouped by type. Keys: ← → (wrapping), Home/End, Z zoom 2× following the mouse, G grid, I info, O original, Esc close (from a G grid: back to the image); tap to open and swipe to step on touch. No JSON request of its own — it reads the record the section already loaded.",
+          "A plain click on the native \"Cover art (N)\" tab now opens the viewer on a grid of every image instead of leaving the page (intercepted on window capture, ahead of the navigation guard's leave-page confirm). Ctrl/Cmd/Shift/middle clicks — and a click while nothing is loaded — behave as before."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "While the viewer is open it owns every key through a window-capture listener and traps Tab, so the page's own shortcuts (Ctrl+M mode, Ctrl shortcuts, ?, /, Shift+Esc) and the navigation guard's Tab trap cannot act behind it; page scrolling is locked and focus returns to the opener on close."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New spec release-tracks-cover-art-viewer.spec.js (8 tests); the mobile spec adds tap-to-open and swipe. Mutation list scripts/mutations/release-tracks-cover-art-p3.json: 13 planted defects, all caught. docs/claude/artwork-caa-eaa.md gains the section/viewer rules; CLAUDE.md's DOM table names .mb-release-art-sec and #mb-art-viewer."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1245",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Release page Cover art section: each thumbnail has a hover card (types as pills, comment, a 500 px preview, \"6 of 16 · Liner 1 of 4\", edit and archive id), built from the archive record already loaded and shown by the shared tooltip engine — so it is skipped on a tap like every other card. Type chips above the sheet (All, then each type in archive order, with counts) show only the images carrying that type; an image with two types counts for and shows under both. A Grid / By type switch groups the sheet under each image's first type; the choice is remembered (GM key mb_sa_release_art_layout) and carried by the config export's workspace block."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Release page Cover art section: a thumbnail that fails to load (the archive was down on 2026-10-06) no longer collapses its tile and spills its alt text over the next one — the tile is now a fixed square box that clips. The sheet is capped at the window width, so a release whose tracklist is wider than the window (many relationship columns, or a phone) no longer lays every tile out in one long row."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "Specs: release-tracks-cover-art.spec.js grows to 14 tests (chips, layout, remembered layout, hover card, square tile on a failed thumbnail); new release-tracks-cover-art.mobile.spec.js (a tap shows no card; the sheet fits the window); config-workspace-roundtrip.spec.js covers the new workspace key. Mutation list scripts/mutations/release-tracks-cover-art-p2.json: 8 planted defects, all caught."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1244",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release pages: after \"Show all Tracks for Release\", a collapsible \"Cover art (N)\" section opens above the tracklist with every Cover Art Archive image of the release — types, comment, ★ on the archive's main front image (read from its `front` flag, not from the Front type), ⏳ on images pending approval. It costs one request to coverartarchive.org per render (none on a session or IndexedDB cache hit shared with the CAA column, none when the tab says \"Cover art (0)\"), is never hidden or counted by the global filter, tells \"no images\" (404) from \"could not be reached\" (429/5xx/network) and offers ⟳ Retry for the latter. New setting sa_enable_release_tracks_cover_art (on by default). Design: org/CAA-release-tracks-handling.org, mockup R1."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "New _artFetchEntityImages(ctx, entityPath): the session Map → IndexedDB → network tiers of _artEnrichIcon() without a table row, with the same 404/410 vs 429/5xx/network bookkeeping (ctx.failedCache, IDB persistence of definitive absences only). _artEnrichIcon() is unchanged for now."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "scripts/probe-caa-release-images.py records the archive record shape the section relies on. Fixture spec tests/fixtures/release-tracks-cover-art.spec.js (9 tests, including an older record that carries only the small/large thumbnail keys, as the probe found) with mutation list scripts/mutations/release-tracks-cover-art.json (10 planted defects, all caught). FIXTURE_SETTINGS_OVERRIDE now also forces the new setting off, so fixture specs stay network-free."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1243",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "brucespringsteen.it: the script now also runs on the brucespringsteen.it record database (DB/records.aspx), off by default. Switch it on under ⚙️ Settings → 💿 BRUCESPRINGSTEEN.IT. Every format of the site's own filter is ticked. Two buttons, Unofficial and Official, each load every record of that kind, all formats, into one filterable, sortable table. Unofficial records get Title, Matrix, Format, Label, Code and Notes; official ones get Title, Catalogue, Format, Country, Promo, Code and Notes. Notes is the italic line some records carry. It works on records.aspx opened in its own tab; inside the site's two-frame view the narrow list frame is left as it is."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1242",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "jungleland.it: the script now also runs on the jungleland.it bootleg artwork list (html/list.htm), off by default. Switch it on under ⚙️ Settings → 🌴 JUNGLELAND.IT. The Bootlegs button turns the long list into one filterable, sortable table with Title, Date and Year columns. The date the site appends to each title becomes its own column, and the titles link to each bootleg's artwork page in a new tab. It works on list.htm opened in its own tab; inside the site's two-frame view the narrow list frame is left as it is.",
+          "springsteenlyrics.com: no visible change. The plain table look is now shared with jungleland.it."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1241",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact bar's Format menu is now also the formats guide. Entries are grouped into Audio, Video and Print, and each has a line with the guide's abbreviation and meaning (e.g. Cassette tape, \"MC · Music Cassette tape\"). Searching matches those lines too, and formats missing from the site's own guide are explained as well. The site's \"Formats guide\" panel is hidden with the format buttons.",
+          "springsteenlyrics.com: hovering a collection Format cell explains each medium in it (\"4xCD + 2xBlu-ray\": CD ×4, Blu-ray ×2) and names the format the site files the item under.",
+          "springsteenlyrics.com: once a list is loaded, Format now filters the loaded table too (9.99.1239), by each item's first medium, as the site files it: \"CD + 2xDVD\" counts as a CD."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1240",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact category and filter bar (9.99.1236) now also runs on the bootleg main page, bootlegs.php. There it offers the Category menu with the era timeline (9.99.1237), the bootleg search box and Recent (9.99.1238). The page lists no items itself, so it gets no action button, and the toolbar keeps only ⚙️ and ❓. With the bar switched off, the script leaves that page alone."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1239",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: once a list is loaded, the compact bar's Country, Year and Copies menus filter the loaded table instead of reloading the page, like a pick in that column's 📊 menu. The chip shows 📊, its × removes just that filter, and the bar follows the column when you clear it there instead. Format, Album and Category still open another list, and each menu says at the top which kind it is. A filter the list was fetched with still needs a reload, because the table holds nothing else."
+        ]
+      },
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: a compact-bar menu opened while the bar sat low on the screen ran past the bottom of the window, and its last entries could not be reached. Menus now open upwards when there is more room above, and scroll inside when they are taller than the space they have."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1238",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: with the compact bar (9.99.1236) on, the bootleg lists' four search forms (date, title, version, public info) become one search box with a field switch: Auto, Date, Title, Version, Public info. Auto searches the date when you type one and titles otherwise. Dates can be typed as 1975-08-15, 15 Aug 1975, Aug 15, 1975 or 15.08.1975. A day that does not exist is pointed out instead of returning an empty list. The site finds full dates only, so for a month or a year (1975-08, Aug 1975, 1975) the box offers the era list that covers it and a title search instead. On a search's result page the box shows that search.",
+          "springsteenlyrics.com: a Recent menu beside the search box lists your last eight bootleg searches, including ones started from the site's own forms, and can forget them."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1237",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: the compact category and filter bar (9.99.1236) now also works on the bootleg lists, where the category buttons become a Category menu. Its setting is renamed \"Compact category and filter bar on springsteenlyrics.com lists\".",
+          "springsteenlyrics.com: the Category menu marks the list you are on (the bootleg lists' own buttons never did). Once you have opened a list with the bar on, it also shows that category's exact number of items, read from the list's own \"Showing items … of N\" line. A list you have not opened yet shows no number; nothing is estimated.",
+          "springsteenlyrics.com: on the bootleg lists the Category menu starts with a timeline of the live-show eras since 1967. Each bar spans its era's years, its height shows recordings per year, and an era you have not opened yet is drawn dashed with a \"?\". Click a bar to open that era."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1236",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com: a new setting, \"Compact category and filter bar on springsteenlyrics.com collection pages\" (off by default), replaces the collection's rows of category, format, country, album, year and copies buttons with one row of pull-down menus above the list. Each menu offers what that page's own buttons offer and marks the current choice. Long menus have a search box, and the menus work with the keyboard. Filters combine: choosing a country keeps the format you already chose. Each filter in use is shown as a chip whose × removes just that filter. The site's own buttons are only hidden, so switching the setting off brings them back."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1235",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "springsteenlyrics.com: every collection category now works, not just \"Official Albums\". On the other categories (Samplers, Singles, Books, Memorabilia, …) the button converted nothing, and the heading read just \"Collection\"."
+        ]
+      },
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "springsteenlyrics.com: the collection's entry page (collection.php, \"Latest additions\", the whole collection) is now supported, with a \"Show all latest additions\" button (\"Items\"). It has over 5000 items in more than 50 pages, so the usual \"many pages\" and \"many rows\" questions come first."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com: Title is now the sticky column instead of Cover, on collection and bootleg lists.",
+          "springsteenlyrics.com: with Enable Sticky Page Headers (📌 Table stickiness, on by default), everything above a wide table now stays in place while you scroll sideways. That covers the site's header and breadcrumb, the toolbar, the category and filter buttons, and the list's heading bar. The year-filter slider and the \"Formats guide\" panel no longer drift off to the right.",
+          "springsteenlyrics.com: when the script finds no item cards on a list page, it now writes a warning to the browser console instead of silently showing an empty table."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1234",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Annotation search results: hovering a cover art image (in the big-picture strip or the small one in the Name column) now shows a full card instead of only the name. It shows the Type, the name, its disambiguation comment and primary alias, and, below a line, the whole annotation with its paragraphs, line breaks and formatting. The annotation is always shown in full, even when its cell is collapsed or a section inside it is folded. The card is wider for annotations, and a very long annotation is cut to fit the window, ending in “… (more in the cell)”."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1233",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "MusicBrainz's own header menus (Editing, Search, My data, …) are no longer drawn behind the page's title bar (for example a release's title with its ISRC, Tracks, Data and View buttons). This happened after a table had been loaded on a page wide enough to scroll sideways, and also when the pointer rested on the title bar beside an open menu. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1232",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Scrolling a wide table sideways no longer leaves page content behind under the pinned bars. The big cover-art strip above a table now stays in line with its h2 or h3 bar; while the page is scrolled it wraps to the window's width. The same goes for the text and forms above a table (an alias page's introduction, \"is subscribed to:\" and its list, a search form, \"Found … results\"), and for the \"Loaded … Fetching …\" status line on pages whose title has no entity header, such as ratings, ISRC and search pages. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers.",
+          "On pages with several sub-tables, such as a user's ratings, the big cover-art strip is now indented under its h3 bar like the table below it, instead of starting at the h2's edge.",
+          "On a work's page, the Wikipedia licence note no longer covers the \"Continue reading at Wikipedia...\" link while a wide table is scrolled sideways.",
+          "The sticky column no longer loses its docked look after the page refreshes its layout while scrolled to the right (for example after resizing the window). Columns could then show through in the strip to its left until you scrolled back. This came with 9.99.1231."
+        ]
+      },
+      {
+        "label": "✨ Improve",
+        "items": [
+          "A table that fits in the window now stays completely in place while the page scrolls sideways, like the bars. This covers an artist's one-column \"Artist credits\" list, or a short sub-table next to wide ones on a ratings page. Before, such a table scrolled out of view, sticky column included.",
+          "The \"Add a new alias\" link is removed from the consolidated Aliases pages of artists and all other entities."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1231",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Scrolling a wide table sideways now stops the sticky column in line with the h2 or h3 bar above its table, not at the window's left edge. On an indented sub-table, such as a release's \"1 - 7\" Vinyl\" tracklist, it used to slide past the bar's left edge. Nothing scrolls into the strip to the left of it any more: no columns passing by, and no ends of the table's top and bottom border lines. Where another column comes first, such as \"#\" before \"Title\", that column now stays at the same line and \"Title\" slides over it, instead of \"#\" sliding into the strip. This needs ⚙️ Settings → 📌 Table stickiness → Enable Sticky Page Headers, which is on by default."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1230",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Hovering the \"#\" cell of a live track shows a release group card for that track's event. For the main event it is the release's own release group. For any other event, a search looks for a release group named exactly like the event: the Disambiguation without \"live, \" and without a trailing \"; …\". The search runs once per event, only when you hover. A found group gets the same card as the header link. Otherwise the card says so and lists the closest titles the search returned. Alt+click the cell to open the release group, or the search, on musicbrainz.org. Four new settings in ⚙️ Settings → 💿 RELEASE TRACKLIST: switch the card off, search the words instead of the exact phrase, search only the release's artist, and set how many closest titles to show."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1229",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Tracks from different events are now told apart in the \"#\" column. Instead of one light green for every track outside the main event, each event gets its own tint and a small chip, \"E1\", \"E2\", …, numbered by date. The chips stay readable without colour. Hovering the \"🎪 N events\" badge shows a legend with each event's tint, chip and number of tracks. A track whose linked event is named without a date, such as \"68th Academy Awards\", now takes its event from the dated recording comment."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1228",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "On a release with a live release group title, tracks from the main event are checked against that title. A Disambiguation, \"Recorded at event\" or \"Recorded at place\" that names the event or venue differently gets a ⚠️ warning, with both names in the tooltip. The venue is the first part of the title's location. The warning is listed in the ⚠️ WARNING menu, and its tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1227",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists mark the tracks that are not from the main event. When the release group title is a live title (\"1996‐04‐19: ICC Berlin, Saal 1, …\"), its date names the main event. If the tracks come from two or more dates, the \"#\" cell of every track from another date turns light green.",
+          "When tracks carry live event data but the release group title is not a live title, a ⚠️ after the release group link says why: the title does not start with a date, is almost but not quite a live title, or has an impossible date. It also suggests a title built from the event with the most tracks. Tracks are then not marked green, because there is no main event to compare with."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1226",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "On a release page, the \"(see all versions of this release, 5 available)\" link now names the release group: \"(5 versions available in 1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany)\". The name is already in the page, so this costs no request. Hovering the link previews the release group: its cover, type and artist, and a table of its releases (format, date, country, label and catalog number), with this release marked. The table is loaded with one request on the first hover. If that request fails, the next hover tries again. A new setting in ⚙️ Settings → 💿 RELEASE TRACKLIST switches it off."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1225",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists show when a medium mixes concerts. Each track is matched to an event: its \"Recorded at event\", else the event its recording comment names, else its \"Recording date\". A medium whose tracks come from two or more events gets a \"🎪 N events\" badge in its heading, after the ⏳ pending-edits badge, and the badge's tooltip lists each event with its number of tracks. The Disambiguation column's 📊 dropdown gets a new \"Event info - Events on this medium\" section with one entry per event, for filtering to its tracks. Both count every track, including tracks a filter hides."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1224",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Release tracklists check \"Recorded at event\" and \"Recorded at place\" against the recording comment. An event cell is marked ❌ when none of its events is named like the comment without its event type: \"live, 1996‐04‐19: Saal 1, ICC Berlin, …\" needs the event \"1996‐04‐19: Saal 1, ICC Berlin, …\". A place cell is marked ❌ when a place is not named like the venue, the first part of the comment's location, so \"Saal 1\" passes and \"Festhalle Frankfurt\" for \"Festhalle, Frankfurt, …\" does not. The tooltip shows both names. Both are listed in the ❌ ERROR menu and the 📊 \"Findings - Error\" section, and their tint has its own switch in ⚙️ Settings → ⚠️ Findings."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1223",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "The live-recording date check now covers the \"Performer\" column too. A performer credit dated differently from the track's \"Recording date\" gets a ❌, and one without a date gets a ⚠️, as Vocals and Instruments already did."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1222",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "Live titles that name several dates are no longer flagged as errors. Three forms are accepted: more days of one month (\"1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA\"), separate dates each with its own location (\"1978‐08‐21: … / 1979‐01‐01: …\"), and separate dates sharing one location (\"1989‐07‐04 / 1990‐04‐22: Park West, Chicago, IL, USA\"). Each date is checked on its own, so such a title is still marked ❌ when one of its days does not exist, such as \"1977‐04‐30/31\". Before, every one of them was reported as a near miss.",
+          "The 📊 dropdown has a new \"Live title info - Multiple dates\" section that counts titles with several days of one month and titles with several separate dates. Ticking an entry filters to those rows. Event names and recording comments get the same section."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1221",
+    "date": "2026-10-05",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "On a page with a single table, such as an artist's release groups, the ⚠⟳ button that retries failed cover art lookups appeared twice side by side. The page-wide button and the button for that one table did exactly the same thing. Only the page-wide one is shown now. The Relationships ⚠⟳ had the same problem and is fixed too.",
+          "A browser tooltip no longer appears on top of the rich tooltip after hovering for a while. Buttons whose text changes while you look at them, such as the ⚠⟳ count during an artwork load, put their plain tooltip back. The browser then showed it as soon as the mouse had rested for a second."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1220",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Typing no longer jumps to the global filter right after a table loads. Shortly after the final render the script focuses the global filter so you can start filtering at once, and it did so even if you had already clicked into another field, such as a 📊 quick filter, a column filter or MusicBrainz's search box. The rest of your typing then ended up in the global filter. On a slow page this could happen well after the table looked finished. The global filter is now focused only when no other text field has focus."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1219",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Cleared the rest of the first ESLint baseline's triage (org/eslint.org items 2 to 7); nothing changes for users. Removed: 15 initial values that were always overwritten before use, 4 unneeded escapes in regular expressions, and every unused variable and function ESLint found, including _formatIsrc() and _artRebuildBigPicsForTable(), which the merged discography view deliberately does not call. Also gone is a leftover plain-text tooltip builder that the rich artwork tooltip replaced, and the statistics panel no longer counts visible rows that it never showed. Three walker loops now use the file's explicit while ((…)) form, and a case block got its own braces. 30 functions gained JSDoc blocks, and one existing block was reattached to its function.",
+          "Test harness: an unawaited row-count assertion is now awaited, 9 unused declarations and 4 stale eslint-disable comments are removed, and ESLint is told which helpers assert and that a conditional test.skip() is intended.",
+          "Ships alongside VZ_MBLibrary 4.3.1, the same kind of cleanup with no behaviour change (the userscript works with 4.3.0 just as well). Lint baseline 339 → 237."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1218",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "The 👁️ column-visibility menu lists Barcode as \"Barcode\" instead of \"▌█Barcode\". The menu named each column after its header's full text, which includes the barcode highlight button. It now uses the same clean column name as sorting and filtering, and a column name that contains a digit keeps it.",
+          "\"Barcode\" in ⚙️ Settings → \"Default hidden columns per page type\" now hides the Barcode column. The setting saved \"Barcode\" while the menu looked for \"▌█Barcode\", so it never applied.",
+          "\"Choose current configuration\" in the page-wide 👁️ menu now also applies to the Barcode column in every sub-table on multi-table pages. It was the one column the sub-table menus did not recognise.",
+          "Show/hide choices saved by earlier versions still apply: a Barcode column you hid stays hidden after the update."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "9.99.1217",
+    "date": "2026-10-04",
+    "sections": [
+      {
+        "label": "🐛 Fix",
+        "items": [
+          "Column headers that contain an emoji such as 🔗, 🖼 or 📋 keep it intact in the 👁️ column-visibility menus and wherever the script looks a column up by its name. The code that removes the script's own header decorations (⇅ ▲ ▼ 📊 …) also removed half of every emoji that shares a building block with 📊, which left a broken character behind, e.g. \"\\uDD17 Links\" instead of \"🔗 Links\". MusicBrainz's own headers carry no emoji, so this only showed on columns that another userscript adds or decorates. The saved show/hide choice for such a column was stored under the broken name, so it is forgotten once, after which it is saved correctly.",
+          "The column name in a column-filter error message no longer keeps the sort-priority superscripts ¹ ² ³."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "All 57 hits of ESLint's no-misleading-character-class rule are fixed, 32 in the userscript and 25 in the test harness, and the lint baseline is lowered to match. A new source-level check (tests/fixtures/regex-unicode-flag-guard.spec.js) runs in npm test and keeps the rule at zero in the userscript and the library while ESLint itself stays report-only."
+        ]
+      }
+    ]
+  },
+  {
     "version": "9.99.1216",
     "date": "2026-10-04",
     "sections": [

@@ -1,0 +1,107 @@
+[
+  {
+    "name": "a chip filters by first type only",
+    "why": "Image 2 is Back + Front; the Front chip counts 2, so it must show both. Comparing types[0] shows 1 while the chip says 2.",
+    "edits": [
+      {
+        "find": "            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));",
+        "replace": "            .filter(i => !filter || ((images[i].types || [])[0] || '(no type)') === filter);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "type chips count every type",
+    "expect": "fail"
+  },
+  {
+    "name": "chip counts only the first type of each image",
+    "why": "The count must match what the chip shows; an image with two types counts for both.",
+    "edits": [
+      {
+        "find": "        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {",
+        "replace": "        images.forEach(im => [(im.types && im.types[0]) || '(no type)'].forEach(t => {"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "type chips count every type",
+    "expect": "fail"
+  },
+  {
+    "name": "the layout is switched but never stored",
+    "why": "Remembering is the decision; asserting only the click would pass on code that writes nothing.",
+    "edits": [
+      {
+        "find": "            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }",
+        "replace": "            sec.dataset.mbArtLayoutTmp = lay.dataset.mbArtLayout;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "groups by first type",
+    "expect": "fail"
+  },
+  {
+    "name": "a stored layout is ignored on load",
+    "why": "A fresh load seeded with 'grouped' must open grouped.",
+    "edits": [
+      {
+        "find": "        return v === 'grouped' ? 'grouped' : 'grid';",
+        "replace": "        return v === 'never' ? 'grouped' : 'grid';"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "a stored \"grouped\" layout",
+    "expect": "fail"
+  },
+  {
+    "name": "the tile carries no hover card",
+    "why": "The card is data-mbtt on the tile; without it the shared engine has nothing to show.",
+    "edits": [
+      {
+        "find": "        fig.dataset.mbtt = _releaseArtTipHtml(images, index);",
+        "replace": "        void _releaseArtTipHtml;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "hovering a tile shows its own liner card",
+    "expect": "fail"
+  },
+  {
+    "name": "the card's position within its type is wrong",
+    "why": "\"Liner 1 of 4\" is computed from the record; an off-by-one or a count of all images would be wrong yet look plausible.",
+    "edits": [
+      {
+        "find": "        const pos = sameType.indexOf(im) + 1;",
+        "replace": "        const pos = sameType.indexOf(im);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "hovering a tile shows its own liner card",
+    "expect": "fail"
+  },
+  {
+    "name": "the sheet is not capped at the window width",
+    "why": "On a release whose tracklist container is far wider than the window, the grid spread all tiles into one long row.",
+    "edits": [
+      {
+        "find": "            .mb-release-art-sec { margin: 6px 0 16px; max-width: calc(100vw - 32px); }",
+        "replace": "            .mb-release-art-sec { margin: 6px 0 16px; }"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.mobile.spec.js",
+    "project": "chromium-mobile",
+    "grep": "tapping a tile shows no hover card",
+    "expect": "fail"
+  },
+  {
+    "name": "a broken thumbnail can spill out of its tile",
+    "why": "A 404 thumbnail (the archive was down on 2026-10-06) renders as alt text and ignores aspect-ratio; the link box must clip it, or it covers the next tile.",
+    "edits": [
+      {
+        "find": "                aspect-ratio: 1;\n                overflow: hidden;\n                background: #f4f4f4;",
+        "replace": "                background: #f4f4f4;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "keeps its square tile",
+    "expect": "fail"
+  }
+]

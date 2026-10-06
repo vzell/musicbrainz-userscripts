@@ -368,6 +368,10 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
         expect(counter.ws2).toBe(1);
 
         // Tells the truth: names the failure, and says to try again.
+        // Park the pointer first: resting on the button after .click(), its
+        // title is stashed while the rich card owns it (docs/claude/
+        // toolbar-and-header-ui.md, "Script tooltips go through _setTip()").
+        await page.mouse.move(0, 0);
         const title = await toggle(page).getAttribute('title');
         expect(title).toContain('HTTP 503');
         expect(title).toContain('Click again to retry');
@@ -411,6 +415,10 @@ test.describe('work-recordings: millisecond Length precision via the Web Service
 
         await toggle(page).click();
         await expect(toggle(page)).toHaveAttribute('aria-disabled', 'true');
+        // Park the pointer first: resting on the button after .click(), its
+        // title is stashed while the rich card owns it (docs/claude/
+        // toolbar-and-header-ui.md, "Script tooltips go through _setTip()").
+        await page.mouse.move(0, 0);
         const title = await toggle(page).getAttribute('title');
         expect(title).toContain('no sub-second length on record');
         expect(await toggle(page).getAttribute('data-mb-ms-retry')).toBeNull();

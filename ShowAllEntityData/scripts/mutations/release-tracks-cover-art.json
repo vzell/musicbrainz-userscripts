@@ -1,0 +1,132 @@
+[
+  {
+    "name": "the render tail never inserts the section",
+    "why": "The section exists only through the hook in startFetchingProcess()'s render tail. Without it nothing appears after \"Show all\".",
+    "edits": [
+      {
+        "find": "            const _releaseArtH2 = _releaseArtInsertSection();",
+        "replace": "            const _releaseArtH2 = null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "appears only after",
+    "expect": "fail"
+  },
+  {
+    "name": "the section is not opened after makeH2sCollapsible()",
+    "why": "makeH2sCollapsible() starts every h2 collapsed except the tracklist's; the decision is that this one starts open. A section that merely exists is invisible.",
+    "edits": [
+      {
+        "find": "            if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);",
+        "replace": "            void _releaseArtH2;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "appears only after",
+    "expect": "fail"
+  },
+  {
+    "name": "the section lands below the tracklist instead of above it",
+    "why": "Placement is a decision (above \"Tracklist\"); the spec asserts sec.nextElementSibling === h2.tracklist.",
+    "edits": [
+      {
+        "find": "        anchorH2.before(h2, sec);",
+        "replace": "        anchorH2.parentNode.append(h2, sec);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "appears only after",
+    "expect": "fail"
+  },
+  {
+    "name": "the h2 count keeps the tab text instead of the record",
+    "why": "The tab count (13 on this fixture) is provisional; once the record arrives the h2 must say how many images were actually shown (16).",
+    "edits": [
+      {
+        "find": "            if (countEl) countEl.textContent = ` (${images.length})`;",
+        "replace": "            void countEl;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "appears only after",
+    "expect": "fail"
+  },
+  {
+    "name": "the star reads the Front type instead of the main-front flag",
+    "why": "An image can be typed Front without being the archive's main front. The spec's record makes image 2 Back/Front with front:false.",
+    "edits": [
+      {
+        "find": "        if (imgData.front) {\n            const star = document.createElement('span');",
+        "replace": "        if ((imgData.types || []).includes('Front')) {\n            const star = document.createElement('span');"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "marks only the archive",
+    "expect": "fail"
+  },
+  {
+    "name": "a \"Cover art (0)\" tab still builds the section and fetches",
+    "why": "The tab count is free; a release that says 0 must cost no request.",
+    "edits": [
+      {
+        "find": "        if (tabCount === 0) return null;",
+        "replace": "        if (tabCount === -1) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "gets no section and makes no request",
+    "expect": "fail"
+  },
+  {
+    "name": "404 is reported as a failure",
+    "why": "A 404 is a fact about the release (no artwork), not a bad minute at the archive; offering a retry for it is wrong.",
+    "edits": [
+      {
+        "find": "                return { state: definitiveAbsence ? 'none' : 'failed', images: [] };",
+        "replace": "                return { state: 'failed', images: [] };"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "404 reads as",
+    "expect": "fail"
+  },
+  {
+    "name": "the retry forgets to drop the session zero",
+    "why": "Tier 1 would serve the cached zero straight back and no request would be made (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).",
+    "edits": [
+      {
+        "find": "            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).\n            ctx.countCache.delete(entityPath);",
+        "replace": "            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).\n            void entityPath;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "503 shows a retry",
+    "expect": "fail"
+  },
+  {
+    "name": "the setting gate is gone",
+    "why": "Turning sa_enable_release_tracks_cover_art off must remove the section and its request entirely.",
+    "edits": [
+      {
+        "find": "        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;",
+        "replace": "        if (false) return null;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "the setting off means",
+    "expect": "fail"
+  },
+  {
+    "name": "tiles ignore the small/large thumbnail keys of older records",
+    "why": "Probed 2026-10-06: older archive records (release a9a3b139-...) carry thumbnails {small, large} only. Without the fallback the tile has no thumbnail and the link no big image.",
+    "edits": [
+      {
+        "find": "        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')",
+        "replace": "        const thumb = (thumbs['250'] || thumbs['500'] || imgData.image || '')"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-cover-art.spec.js",
+    "grep": "older record with only small/large",
+    "expect": "fail"
+  }
+]

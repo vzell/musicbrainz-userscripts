@@ -37,7 +37,7 @@ const URL = 'https://musicbrainz.org/release/6d19588c-0305-4fb0-b687-d4b75a75c3f
 
     const rows = await page.evaluate(() => {
         const vis = (s) => s.replace(/​/g, '<ZWSP>');
-        const strip = (t) => t.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+        const strip = (t) => t.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
         const tables = Array.from(document.querySelectorAll('table.tbl'));
         const headers = tables.flatMap((t) =>
             Array.from(t.querySelectorAll('thead tr:first-child th')));

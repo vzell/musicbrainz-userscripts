@@ -166,7 +166,6 @@ test.describe('Relationships 📊: an icon entry filters after a collapse/expand
         errorStacks = [];
         page.on('pageerror', (err) => {
             errorStacks.push(err.stack || String(err));
-            // eslint-disable-next-line no-console
             console.log('\n=== PAGE ERROR ===\n' + (err.stack || String(err)) + '\n');
         });
     });

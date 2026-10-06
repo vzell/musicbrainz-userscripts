@@ -3,37 +3,12 @@
   "eslint": "10.12.0",
   "counts": {
     "ShowAllEntityData/ShowAllEntityData.user.js": {
-      "jsdoc/require-jsdoc": 31,
-      "no-case-declarations": 1,
-      "no-cond-assign": 3,
-      "no-misleading-character-class": 32,
-      "no-unused-expressions": 1,
-      "no-unused-vars": 24,
-      "no-useless-assignment": 13,
-      "no-useless-escape": 4
-    },
-    "ShowAllEntityData/scripts/bench-release-event-cell-clone.js": {
-      "no-unused-vars": 1
-    },
-    "ShowAllEntityData/scripts/diagnose-rel-expanded-arm.js": {
-      "(eslint-directive)": 2
-    },
-    "ShowAllEntityData/scripts/probe-fixture-columns.js": {
-      "no-misleading-character-class": 2
-    },
-    "ShowAllEntityData/scripts/probe-multitable-metric-targets.js": {
-      "no-misleading-character-class": 1
-    },
-    "ShowAllEntityData/scripts/probe-uniq-collapse-gate.js": {
-      "no-misleading-character-class": 1
+      "no-unused-expressions": 1
     },
     "ShowAllEntityData/tests/fixtures/action-button-shortlabel-and-rich-tooltip.spec.js": {
       "playwright/prefer-web-first-assertions": 1
     },
     "ShowAllEntityData/tests/fixtures/app-help-github-and-markdown.spec.js": {
-      "playwright/missing-playwright-await": 1,
-      "playwright/no-unused-locators": 1,
-      "playwright/no-useless-await": 1,
       "playwright/no-wait-for-selector": 3,
       "playwright/prefer-web-first-assertions": 7
     },
@@ -44,14 +19,12 @@
       "playwright/no-conditional-expect": 3
     },
     "ShowAllEntityData/tests/fixtures/art-mirror-master-row-index.spec.js": {
-      "no-unused-vars": 1,
       "playwright/no-wait-for-timeout": 1
     },
     "ShowAllEntityData/tests/fixtures/artist-credit-relationships-column.spec.js": {
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/artist-recordings-ms-batch.spec.js": {
-      "no-unused-vars": 2,
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/barcode-col-header-toggle.spec.js": {
@@ -76,16 +49,10 @@
     "ShowAllEntityData/tests/fixtures/caa-summary-button-position.spec.js": {
       "playwright/no-wait-for-timeout": 1
     },
-    "ShowAllEntityData/tests/fixtures/collapse-column-width-stable-on-sort.spec.js": {
-      "playwright/expect-expect": 1
-    },
     "ShowAllEntityData/tests/fixtures/column-filter-modes.spec.js": {
       "playwright/no-conditional-expect": 1,
       "playwright/no-wait-for-selector": 1,
       "playwright/no-wait-for-timeout": 1
-    },
-    "ShowAllEntityData/tests/fixtures/control-run-segmented-pill.spec.js": {
-      "playwright/no-skipped-test": 1
     },
     "ShowAllEntityData/tests/fixtures/filter-autofocus.mobile.spec.js": {
       "playwright/no-wait-for-timeout": 3,
@@ -94,9 +61,6 @@
     "ShowAllEntityData/tests/fixtures/filter-autofocus.spec.js": {
       "playwright/no-wait-for-timeout": 1,
       "playwright/prefer-web-first-assertions": 2
-    },
-    "ShowAllEntityData/tests/fixtures/filter-flag-scoping.spec.js": {
-      "no-misleading-character-class": 1
     },
     "ShowAllEntityData/tests/fixtures/h2-table-controls-anchor.spec.js": {
       "playwright/no-wait-for-timeout": 1
@@ -112,28 +76,24 @@
       "playwright/no-wait-for-timeout": 1
     },
     "ShowAllEntityData/tests/fixtures/jesus2099-artifact-purge.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/length-column-filter-colon-gap.spec.js": {
       "playwright/no-wait-for-selector": 2
     },
     "ShowAllEntityData/tests/fixtures/length-duration-sort.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/ms-length-filter-after-toggle.spec.js": {
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/pending-edits-collapsed-cell.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-wait-for-timeout": 6
     },
     "ShowAllEntityData/tests/fixtures/pending-edits-filter.spec.js": {
       "playwright/no-wait-for-timeout": 2
     },
     "ShowAllEntityData/tests/fixtures/per-table-failed-retry.spec.js": {
-      "no-unused-vars": 1,
       "playwright/no-wait-for-timeout": 4
     },
     "ShowAllEntityData/tests/fixtures/place-performances-intcol-align.spec.js": {
@@ -143,7 +103,6 @@
       "playwright/no-wait-for-selector": 1
     },
     "ShowAllEntityData/tests/fixtures/rel-auto-retry-failed.spec.js": {
-      "no-unused-vars": 1,
       "playwright/no-wait-for-timeout": 3
     },
     "ShowAllEntityData/tests/fixtures/rel-cell-state-glyphs.spec.js": {
@@ -157,12 +116,6 @@
     },
     "ShowAllEntityData/tests/fixtures/rel-column-fetch-failure.spec.js": {
       "playwright/no-wait-for-timeout": 5
-    },
-    "ShowAllEntityData/tests/fixtures/rel-retry-failed-only.spec.js": {
-      "no-unused-vars": 1
-    },
-    "ShowAllEntityData/tests/fixtures/rel-uniq-filter-after-collapse-cycle.spec.js": {
-      "(eslint-directive)": 1
     },
     "ShowAllEntityData/tests/fixtures/release-events-transient.spec.js": {
       "playwright/no-wait-for-timeout": 2,
@@ -217,7 +170,6 @@
       "playwright/prefer-web-first-assertions": 2
     },
     "ShowAllEntityData/tests/fixtures/settings-dialog.spec.js": {
-      "no-unused-vars": 1,
       "playwright/no-wait-for-selector": 4,
       "playwright/no-wait-for-timeout": 1,
       "playwright/prefer-web-first-assertions": 1
@@ -247,34 +199,18 @@
     "ShowAllEntityData/tests/fixtures/tag-value-relationships-column.spec.js": {
       "playwright/no-wait-for-selector": 1
     },
-    "ShowAllEntityData/tests/fixtures/thirdPartyScripts/jesus2099-title-mismatch.js": {
-      "no-misleading-character-class": 1
-    },
-    "ShowAllEntityData/tests/fixtures/thirdPartyScripts/rogue-filter-writer.js": {
-      "no-misleading-character-class": 1
-    },
     "ShowAllEntityData/tests/fixtures/toolbar-menus.spec.js": {
-      "playwright/no-skipped-test": 1,
       "playwright/prefer-web-first-assertions": 2
     },
     "ShowAllEntityData/tests/fixtures/touch-tooltip.mobile.spec.js": {
       "playwright/no-wait-for-timeout": 6,
       "playwright/prefer-web-first-assertions": 1
     },
-    "ShowAllEntityData/tests/fixtures/uniq-drop-area-name-flag-thirdparty-shapes.spec.js": {
-      "playwright/expect-expect": 2
-    },
-    "ShowAllEntityData/tests/fixtures/uniq-drop-collapse-gate-glyph-column.spec.js": {
-      "no-misleading-character-class": 1
-    },
     "ShowAllEntityData/tests/fixtures/uniq-drop-count-click-toggle.spec.js": {
       "playwright/no-useless-not": 2
     },
     "ShowAllEntityData/tests/fixtures/uniq-drop-hollow-flag-double-icon.spec.js": {
       "playwright/no-wait-for-selector": 1
-    },
-    "ShowAllEntityData/tests/fixtures/uniq-drop-join-phrases.spec.js": {
-      "playwright/expect-expect": 1
     },
     "ShowAllEntityData/tests/fixtures/uniq-drop-length-mismatch-section.spec.js": {
       "playwright/no-wait-for-selector": 2
@@ -315,11 +251,9 @@
     },
     "ShowAllEntityData/tests/live/artist-releases-filter-sort.spec.js": {
       "playwright/no-conditional-expect": 5,
-      "playwright/no-skipped-test": 2,
       "playwright/no-wait-for-timeout": 2
     },
     "ShowAllEntityData/tests/live/column-visibility-survives-refilter.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-wait-for-timeout": 2
     },
     "ShowAllEntityData/tests/live/discography-view-artwork.spec.js": {
@@ -328,36 +262,15 @@
     "ShowAllEntityData/tests/live/discography-view.spec.js": {
       "playwright/prefer-web-first-assertions": 2
     },
-    "ShowAllEntityData/tests/live/event-parts-extraction.spec.js": {
-      "no-misleading-character-class": 1
-    },
-    "ShowAllEntityData/tests/live/filter-column.spec.js": {
-      "no-misleading-character-class": 1
-    },
     "ShowAllEntityData/tests/live/label-relationships-single-table-column-swap.spec.js": {
-      "no-unused-vars": 1,
       "playwright/no-networkidle": 2
     },
-    "ShowAllEntityData/tests/live/merged-view-caa-search-sync.spec.js": {
-      "no-misleading-character-class": 1
-    },
-    "ShowAllEntityData/tests/live/release-tracks-part-of-series-multirow.spec.js": {
-      "no-misleading-character-class": 1
-    },
     "ShowAllEntityData/tests/live/release-tracks-part-of-series-uniqdrop.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-conditional-expect": 2
     },
-    "ShowAllEntityData/tests/live/release-tracks-recorded-at-place-multidate.spec.js": {
-      "no-misleading-character-class": 1
-    },
     "ShowAllEntityData/tests/live/release-tracks-streaming-ars-leak.spec.js": {
-      "no-misleading-character-class": 1,
       "playwright/no-conditional-expect": 2,
       "playwright/no-wait-for-timeout": 1
-    },
-    "ShowAllEntityData/tests/live/releasegroup-releases-caa-type-comment-filter.spec.js": {
-      "no-misleading-character-class": 1
     },
     "ShowAllEntityData/tests/live/releasegroup-releases-filter-sort.spec.js": {
       "playwright/no-conditional-expect": 4,
@@ -372,31 +285,8 @@
     "ShowAllEntityData/tests/live/third-party-rogue-filter-write.spec.js": {
       "playwright/no-wait-for-timeout": 1
     },
-    "ShowAllEntityData/tests/live/uniqdrop-structure-section.spec.js": {
-      "no-misleading-character-class": 2
-    },
-    "ShowAllEntityData/tests/support/capture-interaction-perf.js": {
-      "(eslint-directive)": 1
-    },
-    "ShowAllEntityData/tests/support/capture-snapshots.js": {
-      "no-misleading-character-class": 1
-    },
-    "ShowAllEntityData/tests/support/filterSortAssertions.js": {
-      "no-misleading-character-class": 2
-    },
-    "ShowAllEntityData/tests/support/measure-caa-metadata-404s.js": {
-      "no-useless-assignment": 1
-    },
-    "ShowAllEntityData/tests/support/runMetadata.js": {
-      "no-useless-assignment": 1
-    },
-    "ShowAllEntityData/tests/support/subtableTab.js": {
-      "no-useless-assignment": 1
-    },
     "lib/VZ_MBLibrary.user.js": {
-      "jsdoc/require-jsdoc": 1,
-      "no-unused-expressions": 1,
-      "no-useless-assignment": 1
+      "no-unused-expressions": 1
     }
   }
 }

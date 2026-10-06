@@ -18170,3 +18170,1095 @@ a copied layout. Fixed: 8/8. The `main` version (`--script` pointing at
 
 **Timing** (petri, 2026-10-04): a full refresh now takes ~46 s, up from
 ~26 s at 591 revisions. This is dev-only and never touches the published script.
+
+## 2026-10-04 — header-strip regexes split emoji into lone surrogates (branch fix/lint-misleading-character-class)
+
+**Symptom.** A column header like "🔗 Links" (one that a third-party script adds
+or decorates) showed up in the 👁️ column-visibility menu as "\uDD17 Links", a
+broken glyph, and was saved under that name in `vz-mb-colvis-<pageType>`.
+Found by the first ESLint baseline (`no-misleading-character-class`, 32 hits in
+the userscript and 25 in the harness), not by a user report.
+
+**Root cause.** The script strips its own header decorations with copies of
+`/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g`, about two dozen of them
+(`_sortColumnHeaderName`, `_cleanColHeaderText`, `_resolveColHeaderName`, both
+col-vis menus, `caaFindColumnByName`, …). Without `u`, a class matches UTF-16
+code units, so 📊 (U+1F4CA) adds `\uD83D` and `\uDCCA` as two members. Every
+emoji whose high half is `\uD83D` (🔗 🖼 📋 💿 …) therefore loses it. 📊 itself
+was stripped correctly, which is why no test noticed. Two more sites had the
+"combined character" form: U+FE0F written after another member
+(`[…✂️…]` in the release-events column removal, `[…⚠️…]`
+in the action-cell plain-text fallback, and `[🖼️📋🔗]` in the IDB stats
+placeholder match). Those read as one emoji but are two members, with or
+without `u`.
+
+**Fix.** Added `u` to every flagged literal. Checked first that none of them
+holds an escape that `u` rejects; only `\s` occurs, and it is valid. For the
+FE0F sites, U+FE0F now leads the class: the set is unchanged and the
+misreading is gone. `getColFilters`' `⁰-⁹` range (U+2070–2079, which misses
+¹²³ at U+00B9/B2/B3) is now the explicit list the other copies use. No
+migration of saved col-vis state: the script's own header glyphs never reach
+`textContent` (▶🔗 is CSS `::before`, and the CAA header button is an `<img>`),
+so only third-party-decorated columns are re-keyed, and only once.
+
+**Tests.** `tests/fixtures/header-emoji-surrogate.spec.js` adds a "🔗 Links"
+column to the artist-events fixture and asserts that the col-vis label is
+exactly that and `isWellFormed()`. `tests/fixtures/regex-unicode-flag-guard.spec.js`
+walks every regex literal in the userscript and the library with acorn and
+fails on either form. It is in `npm test`, which ESLint is not.
+`scripts/mutations/misleading-char-class.json`: 4/4 caught (the col-vis site
+seen by both specs, `_sortColumnHeaderName` and the FE0F reorder seen by the
+guard).
+
+**Lint.** 399 → 342; `no-misleading-character-class` is now 0 everywhere.
+
+**Why ESLint was missing locally.** `node_modules/` is gitignored and was last
+installed at 03:17, before fee0fd1 (05:13) added ESLint to the lockfile; `npm ci`
+fixed it. Anyone on an older checkout has to re-run it before
+`scripts/lint-summary.py` works ("sh: 1: eslint: not found").
+
+## 2026-10-04 — 👁️ menu says "▌█Barcode"; default-hidden Barcode never hides (branch fix/colvis-menu-clean-column-names)
+
+**Symptom.** Seen in a real browser while checking 9.99.1217: the page-wide
+👁️ column-visibility menu lists Barcode as "▌█Barcode".
+
+**Root cause.** `addColumnVisibilityToggle()` named each column
+`th.textContent` minus a glyph list (⇅▲▼📊▶◀▤, digits, superscripts). By the
+time it runs, the Barcode header also holds `.mb-barcode-col-hdr-btn`, whose
+text is "▶▌█"/"▼▌█" (`_barcodeUpdateColHdrBtn()`); only ▶/▼ were on the list.
+The same name is the key the choice is saved under and the name
+`applyGlobalConfig()` matches by, so three things were wrong:
+
+1. the label;
+2. `sa_default_hidden_columns`: `_seedDefaultHiddenColumnsForPageType()`
+   writes `state["Barcode"] = false`, and the menu looked up "▌█Barcode", so a
+   default-hidden Barcode never hid (no error, it just stayed visible);
+3. "Choose current configuration" on a multi-table page: the sub-table menus
+   say "Barcode", so the page-wide "▌█Barcode" never matched them.
+
+The digit strip had the same flaw for any real column name containing a digit.
+`createSubTableColumnVisibilityButton()` is built before the barcode button is
+added to the header, so its labels were already clean. That was confirmed by
+running its label test against the pre-fix userscript, where it passes.
+
+**Fix.** Both menus name columns with `_cleanColHeaderText(th)`
+(`dataset.colName`, the name `makeTableSortableUnified()` stamps; the Picard
+header has none and resolves through the helper's clone fallback). The old name
+(`_colVisLegacyName()`) goes on the checkbox as `data-legacy-column-name` when
+it differs, and `_colVisStateKey()` falls back to it on restore, so a column
+hidden before the fix stays hidden. The next save drops the old key, since both
+menus rebuild the state from their checkboxes.
+
+**Not migrated:** the "touched" set (`vz-mb-colvis-touched-<pt>`) can hold
+"▌█Barcode". It is only consulted for configured default-hidden columns, which
+never worked for Barcode before, so the only case it affects is a user who has
+Barcode in that setting AND had explicitly shown it. For them it re-hides once.
+
+**Tests.** `tests/fixtures/colvis-clean-column-names.spec.js`, 5 tests: labels
+equal `dataset.colName` (BoDeans), a default-hidden Barcode hides, a legacy
+"▌█Barcode" choice still applies, sub-table labels stay clean, and Choose
+current configuration reaches both sub-tables (release-group fixture). 4 of 5
+fail on the pre-fix code; the sub-table label test passes on both, as noted.
+`scripts/mutations/colvis-clean-column-names.json`: 6/6 as expected (5 caught,
+1 recorded `"expect": "pass"`, the sub-table naming overlap).
+
+**Test-harness note.** The page-wide menu's "Choose current configuration"
+button is below the fold of the fixed-position menu at the default viewport,
+and Playwright's click cannot scroll to it, so the spec calls its `onclick`
+via `evaluate`. `.first()` on the button text also matches a sub-table menu's
+hidden button; restrict it with `:visible`.
+
+## 2026-10-04 — ESLint baseline triage, items 2-7 (branch fix/lint-items-2-7)
+
+Follows `org/eslint.org`. No user-visible change was intended, and none was
+found. What was not mechanical:
+
+- **Item 2's premise was wrong.** `expect(await locator).toHaveCount(1)`
+  without an `await` on `expect` DID run: a planted empty `<tr>` fails the
+  unawaited form too, because the very next line awaits and the rejection
+  surfaces there. It is now awaited anyway. Mutation:
+  `scripts/mutations/app-help-table-row-count.json`.
+- **A cleanup of item 3 deleted a live variable.** Removing the dead
+  `_wrapperTitle` block took `const _td = a.closest('td');` with it, and `_td`
+  is still read by `_commentForTooltip` and `_rowCellText` further down. ESLint
+  reported 4 new `no-undef` before anything ran, and it was restored. The
+  awk check I had used to look for later uses had `\b` in it, which awk does
+  not support, so it matched nothing. Re-run the ratchet after every
+  deletion, not once at the end.
+- **`_artRebuildBigPicsForTable()` was dead by design**, not by accident:
+  `_applyDiscographyViewFilter()`'s drain calls `initCaaPics()`/`initEaaPics()`
+  because a per-table rebuild enqueues into the old `_caaQueue`. Deleted, and
+  the three comments that named it now say "a per-table rebuild (the former
+  `_artRebuildBigPicsForTable()`)".
+- **`createFilterHistoryWidget()`'s `_histActiveList` was write-only.** Its
+  ArrowDown always goes to the pin list first, so it never needs to know
+  which list is active, unlike `showLoadFilterDialog()`'s copy. Removed. Making
+  the two copies behave alike is a separate change.
+- **`playwright/expect-expect` and `no-skipped-test` were false positives**
+  (assertions in helpers, conditional skips), so the rules are configured
+  (`assertFunctionNames`, `allowConditional`) rather than the tests edited.
+  Both still fire on a planted bare test and an unconditional `test.skip()`,
+  checked with `eslint --stdin`.
+- **`_buildMasterRowIndex()` had its JSDoc**, but `let _masterRowScanCount`
+  sat between the block and the function. The counter (with its own block) now
+  sits above it.
+
+Edits were applied by scripts that check every target line's exact text first
+and write nothing on a mismatch. Two runs stopped on my own off-by-one line
+numbers, and wrote nothing.
+
+**Lint:** 339 → 237. The library's two hits (one `no-useless-assignment`, one
+`require-jsdoc`) were fixed at the user's request as VZ_MBLibrary 4.3.1, which
+is versioned in its own header, `LIBRARY_VERSION` and its changelog comment.
+The 102 settings and config specs pass against it. Nothing is left at error
+level.
+
+## 2026-10-04 — uvd-grouped-sections.spec.js:257 flake: the post-render auto-focus stole the typing (branch fix/uvd-grouped-sections-flake)
+
+**Symptom.** "quick filter matches the hidden prefix…" failed in 2 of 5
+`test:full` runs, always at `expect(date.collapsed).toBe(false)` right after
+`qf.fill('month')`, and passed every time alone.
+
+**Two wrong guesses first, recorded so nobody repeats them.** (1) The auto-resize
+pass still running (`waitForAutoResize: false`): a diagnostic showed the resize
+button already reading "Restore…" before the fill, even with CDP CPU throttling
+at 20×. (2) `fill()`'s focus-scroll tripping the dropdown's close-on-scroll
+listener: no scroll event fired, and the panel stayed open. Load alone did not
+reproduce it either (60 repeats on 24 workers; 40 alongside a full suite run).
+
+**Root cause, from a diagnostic that failed at viewport height 900.** The
+quick-filter input was empty, and `document.activeElement` was
+`#mb-global-filter-input` with the value `"🔍 month"`. At the end of
+`startFetchingProcess()`'s render tail, a `setTimeout(…, 150)` focuses the
+global filter, unconditionally. `waitForRenderComplete()` does not wait for
+that timer, so the test opens the 📊 dropdown and types inside the window. When
+the timer fires between Playwright's focus of the quick filter and its
+`insertText`, the text goes to the global filter. For a user it is the same
+thing slower: on a busy page the timer fires late, after they have clicked into
+another field.
+
+**Fix.** The timer now leaves focus alone when another editable field (input,
+textarea, select, contenteditable) has it. Taking focus from the just-pressed
+button or from nothing is unchanged, and filter-autofocus.spec.js still pins
+that.
+
+**Tests.** `tests/fixtures/autofocus-does-not-steal.spec.js`, 2 tests (a field
+focused during the render keeps focus and text; typing into a 📊 quick filter
+right after render stays there). Both failed 3/3 before the fix. The timing is
+ordered, not slept: the test's own 300 ms timer is started after the script's
+150 ms one. `scripts/mutations/autofocus-does-not-steal.json`: 3/3 as expected.
+The third entry (adding `button` to the guard) is recorded `"expect": "pass"`,
+because on this fixture `activeElement` is already BODY right after the click.
+Why the button loses focus was not investigated.
+
+The `org/TODO.org` entry for this flake still names the auto-resize guess as
+the suspected cause. It is left for the user to mark DONE, because the file
+has uncommitted edits of theirs.
+
+## 2026-10-05 — Duplicate ⚠⟳ on single-table pages; native tooltip over the card; multi-date live titles (branch fix/live-multidate-and-retry-dup)
+
+Source: `org/live-bootleg.org` items 1 and 2. Items 3 and 4 are not on this
+branch.
+
+**Duplicate ⚠⟳ (item 1).** Snapshot `debug/bs-bootleg-releases.html`
+(artist-releasegroups, host "vzell-lap") has one `table.tbl`, and both
+`#mb-caa-toggle-btn-retry-failed` and `#mb-caa-toggle-btn-retry-failed-0`
+read "⚠⟳ 3", next to each other. Cause: `_artRefreshFailedRetryButton()`
+anchors the page-wide control after `-global-retry`. That element is only
+built by `_artCreateOrUpdateGlobalToggleButton()`, which returns early unless
+`tableMode === 'multi'`. So on a single table the page-wide control falls
+back to `-retry-0`, and `_artRefreshPerTableFailedButtons()` puts table 0's
+control into the same run. The Relationships pair has the same fallback
+(`mb-rel-retry-global` → `mb-rel-retry-0`). Fix: `_failedRetrySharesTableSlot()`
+leaves out the per-table control when there is one table and no global row.
+With several tables and no global row the two controls differ in scope, so
+both stay.
+
+**Native tooltip over the rich card (item 1, "after a while").** While the
+card shows, the engine keeps the element's title in `data-mb-tip-saved`, and
+puts a changed title back into the stash only on the next mousemove. During
+an artwork load the ⚠⟳ count is refreshed every frame / every second.
+`_setTip()` wrote `title` again, and with the pointer resting no mousemove
+came, so the browser showed its own box after about a second. Confirmed by
+`rich-tooltips-liner.spec.js` "pointer at rest", which failed before the fix
+(`title` was the new text, not `''`). Fix: `_setTip()` writes the stash, and
+`aria-description` when the stash set it, and repaints the visible card if
+the element is hovered.
+
+**Multi-date live titles (item 2).** Snapshot `debug/rg-r-multiple-dates.html`
+(host "petri") has eight titles like `1977‐03‐22/23/24/25: Music Hall, Boston,
+MA, USA`, and every one was a ❌ near miss (`_LIVE_TITLE_RE` has no "/").
+`debug/BoDeans-*.html` also has `1989-07-04 / 1990-04-22: Chicago, IL, USA`.
+`_parseLiveTitle()` now hands any title containing "/" to
+`_parseMultiDateLiveTitle()` first. It accepts three forms: days of one month
+(checked against `_liveDaysInMonth()`), dates sharing one location, and whole
+titles joined by " / ". If none fits, it returns `null` and the title takes
+the old single-date path. So a "/" inside a location ("Venue A / Venue B, …")
+still gives one valid title. The verdict gains `multi`, and 📊 gains
+"… - Multiple dates" for releases/RGs, event names and recording comments.
+Recording comments still strip "/DD" before the parser (`_REC_MULTIDAY_RE`),
+so `rc.multiDay` remains their "days" signal.
+
+**Tests.** `single-table-failed-retry.spec.js` (new; CAA on the BoDeans disk
+fixture, all metadata 503) and a count assertion in
+`rel-retry-failed-only.spec.js`; both reproduced the duplicate before the fix
+(2 controls, expected 1). The BoDeans disk fixture carries saved
+relationships, so it cannot fail a Relationships lookup; the series shell
+does that. Live titles: `uvd-live-titles.spec.js`, new parser cases and a
+`releasegroup-releases-live-multidate.html` block built by
+`scripts/build-live-multidate-fixture.py`, a separate fixture because
+`releasegroup-releases-live-titles.html`'s counts are pinned by other specs.
+`scripts/mutations/live-multidate-retry-dup.json`: 10/10 as expected,
+including the over-correction (guard firing on a multi-table page, caught by
+`per-table-failed-retry.spec.js`).
+
+## 2026-10-05 — release-tracks: events per medium, event/place vs comment, Performer date check (branch feature/release-tracks-event-consistency)
+
+Source: `org/live-bootleg.org` item 3. Snapshot
+`debug/multiple-concerts-on-release.html` (release d390b4ff, "Berlin Night",
+three CDs). CD 3 mixes `1996‐04‐19: Saal 1, ICC Berlin, …` (11 tracks) with
+`1992‐06‐26: Festhalle, Frankfurt, Germany` (2). The places on record are
+"Saal 1", "Internationales Congress Centrum Berlin" (3 tracks) and
+"Festhalle Frankfurt" (2).
+
+**Already there, unchanged:** Recording date vs comment date (`rec-date-*`),
+and credit dates vs Recording date (`live-credit-*`). Performer was excluded
+on purpose; the user asked for it to be included.
+
+**Fixture trap, worth remembering.** `scripts/fetch-release-fixture.js` saves
+the raw server HTML, which has no recording comment after the track links:
+MusicBrainz's release script renders them from the embedded JSON.
+`scripts/build-multi-event-fixture.py` puts the real comments back in. Even
+then, the first probe showed no "Disambiguation" column. The DOM held 7.2 MB
+against a 1.36 MB file, with 0 comments in title cells. A freshly fetched page
+names CURRENT `static.metabrainz.org` bundles, so in the fixture harness
+MusicBrainz's own script really downloads and re-renders the tracklist from
+JSON, discarding the injected markup. Older fixtures name bundles that are
+gone, so they were never affected. The spec aborts `static.metabrainz.org/**`.
+
+**Decisions (user, 2026-10-05):** a place must EQUAL the venue (the comment
+location's first part), not just contain it. The 🎪 badge comes after the ⏳
+pending-edits badge. Item 4 (RG name, main-event highlight, RG preview) is the
+next branch, and it reuses `data-mb-event-key`.
+
+**Tests.** `release-tracks-event-consistency.spec.js`, 6 tests: place rule (5
+exact cells), event rule (real data agrees; an edited comment flags exactly
+its row), badge (CD 3 only, survives a filter hiding the Festhalle rows), badge
+after ⏳ (pending edit planted), 📊 section (counts, absent on CD 1, ticking
+filters), Performer ❌/⚠️ (dates planted).
+`scripts/mutations/release-tracks-event-consistency.json`: 9/9 as expected.
+
+## 2026-10-05 — release group link, preview and main event (branch feature/release-rg-main-event)
+
+Source: `org/live-bootleg.org` item 4. **The release group (RG) name needs no
+request.** The release page's embedded JSON carries `release.releaseGroup`
+(name, gid, `l_type_name`, artist), read through `_readEmbeddedReleaseJson()`.
+On Berlin Night it is `1996‐04‐19: ICC Berlin, Saal 1, Berlin, Germany`,
+while the events and comments say `Saal 1, ICC Berlin`, a real case for 4b.
+The name occurs in TWO JSON blobs of the page, so a test that renames the RG
+must replace both (the first `replace()` hit another blob and the link kept
+the old name).
+
+**The preview's request** was checked against the API docs and then probed
+(`scripts/probe-rg-release-browse.py`, 2026-10-05): release-count 5, all 5
+returned, each with title, date, country, status, media, label-info. The raw
+answer is the spec's canned response (`tests/fixtures/ws2-rg-release-browse.json`).
+Mockup approved by the user: https://claude.ai/artifact/GLjW6qPpEAY1BD8JawRZs6.
+
+**Decisions (user):** a track is on the main event when its DATE is one of
+the RG title's dates; 4b is a ⚠️; with no live RG title there is no green,
+only the ⚠️ on the link; the preview loads on the first hover.
+
+**Bug caught by the spec, before shipping.** The 4c suggestion said "72 of
+76" on a 38-track release. `stampFindings()`'s shared traversal
+(`_forEachStampRow()`) visits a multi-table live clone AND its master row.
+That is right for writing a stamp, wrong for counting. `_computeMainEventCtx()`
+now dedupes by `data-mb-row-idx`.
+
+**Main event vs green, split after a mutation survived.** At first the 2+
+dates gate decided the main event itself, so 4b was silent on every
+single-concert release, where every track is main-event data. The item reads
+"multiple dates" as the condition for the green highlight only. Now the main
+event (and 4b) apply to every release with a valid live RG title, and the
+green needs the table's `data-mb-multi-event` (2+ dates). The "4b off the
+main event" mutation stays `expect: pass`: `_rgTitlePartForDate()` finds no
+part for a track off the RG's date, so the guard has no observable effect of
+its own. The item 3 spec's event test had to accept
+a second tooltip line, because its edited Berlin row is also a main-event
+track and now carries the RG warning.
+
+**Tests.** `release-rg-main-event.spec.js`, 11 tests: link at load with no
+request; preview (1 request, kept, 503×4 then retried on the next hover);
+Festhalle tracks green through a filter and a sort; one date on the page →
+no green but 4b on all 38; RG date off the page's one date → off, not green;
+4b counts (36 per column) and detail texts; 4c (non-live title, impossible
+date); no ⚠️ on a live title; setting off.
+`scripts/mutations/release-rg-main-event.json`: 13 entries, 12 `fail` + 1
+honest `pass`.
+
+## 2026-10-05 — per-event "#" tints and the "#" release group card (branch feature/event-colours-rg-tooltip)
+
+Source: the user's screenshot of Brixton Night (release e384f062): CD 3 mixes
+four events besides the main one, and item 4's single green could not tell
+them apart. Mockup with three variants
+(https://claude.ai/artifact/WNk84AymBEwfc6pKoyvmLR); the user picked B, a
+tint plus an "E<n>" chip numbered by date.
+
+**Search behaviour, probed (scripts/probe-rg-event-search.py, 2026-10-05).**
+Phrase + `arid:` finds an RG only under its exact title ("-" and "‐" alike).
+None of Brixton Night's other events has an RG. In terms mode (what the
+website's indexed search does, 23,542 hits unscoped) three 2005 Royal Albert
+Hall RGs score 100 for a 1996 RAH event. So a hit counts only when its title
+IS the event name, and the other results become hints. The search is
+configurable (phrase/terms, artist scope, hint count), as the user asked.
+
+**Two bugs found while testing, both fixed before shipping.**
+1. The "68th Academy Awards" track had no number: its linked event name has
+   no date. `_rowEventKey()` now prefers the dated comment over an undated
+   event name.
+2. A failed search retried itself forever. The repaint after the failure
+   called `_eventRgCardHtml()`, which restarted the lookup it saw "failed".
+   The 503 test saw 5 searches in one hover. Only a real hover may start a
+   lookup now (`start` flag). The header link never had this, because its
+   repaint only renders.
+
+**Tests.** `release-event-colours-rg-tooltip.spec.js`, 10 tests: numbering
+and tints, filter and sort, badge legend, the main-event card without a
+search, found (1 search + 1 browse, cached per event), no match with
+hints, settings (query shape, hints 0, tooltip off), a 503 not cached and
+not looping, Alt+click targets. The "found" answer is a test double (the
+real found answer retitled), because no real one exists for these events.
+`scripts/mutations/event-colours-rg-tooltip.json`: 13 entries. Item 4's
+spec and mutations were updated for the tint (E1) and the per-gid preview
+cache.
+
+## 2026-10-05 — the sticky column docks at the window edge, left of its pinned bar (branch feature/sticky-col-align)
+
+**Symptom** (user, `org/sticky-areas.org`): scrolled to the right, every pinned
+bar stays put, but the sticky column docks at the window's left edge instead
+of in line with the bar above its table. Multi-table: release
+`52c6808b-037d-47d5-b0c7-17331c9d36cd`, h3 "1 - 7" Vinyl" (snapshots
+`debug/MT-final.html`, `debug/MT-final-scrolled.html`). Single-table:
+`isrc/USSM19500019` (`debug/ST-final.html`, `debug/ST-final-scrolled.html`).
+
+**Cause.** `applyStickyColumn()` pins its cells at an inline `left: 0px`
+(`_leftOffset()` always returns 0). The sticky page headers pin every bar at
+its own natural left (`--mb-sph-left`, 38px for that h3 and 16px for the ISRC
+h2 in the snapshots). The table there carries the same `margin-left: 1.5em` as
+its h3, so the column slid the whole indent further left than its bar.
+
+**Fix.** While `html.mb-sph-on` is set, the column docks at its TABLE's
+natural left. `_sphMeasureStickyCols()` reads it in the refresh pass's read
+phase. `_sphApplyStickyCols()` stamps the table with `data-mb-sph-col-left`,
+and `_sphEnsureColRule()` adds one rule pair per distinct value: an
+`!important` `left` that beats the inline `left: 0`, and a `box-shadow` that
+masks the gutter to the column's left.
+- The table's left, not the bar's. With `left` greater than the cell's
+  natural position, sticky shifts the cell at scrollX 0, onto the next column.
+  On the real page the two agree. In the bare fixture they differ by about
+  4px, because each 1.5em resolves against its own font size.
+- An attribute plus a generated rule, not a custom property on the table. An
+  inherited property restyles the whole table subtree, which is the 249 ms
+  recalc removed from `<html>` on 2026-10-02. These selectors have
+  `.mb-sticky-col` as their subject, so a stamp restyles only the sticky
+  cells.
+- A box-shadow mask, because both pseudo-elements of a `td` are taken (the
+  E-chips use `::before`, finding/flag glyphs use `::after`).
+- `.mb-sph-col-docked` gates the mask (`_sphUpdateColDocked()`, called from
+  the refresh pass and the existing scroll listener). With "#" before "Title"
+  the column docks only at scrollX ≥ P, the width of "#". An unconditional
+  mask covered the right L px of "#" and its header buttons at scrollX 0.
+  The first version accepted a transient here: for 0 < scrollX < P, "#"
+  slid through the gutter. The user's browser check rejected that (see the
+  follow-up below).
+
+**Tests.** `sticky-page-headers.spec.js` gets a new describe with 4 tests:
+single-table docking at the table's natural left (the bare fixture gets a
+24px `#content` indent, or 0 and "the table's left" could not be told
+apart), multi-table per sub-table, "#" then "Title" (undocked and unmasked at
+0 and at P/2, docked and masked past P, in line with its h3 bar, released on
+scrolling back), and the setting off (still `left: 0`). The
+`scripts/mutations/sticky-page-headers.json` list gets 6 entries, all caught.
+
+**Follow-up, same day: two defects found by the user in a real browser.**
+1. *"#" still visible in the gutter until "Title" docks* (the accepted
+   transient). Fixed: the cells before the sticky one also dock at L
+   (`data-mb-sph-col-pre` = the sticky cell's `cellIndex`, rule
+   `:nth-child(-n+k)`), at z-index 0 under the sticky column's 1/101, and
+   mask the gutter all the time. "#" holds at the bar's line and "Title"
+   slides over it. A column only docks if it is no wider than the sticky
+   column. A wider one would stick out to the right of it for good, so that
+   table falls back to the transient.
+2. *Stray lines at the top and bottom of each table, stretching left*
+   (`debug/stray-lines.html`). MusicBrainz's `table.tbl` carries
+   `border-top/bottom: solid 1px @dark-border` (musicbrainz-server
+   `root/static/styles/layout.less`). Under this script's
+   `border-collapse: separate` that border belongs to the TABLE box,
+   outside every cell, so no cell mask can cover it. Fixed: while aligned,
+   the table's border widths go to 0 and the same border goes on the first
+   header row's and last body row's cells, where the masks cover it. The
+   height is unchanged. The border is captured from the first table before
+   any stamp (`_sph.colBorder`).
+The fixtures have no MB stylesheet, so neither defect reproduced in them
+until the spec injected the relevant `layout.less` excerpt (`MB_TBL_CSS`).
+Both are now asserted on PIXELS: a screenshot of the gutter strip, decoded
+through a canvas, must be pure page background at P/2 and at the far right.
+The earlier tests asserted positions and computed styles, and passed while
+both defects were on screen.
+
+## 2026-10-05 — sticky page headers leave content behind; a narrow table scrolls away (branch feature/sticky-col-align)
+
+Reported in `org/sticky-bugs.org` with nine snapshots in `debug/`
+(`big-image-strip-not-docking.html`, `wikipedia-overwritten-come-together.html`,
+`aliases.html`, `credits.html`, `artist-subscriptions.html`,
+`user-ratings.html`, `search-pages.html`, `ISRCs.html`, `top-CD-stubs.html`).
+
+Root causes, read off the snapshots:
+
+1. *Big-image strip at the window edge* (artist/b3c01c39…/releases).
+   `_sphSectionBodies()` skipped `.mb-caa-bigbox`/`.mb-eaa-bigbox` by name.
+2. *Wikipedia licence note drawn over "Continue reading"* (work/bcd490e5…).
+   The section body of `h2.wikipedia` is three siblings: the extract `<div>`,
+   an inline `<a>` and an inline `<small>`. Each was pinned on its own at the
+   parent's content edge (`--mb-sph-left: 19.99px` on both), so once scrolled
+   the `<small>` sat on top of the `<a>`. An inline box's natural left is not
+   its parent's content edge, so it can never be pinned that way.
+3. *Intro text, forms and the status line scroll away* (3b/3c, 4a–e). The
+   DATA h2's section was excluded wholesale (`.mb-row-count-stat` test), so
+   "An alias is …", "vzell is subscribed to:" + `<ul>`, `div.searchform`,
+   `p.pageselector-results` were never candidates. `#mb-status-displays-wrapper`
+   is inserted right after the `<h1>`. Inside an entity header (`p.subheader`
+   in `div.*header`) it rides along. After a BARE `<h1>` (user pages, ISRC,
+   search) it is a sibling that nothing collected.
+4. *Credits table scrolls away* (artist/70248960…/aliases, Credits). Live
+   probe (`tests/support/probe-sph-aliases.js`, petri, 2034 px with classic
+   scrollbars): the table is 906 px wide, and its sticky "Name" column IS the
+   table, so it has no room to travel; a sticky cell never leaves its table.
+   The page overflows only by ~120 px, from the collapsed sidebar's table cell
+   beside the auto-resized `#page` (`#page` right 2142 against clientWidth
+   2019), so a 123 px scroll took the whole table with it (column at −103).
+5. *Aliases table docks at the window edge* (3b). NOT reproduced. On fddfe5b,
+   fresh page, logged in, at 2000 px and at 2034 px with scrollbars, the
+   table is stamped (`data-mb-sph-col-left="20"`) and the column docks at
+   20 px. `debug/aliases.html` has no `#mb-sph-col-style` at all, so no
+   engaged pass ever saw that table with its sticky column. The user
+   re-checked on the new build (2026-10-05): it docks. Cause unknown; most
+   likely a build that predated fddfe5b was still loaded when the snapshot
+   was taken.
+
+Found while testing, and not in the report:
+
+6. *The docked state is lost after a refresh pass while scrolled* (fddfe5b).
+   `_sphMeasureStickyCols()` read the docking point `p` from the right edge
+   of the header cell before the sticky one. Since the follow-up that docks
+   "#" under the sticky column, that cell moves with the scroll too, so a pass
+   at scrollX 4672 read p ≈ 4712 instead of 40, and `.mb-sph-col-docked` (the
+   gutter mask) went off. fddfe5b's own spec "single-table: docks at the
+   table's own left" fails deterministically on petri with fddfe5b's own
+   userscript (3/3). On vzell-lap no pass happened to land after the scroll.
+   Fixed: p is the sum of the preceding cells' WIDTHS, which sticky never
+   changes. A new test forces a pass while scrolled.
+
+Fixes:
+
+- `_sphSectionBodies()` is replaced by `_sphContentBodies()`, a walk of
+  `#page`. It skips `table.tbl`, descends into anything that contains one (and
+  always into `#content`), and pins everything else WHOLE. A wrapper like
+  `div.wikipedia-extract`, `div.annotation` or `#bottom-credits` is therefore
+  one target, and its h2/inline content rides along inside it.
+  `_sphIsEligible()` never pins an inline-level body on its own.
+- `_sphFitsTable()`: a top-level `table.tbl` that fits into the room a bar at
+  its place would get is pinned whole (class `mb-sph-table`, no max-width).
+  It is skipped by the column alignment, never raised by hover/focus (its
+  rows would cover a vertically sticky MB header), and counted in
+  `_sphContentExtent()` at its natural right (`--mb-sph-left` + width), since
+  its rect travels with the scroll.
+- `removeSelectors` drops MB's logged-in-only "Add a new alias" `<p>` on
+  `artist-aliases` and `entity-aliases`.
+
+A known limit of the whole-wrapper rule, as for section bodies before it: a
+pinned body is capped to the viewport. If unbreakable content in one (a wide
+image, a long `<pre>`) were the ONLY thing making the page overflow, capping
+it would remove the overflow, the feature would disengage, the cap would come
+off, and so on. No MusicBrainz page is known to do that.
+
+Petri re-measurement of fddfe5b (item 5 of the report): `tests/MEASUREMENTS.org`,
+same date.
+
+Follow-up from the user's live check (`debug/big-picture-stripe-indent-bug.html`,
+user/vzell/ratings): on a multi-table page the pinned strip sat at 16 px
+while its h3 bar and table sat at 34 px. Pinning was right; the strip itself
+had no indent. `renderGroupedTable()` sets `margin-left: 1.5em` inline on
+every sub-table to match `.mb-toggle-h3`, and `_artInitBigPics()` rebuilt
+the strip's `cssText` without it, so it was flush with the h2 even unscrolled.
+The strip now copies its table's inline `margin-left`. A single-table page has
+none, so nothing changes there.
+
+Also seen while running the suite: `release-tracks-ms-length(-overflow).spec.js`
+read the ⏱ toggle's `title` right after clicking it. While the pointer rests
+on a `[data-mb-tip]` element, `_setTip()`'s engine keeps that text in
+`data-mb-tip-saved` and `title` is empty. The specs only passed because, on
+the old build, something above the table grew by ~27 px after the click and
+moved the button out from under the pointer. The specs now read the tooltip
+text from wherever it lives.
+
+Live sweep (`tests/support/probe-sph-unpinned.js`, 1400 px, every reported
+page plus every `tests/pagetypes.json` pageType, stopped after 3 pages each):
+nothing left behind, except on edit/notes-received. There MB puts
+`<span class="new-notes-alert-checkbox"><p>…</p></span>` straight into
+`#content`, between the `<h1>` and the filter `<form>`. That is an inline
+element beside the data table, the case `_sphContentBodies()` had assumed
+no page has. It is alone on its line, so its natural left is the parent's
+edge. `_sphAloneOnLine()` now lets such an element be pinned. Pinned as an
+inline box it still scrolled: Chromium's sticky on an inline box does not
+carry the block-in-inline `<p>` along. While pinned it is `display: block`
+(`.mb-sph-inline`, no `!important`, so an inline `display: none` still wins).
+Its native display is captured on first sight with position and z-index
+(`_sphNativeStyle()`), so the class cannot feed back into the decision.
+
+## 2026-10-05 — MB header menus drawn behind the pinned entity header (branch feature/sticky-col-align)
+
+Reported on release/9d451257-ebce-44ec-aad8-b48609bfaf7a with a screenshot and
+`debug/mb-native-menu-bug.html` (taken with the Editing menu open): the menu
+opens, but the release header (h1 + ISRC / Tracks / Data / View / WARNING)
+paints over its top rows. MB's menus are `li[tabindex=-1]` opened by click
+(focus) or hover, so an open menu leaves `div.header` at 106 (`.mb-sph-chrome`)
+or 107 (`SPH_Z_RAISED`, via `:hover`/`:focus-within`).
+
+Two causes, both in `_sphEnsureStyle()`:
+
+1. *The entity header was raised for good.* The open-popup rule matched
+   `[style*="position: absolute"][style*="display: block"]`, and
+   `#mb-fetch-progress-fill` in the h1 toolbar keeps exactly that inline style
+   after every fetch, inside `#mb-fetch-progress-wrap` (`display: none`),
+   which CSS cannot see. So `.releaseheader` sat at 107 at all times — the
+   snapshot has it as the only match. At 107 against the header's 106/107 it
+   wins (a tie goes to DOM order, and the content comes after the header).
+   Fix: the rule also requires an inline `z-index`, which a real in-place
+   popup has (the filter-history dropdown: `z-index: 20001`).
+2. *A tie even without (1).* Menu opened by click (header 107 through
+   `:focus-within`), pointer then resting on the title bar beside it (bar 107
+   through `:hover`): same tie, same loser. Fix: the raise rules read
+   `var(--mb-sph-z-raised, 107)`, and `body > .mb-sph-target` sets it to 108
+   (`SPH_Z_CHROME_RAISED`). A custom property because a plain override rule
+   cannot out-rank the focus rule's specificity (its `:not(:has(…))`).
+   Registered `inherits: false` like the other three.
+
+Why no test saw it: the "no base z-index" assertion only covered
+`#content h2`, never the entity header, which is the one bar holding the
+progress fill. It now covers `.seriesheader` (with a premise that the fill is
+inside it, styled like a popup), and a new spec opens the header's Editing
+menu, rests the pointer on the entity header beside it and hit-tests the
+overlap. The fixture has neither MB's CSS nor its JS, so the test places the
+submenu itself — out of flow FIRST: unstyled, the submenu is part of the
+header's height, and taking it out shifted the entity header up by 235 px
+between measuring and placing. Both guards are in
+`scripts/mutations/sticky-page-headers.json`.
+
+## 2026-10-05 — annotation search: the artwork card showed the name only (branch feature/annotation-search-tooltip)
+
+**Symptom.** On `search?type=annotation`, hovering a big-picture strip image
+or an inline thumbnail showed only the entity name. The search pageType's
+`entityFeatures['Annotations']` had no `tooltipColumns`, so both hover
+handlers used their static fallback.
+
+**Why adding the spec alone was not enough.** The generic
+`_artTooltipCellText()` path is wrong for a prose cell in three ways. It
+collapses whitespace, so every `<br>`/paragraph becomes one line. It returns
+only the anchor text when a cell holds exactly one `<a>`, so a one-link
+annotation became the single word "Discogs". And a plain clone copies the
+cell's collapsed state: the `.mb-text-clamp-inner` max-height, plus the inline
+`display:none` that `_rewireNestedTableH2Toggles()` puts on every collapsed
+nested wiki `<h2>` section (collapsed by default).
+
+**Fix.** `tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary
+alias', '---', 'Annotation' ]`, plus an `'Annotation'` branch that calls the new
+`_artTooltipAnnotation()`. That function clones the clamp wrapper's CHILDREN,
+removes the script's UI and the `_CLEAN_STRIP_SEL` sentinels, unwraps
+`_COLLAPSE_MATCH_SEL` highlights and clears every inline `display`. The card
+widens to 600px. Both hover handlers reset `maxWidth` to 380px before
+rendering, because the tooltip is a singleton. They also call the new
+`_fitArtTooltipToViewport()` after showing it, since the card has
+`pointer-events:none` and cannot scroll. That function shortens the
+annotation block to the window and reveals a "… (more in the cell)" foot.
+
+**Tests.** `tests/fixtures/search-annotation-tooltip.spec.js` (8 tests) on
+`tests/fixtures/search-annotation-tooltip.html`, built by
+`scripts/build-search-annotation-fixture.py` from the live page. Two of its
+four rows are hand-shaped: one has a single link, one is very long.
+`scripts/mutations/annotation-tooltip.json`: 6 planted defects, all caught.
+The inline thumbnail's fit was not covered at first (expect "pass"); a test
+was added rather than leaving it recorded.
+
+## 2026-10-05 — springsteenlyrics.com: only "Official Albums" converted; entry page; sticky headers (branch feature/sl-all-categories)
+
+`org/springsteenlyrics.org` listed four items: the collection entry page
+`collection.php` was not supported; on the collection "only category=album
+works"; everything above the table scrolled away sideways; and Title should
+be the sticky column (it was Cover, the column-0 fallback).
+
+**Root cause of "only album works".** Card markup is the same in all 26
+collection categories (checked with curl, page 1 of each). The difference is a
+"Filter by original year of release" block, rendered on every category except
+"Official Albums" and on the entry page. It ends in a stray `</div>` (after its
+slider `<script>`, `<p></p></div>`), and the parser closes `.project-detail`
+there, before the list heading and every card. `_SL_CARD_SEL` was
+`.project-detail div.blog-post`, and `_slFindListHeading()` was scoped the same
+way. Both found nothing, so `applySlCardsToTable()` returned without a word and
+the injected `<h1>` read just "Collection". `debug/sl-sampler.html` (saved by
+the user after the script ran) shows exactly that: 99 cards left in place.
+
+Div balance on the live pages (curl, depth counted from `.project-detail`'s
+opening tag):
+
+| Page                                 | Year filter | `.project-detail` closes | Also closes its floated `.col-sm-12` |
+|--------------------------------------|-------------|--------------------------|--------------------------------------|
+| album, album/12i                     | no          | after the last card      | no                                   |
+| sampler, video, `collection.php`     | yes         | before the first card    | no                                   |
+| book, memorabilia                    | yes         | before the first card    | yes                                  |
+| bootlegs aud_live1967 / aud_inter    | no          | after the last card      | no                                   |
+
+Fix: `_slFindCards()` takes every `div.blog-post` outside the navbar and
+footer. Its count equals "Showing items" on every page checked. The heading is
+the `h3.heading`/`h2.heading` that is a direct child of the first card's parent
+(or, once converted, of the table's parent). The renamed `<h2>` gets
+`mb-sl-list-heading`, because the CSS rule `.project-detail h2.heading` had the
+same flaw.
+
+**Entry page.** "Latest additions": 5365 items, 54 pages. It paginates with
+`cmd=intro&category=all&pg=N`, and its "»" link is `?pg=54&cmd=intro`.
+`page=2` returns page 1 again; `pg=2` returns items 101–200, with or without
+`cmd=intro` (probed with curl). The changes:
+- a new pageType `sl-collection-intro` with `features.pageParam: 'pg'`;
+- `_pageParamName()`, read by `determineMaxPageFromDOM()`, the fetch loop and
+  the loop's `currentPageNum`. Read as `page`, `?pg=3` counted as page 1 and
+  its live cards stood in for page 1;
+- a second `@include` line.
+
+`bootlegs.php` with no query renders no cards and stays excluded. Live: 5365
+rows from 54 pages, matching "Showing items".
+
+**Sticky Page Headers on SL.** I removed the `_isSlHost` early return. With no
+`#page`, the generic collector pins the body-level chrome and walks down to
+the table. The fixtures passed at once, but the live check under the real
+site CSS (`tests/live/sl-lists.spec.js`, book at 1000px) found two more
+defects:
+1. **Book: the toolbar `<h1>` scrolled away.** The second stray `</div>` closes
+   the floated Bootstrap `.col-sm-12` too, so that float sits beside the table
+   and holds `.project-detail`. `_sphContentBodies()` pushed it as a body,
+   and `_sphIsEligible()` refuses floats, so the whole column scrolled away.
+   New `_sphIsFullWidthFloat()`: a float as wide as its parent's content box
+   is descended into like a container. A narrow float is still pushed as a
+   body (and refused, as before). MusicBrainz pages only change if they have a
+   full-width float beside the data table. The full fixture suite stays green.
+2. **The year-filter block ended up at left 1198px, capped to 120px.** It is a
+   fixed-width (970px) Bootstrap `.container` centred with auto margins. In
+   the table-wide `.mb-sl-wide` column it sat around x≈773 before any pinning,
+   off-screen at scrollX 0, which is a pre-existing side effect of the
+   widening. Pinned, `left = parentContentLeft + marginLeft` read the auto
+   margin, and every width cap grew it further.
+   `_ensureSlStyle()` now zeroes the side margins of `.container`s inside
+   `.mb-sl-wide` ones. Verified by screenshots before and after a sideways
+   scroll. The generic `marginLeft`-based left is still exposed to
+   auto-margin centring; no MusicBrainz page is known to hit it.
+
+**Fixture artifacts met on the way.** These are not bugs:
+- The DOM-serialized snapshots carry jquery.sticky's inline `height: 80px` on
+  the navbar wrapper. With the site CSS stripped, the unstyled navbar spilled
+  out of it. Once the wrapper was pinned (z-index 106), the spill covered the
+  toolbar and two `sl-host` tests failed on intercepted clicks. The builder
+  now strips that inline height.
+- The spec's stand-in Bootstrap CSS first lacked `box-sizing: border-box`, so
+  each `width: 100%` column overflowed by its padding.
+- A 657px Title column in a 700px window is pushed back by the table's right
+  edge at the far right. That is plain `position: sticky`, so the spec now
+  uses a 1000px window and asserts the column fits.
+- The site throws `ReferenceError: init is not defined` on every year-filter
+  page (its slider snippet runs `window.onload = init;`). The live spec
+  exempts that exact message.
+
+**Tests.**
+- Fixtures, all from `scripts/build-sl-fixtures.py`:
+  - the entry page, two `pg=` pages;
+  - sampler (`debug/sl-sampler-raw.html`, curl), one widget-less page;
+  - memorabilia (`debug/sl-memorabilia-raw.html`, curl), the
+    double-stray-close shape.
+- Specs:
+  - `sl-collection-intro.spec.js`, which first asserts that the cards really
+    sit outside `.project-detail`;
+  - `sl-sticky-headers.spec.js`, three page shapes, geometry;
+  - a sticky-Title test in `sl-bootlegs.spec.js`;
+  - `sl-include-regex.spec.js`, extended;
+  - `tests/live/sl-lists.spec.js`: book, the entry page, and a sticky test
+    under the real CSS.
+- `scripts/mutations/sl-support.json`: 12 new planted defects, all caught.
+  The margin rule is caught only on memorabilia: on sampler the year-filter
+  block rides inside a `.project-detail` pinned and capped to its own width,
+  where the auto margins come out 0. `sticky-page-headers.json`'s kill-switch
+  entry was re-anchored now that the gate line is gone.
+
+**A false alarm, and what it left behind.** After the fix, a real-browser check
+of sampler again showed "Collection" / "0 rows". The cause was the mutation run
+itself: `scripts/mutation-check.py` plants each defect into the working-copy
+userscript in place, and the copy imported into Tampermonkey during that run
+was the "cards scoped to `.project-detail`" mutant. It matched the symptom
+exactly, and it also carried every other new line, the style rules included,
+which is what made it look like the real code. The file's mtime, 18:10 (the
+restore), gave it away. A clean re-import fixed it. What it left: the converter
+now logs a warning when it finds no cards and no table it converted earlier
+(`sl-collection-intro.spec.js`: the warning fires; a normal conversion stays
+quiet; `sl-host.spec.js`: a second Load from Disk onto a rendered page stays
+quiet). Two more mutation entries cover it, both caught.
+
+## 2026-10-05 — springsteenlyrics.com: the compact category/filter bar reads the site's walls (branch feature/sl-scope-bar)
+
+New feature, `sa_sl_compact_nav` (default off): `_slInstallScopeBar()` folds
+the collection's walls of category/filter links into one row of pull-downs.
+Design study: `org/springsteenlyrics.org`, `** analyze`. Two things found while
+building it, both now in `docs/claude/springsteenlyrics.md`:
+
+1. **The site's links already combine filters on a filtered page.** The design
+   study was done on unfiltered snapshots, where every chip carries exactly one
+   `f_*`, and concluded the site "never offers" combining. The fixture
+   `sl-collection-page1.html` is album with `f_format=12i`, and there every
+   country, album and copies link also carries `f_format=12i`, and the active
+   format chip is `label-danger` with an href WITHOUT `f_format` (a click
+   removes it). The first reader took every `f_*` of a wall as its own: the
+   walls after Format merged into one "Format" menu showing `12i`. Now a wall's
+   keys are the `f_*` not carried with the page's own value by all of its
+   links, and the red entry's value is read from the page's query.
+2. **Closing the pull-down on scroll shut it the moment it opened.** Playwright
+   scrolls a target into view before clicking, and the scroll event arrives
+   after the click handler has opened the panel; a real user's focus or
+   scroll-into-view does the same. `_slPlaceScopePop()` now moves the panel
+   with its button and closes it only when the button has left the window.
+
+Tests: `tests/fixtures/sl-scope-bar.spec.js` (10), the three
+`sl-sticky-headers.spec.js` shapes again with the bar on (6 tests in total, 3 new),
+`scripts/mutations/sl-scope-bar.json` (8 entries, all caught, including both
+findings above).
+
+## 2026-10-05 — springsteenlyrics.com: the compact bar on the bootleg lists, exact counts, era timeline (branch feature/sl-scope-bar)
+
+Part 2 of the bar. Notes for whoever touches it next:
+
+- **The bootleg fixture needed `.col-md-12` CSS for the sticky check.** The
+  bootleg lists wrap their content in `.col-md-12`, the collection in
+  `.col-sm-12`. `sl-sticky-headers.spec.js`'s minimal Bootstrap CSS covered only
+  the latter, so on the bootleg fixture the table sat at x=0 and the premise
+  "the table is indented" failed. That was the fixture, not the code. The rule
+  is added for that page only (`BOOTSTRAP_CSS_MD`), so the three earlier shapes
+  keep exactly the CSS they were checked with.
+- **One recording guard cannot be seen by any spec**: `category=f_*` (a bootleg
+  search). Every such URL also carries its `f_*` parameter, which the next
+  guard rejects, so the mutation stays green. It is recorded as
+  `"expect": "pass"` in `scripts/mutations/sl-scope-bar.json` with that reason.
+- **A mutation that crashes the menu is not a pin.** The first "unknown era
+  drawn as counted" mutation made `counts[…].at` throw, so the menu never
+  opened and the spec failed for the wrong reason. It now removes only the
+  `mb-sl-era-unknown` class, and the spec fails on the dashed-bar count.
+
+Tests: `sl-scope-bar.spec.js` 15 (5 new), the sticky spec gains a bootleg shape
+with the bar on (7), mutations 15 (14 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: one search box for the bootleg forms (branch feature/sl-scope-bar)
+
+Part 3 of the bar. No defect was found; the notes are the facts the design
+rests on, so nobody "simplifies" them away:
+
+- **The server reads one search field, the one named by `category`.**
+  `f_title=born&f_version=soundboard` = `f_title=born` (73 rows each). A box that
+  combined fields would promise something the site ignores.
+- **`f_date` needs a full date** (1975-08-15 → 21; 1975-08, 1975 → 0), and
+  `checkForm()` is dead (`form.filter_date` vs the `f_date` input), so a
+  malformed date silently lists nothing on the site itself.
+- **Recent is recorded on the RESULT page, not on submit.** Recording on
+  submit would miss the site's own forms and bookmarks, and would record a
+  search whose navigation the guard cancelled.
+- **Lint caught one `expect(await page.inputValue(...))`**; it is now
+  `toHaveValue()`, and the mutation that empties the box still fails it.
+
+Tests: `sl-scope-bar.spec.js` 23 (8 new), mutations 23 (22 fail as expected, 1
+recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bar filters a loaded table; a fixed pull-down hung off-screen (branch feature/sl-scope-bar)
+
+Part 4 of the bar. Country, Year and Copies now filter the loaded table through
+`applyUniqValueSet()`; Format, Album and Category navigate (user's decision,
+2026-10-05: exact mappings only). Design in `docs/claude/springsteenlyrics.md`,
+"After the fetch".
+
+**Defect found by the new specs, in the part-1 code.** `_slPlaceScopePop()` always
+put the `position: fixed` panel under its button. After a render the page had
+scrolled (the global filter takes focus), the bar sat low, and the Country list
+ran past the window's bottom. Playwright reported "element is outside of the
+viewport" and timed out on every entry below the edge. That was not a test
+artefact: a fixed panel cannot be scrolled into view by the page, so a real user
+could not reach those entries either. Live testing missed it because the bar sat
+high whenever a menu was opened there. The fix opens the panel upwards when
+there is more room above and caps its height to the room it opens into
+(`overflow-y: auto` on the panel). It is pinned by "a pull-down opened low on the
+screen fits in the window" and a two-edit mutation.
+
+Two smaller things:
+
+- `_slLoadedTable()` checks for a column filter row before reading
+  `isLoaded`/`allRows`: the bar is built at init, above those `let`s.
+- The Category menu's note first said "This list was fetched with this filter",
+  because the category is always in the query. The category now has its own
+  note.
+
+Tests: `sl-scope-bar.spec.js` 31 (8 new), mutations 29 (28 fail as expected, 1
+recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the bootleg landing page, for the compact bar only (branch feature/sl-scope-bar)
+
+Part 5 of the bar: `bootlegs.php` is now `@include`d, as pageType
+`sl-bootlegs-intro` with `buttons: []` and `features.slNavOnly`. Three things a
+future reader should not undo:
+
+- **The quiet exit is not the same as no match.** Skipping the definition when
+  `sa_sl_compact_nav` is off would leave `pageType` empty, and the
+  required-elements check would log "Required elements not found.
+  Terminating." at ERROR level on every visit. The init block now returns right
+  after detection with an info line, before any heading, toolbar or body class.
+  The spec checks that the page is untouched AND that the console shows no
+  script error.
+- **The toolbar probe found a leading `|` and two menus with nothing to act
+  on** (📦 Data, 🛠 View): with no fetch buttons the divider leads the bar. They
+  are hidden by `body.mb-sa-sl-nav-only`; ⚙️❓ stay. Found with a throwaway
+  probe spec (deleted), now pinned in the landing test.
+- **`build-sl-fixtures.py` gained `PLAIN_TARGETS`**: the card-less page goes
+  through the same `sanitise()`, unsplit. The refactor regenerated the five
+  existing fixtures byte-identical (no diff in `git status`).
+
+`sl-include-regex.spec.js` used to assert the landing page was EXCLUDED; it now
+asserts it is included (bare, `#top`, `cmd=intro`), while `cmd=introx` and
+`pg=2` stay out.
+
+Tests: `sl-scope-bar.spec.js` 35 (4 new), the `@include` spec flipped,
+mutations 34 (33 fail as expected, 1 recorded pass).
+
+## 2026-10-05 — springsteenlyrics.com: the formats guide; how the server files a format (branch feature/sl-scope-bar)
+
+Part 6 of the bar. **The one fact everything rests on was probed, not
+assumed:** `scripts/probe-sl-format-codes.py` fetched page 1 of
+`collection.php?cmd=list&category=all&f_format=<code>` for all 26 codes and
+tallied the cards' Format texts. Results:
+
+- An item is filed under its FIRST medium: `vhs` holds "VHS + CD" (5) and "VHS +
+  2xMiniCD"; `bd` holds "Blu-ray + DVD"; `cd5` holds "SACD-HYBRID" and
+  "SACD-HYBRID + 2xCD"; `cdr` holds "3xCD-R + 3xDVD-R". No code held an item
+  whose first medium was another code's, apart from one plain "CD" under `cdr`
+  (the site's data).
+- `12i` ("12\" vinyl") is the "LP"s (100 of 100 on page 1); `prt` is
+  "Paperback"/"Hardcover" (65/27); counts are written "2xCD", "2 x Cassette
+  Tape" and "4XLP".
+- Totals for the record (the "of N" line): 7i 989, 10i 16, 12i 1153, flex 13,
+  cd3 33, cd5 1646, cdr 166, mc 261, 8t 20, r2r 11, nt 1, md 18, vhs 61,
+  betamax 3, betacamsp 4, umatic 2, v8 3, ced 1, vhd 2, ld 15, vcd 1, dvd 161,
+  dvdr 6, bd 21, bdr 1, prt 744.
+
+So the bar files a loaded row the same way (`_slFormatCode()`, first medium),
+and the spec pins it with the sampler fixture's "CD + 2xDVD": a last-medium (or
+any-medium) rule would file it as DVD. Only page 1 of each code was read, so a
+rarer spelling may still be missing from `_SL_FORMATS`' patterns; such a row
+matches no Format choice rather than a wrong one.
+
+Changed test: part 4's "Format and Category still navigate" became "Album and
+Category still navigate" on the Official Albums fixture (the only one with an
+Album wall). Test helpers now read an entry's label from its own text node,
+since a Format entry's label span also holds its guide line.
+
+Tests: `sl-scope-bar.spec.js` 39 (4 new), mutations 40 (38 fail as expected, 2
+recorded passes: the bootleg-search count guard, and the guide panel's
+"not the page container" guard, which no fixture can show).
+
+## 2026-10-06 — jungleland.it: the bootleg artwork list as a second foreign host (branch feature/jl-support)
+
+`org/jungleland.it.org`: springsteenlyrics.com's treatment "albeit not so
+complex" for `https://www.jungleland.it/html/list.htm`, opt-in
+(`sa_enable_jungleland`, default off). Design and rules:
+docs/claude/jungleland.md.
+
+**What the snapshot and a live look showed (`debug/jungleland.it.html`,
+2026-10-05):**
+
+- **Page:** one static FrontPage page, windows-1252, no doctype, no
+  pagination, no heading of any kind.
+- **Entries:** 6,326 `<p><a target="inferioredx1" href="YYYYMMDD[_N].htm">`
+  entries under 59 year anchors plus "others".
+  - Every entry under a year anchor ends in a glued `(YYYY-MM-DD)`.
+  - Under "others", 485 are undated, and one, "Magic In The Köln Night
+    (2007-12-13)", has the date after a space.
+  - The "others" heading's second `<a name="others">` sits inside its first
+    entry's `<p>`.
+- **Frameset:** list.htm is not the page users see. The site's entry is
+  `html/artwork.htm`, a frameset whose 25 % LEFT frame is list.htm. Entries
+  open in the right frame `inferioredx1`, which shows the bootleg's artwork.
+  The header has no `@noframes`, so Tampermonkey runs the script in that frame
+  as well. Decided with the user: only a list.htm opened as its own tab is
+  converted. The frame gate (`window.top !== window`) sits next to the opt-in
+  gate, and the table's links open in a new tab, since that frame does not
+  exist there.
+
+**What changed in shared code:**
+
+- **Detection loop:** it compared `Boolean(def.host) !== _isSlHost`. With two
+  foreign hosts that only says "some foreign host", so it now compares
+  `(def.host || null) !== _foreignHost`. No spec can see the difference today,
+  because no SL matcher claims `/html/list.htm`. Removing the comparison
+  entirely is also invisible: checked by mutation, no MusicBrainz matcher
+  claims that path either. Both are recorded as passes.
+- **CSS:** `_ensureSlStyle()`'s `:where()` table rules moved, verbatim, into
+  `_ensureForeignTableStyle()`, keyed on
+  `body:is(.mb-sa-host-sl, .mb-sa-host-jl)`. All 73 sl-* fixture tests pass
+  unchanged.
+
+**Equivalent mutant, dropped:** planting "no `\s*` before the date" in
+`_jlParseItem()`'s regex changes nothing. The lazy title group then ends with
+the space, and `.trim()` removes it. The `\s*` stays as documentation of the
+shape; it is not a guard.
+
+**Pre-existing, fixed on the way:** `sl-support.json`'s "the entry page
+@include line is missing" grepped `every list page, and only list pages`.
+Commit 7e321c2 renamed that test, so the grep selected no test and the entry
+reported ERROR. It now greps `springsteenlyrics.com: every list page` and
+fails as expected.
+
+**Results:**
+
+- `jl-list.spec.js`: 10 tests, plus one new test in `sl-include-regex.spec.js`.
+- Mutations: `jl-support.json` has 14 entries, 12 failing as expected and 2
+  recorded passes (the two host-comparison guards above). `sl-support.json`
+  is all OK after the grep fix.
+- Live `jl-list.spec.js` (`@extended`): the whole real page, 6.3 s.
+
+## 2026-10-06 — brucespringsteen.it: the record database as a third foreign host (branch feature/bs-support)
+
+`org/springsteen.it.org`: two buttons, Unofficial and Official, every format
+checkbox ticked, and the records as a table. It is opt-in
+(`sa_enable_brucespringsteen`), and it works in its own tab only. Design and
+rules: docs/claude/brucespringsteen.md.
+
+**The site (curl probes, 2026-10-06):**
+
+- **Page:** `DB/records.aspx` is one ASP.NET page per query. `tipe=-1|-2`
+  is followed by the ticked format codes 0–11.
+- **Frameset:** it is the 222 px left frame `sommario` of `Blegsdx.htm`
+  (default `tipe=-1,4`, LP only). The site's own "APPLY FILTER" writes
+  `parent.sommario`, so standalone it does nothing.
+- **Charset:** the server sends `charset=utf-8` and the bytes are UTF-8,
+  while the page's meta tag says windows-1252. `fetchHtml()`'s `res.text()`
+  is right, and nothing in the fetch path changed. The trap is the fixtures:
+  served as plain `text/html`, the meta tag wins and "…" becomes "â€¦". So
+  `bsFixture.js` sends the charset, and the spec pins that a "…" title
+  survives.
+- **Record shapes:** official records differ from unofficial ones. They name
+  a country, not a label, may carry PROMO, and have `Catalogue` instead of
+  `Mx`. Two unofficial records have neither an Mx line nor a `</b>`.
+
+**Design point:** the rows never come from the live page. Both buttons carry
+`params`, so page 1 is always fetched with every format of the kind. The live
+page, typically showing the frameset's LP list, gets only an empty table, and
+its own records are removed. `non_paginated` avoids the extra max-page fetch.
+The base definition's `bsRecordsToTable: true` is what Load from Disk runs
+with.
+
+**Not a bug: a second press reloads the page.** It is the generic second-fetch
+rule (fetch-and-render-pipeline.md). A spec that pressed Unofficial and then
+Official measured an empty table, because the injected script does not
+survive the reload. It was removed, and HELP says to press again after the
+reload.
+
+**A false alarm worth remembering:** the user's first browser test showed no
+table — the fetched page converted (1878 rows), but "Abort: #tbody container
+not found".
+
+- **Cause:** the userscript had been re-imported into Tampermonkey while
+  `bs-support.json` was mutating the working copy in place.
+- **Evidence:** the log lacks BOTH the converter's "live page — … removed"
+  debug line and its "no records found" warning, one of which the click-time
+  call always logs. The screenshot shows the Unofficial radio ticked on the
+  Official page, so the click-time tick ran and only the line after it was
+  missing. That is exactly mutation 8, "the live page gets no table to render
+  into". The browser logs in UTC; local time was CEST.
+- **Check:** after the run restored the file (hash verified), the live
+  `@extended` spec passed both buttons against the real site.
+- **Rule:** never re-import while a mutation-check run is in progress
+  (memory note, now with a real instance).
+
+**Mutation anchors shared between hosts:**
+
+- `jl-support.json`'s "the Title link keeps the site's frame target" grepped
+  `link.target = '_blank';`. That line now also exists in `_bsBuildRow()`,
+  so its find matched twice and the run reported ERROR. It now includes the
+  following `link.textContent = title;`.
+- `sl-support.json`'s navigation-guard entry follows the
+  `(_isSlHost || _isBsHost)` text.
+
+**Results:**
+
+- `bs-records.spec.js`: 14 tests.
+- `bs-support.json`: 21 entries, 20 failing as expected and 1 recorded pass
+  (the onload re-tick; the harness injects after load).
+- SL and JL specs: 84 pass.
+- Live `bs-records.spec.js`: both buttons, 6.5 s.
+
+## 2026-10-06 — release-tracks: Cover art section (9.99.1244, branch feature/release-cover-art)
+
+Design and decisions: `org/CAA-release-tracks-handling.org` (mockup R1). After
+"Show all Tracks for Release" a `h2.mb-release-art-h2` "Cover art (N)" plus
+`div.mb-release-art-sec` is inserted before `h2.tracklist` in
+`startFetchingProcess()`'s render tail, BEFORE `makeH2sCollapsible()`, and
+opened with `_mbToggle(true)` after it.
+
+- **Probe** (`scripts/probe-caa-release-images.py`): every archive URL is
+  `http:`; a 0-image release is a 404; WS/2 `cover-art-archive.count` and the
+  tab text agree with `len(images)`. *Older records carry only the
+  `small`/`large` thumbnail keys* (release `a9a3b139-…`, the medley fixture's
+  own) — the tile falls back to them, pinned by a test and a mutation.
+- **Archive outage during the work:** coverartarchive.org answers 307 to
+  `archive.org/download/mbid-…/index.json`, and archive.org refused connections
+  for a while (curl too). The section showed "could not be reached" + ⟳ Retry,
+  as designed.
+- **`_artFetchEntityImages()`** is a NEW helper with `_artEnrichIcon()`'s three
+  tiers; `_artEnrichIcon()` itself was deliberately not rewired (table render
+  path) — an open follow-up.
+- **Fixture override grew to three settings** (`sa_enable_release_tracks_cover_art`
+  forced off, since the section fetches with plain `fetch()`); the two
+  settings-dialog specs' `PRISTINE` and five docs passages said "two".
+- Spec `release-tracks-cover-art.spec.js` (9 tests), mutation list
+  `release-tracks-cover-art.json` (10/10 caught).
+
+## 2026-10-06 — fixture harness: musicbrainz.org answers its own static script with HTML (branch fix/harness-mb-static)
+
+**Symptom:** the 9.99.1244 merge gate (`npm run test:full`) failed 3 tests,
+all in `search-annotation-tooltip.spec.js`, with a page error
+`Unexpected token '<'` that has no stack.
+
+**Not the branch:** repeated runs (`--repeat-each=6 --workers=12`) failed 24
+of 48 on the branch, then 0 of 48 on `main`, then 10 of 48 on `main` — the
+first `main` run was luck. A debug spec logging every script response found
+it: in exactly the failing runs, `https://musicbrainz.org/static/scripts/supported-browser-check.js`
+came back `200 text/html; charset=utf-8`. Fetched directly with curl it was
+JavaScript. MusicBrainz serves an HTML page for it under burst load.
+
+**Why it reached the network at all:** `loadUserscriptPage()` routes only the
+main document. Every saved MusicBrainz page references this script with a
+relative `/static/…` src, which resolves to musicbrainz.org itself (14
+fixture/snapshot files; no other musicbrainz.org script is referenced — the
+rest come from the static.metabrainz.org CDN, which answered correctly). Same
+class of problem as the 2026-10-01 archive.org thumbnail stall
+(`ARCHIVE_ORG_RE`).
+
+**Fix:** `MB_BROWSER_CHECK_RE` in `tests/support/loadPage.js` answers it
+locally with what the real script does in a supported browser (remove the
+hidden `#unsupported-browser` warning), marked `x-sa-fixture-stub`. An empty
+stub would also stop the error but leave a DOM the real page never has.
+
+**Results:** `search-annotation-tooltip.spec.js` 48/48 repeated runs.
+`harness-mb-static-script.spec.js` (2 tests) pins "the stub answered, not the
+network" by the marker header — "no page error" alone passes on every lucky
+run, which is how this hid — and the removed warning.
+`harness-mb-static-script.json`: 2/2 caught, both against `loadPage.js`.

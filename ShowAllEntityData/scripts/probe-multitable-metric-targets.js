@@ -78,7 +78,7 @@ function parseArgs(argv) {
                 if (r.width === 0 && r.height === 0) return '0x0';
                 return `visible ${Math.round(r.width)}x${Math.round(r.height)}`;
             };
-            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
 
             const tables = Array.from(document.querySelectorAll('table.tbl'));
             const h3s = Array.from(document.querySelectorAll('h3.mb-toggle-h3'));

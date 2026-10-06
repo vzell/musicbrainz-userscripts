@@ -46,7 +46,7 @@ async function markersInsideTables(page) {
 /** Resolves the rendered column index of the header whose clean name is `colName`. */
 async function columnIndex(page, colName) {
     return page.evaluate((name) => {
-        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        const strip = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
         return Array.from(document.querySelectorAll('table.tbl thead th'))
             .findIndex((t) => (t.dataset.colName || strip(t.textContent)) === name);
     }, colName);

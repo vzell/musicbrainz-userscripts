@@ -43,7 +43,7 @@
     var result = { found: false, colIdx: -1 };
 
     function stripHeaderDecorations(t) {
-        return t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
     }
 
     var tables = document.querySelectorAll('table.tbl');

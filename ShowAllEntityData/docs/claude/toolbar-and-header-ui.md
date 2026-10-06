@@ -546,7 +546,8 @@ Both halves matter and the reasons are easy to get backwards.
 **When reproducing anything in this area, check the fixture settings first.**
 `loadPage.js`'s `FIXTURE_SETTINGS_OVERRIDE` forces `sa_enable_caa_pics` and
 `sa_enable_relationships_column` OFF for every fixture spec — i.e. it removes
-the two largest late-injected controls. The first attempt to reproduce this bug
+the two largest late-injected controls (it also forces
+`sa_enable_release_tracks_cover_art` off, which adds no table control). The first attempt to reproduce this bug
 reported **0 of 21** affected columns for exactly that reason, against **20 of
 21** on the real page. A "cannot reproduce" here means nothing until that
 override has been switched back on.
@@ -583,6 +584,12 @@ How it behaves, and why:
 - **Live titles.** A title changed under the pointer (a button relabelling
   itself on click) is re-stashed and re-rendered on the next mousemove. A
   mousedown hides the card for the rest of that hover, like a native tooltip.
+- **`_setTip()` on a stashed element writes the stash, not `title`**, and
+  repaints the card if the element is hovered. A control re-tipped on a timer
+  (the ⚠⟳ counts during an artwork load) under a RESTING pointer gets no
+  mousemove, so a written `title` stayed exposed and the browser drew its own
+  box over the card (org/live-bootleg.org 1;
+  `rich-tooltips-liner.spec.js` "pointer at rest").
 - **It steps aside for the other rich tooltips.** No card opens while
   `#mb-art-bigbox-tooltip`, `#mb-art-hover-preview` or `#mb-rel-tooltip`
   shows (`_OTHER_RICH_TIPS`). The title stays stashed, so no grey box appears
@@ -617,6 +624,20 @@ for MusicBrainz's CSP to block.
 Specs: `tests/fixtures/rich-tooltips-liner.spec.js` and the Liner notes case in
 `touch-tooltip.mobile.spec.js`; mutations in
 `scripts/mutations/rich-tooltips-liner.json`.
+
+**The artwork card's `'Annotation'` entry is the one rich-HTML row.** A
+`tooltipColumns` entry named `'Annotation'` goes through
+`_artTooltipAnnotation()`, never `_artTooltipCellText()`. That path flattens
+every line break, cuts a one-link annotation down to the link text, and a
+plain clone would carry the cell's collapsed state with it: the clamp class
+and the `display:none` of collapsed nested wiki `<h2>` sections. The card
+widens to 600px for it. `#mb-art-bigbox-tooltip` is a singleton, so BOTH hover
+handlers (strip and inline thumbnail) reset `maxWidth` to 380px before they
+render. The card cannot scroll, so both handlers call
+`_fitArtTooltipToViewport()` between `display = 'block'` and their position
+measurement. It shortens the `.mb-tt-annotation` block and shows its "… (more
+in the cell)" foot. Spec: `tests/fixtures/search-annotation-tooltip.spec.js`;
+mutations: `scripts/mutations/annotation-tooltip.json`.
 
 ## Hover tooltips must ignore a tap (`_isTouchCompatMouseEvent()`)
 

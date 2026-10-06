@@ -348,7 +348,7 @@ test.describe('single-table: Cc/Rx/Ex scoping (artist-releases)', () => {
             .findIndex((th) => th.dataset.colName === 'Barcode'));
         expect(barcodeIdx, 'the Barcode column exists').toBeGreaterThan(-1);
         const glyphs = await page.evaluate((i) => document.querySelector('table.tbl thead tr:first-child')
-            .cells[i].textContent.replace(/Barcode|[⇅▲▼📊0-9\s]/g, ''), barcodeIdx);
+            .cells[i].textContent.replace(/Barcode|[⇅▲▼📊0-9\s]/gu, ''), barcodeIdx);
         expect(glyphs, 'the header really carries text besides its name').not.toBe('');
         await typeColumn(columnFilterInput(page, barcodeIdx), '[none]');
         await expect.poll(() => globalStatus(page), SETTLE)

@@ -355,6 +355,18 @@ horizontally. Then:
     wrappers, a bare =table.details=). The h3 bars inside such a body then
     lose =mb-sph-target= (they ride along with the body). Capture runs leave
     those sections collapsed, so a clean capture shows none of this;
+  - (branch feature/sticky-col-align, 2026-10-05) every block of content
+    that is not a data table is pinned (=_sphContentBodies()=): a wrapper
+    without a =table.tbl= inside is pinned WHOLE, so =#bottom-credits=,
+    =div.annotation= or =div.wikipedia-extract= now carry =mb-sph-target=
+    even while their section is collapsed, and so do the data section's
+    intro =<p>=/forms, =#mb-status-displays-wrapper= after a bare =h1= and
+    the CAA/EAA big-image strips. A =table.tbl= that fits the viewport is
+    pinned whole too: =mb-sph-target mb-sph-table= with =--mb-sph-maxw: none=.
+    A wider table with a sticky column gets =data-mb-sph-col-left= (and
+    =data-mb-sph-col-pre= with a "#" column), plus =mb-sph-col-docked= when
+    captured at scrollX 0 with the sticky column first; the page gains
+    =<style id="mb-sph-col-style">=;
   - the page gains one =<style id="mb-sticky-page-headers-style">= block.
 
 The values are viewport-derived but deterministic for one viewport, so this is

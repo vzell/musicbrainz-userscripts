@@ -25,6 +25,24 @@ const RG_URL = 'https://musicbrainz.org/release-group/aaaaaaaa-0000-0000-0000-00
 const RG_FIXTURE = path.join(__dirname, 'releasegroup-releases-live-titles.html');
 const ARTIST_URL = 'https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f?all=1&va=0';
 const ARTIST_FIXTURE = path.join(__dirname, 'artist-releasegroups-live-titles.html');
+// Same release group, Bootleg titles swapped for multi-date ones
+// (scripts/build-live-multidate-fixture.py, org/live-bootleg.org 2).
+const MULTI_FIXTURE = path.join(__dirname, 'releasegroup-releases-live-multidate.html');
+const MULTI_DAYS = [
+    '1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA',
+    '1977‐03‐22/23/24/25: Music Hall, Boston, MA, USA',
+    '1977‐04‐30/31: Music Hall, Boston, MA, USA', // impossible: April has 30 days
+];
+const MULTI_DATES = [
+    '1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐01‐01: Nassau Coliseum, Uniondale, NY, USA',
+    '1989‐07‐04 / 1990‐04‐22: Park West, Chicago, IL, USA',
+    '1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐02‐30: Nassau Coliseum, Uniondale, NY, USA', // impossible
+];
+const MULTI_ERRORS = [
+    '1977‐04‐30/31: Music Hall, Boston, MA, USA',
+    '1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐02‐30: Nassau Coliseum, Uniondale, NY, USA',
+    '1977‐03‐22/2: Music Hall, Boston, MA, USA', // "/2" is no day: a near miss
+];
 
 const SETTINGS = { sa_enable_caa_pics: false, sa_enable_relationships_column: false };
 
@@ -176,7 +194,7 @@ test.describe('📊 Live title info', () => {
         const p = (t) => page.evaluate((x) => window.__saTest.parseLiveTitle(x), t);
 
         expect(await p('2008-12-07: Rose Garden, Portland, OR, USA')).toEqual({
-            kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'ascii', extra: null, locParts: 4, problems: [],
+            kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'ascii', extra: null, locParts: 4, problems: [], multi: null,
         });
         expect(await p('2008‐12‐17, early show: Mellon Arena, Pittsburgh, PA, USA')).toMatchObject({
             kind: 'valid', sep: 'unicode', extra: 'early show',
@@ -204,6 +222,45 @@ test.describe('📊 Live title info', () => {
         for (const t of ['Studio Album', '1984 Revisited', '2000: A Space Odyssey', '18 Tracks', '1999', '']) {
             expect(await p(t), t).toBeNull();
         }
+    });
+
+    test('parser: several dates in one title (org/live-bootleg.org 2a)', async ({ page }) => {
+        await openRg(page);
+        const p = (t) => page.evaluate((x) => window.__saTest.parseLiveTitle(x), t);
+
+        // Several days of one month: valid while every day exists.
+        expect(await p('1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA')).toEqual({
+            kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'unicode', extra: null, locParts: 4, problems: [], multi: 'days',
+        });
+        expect(await p('1976‐11‐02/03, late show: Palladium, New York City, NY, USA'))
+            .toMatchObject({ kind: 'valid', multi: 'days', extra: 'late show' });
+        expect(await p('1977‐04‐30/31: Music Hall, Boston, MA, USA'))
+            .toMatchObject({ kind: 'invalid', multi: 'days', problems: ['day 31'] });
+        expect(await p('1999‐02‐28/29: Leap Arena, Utrecht, Netherlands'))
+            .toMatchObject({ kind: 'invalid', problems: ['day 29'] });
+        expect((await p('2000‐02‐28/29: Leap Arena, Utrecht, Netherlands')).kind).toBe('valid');
+        // "/2" is not a day: the old near miss, unchanged.
+        expect(await p('1977‐03‐22/2: Music Hall, Boston, MA, USA'))
+            .toMatchObject({ kind: 'nearmiss', problems: ['date is not written YYYY-MM-DD'], multi: null });
+
+        // Separate dates, each with its own location.
+        expect(await p('1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐01‐01: Nassau Coliseum, Uniondale, NY, USA'))
+            .toEqual({ kind: 'valid', shape: 'YYYY-MM-DD', complete: true, sep: 'unicode', extra: null, locParts: 4, problems: [], multi: 'dates' });
+        expect(await p('1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐02‐30: Nassau Coliseum, Uniondale, NY, USA'))
+            .toMatchObject({ kind: 'invalid', multi: 'dates', problems: ['day 30'] });
+        expect(await p('1978‐08‐21: Madison Square Garden, New York City, NY, USA / 1979‐01‐01 Nassau Coliseum, Uniondale'))
+            .toMatchObject({ kind: 'nearmiss', multi: 'dates', problems: ['no ": " between the date and the location'] });
+        // Separate dates sharing one location; shapes and separators merge.
+        expect(await p('1989-07-04 / 1990-04-22: Park West, Chicago, IL, USA'))
+            .toMatchObject({ kind: 'valid', multi: 'dates', sep: 'ascii', locParts: 4 });
+        expect(await p('1989‐07‐04 / 1990-04: Park West, Chicago, IL, USA'))
+            .toMatchObject({ kind: 'valid', multi: 'dates', sep: 'mixed', shape: 'YYYY-MM-DD / YYYY-MM', complete: false });
+        expect(await p('1989‐07‐04 / 1990‐13‐22: Park West, Chicago, IL, USA'))
+            .toMatchObject({ kind: 'invalid', problems: ['month 13'] });
+
+        // A "/" in the location is one live title, not two.
+        expect(await p('2001‐01‐01: Venue A / Venue B, City, Country'))
+            .toMatchObject({ kind: 'valid', multi: null, locParts: 3 });
     });
 
     test('Bootleg sub-table: every section and count, with the status named', async ({ page }) => {
@@ -340,5 +397,45 @@ test.describe('📊 Live title info', () => {
         expect(valid).toBe(11);
         expect(unicode).toBe(11);
         expect(flagged(await visibleRows(page, 'Title'))).toEqual({ error: [], warn: [] });
+    });
+});
+
+test.describe('📊 Live title info: several dates in one title', () => {
+    const openMulti = (page, settingsOverride) =>
+        open(page, RG_URL, MULTI_FIXTURE, 'Show all Releases for ReleaseGroup', settingsOverride);
+
+    test('Bootleg sub-table: the "Multiple dates" counts, and multi-date titles are valid', async ({ page }) => {
+        await openMulti(page);
+        const s = liveOnly(await sectionsOf(page, 'Release', await tableIndexOf(page, 'Bootleg release')));
+        expect(s['Live title info - Multiple dates']).toEqual({
+            '🗓️ several days of one month ("1978‐08‐21/22/23")': MULTI_DAYS.length,
+            '🗓️ several separate dates ("… / …")': MULTI_DATES.length,
+        });
+        expect(s['Live title info - Validity']).toEqual({
+            '✅ follows the live title convention (Bootleg)': 6,
+            '❌ impossible date (Bootleg)': 2,
+        });
+        expect(s['Live title info - Near miss']).toEqual({ '❗ starts with a date, not "DATE: Venue, City, …"': 1 });
+    });
+
+    test('ticking each "Multiple dates" entry filters to exactly its rows', async ({ page }) => {
+        await openMulti(page);
+        const bootleg = await tableIndexOf(page, 'Bootleg release');
+        await sectionsOf(page, 'Release', bootleg);
+        await tick(page, 'Live title info - Multiple dates', '🗓️ several days');
+        expect((await visibleRows(page, 'Release', bootleg)).map((r) => r.title).sort()).toEqual([...MULTI_DAYS].sort());
+
+        await openMulti(page);
+        await sectionsOf(page, 'Release', bootleg);
+        await tick(page, 'Live title info - Multiple dates', '🗓️ several separate');
+        expect((await visibleRows(page, 'Release', bootleg)).map((r) => r.title).sort()).toEqual([...MULTI_DATES].sort());
+    });
+
+    test('cells: a valid multi-date title is not flagged; an impossible day is, with the reason', async ({ page }) => {
+        await openMulti(page);
+        const rows = await visibleRows(page, 'Release');
+        expect(flagged(rows)).toEqual({ error: [...MULTI_ERRORS].sort(), warn: [] });
+        expect(rows.find((r) => r.title.startsWith('1977‐04‐30/31')).tip).toBe('Live title date is impossible: day 31.');
+        expect(rows.find((r) => r.title.includes('1979‐02‐30')).tip).toBe('Live title date is impossible: day 30.');
     });
 });

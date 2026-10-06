@@ -64,7 +64,6 @@ async function setup(page, { failBatches = [], failStatus = 503 } = {}) {
         const url = new URL(route.request().url());
         const query = url.searchParams.get('query') || '';
         const ids = (query.match(/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g) || []);
-        const ordinal = calls.length;
         calls.push({ ids, limit: url.searchParams.get('limit'), query });
 
         // Which batch is this? Attempts of the same batch repeat its MBIDs, so
@@ -124,9 +123,6 @@ async function waitForVisibleRowCount(page, n) {
 }
 
 const toggle = (page) => page.locator('.mb-ms-col-hdr-btn').first();
-
-/** Distinct batches actually requested, ignoring retry attempts. */
-const distinctBatches = (calls) => new Set(calls.map((c) => c.ids[0])).size;
 
 test.describe('artist-recordings: millisecond Length precision via batched lookups', () => {
     test('the toggle is offered, quotes its cost, and fetches nothing until pressed', async ({ page }) => {
@@ -282,6 +278,10 @@ test.describe('artist-recordings: millisecond Length precision via batched looku
         // The button must not read as finished: same yellow tint as `retry`,
         // because it means the same thing — there is more to get.
         await expect(toggle(page)).toHaveAttribute('data-mb-ms-retry', '1');
+        // Park the pointer first: resting on the button after .click(), its
+        // title is stashed while the rich card owns it (docs/claude/
+        // toolbar-and-header-ui.md, "Script tooltips go through _setTip()").
+        await page.mouse.move(0, 0);
         expect(await toggle(page).getAttribute('title')).toContain('could not be loaded');
 
         // The failed batch cached nothing, so pressing again re-requests
@@ -335,6 +335,10 @@ test.describe('artist-recordings: millisecond Length precision via batched looku
         await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
         // Never the settled, dimmed "there is nothing here" state.
         await expect(toggle(page)).not.toHaveAttribute('aria-disabled', 'true');
+        // Park the pointer first: resting on the button after .click(), its
+        // title is stashed while the rich card owns it (docs/claude/
+        // toolbar-and-header-ui.md, "Script tooltips go through _setTip()").
+        await page.mouse.move(0, 0);
         expect(await toggle(page).getAttribute('title')).toContain('Click again to retry');
         expect(await lengthValues(page)).toEqual(SECONDS);
     });

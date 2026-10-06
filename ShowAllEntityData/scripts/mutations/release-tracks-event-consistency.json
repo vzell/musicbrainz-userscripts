@@ -1,0 +1,119 @@
+[
+  {
+    "name": "Performer gets no live-date context",
+    "why": "Reverts org/live-bootleg.org 3's Performer change: its credits are never checked against \"Recording date\".",
+    "edits": [
+      {
+        "find": "                    row.appendChild(_buildCreditListTd(_entries, _liveDateCtx));\n                }\n\n                // \"Vocals\"/\"Instruments\"",
+        "replace": "                    row.appendChild(_buildCreditListTd(_entries));\n                }\n\n                // \"Vocals\"/\"Instruments\""
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "Performer: a different date",
+    "expect": "fail"
+  },
+  {
+    "name": "place compared by containment instead of equality",
+    "why": "The rule is: place name equals the venue. A substring test lets \"Festhalle Frankfurt\" (contains \"Festhalle\") pass.",
+    "edits": [
+      {
+        "find": "        const bad = kind === 'event' ? !names.includes(want) : names.some(n => n !== want);",
+        "replace": "        const bad = kind === 'event' ? !names.includes(want) : names.some(n => !n.includes(want));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "place vs comment venue",
+    "expect": "fail"
+  },
+  {
+    "name": "event never compared",
+    "why": "rec-event-mismatch silently never fires.",
+    "edits": [
+      {
+        "find": "        const bad = kind === 'event' ? !names.includes(want) : names.some(n => n !== want);",
+        "replace": "        const bad = kind === 'event' ? false : names.some(n => n !== want);"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "event vs comment",
+    "expect": "fail"
+  },
+  {
+    "name": "venue taken as the whole location",
+    "why": "Comparing the place with \"Saal 1, ICC Berlin, Berlin, Germany\" flags every row, \"Saal 1\" included.",
+    "edits": [
+      {
+        "find": "        return { event, venue: event.slice(colon + 2).split(', ')[0].trim() };",
+        "replace": "        return { event, venue: event.slice(colon + 2).trim() };"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "place vs comment venue",
+    "expect": "fail"
+  },
+  {
+    "name": "badge shown on a single-event medium",
+    "why": "Drops the 2+ gate: every medium gets a \"🎪 1 events\" badge.",
+    "edits": [
+      {
+        "find": "            if (counts.size < 2) { if (badge) badge.remove(); return; }",
+        "replace": "            if (counts.size < 1) { if (badge) badge.remove(); return; }"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "🎪 badge: only the medium that mixes events",
+    "expect": "fail"
+  },
+  {
+    "name": "badge counts the live tbody instead of the source rows",
+    "why": "A filter that hides the Festhalle rows would take the badge away.",
+    "edits": [
+      {
+        "find": "            const counts = _mediumEventCounts(table, rows);",
+        "replace": "            const counts = _mediumEventCounts(table, Array.from(table.tBodies[0].rows));"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "🎪 badge: only the medium that mixes events",
+    "expect": "fail"
+  },
+  {
+    "name": "badge not placed after the ⏳ badge",
+    "why": "Order is part of the request: 🎪 goes after the pending-edits badge.",
+    "edits": [
+      {
+        "find": "            const anchor = pending || h3.querySelector('.mb-subtable-filter-container') ||",
+        "replace": "            const anchor = h3.querySelector('.mb-subtable-filter-container') ||"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "sits right after the ⏳",
+    "expect": "fail"
+  },
+  {
+    "name": "📊 section shown on a single-event medium",
+    "why": "Drops the 2+ gate on the section.",
+    "edits": [
+      {
+        "find": "            if (_rc.mediumEvent.size >= 2) _pushVals(",
+        "replace": "            if (_rc.mediumEvent.size >= 1) _pushVals("
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "Events on this medium",
+    "expect": "fail"
+  },
+  {
+    "name": "📊 entries never match a row",
+    "why": "Silently dead entries: shown with counts, ticking one filters everything out.",
+    "edits": [
+      {
+        "find": "            return !!tr && tr.dataset.mbEventKey === mode.slice(12);",
+        "replace": "            return false;"
+      }
+    ],
+    "spec": "tests/fixtures/release-tracks-event-consistency.spec.js",
+    "grep": "Events on this medium",
+    "expect": "fail"
+  }
+]

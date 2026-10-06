@@ -25,7 +25,7 @@ async function getHeaderIndex(page) {
         const ths = Array.from(document.querySelectorAll('table.tbl thead th'));
         const map = {};
         ths.forEach((th, i) => {
-            const name = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹​]/g, '').trim();
+            const name = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹​]/gu, '').trim();
             if (!(name in map)) map[name] = i;
         });
         return map;

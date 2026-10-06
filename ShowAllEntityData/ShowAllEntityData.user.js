@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         VZ: MusicBrainz - Show All Entity Data In A Consolidated View With Filtering And Multi-Sorting Capabilities
 // @namespace    https://github.com/vzell/mb-userscripts
-// @version      9.99.1216+2026-10-04
-// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists.
+// @version      9.99.1246+2026-10-06
+// @description  Consolidation tool to accumulate paginated and non-paginated (tables with subheadings) MusicBrainz table lists (Events, Recordings, Releases, Works, etc.) into a single view with real-time filtering and sorting. Optionally also springsteenlyrics.com collection and bootleg lists, the jungleland.it bootleg artwork list and the brucespringsteen.it record database.
 // @author       vzell
 // @tag          AI generated
 // @homepageURL  https://github.com/vzell/mb-userscripts
@@ -19,6 +19,10 @@
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/(?:search\?query=.*|search\/edits\/?(?:\?.*)?|edit\/(?:subscribed(?:_editors)?|notes-received)\/?(?:\?.*)?|account\/applications\/?(?:\?.*)?|tags.*|tag\/.*|cdtoc\/.*|taglookup.*|artist-credit\/.*|reports.*|report\/.*|elections\/?(?:\?.*)?|election\/.*|genres\/?(?:\?.*)?|cdstub\/.*|isrc\/.*|iswc\/.*|doc\/Edit_Types\/?(?:\?.*)?|instruments\/?(?:\?.*)?|privileged\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:[^\/]+\.)?musicbrainz\.(?:org|eu)\/user\/[^\/]+\/(?:subscriptions\/.*|subscribers\/?(?:\?.*)?|collections\/?(?:\?.*)?|ratings\/.*|ratings(?:\?.*)?|tags.*|tag\/.*|edits(?:\/open)?\/?(?:\?.*)?)$/
 // @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/(?:collection|bootlegs)\.php\?(?:[^#]*&)?cmd=list(?:[&#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/collection\.php(?:\?(?:(?:[^#]*&)?cmd=intro(?:&[^#]*)?|pg=\d+(?:&[^#]*)?))?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?springsteenlyrics\.com\/bootlegs\.php(?:\?(?:[^#]*&)?cmd=intro(?:&[^#]*)?)?(?:#.*)?$/
+// @include      /^https?:\/\/(?:www\.)?jungleland\.it\/html\/list\.htm(?:[?#].*)?$/
+// @include      /^https?:\/\/(?:www\.)?brucespringsteen\.it\/(?:DB|db)\/records\.aspx(?:[?#].*)?$/
 // @connect      raw.githubusercontent.com
 // @connect      coverartarchive.org
 // @connect      eventartarchive.org
@@ -1285,10 +1289,13 @@
             default: true,
             description: 'Keep the page chrome — the MusicBrainz top header, the h1 entity header ' +
                          'with the action bar, the tabs, every h2 section bar and every h3 ' +
-                         'sub-table bar, the content of every expanded section above the data ' +
-                         '(e.g. Credits, Annotation) and the footer — pinned in place while a wide table is ' +
+                         'sub-table bar, everything else that is not a wide table (expanded sections ' +
+                         'such as Credits or Annotation, the text and forms above a table, the status ' +
+                         'line, the cover-art strips) and the footer — pinned in place while a wide table is ' +
                          'scrolled horizontally, the page-level counterpart of \'Enable Sticky ' +
-                         'Columns\'. Only engages while the page really overflows horizontally; ' +
+                         'Columns\'; the sticky column then docks aligned with the h2/h3 bar above ' +
+                         'its table instead of at the window edge, and a table that fits in the window ' +
+                         'stays in place as a whole. Only engages while the page really overflows horizontally; ' +
                          'stays inert while the sidebar is expanded and columns are not ' +
                          'auto-resized (the native sidebar would otherwise be pushed off-screen).'
         },
@@ -2203,6 +2210,26 @@
                          'when one is less precise than the other (2004-10 vs 2004-10-02) or only one of them has a date.'
         },
 
+        sa_findings_tint_rec_event: {
+            label: 'Highlight events and places that disagree with the comment',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist: tint a "Recorded at event" cell light red with a ❌ when no linked event ' +
+                         'is named exactly like the recording\'s comment without its event type ("live, 1996‐04‐19: ' +
+                         'Saal 1, ICC Berlin, …" vs the event "1996‐04‐19: Saal 1, ICC Berlin, …"), and a "Recorded at ' +
+                         'place" cell when a linked place is not named like the venue, the first part of the ' +
+                         'comment\'s location ("Saal 1").'
+        },
+
+        sa_findings_tint_rg_title: {
+            label: 'Highlight main-event tracks that disagree with the release group title as WARNING',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist, when the release group title is a live title: tint a Disambiguation, ' +
+                         '"Recorded at event" or "Recorded at place" cell of a track from the main event light ' +
+                         'yellow with a ⚠️ when it names the event or venue differently from that title.'
+        },
+
         sa_findings_tint_event_state: {
             label: 'Highlight a missing state for USA/Canada as WARNING',
             type: 'checkbox',
@@ -2301,6 +2328,18 @@
                          'list (normally glommed into the Title cell as a comma-separated run). ' +
                          'Off by default since most releases don\'t need it visible; each linked ' +
                          'AcoustID keeps its native unlink (×) / suggested-link (+) action link.'
+        },
+
+        sa_enable_release_tracks_cover_art: {
+            label: 'Show a "Cover art" section above the tracklist',
+            type: 'checkbox',
+            default: true,
+            description: 'After "Show all Tracks for Release", adds a collapsible "Cover art (N)" ' +
+                         'section above the tracklist showing every Cover Art Archive image of ' +
+                         'the release with its types and comment, so the separate "Cover art" tab ' +
+                         'is not needed. Costs one request to coverartarchive.org per render (none ' +
+                         'when the record is already cached, none when the tab says 0), plus the ' +
+                         '250 px thumbnails. ★ marks the archive\'s main front image.'
         },
 
         sa_enable_release_tracks_isrc_column: {
@@ -2530,8 +2569,8 @@
             default: true,
             description: 'For a track whose "Recording of work" cell carries the "live" attribute ' +
                          '(e.g. "The Rising (live)"), compares that track\'s "Recording date" against ' +
-                         'each entity\'s own date attribute in five columns — "Recording engineer", ' +
-                         '"Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
+                         'each entity\'s own date attribute in six columns — "Recording engineer", ' +
+                         '"Performer", "Vocals", "Instruments", "Recorded at event", and "Recorded at place" — and ' +
                          'appends a small icon with an explanatory tooltip when they disagree: "⚠️" when ' +
                          'that entity has no date attribute at all (can\'t be confirmed either way), "❌" ' +
                          'when it has its own date but it differs from "Recording date" (may belong to a ' +
@@ -2539,10 +2578,59 @@
                          'for differing date precision. A track without the "live" attribute, or with ' +
                          'no "Recording date" to compare against, is never flagged. Deliberately ' +
                          'excludes "Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/ ' +
-                         '"Performer"/"Produced for label"/"Mixed at place". Depends on "Show \'Recording ' +
+                         '"Produced for label"/"Mixed at place". Depends on "Show \'Recording ' +
                          'of\' / \'Recorded at\' / \'Recorded in\' / \'Mixed at\' columns" above for the ' +
                          '"Recording date" data itself, and on each target column\'s own setting for that ' +
                          'column to exist in the first place.'
+        },
+
+        sa_release_rg_link: {
+            label: 'Name the release group in the "see all versions" link, with a preview',
+            type: 'checkbox',
+            default: true,
+            description: 'On a release page, rewrite "(see all versions of this release, 5 available)" as ' +
+                         '"(5 versions available in <release group name>)" — the name is in the page already, ' +
+                         'so this costs no request. Hovering it shows a preview of the release group: its ' +
+                         'cover, type and artist, and a table of its releases, which one MusicBrainz Web ' +
+                         'Service request loads on the first hover. When tracks carry live event data but the ' +
+                         'release group title is not a live title ("YYYY-MM-DD: Venue, City, …"), a ⚠️ after ' +
+                         'the link explains why and suggests one.'
+        },
+
+        sa_event_rg_tooltip: {
+            label: 'Release group card on the "#" cell of each live track',
+            type: 'checkbox',
+            default: true,
+            description: 'Release tracklist: hovering a track\'s "#" cell shows the release group of the event the ' +
+                         'track comes from. For the main event that is the release\'s own release group; for any ' +
+                         'other event, a MusicBrainz Web Service search looks for a release group named like the ' +
+                         'event (the Disambiguation without "live, " and without a trailing "; …"), once per event. ' +
+                         'Alt+click the cell to open that release group, or the search, on musicbrainz.org.'
+        },
+
+        sa_event_rg_search_phrase: {
+            label: 'Search the event name as an exact phrase',
+            type: 'checkbox',
+            default: true,
+            description: 'On: releasegroup:"<event name>" — only titles with exactly these words in this order. Off: ' +
+                         'the words alone, like the website\'s indexed search — many more hits, mostly other dates of ' +
+                         'the same venue; they then serve as the "closest titles". Either way a release group counts ' +
+                         'as the event\'s only when its title IS the event name ("-" and "‐" alike).'
+        },
+
+        sa_event_rg_search_artist: {
+            label: 'Search only release groups by the release\'s artist',
+            type: 'checkbox',
+            default: true,
+            description: 'Adds "AND arid:<artist MBID>" (each artist of the release\'s artist credit) to the search.'
+        },
+
+        sa_event_rg_search_hints: {
+            label: 'Closest titles to show when no release group matches',
+            type: 'number',
+            default: 5,
+            description: 'How many of the search\'s other results the "#" card lists when none is named like the ' +
+                         'event. 0 shows none.'
         },
 
         sa_enable_release_tracks_dynamic_ar_columns: {
@@ -3600,10 +3688,77 @@
             default: false,
             description: 'Off by default. When on, the script also runs on springsteenlyrics.com\'s ' +
                          'paginated list pages — collection.php?cmd=list… (every category and ' +
-                         'every format/country/date/… filter) and bootlegs.php?cmd=list… — and ' +
+                         'every format/country/date/… filter), the collection\'s entry page ' +
+                         'collection.php ("Latest additions") and bootlegs.php?cmd=list… — and ' +
                          'offers a "Show all" button that fetches every page of the list, turns ' +
                          'the item cards into one filterable, sortable table, and adds the usual ' +
                          'toolbar. Only what each list card shows is used; no item detail page is ' +
+                         'fetched. When off, the script exits on that site before touching the ' +
+                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
+                         'from either site.'
+        },
+
+        sa_sl_compact_nav: {
+            label: 'Compact category and filter bar on springsteenlyrics.com lists',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default; needs the setting above. When on, the collection\'s ' +
+                         'walls of category and filter buttons (category, format, country, ' +
+                         'album, original year, copies) and the bootleg lists\' category ' +
+                         'buttons are folded into one row of pull-down menus above the list. ' +
+                         'Each menu has a search box, and filters combine: choosing a country ' +
+                         'keeps the format you already chose. Chosen filters are shown as ' +
+                         'chips you can remove one by one. The Category menu marks the current ' +
+                         'list and shows each category\'s exact item count once you have ' +
+                         'opened it; on the bootleg lists it starts with a timeline of the ' +
+                         'live-show eras. The bootleg lists\' four search forms become one ' +
+                         'search box that reads dates the way you type them, plus a menu of ' +
+                         'recent searches. The site\'s own buttons and forms are only hidden, ' +
+                         'so turning this off brings them back unchanged.'
+        },
+
+        // ============================================================
+        // JUNGLELAND.IT SECTION
+        // ============================================================
+        divider_jungleland: {
+            type: 'divider',
+            label: '🌴 JUNGLELAND.IT'
+        },
+
+        sa_enable_jungleland: {
+            label: 'Enable on the jungleland.it bootleg artwork list',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
+                         'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
+                         'that turns the long list of links into one filterable, sortable table ' +
+                         'with Title, Date and Year columns. It works only when list.htm is ' +
+                         'opened in its own tab: inside the site\'s two-frame view ' +
+                         '(artwork.htm) the narrow left frame is left as it is. No item page is ' +
+                         'fetched. When off, the script exits on that site before touching the ' +
+                         'page. Settings are shared with MusicBrainz, so this can be switched on ' +
+                         'from either site.'
+        },
+
+        // ============================================================
+        // BRUCESPRINGSTEEN.IT SECTION
+        // ============================================================
+        divider_brucespringsteen: {
+            type: 'divider',
+            label: '💿 BRUCESPRINGSTEEN.IT'
+        },
+
+        sa_enable_brucespringsteen: {
+            label: 'Enable on the brucespringsteen.it record database',
+            type: 'checkbox',
+            default: false,
+            description: 'Off by default. When on, the script also runs on brucespringsteen.it\'s ' +
+                         'record list (DB/records.aspx) and offers two buttons, "Unofficial" and ' +
+                         '"Official", which load every record of that kind, all formats ticked, ' +
+                         'into one filterable, sortable table (Title, Matrix or Catalogue, Format, ' +
+                         'Label or Country, Code, Notes). It works only when records.aspx is ' +
+                         'opened in its own tab: inside the site\'s two-frame view (Blegsdx.htm) ' +
+                         'the narrow list frame is left as it is. No record\'s detail page is ' +
                          'fetched. When off, the script exits on that site before touching the ' +
                          'page. Settings are shared with MusicBrainz, so this can be switched on ' +
                          'from either site.'
@@ -4049,6 +4204,15 @@
         if (el) el.id = 'mb-sa-startup-notice-style';
     }
 
+    /**
+     * Shows the one-time "Settings updated to current defaults" notice for the
+     * report `_applySettingsMigrations()` left in GM storage: which pinned
+     * settings adopted the current default, plus a note on pruned and orphaned
+     * keys. Does nothing when there is no report, no adopted setting, or the
+     * notice is already on the page.
+     *
+     * @returns {void}
+     */
     function _showSettingsMigrationNotice() {
         if (typeof GM_getValue === 'undefined' || !document.body) return;
         const report = GM_getValue(_SETTINGS_MIGRATION_NOTICE_KEY, null);
@@ -4528,16 +4692,54 @@
     /**
      * True when this page is on springsteenlyrics.com rather than MusicBrainz.
      *
-     * The only non-MusicBrainz host the script runs on (see the last
-     * `@include` line and docs/claude/springsteenlyrics.md). It is read by the
-     * opt-in gate just below, by the page-type detection loop (which only
-     * considers definitions whose `host` matches) and by the few
-     * MusicBrainz-shaped helpers that must stand down there
-     * (`performClutterCleanup()`, `initStickyPageHeaders()`,
-     * `initNavigationGuard()`).
+     * One of the two non-MusicBrainz hosts the script runs on (see the
+     * springsteenlyrics `@include` lines and docs/claude/springsteenlyrics.md;
+     * the other is jungleland.it, `_isJlHost`). It is read by the opt-in gate
+     * just below, through `_foreignHost` by the page-type detection loop
+     * (which only considers definitions whose `host` matches) and by the few
+     * MusicBrainz-shaped helpers that must stand down or adapt there
+     * (`performClutterCleanup()`, `initNavigationGuard()`).
      * @type {boolean}
      */
     const _isSlHost = /(^|\.)springsteenlyrics\.com$/.test(window.location.hostname);
+
+    /**
+     * True when this page is on jungleland.it rather than MusicBrainz.
+     *
+     * The second non-MusicBrainz host (its `@include` line and
+     * docs/claude/jungleland.md): one static list page, `html/list.htm`. Read
+     * by its own opt-in and frame gates just below, through `_foreignHost` by
+     * the detection loop, and by `performClutterCleanup()`.
+     * @type {boolean}
+     */
+    const _isJlHost = /(^|\.)jungleland\.it$/.test(window.location.hostname);
+
+    /**
+     * True when this page is on brucespringsteen.it rather than MusicBrainz.
+     *
+     * The third non-MusicBrainz host (its `@include` line and
+     * docs/claude/brucespringsteen.md): the record database's list page,
+     * `DB/records.aspx`. Read by its own opt-in and frame gates just below,
+     * through `_foreignHost` by the detection loop, by
+     * `performClutterCleanup()`, and by `initNavigationGuard()` (every list
+     * is the same path told apart by its query, as on springsteenlyrics.com).
+     * @type {boolean}
+     */
+    const _isBsHost = /(^|\.)brucespringsteen\.it$/.test(window.location.hostname);
+
+    /**
+     * The non-MusicBrainz host this page is on, as the `host` key of its
+     * `pageDefinitions` entries spells it, or `null` on MusicBrainz.
+     *
+     * The detection loop compares a definition's `host` with this, so a
+     * definition belongs to exactly one site and a MusicBrainz page only ever
+     * considers the definitions without one.
+     * @type {?string}
+     */
+    const _foreignHost = _isSlHost ? 'springsteenlyrics.com'
+        : _isJlHost ? 'jungleland.it'
+        : _isBsHost ? 'brucespringsteen.it'
+        : null;
 
     // springsteenlyrics.com support is opt-in (`sa_enable_springsteenlyrics`,
     // default off), so a published MusicBrainz script never changes another
@@ -4547,6 +4749,35 @@
     // still be switched on from this very page.
     if (_isSlHost && Lib.settings.sa_enable_springsteenlyrics !== true) {
         Lib.info('init', 'springsteenlyrics.com support is off (sa_enable_springsteenlyrics) — nothing to do.');
+        return;
+    }
+
+    // jungleland.it support is opt-in the same way (`sa_enable_jungleland`,
+    // default off), and gated as early for the same reason. Its list.htm is
+    // normally the narrow (25 %) left frame of the site's artwork.htm
+    // frameset, and the header has no `@noframes`, so Tampermonkey runs the
+    // script in that frame too: a 6,000-row table squeezed into a quarter of
+    // the window helps no one, so only a list.htm opened as its own tab is
+    // converted (decided 2026-10-05; docs/claude/jungleland.md).
+    if (_isJlHost && Lib.settings.sa_enable_jungleland !== true) {
+        Lib.info('init', 'jungleland.it support is off (sa_enable_jungleland) — nothing to do.');
+        return;
+    }
+    if (_isJlHost && window.top !== window) {
+        Lib.info('init', 'jungleland.it: this list is inside the artwork.htm frameset — open list.htm in its own tab to get the table. Nothing to do here.');
+        return;
+    }
+
+    // brucespringsteen.it: opt-in (`sa_enable_brucespringsteen`, default off)
+    // and own-tab only, for the same reasons as jungleland.it — its
+    // records.aspx is the 222 px left frame ("sommario") of the Blegsdx.htm
+    // frameset (decided 2026-10-06; docs/claude/brucespringsteen.md).
+    if (_isBsHost && Lib.settings.sa_enable_brucespringsteen !== true) {
+        Lib.info('init', 'brucespringsteen.it support is off (sa_enable_brucespringsteen) — nothing to do.');
+        return;
+    }
+    if (_isBsHost && window.top !== window) {
+        Lib.info('init', 'brucespringsteen.it: this list is inside the Blegsdx.htm frameset — open records.aspx in its own tab to get the table. Nothing to do here.');
         return;
     }
 
@@ -4585,7 +4816,7 @@
     const params = currentUrl.searchParams;
     const isFilteredRelationshipPage = params.has('link_type_id');
 
-    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on ${_isSlHost ? 'springsteenlyrics.com' : 'MusicBrainz'} page: ${currentUrl}`);
+    Lib.info('init', `Userscript (${scriptVersion}) loaded with external library (${libVersion}) active on ${_foreignHost || 'MusicBrainz'} page: ${currentUrl}`);
     Lib.debug('init', `URL: ${currentUrl}`);
     Lib.debug('init', `URL basepath: ${basePath}`);
     Lib.debug('init', `URL path: ${path}`);
@@ -6036,7 +6267,7 @@
                         continue;
                     }
                     if (_pastLink && node.nodeType === Node.TEXT_NODE) {
-                        const _m = node.nodeValue.match(/\(\s*([\d\-]+)\s*\)/);
+                        const _m = node.nodeValue.match(/\(\s*([\d-]+)\s*\)/);
                         if (_m) { tdDate.textContent = _m[1].trim(); break; }
                     }
                 }
@@ -6489,7 +6720,7 @@
 
             // ── Location extraction (post-colon, or the colon-less form) ──────
             let locStr = '';
-            let additionalInfo = '';
+            let additionalInfo;
             if (postPart) {
                 // Split off Additional-Info at the FIRST ';' in the whole post-colon
                 // string before any comma-splitting — if Additional-Info itself
@@ -8042,8 +8273,8 @@
             const _singular    = sectionId.replace(/s$/i, '');
             const _ulClassName = `${_singular}-list`;
 
-            let _ul            = null;   // the <ul> to convert
-            let _replaceTarget = null;   // the node to replace in the parent DOM
+            let _ul;   // the <ul> to convert
+            let _replaceTarget;   // the node to replace in the parent DOM
 
             const _div = docContext.getElementById(sectionId);
             if (_div) {
@@ -8642,13 +8873,28 @@
     // docs/claude/springsteenlyrics.md.
 
     /**
-     * Selector for one item card on a springsteenlyrics.com list page.
-     * Scoped to `.project-detail`, the main content block, which also keeps
-     * the site's navigation mega-menu (seven more `h3.heading`s) out of every
-     * lookup here.
-     * @type {string}
+     * Returns the item cards of a springsteenlyrics.com list page: every
+     * `div.blog-post` outside the site's navbar and footer.
+     *
+     * Deliberately NOT scoped to `.project-detail`, the main content block.
+     * On every collection page that renders the "Filter by original year of
+     * release" slider (all categories but "Official Albums", and the
+     * `collection.php` entry page) that block ends in a stray `</div>`, and
+     * the parser closes `.project-detail` right there — the list heading and
+     * all cards end up AFTER it, not inside it. A `.project-detail`-scoped
+     * selector found nothing on those pages, so the conversion was a silent
+     * no-op (checked live on 2026-10-05: sampler, book, memorabilia and the
+     * entry page close it before the first card; album and the bootleg
+     * lists after the last). The document-wide count equals the page's own
+     * "Showing items" count on every page checked.
+     *
+     * @param {Document} docContext  The live or a fetched document.
+     * @returns {Element[]} The cards, in document order.
      */
-    const _SL_CARD_SEL = '.project-detail div.blog-post';
+    function _slFindCards(docContext) {
+        return Array.from(docContext.querySelectorAll('div.blog-post'))
+            .filter(card => !card.closest('.navbar, footer'));
+    }
 
     /**
      * Column headers per `features.slCardsToTable` kind, in render order.
@@ -8675,16 +8921,22 @@
 
     /**
      * Returns the list heading of a springsteenlyrics.com list page — the
-     * `h3.heading` (or, once converted, `h2.heading`) inside `.project-detail`
-     * that precedes the item cards, e.g. "OFFICIAL ALBUMS" or
-     * "LIVE SHOWS: 1967-1974". Exactly one exists per list page (checked on
-     * both snapshots and four live categories, 2026-10-04).
+     * `h3.heading` (or, once converted, `h2.heading`) that precedes the item
+     * cards as their sibling, e.g. "OFFICIAL ALBUMS", "LIVE SHOWS: 1967-1974"
+     * or the entry page's "Latest additions".
+     *
+     * Found from the cards (or, once they are converted, from the table that
+     * took their place), never by a page-wide or `.project-detail`-scoped
+     * query: seven of the page's ten `h3.heading`s belong to the navigation
+     * mega-menu, and on most collection pages `.project-detail` is closed
+     * before the list starts — see `_slFindCards()`.
      *
      * @param {Document} docContext  The live or a fetched document.
      * @returns {?HTMLElement} The heading, or `null` when the page has none.
      */
     function _slFindListHeading(docContext) {
-        return docContext.querySelector('.project-detail h3.heading, .project-detail h2.heading');
+        const anchor = _slFindCards(docContext)[0] || docContext.querySelector('table.mb-sl-table');
+        return anchor?.parentElement?.querySelector(':scope > h3.heading, :scope > h2.heading') || null;
     }
 
     /**
@@ -8780,6 +9032,101 @@
     }
 
     /**
+     * The collection's formats, one entry per `f_format` code: group, the
+     * site's own filter label, its "Formats guide" abbreviation and text
+     * (`guide: false` where the site's guide has no entry, so the text is
+     * ours), and the card texts that name the medium (`re`, matched against
+     * one medium of a Format text with its count stripped).
+     *
+     * One table for three vocabularies the site keeps apart: filter codes
+     * (12i), guide abbreviations (LP) and the cards' free text ("2xLP",
+     * "4x12\" + 7\""). Probed live on 2026-10-05
+     * (`scripts/probe-sl-format-codes.py`, page 1 of every code): the server
+     * files an item under the format of its FIRST medium — "VHS + CD" is
+     * vhs, "Blu-ray + DVD" bd, "SACD-HYBRID + 2xCD" cd5 — and 12i holds the
+     * "LP"s. One "CD" filed under cdr is the site's own data, not a rule.
+     * Order matters: the first `re` that matches wins, so "CD-R" is tried
+     * before "CD", "Blu-ray-R" before "Blu-ray", "DVD-R" before "DVD".
+     * @type {Array<{code: string, group: string, label: string, abbr: string, text: string, guide: boolean, re: RegExp}>}
+     */
+    const _SL_FORMATS = [
+        { code: '7i', group: 'Audio', label: '7" vinyl', abbr: '7"', text: '7-inch record', guide: true, re: /^7"$/ },
+        { code: '10i', group: 'Audio', label: '10" vinyl', abbr: '10"', text: '10-inch record', guide: true, re: /^10"$/ },
+        { code: '12i', group: 'Audio', label: '12" vinyl', abbr: '12" / LP', text: '12-inch record: single or EP (12"), album (LP)', guide: true, re: /^(?:12"|lp)$/ },
+        { code: 'flex', group: 'Audio', label: 'Flexi-disc', abbr: 'Flexi', text: 'Flexi-disc, a thin flexible vinyl record', guide: false, re: /^flexi(?:-disc)?$/ },
+        { code: 'cd3', group: 'Audio', label: 'MiniCD (CD3)', abbr: 'MiniCD', text: '80 mm Compact Disc', guide: true, re: /^(?:mini ?cd|cd3)$/ },
+        { code: 'cdr', group: 'Audio', label: 'CD-R', abbr: 'CD-R', text: 'Compact Disc Recordable', guide: true, re: /^cd-?r$/ },
+        { code: 'cd5', group: 'Audio', label: 'Compact Disc (CD5)', abbr: 'CD', text: 'Compact Disc (SACD hybrids are filed here too)', guide: true, re: /^(?:cd|cd5|sacd(?:-hybrid)?)$/ },
+        { code: 'nt', group: 'Audio', label: 'NT Cassette', abbr: 'NT', text: 'NT Cassette, Sony\'s stamp-sized digital tape', guide: false, re: /^nt cassette$/ },
+        { code: 'mc', group: 'Audio', label: 'Cassette tape', abbr: 'MC', text: 'Music Cassette tape', guide: true, re: /^(?:cassette(?: tape)?|mc)$/ },
+        { code: '8t', group: 'Audio', label: '8-track cartridge', abbr: '8T', text: '8-Track tape', guide: true, re: /^8-track(?: cartridge)?$/ },
+        { code: 'r2r', group: 'Audio', label: 'Reel-to-reel tape', abbr: 'R2R', text: 'Reel-to-reel tape', guide: true, re: /^reel-to-reel(?: tape)?$/ },
+        { code: 'md', group: 'Audio', label: 'Minidisc', abbr: 'MD', text: 'Minidisc', guide: true, re: /^(?:md|minidisc)$/ },
+        { code: 'vhs', group: 'Video', label: 'VHS cassette tape', abbr: 'VHS', text: 'VHS cassette tape', guide: true, re: /^vhs$/ },
+        { code: 'betamax', group: 'Video', label: 'Betamax', abbr: 'Betamax', text: 'Betamax video cassette', guide: false, re: /^betamax$/ },
+        { code: 'betacamsp', group: 'Video', label: 'Betacam SP', abbr: 'Betacam SP', text: 'Betacam SP professional video cassette (S or L size)', guide: false, re: /^betacam sp\b/ },
+        { code: 'umatic', group: 'Video', label: 'U-matic', abbr: 'U-matic', text: 'U-matic professional video cassette', guide: false, re: /^u-?matic$/ },
+        { code: 'v8', group: 'Video', label: 'Video8 cassette tape', abbr: 'Video8', text: 'Video8 cassette tape', guide: true, re: /^video ?8$/ },
+        { code: 'ced', group: 'Video', label: 'Capacitance Electronic Disc (CED)', abbr: 'CED', text: 'Capacitance Electronic Disc', guide: true, re: /^ced$/ },
+        { code: 'vhd', group: 'Video', label: 'Video High Density (VHD)', abbr: 'VHD', text: 'Video High Density disc', guide: true, re: /^vhd$/ },
+        { code: 'ld', group: 'Video', label: 'LaserDisc (LD)', abbr: 'LD', text: 'LaserDisc', guide: true, re: /^(?:ld|laserdisc)$/ },
+        { code: 'vcd', group: 'Video', label: 'Video CD (VCD)', abbr: 'VCD', text: 'Video Compact Disc', guide: true, re: /^(?:vcd|video cd)$/ },
+        { code: 'dvdr', group: 'Video', label: 'DVD-R', abbr: 'DVD-R', text: 'Digital Video Disc Recordable', guide: true, re: /^dvd-r$/ },
+        { code: 'dvd', group: 'Video', label: 'DVD', abbr: 'DVD', text: 'Digital Video Disc', guide: true, re: /^dvd$/ },
+        { code: 'bdr', group: 'Video', label: 'Blu-ray-R Disc', abbr: 'BD-R', text: 'Blu-ray Disc Recordable', guide: false, re: /^blu-?ray-?r$/ },
+        { code: 'bd', group: 'Video', label: 'Blu-ray Disc', abbr: 'BD', text: 'Blu-Ray Disc', guide: true, re: /^(?:blu-?ray|bd)$/ },
+        { code: 'prt', group: 'Print', label: 'Print', abbr: 'Print', text: 'Printed matter: books (paperback, hardcover) and other print', guide: false, re: /^(?:paperback|hardcover|print)$/ }
+    ];
+
+    /**
+     * Splits a card's Format text into its media: "4xCD + 2xBlu-ray" → CD ×4
+     * and Blu-ray ×2, "2 x Cassette Tape" → Cassette Tape ×2, each with its
+     * `_SL_FORMATS` entry when one names it. The site's "–" (unknown) and an
+     * empty text give no media.
+     *
+     * @param {string} text
+     * @returns {Array<{name: string, count: number, format: ?object}>}
+     */
+    function _slFormatParts(text) {
+        const t = String(text || '').trim();
+        if (!t || /^[–-]$/.test(t)) return [];
+        return t.split('+').map(part => {
+            const m = part.trim().match(/^(\d+)\s*x\s*(.+)$/i);
+            const name = (m ? m[2] : part).trim();
+            const key = name.toLowerCase();
+            return { name, count: m ? Number(m[1]) : 1, format: _SL_FORMATS.find(f => f.re.test(key)) || null };
+        }).filter(p => p.name);
+    }
+
+    /**
+     * The `f_format` code the site files a card under: its FIRST medium's
+     * (see `_SL_FORMATS`), or `null` when that medium is not one it names.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {?string}
+     */
+    function _slFormatCode(text) {
+        return _slFormatParts(text)[0]?.format?.code || null;
+    }
+
+    /**
+     * The hover text of a collection Format cell: one line per medium with
+     * its count and the formats guide's text, then the format the site files
+     * the item under. `''` when no medium is known, so the cell gets no tip.
+     *
+     * @param {string} text  A card's Format text.
+     * @returns {string}
+     */
+    function _slFormatTip(text) {
+        const parts = _slFormatParts(text);
+        if (!parts.some(p => p.format)) return '';
+        const lines = parts.map(p => `${p.name}${p.count > 1 ? ` ×${p.count}` : ''}: ${p.format ? p.format.text : 'not in the formats guide'}`);
+        const filed = parts[0].format;
+        if (filed) lines.push(`Filed under: ${filed.label}`);
+        return [text, ...lines].join('\n');
+    }
+
+    /**
      * Builds the table row for one springsteenlyrics.com card.
      *
      * Columns follow `_SL_HEADERS[kind]`. Title and Cover keep the item link
@@ -8859,6 +9206,11 @@
             textCell(label);
             textCell(catNo);
             textCell(fields['Format'] || '');
+            // The formats guide, per cell: an attribute, so it survives every
+            // cloneNode(true) re-render and a Save/Load round trip, and the
+            // cell's text (what filters, sorts and highlights) is unchanged.
+            const formatTip = _slFormatTip(fields['Format'] || '');
+            if (formatTip) _setTip(tr.lastElementChild, formatTip);
             textCell(fields['Country'] || '');
             textCell(released);
             textCell(originalYear);
@@ -8895,8 +9247,20 @@
     function applySlCardsToTable(def, docContext = document) {
         const kind = def?.features?.slCardsToTable;
         if (!_SL_HEADERS[kind]) return;
-        const cards = Array.from(docContext.querySelectorAll(_SL_CARD_SEL));
-        if (cards.length === 0) return;
+        const cards = _slFindCards(docContext);
+        if (cards.length === 0) {
+            // Said out loud, because a silent no-op here is how "only
+            // Official Albums works" went unnoticed: the button then renders
+            // "0 rows" with nothing in the log to say why. A page this
+            // function already converted (the table took the cards' place)
+            // is the one legitimate case and stays quiet. On a fetched page
+            // the likeliest cause is a CloudFlare challenge instead of the list.
+            if (!docContext.querySelector('table.mb-sl-table')) {
+                Lib.warn('init', `applySlCardsToTable: no item cards found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('div.blog-post').length} div.blog-post in the document, none outside the navbar/footer) — nothing converted.`);
+            }
+            return;
+        }
 
         const table = docContext.createElement('table');
         table.className = 'tbl mb-sl-table';
@@ -8929,6 +9293,10 @@
                 const h2 = document.createElement('h2');
                 Array.from(heading.attributes).forEach(attr => h2.setAttribute(attr.name, attr.value));
                 while (heading.firstChild) h2.appendChild(heading.firstChild);
+                // The site styles h3.heading only; this class carries the
+                // replacement rule in _ensureSlStyle(), wherever the heading
+                // sits (often outside `.project-detail`, see _slFindCards()).
+                h2.classList.add('mb-sl-list-heading');
                 heading.replaceWith(h2);
             }
             for (let el = table.parentElement; el; el = el.parentElement) {
@@ -8940,24 +9308,76 @@
     }
 
     /**
+     * Installs the minimal `table.tbl` look shared by the non-MusicBrainz
+     * hosts (springsteenlyrics.com, jungleland.it, brucespringsteen.it),
+     * once per document.
+     *
+     * MusicBrainz's own site CSS is what normally gives `table.tbl` its
+     * borders, padding, header background and the `tr.even` zebra stripe
+     * that `applyZebraStriping()` merely toggles classes for; neither site
+     * has any of it. The rules are scoped to the hosts' body classes
+     * (`mb-sa-host-sl`, `mb-sa-host-jl`, `mb-sa-host-bs`) and sit inside `:where()` so they
+     * carry almost no specificity: any of this script's own table styling
+     * (sticky header colours, finding tints, hover, highlights) still wins
+     * wherever it applies. A further host extends the `:is()` list here
+     * rather than copying the block.
+     *
+     * @returns {void}
+     */
+    function _ensureForeignTableStyle() {
+        if (document.getElementById('mb-foreign-table-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) {
+                border-collapse: collapse;
+                background: #fff;
+                font-size: 13px;
+                margin: 6px 0;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) th,
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) td {
+                border: 1px solid #ddd;
+                padding: 3px 6px;
+                vertical-align: top;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) thead th {
+                background-color: #e8e8e8;
+                text-align: left;
+            }
+            :where(body:is(.mb-sa-host-sl, .mb-sa-host-jl, .mb-sa-host-bs) table.tbl) tr.even > td {
+                background-color: #f2f2f2;
+            }
+        `);
+        style.id = 'mb-foreign-table-style';
+    }
+
+    /**
      * Installs the springsteenlyrics.com stylesheet, once per document.
      *
      * MusicBrainz's own site CSS is what normally gives `table.tbl` its
      * borders, padding, header background and the `tr.even` zebra stripe that
      * `applyZebraStriping()` merely toggles classes for; none of it exists on
-     * springsteenlyrics.com, so this supplies a minimal equivalent. Every rule
-     * is scoped to `body.mb-sa-host-sl`, and the table rules sit inside
-     * `:where()` so they carry almost no specificity: any of this script's
-     * own table styling (sticky header colours, finding tints, hover,
-     * highlights) still wins wherever it applies. The sticky `<thead>` is
+     * springsteenlyrics.com, so `_ensureForeignTableStyle()` (shared with
+     * jungleland.it, and installed first) supplies a minimal equivalent.
+     * Every rule here is scoped to `body.mb-sa-host-sl`. The sticky `<thead>` is
      * pushed down by the site's own sticky navbar height
      * (`--mb-sl-navbar-h`, measured by `_slPrepareLivePage()`), which turns
      * `position: fixed` once the page is scrolled and would otherwise cover
      * the pinned header.
      *
+     * The site's fixed-width Bootstrap `.container`s INSIDE a widened
+     * (`mb-sl-wide`) one — the year-filter slider and the "Formats guide"
+     * panel — lose their auto side margins. Centred in a column as wide as
+     * the table they sat around its middle, off-screen at scrollX 0; and once
+     * Sticky Page Headers pinned one, every width cap grew its auto margins
+     * and pushed it further right (measured live on "book", 2026-10-05:
+     * left 1198 px, capped to 120 px in a 1000 px window). Left-aligned they
+     * sit at the content's left edge and stay pinned there.
+     *
      * @returns {void}
      */
     function _ensureSlStyle() {
+        _ensureForeignTableStyle();
         if (document.getElementById('mb-sl-style')) return;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
@@ -8966,7 +9386,7 @@
                 margin: 0 0 12px;
                 line-height: 1.4;
             }
-            body.mb-sa-host-sl .project-detail h2.heading {
+            body.mb-sa-host-sl h2.mb-sl-list-heading {
                 font-size: 18px;
                 margin: 10px 0;
             }
@@ -8974,24 +9394,9 @@
                 width: auto;
                 max-width: none;
             }
-            :where(body.mb-sa-host-sl table.tbl) {
-                border-collapse: collapse;
-                background: #fff;
-                font-size: 13px;
-                margin: 6px 0;
-            }
-            :where(body.mb-sa-host-sl table.tbl) th,
-            :where(body.mb-sa-host-sl table.tbl) td {
-                border: 1px solid #ddd;
-                padding: 3px 6px;
-                vertical-align: top;
-            }
-            :where(body.mb-sa-host-sl table.tbl) thead th {
-                background-color: #e8e8e8;
-                text-align: left;
-            }
-            :where(body.mb-sa-host-sl table.tbl) tr.even > td {
-                background-color: #f2f2f2;
+            body.mb-sa-host-sl .container.mb-sl-wide .container:not(.mb-sl-wide) {
+                margin-left: 0;
+                margin-right: 0;
             }
             body.mb-sa-host-sl table.tbl thead {
                 top: var(--mb-sl-navbar-h, 0px);
@@ -9001,6 +9406,371 @@
                 height: 48px;
                 width: auto;
                 max-width: none;
+            }
+            /* A navigation-only page (the bootleg landing page) has no table,
+               so no Data or View menu, and no divider before them. */
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-button-divider-initial,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-data-menu-btn,
+            body.mb-sa-host-sl.mb-sa-sl-nav-only #mb-view-menu-btn {
+                display: none !important;
+            }
+            /* The compact category/filter bar (sa_sl_compact_nav): the walls it
+               folds stay in the DOM, hidden. */
+            body.mb-sa-host-sl .mb-sl-nav-hidden {
+                display: none !important;
+            }
+            body.mb-sa-host-sl .mb-sl-scope {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin: 4px 0 10px;
+                font-size: 13px;
+                line-height: 1.3;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                height: 28px;
+                max-width: 320px;
+                padding: 0 10px;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                background: #eceff1;
+                color: #263238;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn:hover,
+            body.mb-sa-host-sl .mb-sl-scope-btn[aria-expanded="true"] {
+                background: #dfe7f4;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn.mb-sl-set {
+                border-color: #2b4a7b;
+                background: #dfe7f4;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-btn.mb-sl-set .mb-sl-scope-v {
+                color: #2b4a7b;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-k {
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-v {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chips {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+                margin-left: 6px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                padding: 1px 2px 1px 9px;
+                border-radius: 999px;
+                background: #dfe7f4;
+                color: #2b4a7b;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > a {
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                color: inherit;
+                text-decoration: none;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > a:hover {
+                background: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-pop {
+                position: fixed;
+                z-index: 100000;
+                width: 320px;
+                max-width: calc(100vw - 16px);
+                padding: 8px;
+                background: #fff;
+                color: #263238;
+                border: 1px solid #b0bec5;
+                border-radius: 8px;
+                box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+                font-size: 13px;
+                line-height: 1.3;
+                text-align: left;
+                overflow-y: auto;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-search {
+                width: 100%;
+                height: 28px;
+                margin-bottom: 6px;
+                padding: 0 8px;
+                border: 1px solid #b0bec5;
+                border-radius: 5px;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-list {
+                max-height: 340px;
+                overflow-y: auto;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-group {
+                margin: 6px 0 2px;
+                font-size: 11px;
+                font-weight: bold;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 3px 6px;
+                border-radius: 4px;
+                color: #263238;
+                text-decoration: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt[hidden],
+            body.mb-sa-host-sl .mb-sl-scope-group[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt:hover,
+            body.mb-sa-host-sl .mb-sl-scope-opt:focus {
+                background: #dfe7f4;
+                outline: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt.mb-sl-cur {
+                color: #2b4a7b;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-opt.mb-sl-cur::before {
+                content: "\\2713";
+            }
+            body.mb-sa-host-sl .mb-sl-scope-years {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 4px 0 8px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-foot {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-apply {
+                margin-left: auto;
+                padding: 4px 14px;
+                border-radius: 5px;
+                background: #2b4a7b;
+                color: #fff;
+                font-weight: bold;
+                text-decoration: none;
+            }
+            /* The formats guide line under a Format menu entry. */
+            body.mb-sa-host-sl .mb-sl-scope-sub {
+                display: block;
+                font-size: 11px;
+                font-weight: normal;
+                color: #607080;
+            }
+            /* Recorded item count of a category, right-aligned in its entry. */
+            body.mb-sa-host-sl .mb-sl-scope-n {
+                margin-left: auto;
+                padding-left: 8px;
+                color: #607080;
+                font-weight: normal;
+                font-variant-numeric: tabular-nums;
+            }
+            /* The bootleg era timeline heading the Category menu: bars placed
+               on one year axis, width = the era's span, height = recordings
+               per year; a dashed bar is an era not counted yet. */
+            body.mb-sa-host-sl .mb-sl-scope-pop.mb-sl-scope-pop-wide {
+                width: 560px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-ruler {
+                margin: 2px 2px 10px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-bars {
+                position: relative;
+                height: 90px;
+                margin-top: 14px;
+            }
+            body.mb-sa-host-sl .mb-sl-era {
+                position: absolute;
+                bottom: 0;
+                background: #7d95bd;
+                border-radius: 3px 3px 0 0;
+            }
+            body.mb-sa-host-sl .mb-sl-era:hover,
+            body.mb-sa-host-sl .mb-sl-era:focus {
+                background: #2b4a7b;
+                outline: none;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-era-unknown {
+                background: transparent;
+                border: 1px dashed #7d95bd;
+                box-sizing: border-box;
+            }
+            body.mb-sa-host-sl .mb-sl-era.mb-sl-cur {
+                background: #2b4a7b;
+                box-shadow: 0 0 0 2px #fff, 0 0 0 3px #263238;
+            }
+            body.mb-sa-host-sl .mb-sl-era-n {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 10px;
+                color: #607080;
+                white-space: nowrap;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis {
+                position: relative;
+                height: 14px;
+                border-top: 1px solid #b0bec5;
+                font-size: 10px;
+                color: #607080;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span {
+                position: absolute;
+                top: 1px;
+            }
+            body.mb-sa-host-sl .mb-sl-era-axis > span.mb-sl-era-axis-end {
+                right: 0;
+            }
+            /* The bootleg search box: a field switch, one input, Search. The
+               message line takes a row of its own under the bar. */
+            body.mb-sa-host-sl .mb-sl-search {
+                display: inline-flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 6px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg {
+                display: inline-flex;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                overflow: hidden;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn {
+                height: 26px;
+                padding: 0 9px;
+                border: 0;
+                border-left: 1px solid #b0bec5;
+                background: #eceff1;
+                color: #263238;
+                cursor: pointer;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn:first-child {
+                border-left: 0;
+            }
+            body.mb-sa-host-sl .mb-sl-seg-btn[aria-pressed="true"] {
+                background: #2b4a7b;
+                color: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-search-input {
+                width: 260px;
+                max-width: 100%;
+                height: 28px;
+                padding: 0 8px;
+                border: 1px solid #b0bec5;
+                border-radius: 6px;
+                box-sizing: border-box;
+                font-size: 13px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go {
+                display: inline-flex;
+                align-items: center;
+                height: 28px;
+                padding: 0 14px;
+                border-radius: 6px;
+                background: #2b4a7b;
+                color: #fff;
+                font-weight: bold;
+                text-decoration: none;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-search-go[aria-disabled="true"] {
+                background: #b0bec5;
+                cursor: default;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg {
+                flex-basis: 100%;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-search-msg[hidden] {
+                display: none;
+            }
+            /* After the fetch: entries that filter the loaded table are
+               buttons; the note heading a menu says which kind it holds. */
+            body.mb-sa-host-sl button.mb-sl-scope-opt {
+                width: 100%;
+                border: 0;
+                background: none;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note {
+                margin: 0 0 6px;
+                padding: 4px 6px;
+                border-radius: 4px;
+                background: #fbefd9;
+                color: #5d4037;
+                font-size: 12px;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-note.mb-sl-scope-note-table {
+                background: #dff2e6;
+                color: #1b5e20;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chips[hidden] {
+                display: none;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button {
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                padding: 0;
+                border: 0;
+                border-radius: 50%;
+                background: none;
+                color: inherit;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip > button:hover {
+                background: #fff;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-chip-mark {
+                font-size: 11px;
+            }
+            body.mb-sa-host-sl button.mb-sl-scope-clear {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                text-decoration: underline;
+                font: inherit;
+            }
+            body.mb-sa-host-sl .mb-sl-scope-forget {
+                border: 0;
+                background: none;
+                color: #2b4a7b;
+                cursor: pointer;
+                padding: 4px 6px;
+                font-size: 12px;
             }
         `);
         style.id = 'mb-sl-style';
@@ -9046,6 +9816,2101 @@
         bdi.textContent = [section, listHeading].filter(Boolean).join(' — ') || 'springsteenlyrics.com';
         h1.appendChild(bdi);
         main.insertBefore(h1, main.firstChild);
+        return h1;
+    }
+
+    // -------------------------------------------------------------------------
+    // springsteenlyrics.com: the compact category/filter bar (sa_sl_compact_nav)
+    // -------------------------------------------------------------------------
+    // The collection pages stack up to six walls of links above the list
+    // (category, format, country, album, year slider, copies: 123 links on the
+    // entry page), and Sticky Page Headers pins all of them. The bar folds
+    // each wall into one pull-down. It READS its options from those walls, so
+    // whatever a category offers (8 formats on "Official Albums", 26 on the
+    // entry page) is what the menu offers, and only HIDES them. Every choice
+    // is a plain `<a href>`, so initNavigationGuard()'s anchor guard asks
+    // before a loaded table is thrown away, and middle-click opens a new tab.
+    // Filters combine: probed live on 2026-10-05, the server narrows by every
+    // `f_*` parameter at once (album 1315 → f_format=12i 539 → plus
+    // f_country=USA 125; f_range=1980,1985 combines too), and on a filtered
+    // page the site's own links carry the active filter along — which is why
+    // _slReadNavFacets() has to tell a wall's own parameter from a carried
+    // one. See docs/claude/springsteenlyrics.md.
+
+    /**
+     * Short label of each scope-bar control, keyed by the query parameter its
+     * links set. A wall whose parameter is not listed falls back to its own
+     * "Filter by …:" caption.
+     * @type {Object<string, string>}
+     */
+    const _SL_FACET_LABELS = {
+        category: 'Category',
+        f_format: 'Format',
+        f_country: 'Country',
+        f_date_main: 'Album',
+        f_range: 'Year',
+        f_multi: 'Copies',
+        f_nbcopies: 'Copies'
+    };
+
+    /**
+     * Category groups for the Category menu, per list script: a group name and
+     * the test a category key must pass. The site lists its categories flat;
+     * a key no group takes goes under "More", so a category the site adds
+     * later still appears. A key goes to the FIRST group that takes it.
+     * @type {Object<string, Array<[string, function(string): boolean]>>}
+     */
+    const _SL_CATEGORY_GROUPS = {
+        '/collection.php': [
+            ['Audio', k => ['album', 'sampler', 'single', 'nugs', 'radioshows', 'vaalbum', 'guest', 'cover', 'audioboot', 'other'].includes(k)],
+            ['Video', k => ['video', 'video_unauth', 'video_var', 'video_guest', 'video_cover', 'video_doc', 'video_movie', 'video_boot'].includes(k)],
+            ['Print & memorabilia', k => ['book', 'fanzine', 'magazine', 'newspaper', 'program', 'printedmusic', 'calendar', 'memorabilia'].includes(k)]
+        ],
+        '/bootlegs.php': [
+            ['Live shows', k => /^aud_live\d{4}$/.test(k)],
+            ['Other audio', k => k.startsWith('aud_')],
+            ['Video', k => k.startsWith('vid_')]
+        ]
+    };
+
+    /**
+     * Filters that only mean something inside the category that offered them
+     * and are dropped when the category changes: an album (`f_date_main`) is
+     * a release date of an "Official Albums" title. Every other collection
+     * filter is kept across a category change.
+     * @type {string[]}
+     */
+    const _SL_CATEGORY_SPECIFIC_PARAMS = ['f_date_main'];
+
+    /**
+     * List scripts whose filters never combine with a category, so a category
+     * change drops every `f_*` parameter. On the bootleg lists a filter IS the
+     * category (`category=f_date&f_date=…`), and a list category ignores one:
+     * `category=aud_live1975&f_date=1975-08-15` returns the whole era (probed
+     * live, 2026-10-05).
+     * @type {string[]}
+     */
+    const _SL_CATEGORY_CHANGE_DROPS_FILTERS = ['/bootlegs.php'];
+
+    /**
+     * GM storage key of the exact item count of every springsteenlyrics.com
+     * list visited with the compact bar on: `{ "<path>?category=<key>": { n,
+     * at } }`, `at` being the visit's date. Written by
+     * `_slRecordListCount()`, shown in the Category menus. A cache, not a
+     * user setting: it is not in the config export (`_CFG_WORKSPACE_GROUPS`).
+     * Exact on purpose (decided 2026-10-05): the bootleg landing page's
+     * "Statistics" counts drift from the lists' own totals (544 there, 487
+     * on the Live 1975-1977 list itself).
+     * @type {string}
+     */
+    const _SL_LIST_COUNTS_KEY = 'mb_sa_sl_list_counts';
+
+    /**
+     * The `_SL_LIST_COUNTS_KEY` entry key of one list.
+     *
+     * @param {string} pathname  - The list script, e.g. '/bootlegs.php'.
+     * @param {string} category  - The category key, e.g. 'aud_live1992'.
+     * @returns {string}
+     */
+    function _slListCountKey(pathname, category) {
+        return `${pathname}?category=${category}`;
+    }
+
+    /**
+     * Reads the stored list counts (`_SL_LIST_COUNTS_KEY`).
+     *
+     * @returns {Object<string, {n: number, at: string}>} Never null.
+     */
+    function _slReadListCounts() {
+        try {
+            const v = GM_getValue(_SL_LIST_COUNTS_KEY, {});
+            return (v && typeof v === 'object') ? v : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /**
+     * Records this list's exact item count, from the site's own "Showing
+     * items 1-100 of N" line, under its category — but only for a whole
+     * category (`cmd=list`, a real category key, no `f_*` filter): a filtered
+     * list's total is not the category's. Writes only when the count changed.
+     *
+     * @returns {?number} The count recorded or confirmed, or `null` when this
+     *   page is not a whole category or shows no count line.
+     */
+    function _slRecordListCount() {
+        const url = new URL(window.location.href);
+        const params = url.searchParams;
+        const cat = params.get('category');
+        if (params.get('cmd') !== 'list' || !cat || cat.startsWith('f_')) return null;
+        if (Array.from(params.keys()).some(k => k.startsWith('f_'))) return null;
+        let n = null;
+        for (const d of document.querySelectorAll('div[align="center"]')) {
+            const m = d.textContent.match(/Showing items\s+\d+\s*-\s*\d+\s+of\s+(\d+)/);
+            if (m) {
+                n = parseInt(m[1], 10);
+                break;
+            }
+        }
+        if (n === null) return null;
+        const counts = _slReadListCounts();
+        const key = _slListCountKey(url.pathname, cat);
+        if (counts[key]?.n !== n) {
+            counts[key] = { n, at: new Date().toISOString().slice(0, 10) };
+            GM_setValue(_SL_LIST_COUNTS_KEY, counts);
+        }
+        return n;
+    }
+
+    /**
+     * Reads the year span the collection's "original year of release" slider
+     * offers: from the site's inline rSlider setup (`values: [1973, …]`),
+     * else from the rendered slider's scale labels, else 1973 (the year of the
+     * first album) to the current year.
+     *
+     * @param {Document} [doc=document]
+     * @returns {{min: number, max: number}}
+     */
+    function _slReadYearSpan(doc = document) {
+        for (const s of doc.querySelectorAll('script:not([src])')) {
+            const m = s.textContent.match(/#f_range['"][\s\S]*?values:\s*\[([^\]]*)\]/);
+            if (m) {
+                const ys = m[1].split(',').map(Number).filter(n => n > 0);
+                if (ys.length) return { min: Math.min(...ys), max: Math.max(...ys) };
+            }
+        }
+        const ins = Array.from(doc.querySelectorAll('.rs-scale ins'))
+            .map(i => parseInt(i.textContent, 10)).filter(n => n > 0);
+        if (ins.length >= 2) return { min: Math.min(...ins), max: Math.max(...ins) };
+        return { min: 1973, max: new Date().getFullYear() };
+    }
+
+    /**
+     * Reads the page's category and filter walls into scope-bar "facets", in
+     * page order. A wall is a `.element-buttons` block of same-page links:
+     * links that set no `f_*` parameter make the Category facet, the others
+     * one facet per wall, keyed by the `f_*` parameters its links CHANGE (the
+     * copies wall changes both `f_multi` and `f_nbcopies`; a filter the site
+     * merely carries over from the page's own query is not the wall's). The
+     * year slider is a
+     * form, not links, and becomes a range facet. Each facet carries the
+     * elements to hide once the bar stands in for them.
+     *
+     * @param {Document} [doc=document]
+     * @returns {Array<{kind: ('category'|'links'|'range'), label: string, keys: string[],
+     *   options: Array<{label: string, category: string, set: Object<string, string>, active: boolean, icon: ?Element}>,
+     *   min?: number, max?: number, hide: Element[]}>}
+     */
+    function _slReadNavFacets(doc = document) {
+        const here = new URL(window.location.href);
+        const yearForm = doc.getElementById('filter_collection_year');
+        const facets = [];
+        doc.querySelectorAll('.element-buttons').forEach(block => {
+            if (block.closest('.navbar, footer, form')) return;
+            const caption = block.querySelector('p > strong')?.textContent.replace(/\s+/g, ' ').trim() || '';
+            const yearBox = block.nextElementSibling;
+            if (yearForm && yearBox && yearBox.contains(yearForm)) {
+                facets.push({ kind: 'range', label: _SL_FACET_LABELS.f_range, keys: ['f_range'],
+                    options: [], ..._slReadYearSpan(doc), hide: [block, yearBox] });
+                return;
+            }
+            const options = [];
+            block.querySelectorAll('a[href]').forEach(a => {
+                let url;
+                try { url = new URL(a.getAttribute('href'), here); } catch (e) { return; }
+                if (url.pathname !== here.pathname) return;
+                const set = {};
+                url.searchParams.forEach((v, k) => { if (k.startsWith('f_')) set[k] = v; });
+                options.push({ label: a.textContent.replace(/\s+/g, ' ').trim(),
+                    category: url.searchParams.get('category') || '', set,
+                    active: a.classList.contains('label-danger'),
+                    icon: a.querySelector('.flag-icon') });
+            });
+            if (options.length === 0) return;
+            // On a filtered page the site carries the active filter into the
+            // OTHER walls' links (with f_format=12i set, every country link
+            // also says f_format=12i), and draws the active entry of a wall
+            // red (`label-danger`) with an href WITHOUT its own filter, i.e.
+            // a click removes it. A wall's own keys are therefore the f_*
+            // parameters that are NOT on every link with the page's own
+            // value; only when that leaves nothing do all of them count.
+            const all = new Set(options.flatMap(o => Object.keys(o.set)));
+            if (all.size === 0 && !options.some(o => o.active)) {
+                facets.push({ kind: 'category', label: _SL_FACET_LABELS.category, keys: ['category'], options, hide: [block] });
+                return;
+            }
+            const inherited = k => options.every(o => o.set[k] !== undefined && o.set[k] === here.searchParams.get(k));
+            let keyList = Array.from(all).filter(k => !inherited(k));
+            if (keyList.length === 0) keyList = Array.from(all);
+            if (keyList.length === 0) return;
+            options.forEach(o => {
+                // The red entry's own value is the page's: its href drops it.
+                const src = o.active ? Object.fromEntries(keyList.filter(k => here.searchParams.has(k))
+                    .map(k => [k, here.searchParams.get(k)])) : o.set;
+                o.set = Object.fromEntries(keyList.filter(k => src[k] !== undefined).map(k => [k, src[k]]));
+            });
+            const label = _SL_FACET_LABELS[keyList[0]] ||
+                caption.replace(/^Filter by\s+/i, '').replace(/:$/, '').replace(/^./, c => c.toUpperCase()) || keyList[0];
+            const hide = [block];
+            // The Format menu carries the formats guide (every entry's guide
+            // line, `_SL_FORMATS`), so the site's "Formats guide" panel goes
+            // with the format wall — only its own box, never a page container.
+            if (keyList.includes('f_format')) {
+                const guideBox = doc.getElementById('collapseFormats')?.closest('.container');
+                if (guideBox && !guideBox.querySelector('.blog-post, table.mb-sl-table, .element-buttons')) hide.push(guideBox);
+            }
+            facets.push({ kind: 'links', label, keys: keyList, options, hide });
+        });
+        return facets;
+    }
+
+    /**
+     * Builds the URL of this list with the scope changed: the page parameter
+     * dropped (a new scope starts at page 1), `cmd=list`, and `category=all`
+     * when the page has none (the entry page, whose own filter links say the
+     * same). Then `change.category` replaces the category (dropping
+     * `_SL_CATEGORY_SPECIFIC_PARAMS`, or every `f_*` on a list script in
+     * `_SL_CATEGORY_CHANGE_DROPS_FILTERS`), `change.clear` removes parameters
+     * and `change.set` sets them — so a new value for one filter keeps the
+     * others.
+     *
+     * @param {{category?: string, clear?: string[], set?: Object<string, string>}} change
+     * @returns {string} Absolute URL.
+     */
+    function _slScopeHref(change) {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        ['page', 'pg', 'item'].forEach(k => url.searchParams.delete(k));
+        url.searchParams.set('cmd', 'list');
+        if (!url.searchParams.get('category')) url.searchParams.set('category', 'all');
+        if (change.category !== undefined) {
+            url.searchParams.set('category', change.category);
+            const dropAll = _SL_CATEGORY_CHANGE_DROPS_FILTERS.includes(url.pathname);
+            Array.from(url.searchParams.keys()).forEach(k => {
+                if (dropAll ? k.startsWith('f_') : _SL_CATEGORY_SPECIFIC_PARAMS.includes(k)) url.searchParams.delete(k);
+            });
+        }
+        (change.clear || []).forEach(k => url.searchParams.delete(k));
+        Object.entries(change.set || {}).forEach(([k, v]) => url.searchParams.set(k, v));
+        return url.href;
+    }
+
+    /**
+     * Tells what a facet is set to on this page.
+     *
+     * @param {object}          facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {{active: boolean, label: string, option: ?object}} `active` is
+     *   false for the Category facet (it always has a value) and for a filter
+     *   the query does not carry; `option` is the matching menu entry, if any.
+     */
+    function _slFacetCurrent(facet, params) {
+        if (facet.kind === 'category') {
+            const cat = params.get('category') || 'all';
+            const option = facet.options.find(o => o.category === cat) || null;
+            // Not one of the wall's categories: "all" (the collection entry
+            // page has no category and lists everything), none at all on the
+            // bootleg landing page (which lists nothing), or a bootleg search
+            // (category=f_title…), whose list heading ("SHOWS BY TITLE") says
+            // what the page is.
+            const fallback = !params.get('category') && window.location.pathname === '/bootlegs.php' ? 'Choose a list'
+                : cat === 'all' ? 'All categories'
+                    : (_slFindListHeading(document)?.textContent.replace(/\s+/g, ' ').trim() || cat);
+            return { active: false, label: option ? option.label : fallback, option };
+        }
+        if (facet.kind === 'range') {
+            const v = params.get('f_range');
+            return v ? { active: true, label: v.replace(',', '–'), option: null }
+                : { active: false, label: 'Any', option: null };
+        }
+        if (!facet.keys.some(k => params.has(k))) return { active: false, label: 'Any', option: null };
+        const option = facet.options.find(o =>
+            facet.keys.every(k => (o.set[k] ?? null) === params.get(k))) || null;
+        const raw = facet.keys.filter(k => params.has(k)).map(k => params.get(k)).join(', ');
+        return { active: true, label: option ? option.label : raw, option };
+    }
+
+    /**
+     * The open scope-bar pull-down, if any: its panel and the button it hangs
+     * from.
+     * @type {?{pop: HTMLElement, btn: HTMLElement}}
+     */
+    let _slScopePop = null;
+
+    /**
+     * Closes the open scope-bar pull-down, if any.
+     *
+     * @param {boolean} [refocus=false] - Return focus to its button (Escape).
+     * @returns {void}
+     */
+    function _slCloseScopePop(refocus = false) {
+        if (!_slScopePop) return;
+        const { pop, btn } = _slScopePop;
+        _slScopePop = null;
+        pop.remove();
+        btn.setAttribute('aria-expanded', 'false');
+        if (refocus) btn.focus();
+    }
+
+    // --- After the fetch: the bar filters the loaded table ------------------
+    // Once a list is loaded, a server filter would reload the page and throw
+    // the table away, while the same narrowing is a column filter away. So a
+    // facet whose values ARE a column's cell values filters the table instead
+    // (decided 2026-10-05): Country, the year range and Copies, and Format
+    // through the formats glossary (`_SL_FORMATS`), since the site's codes
+    // (12i, "12\" vinyl") are not the cells' text (LP, 2xLP, 4x12" + 7").
+    // Album has no column, so it and the Category keep navigating, and the
+    // menu says which kind it is. Filtering
+    // goes through applyUniqValueSet(), the 📊 dropdown's own exact-value
+    // path, so every cache and highlight rule of that path holds unchanged.
+
+    /**
+     * The table column each table-filterable bar parameter narrows.
+     * @type {Object<string, string>}
+     */
+    const _SL_TABLE_FILTER_COLUMNS = {
+        f_country: 'Country',
+        f_range: 'Original year',
+        f_nbcopies: 'Copies',
+        f_multi: 'Copies',
+        // Through `_SL_FORMATS`: a row counts under the format of its FIRST
+        // medium, as the server files it (probed, see that table).
+        f_format: 'Format'
+    };
+
+    /**
+     * The loaded springsteenlyrics.com table, or `null` before one is
+     * rendered. The filter-row test comes FIRST on purpose: this runs from
+     * the bar, which is built at init, long before `isLoaded`/`allRows` are
+     * declared further down the script — reading them then would throw (TDZ).
+     * No table has a column filter row until a render, which is after both.
+     *
+     * @returns {?HTMLTableElement}
+     */
+    function _slLoadedTable() {
+        const table = document.querySelector('table.mb-sl-table');
+        if (!table || !table.querySelector('thead tr.mb-col-filter-row')) return null;
+        return (isLoaded && allRows.length > 0) ? table : null;
+    }
+
+    /**
+     * Tells whether a facet filters the loaded table instead of navigating:
+     * every key maps to the same column (`_SL_TABLE_FILTER_COLUMNS`), a table
+     * is loaded with that column, and the page's query does NOT already carry
+     * the facet — then the server narrowed the fetch and the table holds only
+     * that value, so only a reload can widen it.
+     *
+     * @param {object} facet  - From `_slReadNavFacets()`.
+     * @returns {?{table: HTMLTableElement, idx: number, column: string}}
+     */
+    function _slHandoff(facet) {
+        if (facet.kind !== 'links' && facet.kind !== 'range') return null;
+        const cols = new Set(facet.keys.map(k => _SL_TABLE_FILTER_COLUMNS[k]));
+        if (cols.size !== 1 || cols.has(undefined)) return null;
+        const params = new URL(window.location.href).searchParams;
+        if (facet.keys.some(k => params.has(k))) return null;
+        const table = _slLoadedTable();
+        if (!table) return null;
+        const column = [...cols][0];
+        const idx = _findColIdxByName(table, column);
+        return idx >= 0 ? { table, idx, column } : null;
+    }
+
+    /**
+     * The distinct, non-empty cell texts of one column over ALL loaded rows
+     * (`allRows`), not only those a filter leaves visible.
+     *
+     * @param {number} idx  - Column index.
+     * @returns {string[]}
+     */
+    function _slColumnValues(idx) {
+        const seen = new Set();
+        allRows.forEach(r => {
+            const cell = r.cells && r.cells[idx];
+            const t = cell ? getCleanColumnText(cell).trim() : '';
+            if (t) seen.add(t);
+        });
+        return Array.from(seen);
+    }
+
+    /**
+     * The column values one bar choice stands for: a country by its name
+     * (matched case-blind against the column, so the site's chip label and
+     * the cards' text may differ in case); a format code as every Format text
+     * whose first medium it names (`_slFormatCode()`); "Copies = N" as N;
+     * "Duplicates" as every count of 2 or more; a year range as every year in
+     * it the column holds. When nothing in the table qualifies, a value no cell
+     * holds is returned, so the filter shows an empty table rather than
+     * silently clearing itself (an empty set means "no filter").
+     *
+     * @param {{idx: number, column: string}} h  - From `_slHandoff()`.
+     * @param {Object<string, string>} set        - The choice's parameters.
+     * @returns {string[]}
+     */
+    function _slHandoffValues(h, set) {
+        const vals = _slColumnValues(h.idx);
+        let hit = [];
+        if (set.f_country !== undefined) {
+            const want = set.f_country.toLowerCase();
+            hit = vals.filter(v => v.toLowerCase() === want);
+        } else if (set.f_format !== undefined) {
+            hit = vals.filter(v => _slFormatCode(v) === set.f_format);
+        } else if (set.f_nbcopies !== undefined) {
+            hit = vals.filter(v => Number(v) === Number(set.f_nbcopies));
+        } else if (set.f_multi !== undefined) {
+            hit = vals.filter(v => Number(v) >= 2);
+        } else if (set.f_range !== undefined) {
+            const [a, b] = set.f_range.split(',').map(Number);
+            hit = vals.filter(v => Number(v) >= a && Number(v) <= b);
+        }
+        return hit.length ? hit : [`∅ no ${h.column.toLowerCase()} matches`];
+    }
+
+    /**
+     * The column filter `<input>` of a hand-off column.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?HTMLInputElement}
+     */
+    function _slHandoffInput(h) {
+        return h.table.querySelector(`thead tr.mb-col-filter-row .mb-col-filter-input[data-col-idx="${h.idx}"]`);
+    }
+
+    /**
+     * What a hand-off column is filtered to, as the bar should name it: the
+     * bar's own label while the column still holds exactly the value set the
+     * bar wrote, else a summary of whatever value set the 📊 dropdown left
+     * there, else `null` (no value set; a typed column filter is not the
+     * bar's to show).
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @returns {?string}
+     */
+    function _slTableChoice(h) {
+        const input = _slHandoffInput(h);
+        const vs = input?.dataset.mbUniqValues;
+        if (!vs) return null;
+        if (input.dataset.mbSlBarValues === vs && input.dataset.mbSlBarLabel) return input.dataset.mbSlBarLabel;
+        try {
+            const arr = JSON.parse(vs);
+            return arr.length <= 3 ? arr.join(', ') : `${arr.length} values`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Narrows (or, with an empty `values`, clears) a hand-off column through
+     * `applyUniqValueSet()`, remembers the bar's label for it, and redraws
+     * the bar.
+     *
+     * @param {{table: HTMLTableElement, idx: number}} h
+     * @param {string[]} values  - From `_slHandoffValues()`, or `[]` to clear.
+     * @param {string}   label   - What the bar calls the choice.
+     * @returns {void}
+     */
+    function _slApplyTableFilter(h, values, label) {
+        applyUniqValueSet(values, h.table, h.idx);
+        const input = _slHandoffInput(h);
+        if (input) {
+            if (values.length) {
+                input.dataset.mbSlBarLabel = label;
+                input.dataset.mbSlBarValues = input.dataset.mbUniqValues || '';
+            } else {
+                delete input.dataset.mbSlBarLabel;
+                delete input.dataset.mbSlBarValues;
+            }
+        }
+        _slRenderScopeState();
+    }
+
+    /**
+     * Heads a pull-down with what its entries do once a table is loaded:
+     * filter that table (a hand-off facet), or reload the page and replace
+     * it. Says nothing before a table is loaded, when every entry navigates.
+     *
+     * @param {HTMLElement} pop      - The panel being filled.
+     * @param {object}      facet    - From `_slReadNavFacets()`.
+     * @param {?object}     handoff  - From `_slHandoff()`.
+     * @returns {void}
+     */
+    function _slAddScopeNote(pop, facet, handoff) {
+        let text = '';
+        if (handoff) {
+            text = `Filters the loaded table by its ${handoff.column} column; nothing is reloaded.`;
+        } else if (_slLoadedTable()) {
+            const carried = facet.kind !== 'category' &&
+                facet.keys.some(k => new URL(window.location.href).searchParams.has(k));
+            text = facet.kind === 'category' ? 'Opens another list and replaces the loaded table.'
+                : carried ? 'This list was fetched with this filter, so changing it reloads the page and replaces the loaded table.'
+                    : 'Reloads the page and replaces the loaded table.';
+        }
+        if (!text) return;
+        const note = document.createElement('div');
+        note.className = 'mb-sl-scope-note';
+        note.classList.toggle('mb-sl-scope-note-table', Boolean(handoff));
+        note.textContent = text;
+        pop.appendChild(note);
+    }
+
+    /**
+     * Reads a bootleg era out of a category label: "Live 1967-1974" → 1967 to
+     * 1974, "Live 2005" → 2005 to 2005.
+     *
+     * @param {string} label
+     * @returns {?{from: number, to: number}} `null` for a label that is not an era.
+     */
+    function _slParseEra(label) {
+        const m = label.match(/^Live\s+(\d{4})(?:\s*-\s*(\d{4}))?$/);
+        if (!m) return null;
+        const from = Number(m[1]);
+        const to = Number(m[2] || m[1]);
+        return to >= from ? { from, to } : null;
+    }
+
+    /**
+     * Builds the era timeline that heads the bootleg Category menu: every
+     * "Live YYYY-YYYY" category as a bar on one year axis, its width the
+     * era's span and its height the recordings PER YEAR, from the exact
+     * counts recorded on earlier visits (`_SL_LIST_COUNTS_KEY`). An era not
+     * visited yet is drawn dashed at a fixed height with "?", never
+     * estimated. Every bar is a link to its list; the current one is marked.
+     *
+     * @param {object}                facet   - The Category facet.
+     * @param {string}                curCat  - The page's category key.
+     * @param {Object<string, {n: number, at: string}>} counts
+     * @returns {?HTMLElement} The timeline, or `null` with fewer than three eras.
+     */
+    function _slBuildEraRuler(facet, curCat, counts) {
+        const path = window.location.pathname;
+        const eras = facet.options.map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        if (eras.length < 3) return null;
+        const min = Math.min(...eras.map(e => e.span.from));
+        const max = Math.max(...eras.map(e => e.span.to));
+        const years = max - min + 1;
+        const pct = y => `${(100 * (y - min) / years).toFixed(3)}%`;
+        eras.forEach(e => {
+            const c = counts[_slListCountKey(path, e.o.category)];
+            e.n = c ? c.n : null;
+            e.perYear = c ? c.n / (e.span.to - e.span.from + 1) : null;
+        });
+        const top = Math.max(1, ...eras.map(e => e.perYear || 0));
+
+        const ruler = document.createElement('div');
+        ruler.className = 'mb-sl-era-ruler';
+        const bars = document.createElement('div');
+        bars.className = 'mb-sl-era-bars';
+        eras.forEach(e => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-era';
+            a.href = _slScopeHref({ category: e.o.category });
+            a.style.left = pct(e.span.from);
+            a.style.width = `calc(${(100 * (e.span.to - e.span.from + 1) / years).toFixed(3)}% - 2px)`;
+            const n = document.createElement('span');
+            n.className = 'mb-sl-era-n';
+            if (e.n === null) {
+                a.classList.add('mb-sl-era-unknown');
+                a.style.height = '30%';
+                n.textContent = '?';
+                _setTip(a, `${e.o.label}\nNot counted yet: the count is recorded when you open this list.`);
+            } else {
+                a.style.height = `${Math.max(8, Math.round(100 * e.perYear / top))}%`;
+                n.textContent = String(e.n);
+                _setTip(a, `${e.o.label}\n${e.n} recordings, about ${Math.round(e.perYear)} a year\nCounted on ${counts[_slListCountKey(path, e.o.category)].at}`);
+            }
+            if (e.o.category === curCat) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            a.setAttribute('aria-label', `${e.o.label}${e.n === null ? '' : `, ${e.n} recordings`}`);
+            a.appendChild(n);
+            bars.appendChild(a);
+        });
+        const axis = document.createElement('div');
+        axis.className = 'mb-sl-era-axis';
+        const ticks = [min];
+        for (let y = Math.ceil((min + 1) / 10) * 10; y <= max - 4; y += 10) {
+            if (y - min >= 4) ticks.push(y);
+        }
+        ticks.forEach(y => {
+            const t = document.createElement('span');
+            t.textContent = String(y);
+            t.style.left = pct(y);
+            axis.appendChild(t);
+        });
+        const last = document.createElement('span');
+        last.className = 'mb-sl-era-axis-end';
+        last.textContent = String(max);
+        axis.appendChild(last);
+        ruler.append(bars, axis);
+        return ruler;
+    }
+
+    /**
+     * Fills a scope-bar pull-down for a Category or links facet: one link per
+     * option (the Category facet grouped per `_SL_CATEGORY_GROUPS` with the
+     * recorded item count of each category, and headed by the era timeline
+     * on the bootleg lists; a filter facet led by "Any"), the current one
+     * marked, and a search box above a long list. Typing filters the list;
+     * Enter follows the first match.
+     *
+     * @param {HTMLElement}     pop     - The empty panel.
+     * @param {object}          facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {void}
+     */
+    function _slFillScopeList(pop, facet, params) {
+        const cur = _slFacetCurrent(facet, params);
+        const path = window.location.pathname;
+        const counts = facet.kind === 'category' ? _slReadListCounts() : {};
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
+        const list = document.createElement('div');
+        list.className = 'mb-sl-scope-list';
+        // `target`: an href (navigates), or a function (filters the table).
+        // `sub`: a second, smaller line (the Format menu's guide text).
+        const addOpt = (label, target, isCur, icon, category, sub) => {
+            const a = document.createElement(typeof target === 'function' ? 'button' : 'a');
+            a.className = 'mb-sl-scope-opt';
+            if (typeof target === 'function') {
+                a.type = 'button';
+                a.addEventListener('click', () => {
+                    _slCloseScopePop(true);
+                    target();
+                });
+            } else {
+                a.href = target;
+            }
+            if (isCur) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            if (icon) a.appendChild(icon.cloneNode(true));
+            const span = document.createElement('span');
+            span.className = 'mb-sl-scope-label';
+            span.textContent = label;
+            if (sub) {
+                const s = document.createElement('span');
+                s.className = 'mb-sl-scope-sub';
+                s.textContent = sub;
+                span.appendChild(s);
+            }
+            a.appendChild(span);
+            const c = category !== undefined ? counts[_slListCountKey(path, category)] : null;
+            if (c) {
+                const n = document.createElement('span');
+                n.className = 'mb-sl-scope-n';
+                n.textContent = String(c.n);
+                _setTip(n, `${c.n} items, counted on ${c.at}`);
+                a.appendChild(n);
+            }
+            list.appendChild(a);
+        };
+        const addGroup = (text) => {
+            const g = document.createElement('div');
+            g.className = 'mb-sl-scope-group';
+            g.textContent = text;
+            list.appendChild(g);
+        };
+
+        if (facet.kind === 'category') {
+            const curCat = params.get('category') || 'all';
+            // Only the collection has an "all" list (its entry page's own
+            // filter links use it); the bootleg lists have none.
+            if (path === '/collection.php') {
+                addOpt('All categories', _slScopeHref({ category: 'all' }), curCat === 'all', null, 'all');
+            }
+            const defs = _SL_CATEGORY_GROUPS[path] || [];
+            const groups = defs.map(([name]) => [name, []]);
+            const more = [];
+            facet.options.forEach(o => {
+                const i = defs.findIndex(([, takes]) => takes(o.category));
+                (i >= 0 ? groups[i][1] : more).push(o);
+            });
+            groups.push(['More', more]);
+            groups.forEach(([name, opts]) => {
+                if (opts.length === 0) return;
+                addGroup(name);
+                opts.forEach(o => addOpt(o.label, _slScopeHref({ category: o.category }), o.category === curCat, o.icon, o.category));
+            });
+            const ruler = _slBuildEraRuler(facet, curCat, counts);
+            if (ruler) {
+                pop.classList.add('mb-sl-scope-pop-wide');
+                pop.appendChild(ruler);
+            }
+        } else {
+            // One entry per option: a table filter after the fetch, a link
+            // before it. The Format menu is the formats guide too: entries
+            // grouped Audio / Video / Print, each with its guide line.
+            const chosen = handoff ? _slTableChoice(handoff) : null;
+            const addOption = o => {
+                const fmt = o.set.f_format !== undefined ? _SL_FORMATS.find(f => f.code === o.set.f_format) : null;
+                const sub = fmt ? `${fmt.abbr} · ${fmt.text}${fmt.guide ? '' : ' (not in the site\'s guide)'}` : '';
+                if (handoff) {
+                    addOpt(o.label, () => _slApplyTableFilter(handoff, _slHandoffValues(handoff, o.set), o.label),
+                        chosen === o.label, o.icon, undefined, sub);
+                } else {
+                    addOpt(o.label, _slScopeHref({ clear: facet.keys, set: o.set }), cur.option === o, o.icon, undefined, sub);
+                }
+            };
+            if (handoff) addOpt('Any', () => _slApplyTableFilter(handoff, [], ''), chosen === null, null);
+            else addOpt('Any', _slScopeHref({ clear: facet.keys }), !cur.active, null);
+            if (facet.keys.includes('f_format')) {
+                const groupOf = o => _SL_FORMATS.find(f => f.code === o.set.f_format)?.group || 'More';
+                ['Audio', 'Video', 'Print', 'More'].forEach(g => {
+                    const opts = facet.options.filter(o => groupOf(o) === g);
+                    if (opts.length === 0) return;
+                    addGroup(g);
+                    opts.forEach(addOption);
+                });
+            } else {
+                facet.options.forEach(addOption);
+            }
+        }
+
+        const optCount = list.querySelectorAll('.mb-sl-scope-opt').length;
+        if (optCount > 12) {
+            const q = document.createElement('input');
+            q.type = 'search';
+            q.className = 'mb-sl-scope-search';
+            q.placeholder = `Search ${facet.options.length} ${facet.label.toLowerCase()} entries…`;
+            q.setAttribute('aria-label', `Search ${facet.label}`);
+            q.addEventListener('input', () => {
+                const needle = q.value.trim().toLowerCase();
+                list.querySelectorAll('.mb-sl-scope-opt').forEach(a => {
+                    a.hidden = needle !== '' && !a.textContent.toLowerCase().includes(needle);
+                });
+                // A group header stays only while one of its entries does.
+                list.querySelectorAll('.mb-sl-scope-group').forEach(g => {
+                    let n = g.nextElementSibling;
+                    let any = false;
+                    for (; n && !n.matches('.mb-sl-scope-group'); n = n.nextElementSibling) {
+                        if (!n.hidden) { any = true; break; }
+                    }
+                    g.hidden = !any;
+                });
+            });
+            q.addEventListener('keydown', e => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                list.querySelector('.mb-sl-scope-opt:not([hidden])')?.click();
+            });
+            pop.appendChild(q);
+        }
+        pop.appendChild(list);
+    }
+
+    /**
+     * Fills the scope-bar pull-down for the year range: two year pickers
+     * over the slider's own span and an Apply link whose `href` follows them,
+     * plus a link that drops the year filter when one is set.
+     *
+     * @param {HTMLElement}     pop     - The empty panel.
+     * @param {object}          facet   - The range facet from `_slReadNavFacets()`.
+     * @param {URLSearchParams} params  - The page's query.
+     * @returns {void}
+     */
+    function _slFillScopeRange(pop, facet, params) {
+        const handoff = _slHandoff(facet);
+        _slAddScopeNote(pop, facet, handoff);
+        const chosen = handoff ? _slTableChoice(handoff) : null;
+        const tableSpan = chosen && chosen.match(/^(\d{4})–(\d{4})$/);
+        const [curFrom, curTo] = tableSpan ? [Number(tableSpan[1]), Number(tableSpan[2])]
+            : (params.get('f_range') || `${facet.min},${facet.max}`).split(',').map(Number);
+        const mkSelect = (id, value, aria) => {
+            const s = document.createElement('select');
+            s.id = id;
+            s.setAttribute('aria-label', aria);
+            for (let y = facet.min; y <= facet.max; y++) {
+                const o = document.createElement('option');
+                o.value = String(y);
+                o.textContent = String(y);
+                s.appendChild(o);
+            }
+            s.value = String(value);
+            return s;
+        };
+        const from = mkSelect('mb-sl-year-from', curFrom || facet.min, 'From year');
+        const to = mkSelect('mb-sl-year-to', curTo || facet.max, 'To year');
+        // A link before the fetch; a button that filters the table after it.
+        const apply = document.createElement(handoff ? 'button' : 'a');
+        apply.className = 'mb-sl-scope-apply';
+        apply.textContent = 'Apply';
+        const span = () => {
+            let a = Number(from.value), b = Number(to.value);
+            if (a > b) [a, b] = [b, a];
+            return [a, b];
+        };
+        const sync = () => {
+            if (handoff) return;
+            const [a, b] = span();
+            apply.href = (a === facet.min && b === facet.max)
+                ? _slScopeHref({ clear: ['f_range'] })
+                : _slScopeHref({ set: { f_range: `${a},${b}` } });
+        };
+        if (handoff) {
+            apply.type = 'button';
+            apply.addEventListener('click', () => {
+                const [a, b] = span();
+                _slCloseScopePop(true);
+                if (a === facet.min && b === facet.max) _slApplyTableFilter(handoff, [], '');
+                else _slApplyTableFilter(handoff, _slHandoffValues(handoff, { f_range: `${a},${b}` }), `${a}–${b}`);
+            });
+        }
+        from.addEventListener('change', sync);
+        to.addEventListener('change', sync);
+        sync();
+
+        const caption = document.createElement('div');
+        caption.className = 'mb-sl-scope-group';
+        caption.textContent = 'Original year of release';
+        const row = document.createElement('div');
+        row.className = 'mb-sl-scope-years';
+        const dash = document.createElement('span');
+        dash.textContent = '–';
+        row.append(from, dash, to);
+        const foot = document.createElement('div');
+        foot.className = 'mb-sl-scope-foot';
+        if (handoff && chosen) {
+            const reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'mb-sl-scope-opt';
+            reset.textContent = 'Any year';
+            reset.addEventListener('click', () => {
+                _slCloseScopePop(true);
+                _slApplyTableFilter(handoff, [], '');
+            });
+            foot.appendChild(reset);
+        } else if (params.has('f_range')) {
+            const reset = document.createElement('a');
+            reset.className = 'mb-sl-scope-opt';
+            reset.href = _slScopeHref({ clear: ['f_range'] });
+            reset.textContent = 'Any year';
+            foot.appendChild(reset);
+        }
+        foot.appendChild(apply);
+        pop.append(caption, row, foot);
+    }
+
+    /**
+     * Places the open scope-bar pull-down under its button, inside the
+     * window, or closes it when the button has left the window (scrolled
+     * away with Sticky Page Headers off).
+     *
+     * @returns {void}
+     */
+    function _slPlaceScopePop() {
+        if (!_slScopePop) return;
+        const { pop, btn } = _slScopePop;
+        const r = btn.getBoundingClientRect();
+        if (r.bottom < 0 || r.top > window.innerHeight || r.width === 0) {
+            _slCloseScopePop();
+            return;
+        }
+        // A fixed panel cannot be scrolled into view, so it must FIT: below
+        // the button when there is room, else above it when there is more
+        // room there, and never taller than the space it opens into (it
+        // scrolls inside). Hanging past the window's bottom, its lower
+        // entries were unreachable once the bar sat low on the screen.
+        const below = window.innerHeight - r.bottom - 12;
+        const above = r.top - 12;
+        const up = below < 240 && above > below;
+        pop.style.maxHeight = `${Math.max(120, Math.round(up ? above : below))}px`;
+        if (up) {
+            pop.style.top = '';
+            pop.style.bottom = `${Math.round(window.innerHeight - r.top + 4)}px`;
+        } else {
+            pop.style.bottom = '';
+            pop.style.top = `${Math.round(r.bottom + 4)}px`;
+        }
+        pop.style.left = `${Math.round(Math.max(8, Math.min(r.left, window.innerWidth - pop.offsetWidth - 8)))}px`;
+    }
+
+    /**
+     * Opens (or, for its own button, closes) a scope-bar pull-down. The panel
+     * is appended to `<body>` with `position: fixed` under its button, so no
+     * pinned (sticky) ancestor's stacking context or the table's sticky
+     * header can cover it; scrolling or resizing the window moves it along
+     * (`_slPlaceScopePop()`).
+     *
+     * @param {HTMLButtonElement} btn     - The facet's button in the bar.
+     * @param {object}            facet   - From `_slReadNavFacets()`.
+     * @param {URLSearchParams}   params  - The page's query.
+     * @returns {void}
+     */
+    function _slToggleScopePop(btn, facet, params) {
+        if (_slScopePop && _slScopePop.btn === btn) {
+            _slCloseScopePop();
+            return;
+        }
+        _slCloseScopePop();
+        const pop = document.createElement('div');
+        pop.className = 'mb-sl-scope-pop';
+        pop.setAttribute('role', 'dialog');
+        pop.setAttribute('aria-label', facet.label);
+        if (facet.kind === 'range') _slFillScopeRange(pop, facet, params);
+        else if (facet.kind === 'recent') _slFillScopeRecent(pop, facet.search);
+        else _slFillScopeList(pop, facet, params);
+        document.body.appendChild(pop);
+        btn.setAttribute('aria-expanded', 'true');
+        _slScopePop = { pop, btn };
+        _slPlaceScopePop();
+        (pop.querySelector('input, select') || pop.querySelector('.mb-sl-cur') ||
+            pop.querySelector('a'))?.focus();
+    }
+
+    /**
+     * Wires the document-level behaviour every scope-bar pull-down shares,
+     * once: a press outside the open panel and its button closes it; Escape
+     * closes it and returns focus to the button; ArrowDown/ArrowUp move
+     * between the visible entries; scrolling or resizing the window moves
+     * it along with its button, since a `position: fixed` panel would
+     * otherwise drift off it.
+     *
+     * @returns {void}
+     */
+    function _slWireScopePopEvents() {
+        if (document._mbSlScopeWired) return;
+        document._mbSlScopeWired = true;
+        document.addEventListener('mousedown', e => {
+            if (_slScopePop && !_slScopePop.pop.contains(e.target) && !_slScopePop.btn.contains(e.target)) {
+                _slCloseScopePop();
+            }
+        }, true);
+        document.addEventListener('keydown', e => {
+            if (!_slScopePop) return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                _slCloseScopePop(true);
+                return;
+            }
+            if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+            if (!_slScopePop.pop.contains(document.activeElement) ||
+                document.activeElement.tagName === 'SELECT') return;
+            const opts = Array.from(_slScopePop.pop.querySelectorAll('a[href]:not([hidden]), button.mb-sl-scope-opt:not([hidden])'));
+            if (opts.length === 0) return;
+            e.preventDefault();
+            const i = opts.indexOf(document.activeElement);
+            const next = e.key === 'ArrowDown' ? (i + 1) % opts.length : (i <= 0 ? opts.length - 1 : i - 1);
+            opts[next].focus();
+        }, true);
+        window.addEventListener('scroll', e => {
+            if (_slScopePop && !(_slScopePop.pop.contains(e.target))) _slPlaceScopePop();
+        }, true);
+        window.addEventListener('resize', () => _slPlaceScopePop());
+    }
+
+    // --- The bootleg search box (part of the compact bar) -------------------
+    // The bootleg lists offer four separate GET forms (date, title, version,
+    // public info), each with its own Go button, each sending its field as
+    // the category (`?f_date=…&cmd=list&category=f_date`). The server takes
+    // ONE of them at a time: f_title=born&f_version=soundboard returns the
+    // same 73 rows as f_title=born (probed live, 2026-10-05). So the bar
+    // keeps one field per search, behind one box with a field switch. The
+    // site's date check, checkForm(), reads `form.filter_date` while the input
+    // is `f_date`, so it throws and never runs; and f_date matches FULL dates
+    // only (1975-08-15 → 21 rows; 1975-08 and 1975 → none). The box reads the
+    // dates people type, says when a day does not exist, and turns a partial
+    // date into a pointer to the era list that holds it.
+
+    /**
+     * GM storage key of the recent bootleg searches: newest first, at most
+     * `_SL_RECENT_SEARCH_MAX`, as `[{ field, q }]`. Recorded when a search
+     * result page is opened with the bar on (`_slRecordRecentSearch()`), so a
+     * search started anywhere (the site's own forms, a bookmark) counts. A
+     * convenience, not a setting: not in the config export.
+     * @type {string}
+     */
+    const _SL_RECENT_SEARCH_KEY = 'mb_sa_sl_recent_searches';
+
+    /**
+     * How many recent searches are kept.
+     * @type {number}
+     */
+    const _SL_RECENT_SEARCH_MAX = 8;
+
+    /**
+     * Reads the page's search forms: every GET form whose `category` hidden
+     * input names its own `f_*` text field (the bootleg lists' four), in page
+     * order, with the label from its "Filter by …" caption and the elements
+     * to hide once the bar stands in for them.
+     *
+     * @param {Document} [doc=document]
+     * @returns {?{fields: Array<{param: string, label: string, placeholder: string}>, hide: Element[]}}
+     *   `null` when the page has no such forms.
+     */
+    function _slReadSearchForms(doc = document) {
+        const fields = [];
+        const forms = [];
+        doc.querySelectorAll('form').forEach(form => {
+            if (form.closest('.navbar, footer')) return;
+            const cat = form.querySelector('input[type="hidden"][name="category"]')?.value || '';
+            const input = cat.startsWith('f_') ? form.querySelector(`input[type="text"][name="${cat}"]`) : null;
+            if (!input) return;
+            const caption = form.parentElement?.querySelector('strong')?.textContent.replace(/\s+/g, ' ').trim() || cat;
+            const label = caption.replace(/^Filter by\s+/i, '').replace(/^./, c => c.toUpperCase());
+            fields.push({ param: cat, label, placeholder: input.getAttribute('placeholder') || '' });
+            forms.push(form);
+        });
+        if (fields.length === 0) return null;
+        // The four forms share one Bootstrap row in one .container; hide that
+        // box when it holds them all, else each form's own column.
+        const box = forms[0].closest('.container');
+        const hide = (box && forms.every(f => box.contains(f)))
+            ? [box] : forms.map(f => f.parentElement);
+        return { fields, hide };
+    }
+
+    /**
+     * Reads a date the way people type it, for the bootleg date search.
+     * Full dates: `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+     * `Aug 15, 1975`, `15.08.1975`. Partial: `1975-08`, `Aug 1975`,
+     * `August 1975`, `1975`. Slash forms are refused: `08/09/1975` is a
+     * different day in the US and in Europe.
+     *
+     * @param {string} text
+     * @returns {?{kind: ('full'|'partial'|'invalid'), iso?: string, y?: number, m?: number}}
+     *   `full` with `iso`; `partial` with `y` (and `m`); `invalid` for a day
+     *   the calendar does not have; `null` when the text is not a date.
+     */
+    function _slReadSearchDate(text) {
+        const t = String(text || '').trim().toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ');
+        const month = s => {
+            const i = _SL_MONTH_NAMES.findIndex(n => n === s || (s.length >= 3 && n.startsWith(s)));
+            return i >= 0 ? i + 1 : 0;
+        };
+        const pad = n => String(n).padStart(2, '0');
+        const full = (y, m, d) => {
+            const dt = new Date(Date.UTC(y, m - 1, d));
+            return (dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d)
+                ? { kind: 'full', iso: `${y}-${pad(m)}-${pad(d)}` } : { kind: 'invalid' };
+        };
+        let m;
+        if ((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return full(+m[1], +m[2], +m[3]);
+        if ((m = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/))) return full(+m[3], +m[2], +m[1]);
+        if ((m = t.match(/^(\d{1,2}) ([a-z]+) (\d{4})$/)) && month(m[2])) return full(+m[3], month(m[2]), +m[1]);
+        if ((m = t.match(/^([a-z]+) (\d{1,2}) (\d{4})$/)) && month(m[1])) return full(+m[3], month(m[1]), +m[2]);
+        if ((m = t.match(/^(\d{4})-(\d{1,2})$/)) && +m[2] >= 1 && +m[2] <= 12) return { kind: 'partial', y: +m[1], m: +m[2] };
+        if ((m = t.match(/^([a-z]+) (\d{4})$/)) && month(m[1])) return { kind: 'partial', y: +m[2], m: month(m[1]) };
+        if ((m = t.match(/^(19[6-9]\d|20\d\d)$/))) return { kind: 'partial', y: +m[1] };
+        return null;
+    }
+
+    /**
+     * The URL of one bootleg search: the list script with `cmd=list`, the
+     * field as the category, and the query — nothing of the current page's
+     * query is kept, since a search never combines with anything.
+     *
+     * @param {string} param  - The field, e.g. 'f_title'.
+     * @param {string} q      - The query (an ISO date for 'f_date').
+     * @returns {string} Absolute URL.
+     */
+    function _slSearchHref(param, q) {
+        const url = new URL(window.location.pathname, window.location.origin);
+        url.searchParams.set('cmd', 'list');
+        url.searchParams.set('category', param);
+        url.searchParams.set(param, q);
+        return url.href;
+    }
+
+    /**
+     * Reads the recent searches (`_SL_RECENT_SEARCH_KEY`).
+     *
+     * @returns {Array<{field: string, q: string}>} Never null.
+     */
+    function _slReadRecentSearches() {
+        try {
+            const v = GM_getValue(_SL_RECENT_SEARCH_KEY, []);
+            return Array.isArray(v) ? v.filter(e => e && typeof e.field === 'string' && typeof e.q === 'string') : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * Records this page's search, when it is a bootleg search result page
+     * (`category=f_*` with that parameter set), at the head of the recent
+     * list: an earlier identical entry moves up instead of repeating.
+     *
+     * @returns {?{field: string, q: string}} The recorded search, or `null`.
+     */
+    function _slRecordRecentSearch() {
+        const params = new URL(window.location.href).searchParams;
+        const field = params.get('category') || '';
+        const q = field.startsWith('f_') ? (params.get(field) || '').trim() : '';
+        if (params.get('cmd') !== 'list' || !q) return null;
+        const entry = { field, q };
+        const list = [entry].concat(_slReadRecentSearches().filter(e => !(e.field === field && e.q === q)))
+            .slice(0, _SL_RECENT_SEARCH_MAX);
+        GM_setValue(_SL_RECENT_SEARCH_KEY, list);
+        return entry;
+    }
+
+    /**
+     * Fills the Recent pull-down: one link per recent search ("Title: born"),
+     * the page's own search marked, and a button that forgets them all.
+     *
+     * @param {HTMLElement} pop     - The empty panel.
+     * @param {object}      search  - From `_slReadSearchForms()`.
+     * @returns {void}
+     */
+    function _slFillScopeRecent(pop, search) {
+        const params = new URL(window.location.href).searchParams;
+        const list = document.createElement('div');
+        list.className = 'mb-sl-scope-list';
+        const recent = _slReadRecentSearches();
+        recent.forEach(({ field, q }) => {
+            const a = document.createElement('a');
+            a.className = 'mb-sl-scope-opt';
+            a.href = _slSearchHref(field, q);
+            if (params.get('category') === field && params.get(field) === q) {
+                a.classList.add('mb-sl-cur');
+                a.setAttribute('aria-current', 'true');
+            }
+            const label = search.fields.find(f => f.param === field)?.label || field;
+            const span = document.createElement('span');
+            span.textContent = `${label}: ${q}`;
+            a.appendChild(span);
+            list.appendChild(a);
+        });
+        if (recent.length === 0) {
+            const none = document.createElement('div');
+            none.className = 'mb-sl-scope-group';
+            none.textContent = 'No searches yet';
+            list.appendChild(none);
+        }
+        pop.appendChild(list);
+        if (recent.length) {
+            const foot = document.createElement('div');
+            foot.className = 'mb-sl-scope-foot';
+            const forget = document.createElement('button');
+            forget.type = 'button';
+            forget.className = 'mb-sl-scope-forget';
+            forget.textContent = 'Forget these searches';
+            forget.addEventListener('click', () => {
+                GM_setValue(_SL_RECENT_SEARCH_KEY, []);
+                _slCloseScopePop(true);
+            });
+            foot.appendChild(forget);
+            pop.appendChild(foot);
+        }
+    }
+
+    /**
+     * Builds the bootleg search box for the compact bar: a field switch (Auto
+     * plus one button per search form), one input and a Search link whose
+     * `href` follows what is typed, and a message line under the bar. Auto
+     * searches a date when the text reads as one (`_slReadSearchDate()`),
+     * else titles. A day that does not exist, or a non-date in Date mode,
+     * leaves Search disabled and says why; a partial date offers the era
+     * list that holds it and a title search instead. On a search result
+     * page the box opens with that search. Enter follows Search.
+     *
+     * @param {object}  search     - From `_slReadSearchForms()`.
+     * @param {?object} catFacet   - The Category facet (for the era lists), or null.
+     * @returns {{group: HTMLElement, msg: HTMLElement}} The box and its message line.
+     */
+    function _slBuildSearchBox(search, catFacet) {
+        const params = new URL(window.location.href).searchParams;
+        const curCat = params.get('category') || '';
+        const curField = search.fields.find(f => f.param === curCat);
+        let field = curField ? curField.param : 'auto';
+
+        const group = document.createElement('span');
+        group.className = 'mb-sl-search';
+        group.setAttribute('role', 'search');
+        const seg = document.createElement('span');
+        seg.className = 'mb-sl-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Search in');
+        const input = document.createElement('input');
+        input.type = 'search';
+        input.id = 'mb-sl-search-input';
+        input.className = 'mb-sl-search-input';
+        input.setAttribute('aria-label', 'Search bootlegs');
+        input.value = curField ? (params.get(curField.param) || '') : '';
+        const go = document.createElement('a');
+        go.className = 'mb-sl-search-go';
+        go.setAttribute('role', 'button');
+        go.textContent = 'Search';
+        const msg = document.createElement('div');
+        msg.className = 'mb-sl-search-msg';
+        msg.setAttribute('aria-live', 'polite');
+
+        const eras = (catFacet?.options || [])
+            .map(o => ({ o, span: _slParseEra(o.label) })).filter(e => e.span);
+        const say = (...parts) => {
+            msg.replaceChildren(...parts);
+            msg.hidden = parts.length === 0;
+        };
+        const link = (text, href) => {
+            const a = document.createElement('a');
+            a.href = href;
+            a.textContent = text;
+            return a;
+        };
+        const setGo = href => {
+            if (href) {
+                go.href = href;
+                go.removeAttribute('aria-disabled');
+            } else {
+                go.removeAttribute('href');
+                go.setAttribute('aria-disabled', 'true');
+            }
+        };
+        const update = () => {
+            const q = input.value.trim();
+            const placeholders = { auto: 'Date or title: 1975-08-15, 15 Aug 1975, Born…', f_date: '1975-08-15 or 15 Aug 1975' };
+            input.placeholder = placeholders[field] || search.fields.find(f => f.param === field)?.placeholder || '';
+            if (!q) {
+                setGo(null);
+                say();
+                return;
+            }
+            const d = _slReadSearchDate(q);
+            const asDate = field === 'f_date' || (field === 'auto' && d && search.fields.some(f => f.param === 'f_date'));
+            if (!asDate) {
+                const param = field === 'auto' ? (search.fields.find(f => f.param === 'f_title') || search.fields[0]).param : field;
+                setGo(_slSearchHref(param, q));
+                say();
+                return;
+            }
+            if (!d) {
+                setGo(null);
+                say(document.createTextNode('Type a full date such as 1975-08-15 or 15 Aug 1975.'));
+            } else if (d.kind === 'invalid') {
+                setGo(null);
+                say(document.createTextNode('That day does not exist.'));
+            } else if (d.kind === 'full') {
+                setGo(_slSearchHref('f_date', d.iso));
+                say(...(d.iso === q ? [] : [document.createTextNode(`Searching the date ${d.iso}.`)]));
+            } else {
+                setGo(null);
+                const when = d.m ? `${d.y}-${String(d.m).padStart(2, '0')}` : String(d.y);
+                const era = eras.find(e => d.y >= e.span.from && d.y <= e.span.to);
+                const parts = [document.createTextNode('The site finds full dates only. ')];
+                if (era) {
+                    parts.push(document.createTextNode('Open '), link(era.o.label, _slScopeHref({ category: era.o.category })),
+                        document.createTextNode(` and filter its First date column for ${when}, or `));
+                } else {
+                    parts.push(document.createTextNode('You can '));
+                }
+                const titles = search.fields.find(f => f.param === 'f_title');
+                if (titles) parts.push(link(`search titles for “${q}”`, _slSearchHref('f_title', q)));
+                parts.push(document.createTextNode('.'));
+                say(...parts);
+            }
+        };
+
+        [{ param: 'auto', label: 'Auto' }].concat(search.fields).forEach(f => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-sl-seg-btn';
+            b.dataset.mbSlField = f.param;
+            b.textContent = f.label;
+            b.setAttribute('aria-pressed', String(f.param === field));
+            b.addEventListener('click', () => {
+                field = f.param;
+                seg.querySelectorAll('.mb-sl-seg-btn').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+                update();
+                input.focus();
+            });
+            seg.appendChild(b);
+        });
+        input.addEventListener('input', update);
+        input.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            if (go.hasAttribute('href')) go.click();
+        });
+        group.append(seg, input, go);
+        update();
+        return { group, msg };
+    }
+
+    /**
+     * The installed bar's facets (each with its `btn`), the page's query and
+     * the chip container — what `_slRenderScopeState()` redraws from.
+     * @type {?{facets: object[], params: URLSearchParams, chips: HTMLElement}}
+     */
+    let _slScopeState = null;
+
+    /**
+     * Set while a bar redraw is queued for the next frame, so a burst of
+     * value-set changes (Clear all touches every column) redraws once.
+     * @type {boolean}
+     */
+    let _slScopeRenderQueued = false;
+
+    /**
+     * Redraws the bar's state: each button's value (a table filter the bar
+     * can name wins over the page's query), its "set" styling, and the chips —
+     * one link chip per filter in the query (its × reloads without it), one
+     * 📊 chip per filtered hand-off column (its × clears that column), and
+     * "Clear all" when there are two or more. Called at install and whenever
+     * a 📊 value set changes.
+     *
+     * @returns {void}
+     */
+    function _slRenderScopeState() {
+        const st = _slScopeState;
+        if (!st) return;
+        const urlChips = [];
+        const tableChips = [];
+        st.facets.forEach(facet => {
+            const cur = _slFacetCurrent(facet, st.params);
+            const h = _slHandoff(facet);
+            const tableLabel = h ? _slTableChoice(h) : null;
+            facet.btn.querySelector('.mb-sl-scope-v').textContent = tableLabel ?? cur.label;
+            facet.btn.classList.toggle('mb-sl-set', cur.active || tableLabel !== null);
+            facet.btn.classList.toggle('mb-sl-set-table', tableLabel !== null);
+            if (cur.active) urlChips.push({ text: `${facet.label}: ${cur.label}`, keys: facet.keys });
+            if (tableLabel !== null) tableChips.push({ text: `${facet.label}: ${tableLabel}`, h });
+        });
+
+        st.chips.replaceChildren();
+        urlChips.forEach(({ text, keys }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip';
+            chip.textContent = text;
+            const x = document.createElement('a');
+            x.href = _slScopeHref({ clear: keys });
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            chip.appendChild(x);
+            st.chips.appendChild(chip);
+        });
+        tableChips.forEach(({ text, h }) => {
+            const chip = document.createElement('span');
+            chip.className = 'mb-sl-scope-chip mb-sl-scope-chip-table';
+            chip.textContent = text;
+            const mark = document.createElement('span');
+            mark.className = 'mb-sl-scope-chip-mark';
+            mark.textContent = '📊';
+            _setTip(mark, `Filters the loaded table by its ${h.column} column`);
+            const x = document.createElement('button');
+            x.type = 'button';
+            x.textContent = '×';
+            x.setAttribute('aria-label', `Remove ${text}`);
+            x.addEventListener('click', () => _slApplyTableFilter(h, [], ''));
+            chip.append(mark, x);
+            st.chips.appendChild(chip);
+        });
+        if (urlChips.length + tableChips.length > 1) {
+            // A query filter can only go by reloading, which also drops every
+            // table filter; with table filters alone, clear them in place.
+            const all = document.createElement(urlChips.length ? 'a' : 'button');
+            all.className = 'mb-sl-scope-clear';
+            all.textContent = 'Clear all';
+            if (urlChips.length) {
+                all.href = _slScopeHref({ clear: urlChips.flatMap(c => c.keys) });
+            } else {
+                all.type = 'button';
+                all.addEventListener('click', () => tableChips.forEach(({ h }) => _slApplyTableFilter(h, [], '')));
+            }
+            st.chips.appendChild(all);
+        }
+        st.chips.hidden = st.chips.childElementCount === 0;
+    }
+
+    /**
+     * Installs the compact category/filter bar on a springsteenlyrics.com
+     * list (`sa_sl_compact_nav`): one pull-down per wall of category/filter
+     * links, then — where the page has the bootleg search forms — the search
+     * box (`_slBuildSearchBox()`) and a Recent pull-down, then a chip per
+     * active filter with a × that removes only that filter, and "Clear all"
+     * when two or more are set. Inserted where the first wall (or the search
+     * forms) was, so it sits in `.project-detail` under the toolbar `<h1>`
+     * and Sticky Page Headers pins it like the walls before it; everything it
+     * stands in for gets `mb-sl-nav-hidden` and stays in the DOM. A no-op
+     * when it is already installed or the page has neither walls nor forms.
+     *
+     * @returns {?HTMLElement} The bar, or `null` when nothing was installed.
+     */
+    function _slInstallScopeBar() {
+        if (document.querySelector('.mb-sl-scope')) return null;
+        const facets = _slReadNavFacets();
+        const search = _slReadSearchForms();
+        if (facets.length === 0 && !search) {
+            Lib.debug('init', '_slInstallScopeBar: no category/filter walls or search forms on this page — nothing to fold.');
+            return null;
+        }
+        const params = new URL(window.location.href).searchParams;
+        const bar = document.createElement('div');
+        bar.className = 'mb-sl-scope';
+        bar.setAttribute('role', 'toolbar');
+        bar.setAttribute('aria-label', 'Category and filters');
+        facets.forEach(facet => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-sl-scope-btn';
+            btn.dataset.mbSlFacet = facet.keys.join('+');
+            btn.setAttribute('aria-haspopup', 'dialog');
+            btn.setAttribute('aria-expanded', 'false');
+            const k = document.createElement('span');
+            k.className = 'mb-sl-scope-k';
+            k.textContent = `${facet.label}:`;
+            const v = document.createElement('span');
+            v.className = 'mb-sl-scope-v';
+            const caret = document.createElement('span');
+            caret.className = 'mb-sl-scope-k';
+            caret.textContent = '▾';
+            btn.append(k, v, caret);
+            btn.addEventListener('click', () => _slToggleScopePop(btn, facet, params));
+            bar.appendChild(btn);
+            facet.btn = btn;
+        });
+
+        let searchMsg = null;
+        if (search) {
+            const box = _slBuildSearchBox(search, facets.find(f => f.kind === 'category') || null);
+            bar.appendChild(box.group);
+            searchMsg = box.msg;
+            const recent = { kind: 'recent', label: 'Recent', keys: ['recent'], search };
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'mb-sl-scope-btn';
+            btn.dataset.mbSlFacet = 'recent';
+            btn.setAttribute('aria-haspopup', 'dialog');
+            btn.setAttribute('aria-expanded', 'false');
+            const k = document.createElement('span');
+            k.className = 'mb-sl-scope-k';
+            k.textContent = 'Recent:';
+            const v = document.createElement('span');
+            v.className = 'mb-sl-scope-v';
+            v.textContent = String(_slReadRecentSearches().length);
+            const caret = document.createElement('span');
+            caret.className = 'mb-sl-scope-k';
+            caret.textContent = '▾';
+            btn.append(k, v, caret);
+            btn.addEventListener('click', () => _slToggleScopePop(btn, recent, params));
+            bar.appendChild(btn);
+        }
+
+        const chips = document.createElement('span');
+        chips.className = 'mb-sl-scope-chips';
+        bar.appendChild(chips);
+        if (searchMsg) bar.appendChild(searchMsg);
+        _slScopeState = { facets, params, chips };
+        _slRenderScopeState();
+        // A 📊 value set changed anywhere — the bar's own choice, the column's
+        // ✕, the 📊 dropdown, Clear all — redraws the bar's buttons and chips.
+        // Filtered to that one attribute, so the observer costs nothing on
+        // any other mutation.
+        new MutationObserver(() => {
+            if (_slScopeRenderQueued) return;
+            _slScopeRenderQueued = true;
+            requestAnimationFrame(() => {
+                _slScopeRenderQueued = false;
+                _slRenderScopeState();
+            });
+        }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-mb-uniq-values'] });
+
+        const first = facets.length ? facets[0].hide[0] : search.hide[0];
+        first.parentNode.insertBefore(bar, first);
+        facets.forEach(f => f.hide.forEach(el => el.classList.add('mb-sl-nav-hidden')));
+        if (search) search.hide.forEach(el => el.classList.add('mb-sl-nav-hidden'));
+        _slWireScopePopEvents();
+        Lib.debug('init', `_slInstallScopeBar: ${facets.length} wall(s) folded (${facets.map(f => f.label).join(', ')}), ` +
+            `${search ? search.fields.length : 0} search form(s), ${chips.childElementCount} chip(s).`);
+        return bar;
+    }
+
+    // -------------------------------------------------------------------------
+    // jungleland.it: the bootleg artwork list (html/list.htm)
+    // -------------------------------------------------------------------------
+    // One static FrontPage page: a year jump menu, then one anchor heading per
+    // year (`<a name="1975">`, then `<a name="others">` for the undated rest),
+    // each followed by one `<p>` per bootleg holding a single link,
+    // `<a target="inferioredx1" href="19750815.htm">The way it was(1975-08-15)</a>`.
+    // The link's target is the right-hand frame of the site's artwork.htm
+    // frameset; the script only runs on list.htm opened as its own tab (see
+    // the frame gate at the top), where that frame does not exist. See
+    // docs/claude/jungleland.md.
+
+    /**
+     * Column headers of the jungleland.it table, in order.
+     * @type {string[]}
+     */
+    const _JL_HEADERS = ['Title', 'Date', 'Year'];
+
+    /**
+     * Splits one jungleland.it list entry into its table fields.
+     *
+     * Every entry under a year heading ends in its show date, `(YYYY-MM-DD)`,
+     * glued to the title ("The way it was(1975-08-15)") or after a space
+     * ("Magic In The Köln Night (2007-12-13)", filed under "others"). The
+     * date is cut off the title; anything else in the title, such as the
+     * site's own "(Version 2)" for a re-issue, stays as written.
+     *
+     * Year is the date's year when there is a date, else the section the
+     * entry sits under when that is a year, else empty — so the undated
+     * "others" entries have no Year, and a dated one among them still gets
+     * its own.
+     *
+     * @param {string}  text      The link's text.
+     * @param {string}  [section] The `name` of the anchor heading above it ("1975", "others", or '').
+     * @returns {{title: string, date: string, year: string}} The fields; `date` is ISO or ''.
+     */
+    function _jlParseItem(text, section) {
+        const t = String(text || '').replace(/\s+/g, ' ').trim();
+        const m = t.match(/^(.*?)\s*\((\d{4})-(\d{2})-(\d{2})\)$/);
+        if (!m) {
+            return { title: t, date: '', year: /^\d{4}$/.test(section || '') ? section : '' };
+        }
+        return { title: m[1].trim() || t, date: `${m[2]}-${m[3]}-${m[4]}`, year: m[2] };
+    }
+
+    /**
+     * Finds the list's entries, each with the section heading it sits under.
+     *
+     * One `querySelectorAll()` over the anchor headings and the entry links
+     * together, which yields them in document order, so the last heading seen
+     * is the entry's section. Only `<a name>`s that are a year or "others"
+     * count as headings (the page also has two `<a name="TOP">`). Links
+     * already inside a converted table are skipped.
+     *
+     * @param {Document} docContext The document to read.
+     * @returns {Array<{anchor: HTMLAnchorElement, section: string}>} The entries, in page order.
+     */
+    function _jlCollectItems(docContext) {
+        const items = [];
+        let section = '';
+        docContext.querySelectorAll('a[name], a[target="inferioredx1"][href]').forEach(a => {
+            if (a.closest('table.mb-jl-table')) return;
+            if (a.hasAttribute('name')) {
+                const name = a.getAttribute('name');
+                if (/^(?:\d{4}|others)$/.test(name)) section = name;
+                return;
+            }
+            items.push({ anchor: a, section });
+        });
+        return items;
+    }
+
+    /**
+     * Builds one table row (Title, Date, Year) for a jungleland.it entry.
+     *
+     * The Title cell links to the entry's artwork page by its resolved
+     * absolute URL, in a new tab: standalone there is no `inferioredx1`
+     * frame for the site's own target to name.
+     *
+     * @param {{anchor: HTMLAnchorElement, section: string}} item  One entry from `_jlCollectItems()`.
+     * @param {Document}                                      docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _jlBuildRow(item, docContext) {
+        const { title, date, year } = _jlParseItem(item.anchor.textContent, item.section);
+        const tr = docContext.createElement('tr');
+        const titleTd = docContext.createElement('td');
+        const link = docContext.createElement('a');
+        link.href = item.anchor.href;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = title;
+        titleTd.appendChild(link);
+        tr.appendChild(titleTd);
+        [date, year].forEach(value => {
+            const td = docContext.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts the jungleland.it list's links into a `<table class="tbl">`,
+     * so the standard fetch / filter / sort pipeline can process it like any
+     * MusicBrainz table — the counterpart of `applySlCardsToTable()` for the
+     * pageType carrying `features.jlListToTable`.
+     *
+     * Called from the same three places as the other converters: the
+     * click-time pre-processing block of `startFetchingProcess()` (live page),
+     * the pagination loop for a fetched page (`doc !== document`; never
+     * reached today, the list has one page) and
+     * `_hydrateAndRenderFromSnapshotData()` for Load from Disk, where the
+     * reloaded page holds the plain list again. Idempotent: a page with no
+     * entries left is a no-op.
+     *
+     * The table takes the place of the first year heading; every entry `<p>`
+     * and every year-heading `<p>` is removed. On the live document it also
+     * inserts `<h2 class="mb-jl-list-heading">` before the table, where
+     * `updateH2Count()`'s "last h2 before the table" lookup anchors the row
+     * count and filter bar, and hides (does not remove) the year jump menu
+     * with its caption and rule: its anchors are gone, and the Year column
+     * does its job.
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyJlListToTable(def, docContext = document) {
+        if (!def?.features?.jlListToTable) return;
+        const items = _jlCollectItems(docContext);
+        if (items.length === 0) {
+            // Said out loud, like applySlCardsToTable(): a silent no-op would
+            // render "0 rows" with nothing in the log to say why. A page this
+            // function already converted is the one legitimate case.
+            if (!docContext.querySelector('table.mb-jl-table')) {
+                Lib.warn('init', `applyJlListToTable: no list entries found on the ${docContext === document ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href]').length} link(s) in the document, none with target="inferioredx1") — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-jl-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _JL_HEADERS.forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        items.forEach(item => tbody.appendChild(_jlBuildRow(item, docContext)));
+        table.appendChild(tbody);
+
+        const headings = Array.from(docContext.querySelectorAll('a[name]'))
+            .filter(a => /^(?:\d{4}|others)$/.test(a.getAttribute('name')));
+        const firstAnchor = headings[0] || items[0].anchor;
+        const insertPoint = firstAnchor.closest('p') || firstAnchor;
+        insertPoint.parentNode.insertBefore(table, insertPoint);
+
+        const doomed = new Set();
+        items.forEach(item => doomed.add(item.anchor.closest('p') || item.anchor));
+        headings.forEach(a => doomed.add(a.closest('p') || a));
+        doomed.forEach(el => el.remove());
+
+        if (docContext === document) {
+            if (!document.querySelector('h2.mb-jl-list-heading')) {
+                const h2 = document.createElement('h2');
+                h2.className = 'mb-jl-list-heading';
+                h2.textContent = 'Bootlegs';
+                table.parentNode.insertBefore(h2, table);
+            }
+            const form = document.querySelector('form[name="theForm"]');
+            if (form) {
+                form.classList.add('mb-jl-hidden');
+                const before = form.previousElementSibling;
+                if (before?.tagName === 'P' && /choose the year/i.test(before.textContent)) before.classList.add('mb-jl-hidden');
+                const after = form.nextElementSibling;
+                if (after?.tagName === 'P' && /^=+$/.test(after.textContent.trim())) after.classList.add('mb-jl-hidden');
+            }
+        }
+
+        Lib.debug('init', `applyJlListToTable: converted ${tbody.rows.length} list entr${tbody.rows.length === 1 ? 'y' : 'ies'} → table.`);
+    }
+
+    /**
+     * Installs the jungleland.it stylesheet, once per document.
+     *
+     * The table itself is styled by `_ensureForeignTableStyle()`, shared with
+     * springsteenlyrics.com; this adds only what is jungleland's own: the
+     * injected `<h1>`/`<h2>` (the page has no heading to inherit a look from),
+     * the hidden jump menu, and a guard against the site's
+     * `A:hover { font-weight: bold }`, which would reflow a table row under
+     * the pointer. Every rule is scoped to `body.mb-sa-host-jl`.
+     *
+     * @returns {void}
+     */
+    function _ensureJlStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-jl-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-jl h1.mb-jl-h1 {
+                font-family: Arial, sans-serif;
+                font-size: 24px;
+                margin: 8px 0 12px;
+                line-height: 1.4;
+            }
+            body.mb-sa-host-jl h2.mb-jl-list-heading {
+                font-family: Arial, sans-serif;
+                font-size: 18px;
+                margin: 10px 0;
+            }
+            body.mb-sa-host-jl .mb-jl-hidden {
+                display: none !important;
+            }
+            body.mb-sa-host-jl table.mb-jl-table {
+                font-family: Arial, sans-serif;
+            }
+            body.mb-sa-host-jl table.mb-jl-table a:hover {
+                font-weight: inherit;
+            }
+        `);
+        style.id = 'mb-jl-style';
+    }
+
+    /**
+     * Prepares the jungleland.it list page at init, standing in for the
+     * MusicBrainz header lookup (the init block calls it right after that
+     * lookup, for the jungleland.it definition only): the page has no heading
+     * of any kind, and the script needs an `<h1>` to hold its toolbar. Inserts
+     * `<h1 class="mb-jl-h1">` as the first child of `<body>`, its text in a
+     * `<bdi>` so the init-time entity name capture (`_cachedEntityName`, used
+     * for file names) reads it like a MusicBrainz h1.
+     *
+     * Also tags `<body>` with `mb-sa-host-jl` (the scope of every jungleland
+     * style rule) and installs `_ensureJlStyle()`. Nothing else on the page
+     * changes until the user presses the "Show all" button.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _jlPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-jl-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+
+        document.body.classList.add('mb-sa-host-jl');
+        _ensureJlStyle();
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-jl-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = 'jungleland.it — Bootleg artwork list';
+        h1.appendChild(bdi);
+        document.body.insertBefore(h1, document.body.firstChild);
+        return h1;
+    }
+
+    // -------------------------------------------------------------------------
+    // brucespringsteen.it: the record database (DB/records.aspx)
+    // -------------------------------------------------------------------------
+    // One ASP.NET page per query: `tipe=-1|-2,<format codes>` (unofficial or
+    // official, then the formats ticked in the site's form, 0–11) and `sort=`.
+    // Each record is one `<p>`:
+    //   <p><b>2 CD-R (Anubis Records) <br><a href="detrec.aspx?code=CR1AD1">1001 AMERICAN DREAMS</a><br>Mx:2211/12</b><br>[<i><u>note</u></i><br>]</p>
+    //   <p><b>1 7 in. (Germany) <span …>PROMO</span><br><a href = "detrec.aspx?code=CBS39404">…</a><br>Catalogue : CBS 3940</b><br></p>
+    // with `<hr><center><b><u>A</u></b></center><hr>` section headers between
+    // them. Served as UTF-8 (the header says so, the bytes are; the page's own
+    // meta tag claims windows-1252). See docs/claude/brucespringsteen.md.
+
+    /**
+     * The site's twelve format codes (its form's checkboxes C0–C11: Album,
+     * Vinyl 7 in., CD, miniCD 3in., Vinyl LP, Tape, Vinyl 12 in., VHS, CD-R,
+     * DVD, miniCD 5in., VA Album), as the `tipe=` list after the kind.
+     * @type {string}
+     */
+    const _BS_ALL_FORMATS = '0,1,2,3,4,5,6,7,8,9,10,11';
+
+    /**
+     * Column headers of the brucespringsteen.it table, per kind of record:
+     * an unofficial record names its label and matrix, an official one its
+     * country, catalogue number and whether it is a promo.
+     * @type {{unofficial: string[], official: string[]}}
+     */
+    const _BS_HEADERS = {
+        unofficial: ['Title', 'Matrix', 'Format', 'Label', 'Code', 'Notes'],
+        official: ['Title', 'Catalogue', 'Format', 'Country', 'Promo', 'Code', 'Notes']
+    };
+
+    /**
+     * Splits a record's first line — "2 CD-R (Anubis Records)",
+     * "1 7 in. (Germany) PROMO", "2 CD (UPC (?))" — into its parts.
+     *
+     * A trailing PROMO (the site highlights it in a `<span>`) is a flag. The
+     * rest is "format (label or country)": the format runs to the FIRST "(",
+     * and the parenthesised part takes everything up to the LAST ")", so a
+     * label with its own parentheses stays whole. No parentheses at all: the
+     * whole line is the format.
+     *
+     * @param {string} text The record's first line, as text.
+     * @returns {{format: string, party: string, promo: boolean}} `party` is the label (unofficial) or country (official).
+     */
+    function _bsParseHead(text) {
+        let t = String(text || '').replace(/\s+/g, ' ').trim();
+        let promo = false;
+        const pm = t.match(/^(.*?)\s*\bPROMO$/);
+        if (pm) {
+            promo = true;
+            t = pm[1];
+        }
+        const m = t.match(/^(.*?)\s*\((.*)\)$/);
+        return m ? { format: m[1].trim(), party: m[2].trim(), promo } : { format: t, party: '', promo };
+    }
+
+    /**
+     * Finds the record paragraphs of a records.aspx page: every `<p>` holding
+     * a `detrec.aspx?code=` link, outside an already converted table.
+     *
+     * @param {Document} docContext The document to read.
+     * @returns {HTMLParagraphElement[]} The records, in page order.
+     */
+    function _bsFindRecords(docContext) {
+        return Array.from(docContext.querySelectorAll('p'))
+            .filter(p => !p.closest('table.mb-bs-table') && p.querySelector('a[href*="detrec.aspx?code="]'));
+    }
+
+    /**
+     * Reads one record paragraph into its fields.
+     *
+     * The bold block holds three lines split by `<br>`: the head
+     * (`_bsParseHead()`), the title link, and "Mx: …" (unofficial) or
+     * "Catalogue: …" (official), written with or without spaces around the
+     * colon. An italic line after the bold block is the record's note; there
+     * can be none. Whitespace is collapsed throughout, so "COL  3-10274"
+     * filters as "COL 3-10274".
+     *
+     * @param {HTMLParagraphElement} p The record.
+     * @returns {{title: string, href: string, code: string, number: string, format: string, party: string, promo: boolean, notes: string}}
+     *   `number` is the matrix or catalogue number; `href` is absolute.
+     */
+    function _bsReadRecord(p) {
+        const collapse = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+        const link = p.querySelector('a[href*="detrec.aspx?code="]');
+        const holder = link.parentNode;
+        let before = '';
+        let after = '';
+        let seen = false;
+        holder.childNodes.forEach(node => {
+            if (node === link) {
+                seen = true;
+                return;
+            }
+            if (node.nodeType === 1 && node.tagName === 'BR') {
+                if (seen) after += ' ';
+                else before += ' ';
+                return;
+            }
+            if (seen) after += node.textContent;
+            else before += node.textContent;
+        });
+        const head = _bsParseHead(before);
+        const numberMatch = collapse(after).match(/^(?:Mx|Catalogue)\s*:\s*(.*)$/i);
+        const url = new URL(link.getAttribute('href'), window.location.href);
+        const notes = Array.from(p.querySelectorAll('i'))
+            .filter(i => !holder.contains(i))
+            .map(i => collapse(i.textContent))
+            .filter(Boolean)
+            .join('; ');
+        return {
+            title: collapse(link.textContent),
+            href: url.href,
+            code: url.searchParams.get('code') || '',
+            number: numberMatch ? numberMatch[1] : collapse(after),
+            format: head.format,
+            party: head.party,
+            promo: head.promo,
+            notes
+        };
+    }
+
+    /**
+     * Builds one table row for a record, in the column order of `_BS_HEADERS[kind]`.
+     *
+     * The Title cell links to the record's detail page by its absolute URL,
+     * in a new tab: standalone there is no "principale" frame for the site's
+     * `<base target>` to name.
+     *
+     * @param {HTMLParagraphElement} p          The record.
+     * @param {('unofficial'|'official')} kind  Which column set.
+     * @param {Document}             docContext The document the row is built in.
+     * @returns {HTMLTableRowElement} The row.
+     */
+    function _bsBuildRow(p, kind, docContext) {
+        const r = _bsReadRecord(p);
+        const tr = docContext.createElement('tr');
+        const titleTd = docContext.createElement('td');
+        const link = docContext.createElement('a');
+        link.href = r.href;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = r.title;
+        titleTd.appendChild(link);
+        tr.appendChild(titleTd);
+        const values = kind === 'official'
+            ? [r.number, r.format, r.party, r.promo ? 'yes' : '', r.code, r.notes]
+            : [r.number, r.format, r.party, r.code, r.notes];
+        values.forEach(value => {
+            const td = docContext.createElement('td');
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+        return tr;
+    }
+
+    /**
+     * Converts a brucespringsteen.it records.aspx page into a
+     * `<table class="tbl">`, so the standard fetch / filter / sort pipeline
+     * can process it — the counterpart of `applyJlListToTable()` for the
+     * pageType carrying `features.bsRecordsToTable` (`'unofficial'` or
+     * `'official'` from the pressed button; `true` from the base definition,
+     * which is what Load from Disk runs with).
+     *
+     * Called from the same three places as the other converters. Here the
+     * FETCHED page (the pagination loop, `doc !== document`) is the one that
+     * matters: both buttons carry `params`, so page 1 is always fetched with
+     * every format of their kind, and its records become the table's rows.
+     * The live document — the click-time pre-processing and
+     * `_hydrateAndRenderFromSnapshotData()` — only gets an EMPTY table: its
+     * own records show whatever filter the page was opened with (often
+     * another kind), `renderFinalTable()` empties the tbody before filling
+     * it, and Load from Disk rebuilds the header row from the file. Its
+     * records, section headers and rules after the site's form are removed,
+     * and `<h2 class="mb-bs-list-heading">` is inserted before the table,
+     * where `updateH2Count()` anchors the count and filter bar.
+     *
+     * Never silent: a page with no records and no converted table logs a
+     * warning (on a fetched page, an error page instead of the list).
+     *
+     * @param {object}   def                   The active merged pageDefinition.
+     * @param {Document} [docContext=document] The live or a fetched document.
+     * @returns {void}
+     */
+    function applyBsRecordsToTable(def, docContext = document) {
+        const feature = def?.features?.bsRecordsToTable;
+        if (!feature) return;
+        const kind = feature === 'official' ? 'official' : 'unofficial';
+        const isLive = docContext === document;
+        const records = _bsFindRecords(docContext);
+        if (records.length === 0) {
+            if (!docContext.querySelector('table.mb-bs-table')) {
+                Lib.warn('init', `applyBsRecordsToTable: no records found on the ${isLive ? 'live' : 'fetched'} page ` +
+                    `(${docContext.querySelectorAll('a[href*="detrec.aspx"]').length} detrec.aspx link(s)) — nothing converted.`);
+            }
+            return;
+        }
+
+        const table = docContext.createElement('table');
+        table.className = 'tbl mb-bs-table';
+        const thead = docContext.createElement('thead');
+        const hr = docContext.createElement('tr');
+        _BS_HEADERS[kind].forEach(h => {
+            const th = docContext.createElement('th');
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        const tbody = docContext.createElement('tbody');
+        if (!isLive) records.forEach(p => tbody.appendChild(_bsBuildRow(p, kind, docContext)));
+        table.appendChild(tbody);
+
+        // Everything of the list after the site's form: the records, and the
+        // `<hr><center>…</center><hr>` section headers between them.
+        const form = docContext.querySelector('form[name="mio"]');
+        const afterForm = (el) => !form || (!form.contains(el) &&
+            !!(form.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING));
+        const furniture = Array.from(docContext.querySelectorAll('hr, center'))
+            .filter(el => afterForm(el) && !el.closest('table.mb-bs-table'));
+        const firstOf = [furniture[0], records[0]].filter(Boolean)
+            .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))[0];
+        firstOf.parentNode.insertBefore(table, firstOf);
+        records.forEach(p => p.remove());
+        furniture.forEach(el => el.remove());
+
+        if (isLive && !document.querySelector('h2.mb-bs-list-heading')) {
+            const h2 = document.createElement('h2');
+            h2.className = 'mb-bs-list-heading';
+            h2.textContent = 'Records';
+            table.parentNode.insertBefore(h2, table);
+        }
+
+        Lib.debug('init', `applyBsRecordsToTable: ${isLive
+            ? `live page — ${records.length} record(s) of its own filter removed, empty ${kind} table in their place`
+            : `converted ${tbody.rows.length} ${kind} record(s) → table`}.`);
+    }
+
+    /**
+     * Ticks every format checkbox (C0–C11) of the site's own filter form,
+     * and — given a kind — selects the matching Unofficial/Official radio.
+     *
+     * The buttons always load every format of their kind, so the form is
+     * made to say so: at init (the page's own `onload="setup(…)"` ticks only
+     * the formats of the list it shows — Vinyl LP alone in the frameset's
+     * default), and again at click time. Only `.checked` is set: the site's
+     * `setup()`/`clean()` would also reset its producer/country selects.
+     *
+     * @param {('unofficial'|'official')} [kind] The button's kind, if any.
+     * @returns {void}
+     */
+    function _bsCheckAllFormats(kind) {
+        const form = document.querySelector('form[name="mio"]');
+        if (!form) return;
+        _BS_ALL_FORMATS.split(',').forEach(code => {
+            const box = form.querySelector(`input[type="checkbox"][name="C${code}"]`);
+            if (box) box.checked = true;
+        });
+        if (kind) {
+            const radio = form.querySelector(`input[type="radio"][name="UN"][value="${kind === 'official' ? '-2' : '-1'}"]`);
+            if (radio) radio.checked = true;
+        }
+    }
+
+    /**
+     * Installs the brucespringsteen.it stylesheet, once per document.
+     *
+     * The table itself is styled by `_ensureForeignTableStyle()`, shared with
+     * the other non-MusicBrainz hosts; this adds the injected `<h1>`/`<h2>`
+     * (the site has none) and left-aligns them against the site's centred
+     * layout. Every rule is scoped to `body.mb-sa-host-bs`.
+     *
+     * @returns {void}
+     */
+    function _ensureBsStyle() {
+        _ensureForeignTableStyle();
+        if (document.getElementById('mb-bs-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            body.mb-sa-host-bs h1.mb-bs-h1 {
+                font-family: Arial, sans-serif;
+                font-size: 24px;
+                margin: 8px 0 12px;
+                line-height: 1.4;
+                text-align: left;
+            }
+            body.mb-sa-host-bs h2.mb-bs-list-heading {
+                font-family: Arial, sans-serif;
+                font-size: 18px;
+                margin: 10px 0;
+                text-align: left;
+            }
+            body.mb-sa-host-bs table.mb-bs-table {
+                font-family: Arial, sans-serif;
+            }
+        `);
+        style.id = 'mb-bs-style';
+    }
+
+    /**
+     * Prepares a brucespringsteen.it records.aspx page at init, standing in
+     * for the MusicBrainz header lookup (the init block calls it right after
+     * that lookup, for the brucespringsteen.it definition only): the page has
+     * no heading, and the script needs an `<h1>` to hold its toolbar and the
+     * two buttons. Inserts `<h1 class="mb-bs-h1">` as the first child of
+     * `<body>`, its text in a `<bdi>` for the init-time entity name capture.
+     *
+     * Also tags `<body>` with `mb-sa-host-bs`, installs `_ensureBsStyle()`,
+     * and ticks every format checkbox of the site's form
+     * (`_bsCheckAllFormats()`) — once now, and once more after the page's
+     * own `onload` handler, which runs `setup()` and would untick them again
+     * when this init comes first.
+     *
+     * @returns {?HTMLHeadingElement} The `<h1>` to use as header container, or
+     *   `null` when the document has no `<body>`.
+     */
+    function _bsPrepareLivePage() {
+        const existing = document.querySelector('h1.mb-bs-h1');
+        if (existing) return existing;
+        if (!document.body) return null;
+
+        document.body.classList.add('mb-sa-host-bs');
+        _ensureBsStyle();
+        _bsCheckAllFormats();
+        if (document.readyState !== 'complete') {
+            window.addEventListener('load', () => _bsCheckAllFormats(), { once: true });
+        }
+        const h1 = document.createElement('h1');
+        h1.className = 'mb-bs-h1';
+        const bdi = document.createElement('bdi');
+        bdi.textContent = 'brucespringsteen.it — Bootleg database';
+        h1.appendChild(bdi);
+        document.body.insertBefore(h1, document.body.firstChild);
         return h1;
     }
 
@@ -10372,15 +13237,16 @@
      *     `sa_enable_release_tracks_live_date_check`, gated additionally on
      *     `_recOfEnabled` — see `_liveDateCheckEnabled`): for a track whose
      *     "Recording of work" carries the `live` attribute AND has a
-     *     "Recording date", each entity named in exactly five columns —
-     *     "Recording engineer", "Vocals", "Instruments", "Recorded at
-     *     event", "Recorded at place" — gets a trailing `⚠️`/`❌`
+     *     "Recording date", each entity named in exactly six columns —
+     *     "Recording engineer", "Performer" (since org/live-bootleg.org 3),
+     *     "Vocals", "Instruments", "Recorded at event", "Recorded at
+     *     place" — gets a trailing `⚠️`/`❌`
      *     `<span class="mb-live-date-flag">` (native `title` tooltip) when
      *     its OWN date attribute is missing entirely (`⚠️`) or doesn't
      *     exactly match "Recording date" (`❌`, via `_liveDateCheckResult`).
      *     Deliberately excludes every other credit/place column
      *     ("Engineer"/"Producer"/"Mixer"/"Miscellaneous support"/
-     *     "Performer"/"Produced for label"/"Mixed at place") — "Mixed at
+     *     "Produced for label"/"Mixed at place") — "Mixed at
      *     place" in particular shares `_buildRecordedAtPlaceTd` with
      *     "Recorded at place" but is opted out by simply never passing the
      *     `liveDateCtx` parameter at its own call site. Comparison is exact
@@ -11497,7 +14363,9 @@
                     const _entries = _matches
                         .map(m => ({ dd: m.dt.nextElementSibling, attributes: m.attributes }))
                         .filter(e => e.dd && e.dd.tagName === 'DD');
-                    row.appendChild(_buildCreditListTd(_entries));
+                    // Live-date checked like Vocals/Instruments
+                    // (org/live-bootleg.org 3).
+                    row.appendChild(_buildCreditListTd(_entries, _liveDateCtx));
                 }
 
                 // "Vocals"/"Instruments" — Vocals appended first, matching
@@ -14415,6 +17283,13 @@
     // at every log site that uses it) rather than removed, for reuse if a similar
     // CAA/EAA regression ever needs chasing again.
     const _debugCallCounters = new Map();
+    /**
+     * Increments and returns the call counter for `fnName` (see
+     * `_debugCallCounters` above).
+     *
+     * @param {string} fnName - Name of the function being counted.
+     * @returns {number} The count including this call (1 on the first).
+     */
     function _debugCallCount(fnName) {
         const n = (_debugCallCounters.get(fnName) || 0) + 1;
         _debugCallCounters.set(fnName, n);
@@ -17548,6 +20423,9 @@
                 },
                 'Annotations': {
                     collapsableColumns: [ 'Annotation' ],
+                    // 'Annotation' gets its own renderer (_artTooltipAnnotation):
+                    // the full, uncollapsed cell markup in a wider card.
+                    tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Annotation' ],
                     injectedColumns: [ 'Relationships' ],
                     addCAA: 'Name',
                     extractMainColumn: 'Name',
@@ -17651,7 +20529,10 @@
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                     { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
+                ],
+                // MB's "Add a new alias" link (a bare <p> in #content): an
+                // editing shortcut that duplicates the Edit tab's own action.
+                removeSelectors: ['#content > p:has(> a[href$="/add-alias"])']
             },
             tableMode: 'single'
         },
@@ -18370,7 +21251,9 @@
                 integerColumns: [
                     { sourceColumn: 'B-DD', align: 'R' }, { sourceColumn: 'B-MM', align: 'R' }, { sourceColumn: 'B-YYYY', align: 'C' },
                     { sourceColumn: 'E-DD', align: 'R' }, { sourceColumn: 'E-MM', align: 'R' }, { sourceColumn: 'E-YYYY', align: 'C' }
-                ]
+                ],
+                // Same "Add a new alias" <p> as on 'entity-aliases'.
+                removeSelectors: ['#content > p:has(> a[href$="/add-alias"])']
             },
         },
         {
@@ -18722,17 +21605,18 @@
 
         // --- springsteenlyrics.com -------------------------------------------
         // Not MusicBrainz at all: Bruce Springsteen collection and bootleg
-        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination. Opt-in
+        // lists, 100 `div.blog-post` cards per page, `&page=N` pagination (the
+        // collection entry page: `&pg=N`, via `pageParam`). Opt-in
         // via `sa_enable_springsteenlyrics`, and only ever considered on that
         // host — the `host` key is read by the detection loop, which skips every
         // definition whose host does not match, so none of the broad
-        // MusicBrainz matchers above can claim an SL path and these two can
+        // MusicBrainz matchers above can claim an SL path and these can
         // never match on MusicBrainz. `slCardsToTable` turns the cards into the
         // `table.tbl` the whole pipeline expects; see applySlCardsToTable() and
         // docs/claude/springsteenlyrics.md. Page count needs no hook:
         // determineMaxPageFromDOM()'s no-"Next" branch takes the highest
-        // `page=` link, and SL's "»" always points at the last page (checked
-        // live on 2026-10-04, see DEBUG-NOTES.md).
+        // page-parameter link, and SL's "»" always points at the last page
+        // (checked live on 2026-10-04 and 2026-10-05, see DEBUG-NOTES.md).
         {
             type: 'sl-collection',
             host: 'springsteenlyrics.com',
@@ -18740,7 +21624,29 @@
             buttons: [ { label: 'Show all items of this collection list', shortLabel: 'Items' } ],
             features: {
                 slCardsToTable: 'collection',
-                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ]
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The collection's entry page, "Latest additions": every item of the
+        // whole collection, newest first (5365 items in 54 pages on
+        // 2026-10-05). Same cards as a category list, but it paginates with
+        // `cmd=intro&category=all&pg=N` — `page=N` is ignored there and
+        // returns page 1 again (checked live) — hence `pageParam: 'pg'`.
+        // `cmd` is absent on the bare `/collection.php`; an item page always
+        // carries `item=`.
+        {
+            type: 'sl-collection-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/collection.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [ { label: 'Show all latest additions', shortLabel: 'Items' } ],
+            features: {
+                slCardsToTable: 'collection',
+                pageParam: 'pg',
+                integerColumns: [ { sourceColumn: 'Original year', align: 'C' }, { sourceColumn: 'Copies', align: 'R' } ],
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         },
@@ -18754,7 +21660,86 @@
                 // `align: ':'` is what makes _sortColumnKind() sort it as a
                 // duration (_parseDurationToMs() accepts minutes above 59, so
                 // "129:33.23" sorts after "61:58.22").
-                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ]
+                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+        // The bootleg landing page (`bootlegs.php`, bare or `cmd=intro`): the
+        // category buttons, the four search forms and a "Statistics" block,
+        // but no item cards, so nothing to fetch — no button. It exists for
+        // the compact bar alone (`slNavOnly`): with `sa_sl_compact_nav` off
+        // the init block exits quietly right after detection, leaving the
+        // page untouched. Its Statistics counts are deliberately not read
+        // (they drift from the lists' own totals; docs/claude/springsteenlyrics.md).
+        {
+            type: 'sl-bootlegs-intro',
+            host: 'springsteenlyrics.com',
+            match: (path, params) => path === '/bootlegs.php' && !params.has('item') &&
+                (!params.has('cmd') || params.get('cmd') === 'intro'),
+            buttons: [],
+            features: {
+                slNavOnly: true
+            },
+            tableMode: 'single'
+        },
+
+        // --- jungleland.it ---------------------------------------------------
+        // Not MusicBrainz either: the jungleland.it bootleg ARTWORK list,
+        // one static page (`html/list.htm`, about 6,300 links under one anchor
+        // heading per year plus "others"), no pagination, so
+        // determineMaxPageFromDOM() finds no widget and the fetch loop reuses
+        // the live document — no request. Opt-in via `sa_enable_jungleland`,
+        // and only when list.htm is its own tab (not the artwork.htm frame).
+        // `jlListToTable` turns the links into the `table.tbl` the pipeline
+        // expects; see applyJlListToTable() and docs/claude/jungleland.md.
+        {
+            type: 'jl-list',
+            host: 'jungleland.it',
+            match: (path) => path === '/html/list.htm',
+            buttons: [ { label: 'Show all bootlegs of this list', shortLabel: 'Bootlegs' } ],
+            features: {
+                jlListToTable: true,
+                integerColumns: [ { sourceColumn: 'Year', align: 'C' } ],
+                stickyColumn: 'Title'
+            },
+            tableMode: 'single'
+        },
+
+        // --- brucespringsteen.it ---------------------------------------------
+        // Not MusicBrainz either: the brucespringsteen.it record database's
+        // list page (`DB/records.aspx`), one `<p>` per record, no pagination.
+        // Which records it lists is all in the query: `tipe=-1|-2,<format
+        // codes>` (unofficial or official, then the ticked formats 0–11) and
+        // `sort=`. The two buttons always fetch ALL formats of their kind via
+        // `params`, whatever the page itself shows, so page 1 is always
+        // fetched (button params never reuse the live document); and
+        // `non_paginated` skips the extra page-1 request that
+        // fetchMaxPageGeneric() would make for params. Opt-in via
+        // `sa_enable_brucespringsteen`, own tab only. See
+        // applyBsRecordsToTable() and docs/claude/brucespringsteen.md.
+        {
+            type: 'bs-records',
+            host: 'brucespringsteen.it',
+            match: (path) => path.toLowerCase() === '/db/records.aspx',
+            non_paginated: true,
+            buttons: [
+                {
+                    label: 'Unofficial',
+                    params: { tipe: `-1,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' },
+                    features: { bsRecordsToTable: 'unofficial' }
+                },
+                {
+                    label: 'Official',
+                    params: { tipe: `-2,${_BS_ALL_FORMATS}`, sort: '0', addon: '0' },
+                    features: { bsRecordsToTable: 'official' }
+                }
+            ],
+            features: {
+                // `true` here (Load from Disk runs with the base definition);
+                // each button narrows it to its own kind.
+                bsRecordsToTable: true,
+                stickyColumn: 'Title'
             },
             tableMode: 'single'
         }
@@ -19390,7 +22375,7 @@
      */
     function _sortColumnHeaderName(th) {
         if (!th) return '';
-        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim();
+        return th.dataset.colName || th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim();
     }
 
     /**
@@ -20375,6 +23360,18 @@
         );
     }
 
+    /**
+     * Looks up a track row's millisecond length: by the recording MBID in its
+     * title cell first, else by medium and track position.
+     *
+     * @param {HTMLCollection|HTMLTableCellElement[]} cells - The row's cells.
+     * @param {number} medIdx - The row's medium number.
+     * @param {number} titleIdx - Title column index, or -1.
+     * @param {number} posIdx - Track-position column index, or -1.
+     * @param {{byRecording: Map<string, number>, byPosition: Map<string, number>}} maps
+     *   Lengths keyed by recording MBID and by `m<medium>n<position>`.
+     * @returns {number|undefined} Length in ms, or undefined when neither key is known.
+     */
     function _msLengthForRow(cells, medIdx, titleIdx, posIdx, maps) {
         const titleTd = titleIdx === -1 ? null : cells[titleIdx];
         const recA    = _titleRecordingAnchor(titleTd);
@@ -22383,9 +25380,12 @@
     // scrolling is deliberately kept on the window so the vertical sticky thead
     // keeps working), the MusicBrainz top header, the h1 entity header with the
     // action bar, the tabs, every h2 section bar and every h3 sub-table bar stay
-    // where they are instead of scrolling off to the left — and so does the
-    // CONTENT of every expanded non-data h2 section (Credits, Annotation,
-    // Relationships; see _sphSectionBodies()), while the data tables scroll.
+    // where they are instead of scrolling off to the left — and so does every
+    // other block of page content: expanded sections (Credits, Annotation,
+    // Relationships, the Wikipedia extract), the data section's intro text and
+    // forms, the status line, the CAA/EAA big-image strips (see
+    // _sphContentBodies()). Only the data tables scroll, and a data table
+    // narrow enough to fit is pinned whole as well (_sphFitsTable()).
     //
     // Mechanism — plain CSS `position: sticky; left: <natural offset>`, NOT a
     // scroll listener + transform: sticky is resolved by the compositor, so it
@@ -22417,6 +25417,24 @@
     //      itself ignores transforms (_sphContentExtent()), so engaging can
     //      never feed back into the decision to engage.
     //
+    // The sticky COLUMN follows the same rule while engaged. applyStickyColumn()
+    // pins its cells at `left: 0`, which made the column dock at the window
+    // edge while the h2/h3 bar above it docked at its own, indented left. Each
+    // table carrying a sticky column therefore gets `data-mb-sph-col-left`
+    // (its natural left, L) and one generated rule per distinct L moves its
+    // sticky cells to `left: L` (see _sphApplyStickyCols()). The gutter that
+    // opens to the left of the docked column is masked with a `box-shadow` in
+    // the page colour, but only once the column has actually docked
+    // (`.mb-sph-col-docked`, _sphUpdateColDocked()): with columns before the
+    // sticky one ("#" before "Title") the mask would otherwise cover them at
+    // scrollX 0. Those columns dock at L as well, underneath the sticky one
+    // (`data-mb-sph-col-pre`), and mask the gutter themselves until it has
+    // docked over them, so nothing ever slides past the bar's line. MB's own
+    // top/bottom border of `table.tbl` is moved onto the edge cells, where
+    // the masks cover it. An attribute + per-value rule rather than a custom property on
+    // the table, because an inherited custom property restyles the whole
+    // table subtree, while these selectors invalidate only the sticky cells.
+    //
     // Natively sticky elements are pinned too — notably the header of
     // jesus2099's "mb. STICKY HEADER" userstyle (`html > body > div.header {
     // position: sticky; top: 0; z-index: 1 }`): only `left`/`max-width` are
@@ -22428,7 +25446,16 @@
     // sticky thead (100), the sticky sidebar (105) and every other bar while it
     // is hovered, contains focus or holds an open popup. Focus resting in a
     // text field does not count: the global filter is focused after every
-    // render, which would otherwise keep the data h2 raised. Otherwise the native
+    // render, which would otherwise keep the data h2 raised. An "open popup"
+    // is an inline display:block + position:absolute element that also has an
+    // inline z-index: without that last part the h1 toolbar's fetch progress
+    // fill (display:block; position:absolute, permanently, inside a hidden
+    // wrapper) kept the entity header raised at all times, and it painted
+    // over MusicBrainz's own header menus. A raised BODY-LEVEL element (the
+    // MB header with an open menu) goes one higher still (SPH_Z_CHROME_RAISED),
+    // because equal z-indexes resolve by DOM order and the content bars come
+    // later: a menu opened by click, with the pointer then resting on the
+    // title bar beside it, was covered by that hovered bar. Otherwise the native
     // stacking is left alone: content bars get NO base z-index (a vertically
     // sticky header keeps covering the bars scrolling under it), and only a
     // non-positioned, z-index:auto body-level element (the plain MB header)
@@ -22462,6 +25489,8 @@
     const SPH_Z_CHROME = 106;
     /** z-index of a hovered / focus-containing / popup-holding pinned element: above sticky thead (100) and sidebar (105). */
     const SPH_Z_RAISED = 107;
+    /** z-index of a raised BODY-LEVEL pinned element (MB header, banners, footer): one above SPH_Z_RAISED, so an open MB header menu beats a raised content bar instead of tying with it (a tie goes to the later element in DOM order, i.e. the content bar). */
+    const SPH_Z_CHROME_RAISED = 108;
     /** Debounce delay (ms) for coalescing resize / observer bursts into one refresh pass. */
     const SPH_REFRESH_DELAY_MS = 60;
     /** Lower bound (px) for a pinned element's clamped width, so tiny viewports never collapse a bar. */
@@ -22482,6 +25511,14 @@
      *   widths:         WeakMap<Element, number>
      *                                     - last border-box width the observer reported per element
      *   passes:         number            - refresh passes run so far (read by the test hook only)
+     *   colTables:      Array<{table: HTMLTableElement, p: number}>
+     *                                     - tables whose sticky column is aligned, with the scrollX
+     *                                       at which that column docks (see _sphMeasureStickyCols())
+     *   colStyle:       ?HTMLStyleElement - holds one generated rule pair per distinct left offset
+     *   colRules:       Set<string>       - left offsets that already have their rule pair
+     *   colGutterBg:    string            - page colour of the gutter mask, read with the first rule
+     *   colBorder:      ?{top: number, topC: string, bottom: number, bottomC: string}
+     *                                     - MB's table.tbl top/bottom border, captured before the first stamp
      * }}
      */
     const _sph = {
@@ -22493,7 +25530,12 @@
         targets:     new Set(),
         native:      new WeakMap(),
         widths:      new WeakMap(),
-        passes:      0
+        passes:      0,
+        colTables:   [],
+        colStyle:    null,
+        colRules:    new Set(),
+        colGutterBg: '#ffffff',
+        colBorder:   null
     };
 
     /**
@@ -22533,6 +25575,7 @@
             @property --mb-sph-body-native-minw { syntax: '*'; inherits: false; }
             @property --mb-sph-left { syntax: '*'; inherits: false; }
             @property --mb-sph-maxw { syntax: '*'; inherits: false; }
+            @property --mb-sph-z-raised { syntax: '*'; inherits: false; }
             /* Widen <body> to the scrolled content so its direct children
                (MB header, banners, footer) have room to stay pinned. Margins
                and box model are pinned down so the widening cannot feed back
@@ -22556,9 +25599,18 @@
             html.mb-sph-on .mb-sph-target.mb-sph-chrome {
                 z-index: ${SPH_Z_CHROME};
             }
-            /* Must follow the rule above: equal specificity, wins by order. */
-            html.mb-sph-on .mb-sph-target:hover {
-                z-index: ${SPH_Z_RAISED};
+            /* An inline body alone on its line, pinned on its own: sticky
+               does not carry a block inside an inline box along. Without
+               !important, so an inline display: none still hides it. */
+            html.mb-sph-on .mb-sph-target.mb-sph-inline {
+                display: block;
+            }
+            /* Must follow the rule above. A table pinned whole is never raised
+               by hover or focus: the pointer rests on it all the time, and its
+               rows would then paint over a vertically sticky MB header. Its
+               menus (the 📊 panel and the like) live on body anyway. */
+            html.mb-sph-on .mb-sph-target:not(.mb-sph-table):hover {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Focus raises too (a menu opened by click or keyboard keeps its
                bar on top after the pointer leaves), but NOT while focus merely
@@ -22567,15 +25619,28 @@
                sticky MB header until focus moves. A text field's own popup
                (the filter-history dropdown) is caught by the popup rule
                below. Separate rule: a browser without :has() drops only it. */
-            html.mb-sph-on .mb-sph-target:focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
-                z-index: ${SPH_Z_RAISED};
+            html.mb-sph-on .mb-sph-target:not(.mb-sph-table):focus-within:not(:has(:is(input[type="search"], input[type="text"], input:not([type]), textarea):focus)) {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
             }
             /* Open in-place popup (e.g. the filter-history dropdown, whose
-               inline cssText serializes as "display: block; position: absolute")
-               while neither hovered nor focused. Separate rule on purpose: a
+               inline cssText serializes as "display: block; position: absolute;
+               … z-index: 20001") while neither hovered nor focused. The z-index
+               is part of the test: the h1 toolbar's fetch progress fill is
+               display:block + position:absolute for good, inside a hidden
+               wrapper, and without it the entity header stayed raised and
+               painted over the MB header's menus. Separate rule on purpose: a
                browser without :has() drops only this rule, not the one above. */
-            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"]) {
-                z-index: ${SPH_Z_RAISED};
+            html.mb-sph-on .mb-sph-target:has([style*="position: absolute"][style*="display: block"][style*="z-index"]) {
+                z-index: var(--mb-sph-z-raised, ${SPH_Z_RAISED});
+            }
+            /* The level the three raise rules above use. Body-level chrome
+               (the MB header and its menus) is raised one higher than a
+               content bar, so the two never tie: a tie goes to the later
+               element in DOM order, which is always the content bar. A
+               custom property rather than a fourth z-index rule, because a
+               plain override could not out-rank the focus rule's specificity. */
+            html.mb-sph-on body > .mb-sph-target {
+                --mb-sph-z-raised: ${SPH_Z_CHROME_RAISED};
             }
         `);
         style.id = 'mb-sticky-page-headers-style';
@@ -22605,32 +25670,34 @@
      * @returns {void}
      */
     function _sphUnmark(el) {
-        el.classList.remove('mb-sph-target', 'mb-sph-chrome');
+        el.classList.remove('mb-sph-target', 'mb-sph-chrome', 'mb-sph-table', 'mb-sph-inline');
         el.style.removeProperty('--mb-sph-left');
         el.style.removeProperty('--mb-sph-maxw');
     }
 
     /**
-     * Returns an element's OWN `position` and `z-index`, i.e. the values it
-     * has without this feature's rules.
+     * Returns an element's OWN `position`, `z-index` and `display`, i.e. the
+     * values it has without this feature's rules.
      *
      * Captured from the computed style the first time the element is seen
      * unmarked, and cached: once marked, its computed `position` is this
      * feature's `sticky` and its z-index may be `SPH_Z_CHROME`, so the live
      * values can no longer tell a static MB header from one made sticky by
-     * the "mb. STICKY HEADER" userstyle.
+     * the "mb. STICKY HEADER" userstyle; and an inline body pinned on its own
+     * is displayed as a block (`.mb-sph-inline`), which must not make it look
+     * block-level to the next pass.
      *
      * @param {HTMLElement}         el - Element to inspect.
      * @param {CSSStyleDeclaration} cs - Its live computed style.
-     * @returns {{position: string, zIndex: string}} The element's own values.
+     * @returns {{position: string, zIndex: string, display: string}} The element's own values.
      */
     function _sphNativeStyle(el, cs) {
         let nat = _sph.native.get(el);
         if (!nat && !el.classList.contains('mb-sph-target')) {
-            nat = { position: cs.position, zIndex: cs.zIndex };
+            nat = { position: cs.position, zIndex: cs.zIndex, display: cs.display };
             _sph.native.set(el, nat);
         }
-        return nat || { position: cs.position, zIndex: cs.zIndex };
+        return nat || { position: cs.position, zIndex: cs.zIndex, display: cs.display };
     }
 
     /**
@@ -22639,31 +25706,39 @@
      * Rejected are: non-rendering tags; anything inside `#sidebar` or inside a
      * table (e.g. wiki `h2.mb-toggle-h2` sub-headings in Annotation cells);
      * anything CONTAINING a table (capping its width would squeeze the table) —
-     * except for a section body (`isBody`, see `_sphSectionBodies()`), where
-     * only a data table (`table.tbl`) is ruled out: a `table.details` holding
-     * Credits URLs or relationships is exactly the content that has to stay
-     * in view, and capping it to the viewport only lets its text wrap;
-     * elements that are not rendered at all (`display:none` on itself or an
+     * except for a content body (`kind` `'body'`, see `_sphContentBodies()`),
+     * where only a data table (`table.tbl`) is ruled out: a `table.details`
+     * holding Credits URLs or relationships is exactly the content that has
+     * to stay in view, and capping it to the viewport only lets its text
+     * wrap — and except for a data table that fits (`kind` `'table'`, see
+     * `_sphFitsTable()`), which is pinned whole; elements that are not
+     * rendered at all (`display:none` on itself or an
      * ancestor — they get picked up by a later refresh once shown); floated
-     * elements; and elements whose own position (see `_sphNativeStyle()`) is
+     * elements; inline-level bodies (`display: inline…`) that share their line
+     * with other inline content (`_sphAloneOnLine()`), whose natural left is
+     * not their parent's content edge, so two of them on one line were
+     * pinned on top of each other; and elements whose own position (see `_sphNativeStyle()`) is
      * `absolute`/`fixed` (overlays, menus, tooltips, the sidebar toggle
      * handle). Natively `sticky` elements ARE accepted — e.g. the header of
      * the "mb. STICKY HEADER" userstyle, which sticks vertically; this feature
      * only adds `left`, so both directions work together.
      *
-     * @param {Element}      el       - Candidate element.
-     * @param {?HTMLElement} sidebar  - The native `#sidebar`, if present.
-     * @param {boolean}      [isBody] - `true` for a section body from
-     *   `_sphSectionBodies()`, which may contain (or be) a non-data table.
+     * @param {Element}      el      - Candidate element.
+     * @param {?HTMLElement} sidebar - The native `#sidebar`, if present.
+     * @param {('bar'|'body'|'table')} [kind] - `'body'` for a content body
+     *   from `_sphContentBodies()`, which may contain (or be) a non-data
+     *   table; `'table'` for a data table; a bar or header otherwise.
      * @returns {boolean} `true` when the element can safely be pinned.
      */
-    function _sphIsEligible(el, sidebar, isBody) {
+    function _sphIsEligible(el, sidebar, kind) {
         if (!(el instanceof HTMLElement)) return false;
         if (/^(SCRIPT|STYLE|LINK|META|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return false;
         if (sidebar && sidebar.contains(el)) return false;
         // The PARENT's ancestry: a section body may itself be a <table>.
         if (el.parentElement && el.parentElement.closest('table')) return false;
-        if (isBody) {
+        if (kind === 'table') {
+            if (!el.matches('table.tbl')) return false;
+        } else if (kind === 'body') {
             if (el.matches('table.tbl') || el.querySelector('table.tbl')) return false;
         } else if (el.querySelector('table')) {
             return false;
@@ -22671,46 +25746,135 @@
         if (el.getClientRects().length === 0) return false;
 
         const cs  = getComputedStyle(el);
-        const pos = _sphNativeStyle(el, cs).position;
-        if (pos !== 'static' && pos !== 'relative' && pos !== 'sticky') return false;
+        const nat = _sphNativeStyle(el, cs);
+        if (nat.position !== 'static' && nat.position !== 'relative' && nat.position !== 'sticky') return false;
         if (cs.float !== 'none') return false;
+        if (kind === 'body' && nat.display.startsWith('inline') && !_sphAloneOnLine(el)) return false;
         return true;
     }
 
     /**
-     * Returns the bodies of every non-data h2 section in the page content —
-     * for each `<h2>` the element siblings that follow it up to the next
-     * `<h2>`, i.e. exactly what `makeH2sCollapsible()` shows and hides — so
-     * that an expanded section (Credits, Annotation, Relationships, …) stays
-     * in view while a wide table is scrolled sideways, not just its bar.
+     * Tells whether an inline-level element sits on a line of its own: the
+     * nearest sibling node on either side, skipping comments and whitespace,
+     * is missing or a block-level element. Then its natural left IS its
+     * parent's content edge, and it can be pinned there like a block, e.g.
+     * MB's `<span class="new-notes-alert-checkbox"><p>…</p></span>` between the
+     * `<h1>` and the filter `<form>` of edit/notes-received, a direct child of
+     * `#content` beside the data table (found by
+     * `tests/support/probe-sph-unpinned.js`, 2026-10-05). Two inline siblings
+     * sharing a line, like the Wikipedia extract's "Continue reading" `<a>` and
+     * licence `<small>`, are never pinned on their own: both would stick at
+     * that edge, one over the other.
      *
-     * Left out: h2s inside a table or `#sidebar`; the DATA h2 (the one holding
-     * `.mb-row-count-stat`, the same test `makeH2sCollapsible()` and
-     * `_relocateTrailingH2Sections()` use), whose body is the data tables and
-     * their artwork strips, which must keep scrolling (its h3 bars are pinned
-     * as bars); and any sibling that is or contains a `table.tbl`, a CAA/EAA
-     * big-image strip or another `<h2>` (a wrapper around a later section).
+     * One that is alone on its line is displayed as a block while pinned
+     * (`.mb-sph-inline`): sticky on an inline box does not carry a block
+     * inside it (the `<p>` of that `<span>`) along in Chromium, so the
+     * content scrolled away under a pinned, empty inline box. Alone on its
+     * line, the block box takes the same place.
+     *
+     * @param {Element} el - An inline-level candidate body.
+     * @returns {boolean} `true` when nothing inline shares its line.
+     */
+    function _sphAloneOnLine(el) {
+        for (const dir of ['previousSibling', 'nextSibling']) {
+            let n = el[dir];
+            while (n && (n.nodeType === Node.COMMENT_NODE
+                || (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()))) n = n[dir];
+            if (!n) continue;
+            if (n.nodeType !== Node.ELEMENT_NODE) return false;
+            if (n.classList.contains('mb-sph-inline') || getComputedStyle(n).display.startsWith('inline')) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Tells whether `el` is floated and spans its parent's whole content box
+     * — a grid column used as a plain block (Bootstrap's `.col-sm-12`), as
+     * opposed to a narrow float beside other content. `_sphContentBodies()`
+     * descends into such a float instead of offering it as a body, since
+     * `_sphIsEligible()` never pins a float. A hidden float has no width and
+     * is not one.
+     *
+     * @param {Element} el - Candidate element.
+     * @returns {boolean}
+     */
+    function _sphIsFullWidthFloat(el) {
+        const parent = el.parentElement;
+        if (!parent || getComputedStyle(el).float === 'none') return false;
+        const pcs = getComputedStyle(parent);
+        const contentWidth = parent.clientWidth - parseFloat(pcs.paddingLeft) - parseFloat(pcs.paddingRight);
+        return contentWidth > 0 && el.getBoundingClientRect().width >= contentWidth - 1;
+    }
+
+    /**
+     * Returns every block of page content that is not a data table, so that
+     * all of it stays in view while a wide table is scrolled sideways: the
+     * content of expanded sections (Credits, Annotation, Relationships, the
+     * Wikipedia extract), the intro text and forms of the DATA section ("An
+     * alias is …", "vzell is subscribed to:" and its list, a search form,
+     * "Found 270,077 results"), the status line after a bare `<h1>`
+     * (`#mb-status-displays-wrapper`) and the CAA/EAA big-image strips.
+     *
+     * Walks the children of `#page` (else `<body>`), skipping `#sidebar`:
+     *   - a `table.tbl` is a data table: never a body, never descended into
+     *     (`_sphCollectTargets()` pins it whole only when it fits, see
+     *     `_sphFitsTable()`);
+     *   - an element CONTAINING a `table.tbl` (`#content`, a `<form>` around
+     *     the table) is descended into; it is never pinned itself, so the
+     *     table inside keeps scrolling;
+     *   - a floated element as wide as its parent's content box (a Bootstrap
+     *     `.col-sm-12` grid column, see `_sphIsFullWidthFloat()`) is descended
+     *     into too: `_sphIsEligible()` never pins a float, so pushed as a
+     *     body it would scroll away with everything in it. On
+     *     springsteenlyrics.com's "book"/"memorabilia" lists the site's stray
+     *     `</div>`s close the column holding the toolbar `<h1>` and the
+     *     category buttons before the list starts, leaving that floated
+     *     column beside the table (checked live, 2026-10-05). A NARROW float
+     *     (a right-floated box) is still pushed as a body, i.e. left alone;
+     *   - anything else is a body, pinned as a whole. A bar inside it (a
+     *     section's `<h2>` in `div.wikipedia-extract`, the Credits
+     *     `Release` / `Release group` h3s) is dropped by the nesting rule in
+     *     `_sphCollectTargets()` and rides along with it.
+     *
+     * Pinning a container whole is what keeps inline content apart: the
+     * Wikipedia extract's "Continue reading at Wikipedia..." `<a>` and its
+     * licence `<small>` were once pinned one by one, both at the container's
+     * left edge, so the second was drawn over the first. An inline-level
+     * element is therefore pinned on its own only when nothing inline shares
+     * its line (`_sphAloneOnLine()`, e.g. edit/notes-received's alert
+     * checkbox `<span>` beside the data table). Inline siblings sharing a line,
+     * or a bare text node, directly beside a data table in a container that
+     * has to be descended into keep scrolling: they have no box of their own
+     * at the parent's edge. None is known on MusicBrainz pages.
      *
      * Hidden (collapsed) bodies are included on purpose: `_sphSyncObserved()`
-     * observes them, so expanding a section — a 0 → W width change that
-     * `_sphOnResize()` lets through — schedules the pass that pins it.
-     * `_sphIsEligible()` keeps them out of the targets while hidden.
+     * observes them, so expanding a section or showing a strip — a 0 → W
+     * width change that `_sphOnResize()` lets through — schedules the pass
+     * that pins it. `_sphIsEligible()` keeps them out of the targets while
+     * hidden.
      *
-     * @returns {HTMLElement[]} Section bodies, in document order.
+     * @returns {HTMLElement[]} Content bodies, in document order.
      */
-    function _sphSectionBodies() {
+    function _sphContentBodies() {
         const root    = document.getElementById('page') || document.body;
         const sidebar = document.getElementById('sidebar');
         const bodies  = [];
-        root.querySelectorAll('h2').forEach(h2 => {
-            if (h2.closest('table') || (sidebar && sidebar.contains(h2))) return;
-            if (h2.querySelector('.mb-row-count-stat')) return;
-            for (let el = h2.nextElementSibling; el && el.tagName !== 'H2'; el = el.nextElementSibling) {
-                if (el.matches('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox')) continue;
-                if (el.querySelector('table.tbl, .mb-caa-bigbox, .mb-eaa-bigbox, h2')) continue;
-                bodies.push(el);
+        /**
+         * Collects the bodies among one container's children.
+         *
+         * @param {Element} parent - A container holding a data table.
+         * @returns {void}
+         */
+        function walk(parent) {
+            for (const el of Array.from(parent.children)) {
+                if (el === sidebar || el.matches('table.tbl')) continue;
+                // #content is always a container, also before any table is
+                // rendered: pinned whole it would be capped to the viewport.
+                if (el.id === 'content' || el.querySelector('table.tbl') || _sphIsFullWidthFloat(el)) walk(el);
+                else bodies.push(el);
             }
-        });
+        }
+        walk(root);
         return bodies;
     }
 
@@ -22730,16 +25894,19 @@
      *   - every rendered `<h2>` / `<h3>` below `#page` (section bars incl.
      *     `.mb-toggle-h2`, sub-table bars `.mb-toggle-h3`, Credits sub-bars
      *     `.mb-credits-toggle-h3`);
-     *   - every rendered section body from `_sphSectionBodies()`. A bar
+     *   - every rendered content body from `_sphContentBodies()`. A bar
      *     inside a pinned body (the Credits `Release` / `Release group` h3s)
-     *     is then dropped by the nesting rule below and rides along with it.
+     *     is then dropped by the nesting rule below and rides along with it;
+     *   - every rendered top-level data table (`table.tbl`), flagged `table`:
+     *     `_sphRefresh()` pins it whole only if it fits (`_sphFitsTable()`).
      *
      * Each candidate passes `_sphIsEligible()`; a candidate nested inside
      * another candidate is dropped (nested sticky boxes would have no room to
      * travel inside their already-clamped parent anyway).
      *
-     * @returns {Array<{el: HTMLElement, chrome: boolean}>} Targets to pin;
-     *   `chrome` is `true` for body-level elements.
+     * @returns {Array<{el: HTMLElement, chrome: boolean, table: boolean}>}
+     *   Candidates to pin; `chrome` is `true` for body-level elements,
+     *   `table` for a data table.
      */
     function _sphCollectTargets() {
         const page    = document.getElementById('page');
@@ -22751,15 +25918,15 @@
         /**
          * Registers one candidate if it is eligible and not yet registered.
          *
-         * @param {Element} el       - Candidate element.
-         * @param {boolean} chrome   - `true` for direct children of `<body>`.
-         * @param {boolean} [isBody] - `true` for a section body.
+         * @param {Element} el     - Candidate element.
+         * @param {boolean} chrome - `true` for direct children of `<body>`.
+         * @param {('bar'|'body'|'table')} [kind] - See `_sphIsEligible()`.
          * @returns {void}
          */
-        function add(el, chrome, isBody) {
-            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar, isBody)) return;
+        function add(el, chrome, kind) {
+            if (!el || seen.has(el) || !_sphIsEligible(el, sidebar, kind)) return;
             seen.add(el);
-            found.push({ el, chrome });
+            found.push({ el, chrome, table: kind === 'table' });
         }
 
         for (const el of Array.from(document.body.children)) {
@@ -22778,7 +25945,8 @@
         });
 
         (page || document.body).querySelectorAll('h2, h3').forEach(el => add(el, false));
-        _sphSectionBodies().forEach(el => add(el, false, true));
+        _sphContentBodies().forEach(el => add(el, false, 'body'));
+        document.querySelectorAll('table.tbl').forEach(el => add(el, false, 'table'));
 
         return found.filter(({ el }) => {
             for (let p = el.parentElement; p; p = p.parentElement) {
@@ -22802,6 +25970,14 @@
      * rendered `table.tbl` are taken — layout boxes only, which transforms
      * never move. Tables are included because without auto-resize a wide
      * table overflows `#content`/`#page` rather than widening them.
+     *
+     * A table pinned whole (`_sphFitsTable()`) is counted by its rect too,
+     * although that rect travels with the scroll: a sticky box never moves
+     * past its containing block, so a stuck table's right edge stays within
+     * its parent's, which the content extending past the window keeps at
+     * least that wide. It therefore never reports more than the true extent
+     * (checked 2026-10-05: computing its natural right from `--mb-sph-left`
+     * instead changed no measurement, see `scripts/mutations/`).
      *
      * @returns {number} Right edge of the content in document px (0 if none).
      */
@@ -22860,8 +26036,8 @@
      * Tables must be watched individually because a table growing wider
      * (manual column drag, column visibility, density) does not necessarily
      * resize `<body>`/`#page` while those still have their normal width.
-     * Every section body from `_sphSectionBodies()` is watched too, hidden
-     * ones included: expanding a collapsed section changes no other observed
+     * Every content body from `_sphContentBodies()` is watched too, hidden
+     * ones included: expanding a collapsed section or showing a strip changes no other observed
      * WIDTH, so without this nothing would schedule the pass that pins it.
      * Elements already observed are never re-observed (a second `observe()`
      * would queue a fresh initial notification and turn refresh → observe →
@@ -22882,7 +26058,7 @@
                        document.getElementById('page'), document.getElementById('content'),
                        document.getElementById('sidebar')];
         const tables = Array.from(document.querySelectorAll('table.tbl'));
-        roots.concat(tables, _sphSectionBodies()).forEach(el => {
+        roots.concat(tables, _sphContentBodies()).forEach(el => {
             if (el && !_sph.observed.has(el)) {
                 ro.observe(el);
                 _sph.observed.add(el);
@@ -22924,6 +26100,271 @@
     function _sphViewportWidth() {
         const cw = document.documentElement.clientWidth;
         return _isTouchPrimaryDevice() ? Math.max(cw, window.innerWidth || 0) : cw;
+    }
+
+    /**
+     * Tells whether a data table is narrow enough to be pinned whole, like a
+     * bar: its border-box width fits into the room a pinned bar at the same
+     * place would get (viewport − its natural left − the right gutter − its
+     * margin-right, see `_sphRefresh()`).
+     *
+     * A wide table keeps scrolling, with its sticky column docked at the
+     * table's left (`_sphApplyStickyCols()`). A narrow one cannot do that:
+     * a sticky cell never leaves its table, so once the page has scrolled
+     * further than the table is wide the whole table, its sticky column
+     * included, is gone — e.g. an artist's one-column "Artist credits" table
+     * (1009 px) on a page made wider by something else, or a narrow
+     * user-ratings sub-table next to wide ones. Pinned whole it stays where
+     * it is, together with the bar above it. It is never capped
+     * (`--mb-sph-maxw: none`), so pinning it cannot change its layout.
+     *
+     * @param {number} tableWidth - The table's border-box width, px.
+     * @param {number} room       - Width available to it while pinned, px.
+     * @returns {boolean} `true` when the table is pinned whole.
+     */
+    function _sphFitsTable(tableWidth, room) {
+        return tableWidth > 0 && tableWidth <= room + 0.5;
+    }
+
+    /**
+     * Read phase of the sticky-column alignment: measures every rendered
+     * `table.tbl` that carries a sticky column (`.mb-sticky-col` in its first
+     * header row), outside `#sidebar` and not nested in another table.
+     *
+     *   left = the table's natural left in document px (its border-box left
+     *          plus its left border), the offset its sticky column docks at;
+     *   p    = how far the page must scroll before that column docks, i.e.
+     *          the widths of the columns before it ("#" before "Title"):
+     *          the SUM of the rendered header cells' widths before the
+     *          sticky one (`border-spacing` is 0 on these tables). Never a
+     *          position: the sticky cell's rect moves once it has docked,
+     *          and so do the cells before it, which dock as well (`pre`).
+     *          Reading the right edge of "#" in a pass that ran while the
+     *          page was scrolled gave p ≈ scrollX + 40 instead of 40, so the
+     *          docked state (and with it the gutter mask) went off until the
+     *          next pass at scrollX 0;
+     *   pre  = how many cells precede the sticky one (its `cellIndex`). Those
+     *          columns dock at `left` too, underneath the sticky one, so they
+     *          never slide into the gutter while the sticky column is still
+     *          on its way (see `_sphEnsureColRules()`). 0 when any of them is
+     *          rendered wider than the sticky column: it would stick out to
+     *          the right of it for good, and the scrolling columns would pass
+     *          underneath that sliver.
+     *
+     * A measured table is never pinned itself (pinned ones are skipped, see
+     * `pinned`), so its rect is natural geometry at
+     * any scroll position (same reasoning as the parent rects in
+     * `_sphRefresh()`). The first call also captures the top/bottom table
+     * border (`_sph.colBorder`), before any stamp has moved it.
+     *
+     * @param {number} scrollX - `window.scrollX` of the current pass.
+     * @param {Set<Element>} pinned - This pass's targets: a table pinned
+     *   whole (`_sphFitsTable()`) is left out, it does not scroll, so its
+     *   column has nothing to dock against, and its rect moves with the scroll.
+     * @returns {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>}
+     *   One entry per table; `left` is already formatted for the attribute.
+     */
+    function _sphMeasureStickyCols(scrollX, pinned) {
+        const sidebar = document.getElementById('sidebar');
+        const out = [];
+        document.querySelectorAll('table.tbl').forEach(table => {
+            const sticky = table.querySelector(':scope > thead > tr:first-child > .mb-sticky-col');
+            if (!sticky || pinned.has(table)) return;
+            if (sidebar && sidebar.contains(table)) return;
+            if (table.parentElement && table.parentElement.closest('table')) return;
+            if (table.getClientRects().length === 0) return;
+            if (!_sph.colBorder && !table.dataset.mbSphColLeft) {
+                const cs = getComputedStyle(table);
+                _sph.colBorder = {
+                    top:    cs.borderTopStyle === 'none' ? 0 : (parseFloat(cs.borderTopWidth) || 0),
+                    topC:   cs.borderTopColor,
+                    bottom: cs.borderBottomStyle === 'none' ? 0 : (parseFloat(cs.borderBottomWidth) || 0),
+                    bottomC: cs.borderBottomColor
+                };
+            }
+            const tr = table.getBoundingClientRect();
+            const innerLeft = tr.left + table.clientLeft;
+            const stickyW = sticky.getBoundingClientRect().width;
+            let p = 0;
+            let pre = sticky.cellIndex;
+            for (let c = sticky.previousElementSibling; c; c = c.previousElementSibling) {
+                if (c.getClientRects().length === 0) continue;
+                const w = c.getBoundingClientRect().width;
+                p += w;
+                if (w > stickyW + 0.5) pre = 0;
+            }
+            const left = Math.max(0, _sphFloor2(innerLeft + scrollX));
+            out.push({ table, left: String(left), p, pre: p > 0 ? pre : 0 });
+        });
+        return out;
+    }
+
+    /**
+     * Background colour of the page behind the tables, used to mask the
+     * gutter to the left of a docked sticky column: the first non-transparent
+     * background of `#page`, `<body>`, `<html>`, else white.
+     *
+     * @returns {string} A CSS colour.
+     */
+    function _sphGutterBg() {
+        for (const el of [document.getElementById('page'), document.body, document.documentElement]) {
+            if (!el) continue;
+            const bg = getComputedStyle(el).backgroundColor;
+            if (bg && bg !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(bg)) return bg;
+        }
+        return '#ffffff';
+    }
+
+    /**
+     * Appends rules to the generated sticky-column stylesheet, creating it on
+     * first use. On creation it also adds the rules shared by every aligned
+     * table: MusicBrainz's `table.tbl { border-top / border-bottom }` is moved
+     * onto the first header row's and the last body row's cells. Under
+     * `border-collapse: separate` that border belongs to the TABLE box,
+     * outside every cell, so no cell's mask can cover it, and it stretched
+     * into the gutter as a stray line at the top and bottom of each table.
+     * Inside the cells it is covered like any cell border. The widths stay
+     * the same, so the table's height does not change.
+     *
+     * @param {string[]} rules - Complete CSS rules.
+     * @returns {void}
+     */
+    function _sphAddColRules(rules) {
+        if (!_sph.colStyle) {
+            _sph.colStyle = GM_addStyle('/* sticky column alignment: rules per left offset */');
+            _sph.colStyle.id = 'mb-sph-col-style';
+            _sph.colGutterBg = _sphGutterBg();
+            const b = _sph.colBorder || { top: 0, bottom: 0 };
+            const any = 'html.mb-sph-on table.tbl[data-mb-sph-col-left]';
+            const shared = [];
+            if (b.top > 0) {
+                shared.push(`${any} { border-top-width: 0 !important; }`,
+                    `${any} > thead > tr:first-child > * { border-top: ${b.top}px solid ${b.topC} !important; }`);
+            }
+            if (b.bottom > 0) {
+                shared.push(`${any} { border-bottom-width: 0 !important; }`,
+                    `${any} > tbody:last-of-type > tr:last-child > * { border-bottom: ${b.bottom}px solid ${b.bottomC} !important; }`);
+            }
+            rules = shared.concat(rules);
+        }
+        const sheet = _sph.colStyle.sheet;
+        rules.forEach(rule => {
+            try {
+                sheet.insertRule(rule, sheet.cssRules.length);
+            } catch (err) {
+                _sph.colStyle.appendChild(document.createTextNode(`\n${rule}`));
+            }
+        });
+    }
+
+    /**
+     * Makes sure the rules for one left offset (and, when columns precede the
+     * sticky one, for that count) exist in the generated stylesheet:
+     *
+     *   - the sticky cells of every table stamped with that offset dock at
+     *     `left: <offset>`;
+     *   - while the table is `.mb-sph-col-docked`, they mask the gutter to
+     *     their left;
+     *   - with `pre` > 0 the first `pre` cells of every row dock at the same
+     *     offset, one layer below the sticky column (z-index 0 against its 1
+     *     and 101), and mask the gutter all the time. "#" then stays at the
+     *     bar's line while "Title" slides over it, instead of sliding into
+     *     the gutter. Their mask is harmless at scrollX 0, where they sit at
+     *     their natural place and the gutter is page margin.
+     *
+     * Rules are only ever added, once per distinct offset / count (a page
+     * normally has one or two). Their subjects are cells of the sticky
+     * column or of the columns before it, so stamping a table restyles only
+     * those cells, not the whole table. `!important` beats the inline
+     * `left: 0px` of `applyStickyColumn()`, which stays the value whenever
+     * `html.mb-sph-on` is not set. The mask is a `box-shadow` because both
+     * pseudo-elements of a `td` are already in use (E-chips, finding glyphs);
+     * `table.tbl` is `border-collapse: separate` (`applyStickyHeaders()`), so
+     * cell shadows paint, inside the cell's own stacking context and hence
+     * over the scrolling cells. Two shadows, at the full and the half offset,
+     * so a column at least half as wide as the gutter still covers all of it.
+     *
+     * @param {string} left - Offset in px, as stamped in `data-mb-sph-col-left`.
+     * @param {number} pre  - Cells before the sticky one, 0 for none (see
+     *   `_sphMeasureStickyCols()`).
+     * @returns {void}
+     */
+    function _sphEnsureColRules(left, pre) {
+        const sel  = `html.mb-sph-on table.tbl[data-mb-sph-col-left="${left}"]`;
+        const half = _sphFloor2(parseFloat(left) / 2);
+        const mask = () => `-${left}px 0 0 0 ${_sph.colGutterBg}, -${half}px 0 0 0 ${_sph.colGutterBg}`;
+        if (!_sph.colRules.has(left)) {
+            const cells = ' > * > tr > .mb-sticky-col';
+            _sphAddColRules([
+                `${sel}${cells} { left: ${left}px !important; }`,
+                `${sel}.mb-sph-col-docked${cells} { box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(left);
+        }
+        const key = `${left}|${pre}`;
+        if (pre > 0 && !_sph.colRules.has(key)) {
+            _sphAddColRules([
+                `${sel}[data-mb-sph-col-pre="${pre}"] > * > tr > :nth-child(-n+${pre}) ` +
+                `{ position: sticky !important; left: ${left}px !important; z-index: 0 !important; box-shadow: ${mask()}; }`
+            ]);
+            _sph.colRules.add(key);
+        }
+    }
+
+    /**
+     * Write phase of the sticky-column alignment: stamps each measured table
+     * with its offset and its count of docking columns before the sticky one
+     * (only on change), drops the stamps from tables that are no longer
+     * measured but still shown, and refreshes the docked state. A hidden
+     * (collapsed) table keeps its stamps, so it is right again the moment it
+     * is shown.
+     *
+     * @param {Array<{table: HTMLTableElement, left: string, p: number, pre: number}>} cols
+     *   Output of `_sphMeasureStickyCols()`.
+     * @returns {void}
+     */
+    function _sphApplyStickyCols(cols) {
+        const keep = new Set(cols.map(c => c.table));
+        _sph.colTables.forEach(({ table }) => {
+            if (keep.has(table) || (table.isConnected && table.getClientRects().length === 0)) return;
+            delete table.dataset.mbSphColLeft;
+            delete table.dataset.mbSphColPre;
+            table.classList.remove('mb-sph-col-docked');
+        });
+        cols.forEach(({ table, left, pre }) => {
+            _sphEnsureColRules(left, pre);
+            if (table.dataset.mbSphColLeft !== left) table.dataset.mbSphColLeft = left;
+            const preStr = pre > 0 ? String(pre) : undefined;
+            if (table.dataset.mbSphColPre !== preStr) {
+                if (preStr) table.dataset.mbSphColPre = preStr;
+                else delete table.dataset.mbSphColPre;
+            }
+        });
+        _sph.colTables = cols.map(({ table, p }) => ({ table, p }));
+        _sphUpdateColDocked();
+    }
+
+    /**
+     * Sets `.mb-sph-col-docked` on each aligned table whose sticky column has
+     * docked (`scrollX >= p`), which switches its gutter mask on; writes only
+     * when the state flips. With `p = 0` (sticky column first) the class is
+     * always on, harmless at scrollX 0 where the gutter is empty page margin.
+     * With `p > 0` the sticky column's mask, L px to its left, would cover
+     * the still visible part of the columns before it ("#") until it has
+     * docked over them; meanwhile those columns mask the gutter themselves
+     * (see `_sphEnsureColRules()`). Called from every refresh pass and from the scroll listener
+     * while the feature is engaged: one compare per table per scroll event.
+     *
+     * @returns {void}
+     */
+    function _sphUpdateColDocked() {
+        const scrollX = window.scrollX;
+        _sph.colTables.forEach(({ table, p }) => {
+            const docked = scrollX >= p - 0.5;
+            if (table.classList.contains('mb-sph-col-docked') !== docked) {
+                table.classList.toggle('mb-sph-col-docked', docked);
+            }
+        });
     }
 
     /**
@@ -23010,12 +26451,10 @@
             const extentNow = engaging ? _sphContentExtent() : extent;
 
             const targets = _sphCollectTargets();
-            const next = new Set(targets.map(t => t.el));
-            _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
 
             // ── Read phase ──────────────────────────────────────────────────
             const scrollX = window.scrollX;
-            const plans = targets.map(({ el, chrome }) => {
+            const plans = targets.map(({ el, chrome, table }) => {
                 const parent = el.parentElement || body;
                 const pcs = getComputedStyle(parent);
                 const pr  = parent.getBoundingClientRect();
@@ -23029,7 +26468,14 @@
                 // Sticky keeps the MARGIN box inside the containing block, so the
                 // element's own margin-right (plain MB header: 16px) must come off
                 // too, or it widens by that much and is pushed back at max scroll.
-                let width = Math.max(SPH_MIN_WIDTH_PX, vw - left - gutter - (parseFloat(cs.marginRight) || 0));
+                const room = vw - left - gutter - (parseFloat(cs.marginRight) || 0);
+                if (table) {
+                    // Never capped: pinned whole while it fits, else left to
+                    // scroll with its sticky column docked.
+                    if (!_sphFitsTable(el.getBoundingClientRect().width, room)) return null;
+                    return { el, baseZ: false, table, inline: false, left: Math.max(0, _sphFloor2(left)), width: null };
+                }
+                let width = Math.max(SPH_MIN_WIDTH_PX, room);
                 if (cs.boxSizing !== 'border-box') {
                     width -= (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) +
                              (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
@@ -23038,19 +26484,26 @@
                 // (see the section comment); a natively sticky / z-indexed
                 // element keeps its own.
                 const baseZ = chrome && nat.position !== 'sticky' && nat.zIndex === 'auto';
-                return { el, baseZ, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
-            });
+                const inline = nat.display.startsWith('inline');
+                return { el, baseZ, table, inline, left: Math.max(0, _sphFloor2(left)), width: Math.max(0, _sphFloor2(width)) };
+            }).filter(Boolean);
+            const next = new Set(plans.map(p => p.el));
+            const cols = _sphMeasureStickyCols(scrollX, next);
 
             // ── Write phase ─────────────────────────────────────────────────
-            plans.forEach(({ el, baseZ, left, width }) => {
+            _sph.targets.forEach(el => { if (!next.has(el)) _sphUnmark(el); });
+            plans.forEach(({ el, baseZ, table, inline, left, width }) => {
                 _sphSetVar(el, '--mb-sph-left', `${left}px`);
-                _sphSetVar(el, '--mb-sph-maxw', `${width}px`);
+                _sphSetVar(el, '--mb-sph-maxw', width === null ? 'none' : `${width}px`);
                 // classList.add()/toggle() rewrite the class attribute even when
                 // nothing changes (DOM "update steps") — only write on change.
                 if (!el.classList.contains('mb-sph-target')) el.classList.add('mb-sph-target');
                 if (el.classList.contains('mb-sph-chrome') !== baseZ) el.classList.toggle('mb-sph-chrome', baseZ);
+                if (el.classList.contains('mb-sph-table') !== table) el.classList.toggle('mb-sph-table', table);
+                if (el.classList.contains('mb-sph-inline') !== inline) el.classList.toggle('mb-sph-inline', inline);
             });
             _sph.targets = next;
+            _sphApplyStickyCols(cols);
 
             if (engaging) {
                 Lib.debug('ui', `Sticky page headers: engaged for ${plans.length} element(s)`);
@@ -23131,17 +26584,22 @@
      * Idempotent: the first call installs the stylesheet, a ResizeObserver
      * (html, body, #page, #content, #sidebar, every `table.tbl`), a `resize`
      * listener and a passive `scroll` listener (fallback: engages on the first
-     * horizontal scroll should no observer have noticed the overflow); every
+     * horizontal scroll should no observer have noticed the overflow; while
+     * engaged it only flips each aligned table's docked state, see
+     * `_sphUpdateColDocked()`); every
      * call then schedules a refresh, so re-renders (Load from Disk, re-fetch)
      * pick up their new h2/h3 bars.
      *
      * @returns {void}
      */
     function initStickyPageHeaders() {
-        // Without a MusicBrainz `#page`, `_sphCollectTargets()` pins every
-        // direct <body> child — on springsteenlyrics.com that is the site's
-        // own navbar and footer. The feature is MusicBrainz-layout-only.
-        if (_isSlHost) return;
+        // Also runs on springsteenlyrics.com. With no MusicBrainz `#page`,
+        // `_sphCollectTargets()` pins every direct <body> child that holds no
+        // table — the site's top bar, navbar, breadcrumb and footer — and
+        // `_sphContentBodies()` walks down from <body> to the list table,
+        // pinning the toolbar h1, the category/filter blocks and the list h2
+        // beside it. That is everything above the table, which is wanted
+        // there (see docs/claude/springsteenlyrics.md).
         if (!_sph.initialized) {
             _sphEnsureStyle();
             if (typeof ResizeObserver === 'function') {
@@ -23149,7 +26607,11 @@
             }
             window.addEventListener('resize', scheduleStickyPageHeadersRefresh, { passive: true });
             window.addEventListener('scroll', () => {
-                if (!_sph.active && window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                if (!_sph.active) {
+                    if (window.scrollX > 0) scheduleStickyPageHeadersRefresh();
+                } else if (_sph.colTables.length) {
+                    _sphUpdateColDocked();
+                }
             }, { passive: true });
             _sph.initialized = true;
             Lib.debug('ui', 'Sticky page headers enabled - page chrome stays pinned while scrolling horizontally');
@@ -23464,7 +26926,7 @@
         if (stickyName) {
             const found = headers.findIndex(th => {
                 const txt = th.dataset.colName ||
-                    th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                    th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
                 return txt === stickyName;
             });
             if (found !== -1) stickyIdx = found;
@@ -23485,6 +26947,14 @@
          * A non-zero `left` offset is only needed when multiple preceding columns
          * are ALSO sticky (so each one stacks behind the next).  This script uses
          * a single sticky column per table, so `left: 0` is always correct.
+         *
+         * Exception: while sticky page headers are engaged (`html.mb-sph-on`),
+         * a stylesheet rule overrides this inline value with the TABLE's own
+         * natural left, so the column docks aligned with the pinned h2/h3 bar
+         * above it (see `_sphApplyStickyCols()`). That brings no ghosting back:
+         * the offset is the table's own left, not the preceding columns'
+         * widths, so the gap it leaves is page gutter, which is masked once
+         * the column has docked.
          *
          * @returns {number} always 0
          */
@@ -24110,7 +27580,7 @@
         const isColVisible = colName => {
             const th = headers.find(h => {
                 const clean = h.textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '')
+                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '')
                     .trim()
                     .replace(/\s+/g, ' ');
                 return clean === colName;
@@ -24637,6 +28107,13 @@
     function _findCellRelIcons(cell) {
         if (!cell) return [];
         const PATH_SENSITIVE_HOSTS = new Set(['springsteenlyrics.com']);
+        /**
+         * True when `hostname` is, or is a subdomain of, a host in
+         * `PATH_SENSITIVE_HOSTS`, whose links are told apart by path, not domain.
+         *
+         * @param {string} hostname
+         * @returns {boolean}
+         */
         function _isPathSensitive(hostname) {
             for (const h of PATH_SENSITIVE_HOSTS) {
                 if (hostname === h || hostname.endsWith('.' + h)) return true;
@@ -25584,7 +29061,7 @@
     //     ", Parts I–V" / ", Pt. II".
     //   - OC ReMix: 'Game "Title" OC ReMix' (the guide's one named exception).
     const _TITLE_MEDLEY_RE   = /^(Medley(?:\s+(\d+))?)\s*[:;]\s*/i;
-    const _TITLE_ETI_RE      = /\s[(\[]([^()\[\]]+)[)\]]$/;
+    const _TITLE_ETI_RE      = /\s[([]([^()[\]]+)[)\]]$/;
     const _TITLE_ETI_MINOR_RE = /^(?:a|an|the|and|or|but|nor|with|of|in|on|at|to|by|for|as|into|onto|upon)\b/;
     const _TITLE_SERIES_RE   = /,\s(?:Vol(?:ume)?\.?|Parts?|Pt\.)\s*([IVXLC\d]+(?:\s*[–-]\s*[IVXLC\d]+)?)\b/i;
     const _TITLE_FORMAT_RE   = /\b(EP|LP|CD|Single)\b/g;
@@ -25936,6 +29413,11 @@
     // "bad date" apart from its "bad rest".
     const _LIVE_DATE_HEAD_RE = new RegExp(`^${_LIVE_DATE_SRC}(?![\\d‐\\-–./])`);
     const _LIVE_DATE_LED_RE = /^(?:(?:\d{4}|\?{4})[‐\-–./]\s?(?:\d{1,2}|\?\?)|(?:\d{1,2}|\?\?)[‐\-–./](?:\d{1,2}|\?\?)[‐\-–./,:])/;
+    // A date with a day, followed by more days of the same month
+    // ("1978‐08‐21/22/23", org/live-bootleg.org 2a) — the "/DD" convention
+    // recording comments already use (_REC_MULTIDAY_RE). Group 1 is the
+    // date, group 2 the "/DD…" tail.
+    const _LIVE_DAYS_RE = /^((?:\d{4}|\?{4})[‐-](?:\d{2}|\?\?)[‐-](?:\d{2}|\?\?)|(?:\d{2}|\?\?)[‐-](?:\d{2}|\?\?))((?:\/\d{2})+)(?=$|, |: )/;
 
     /**
      * Number of days in `month` of `year`, for the live-title date check.
@@ -25969,21 +29451,46 @@
      * A bare-year title whose location lacks ", " is `null`, not a near miss
      * ("1984: The Musical" is a title, not a live date).
      *
+     * A title can name several dates (org/live-bootleg.org 2a), and is then
+     * judged date by date (`_parseMultiDateLiveTitle()`):
+     *   - `days`  — "1978‐08‐21/22/23: Venue, City, …", more days of one month;
+     *   - `dates` — "1978‐08‐21: Venue, … / 1979‐01‐01: Venue, …" (each part a
+     *               live title) or "1989‐07‐04 / 1990‐04‐22: Venue, …" (one
+     *               location for all).
+     * Such a title is `valid` unless one of its dates is impossible.
+     *
      * @param {?string} text - The displayed title.
      * @returns {?{kind: ('valid'|'invalid'|'nearmiss'), shape: ?string,
      *   complete: boolean, sep: ?('unicode'|'ascii'|'mixed'), extra: ?string,
-     *   locParts: ?number, problems: string[]}} `null` when the title is not
-     *   date-led. `shape` spells the date's parts, e.g. `YYYY-MM-DD`,
-     *   `YYYY-MM`, `MM-DD`, `YYYY-??-??`. `locParts` counts the location's
-     *   ", "-separated parts (always 2 or more, see `_liveLocLabel()`).
-     *   `shape`, `sep`, `extra` and `locParts` are `null` on a near miss.
+     *   locParts: ?number, problems: string[], multi: ?('days'|'dates')}}
+     *   `null` when the title is not date-led. `shape` spells the date's
+     *   parts, e.g. `YYYY-MM-DD`, `YYYY-MM`, `MM-DD`, `YYYY-??-??`.
+     *   `locParts` counts the location's ", "-separated parts (always 2 or
+     *   more, see `_liveLocLabel()`). `shape`, `sep`, `extra` and `locParts`
+     *   are `null` on a near miss. `multi` is `null` for a single date.
      */
     function _parseLiveTitle(text) {
         if (!text) return null;
         const full = text.trim();
         const c0 = full.charCodeAt(0);
         if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
-        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, locParts: null, problems: [problem] });
+        // The pre-check keeps every single-date title on the path it always took.
+        if (full.includes('/')) {
+            const multi = _parseMultiDateLiveTitle(full);
+            if (multi) return multi;
+        }
+        return _parseSingleDateLiveTitle(full);
+    }
+
+    /**
+     * `_parseLiveTitle()` for one date: the "DATE[, info]: Venue, City, …"
+     * grammar itself, with no "/" handling.
+     *
+     * @param {string} full - Trimmed, date-led title.
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _parseSingleDateLiveTitle(full) {
+        const nearMiss = (problem) => ({ kind: 'nearmiss', shape: null, complete: false, sep: null, extra: null, locParts: null, problems: [problem], multi: null });
         const m = _LIVE_TITLE_RE.exec(full);
         if (!m || !m[10].includes(', ')) {
             if (!_LIVE_DATE_LED_RE.test(full)) return null;
@@ -25995,6 +29502,93 @@
             return nearMiss('location is not "Venue, City, …"');
         }
         return _liveVerdictFromMatch(m, m[10]);
+    }
+
+    /**
+     * One live title that may carry extra "/DD" days after its date
+     * ("1978‐08‐21/22/23: …"): the title without them goes through
+     * `_parseSingleDateLiveTitle()`, then every extra day is checked against
+     * the date's month and year like the date's own day.
+     *
+     * @param {string} full - Trimmed title, no " / ".
+     * @returns {?ReturnType<typeof _parseLiveTitle>} `null` when not date-led.
+     */
+    function _parseLiveTitleWithDays(full) {
+        const c0 = full.charCodeAt(0);
+        if (!((c0 >= 48 && c0 <= 57) || c0 === 63)) return null;
+        const d = _LIVE_DAYS_RE.exec(full);
+        if (!d) return _parseSingleDateLiveTitle(full);
+        const v = _parseSingleDateLiveTitle(d[1] + full.slice(d[0].length));
+        if (!v || v.kind === 'nearmiss') return v ? Object.assign(v, { multi: 'days' }) : null;
+        // The date's own groups: 1 year, 3 month (year-led); 6 month (year-less).
+        const h = _LIVE_DATE_HEAD_RE.exec(d[1]);
+        const known = s => !!s && !s.startsWith('?');
+        const year = h && known(h[1]) ? parseInt(h[1], 10) : null;
+        const monthRaw = h ? (h[1] ? h[3] : h[6]) : null;
+        const month = known(monthRaw) ? parseInt(monthRaw, 10) : null;
+        const max = month !== null && month >= 1 && month <= 12 ? _liveDaysInMonth(month, year) : 31;
+        const problems = v.problems.slice();
+        d[2].slice(1).split('/').forEach(dd => {
+            const n = parseInt(dd, 10);
+            if ((n < 1 || n > max) && !problems.includes(`day ${dd}`)) problems.push(`day ${dd}`);
+        });
+        return Object.assign(v, { kind: problems.length ? 'invalid' : 'valid', problems, multi: 'days' });
+    }
+
+    /**
+     * The several-dates forms of a live title (org/live-bootleg.org 2a), in
+     * this order:
+     *   1. one date with extra days — "1978‐08‐21/22/23: Venue, City, …";
+     *   2. dates sharing one location — "1989‐07‐04 / 1990‐04‐22: Venue, …":
+     *      every " / "-separated date before the first ": " is read with that
+     *      location, so each is judged as a whole live title;
+     *   3. live titles joined by " / " — "1978‐08‐21: A, B / 1979‐01‐01: C, D".
+     * Anything else is `null`, and `_parseLiveTitle()` goes on with the
+     * single-date grammar — so "2001‐01‐01: Venue A / Venue B, City, …" (a
+     * "/" inside the location) stays the one live title it is.
+     *
+     * The verdict merges the parts: the worst `kind` (a near miss, then an
+     * impossible date), every part's `problems`, `complete` only when every
+     * date is, `shape` the parts' shapes (joined by " / " when they differ),
+     * `sep` across all parts, and `extra`/`locParts` from the first part that
+     * has them.
+     *
+     * @param {string} full - Trimmed, date-led title containing "/".
+     * @returns {?ReturnType<typeof _parseLiveTitle>}
+     */
+    function _parseMultiDateLiveTitle(full) {
+        if (!full.includes(' / ')) {
+            return _LIVE_DAYS_RE.test(full) ? _parseLiveTitleWithDays(full) : null;
+        }
+        const colon = full.indexOf(': ');
+        const head = colon > 0 ? full.slice(0, colon) : '';
+        let parts = null;
+        if (head.includes(' / ')) {
+            const loc = full.slice(colon);
+            const shared = head.split(' / ').map(u => _parseLiveTitleWithDays(u.trim() + loc));
+            if (shared.every(Boolean)) parts = shared;
+        }
+        if (!parts) {
+            const joined = full.split(' / ').map(p => _parseLiveTitleWithDays(p.trim()));
+            if (joined.every(Boolean)) parts = joined;
+        }
+        if (!parts) return null;
+        const near = parts.find(p => p.kind === 'nearmiss');
+        if (near) return Object.assign({}, near, { multi: 'dates' });
+        const shapes = [...new Set(parts.map(p => p.shape))];
+        const seps = [...new Set(parts.map(p => p.sep).filter(Boolean))];
+        const problems = [...new Set(parts.flatMap(p => p.problems))];
+        const first = key => (parts.find(p => p[key]) || {})[key] || null;
+        return {
+            kind: problems.length ? 'invalid' : 'valid',
+            shape: shapes.join(' / '),
+            complete: parts.every(p => p.complete),
+            sep: !seps.length ? null : seps.length === 1 ? seps[0] : 'mixed',
+            extra: first('extra'),
+            locParts: first('locParts'),
+            problems,
+            multi: 'dates',
+        };
     }
 
     /**
@@ -26038,6 +29632,7 @@
             extra: m[9] ? m[9].trim() : null,
             locParts: locStr ? locStr.split(', ').length : null,
             problems,
+            multi: null,
         };
     }
 
@@ -26219,6 +29814,7 @@
         const facets = () => ({ all: 0, valid: 0, invalid: 0, partial: 0, extra: 0 });
         return {
             valid: 0, invalid: 0, nearMiss: 0, complete: 0, partial: 0, extra: 0,
+            multiDays: 0, multiDates: 0,
             shape: new Map(), extraValue: new Map(), loc: new Map(),
             sep: { unicode: facets(), ascii: facets(), mixed: facets() },
         };
@@ -26242,6 +29838,8 @@
         // A date-only recording comment ("live, 2002") has no location.
         if (live.locParts) bump(counts.loc, _liveLocLabel(live.locParts));
         if (live.extra) { counts.extra++; bump(counts.extraValue, live.extra); }
+        if (live.multi === 'days') counts.multiDays++;
+        else if (live.multi === 'dates') counts.multiDates++;
         if (live.sep) {
             const f = counts.sep[live.sep];
             f.all++;
@@ -26491,6 +30089,82 @@
         return src ? _recDateCheck(cell.textContent, _findCellRecordingComment(src, true)) : null;
     }
 
+    /**
+     * The event a live recording comment names, in the form an event name
+     * takes: the comment without its "<type>, " prefix and "; info" tail
+     * ("live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" →
+     * "1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany"), plus the venue,
+     * the location's first ", " part ("Saal 1"). Only the full
+     * "<type>, DATE: Venue, City, …" form names one: a date-only comment
+     * cannot equal an event name, and a location-only one starts with a
+     * city, not a venue (org/live-bootleg.org 3).
+     *
+     * @param {string} text - The comment, as `_recCommentTextOf()` reads it.
+     * @returns {?{event: string, venue: string}}
+     */
+    function _recCommentEvent(text) {
+        const rc = _parseRecordingComment(text);
+        if (!rc || rc.form !== 'datelocation') return null;
+        const semi = text.indexOf(';');
+        const head = (semi === -1 ? text : text.slice(0, semi)).trim();
+        const event = head.slice(rc.type.length + 2).trim();
+        const colon = event.indexOf(': ');
+        if (colon === -1) return null;
+        return { event, venue: event.slice(colon + 2).split(', ')[0].trim() };
+    }
+
+    /**
+     * `_recCommentEvent()` of a row's plain comment column
+     * (`plan.recPlainIdx`, "Disambiguation").
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?{event: string, venue: string}}
+     */
+    function _rowRecCommentEvent(row, plan) {
+        const src = plan.recPlainIdx >= 0 ? row.cells[plan.recPlainIdx] : null;
+        return src ? _recCommentEvent(_recCommentTextOf(src)) : null;
+    }
+
+    /**
+     * Names of the entities of one kind a cell links, read from each link's
+     * own `<bdi>` — for a place that is the text before " in …", so neither
+     * the area chain nor the "(on …)" date is part of it.
+     *
+     * @param {?HTMLTableCellElement} cell
+     * @param {('event'|'place')} kind
+     * @returns {string[]}
+     */
+    function _findCellLinkedNames(cell, kind) {
+        if (!cell) return [];
+        return Array.from(cell.querySelectorAll(`a[href*="/${kind}/"]`))
+            .map(a => (a.querySelector('bdi') || a).textContent.replace(/\s+/g, ' ').trim())
+            .filter(Boolean);
+    }
+
+    /**
+     * Whether a "Recorded at event" / "Recorded at place" cell disagrees with
+     * the row's comment: no linked event is named like the comment's event,
+     * or a linked place is not named like its venue. `null` when there is
+     * nothing to compare (no full live comment, or no link).
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {{recPlainIdx: number}} plan
+     * @param {('event'|'place')} kind
+     * @returns {?{comment: string, linked: string[]}} The mismatch, for the
+     *   cell tooltip.
+     */
+    function _findingRecLinkMismatch(cell, row, plan, kind) {
+        const ce = _rowRecCommentEvent(row, plan);
+        if (!ce) return null;
+        const names = _findCellLinkedNames(cell, kind);
+        if (!names.length) return null;
+        const want = kind === 'event' ? ce.event : ce.venue;
+        const bad = kind === 'event' ? !names.includes(want) : names.some(n => n !== want);
+        return bad ? { comment: want, linked: names } : null;
+    }
+
     // MusicBrainz's release statuses, as a sub-table heading names them
     // (releasegroup-releases groups its releases by status).
     const _RELEASE_STATUS_NAMES = new Set(['Official', 'Promotion', 'Bootleg', 'Pseudo-Release', 'Withdrawn', 'Expunged', 'Cancelled']);
@@ -26557,8 +30231,9 @@
      * in step with the counting loop in `openUniqDrop()` (same facets).
      *
      * @param {ReturnType<typeof _parseLiveTitle>} live - Non-null.
-     * @param {string} mode - `live-*`, `liveshape:<shape>`, `liveextra:<text>`
-     *   or `liveloc:<label>` (`_liveLocLabel()`).
+     * @param {string} mode - `live-*` (`live-multi-days`/`-dates` for the
+     *   several-dates forms), `liveshape:<shape>`, `liveextra:<text>` or
+     *   `liveloc:<label>` (`_liveLocLabel()`).
      * @returns {boolean}
      */
     function _liveTitleMatchesMode(live, mode) {
@@ -26578,6 +30253,8 @@
         if (mode === 'live-complete') return live.complete;
         if (mode === 'live-partial')  return !live.complete;
         if (mode === 'live-extra')    return !!live.extra;
+        if (mode === 'live-multi-days')  return live.multi === 'days';
+        if (mode === 'live-multi-dates') return live.multi === 'dates';
         return false;
     }
 
@@ -26746,6 +30423,9 @@
     //   • `scope: 'row'` findings can sit in several unrelated columns of one
     //     row, so the menu filters them with `_findingRowFilter` (any cell),
     //     never with 📊 ticks — those AND across columns.
+    //   • `detail(cell, row, plan)` (optional, cell scope) returns this cell's
+    //     own text for the tooltip line after the label, e.g. the two values
+    //     that disagree; same source-row rule as `test()`.
 
     /**
      * Whether a `sa_findings_tint_*` setting is on (they default to true).
@@ -26775,6 +30455,7 @@
      *               enabled?: function(): boolean, rowGate?: function(HTMLTableRowElement): boolean,
      *               cols: (function(string, object): boolean|'*'),
      *               test: function(HTMLTableCellElement, HTMLTableRowElement, object): boolean,
+     *               detail?: function(HTMLTableCellElement, HTMLTableRowElement, object): ?string,
      *               tint: function(HTMLTableCellElement): boolean}>}
      */
     const FINDINGS = [
@@ -26845,6 +30526,18 @@
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'imprecise',
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
+        },
+        {
+            id: 'rg-title-mismatch', level: 'warn', glyph: '🏷️', scope: 'cell',
+            label: 'Main-event track differs from the release group title',
+            tip: 'Release tracklist, when the release group title is a live title: a track from the main event whose Disambiguation, "Recorded at event" or "Recorded at place" names the event or venue differently from that title — "1996‐04‐19: ICC Berlin, Saal 1, …" vs the event "1996‐04‐19: Saal 1, ICC Berlin, …".',
+            cols: (name, plan) => name === 'Recorded at event' || name === 'Recorded at place' || plan.recComment(name) === 'plain',
+            test: (cell, row, plan) => !!_findingRgTitleMismatch(cell, row, plan),
+            detail: (cell, row, plan) => {
+                const m = _findingRgTitleMismatch(cell, row, plan);
+                return m ? `release group "${m.expected}", here "${m.found.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rg_title'),
         },
         {
             id: 'event-state-missing', level: 'warn', glyph: '🗺️', scope: 'cell',
@@ -26941,7 +30634,7 @@
         {
             id: 'live-credit-nodate', level: 'warn', glyph: '📅', scope: 'row', inlineGlyph: true,
             label: 'Live credit without a date',
-            tip: 'A live recording\'s credit (vocals, instruments, engineer, event, place) carries no date attribute. Can sit in several credit columns, so this filters by row.',
+            tip: 'A live recording\'s credit (performer, vocals, instruments, engineer, event, place) carries no date attribute. Can sit in several credit columns, so this filters by row.',
             rowGate: row => !!row.querySelector('.mb-live-date-flag'),
             cols: () => '*',
             test: cell => _cellHasLiveDateFlag(cell, '⚠️'),
@@ -27021,6 +30714,30 @@
             cols: (name, plan) => name === 'Recording date' && plan.recPlainIdx >= 0,
             test: (cell, row, plan) => _findingRecDate(cell, row, plan) === 'mismatch',
             tint: _findingTintSetting('sa_findings_tint_rec_date'),
+        },
+        {
+            id: 'rec-event-mismatch', level: 'error', glyph: '🎪', scope: 'cell',
+            label: 'Recorded at event differs from the comment',
+            tip: 'Release tracklist: no event in "Recorded at event" is named exactly like the recording\'s comment without its event type — "live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany" needs the event "1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany".',
+            cols: (name, plan) => name === 'Recorded at event' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => !!_findingRecLinkMismatch(cell, row, plan, 'event'),
+            detail: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'event');
+                return m ? `comment "${m.comment}", event "${m.linked.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rec_event'),
+        },
+        {
+            id: 'rec-place-mismatch', level: 'error', glyph: '📍', scope: 'cell',
+            label: 'Recorded at place differs from the comment venue',
+            tip: 'Release tracklist: a place in "Recorded at place" is not named like the venue in the recording\'s comment, the first part of its location — "live, 1996‐04‐19: Saal 1, ICC Berlin, …" needs the place "Saal 1".',
+            cols: (name, plan) => name === 'Recorded at place' && plan.recPlainIdx >= 0,
+            test: (cell, row, plan) => !!_findingRecLinkMismatch(cell, row, plan, 'place'),
+            detail: (cell, row, plan) => {
+                const m = _findingRecLinkMismatch(cell, row, plan, 'place');
+                return m ? `comment venue "${m.comment}", place "${m.linked.join('", "')}"` : null;
+            },
+            tint: _findingTintSetting('sa_findings_tint_rec_event'),
         },
         {
             id: 'live-credit-date', level: 'error', glyph: '📅', scope: 'row', inlineGlyph: true,
@@ -27128,12 +30845,14 @@
      *     that level (ISRC, ISWC, barcode, live credit), so CSS adds none;
      *   - `title`: the findings' labels, only on a cell with no tooltip of
      *     its own and no family flag (`data-mb-finding-tip` marks one this
-     *     function wrote).
+     *     function wrote), each followed by the finding's `detail` for this
+     *     cell when it has one.
      *
      * @param {HTMLTableCellElement} td
      * @param {string[]} ids
+     * @param {Object<string, string>} [details] - Per-cell detail text by id.
      */
-    function _writeFindingAttrs(td, ids) {
+    function _writeFindingAttrs(td, ids, details = {}) {
         if (!ids.length) {
             if (td.dataset.mbFindings === undefined) return;
             delete td.dataset.mbFindings;
@@ -27158,7 +30877,7 @@
         if (!familyPainted && (!td.hasAttribute('title') || td.dataset.mbFindingTip)) {
             _setTip(td, ids.map(id => {
                 const f = _FINDING_BY_ID.get(id);
-                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}`;
+                return `${f.level === 'error' ? '❌' : '⚠️'} ${f.label}${details[id] ? `: ${details[id]}` : ''}`;
             }).join('\n'));
             td.dataset.mbFindingTip = '1';
         }
@@ -27174,10 +30893,798 @@
         const rowWide = plan.rowWide.filter(f => !f.rowGate || f.rowGate(row));
         Array.from(row.cells).forEach((td, i) => {
             const ids = [];
-            (plan.byCol.get(i) || []).forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
+            const details = {};
+            (plan.byCol.get(i) || []).forEach(f => {
+                if (!f.test(td, row, plan)) return;
+                ids.push(f.id);
+                const d = f.detail && f.detail(td, row, plan);
+                if (d) details[f.id] = d;
+            });
             rowWide.forEach(f => { if (f.test(td, row, plan)) ids.push(f.id); });
-            _writeFindingAttrs(td, ids);
+            _writeFindingAttrs(td, ids, details);
         });
+    }
+
+    /**
+     * The release's main event, decided once per `stampFindings()` pass from
+     * the release group title (org/live-bootleg.org 4). `active` when the
+     * title is a valid live title — then a track is on the main event when
+     * its date is one of `rgDates`, which 4b checks on every live release.
+     * `multi` when the tracks come from two or more dates: only then does a
+     * track off the main event get its green "#" (the table's
+     * `data-mb-multi-event`). `rgTitle` is set whenever the page names its
+     * release group.
+     *
+     * `eventIdx` numbers the events that are NOT the main one, by date then
+     * name (1, 2, …): the "#" cell's tint and "E<n>" chip, and the 🎪 badge
+     * legend (org/live-bootleg.org follow-up). `allKeys` counts every key.
+     *
+     * @type {{active: boolean, multi: boolean, rgTitle: ?string, rgDates: Set<string>, pageDates: Set<string>,
+     *         liveRows: number, keys: Map<string, number>, allKeys: Map<string, number>, eventIdx: Map<string, number>}}
+     */
+    let _mainEventCtx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map(), allKeys: new Map(), eventIdx: new Map() };
+
+    // Tints of the "#" cell per non-main event, by `eventIdx` (cycling after
+    // six): pastels told apart by lightness as well as hue, so they also work
+    // for the colour-blind; the "E<n>" chip carries the number regardless.
+    // Mockup approved 2026-10-05 (variant B): https://claude.ai/artifact/WNk84AymBEwfc6pKoyvmLR
+    const _EVENT_TINTS = ['#e6dcf5', '#cfe3f7', '#fbe0c2', '#cdeee6', '#f6efb8', '#f6d4dc'];
+
+    /**
+     * The tint of one non-main event's "#" cells.
+     *
+     * @param {number} idx - 1-based `eventIdx`.
+     * @returns {string}
+     */
+    const _eventTint = idx => _EVENT_TINTS[(idx - 1) % _EVENT_TINTS.length];
+
+    // A full date with optional extra "/DD" days, in either hyphen.
+    const _FULL_DATE_RE = /(\d{4})[‐-](\d{2})[‐-](\d{2})((?:\/\d{2})*)/g;
+
+    /**
+     * Every full date a live title names, as `YYYY-MM-DD` with plain hyphens:
+     * "1978‐08‐21/22/23: …" gives three, "A / B: …" and "A: … / B: …" one each.
+     * Empty unless `_parseLiveTitle()` calls the title `valid`, so a near miss
+     * or an impossible date names no main event.
+     *
+     * @param {?string} text
+     * @returns {string[]}
+     */
+    function _liveTitleDates(text) {
+        const live = _parseLiveTitle(text);
+        if (!live || live.kind !== 'valid') return [];
+        const out = [];
+        for (const m of String(text).matchAll(_FULL_DATE_RE)) {
+            out.push(`${m[1]}-${m[2]}-${m[3]}`);
+            if (m[4]) m[4].slice(1).split('/').forEach(d => out.push(`${m[1]}-${m[2]}-${d}`));
+        }
+        return out;
+    }
+
+    /**
+     * The first full date in an event key ("1996‐04‐19: …" or a bare
+     * "1996-04-19"), as `YYYY-MM-DD`; `null` without one.
+     *
+     * @param {?string} key
+     * @returns {?string}
+     */
+    function _eventKeyDate(key) {
+        const m = /(\d{4})[‐-](\d{2})[‐-](\d{2})/.exec(key || '');
+        return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+    }
+
+    /**
+     * The part of a live release group title that names one date, in the
+     * "DATE: Location" form an event name takes, for comparing a main-event
+     * track with it: the title itself for one date; for "A / B: Loc", the
+     * matching date with the shared location; for "A: L1 / B: L2", the
+     * matching part; for "DATE/DD/DD: Loc", the date with that day.
+     *
+     * @param {string} title
+     * @param {string} isoDate - `YYYY-MM-DD`.
+     * @returns {?string}
+     */
+    function _rgTitlePartForDate(title, isoDate) {
+        const live = _parseLiveTitle(title);
+        if (!live || live.kind !== 'valid') return null;
+        const same = s => _eventKeyDate(s) === isoDate;
+        if (live.multi === 'dates') {
+            const colon = title.indexOf(': ');
+            const head = colon > 0 ? title.slice(0, colon) : '';
+            if (head.includes(' / ')) {
+                const unit = head.split(' / ').map(u => u.trim()).find(same);
+                return unit ? `${unit}${title.slice(colon)}` : null;
+            }
+            return title.split(' / ').map(p => p.trim()).find(same) || null;
+        }
+        if (live.multi === 'days') {
+            const m = /^(.*?)([‐-])(\d{2})((?:\/\d{2})+)(.*)$/.exec(title);
+            if (!m) return null;
+            return `${m[1]}${m[2]}${isoDate.slice(8)}${m[5]}`;
+        }
+        return same(title) ? title : null;
+    }
+
+    /**
+     * `_mainEventCtx` for this page, from the release group title in the
+     * page's own JSON (`_readEmbeddedReleaseJson()`) and the event keys pass 1
+     * of `stampFindings()` just wrote. Release tracklists only.
+     *
+     * @param {HTMLTableElement[]} tables
+     * @param {Map} master - From `_buildMasterRowIndex()`.
+     * @returns {typeof _mainEventCtx}
+     */
+    function _computeMainEventCtx(tables, master) {
+        const ctx = { active: false, multi: false, rgTitle: null, rgDates: new Set(), pageDates: new Set(), liveRows: 0, keys: new Map(), allKeys: new Map(), eventIdx: new Map() };
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return ctx;
+        const info = _releaseGroupInfo();
+        ctx.rgTitle = info ? info.name : null;
+        // _forEachStampRow() visits a live clone AND its master row; count
+        // each track once, by its row index.
+        const seen = new Set();
+        tables.forEach((table, ti) => _forEachStampRow(table, master, r => {
+            const id = r.dataset.mbRowIdx !== undefined ? `${ti}:${r.dataset.mbRowIdx}` : r;
+            if (seen.has(id)) return;
+            seen.add(id);
+            const key = r.dataset.mbEventKey;
+            if (!key) return;
+            ctx.allKeys.set(key, (ctx.allKeys.get(key) || 0) + 1);
+            const d = _eventKeyDate(key);
+            if (d) ctx.pageDates.add(d);
+            // A key in the event-name form came from an event or a comment.
+            if (key.includes(': ')) {
+                ctx.liveRows++;
+                ctx.keys.set(key, (ctx.keys.get(key) || 0) + 1);
+            }
+        }));
+        _liveTitleDates(ctx.rgTitle).forEach(d => ctx.rgDates.add(d));
+        ctx.active = ctx.rgDates.size > 0;
+        ctx.multi = ctx.active && ctx.pageDates.size >= 2;
+        if (ctx.active) {
+            Array.from(ctx.allKeys.keys())
+                .filter(k => _eventKeyDate(k) && !ctx.rgDates.has(_eventKeyDate(k)))
+                .sort((a, b) => _eventKeyDate(a).localeCompare(_eventKeyDate(b)) || a.localeCompare(b))
+                .forEach((k, i) => ctx.eventIdx.set(k, i + 1));
+        }
+        return ctx;
+    }
+
+    /**
+     * Writes (or clears) a row's `data-mb-main-event`: "1" for a track from
+     * the main event, "0" for one that is not, none when there is no main
+     * event to judge by or the row has no date. A track off the main event
+     * also gets `data-mb-event-idx`/`data-mb-event-tint` on its "#" cell:
+     * its own tint and "E<n>" chip when the table carries
+     * `data-mb-multi-event`.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {boolean} on - Whether this table takes part.
+     */
+    function _stampMainEventRow(row, on) {
+        const d = on ? _eventKeyDate(row.dataset.mbEventKey) : null;
+        if (d) row.dataset.mbMainEvent = _mainEventCtx.rgDates.has(d) ? '1' : '0';
+        else delete row.dataset.mbMainEvent;
+        // The event's number, on the "#" cell itself: its ::before chip reads
+        // it with attr(), and CSS cannot read the row's attribute from there.
+        const idx = d && row.dataset.mbMainEvent === '0' ? _mainEventCtx.eventIdx.get(row.dataset.mbEventKey) : null;
+        const cell = row.cells[0];
+        if (!cell) return;
+        if (idx) {
+            cell.dataset.mbEventIdx = String(idx);
+            cell.dataset.mbEventTint = String(((idx - 1) % _EVENT_TINTS.length) + 1);
+        } else {
+            delete cell.dataset.mbEventIdx;
+            delete cell.dataset.mbEventTint;
+        }
+    }
+
+    /**
+     * Whether a main-event track's cell names the event differently from the
+     * release group title (org/live-bootleg.org 4b). Disambiguation: the
+     * comment's event (`_recCommentEvent()`) vs the title's part for the
+     * track's date; Recorded at event: no linked event equals that part;
+     * Recorded at place: a place is not named like its venue.
+     *
+     * @param {HTMLTableCellElement} cell
+     * @param {HTMLTableRowElement} row
+     * @param {object} plan
+     * @returns {?{expected: string, found: string[]}}
+     */
+    function _findingRgTitleMismatch(cell, row, plan) {
+        if (row.dataset.mbMainEvent !== '1' || !_mainEventCtx.rgTitle) return null;
+        const part = _rgTitlePartForDate(_mainEventCtx.rgTitle, _eventKeyDate(row.dataset.mbEventKey));
+        if (!part) return null;
+        const name = plan.nameOf(cell.cellIndex);
+        if (cell.cellIndex === plan.recPlainIdx) {
+            const ce = _recCommentEvent(_recCommentTextOf(cell));
+            return ce && ce.event !== part ? { expected: part, found: [ce.event] } : null;
+        }
+        if (name === 'Recorded at event') {
+            const names = _findCellLinkedNames(cell, 'event');
+            return names.length && !names.includes(part) ? { expected: part, found: names } : null;
+        }
+        if (name === 'Recorded at place') {
+            const venue = part.slice(part.indexOf(': ') + 2).split(', ')[0].trim();
+            const names = _findCellLinkedNames(cell, 'place');
+            return names.length && names.some(n => n !== venue) ? { expected: venue, found: names } : null;
+        }
+        return null;
+    }
+
+    // ── Release group link and preview (org/live-bootleg.org 4a/4c) ─────────
+    //
+    // A release page's subheader links its release group as "(see all
+    // versions of this release, 5 available)". The name is in the page
+    // already (`release.releaseGroup` of the embedded JSON), so the link is
+    // rewritten with no request; only the preview's table of releases costs
+    // one, on the first hover:
+    //   /ws/2/release?release-group=<mbid>&inc=media+labels&limit=100&fmt=json
+    // https://musicbrainz.org/doc/MusicBrainz_API (checked 2026-10-05) allows
+    // `media` and `labels` on that browse, 100 at most, at most 500 tracks in
+    // all. Probed 2026-10-05 (scripts/probe-rg-release-browse.py) on RG
+    // fa9c43a7…: release-count 5, 5 returned, each with title, date,
+    // country, status, media[].format, label-info[] — saved as
+    // tests/fixtures/ws2-rg-release-browse.json. Mockup the card follows:
+    // https://claude.ai/artifact/GLjW6qPpEAY1BD8JawRZs6 (approved 2026-10-05).
+
+    /** Attempts for the preview's one request, including the first (see `_ws2GetJson()`). */
+    const _RG_PREVIEW_TRIES = 4;
+    /** Base spacing between those attempts, ms; widened per attempt. */
+    const _RG_PREVIEW_DELAY = 1200;
+
+    /**
+     * Each release group's preview table, per page, by RG gid — shared by
+     * the header link, the "#" cells of the main event and those of any
+     * other event whose RG the search found. Absent until the first hover,
+     * then `loading`, `done` (kept for the page) or `failed` (the next hover
+     * asks again — only a successful answer is kept).
+     *
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), table: string, detail: string}>}
+     */
+    const _rgPreviews = new Map();
+
+    /** Minimum spacing between this feature's WS/2 requests, ms (MusicBrainz asks for ~1/s). */
+    const _RG_WS_SPACING = 1100;
+    /** The tail of the request queue `_rgWsGet()` appends to. */
+    let _rgWsQueue = Promise.resolve();
+    /** When the last queued request started, ms since the epoch. */
+    let _rgWsLastAt = 0;
+
+    /**
+     * One WS/2 request of the release group previews and the "#" event
+     * search, run one at a time and at least `_RG_WS_SPACING` apart, however
+     * fast the pointer moves over the table; `_ws2GetJson()` retries a
+     * transient status with the server's `Retry-After` as a floor.
+     *
+     * @param {string} url - Same-origin `/ws/2/...`.
+     * @param {string} label - For the `rg` debug channel.
+     * @returns {Promise<{ok: boolean, status: number, data: ?Object, detail: string}>}
+     */
+    function _rgWsGet(url, label) {
+        const run = _rgWsQueue.then(async () => {
+            const wait = _rgWsLastAt + _RG_WS_SPACING - Date.now();
+            if (wait > 0) await new Promise(r => setTimeout(r, wait));
+            _rgWsLastAt = Date.now();
+            return _ws2GetJson(url, {
+                tries: _RG_PREVIEW_TRIES,
+                beforeRetry: (attempt, retryAfterMs) => new Promise(
+                    r => setTimeout(r, Math.max(_RG_PREVIEW_DELAY * attempt, retryAfterMs))),
+                dbg: (...args) => Lib.debug('rg', ...args),
+                label,
+            });
+        });
+        _rgWsQueue = run.catch(() => {});
+        return run;
+    }
+
+    /**
+     * HTML-escapes text for the preview and warning cards.
+     *
+     * @param {*} v
+     * @returns {string}
+     */
+    const _rgEsc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    /**
+     * The release group of the current release page, from the page's own
+     * embedded JSON; `null` on any other page or when the JSON is absent.
+     *
+     * @returns {?{gid: string, name: string, type: string, artist: string, releaseGid: string}}
+     */
+    function _releaseGroupInfo() {
+        const p = _readEmbeddedReleaseJson();
+        const rg = p && p.release && p.release.releaseGroup;
+        if (!rg || !rg.gid || !rg.name) return null;
+        return {
+            gid: rg.gid, name: rg.name, type: rg.l_type_name || '',
+            artist: typeof rg.artist === 'string' ? rg.artist : '', releaseGid: p.release.gid || '',
+        };
+    }
+
+    /**
+     * The preview's table of releases, from the WS/2 browse: the current
+     * release first and marked, then by date and title; format as
+     * "3×CD" / "CD + DVD", label and catalog number. One string, no
+     * whitespace between tags (`#mb-stat-tooltip` is `white-space: pre-wrap`).
+     *
+     * @param {{releases?: Array<object>, 'release-count'?: number}} data
+     * @param {{releaseGid: string}} info
+     * @returns {string}
+     */
+    function _rgReleasesTableHtml(data, info) {
+        const rels = (data.releases || []).slice().sort((a, b) =>
+            (b.id === info.releaseGid) - (a.id === info.releaseGid) ||
+            (a.date || '9999').localeCompare(b.date || '9999') || String(a.title).localeCompare(String(b.title)));
+        const fmt = r => {
+            const counts = new Map();
+            (r.media || []).forEach(m => counts.set(m.format || '?', (counts.get(m.format || '?') || 0) + 1));
+            return Array.from(counts).map(([f, n]) => (n > 1 ? `${n}×${f}` : f)).join(' + ') || '—';
+        };
+        const label = r => (r['label-info'] || [])
+            .map(li => [li.label && li.label.name, li['catalog-number']].filter(Boolean).join(' · '))
+            .filter(Boolean).join('; ');
+        const td = 'padding:2px 6px 2px 0;';
+        const dim = 'color:#7a6d5c;';
+        const rows = rels.map(r => {
+            const cur = r.id === info.releaseGid;
+            const lab = label(r);
+            return `<tr${cur ? ' style="background:#f1e8d5;"' : ''}>` +
+                `<td style="padding:2px 6px 2px 4px;${cur ? 'font-weight:700;' : ''}">${cur ? '▸ ' : ''}${_rgEsc(r.title)}</td>` +
+                `<td style="${td}">${_rgEsc(fmt(r))}</td>` +
+                `<td style="${td}${r.date ? '' : dim}">${_rgEsc(r.date || '—')}</td>` +
+                `<td style="${td}${r.country ? '' : dim}">${r.country ? `<span style="font-size:0.85em;border:1px solid #d9cfbd;border-radius:2px;padding:0 3px;">${_rgEsc(r.country)}</span>` : '—'}</td>` +
+                `<td style="padding:2px 4px 2px 0;${!lab || lab.startsWith('[') ? dim : ''}">${_rgEsc(lab || '—')}</td></tr>`;
+        }).join('');
+        const th = 'font-weight:400;font-style:italic;padding:0 6px 3px 0;';
+        const statuses = new Set(rels.map(r => r.status).filter(Boolean));
+        const total = data['release-count'] || rels.length;
+        const foot = [
+            statuses.size === 1 ? `All ${total} release${total === 1 ? '' : 's'} are ${[...statuses][0]}` : `${total} release${total === 1 ? '' : 's'}`,
+            total > rels.length ? `showing ${rels.length}` : null,
+            '▸ = this release · click to open the release group',
+        ].filter(Boolean).join(' · ');
+        return `<table style="width:100%;border-collapse:collapse;font-size:0.92em;line-height:1.4;">` +
+            `<thead><tr style="color:#7a6d5c;text-align:left;"><th style="${th}">Release</th><th style="${th}">Format</th>` +
+            `<th style="${th}">Date</th><th style="${th}">Country</th><th style="${th}padding-right:0;">Label / Cat#</th></tr></thead>` +
+            `<tbody>${rows}</tbody></table><div class="mb-tt-foot">${_rgEsc(foot)}</div>`;
+    }
+
+    /**
+     * The whole preview card: the release group's cover, name, type and
+     * artist, then the table — or its loading or failure line.
+     *
+     * @param {{gid: string, name: string, type: string, artist: string}} info
+     * @param {number} n - Releases the group has.
+     * @param {string} [lead] - HTML before the pills: the "main event" pill
+     *   or an event's "E<n>" chip, on a "#" cell's card.
+     * @returns {string}
+     */
+    function _rgPreviewHtml(info, n, lead = '') {
+        const live = _parseLiveTitle(info.name);
+        const st = _rgPreviews.get(info.gid) || { status: 'loading', table: '', detail: '' };
+        const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
+        const head = `<div style="display:flex;gap:12px;align-items:flex-start;">` +
+            `<div style="width:84px;height:84px;flex-shrink:0;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;overflow:hidden;">` +
+            `<img src="https://coverartarchive.org/release-group/${_rgEsc(info.gid)}/front-250" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` +
+            `<div style="min-width:0;"><div class="mb-tt-title">${_rgEsc(info.name)}</div>` +
+            `<div class="mb-tt-body">${_rgEsc([info.type, info.artist].filter(Boolean).join(' · '))}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${lead}${live && live.kind === 'valid' ? pill('✓ live title') : ''}${pill(`${n} release${n === 1 ? '' : 's'}`)}</div>` +
+            `</div></div><div class="mb-tt-rule"></div>`;
+        let body;
+        if (st.status === 'done') body = st.table;
+        else if (st.status === 'failed') {
+            body = `<div class="mb-tt-alert">Could not load the releases (${_rgEsc(st.detail)}).</div>` +
+                   `<div class="mb-tt-foot">Hover again to retry.</div>`;
+        } else body = `<div class="mb-tt-comment">Loading the ${n} release${n === 1 ? '' : 's'}…</div>`;
+        return `<div style="width:500px;max-width:100%;">${head}${body}</div>`;
+    }
+
+    /**
+     * Writes the preview into the link's `data-mbtt`, and into the shown
+     * card when the pointer is on the link.
+     *
+     * @param {HTMLAnchorElement} a
+     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {number} n
+     */
+    function _rgPreviewRefresh(a, info, n) {
+        a.dataset.mbtt = _rgPreviewHtml(info, n);
+        const tip = document.getElementById('mb-stat-tooltip');
+        if (tip && tip.style.display === 'block' && a.matches(':hover')) tip.innerHTML = a.dataset.mbtt;
+    }
+
+    /**
+     * Loads one release group's preview table on the first hover (and on
+     * the next one after a failure): one WS/2 browse through `_rgWsGet()`.
+     * Never more than one in flight per group.
+     *
+     * @param {object} info - `_releaseGroupInfo()`, or a found event's RG.
+     * @param {function(): void} onUpdate - Repaints whatever shows the card.
+     * @returns {Promise<void>}
+     */
+    async function _rgPreviewLoad(info, onUpdate) {
+        const cur = _rgPreviews.get(info.gid);
+        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
+        _rgPreviews.set(info.gid, { status: 'loading', table: '', detail: '' });
+        onUpdate();
+        const res = await _rgWsGet(`/ws/2/release?release-group=${encodeURIComponent(info.gid)}&inc=media+labels&limit=100&fmt=json`, '_rgPreviewLoad');
+        _rgPreviews.set(info.gid, res.ok && res.data
+            ? { status: 'done', table: _rgReleasesTableHtml(res.data, info), detail: '' }
+            : { status: 'failed', table: '', detail: res.detail || `HTTP ${res.status}` });
+        onUpdate();
+    }
+
+    /**
+     * The 4c card: why a release with live tracks should have a live release
+     * group title, what is wrong with this one, and a title built from the
+     * event with the most tracks.
+     *
+     * @param {object} info - `_releaseGroupInfo()`.
+     * @param {?ReturnType<typeof _parseLiveTitle>} live
+     * @returns {string}
+     */
+    function _rgLiveWarnHtml(info, live) {
+        const why = !live ? 'does not start with a date'
+            : live.kind === 'nearmiss' ? `starts with a date but is not a live title: ${live.problems[0]}`
+            : `has an impossible date: ${live.problems.join(', ')}`;
+        const top = Array.from(_mainEventCtx.keys).sort((x, y) => y[1] - x[1])[0];
+        return `<div style="width:460px;max-width:100%;">` +
+            `<div class="mb-tt-title">The release group title is not a live title</div>` +
+            `<div class="mb-tt-body">This release has live tracks — ${_mainEventCtx.liveRows} of them carry an event — but its release group is called <b>“${_rgEsc(info.name)}”</b>, which ${_rgEsc(why)}.</div>` +
+            `<div class="mb-tt-body">The live bootleg style guide names a live release group <span class="mb-tt-pill">YYYY-MM-DD: Venue, City, State, Country</span>.</div>` +
+            (top ? `<div class="mb-tt-rule"></div><div class="mb-tt-dim">Suggested, from the event with the most tracks (${top[1]} of ${_mainEventCtx.liveRows}):</div><div class="mb-tt-title">${_rgEsc(top[0])}</div>` : '') +
+            `<div class="mb-tt-body">No track is marked as “not the main event”: without a live title there is no main event to compare with.</div>` +
+            `<div class="mb-tt-foot">musicbrainz.org/doc/Style/Specific_types_of_releases/Live_bootlegs</div></div>`;
+    }
+
+    /**
+     * Rewrites the release page's "(see all versions of this release, N
+     * available)" link as "(N versions available in <name>)" with the
+     * preview card, once; and on every call (page init, then each
+     * `stampFindings()` pass) adds or removes the 4c ⚠️ after it: shown when
+     * tracks carry live event data (`_mainEventCtx.liveRows`) and the release
+     * group title is not a valid live title.
+     *
+     * @returns {void}
+     */
+    function initReleaseGroupLink() {
+        if (Lib.settings.sa_release_rg_link === false) return;
+        const a = document.querySelector('p.subheader span.small > a[href^="/release-group/"]');
+        if (!a) return;
+        const info = _releaseGroupInfo();
+        if (!info) return;
+        if (!a.dataset.mbRgLink) {
+            const m = /(\d+)\s+available/.exec(a.textContent);
+            if (!m) return;
+            const n = parseInt(m[1], 10);
+            a.dataset.mbRgLink = String(n);
+            a.textContent = `${n} version${n === 1 ? '' : 's'} available in `;
+            const bdi = document.createElement('bdi');
+            bdi.textContent = info.name;
+            a.appendChild(bdi);
+            a.addEventListener('mouseenter', () => { _rgPreviewLoad(info, () => _rgPreviewRefresh(a, info, n)); });
+            _rgPreviewRefresh(a, info, n);
+        }
+        const live = _parseLiveTitle(info.name);
+        let warn = a.parentNode.querySelector('.mb-rg-live-warn');
+        if (!(_mainEventCtx.liveRows > 0 && (!live || live.kind !== 'valid'))) {
+            if (warn) warn.remove();
+            return;
+        }
+        if (!warn) {
+            warn = document.createElement('span');
+            warn.className = 'mb-rg-live-warn';
+            warn.textContent = '⚠️';
+            warn.style.cssText = 'display:inline-block; margin-left:4px; background:#fff3cd; border:1px solid #e0c14a;' +
+                ' border-radius:3px; padding:0 3px; font-size:11px; color:#8a6d00; cursor:default;';
+            a.after(warn);
+        }
+        warn.dataset.mbtt = _rgLiveWarnHtml(info, live);
+    }
+
+    // ── "#" cell: the release group of the track's event ─────────────────────
+    //
+    // Every release-tracklist track with an event key gets a card on its "#"
+    // cell: the release's own RG for the main event, else the RG a search
+    // finds for the track's event. /ws/2/release-group search, per
+    // https://musicbrainz.org/doc/MusicBrainz_API/Search (checked 2026-10-05):
+    // `releasegroup` (title) and `arid` fields, full Lucene syntax, `score`
+    // per hit. Probed 2026-10-05 (scripts/probe-rg-event-search.py): a
+    // phrase + arid query finds "1996‐04‐19: ICC Berlin, Saal 1, …" at score
+    // 100, with "-" too; the venue order swapped finds nothing; terms mode
+    // scores three 2005 Royal Albert Hall RGs 100 for a 1996 event — so a hit
+    // counts only when its title IS the event name, never by score.
+
+    /**
+     * Each event search, per page, by search text: `loading`, `done` (kept;
+     * `rg` is null when nothing matched) or `failed` (asked again on the next
+     * hover).
+     *
+     * @type {Map<string, {status: ('loading'|'done'|'failed'), rg: ?object, n: number, hints: string[], query: string, detail: string}>}
+     */
+    const _eventRgSearches = new Map();
+
+    /** Findings plan per table, to find a hovered row's comment column. */
+    const _eventRgPlans = new WeakMap();
+
+    /**
+     * MBIDs of the release's artist credit, from the page's own JSON.
+     *
+     * @returns {string[]}
+     */
+    function _releaseArtistGids() {
+        const p = _readEmbeddedReleaseJson();
+        const names = (p && p.release && p.release.artistCredit && p.release.artistCredit.names) || [];
+        return names.map(n => n && n.artist && n.artist.gid).filter(Boolean);
+    }
+
+    /**
+     * The Lucene query for one event name, per the search settings: a
+     * phrase (only `"` and `\` escaped) or plain terms (every special
+     * character escaped), and the release's artists as `arid:`.
+     *
+     * @param {string} text
+     * @returns {string}
+     */
+    function _eventRgQuery(text) {
+        let q = Lib.settings.sa_event_rg_search_phrase !== false
+            ? `releasegroup:"${text.replace(/[\\"]/g, '\\$&')}"`
+            : `releasegroup:(${text.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, '\\$&')})`;
+        const arids = Lib.settings.sa_event_rg_search_artist !== false ? _releaseArtistGids() : [];
+        if (arids.length) q += ` AND (${arids.map(a => `arid:${a}`).join(' OR ')})`;
+        return q;
+    }
+
+    /**
+     * The name to search for a row's event: its Disambiguation without the
+     * event type and "; …" (`_rowRecCommentEvent()`), else its event key
+     * when that is an event name; `null` for a bare date.
+     *
+     * @param {HTMLTableRowElement} row
+     * @returns {?string}
+     */
+    function _eventSearchText(row) {
+        const table = row.closest('table');
+        let plan = table ? _eventRgPlans.get(table) : null;
+        if (table && !plan) {
+            plan = _findingPlanForTable(table);
+            _eventRgPlans.set(table, plan);
+        }
+        const ce = plan ? _rowRecCommentEvent(row, plan) : null;
+        if (ce) return ce.event;
+        const key = row.dataset.mbEventKey || '';
+        return key.includes(': ') ? key : null;
+    }
+
+    /**
+     * Searches once per event name for a release group named exactly like it
+     * ("-" and "‐" alike), keeps the closest other titles as hints, and loads
+     * a found group's preview table.
+     *
+     * @param {string} text
+     * @param {function(): void} onUpdate
+     * @returns {Promise<void>}
+     */
+    async function _eventRgLookup(text, onUpdate) {
+        const cur = _eventRgSearches.get(text);
+        if (cur && (cur.status === 'loading' || cur.status === 'done')) return;
+        const h = Lib.settings.sa_event_rg_search_hints;
+        const hintsN = typeof h === 'number' && h >= 0 ? h : 5;
+        const query = _eventRgQuery(text);
+        _eventRgSearches.set(text, { status: 'loading', rg: null, n: 0, hints: [], query, detail: '' });
+        onUpdate();
+        const res = await _rgWsGet(`/ws/2/release-group?query=${encodeURIComponent(query)}&limit=${Math.min(25, hintsN + 5)}&fmt=json`, '_eventRgLookup');
+        if (!res.ok || !res.data) {
+            _eventRgSearches.set(text, { status: 'failed', rg: null, n: 0, hints: [], query, detail: res.detail || `HTTP ${res.status}` });
+            onUpdate();
+            return;
+        }
+        const fold = v => String(v || '').replace(/‐/g, '-').trim();
+        const rgs = res.data['release-groups'] || [];
+        const hit = rgs.find(r => fold(r.title) === fold(text));
+        const p = _readEmbeddedReleaseJson();
+        const info = hit ? {
+            gid: hit.id, name: hit.title,
+            type: [hit['primary-type'], ...(hit['secondary-types'] || [])].filter(Boolean).join(' + '),
+            artist: (hit['artist-credit'] || []).map(c => `${c.name || ''}${c.joinphrase || ''}`).join(''),
+            releaseGid: (p && p.release && p.release.gid) || '',
+        } : null;
+        _eventRgSearches.set(text, {
+            status: 'done', rg: info, n: hit ? (hit.count || (hit.releases || []).length) : 0,
+            hints: rgs.filter(r => r !== hit).slice(0, hintsN).map(r => r.title), query, detail: '',
+        });
+        if (info) _rgPreviewLoad(info, onUpdate);
+        onUpdate();
+    }
+
+    /**
+     * How many versions the release's group has, as the header link says.
+     *
+     * @returns {number}
+     */
+    function _releaseGroupVersionCount() {
+        const a = document.querySelector('p.subheader span.small > a[href^="/release-group/"]');
+        if (!a) return 0;
+        if (a.dataset.mbRgLink) return Number(a.dataset.mbRgLink);
+        const m = /(\d+)\s+available/.exec(a.textContent);
+        return m ? Number(m[1]) : 0;
+    }
+
+    /**
+     * The "#" cell's card: the release's own RG for the main event; for
+     * another event its found RG, or the search's state — searching,
+     * failed, or no match with hints. With `start` (a hover, never a
+     * repaint) it also starts whatever lookup is still needed: a repaint
+     * that restarted one would retry a failed request forever.
+     *
+     * @param {HTMLTableCellElement} td
+     * @param {boolean} [start]
+     * @returns {string}
+     */
+    function _eventRgCardHtml(td, start = false) {
+        const row = td.parentElement;
+        const key = row.dataset.mbEventKey || '';
+        const refresh = () => _eventRgRepaint(td);
+        const idx = td.dataset.mbEventIdx ? Number(td.dataset.mbEventIdx) : null;
+        const chip = idx
+            ? `<span style="font-size:0.75em;font-weight:700;border:1px solid #8f8f8f;border-radius:2px;padding:0 3px;background:${_eventTint(idx)};">E${idx}</span>`
+            : '';
+        const foot = t => `<div class="mb-tt-foot">${t}</div>`;
+        if (row.dataset.mbMainEvent === '1') {
+            const info = _releaseGroupInfo();
+            if (info) {
+                if (start) _rgPreviewLoad(info, refresh);
+                return _rgPreviewHtml(info, _releaseGroupVersionCount(), '<span class="mb-tt-pill">main event</span>') +
+                    foot('The release\'s own release group · Alt+click to open it');
+            }
+        }
+        const text = _eventSearchText(row);
+        const count = _mainEventCtx.allKeys.get(key) || 0;
+        const head = `<div style="display:flex;gap:8px;align-items:center;">${chip}<span class="mb-tt-title">${_rgEsc(text || key)}</span></div>` +
+            `<div class="mb-tt-body">${count} track${count === 1 ? '' : 's'} on this release${row.dataset.mbMainEvent === '0' ? ' · not the main event' : ''}</div><div class="mb-tt-rule"></div>`;
+        const wrap = body => `<div style="width:460px;max-width:100%;">${head}${body}</div>`;
+        if (!text) return wrap('<div class="mb-tt-body">No event name to search for: this track has a date but no event and no live comment.</div>');
+        if (start) _eventRgLookup(text, refresh);
+        const st = _eventRgSearches.get(text) || { status: 'loading', rg: null, hints: [], query: '', detail: '' };
+        if (st.status === 'done' && st.rg) {
+            return _rgPreviewHtml(st.rg, st.n, chip) + foot('Found by searching for this event · Alt+click to open it');
+        }
+        if (st.status === 'loading') return wrap('<div class="mb-tt-comment">Searching for a release group named like this event…</div>');
+        if (st.status === 'failed') {
+            return wrap(`<div class="mb-tt-alert">Could not search (${_rgEsc(st.detail)}).</div>${foot('Hover again to retry.')}`);
+        }
+        const mode = `${Lib.settings.sa_event_rg_search_phrase !== false ? 'phrase' : 'terms'} search` +
+            `${Lib.settings.sa_event_rg_search_artist !== false ? ', by the release\'s artist' : ''}`;
+        const hints = st.hints.length
+            ? `<div class="mb-tt-dim" style="margin-top:4px;">Closest titles the search returned:</div><div class="mb-tt-body">${st.hints.map(_rgEsc).join('<br>')}</div>`
+            : '';
+        return wrap(`<div class="mb-tt-body">No release group is named like this event.</div>${hints}` +
+            foot(`${mode} · Alt+click to run it on musicbrainz.org`));
+    }
+
+    /**
+     * Rewrites a "#" cell's card, and the shown tooltip when the pointer is
+     * on that cell.
+     *
+     * @param {HTMLTableCellElement} td
+     */
+    function _eventRgRepaint(td) {
+        if (!td.isConnected) return;
+        td.dataset.mbtt = _eventRgCardHtml(td);
+        const tip = document.getElementById('mb-stat-tooltip');
+        if (tip && tip.style.display === 'block' && td.matches(':hover')) tip.innerHTML = td.dataset.mbtt;
+    }
+
+    /**
+     * Where Alt+click on a "#" cell goes: the main event's or the found
+     * release group, else the search on musicbrainz.org; `null` before the
+     * search has answered.
+     *
+     * @param {HTMLTableCellElement} td
+     * @returns {?string}
+     */
+    function _eventRgTargetUrl(td) {
+        const row = td.parentElement;
+        if (row.dataset.mbMainEvent === '1') {
+            const info = _releaseGroupInfo();
+            if (info) return `/release-group/${info.gid}`;
+        }
+        const text = _eventSearchText(row);
+        const st = text ? _eventRgSearches.get(text) : null;
+        if (!st || st.status !== 'done') return null;
+        if (st.rg) return `/release-group/${st.rg.gid}`;
+        return `/search?query=${encodeURIComponent(st.query)}&type=release_group&method=advanced`;
+    }
+
+    /** The "#" cells the event card serves. */
+    const _EVENT_RG_CELL_SEL = 'table.tbl tr[data-mb-event-key] > td:first-child';
+    let _eventRgTooltipWired = false;
+
+    /**
+     * Wires the "#" event card once, delegated on `document`, so the clones
+     * every re-render makes need nothing: a `pointerover` (dispatched before
+     * the tooltip engine's `mouseover`) writes the cell's `data-mbtt` just
+     * in time and starts the lookup; an Alt+click opens the card's target.
+     *
+     * @returns {void}
+     */
+    function initEventRgTooltip() {
+        if (_eventRgTooltipWired) return;
+        _eventRgTooltipWired = true;
+        document.addEventListener('pointerover', e => {
+            if (Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
+            const td = e.target.closest(_EVENT_RG_CELL_SEL);
+            if (td) td.dataset.mbtt = _eventRgCardHtml(td, true);
+        }, true);
+        document.addEventListener('click', e => {
+            if (!e.altKey || Lib.settings.sa_event_rg_tooltip === false || !e.target.closest) return;
+            const td = e.target.closest(_EVENT_RG_CELL_SEL);
+            const url = td ? _eventRgTargetUrl(td) : null;
+            if (!url) return;
+            e.preventDefault();
+            e.stopPropagation();
+            window.open(url, '_blank', 'noopener');
+        }, true);
+    }
+
+    /**
+     * Where one table's rows say which event they come from, for
+     * `data-mb-event-key` (org/live-bootleg.org 3): the "Recorded at event",
+     * plain comment ("Disambiguation") and "Recording date" columns. Only a
+     * release tracklist is stamped — a medium is where "rows from several
+     * events" means something; on a recordings list every row is its own.
+     *
+     * @param {HTMLTableElement} table
+     * @param {ReturnType<typeof _findingPlanForTable>} plan
+     * @returns {?{event: number, date: number}} `null` when not stamped.
+     */
+    function _eventKeyColsForTable(table, plan) {
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return null;
+        const count = table.querySelectorAll('thead tr:first-child th').length;
+        let event = -1, date = -1;
+        for (let i = 0; i < count; i++) {
+            const name = plan.nameOf(i);
+            if (name === 'Recorded at event') event = i;
+            else if (name === 'Recording date') date = i;
+        }
+        return event >= 0 || date >= 0 || plan.recPlainIdx >= 0 ? { event, date } : null;
+    }
+
+    /**
+     * The event one row comes from, as a "DATE: Location" name: the first
+     * linked event, else the event its live comment names
+     * (`_rowRecCommentEvent()`), else the bare "Recording date". The first
+     * two share the event-name form, so a row whose data agrees lands on one
+     * key either way. `null` when the row says nothing.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{event: number, date: number}} cols
+     * @param {{recPlainIdx: number}} plan
+     * @returns {?string}
+     */
+    function _rowEventKey(row, cols, plan) {
+        const linked = cols.event >= 0 ? _findCellLinkedNames(row.cells[cols.event], 'event')[0] : null;
+        // A linked event named without a date ("68th Academy Awards") says
+        // less than the live comment, which carries one: prefer the comment.
+        if (linked && _eventKeyDate(linked)) return linked;
+        const ce = _rowRecCommentEvent(row, plan);
+        if (ce) return ce.event;
+        if (linked) return linked;
+        const d = cols.date >= 0 && row.cells[cols.date] ? row.cells[cols.date].textContent.trim() : '';
+        return d || null;
+    }
+
+    /**
+     * Writes (or clears) a row's `data-mb-event-key` from `_rowEventKey()`.
+     *
+     * @param {HTMLTableRowElement} row
+     * @param {{event: number, date: number}} cols
+     * @param {{recPlainIdx: number}} plan
+     */
+    function _stampRowEventKey(row, cols, plan) {
+        const key = _rowEventKey(row, cols, plan);
+        if (key) row.dataset.mbEventKey = key;
+        else delete row.dataset.mbEventKey;
     }
 
     /**
@@ -27193,34 +31700,72 @@
      * — except the 📊 cache: its `findingCounts` are read from these
      * attributes, so every table it touched is invalidated. And the menu tally,
      * which `_findingStampGen` invalidates.
+     *
+     * The same pass stamps each release-tracklist row's `data-mb-event-key`
+     * (`_stampRowEventKey()`), which the 🎪 badge and the 📊 "Events on this
+     * medium" section count — same once-per-fetch, source-row reasons.
      */
     function stampFindings() {
         _findingStampGen++;
         const master = _buildMasterRowIndex();
-        const done = new Set();
-        document.querySelectorAll('table.tbl').forEach(table => {
-            const tbody = table.tBodies[0];
-            if (!tbody) return;
-            const plan = _findingPlanForTable(table);
-            if (!plan.byCol.size && !plan.rowWide.length) return;
-            const owners = new Set();
-            Array.from(tbody.rows).forEach(row => {
-                _stampFindingRow(row, plan);
-                const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
-                if (!m) return;
-                if (m.row !== row) _stampFindingRow(m.row, plan);
-                done.add(m.row);
-                owners.add(m.owner);
-            });
-            owners.forEach(owner => owner.forEach(r => {
-                if (done.has(r)) return;
+        const tables = Array.from(document.querySelectorAll('table.tbl')).filter(t => t.tBodies[0]);
+        const plans = new Map(tables.map(t => [t, _findingPlanForTable(t)]));
+        // Pass 1: every row's event key, page-wide, because the main event
+        // (pass 2) is decided from all of them at once.
+        tables.forEach(table => {
+            const plan = plans.get(table);
+            const evCols = _eventKeyColsForTable(table, plan);
+            if (evCols) _forEachStampRow(table, master, r => _stampRowEventKey(r, evCols, plan));
+        });
+        _mainEventCtx = _computeMainEventCtx(tables, master);
+        // Pass 2: main-event flag, then findings (rg-title-mismatch reads it).
+        let stamped = 0;
+        tables.forEach(table => {
+            const plan = plans.get(table);
+            const mainEvent = _mainEventCtx.active && !!_eventKeyColsForTable(table, plan);
+            if (mainEvent && _mainEventCtx.multi) table.dataset.mbMultiEvent = '1';
+            else delete table.dataset.mbMultiEvent;
+            if (!plan.byCol.size && !plan.rowWide.length && !mainEvent && !table.querySelector('tr[data-mb-main-event]')) return;
+            stamped += _forEachStampRow(table, master, r => {
+                _stampMainEventRow(r, mainEvent);
                 _stampFindingRow(r, plan);
-                done.add(r);
-            }));
+            });
             _invalidateUniqDropDataCacheForTable(table);
         });
-        Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${done.size} source row(s) stamped.`);
+        Lib.debug('filter', `stampFindings(): pass ${_findingStampGen}, ${stamped} source row(s) stamped.`);
         if (typeof window.updateFilterButtonsVisibility === 'function') window.updateFilterButtonsVisibility();
+        initReleaseGroupLink();
+    }
+
+    /**
+     * Calls `fn` once for every row a stamp must reach in `table`: each live
+     * row, its master row, and the rows of the same source arrays the active
+     * filter left out of the live tbody (`renderGroupedTable()` renders
+     * clones, so a live-only stamp vanishes on the next re-render).
+     *
+     * @param {HTMLTableElement} table
+     * @param {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>} master
+     *   From `_buildMasterRowIndex()`.
+     * @param {function(HTMLTableRowElement): void} fn
+     * @returns {number} Source rows reached.
+     */
+    function _forEachStampRow(table, master, fn) {
+        const done = new Set();
+        const owners = new Set();
+        Array.from(table.tBodies[0].rows).forEach(row => {
+            fn(row);
+            const m = row.dataset.mbRowIdx !== undefined ? master.get(row.dataset.mbRowIdx) : null;
+            if (!m) return;
+            if (m.row !== row) fn(m.row);
+            done.add(m.row);
+            owners.add(m.owner);
+        });
+        owners.forEach(owner => owner.forEach(r => {
+            if (done.has(r)) return;
+            fn(r);
+            done.add(r);
+        }));
+        return done.size;
     }
 
     /**
@@ -27816,21 +32361,6 @@
         const yearInt = parseInt(year, 10);
         const yearFull = (yearInt < 40 ? 2000 : 1900) + yearInt;
         return { country, registrant, year, yearFull, designation };
-    }
-
-    /**
-     * Formats a compact ISRC as the hyphenated `CC-XXX-YY-NNNNN` display
-     * form — see `_parseIsrcCode()`'s own JSDoc for the parsing rules.
-     * Returns `null` for a code that doesn't match the required shape, so
-     * callers can tell "reformat" apart from "flag as invalid"
-     * (org/ISRC.org items 3/6).
-     *
-     * @param {string} rawCode
-     * @returns {?string}
-     */
-    function _formatIsrc(rawCode) {
-        const p = _parseIsrcCode(rawCode);
-        return p ? `${p.country}-${p.registrant}-${p.year}-${p.designation}` : null;
     }
 
     /**
@@ -29332,6 +33862,12 @@
             const live = _findCellLiveTitle(cell);
             return !!live && _liveTitleMatchesMode(live, mode);
         }
+        if (mode.startsWith('mediumevent:')) {
+            // "Event info - Events on this medium" — the row's event key,
+            // stamped by stampFindings(); an attribute, so clones carry it.
+            const tr = cell && cell.parentElement;
+            return !!tr && tr.dataset.mbEventKey === mode.slice(12);
+        }
         if (_isRecCommentMode(mode)) {
             // "Recording comment info - …" — one _parseRecordingComment()
             // verdict per comment, read as text on a plain comment column
@@ -30339,6 +34875,40 @@
         return map;
     }
 
+    /**
+     * The name the column-visibility menus saved a column under until they
+     * switched to `_cleanColHeaderText()`: the header's raw `textContent`
+     * minus a fixed glyph list.
+     * That kept the glyphs of any header button not on the list (the Barcode
+     * highlight toggle's "▌█" above all, so "▌█Barcode") and dropped every
+     * digit, including a real one in a column name.
+     *
+     * This exists only so a choice saved under the old key still applies;
+     * see `_colVisStateKey()`.
+     *
+     * @param {HTMLTableCellElement} th - Live header cell.
+     * @returns {string} The old key for this column.
+     */
+    function _colVisLegacyName(th) {
+        return th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
+    }
+
+    /**
+     * Finds a column's entry in a saved column-visibility state: under its
+     * clean name (`data-column-name`) first, else under the name an older
+     * version saved it under (`data-legacy-column-name`, see
+     * `_colVisLegacyName()`). The next save writes the clean name only, since
+     * both menus rebuild the state from their checkboxes.
+     *
+     * @param {Object<string, boolean>} state - Parsed saved state.
+     * @param {HTMLInputElement} cb - The column's checkbox.
+     * @returns {?string} The key present in `state`, or null.
+     */
+    function _colVisStateKey(state, cb) {
+        return [cb.dataset.columnName, cb.dataset.legacyColumnName]
+            .find(n => n && Object.prototype.hasOwnProperty.call(state, n)) || null;
+    }
+
     // Tracks, per pageType, which column names the user has EXPLICITLY
     // toggled at least once — a genuine trusted click on that column's own
     // checkbox, or a deliberate bulk action (Select All / Deselect All /
@@ -30655,8 +35225,9 @@
 
         // Create checkbox for each column
         headers.forEach((th, index) => {
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const colName = _cleanColHeaderText(th);
             if (!colName) return; // Skip empty headers
+            const legacyName = _colVisLegacyName(th);
 
             const wrapper = document.createElement('div');
             wrapper.style.cssText = 'margin: 5px 0; white-space: nowrap; display: flex; align-items: center;';
@@ -30668,6 +35239,7 @@
             checkbox.style.cssText = 'margin-right: 8px; cursor: pointer;';
             checkbox.dataset.columnIndex = index;
             checkbox.dataset.columnName  = colName; // store for persistence lookup
+            if (legacyName && legacyName !== colName) checkbox.dataset.legacyColumnName = legacyName;
 
             const label = document.createElement('label');
             label.htmlFor = checkbox.id;
@@ -30708,8 +35280,9 @@
         if (savedState) {
             checkboxes.forEach(cb => {
                 const colName = cb.dataset.columnName;
-                if (colName && Object.prototype.hasOwnProperty.call(savedState, colName)) {
-                    const shouldBeVisible = !!savedState[colName];
+                const stateKey = _colVisStateKey(savedState, cb);
+                if (colName && stateKey) {
+                    const shouldBeVisible = !!savedState[stateKey];
                     if (cb.checked !== shouldBeVisible) {
                         cb.checked = shouldBeVisible;
                         // Fire the change event so toggleColumn() hides/shows the DOM cells
@@ -31026,8 +35599,9 @@
 
         if (headerRow) {
             Array.from(headerRow.cells).forEach((th, index) => {
-                const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const colName = _cleanColHeaderText(th);
                 if (!colName) return;
+                const legacyName = _colVisLegacyName(th);
 
                 const wrapper = document.createElement('div');
                 wrapper.style.cssText = 'margin:5px 0; white-space:nowrap; display:flex; align-items:center;';
@@ -31039,6 +35613,7 @@
                 cb.style.cssText = 'margin-right:8px; cursor:pointer;';
                 cb.dataset.columnIndex = index;
                 cb.dataset.columnName  = colName;
+                if (legacyName && legacyName !== colName) cb.dataset.legacyColumnName = legacyName;
 
                 const lbl = document.createElement('label');
                 lbl.htmlFor   = cb.id;
@@ -31075,8 +35650,9 @@
         if (savedState) {
             subCheckboxes.forEach(cb => {
                 const colName = cb.dataset.columnName;
-                if (colName && Object.prototype.hasOwnProperty.call(savedState, colName)) {
-                    const shouldBeVisible = !!savedState[colName];
+                const stateKey = _colVisStateKey(savedState, cb);
+                if (colName && stateKey) {
+                    const shouldBeVisible = !!savedState[stateKey];
                     if (cb.checked !== shouldBeVisible) {
                         cb.checked = shouldBeVisible;
                         cb.dispatchEvent(new Event('change'));
@@ -31313,7 +35889,7 @@
         if (fallback) return fallback;
 
         // Last resort: raw textContent stripped of known glyph characters
-        return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+        return th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
     }
 
     /**
@@ -31441,7 +36017,7 @@
             '.mb-picard-col-hdr-btn'
         ).forEach(el => el.remove());
         let text = clone.textContent
-            .replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim().replace(/\s+/g, ' ');
+            .replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim().replace(/\s+/g, ' ');
         if (!text && th.dataset.colName) text = th.dataset.colName.trim();
         if (sortSuffix) text += sortSuffix;
         if (uniqCount) text = `${text} (${uniqCount})`;
@@ -33195,7 +37771,7 @@ ${sections.join('\n')}
      */
     function uiGlobalFilterInputCSS() {
         const defaults = '1em|2px 28px 2px 6px|2px solid #000|3px|500px|24px';
-        const [fontSize, padding, _border, borderRadius, _width, height] =
+        const [fontSize, padding, _unusedBorder, borderRadius, _unusedWidth, height] =
             parseCondensedStyle(Lib.settings.sa_ui_global_filter_input_style, defaults);
         const borderColor = Lib.settings.sa_global_filter_border_idle || '#000';
         const width       = (Lib.settings.sa_global_filter_initial_width ?? 500) + 'px';
@@ -33391,7 +37967,6 @@ ${sections.join('\n')}
         };
 
         // ── Navigation state ─────────────────────────────────────────────────────
-        let _histActiveList = 'lru';
         let _histPinVisible = [];
         let _histLruVisible = [];
         let _histPinSelIdx  = -1;
@@ -33505,7 +38080,6 @@ ${sections.join('\n')}
 
             container.querySelectorAll('.mb-fhw-hist-row').forEach(row => {
                 row.addEventListener('mouseenter', () => {
-                    _histActiveList = listId;
                     _selectRow(parseInt(row.dataset.idx), listId);
                 });
                 row.addEventListener('click', () => _applyEntry(parseInt(row.dataset.idx), listId));
@@ -33660,11 +38234,9 @@ ${sections.join('\n')}
             if (ev.key === 'ArrowDown') {
                 ev.preventDefault();
                 if (_histPinVisible.length > 0) {
-                    _histActiveList = 'pin';
                     _selectRow(0, 'pin');
                     pinList.focus();
                 } else if (_histLruVisible.length > 0) {
-                    _histActiveList = 'lru';
                     _selectRow(0, 'lru');
                     lruList.focus();
                 }
@@ -33698,10 +38270,8 @@ ${sections.join('\n')}
                     ev.preventDefault();
                     const next = selIdx + 1;
                     if (next < visible.length) {
-                        _histActiveList = listId;
                         _selectRow(next, listId);
                     } else if (listId === 'pin' && _histLruVisible.length > 0) {
-                        _histActiveList = 'lru';
                         _selectRow(0, 'lru');
                         lruList && lruList.focus();
                     }
@@ -33709,11 +38279,9 @@ ${sections.join('\n')}
                     ev.preventDefault();
                     const prev = selIdx - 1;
                     if (prev >= 0) {
-                        _histActiveList = listId;
                         _selectRow(prev, listId);
                     } else if (listId === 'lru' && _histPinVisible.length > 0) {
                         const lastPin = _histPinVisible.length - 1;
-                        _histActiveList = 'pin';
                         _selectRow(lastPin, 'pin');
                         pinList && pinList.focus();
                     } else {
@@ -35097,7 +39665,7 @@ ${sections.join('\n')}
         });
         if (!result) return; // toggled closed
 
-        const { dialog, scrollArea: contentArea, close: closeDialog, applyQF: _helpApplyQF } = result;
+        const { scrollArea: contentArea, applyQF: _helpApplyQF } = result;
         Object.assign(contentArea.style, {
             padding:    '20px 24px',
             fontSize:   Lib.libPrefs.lib_content_font_size,
@@ -36155,7 +40723,6 @@ ${sections.join('\n')}
         // this context so EAA pages show EAA everywhere instead of CAA.
         const _artCtx    = _getActiveArtCtx();
         const _artKey    = _artCtx.key.toUpperCase();          // 'CAA' or 'EAA'
-        const _artIsEaa  = _artCtx.key === 'eaa';
 
         const _cs  = (typeof _caaFetchStats !== 'undefined') ? _caaFetchStats : null;
         const _caaElapsedMs = (_cs && _cs.startTime !== null)
@@ -36182,13 +40749,10 @@ ${sections.join('\n')}
             : '— (not available in this browser)';
         const _memComment = _mem ? 'JS heap via performance.memory (Chromium)' : '';
 
-        let totalRows = 0, visibleRows = 0;
+        let totalRows = 0;
         tables.forEach(t => {
-            const rs = t.querySelectorAll('tbody tr');
-            totalRows   += rs.length;
-            visibleRows += Array.from(rs).filter(r => r.style.display !== 'none').length;
+            totalRows += t.querySelectorAll('tbody tr').length;
         });
-        const hiddenRows = totalRows - visibleRows;
 
         const firstTable = tables[0];
         const headerRow  = firstTable.querySelector('thead tr:first-child');
@@ -36341,7 +40905,7 @@ ${sections.join('\n')}
             const _columns = _tHdrRow ? Array.from(_tHdrRow.cells).map((th, ci) => {
                 const _thFlex  = th.querySelector('.mb-col-hdr-flex');
                 const _rawName = (_thFlex || th).textContent
-                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/g, '')
+                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤]/gu, '')
                     .replace(/\d+\s*$/, '').trim();
                 const _colName = _rawName || `Col ${ci + 1}`;
 
@@ -36666,7 +41230,7 @@ ${sections.join('\n')}
 
         // Original / extracted / derived column counts — from snapshot when available,
         // live DOM class scan otherwise.
-        const { _origCols, _extractedCols, _derivedCols, _injectedCols, _synthCols } = (() => {
+        const { _origCols, _extractedCols, _derivedCols, _injectedCols } = (() => {
             if (_statsSnapshot.captured) {
                 return {
                     _origCols:      _statsSnapshot.originalCols,
@@ -36972,10 +41536,11 @@ ${sections.join('\n')}
             // Tag placeholder <td> cells with their data-id so we can fill them in.
             _idbPlaceholderRows.forEach(row => {
                 if (!row._id) return;
-                const tds = _idbTbl.querySelectorAll('tbody tr td:nth-child(2)');
                 const tr = Array.from(_idbTbl.querySelectorAll('tbody tr')).find(
                     r => r.querySelector('td') && r.querySelector('td').textContent.includes(
-                        row.stat.replace(/[🖼️📋🔗]/g, '').trim().substring(0, 10)
+                        // U+FE0F leads the class: written after 🖼 it would read as
+                        // one "🖼️" member (eslint no-misleading-character-class).
+                        row.stat.replace(/[\ufe0f🖼📋🔗]/gu, '').trim().substring(0, 10)
                     )
                 );
                 if (tr) tr.dataset.idbPlaceholder = row._id;
@@ -37654,6 +42219,13 @@ ${sections.join('\n')}
 
         Lib.debug('stats', `Statistics panel displayed (${_tableData.length} table(s))`);
 
+        /**
+         * Saves the open statistics panel as a standalone HTML file: a clone of
+         * its body with every table card expanded and the quick filter removed,
+         * titled after the page heading.
+         *
+         * @returns {void}
+         */
         function _exportStatsToHTML() {
             const bodyClone = body.cloneNode(true);
             // Force-expand all table-detail cards (may be collapsed by toggle)
@@ -38129,7 +42701,7 @@ a { color: #1565c0; }`;
                     updateOptionFocus(selectedOptionIndex, true);
                     break;
 
-                case 'Enter':
+                case 'Enter': {
                     e.preventDefault();
                     const selectedOption = menuOptions[selectedOptionIndex];
                     applyTableDensity(selectedOption.dataset.densityKey);
@@ -38142,6 +42714,7 @@ a { color: #1565c0; }`;
                         opt.style.fontWeight = isSelected ? '600' : 'normal';
                     });
                     break;
+                }
             }
         };
         document.addEventListener('keydown', densityMenuKeyHandler);
@@ -38356,6 +42929,14 @@ a { color: #1565c0; }`;
         return _w + 8;
     }
 
+    /**
+     * Adds a drag handle (`.column-resizer`) to each of `table`'s header
+     * cells, so a column can be resized by dragging its right edge. A header
+     * that already has a handle is skipped.
+     *
+     * @param {HTMLTableElement} table
+     * @returns {void}
+     */
     function makeColumnsResizable(table) {
         const headers = table.querySelectorAll('thead tr:first-child th');
 
@@ -38555,6 +43136,13 @@ a { color: #1565c0; }`;
                 });
             }
 
+            /**
+             * Ends a column-resize drag: detaches the drag listeners, restores text
+             * selection and records the final width.
+             *
+             * @param {MouseEvent} e
+             * @returns {void}
+             */
             function onMouseUp(e) {
                 resizer.classList.remove('resizing');
                 resizer.style.background = 'transparent';
@@ -39866,7 +44454,6 @@ a { color: #1565c0; }`;
             <div id="mb-resize-progress">Preparing…</div>
         `;
         document.body.appendChild(_resizeOverlay);
-        const _resizeHeading  = _resizeOverlay.querySelector('#mb-resize-heading');
         const _resizeProgress = _resizeOverlay.querySelector('#mb-resize-progress');
 
         // Offscreen measurement container — shared across all source tables.
@@ -40240,8 +44827,6 @@ a { color: #1565c0; }`;
         if (!Lib.settings.sa_collabsable_sidebar) return; // Only available if true
 
         const sidebar = document.getElementById("sidebar");
-        const page = document.getElementById("page");
-        const content = document.getElementById("content");
 
         if (!sidebar) return;
 
@@ -40257,7 +44842,7 @@ a { color: #1565c0; }`;
         const sidebarWidth = '240px';
 
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
-        const style = GM_addStyle(`
+        GM_addStyle(`
             /* Sidebar with proper overflow handling */
             #sidebar {
                 transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease, margin-right 0.3s ease;
@@ -40557,9 +45142,10 @@ a { color: #1565c0; }`;
         // A definition with a `host` belongs to that site alone, and on a
         // non-MusicBrainz host only such definitions are considered — so the
         // broad MusicBrainz matchers (`includes('/label')`, `'/search'`, …)
-        // can never claim a springsteenlyrics.com path, and the SL ones can
-        // never match on MusicBrainz.
-        if (Boolean(def.host) !== _isSlHost) continue;
+        // can never claim a springsteenlyrics.com, jungleland.it or
+        // brucespringsteen.it path, and those sites' definitions can never
+        // match on MusicBrainz (or on each other's host).
+        if ((def.host || null) !== _foreignHost) continue;
         if (def.match(path, params)) {
             pageType = def.type;
             baseDefinition = def;   // Save the base reference
@@ -40569,6 +45155,15 @@ a { color: #1565c0; }`;
             Lib.debug('init', `Detected tableMode: ${activeDefinition ? activeDefinition.tableMode : 'unknown'}`);
             break; // Stop at first match (priority based on array order)
         }
+    }
+
+    // A navigation-only page (the springsteenlyrics.com bootleg landing page)
+    // has nothing for the script to do without the compact bar: stop here,
+    // before any toolbar or heading is added, and say so at info level rather
+    // than letting the required-elements check below log an error.
+    if (baseDefinition?.features?.slNavOnly && Lib.settings.sa_sl_compact_nav !== true) {
+        Lib.info('init', `${pageType}: navigation-only page and the compact bar (sa_sl_compact_nav) is off — nothing to do.`);
+        return;
     }
 
     // 2. Locate Header
@@ -40602,6 +45197,28 @@ a { color: #1565c0; }`;
     // definitions only, like the user-edits fallback above.
     if (baseDefinition?.host === 'springsteenlyrics.com') {
         headerContainer = _slPrepareLivePage();
+        // The compact category/filter bar (sa_sl_compact_nav), on the
+        // collection and bootleg lists and the bootleg landing page. This
+        // list's exact count (and, on a bootleg search result, the search) is
+        // recorded first, so the bar's own menus already show it.
+        // A navigation-only page has no table: the 📦 Data and 🛠 View menus
+        // (and the divider that separates them from fetch buttons it does not
+        // have) are hidden by this class; ⚙️ and ❓ stay.
+        if (baseDefinition.features?.slNavOnly) document.body.classList.add('mb-sa-sl-nav-only');
+        if (headerContainer && Lib.settings.sa_sl_compact_nav === true &&
+            (['collection', 'bootlegs'].includes(baseDefinition.features?.slCardsToTable) ||
+             baseDefinition.features?.slNavOnly)) {
+            _slRecordListCount();
+            _slRecordRecentSearch();
+            _slInstallScopeBar();
+        }
+    } else if (baseDefinition?.host === 'jungleland.it') {
+        // jungleland.it's list has no heading at all either — see
+        // _jlPrepareLivePage().
+        headerContainer = _jlPrepareLivePage();
+    } else if (baseDefinition?.host === 'brucespringsteen.it') {
+        // Nor has brucespringsteen.it's records.aspx — see _bsPrepareLivePage().
+        headerContainer = _bsPrepareLivePage();
     }
 
     if (pageType) Lib.prefix = `[VZ-${SCRIPT_BASE_NAME}: ${pageType}]`;
@@ -42065,6 +46682,97 @@ a { color: #1565c0; }`;
         runFilter();
     }
 
+    /** Per table: the source rows and stamp generation its event counts were read at. */
+    const _mediumEventMemo = new WeakMap();
+
+    /**
+     * Rows per event key (`data-mb-event-key`) over a table's SOURCE rows, so
+     * a filter that hides one event's rows cannot hide the event. Memoized on
+     * the row array, its length and `_findingStampGen` — the stamp writes into
+     * rows already captured, which only the generation can see.
+     *
+     * @param {HTMLTableElement} table
+     * @param {HTMLTableRowElement[]} rows
+     * @returns {Map<string, number>}
+     */
+    function _mediumEventCounts(table, rows) {
+        const memo = _mediumEventMemo.get(table);
+        if (memo && memo.rows === rows && memo.len === rows.length && memo.gen === _findingStampGen) return memo.counts;
+        const counts = new Map();
+        rows.forEach(r => {
+            const k = r.dataset.mbEventKey;
+            if (k) counts.set(k, (counts.get(k) || 0) + 1);
+        });
+        _mediumEventMemo.set(table, { rows, len: rows.length, gen: _findingStampGen, counts });
+        return counts;
+    }
+
+    /**
+     * The "🎪 N events" badge of each release-tracklist medium whose rows
+     * come from two or more events (org/live-bootleg.org 3). Counts only, no
+     * action: its tooltip lists each event and its rows; the 📊 "Events on
+     * this medium" section is where to filter. Sits right after the ⏳
+     * pending-edits button when there is one, else where that button would
+     * go. Rides `updateFilterButtonsVisibility()`, and costs a Map read per
+     * table there (`_mediumEventCounts()`).
+     *
+     * @returns {void}
+     */
+    function _updateMediumEventBadges() {
+        if (!activeDefinition || activeDefinition.type !== 'release-tracks') return;
+        _tableSourceRows().forEach(({ table, rows }) => {
+            const h3 = findH3ForTable(table);
+            if (!h3) return;
+            const counts = _mediumEventCounts(table, rows);
+            let badge = h3.querySelector('.mb-medium-events-badge');
+            if (counts.size < 2) { if (badge) badge.remove(); return; }
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'mb-medium-events-badge';
+                badge.style.cssText = `${uiFilterBarBtnCSS()} margin-left:6px; cursor:default; color:#2e6b2e; border-color:#9cc59c;`;
+            }
+            const pending = h3.querySelector('.mb-subtable-pending-edits-btn');
+            const anchor = pending || h3.querySelector('.mb-subtable-filter-container') ||
+                           h3.querySelector('.mb-subtable-filter-toggle-icon');
+            if (anchor && anchor.nextElementSibling !== badge) anchor.after(badge);
+            else if (!anchor && !badge.isConnected) h3.appendChild(badge);
+            badge.textContent = `🎪 ${counts.size} events`;
+            const lines = Array.from(counts.entries())
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .map(([k, n]) => `${n} row${n === 1 ? '' : 's'}: ${k}`);
+            _setTip(badge, `Rows from ${counts.size} events on this medium\n${lines.join('\n')}`);
+            // With a main event, the card is a legend: each event's tint and
+            // "E<n>" chip as the "#" cells show them.
+            if (_mainEventCtx.active) badge.dataset.mbtt = _mediumEventLegendHtml(counts);
+            else delete badge.dataset.mbtt;
+        });
+    }
+
+    /**
+     * The 🎪 badge's legend card: one line per event on the medium, by date,
+     * with the swatch and "E<n>" chip its "#" cells carry ("main event" for
+     * the one the release group names) and its number of tracks.
+     *
+     * @param {Map<string, number>} counts - From `_mediumEventCounts()`.
+     * @returns {string}
+     */
+    function _mediumEventLegendHtml(counts) {
+        const rows = Array.from(counts.entries())
+            .sort((a, b) => (_eventKeyDate(a[0]) || '').localeCompare(_eventKeyDate(b[0]) || '') || a[0].localeCompare(b[0]))
+            .map(([k, n]) => {
+                const idx = _mainEventCtx.eventIdx.get(k);
+                const swatch = `<span style="display:inline-block;width:18px;height:12px;flex-shrink:0;border:1px solid #c9bfae;background:${idx ? _eventTint(idx) : '#ffffff'};"></span>`;
+                const chip = idx
+                    ? `<span style="font-size:0.75em;font-weight:700;border:1px solid #8f8f8f;border-radius:2px;padding:0 2px;background:#ffffff;">E${idx}</span>`
+                    : '<span class="mb-tt-pill">main event</span>';
+                return `<div style="display:flex;gap:6px;align-items:center;margin-top:3px;">${swatch}${chip}` +
+                    `<span>${n} track${n === 1 ? '' : 's'} · ${_rgEsc(k)}</span></div>`;
+            }).join('');
+        return `<div style="max-width:480px;"><div class="mb-tt-title">Rows from ${counts.size} events on this medium</div>` +
+            `<div class="mb-tt-rule"></div>${rows}` +
+            `<div class="mb-tt-foot">Main event: the release group, ${_rgEsc(_mainEventCtx.rgTitle || '')}</div></div>`;
+    }
+
     /**
      * Creates (once) and repaints the global and per-sub-table ⏳ toggles.
      *
@@ -42649,6 +47357,7 @@ a { color: #1565c0; }`;
         // piggybacks on every existing call site of this function rather than
         // needing its own.
         _updatePendingEditsButtons();
+        _updateMediumEventBadges();
         _updateFindingMenus();
     }
 
@@ -42751,7 +47460,7 @@ a { color: #1565c0; }`;
     // GM_addStyle so this is exempt from page CSP style-src restrictions
     // (MusicBrainz's account/* pages serve a CSP with no 'unsafe-inline' for
     // style-src, which silently drops plain injected <style> tags).
-    const style = GM_addStyle(`
+    GM_addStyle(`
         .mb-sorting-active, .mb-sorting-active * { cursor: wait !important; }
         button.mb-show-all-btn-loading:disabled {
             cursor: default !important;
@@ -43209,6 +47918,14 @@ a { color: #1565c0; }`;
         .mb-tt-liner .mb-tt-rule { height: 0; border-top: 1px solid #d9cfbd; margin: 5px 0; }
         .mb-tt-liner .mb-tt-pill { display: inline-block; background: #efe6d4; color: #4a3f33; border: 1px solid #d9cfbd; border-radius: 3px; padding: 0 5px; font-size: 0.88em; font-weight: 700; line-height: 1.45; white-space: nowrap; }
         .mb-tt-liner .mb-tt-alert { color: #9b2218; font-weight: 700; }
+        /* Annotation prose in the artwork card (_artTooltipAnnotation): the
+           cell markup, kept compact. Height is capped per hover by
+           _fitArtTooltipToViewport, which also reveals the "more" foot. */
+        .mb-tt-liner .mb-tt-annotation { overflow: hidden; }
+        .mb-tt-liner .mb-tt-annotation p { margin: 0 0 4px; }
+        .mb-tt-liner .mb-tt-annotation :is(h2, h3, h4) { font-size: 1em; margin: 4px 0 2px; }
+        .mb-tt-liner .mb-tt-annotation :is(ul, ol) { margin: 0 0 4px; padding-left: 1.2em; }
+        .mb-tt-liner .mb-tt-annotation-more { display: none; }
         .mb-tt-liner kbd { display: inline-block; margin: 0 1px; padding: 0 5px; background: #ffffff; color: #2b2622; border: 1px solid #cbbfa9; border-radius: 3px; box-shadow: 0 1px 0 #cbbfa9; font: 600 0.82em/1.35 ui-monospace, Consolas, "Courier New", monospace; }
         #mb-stat-tooltip {
             position: fixed;
@@ -43440,6 +48157,30 @@ a { color: #1565c0; }`;
            and the sticky Title cell's inline background. The cells that carry
            a warning flag keep their own tint — a flag is the more urgent
            message, and the rest of the row still shows the target. */
+        /* A release-tracklist track NOT from the main event — the one the
+           release group's live title names (stampFindings(), org/live-bootleg.org
+           4), on a release whose tracks come from two or more dates
+           (data-mb-multi-event): its "#" cell gets its event's own tint
+           (_EVENT_TINTS, by data-mb-event-tint) and an "E<n>" chip, so the
+           events can be told apart, by colour and without it. The chip is a
+           ::before: no cell text, so no filter or sort sees it. Placed before
+           the track-target rule, which out-ranks it on specificity, so a
+           targeted row keeps the target colour. !important for the zebra
+           rule. */
+        ${_EVENT_TINTS.map((c, i) => `table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child[data-mb-event-tint="${i + 1}"] { background-color: ${c} !important; }`).join('\n        ')}
+        table.tbl[data-mb-multi-event] tr[data-mb-main-event="0"] > td:first-child[data-mb-event-idx]::before {
+            content: "E" attr(data-mb-event-idx);
+            float: left;
+            margin-right: 4px;
+            padding: 0 2px;
+            border: 1px solid #8f8f8f;
+            border-radius: 2px;
+            background: #ffffff;
+            color: #3d3d3d;
+            font-size: 9.5px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
         tr[data-mb-track-target] > td:not([data-mb-len-flag]):not([data-mb-video-flag="mismatch"]):not([data-mb-work-flag]):not([data-mb-live-flag]):not([data-mb-finding]) {
             background-color: #f2f2b2 !important;
         }
@@ -45172,6 +49913,8 @@ a { color: #1565c0; }`;
     // row-count stat — which still independently gates its OWN data-mbtt via
     // sa_enable_count_stat_tooltip at the point it's set, further below.
     _initStatTooltip(); // create the custom #mb-stat-tooltip hover system once
+    initReleaseGroupLink(); // org/live-bootleg.org 4a: no request, the name is in the page
+    initEventRgTooltip(); // the "#" cell's event card: delegated, requests only on hover
 
     if (headerContainer.tagName === 'A') {
         // Resolve the owning <h1> and append at the END so that any pre-existing
@@ -45285,7 +50028,6 @@ a { color: #1565c0; }`;
         // ── Detect EXTRA sibling text after </i> inside the <bdi> ────────────
         // Walk the text nodes that follow <i> within its parent <bdi> (or the
         // commentSpan itself when there is no wrapping <bdi>).
-        const bdiEl = iEl.closest('bdi') || commentSpan;
         let extraText = '';
         let node = iEl.nextSibling;
         while (node) {
@@ -47651,8 +52393,6 @@ a { color: #1565c0; }`;
 
             histQuickFilter.addEventListener('keydown', (ev) => {
                 if (!_histIsOpen()) return;
-                const allVisible  = [..._histPinVisible, ..._histLruVisible];
-                const totalVisible = allVisible.length;
 
                 if (ev.key === 'ArrowDown') {
                     ev.preventDefault();
@@ -48002,7 +52742,7 @@ a { color: #1565c0; }`;
         // userscript's widget, and some removals (any <details> with more
         // than 5 images, any 700px-wide div) would hit unrelated content on
         // another site.
-        if (_isSlHost) return;
+        if (_isSlHost || _isJlHost || _isBsHost) return;
         Lib.debug('cleanup', 'Starting clutter element removal.');
 
         // Remove Jesus2099 bigbox elements
@@ -48364,14 +53104,30 @@ a { color: #1565c0; }`;
      * `cloneNode(true)`, and the engine is delegated, so clones need no
      * re-wiring.
      *
+     * While the engine has the element's title stashed (`data-mb-tip-saved`,
+     * i.e. its card is up), the text goes into the stash instead, and into
+     * the visible card if the element is the one hovered. Writing `title`
+     * there exposed it to the browser: a control that re-tips itself on a
+     * timer (the ⚠⟳ retry counts) drew a native box over its own card once
+     * the pointer had rested for a second, because only a mousemove
+     * re-stashes (org/live-bootleg.org 1).
+     *
      * @param {Element} el    - The element the tooltip belongs to.
      * @param {string}  text  - Plain tooltip text; `\n` starts a new line.
      * @returns {string} `text`, so a converted assignment used as a value
      *   keeps its value.
      */
     function _setTip(el, text) {
-        el.title = text;
         el.setAttribute('data-mb-tip', '');
+        if (el.dataset.mbTipSaved === undefined || el.title) {
+            el.title = text;
+            return text;
+        }
+        if (el.dataset.mbTipSaved === text) return text;
+        el.dataset.mbTipSaved = text;
+        if (el.dataset.mbTipAria !== undefined) el.setAttribute('aria-description', text);
+        const card = el.matches(':hover') ? document.getElementById('mb-stat-tooltip') : null;
+        if (card && card.style.display === 'block') card.innerHTML = _tipTextToHtml(text);
         return text;
     }
 
@@ -48396,7 +53152,7 @@ a { color: #1565c0; }`;
         const keycaps = (s) => s
             .replace(comboRe, (m, pre, combo) =>
                 pre + combo.split(/\+(?=.)/).map(kbd).join('+'))
-            .replace(/\bthen ([A-Za-z0-9,.\/?;\-=])(?![A-Za-z0-9])/g, (m, k) => `then ${kbd(k)}`)
+            .replace(/\bthen ([A-Za-z0-9,./?;\-=])(?![A-Za-z0-9])/g, (m, k) => `then ${kbd(k)}`)
             .replace(/(^|[\s(])(Escape)\b(?![^<]*<\/kbd>)/g, (m, pre, k) => pre + kbd(k));
 
         const blocks = String(text).split('\n').map(s => s.trim()).filter(Boolean);
@@ -48621,8 +53377,26 @@ a { color: #1565c0; }`;
      * Returns an HTML string stored in `data-mbtt`; never used as `title`.
      */
     function _buildH2CountTooltip(filteredCount, totalCount, absoluteTotal) {
+        /**
+         * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _nR(n) { return n === 1 ? `There is ${_mbttCount(n)} row` : `There are ${_mbttCount(n)} rows`; }
+        /**
+         * "row" or "rows" for `n`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _r(n)  { return n === 1 ? 'row' : 'rows'; }
+        /**
+         * `n` formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _cN(n) { return _mbttCount(n); }
 
         const _gfEl  = document.getElementById('mb-global-filter-input');
@@ -49100,7 +53874,7 @@ a { color: #1565c0; }`;
             });
 
             let node;
-            while (node = walker.nextNode()) {
+            while ((node = walker.nextNode())) {
                 if (node.nodeType === Node.TEXT_NODE) {
                     const trimmed = node.nodeValue.trim();
                     if (trimmed && !isDecorativeIcon(trimmed)) {
@@ -49336,7 +54110,7 @@ a { color: #1565c0; }`;
         });
 
         let node;
-        while (node = walker.nextNode()) {
+        while ((node = walker.nextNode())) {
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.nodeValue;
                 // Skip text nodes that are just decorative icons or pure whitespace
@@ -50623,6 +55397,16 @@ a { color: #1565c0; }`;
     const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
 
     /**
+     * GM storage key for the release page Cover art section's layout
+     * (`_releaseArtInsertSection()`): the string `'grid'` or `'grouped'`
+     * ("By type"). A missing or unknown value means `'grid'`. Runtime UI
+     * state, not an `sa_` setting, so it is written directly and carried by
+     * the config export through `_CFG_WORKSPACE_GROUPS`. Declared here, above
+     * that registry, because a `const` read before its line is a TDZ error.
+     */
+    const MB_RELEASE_ART_LAYOUT_KEY = 'mb_sa_release_art_layout';
+
+    /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
      * under its `__v` property. Version 2 (grouped sections) gave a stored
      * `false` a meaning: "expanded on purpose, beats auto-collapse". Before
@@ -50738,7 +55522,7 @@ a { color: #1565c0; }`;
      * @returns {Object<string, Object<string, {w: number, h: number}>>}
      */
     function _uvdGeoReadAll() {
-        let all = null;
+        let all;
         try { all = GM_getValue(MB_UNIQ_DROP_GEOMETRY_KEY, null); } catch (_) { all = null; }
         return (all && typeof all === 'object' && !Array.isArray(all)) ? all : {};
     }
@@ -51097,6 +55881,7 @@ a { color: #1565c0; }`;
         liveValidity:    { label: 'Live title info - Validity',              glyph: '🎤' },
         liveNearMiss:    { label: 'Live title info - Near miss',             glyph: '❗' },
         liveDate:        { label: 'Live title info - Date completeness',     glyph: '📅' },
+        liveMulti:       { label: 'Live title info - Multiple dates',        glyph: '🗓️' },
         liveExtra:       { label: 'Live title info - Additional date info',  glyph: '🕗' },
         liveLoc:         { label: 'Live title info - Location completeness', glyph: '📍' },
         liveSepUnicode:  { label: 'Live title info - Separator ‐ only',      glyph: '‐' },
@@ -51116,6 +55901,7 @@ a { color: #1565c0; }`;
         evLiveValidity:    { label: 'Event name info - Live form validity',       glyph: '🎤' },
         evLiveNearMiss:    { label: 'Event name info - Live form near miss',      glyph: '❗' },
         evLiveDate:        { label: 'Event name info - Date completeness',        glyph: '📅' },
+        evLiveMulti:       { label: 'Event name info - Multiple dates',           glyph: '🗓️' },
         evLiveExtra:       { label: 'Event name info - Additional date info',     glyph: '🕗' },
         evLiveLoc:         { label: 'Event name info - Location completeness',    glyph: '📍' },
         evLiveSepUnicode:  { label: 'Event name info - Separator ‐ only',         glyph: '‐' },
@@ -51132,6 +55918,7 @@ a { color: #1565c0; }`;
         rcNearMiss:        { label: 'Recording comment info - Near miss',             glyph: '❗' },
         rcLiveValidity:    { label: 'Recording comment info - Validity',              glyph: '✅' },
         rcLiveDate:        { label: 'Recording comment info - Date completeness',     glyph: '📅' },
+        rcLiveMulti:       { label: 'Recording comment info - Multiple dates',        glyph: '🗓️' },
         rcMultiDay:        { label: 'Recording comment info - Uncertain day',         glyph: '❔' },
         rcLiveExtra:       { label: 'Recording comment info - Additional date info',  glyph: '🕗' },
         rcLiveLoc:         { label: 'Recording comment info - Location completeness', glyph: '📍' },
@@ -51139,6 +55926,11 @@ a { color: #1565c0; }`;
         rcLiveSepUnicode:  { label: 'Recording comment info - Separator ‐ only',      glyph: '‐' },
         rcLiveSepAscii:    { label: 'Recording comment info - Separator - only',      glyph: '⚠️' },
         rcLiveSepMixed:    { label: 'Recording comment info - Separator mixed',       glyph: '⚠️' },
+        // "Event info - Events on this medium" — release tracklists only: the
+        // event each row comes from (`data-mb-event-key`, stamped by
+        // `stampFindings()`), on the plain comment column, shown only when a
+        // medium mixes two or more events (org/live-bootleg.org 3).
+        mediumEvents:      { label: 'Event info - Events on this medium',             glyph: '🎪' },
         // "Findings - Warning"/"- Error" — one entry per FINDINGS entry present
         // in the open column (mode `finding-<id>`, read off the
         // data-mb-findings attribute stampFindings() writes). The entries the
@@ -51382,14 +56174,17 @@ a { color: #1565c0; }`;
         'title-truncated': 'titleStyle', 'title-ocremix': 'titleStyle', 'title-allcaps': 'titleStyle',
         'live-valid': 'liveValidity', 'live-invalid': 'liveValidity', 'live-nearmiss': 'liveNearMiss',
         'live-complete': 'liveDate', 'live-partial': 'liveDate', 'live-extra': 'liveExtra',
+        'live-multi-days': 'liveMulti', 'live-multi-dates': 'liveMulti',
         'evform-live': 'evForm', 'evform-oneoff': 'evForm', 'evform-festival': 'evForm',
         'evform-tour': 'evForm', 'evform-other': 'evForm', 'evform-nearmiss': 'evStyleNearMiss',
         'evlive-valid': 'evLiveValidity', 'evlive-invalid': 'evLiveValidity', 'evlive-nearmiss': 'evLiveNearMiss',
         'evlive-complete': 'evLiveDate', 'evlive-partial': 'evLiveDate', 'evlive-extra': 'evLiveExtra',
+        'evlive-multi-days': 'evLiveMulti', 'evlive-multi-dates': 'evLiveMulti',
         'rcform-typeonly': 'rcForm', 'rcform-date': 'rcForm', 'rcform-datelocation': 'rcForm',
         'rcform-location': 'rcForm', 'rcform-other': 'rcForm', 'rcform-nearmiss': 'rcNearMiss',
         'rclive-valid': 'rcLiveValidity', 'rclive-invalid': 'rcLiveValidity',
         'rclive-complete': 'rcLiveDate', 'rclive-partial': 'rcLiveDate', 'rclive-extra': 'rcLiveExtra',
+        'rclive-multi-days': 'rcLiveMulti', 'rclive-multi-dates': 'rcLiveMulti',
         'rc-multiday': 'rcMultiDay', 'rc-info-has': 'rcInfo', 'rc-info-none': 'rcInfo',
         'evcountry-abbr': 'eventPartsCountryForm', 'evcountry-full': 'eventPartsCountryForm',
         'evdetail-has': 'eventPartsDetail', 'evdetail-none': 'eventPartsDetail',
@@ -51483,7 +56278,7 @@ a { color: #1565c0; }`;
         evliveshape: 'evLiveDate', evliveextra: 'evLiveExtra', evliveloc: 'evLiveLoc',
         evstylemiss: 'evStyleNearMiss', evedition: 'evFestEdition',
         rcliveshape: 'rcLiveDate', rcliveextra: 'rcLiveExtra', rcliveloc: 'rcLiveLoc',
-        rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo',
+        rctype: 'rcType', rcmiss: 'rcNearMiss', rcinfo: 'rcInfo', mediumevent: 'mediumEvents',
         eventdetail: 'eventPartsDetail', eventaddinfo: 'eventPartsAddInfo',
     };
 
@@ -52226,7 +57021,7 @@ a { color: #1565c0; }`;
             const colIdx  = parseInt(inp.dataset.colIdx, 10);
             const headers = table.querySelectorAll('thead tr:first-child th');
             const colName = headers[colIdx]
-                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰-⁹📊▶◀▤0-9]/g, '').trim()
+                ? headers[colIdx].textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                 : `Col ${colIdx}`;
 
             // ── Value-set filter (set by applyUniqValueSet via uniq-drop checkboxes) ──
@@ -53411,7 +58206,6 @@ a { color: #1565c0; }`;
         const isDecade  = mode.startsWith('datedecade:');
         const isMonth   = mode.startsWith('datemonth:');
         const isYear    = mode.startsWith('dateyear:');
-        const isWeekday = mode.startsWith('dateweekday:');
         const want = mode.slice(mode.indexOf(':') + 1);
         if (!want) return;
         const parts = _findCellDateExpressionParts(cell);
@@ -54385,7 +59179,7 @@ a { color: #1565c0; }`;
         // --- Global filter ---
         let globalHit = !globalQuery;
         if (!globalHit) {
-            let matchFound = false;
+            let matchFound;
             if (isRegExp && globalRegex) {
                 // Test each cell individually so anchored patterns like ^Thunder Road work correctly
                 matchFound = Array.from(row.cells).some((cell, i) =>
@@ -54530,7 +59324,7 @@ a { color: #1565c0; }`;
             const _fIsExclude = f.isExclude       !== undefined ? f.isExclude       : isExclude;
 
             const cellText = matchOnly ? _cachedColText(row, f.idx) : getCleanColumnText(row.cells[f.idx]);
-            let match = false;
+            let match;
 
             if (_fIsRegExp) {
                 // Regexp mode — always run the full test; a plain includes pre-check
@@ -56328,7 +61122,7 @@ a { color: #1565c0; }`;
         // are skipped — they produce no cells and need no header.
         activeColumnExtractors.forEach(entry => {
             if (entry.colIdx === -1) return; // column absent from this page
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             entry.syntheticColumns.forEach(colName => {
                 if (!headersText.includes(colName)) {
                     const th = document.createElement('th');
@@ -56372,7 +61166,7 @@ a { color: #1565c0; }`;
             _resolvedPrimaryCols.add('Primary alias');
         }
         activeSyntheticColumnExtractors.forEach(entry => {
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             // Skip if the source column was neither produced by a resolved primary
             // extractor NOR is already a real header on this table — the latter
             // covers page types like release-tracks, whose bespoke pre-processing
@@ -56401,7 +61195,7 @@ a { color: #1565c0; }`;
         // On pages where the configuration is enabled, create the "MB-Name", "Comment",
         // and "Primary alias" columns
         if (isMainColEnabled) {
-            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+            const headersText = Array.from(theadRow.cells).map(th => th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             if (!headersText.includes('MB-Name')) {
                 const thN = document.createElement('th');
                 thN.textContent = 'MB-Name';
@@ -56528,11 +61322,29 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Returns the name of the query parameter that selects a result page on
+     * the current pageType: `features.pageParam` of the active definition,
+     * else MusicBrainz's `page`. Only springsteenlyrics.com's collection
+     * entry page sets it (`pg` — that page ignores `page=N`). Read by
+     * `determineMaxPageFromDOM()` and by the single-table fetch loop, the two
+     * places a non-MusicBrainz page can reach; the MusicBrainz-only paths
+     * (`fetchMaxPageGeneric()`, the artist-releasegroups pre-fetch pass) keep
+     * `page`.
+     *
+     * @returns {string}
+     */
+    function _pageParamName() {
+        return activeDefinition?.features?.pageParam || 'page';
+    }
+
+    /**
      * Determines the maximum page number by parsing the pagination UI on the current page
+     * (the page number is read from the `_pageParamName()` query parameter of each link).
      * @returns {number} The maximum page number found, defaults to 1 if no pagination is present
      */
     function determineMaxPageFromDOM() {
         let maxPage = 1;
+        const pageParam = _pageParamName();
 
         Lib.debug('fetch', 'Context: Standard pagination. Parsing "ul.pagination" from current page.');
         const pagination = document.querySelector('ul.pagination');
@@ -56541,7 +61353,7 @@ a { color: #1565c0; }`;
             const nextIdx = links.findIndex(a => a.textContent.trim() === 'Next');
             if (nextIdx > 0) {
                 const urlObj = new URL(links[nextIdx - 1].href, window.location.origin);
-                const p = urlObj.searchParams.get('page');
+                const p = urlObj.searchParams.get(pageParam);
                 if (p) {
                     maxPage = parseInt(p, 10);
                     Lib.debug('fetch', `determineMaxPageFromDOM: Found "Next" link. Extracted page: ${maxPage}`);
@@ -56549,7 +61361,7 @@ a { color: #1565c0; }`;
             } else if (links.length > 0) {
                 const pageNumbers = links
                       .map(a => {
-                          const p = new URL(a.href, window.location.origin).searchParams.get('page');
+                          const p = new URL(a.href, window.location.origin).searchParams.get(pageParam);
                           return p ? parseInt(p, 10) : 1;
                       })
                       .filter(num => !isNaN(num));
@@ -57570,6 +62382,23 @@ a { color: #1565c0; }`;
             applySlCardsToTable(activeDefinition);
         }
 
+        // ── jlListToTable pre-processing ─────────────────────────────────────
+        // The jungleland.it list ('jl-list'): its plain links become a
+        // <table class="tbl"> — see applyJlListToTable's JSDoc.
+        if (activeDefinition.features?.jlListToTable) {
+            applyJlListToTable(activeDefinition);
+        }
+
+        // ── bsRecordsToTable pre-processing ──────────────────────────────────
+        // brucespringsteen.it ('bs-records'): tick every format in the site's
+        // form for the pressed kind, and give the live page an empty table to
+        // render into — the rows come from the fetched page, see
+        // applyBsRecordsToTable's JSDoc.
+        if (activeDefinition.features?.bsRecordsToTable) {
+            _bsCheckAllFormats(activeDefinition.features.bsRecordsToTable);
+            applyBsRecordsToTable(activeDefinition);
+        }
+
         // Clear existing highlights immediately from DOM for visual feedback
         document.querySelectorAll('.mb-global-filter-highlight, .mb-column-filter-highlight').forEach(n => {
             n.replaceWith(document.createTextNode(n.textContent));
@@ -57609,7 +62438,7 @@ a { color: #1565c0; }`;
         // Removed isLoaded block to allow re-fetching
         Lib.debug('fetch', 'Starting fetch process...', overrideParams);
         globalStatusDisplay.textContent = 'Getting number of pages to fetch...';
-        let maxPage = 1;
+        let maxPage;
 
         // ── Compute effective fetch path (accounts for virtualPath) ──────────
         // When a button carries virtualPath (e.g. '/label'), replace the last
@@ -57778,11 +62607,13 @@ a { color: #1565c0; }`;
         // stage timings without needing to know this closure's internal
         // variable names.
         performance.mark('sa-fetch-phase-start');
-        let totalFetchingTime = 0;
-        let totalRenderingTime = 0;
+        let totalFetchingTime;
+        let totalRenderingTime;
 
         const currentUrlParams = new URLSearchParams(window.location.search);
-        const currentPageNum = parseInt(currentUrlParams.get('page') || '1', 10);
+        // Same parameter the loop below sets: on a `pageParam` page, reading
+        // `page` would call `?pg=3` "page 1" and reuse its live cards as page 1.
+        const currentPageNum = parseInt(currentUrlParams.get(_pageParamName()) || '1', 10);
 
         // A resume continues the interrupted run's running totals rather than
         // restarting them, or the status line would say "Loaded 3 pages" over a
@@ -57815,7 +62646,7 @@ a { color: #1565c0; }`;
 
                 // Initialize fetchUrl from the full current URL to preserve Search parameters (query, type, etc.)
                 const fetchUrl = new URL(window.location.href);
-                fetchUrl.searchParams.set('page', p.toString());
+                fetchUrl.searchParams.set(_pageParamName(), p.toString());
 
                 // ── virtualPath support ───────────────────────────────────────
                 // When the clicked button carries a virtualPath value (e.g.
@@ -57982,6 +62813,16 @@ a { color: #1565c0; }`;
                 // springsteenlyrics.com page is raw cards, never converted.
                 if (doc !== document && activeDefinition.features?.slCardsToTable) {
                     applySlCardsToTable(activeDefinition, doc);
+                }
+                // Same for jungleland.it — not reached today (its list is one
+                // page, so the live document is reused), kept so a second
+                // page could never arrive unconverted.
+                if (doc !== document && activeDefinition.features?.jlListToTable) {
+                    applyJlListToTable(activeDefinition, doc);
+                }
+                // brucespringsteen.it: THE path — both buttons fetch page 1.
+                if (doc !== document && activeDefinition.features?.bsRecordsToTable) {
+                    applyBsRecordsToTable(activeDefinition, doc);
                 }
 
                 // Use parseDocumentForTables to filter which tables we actually process
@@ -58715,7 +63556,7 @@ a { color: #1565c0; }`;
                             const _ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
                             _ths.forEach((th, idx) => {
                                 const _txt = (th.dataset.colName || th.textContent)
-                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                     .replace(/\s+/g, ' ');
                                 activeColumnExtractors.forEach(entry => {
                                     if (_txt === entry.sourceColumn) entry.colIdx = idx;
@@ -58730,7 +63571,7 @@ a { color: #1565c0; }`;
                             activeColumnErasers.forEach(e => { e.colIdx = -1; });
                             _ths.forEach((th, idx) => {
                                 const _txt = (th.dataset.colName || th.textContent)
-                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                    .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                     .replace(/\s+/g, ' ');
                                 activeColumnErasers.forEach(entry => {
                                     if (_txt === entry.sourceColumn) entry.colIdx = idx;
@@ -58743,7 +63584,7 @@ a { color: #1565c0; }`;
                                 const _perTableColNames = [];
                                 _ths.forEach((th) => {
                                     const _n = (th.dataset.colName || th.textContent)
-                                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim()
+                                        .replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim()
                                         .replace(/\s+/g, ' ');
                                     _perTableColNames.push(_n);
                                 });
@@ -59842,8 +64683,14 @@ a { color: #1565c0; }`;
             // Install navigation guard (idempotent — safe to call on every render)
             initNavigationGuard();
 
+            // release-tracks: the "Cover art (N)" section goes in BEFORE
+            // makeH2sCollapsible() so it becomes an ordinary collapsible h2, and
+            // is opened right after (it starts uncollapsed, unlike other h2s).
+            const _releaseArtH2 = _releaseArtInsertSection();
+
             // Make all H2s collapsible after rendering
             makeH2sCollapsible();
+            if (_releaseArtH2 && _releaseArtH2._mbToggle) _releaseArtH2._mbToggle(true);
 
             // Apply sticky headers for better scrolling experience
             if (Lib.settings.sa_enable_sticky_headers) {
@@ -59937,10 +64784,22 @@ a { color: #1565c0; }`;
             // typing a filter query immediately without a manual click.
             // Not on a phone/tablet: the focus would raise the on-screen
             // keyboard over the freshly rendered page (_autoFocusInput()).
+            // Not over a field someone is already typing in either: by the
+            // time this fires (later on a busy page), the user may have opened
+            // a 📊 quick filter or clicked into a column filter or MusicBrainz's
+            // search box, and taking focus would send the rest of their typing
+            // to the global filter. Focus on the action button they just
+            // pressed (or on nothing) is still taken, which is the point.
             setTimeout(() => {
                 if (_isTouchPrimaryDevice()) return;
                 const _gfi = document.getElementById('mb-global-filter-input') ||
                              document.querySelector('.mb-global-filter input');
+                const _ae = document.activeElement;
+                if (_gfi && _ae && _ae !== _gfi && _ae.matches &&
+                        _ae.matches('input, textarea, select, [contenteditable=""], [contenteditable="true"]')) {
+                    Lib.debug('ui', 'Skipped auto-focusing the global filter: another field already has focus', _ae);
+                    return;
+                }
                 if (_gfi) {
                     // This is a PROGRAMMATIC focus — the readonly-until-genuine-
                     // interaction guard in _hardenFilterInputAgainstAutofill()
@@ -60753,7 +65612,7 @@ a { color: #1565c0; }`;
         const _stripForeignHeaderTh = (el) => {
             if (el.tagName !== 'TH' || !el.closest('table.tbl thead')) return;
             if (OWN_HEADER_MARKER_CLASSES.some(c => el.classList.contains(c))) return;
-            const txt = el.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const txt = el.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             if (/^(Relationships|Performance Attributes|Release events|Tagger)\b/.test(txt)) {
                 el.remove();
                 Lib.debug('cleanup', `_watchForLateJesus2099Injections: removed a late foreign header <th> ("${txt}").`);
@@ -60984,6 +65843,13 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * How many linear master-row scans have run since the page loaded.
+     * Read by `__saTest.masterRowScans()`; see its JSDoc for why the effect of
+     * sharing one index cannot be asserted from the DOM.
+     */
+    let _masterRowScanCount = 0;
+
+    /**
      * Builds a one-shot `data-mb-row-idx` → master-row index over every captured
      * source row, together with the ARRAY that owns each row.
      *
@@ -61006,13 +65872,6 @@ a { color: #1565c0; }`;
      *
      * @returns {Map<string, {row: HTMLTableRowElement, owner: HTMLTableRowElement[]}>}
      */
-    /**
-     * How many linear master-row scans have run since the page loaded.
-     * Read by `__saTest.masterRowScans()`; see its JSDoc for why the effect of
-     * sharing one index cannot be asserted from the DOM.
-     */
-    let _masterRowScanCount = 0;
-
     function _buildMasterRowIndex() {
         const idx = new Map();
         if (typeof groupedRows !== 'undefined') {
@@ -61048,7 +65907,7 @@ a { color: #1565c0; }`;
     function _flagRegionColumnTrios(table) {
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const names = headers.map(th => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' '));
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' '));
         const trios = [];
         for (let i = 0; i < names.length - 2; i++) {
             if (names[i].endsWith('ocality') && names[i + 1].endsWith('egion') && names[i + 2].endsWith('ountry')) {
@@ -61282,6 +66141,17 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Corrects one row's Locality/Region split once a flag userscript has
+     * decorated its Locality anchor: a subdivision the flag identifies as a
+     * region moves from Locality to Region. Each (row, trio) is corrected at
+     * most once (`_areaFlagRegionCorrected`).
+     *
+     * @param {HTMLTableRowElement} tr - A live row carrying `data-mb-row-idx`.
+     * @param {Array<{localityIdx: number, regionIdx: number, countryIdx: number}>} trios
+     *   Column trios from `_flagRegionColumnTrios()`.
+     * @returns {void}
+     */
     function _maybeCorrectAreaFlagRegion(tr, trios) {
         const rowIdx = tr.dataset.mbRowIdx;
         if (rowIdx === undefined) return;
@@ -62146,7 +67016,7 @@ a { color: #1565c0; }`;
                 if (row.style.display === 'none') return;
 
                 // ── Test the row ───────────────────────────────────────────────
-                let matchFound = false;
+                let matchFound;
                 if (useRx) {
                     try {
                         // Use getCleanColumnText so .mb-rel-filter-key URL text is
@@ -62522,8 +67392,26 @@ a { color: #1565c0; }`;
         const _colHTML = _activeCol
             .map(f => `${_mbttColName(f.colName)}:${_mbttSpan(f.expr, 'cf')}`).join(', ');
 
+        /**
+         * "There is 1 row" / "There are N rows", with N formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _nRows(n) { return n === 1 ? `There is ${_mbttCount(n)} row` : `There are ${_mbttCount(n)} rows`; }
+        /**
+         * "row" or "rows" for `n`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _r(n)     { return n === 1 ? 'row' : 'rows'; }
+        /**
+         * `n` formatted by `_mbttCount()`.
+         *
+         * @param {number} n
+         * @returns {string}
+         */
         function _cN(n)    { return _mbttCount(n); }
 
         // Build the rich HTML tooltip string
@@ -64411,52 +69299,6 @@ a { color: #1565c0; }`;
     }
 
     /**
-     * Rebuilds the CAA and EAA bigbox artwork strips for a single table after
-     * its tbody content has been replaced (e.g. by the 'merged' discography view
-     *
-     * Mirrors the single-table path inside `_artInitPics` but operates on an
-     * already-known table element without the full querySelectorAll pass.
-     *
-     * Guards: `Lib.settings.sa_enable_caa_pics` must be true; `_caaQueue` must
-     * be initialised (initCaaPics must have run before this call).
-     *
-     * @param {HTMLTableElement} table  The table whose bigbox should be rebuilt.
-     */
-    function _artRebuildBigPicsForTable(table) {
-        if (!Lib.settings.sa_enable_caa_pics) return;
-        if (!_caaQueue) return; // queue not yet initialised
-
-        // Determine this table's DOM index among all table.tbl elements — the
-        // bigbox and toggle button are keyed by this index.
-        const _allTables = Array.from(document.querySelectorAll('table.tbl'));
-        const _tblIdx    = _allTables.indexOf(table);
-        if (_tblIdx === -1) return; // table not in DOM
-
-        for (const _ctx of [CAA_CTX, EAA_CTX]) {
-            const _hasCol = caaFindColumnByName(table, _ctx.column) !== -1;
-            const _hasAdd = !!(activeDefinition &&
-                               activeDefinition.features &&
-                               activeDefinition.features[_ctx.addFeature]);
-            if (!_hasCol && !_hasAdd) continue;
-
-            const { count: _cnt, firstImgUrl: _url } = _artCountLinks(_ctx, table);
-
-            if (_cnt === 0) {
-                // No links — clear stale bigbox and hide toggle button
-                const _staleBox = document.getElementById(_ctx.boxPrefix + '-' + _tblIdx);
-                if (_staleBox) { _staleBox.innerHTML = ''; _staleBox.style.display = 'none'; }
-                const _staleBtn = document.getElementById(_ctx.btnPrefix + '-' + _tblIdx);
-                if (_staleBtn) _staleBtn.style.display = 'none';
-                continue;
-            }
-
-            const _btnId = _artCreateOrUpdateToggleButton(_ctx, table, _tblIdx, _cnt, _url);
-            _artCreateOrUpdateRetryButton(_ctx, table, _tblIdx);
-            _artInitBigPics(_ctx, table, _tblIdx, _btnId);
-        }
-    }
-
-    /**
      * Injects four discography view-mode buttons into controlsContainer for
      * artist-releasegroups pages after the combined (all:'1') render completes
      * and the h3 category arrays have been built.
@@ -64901,12 +69743,12 @@ a { color: #1565c0; }`;
         const _allH3s = Array.from(_container.querySelectorAll('h3.mb-toggle-h3'));
 
         // ── Bigbox rebuild queue ─────────────────────────────────────────────────
-        // All _artRebuildBigPicsForTable calls are deferred: tables are collected here
+        // All bigbox rebuilds are deferred: tables are collected here
         // and rebuilt in a single drain pass AFTER the full visibility loop has
         // completed.  This fixes the CAA count corruption on merged ↔ other-view
         // switches caused by two interacting races:
         //
-        //  Race A (wrong _tblIdx): _artRebuildBigPicsForTable resolves a table's DOM
+        //  Race A (wrong _tblIdx): a per-table rebuild resolves a table's DOM
         //  index via querySelectorAll('table.tbl').indexOf(table).  When called inline
         //  inside a forEach that also hides/shows other sections, subsequent
         //  insertBefore moves (bigbox repositioning) can shift that index between calls,
@@ -64922,7 +69764,7 @@ a { color: #1565c0; }`;
         //  Deferring to after the visibility loop ensures:
         //   (1) All h3.dataset.mbDiscHidden flags are set before any IDB/network
         //       requests begin — no transitional state visible to async callbacks.
-        //   (2) The DOM table order read by _artRebuildBigPicsForTable is the final
+        //   (2) The DOM table order read by the rebuild is the final
         //       settled order — no further bigbox insertBefore moves occur later.
         //   (3) _artCreateOrUpdateGlobalToggleButton sees per-table badges freshly
         //       reset to 0, giving a consistent baseline for async increments.
@@ -65186,9 +70028,10 @@ a { color: #1565c0; }`;
         // restore-from-merged), we must rebuild their CAA/EAA bigboxes.
         //
         // We intentionally use initCaaPics()/initEaaPics() rather than calling
-        // _artRebuildBigPicsForTable() for each table individually.  The reason:
+        // a per-table rebuild for each table individually (the former
+        // _artRebuildBigPicsForTable(), removed 2026-10-04 as dead code).  The reason:
         //
-        //   _artRebuildBigPicsForTable enqueues new tasks into the SHARED _caaQueue,
+        //   A per-table rebuild enqueues new tasks into the SHARED _caaQueue,
         //   which already holds in-flight tasks from every previous _artInitBigPics
         //   call (initial render, earlier view switches, …).  Even though the per-
         //   button render-generation counter (data-art-render-gen) should invalidate
@@ -66184,7 +71027,7 @@ a { color: #1565c0; }`;
         const th = headers[colIndex];
         if (!th) return '';
         return th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
     }
 
     // Per-table memo of _getLengthColumnAverages()'s own computed averages —
@@ -66292,7 +71135,7 @@ a { color: #1565c0; }`;
         // resolution (isFormatCol/isLengthCol/etc. inside openUniqDrop()).
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
         const lengthIdx = headers.findIndex(th => clean(th) === lengthColName);
         const liveColName = (activeDefinition && activeDefinition.features &&
             activeDefinition.features.lengthDeviationLiveColumn) || 'Attributes';
@@ -66402,7 +71245,7 @@ a { color: #1565c0; }`;
 
         const headers = Array.from(table.querySelectorAll('thead tr:first-child th'));
         const clean = (th) => th.dataset.colName ||
-            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+            th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
         const barcodeIdx = headers.findIndex(th => clean(th) === 'Barcode');
 
         const all = new Map();
@@ -66970,7 +71813,7 @@ a { color: #1565c0; }`;
         const _rc = _uniqCacheHit ? _uniqCacheHit.recCommentCounts : {
             form: { typeonly: 0, date: 0, location: 0, datelocation: 0, other: 0, nearmiss: 0 },
             type: new Map(), miss: new Map(), info: new Map(), infoHas: 0, infoNone: 0, multiDay: 0,
-            live: _newLiveCounts(),
+            live: _newLiveCounts(), mediumEvent: new Map(),
         };
         let ratingHasCount  = _uniqCacheHit ? _uniqCacheHit.ratingHasCount  : 0;
         let ratingNoneCount = _uniqCacheHit ? _uniqCacheHit.ratingNoneCount : 0;
@@ -67090,7 +71933,7 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return false;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return name === 'Title';
         })();
         // Column-name gate for Format/Tracks/Catalog# — unlike every other
@@ -67395,6 +72238,11 @@ a { color: #1565c0; }`;
                     }
                 }
                 if (recCommentKind) {
+                    // "Event info - Events on this medium": the row's stamp
+                    // (stampFindings()), counted on the plain comment column.
+                    if (recCommentKind === 'plain' && row.dataset.mbEventKey) {
+                        _rc.mediumEvent.set(row.dataset.mbEventKey, (_rc.mediumEvent.get(row.dataset.mbEventKey) || 0) + 1);
+                    }
                     const _r = _findCellRecordingComment(cell, recCommentKind === 'plain');
                     if (_r) {
                         const _bump = (m, k) => m.set(k, (m.get(k) || 0) + 1);
@@ -68264,12 +73112,10 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return null;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return (name === 'CAA' || name === 'EAA') ? name : null;
         })();
         const isCaaOrEaaCol = _caaOrEaaColName !== null;
-        const caaYesCount = 0; // unused after 9.99.569 — artwork-presence filtered via makeSynItem rename
-        const caaNoCount  = 0;
 
         // Does this column's cells carry flag icon(s) the unique-values
         // dropdown should decorate each entry with? Detected by column
@@ -68332,7 +73178,7 @@ a { color: #1565c0; }`;
             const th = headers[colIndex];
             if (!th) return false;
             const name = th.dataset.colName ||
-                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/g, '').trim().replace(/\s+/g, ' ');
+                th.textContent.replace(/[⇅▲▼⁰¹²³⁴⁵⁶⁷⁸⁹📊▶◀▤0-9]/gu, '').trim().replace(/\s+/g, ' ');
             return name.endsWith('ountry') || name.endsWith('ocality') ||
                 name.endsWith('egion') || name.endsWith('rea') ||
                 name === 'Location' || name === 'Place' || name === 'Country/Date' ||
@@ -68758,7 +73604,7 @@ a { color: #1565c0; }`;
                     }
                 });
                 let node;
-                while (node = walker.nextNode()) {
+                while ((node = walker.nextNode())) {
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         if (node.matches(iconSel)) {
                             const baked = bakedIcons[iconIdx++];
@@ -69889,6 +74735,7 @@ a { color: #1565c0; }`;
                  : kind === 'rctype'        ? '» type: '
                  : kind === 'rcmiss'        ? '» problem: '
                  : kind === 'rcinfo'        ? '» info: '
+                 : kind === 'mediumevent'   ? '» event: '
                  : kind === 'eventdetail'   ? '» detail: '
                  : kind === 'eventaddinfo'  ? '» info: '
                  : kind === 'evliveshape'   ? '» date: '
@@ -70449,6 +75296,8 @@ a { color: #1565c0; }`;
             _pushSyn(`${p}live-partial`, _structureModeLabel('live-partial'), c.partial);
             _pushVals(`${p}liveshape`, c.shape, _byText(c.shape));
             _pushSyn(`${p}live-extra`, _structureModeLabel('live-extra'), c.extra);
+            _pushSyn(`${p}live-multi-days`, _structureModeLabel('live-multi-days'), c.multiDays);
+            _pushSyn(`${p}live-multi-dates`, _structureModeLabel('live-multi-dates'), c.multiDates);
             _pushVals(`${p}liveextra`, c.extraValue, _byText(c.extraValue));
             _pushVals(`${p}liveloc`, c.loc, _byText(c.loc));
             _LIVE_SEP_KINDS.forEach(sep => _LIVE_SEP_FACETS.forEach(facet =>
@@ -70479,6 +75328,8 @@ a { color: #1565c0; }`;
             _pushSyn('rc-info-none', _structureModeLabel('rc-info-none'), _rc.infoNone);
             _pushVals('rcinfo', _rc.info, _byText(_rc.info));
             _pushLiveSections('rc', _rc.live, '');
+            // Only a medium that mixes events gets the section.
+            if (_rc.mediumEvent.size >= 2) _pushVals('mediumevent', _rc.mediumEvent, _byText(_rc.mediumEvent));
         }
         _pushSyn('evcountry-abbr', _structureModeLabel('evcountry-abbr'), _ep.abbr);
         _pushSyn('evcountry-full', _structureModeLabel('evcountry-full'), _ep.full);
@@ -71011,6 +75862,11 @@ a { color: #1565c0; }`;
         // ---- Quickfilter input events -------------------------------------
 
         // Show/hide the clear button depending on whether there is input
+        /**
+         * Shows the quick filter's clear button while the input holds text.
+         *
+         * @returns {void}
+         */
         function updateClearBtn() {
             if (qfInput.value.length > 0) {
                 qfClear.classList.add('mb-uniq-qf-clear-visible');
@@ -71428,6 +76284,7 @@ a { color: #1565c0; }`;
             }[mode.slice(7)] || mode;
         }
         if (mode.startsWith('rctype:'))      return `» type: ${mode.slice(7)}`;
+        if (mode.startsWith('mediumevent:')) return `» event: ${mode.slice(12)}`;
         if (mode.startsWith('rcmiss:'))      return `» problem: ${mode.slice(7)}`;
         if (mode.startsWith('rcinfo:'))      return `» info: ${mode.slice(7)}`;
         if (mode === 'rc-multiday')          return '❔ uncertain day ("2001-12-22/23")';
@@ -71512,6 +76369,8 @@ a { color: #1565c0; }`;
         if (mode === 'live-complete')   return '📅 complete date (YYYY-MM-DD)';
         if (mode === 'live-partial')    return '◐ incomplete date';
         if (mode === 'live-extra')      return '🕗 has additional date information';
+        if (mode === 'live-multi-days')  return '🗓️ several days of one month ("1978‐08‐21/22/23")';
+        if (mode === 'live-multi-dates') return '🗓️ several separate dates ("… / …")';
         {
             const sm = _LIVE_SEP_MODE_RE.exec(mode);
             if (sm) {
@@ -71647,6 +76506,7 @@ a { color: #1565c0; }`;
             }[mode.slice(7)] || '';
         }
         if (mode.startsWith('rctype:'))      return 'The event type the comment starts with (live, soundcheck, rehearsal, live rehearsal, interview, audition, studio).';
+        if (mode.startsWith('mediumevent:')) return 'One event this medium\'s rows come from: the linked "Recorded at event", else the event the recording comment names, else the "Recording date".';
         if (mode.startsWith('rcmiss:'))      return 'Why a recording comment almost follows "live, YYYY-MM-DD: Venue, City, …".';
         if (mode.startsWith('rcinfo:'))      return 'One text after the ";" that ends a recording comment.';
         if (mode === 'rc-multiday')          return '❔ = the date ends in one or more "/DD" days, MusicBrainz\'s way of saying "one of these days".';
@@ -71726,6 +76586,8 @@ a { color: #1565c0; }`;
         if (mode === 'live-complete') return '📅 = the live title\'s date has year, month and day.';
         if (mode === 'live-partial') return '◐ = the live title\'s date lacks a part: "2008-12", "2008", "12-07" (year unknown) or a "??" part.';
         if (mode === 'live-extra') return '🕗 = the live title carries additional date information before the colon, e.g. "2008-12-17, early show: …".';
+        if (mode === 'live-multi-days') return '🗓️ = the live title names more days of the same month after its date, e.g. "1978‐08‐21/22/23: Madison Square Garden, New York City, NY, USA" — a multi-night run or "one of these days". Valid as long as every day exists in that month.';
+        if (mode === 'live-multi-dates') return '🗓️ = the live title names separate dates joined by " / ": each with its own location ("1978‐08‐21: Venue, City, … / 1979‐01‐01: Venue, City, …") or one location for all ("1989‐07‐04 / 1990‐04‐22: Venue, City, …"). Every date is checked on its own.';
         if (_LIVE_SEP_MODE_RE.test(mode)) {
             const sep = mode.split('-')[2];
             return sep === 'unicode' ? 'Live titles whose date uses only the Unicode hyphen "‐" (U+2010) between its parts — MusicBrainz\'s normalized form.'
@@ -74012,7 +78874,7 @@ a { color: #1565c0; }`;
             // seconder"). Only the decorative icon glyphs and Unicode
             // superscript digits (used later for the multi-sort order badge,
             // a distinct code point range from ASCII 0-9) are stripped.
-            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const colName = th.textContent.replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             th.innerHTML = ''; // clear for new icon layout
 
             const createIcon = (char, targetState) => {
@@ -74517,9 +79379,11 @@ a { color: #1565c0; }`;
             // Not so on springsteenlyrics.com, where every page is one script
             // told apart by its query string — `collection.php?item=…` (an
             // item) and `collection.php?cmd=list…` (this list) share a path —
-            // so there only a hash-only change counts as the same page.
-            const currentBase = window.location.origin + window.location.pathname + (_isSlHost ? window.location.search : '');
-            const targetBase  = targetUrl.origin  + targetUrl.pathname + (_isSlHost ? targetUrl.search : '');
+            // so there only a hash-only change counts as the same page. The
+            // same on brucespringsteen.it: every list is `records.aspx?tipe=…`,
+            // and its predefined-filter links leave a loaded table behind.
+            const currentBase = window.location.origin + window.location.pathname + ((_isSlHost || _isBsHost) ? window.location.search : '');
+            const targetBase  = targetUrl.origin  + targetUrl.pathname + ((_isSlHost || _isBsHost) ? targetUrl.search : '');
             if (targetBase === currentBase) return;
 
             if (!confirmNavigation(`anchor click → ${targetUrl.href}`)) {
@@ -75051,8 +79915,9 @@ a { color: #1565c0; }`;
      * `div.annotation > div.annotation-body`. Left as an h2 it is mistaken for
      * a page-level section everywhere h2s are walked: `makeH2sCollapsible()`
      * gives it the h2 colour, the page-wide Ctrl+Click / `Ctrl+2` set and a
-     * collapsed default, and `_sphSectionBodies()` refuses to pin a body that
-     * contains an h2 — so the whole annotation text scrolled away sideways
+     * collapsed default, and `_sphSectionBodies()` (since replaced by
+     * `_sphContentBodies()`, which pins such a body whole) refused to pin a body that
+     * contained an h2 — so the whole annotation text scrolled away sideways
      * (the heading and its paragraph were pinned on their own, but a sticky
      * box cannot leave its unpinned containing block). As an h3 the body is
      * pinned as a whole and the bar rides along inside it.
@@ -76378,6 +81243,19 @@ a { color: #1565c0; }`;
         await startFetchingProcess(_synthetic, st.buttonConfig, st.baseDef, st);
     }
 
+    /**
+     * Describes why a fetch run did not complete, for the status line and its
+     * tooltip: a failed page, an unreadable page count, or an unfinished
+     * pre-fetch.
+     *
+     * @param {{pageFailure?: {page: number, detail: string}, maxPageUnknown?: string,
+     *   preFetchIncomplete?: string}} rec - What went wrong in this run.
+     * @param {number} maxPage - Page count the run used.
+     * @param {number} pagesProcessed - Pages actually loaded.
+     * @returns {?{dataIncomplete: boolean, reasons: string[], tip: string, pagesPhrase: string}}
+     *   `null` when nothing went wrong. `dataIncomplete` is true when rows are
+     *   missing (a failed page or an unknown page count), not only a pre-fetch.
+     */
     function _fetchIncompleteSummary(rec, maxPage, pagesProcessed) {
         const reasons = [];
         if (rec.pageFailure) {
@@ -77311,6 +82189,11 @@ a { color: #1565c0; }`;
             keys: [MB_UNIQ_SECTION_COLLAPSE_KEY],
         },
         {
+            group: 'releaseart',
+            label: 'Release page Cover art layout',
+            keys: [MB_RELEASE_ART_LAYOUT_KEY],
+        },
+        {
             group: 'dialog',
             label: 'Settings dialog layout',
             // Written by VZ_MBLibrary, into THIS script's GM storage — a
@@ -77784,7 +82667,7 @@ a { color: #1565c0; }`;
             }
 
             // Type coercion
-            let coerced = value;
+            let coerced;
             try {
                 if (schemaCfg.type === 'checkbox') {
                     coerced = value === true || value === 'true';
@@ -79266,7 +84149,9 @@ a { color: #1565c0; }`;
         const _indicesToRemove = [];
         Array.from(_theadRow.cells).forEach((th, idx) => {
             const _colName = th.dataset.colName ||
-                th.textContent.replace(/[\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a4\u2702\ufe0f0-9]/g, '').trim();
+                // U+FE0F leads the class so it is not read as part of "\u2702\ufe0f"
+                // (eslint no-misleading-character-class).
+                th.textContent.replace(/[\ufe0f\u21c5\u25b2\u25bc\u2702\u25b6\u25c0\u25a40-9]/g, '').trim();
             // Remove: the Release events injected-column <th> itself
             const _isReCol = activeReleaseEventColumns.some(e => e.colName === _colName);
             // Remove: every ICE synthetic <th> derived from Release events
@@ -79414,6 +84299,13 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Fills the injected "Release events" column: adds a `td.mb-re-cell`
+     * placeholder to every row, then loads and renders each release's events.
+     * Does nothing when the column is switched off or this page has none.
+     *
+     * @returns {Promise<void>}
+     */
     async function initReleaseEventsColumn() {
         if (!Lib.settings.sa_enable_release_events_column) return;
         if (!activeReleaseEventColumns.length) return;
@@ -79423,6 +84315,13 @@ a { color: #1565c0; }`;
         };
 
         const _injBg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '22';
+        /**
+         * Adds the Release events placeholder cell to `row` unless it already has
+         * one, placed before the row's Relationships cell when there is one.
+         *
+         * @param {HTMLTableRowElement} row
+         * @returns {void}
+         */
         function _ensureReCell(row) {
             if (row.querySelector('td.mb-re-cell')) return;
             const mbid = _extractMbidFromRow(row);
@@ -81444,14 +86343,22 @@ a { color: #1565c0; }`;
         // stamped with `mbRelEntityType` (every pageType without a per-group
         // rebuild, where this module-level value is correct and stable for the
         // whole page). May be `{}` now that the entry gate above is DOM-based
-        // rather than `activeInjectedColumns.length`, so default both fields.
-        const { entityType = 'release', incOptions = ['url-rels'] } = activeInjectedColumns[0] || {};
+        // rather than `activeInjectedColumns.length`, so default the field.
+        const { entityType = 'release' } = activeInjectedColumns[0] || {};
         // ── Ensure mb-rel-cell tds exist in every data row ───────────────────
         // Inject into BOTH DOM rows and source rows (groupedRows/allRows).
         // runFilter() clones from source rows — if those lack mb-rel-cell,
         // every filter re-render loses the icons.
         if (activeInjectedColumns.length) {
             const _injBg = (Lib.settings.sa_ui_thead_th_injected_bg || '#b8b8d0') + '22';
+            /**
+             * Adds the Relationships placeholder cell (`td.mb-rel-cell`) to `row`
+             * unless it already has one, placed before the row's Picard cell when
+             * there is one.
+             *
+             * @param {HTMLTableRowElement} row
+             * @returns {void}
+             */
             function _ensureRelCell(row) {
                 if (row.querySelector('td.mb-rel-cell')) return;
                 const _mbid = _extractMbidFromRow(row);
@@ -81605,6 +86512,14 @@ a { color: #1565c0; }`;
             return !_table || _relTableExpanded(_table);
         }
 
+        /**
+         * Writes one entity's Relationships answer into every cell for `mbid`
+         * that may still receive content, and onto their master rows.
+         *
+         * @param {string} mbid
+         * @param {Object} data - The WS/2 answer for that entity.
+         * @returns {Promise<void>}
+         */
         async function _populateCells(mbid, data) {
             // Only the cells still allowed to receive content. Filtering here
             // rather than at the call site keeps every writer — Phase 1's IDB
@@ -82266,10 +87181,24 @@ a { color: #1565c0; }`;
         return _a;
     }
 
+    /**
+     * Creates the Relationships retry buttons: the page-wide 🔗⟳ on
+     * multi-table pages, and the per-table ones.
+     *
+     * @returns {void}
+     */
     function _relCreateRetryButtons() {
         if (!Lib.settings.sa_enable_relationships_column) return;
         if (!_relPageHasColumn()) return;
         const C = _REL_RETRY_BTN_CSS;
+        /**
+         * Builds one 🔗⟳ retry button, or returns null when `id` already exists.
+         *
+         * @param {string} id - Element id.
+         * @param {string} t - Tooltip text.
+         * @param {Function} fn - Click handler.
+         * @returns {?HTMLButtonElement}
+         */
         function mk(id,t,fn) { if(document.getElementById(id))return null; const b=document.createElement('button'); b.id=id;b.type='button';_setTip(b, t);b.textContent='🔗⟳';b.style.cssText=C;b.addEventListener('click',e=>{e.stopPropagation();fn();});return b;}
         // The global Relationships retry button is only meaningful on multi-table
         // pages where there are multiple sub-tables.  On single-table pages the
@@ -82396,6 +87325,12 @@ a { color: #1565c0; }`;
         return [{ table: tables[0], rows: (typeof allRows !== 'undefined' && allRows) || [] }];
     }
 
+    /**
+     * Collects the MBIDs whose Relationships lookup failed, from the live
+     * page and the source rows, leaving out any that succeeded somewhere.
+     *
+     * @returns {Set<string>}
+     */
     function _relFailedMbidsPageWide() {
         const _failed = new Set();
         const _done = new Set();
@@ -82599,6 +87534,24 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Whether the page-wide ⚠⟳ and table 0's per-table ⚠⟳ would be the same
+     * control twice (org/live-bootleg.org 1). The page-wide one anchors after
+     * the global ⟳ (`globalRetryId`), which only a multi-table page builds;
+     * without it, it falls back to table 0's run — where table 0's per-table
+     * ⚠⟳ goes too. On a single table both cover exactly the same rows, so the
+     * per-table one is left out. With several tables and no global row the two
+     * differ in scope and both stay.
+     *
+     * @param   {string} globalRetryId - Id of the global ⟳ the page-wide ⚠⟳
+     *   anchors on (`<btnPrefix>-global-retry`, `mb-rel-retry-global`).
+     * @param   {number} tableCount    - Tables the per-table refresh covers.
+     * @returns {boolean}
+     */
+    function _failedRetrySharesTableSlot(globalRetryId, tableCount) {
+        return tableCount <= 1 && !document.getElementById(globalRetryId);
+    }
+
+    /**
      * Creates, updates or removes the PER-TABLE Relationships failed-retry
      * controls, one per table that has failures of its own.
      *
@@ -82611,11 +87564,16 @@ a { color: #1565c0; }`;
      * segmented pill automatically, and it is inserted at the END of that run
      * via `_ctlRunEnd()` — see CLAUDE.md's pill section for why both matter.
      *
+     * None at all on a single table without a global control row
+     * (`_failedRetrySharesTableSlot()`): the page-wide control already sits
+     * in that table's run and covers exactly its rows.
+     *
      * @returns {void}
      */
     function _relRefreshPerTableFailedButtons() {
         const _enabled = Lib.settings.sa_enable_relationships_column && _relPageHasColumn();
-        const _entries = _enabled ? _relFailedMbidsByTable() : [];
+        const _all = _enabled ? _relFailedMbidsByTable() : [];
+        const _entries = _failedRetrySharesTableSlot('mb-rel-retry-global', _all.length) ? [] : _all;
         const _live = new Set();
         _entries.forEach(({ table, mbids }, i) => {
             const id = 'mb-rel-retry-failed-' + i;
@@ -82666,6 +87624,12 @@ a { color: #1565c0; }`;
         _relRetryMbids(entry.mbids, et, _relIncOptionsForEntityType(et));
     }
 
+    /**
+     * Shows the page-wide "retry failed Relationships" button with the current
+     * failure count, or removes it when nothing failed.
+     *
+     * @returns {void}
+     */
     function _relRefreshFailedRetryButtons() {
         const _existing = document.getElementById('mb-rel-retry-failed');
         if (!Lib.settings.sa_enable_relationships_column || !_relPageHasColumn()) {
@@ -83228,6 +88192,15 @@ a { color: #1565c0; }`;
             // of <body> (there is no #content on that site).
             if (activeDefinition.features?.slCardsToTable) {
                 applySlCardsToTable(activeDefinition);
+            }
+            // And for jungleland.it: the reloaded list is plain links again.
+            if (activeDefinition.features?.jlListToTable) {
+                applyJlListToTable(activeDefinition);
+            }
+            // And for brucespringsteen.it: the reloaded page holds the site's
+            // record paragraphs again; an empty table takes their place.
+            if (activeDefinition.features?.bsRecordsToTable) {
+                applyBsRecordsToTable(activeDefinition);
             }
 
             // Restore table headers if they were saved
@@ -85044,6 +90017,12 @@ a { color: #1565c0; }`;
         // Lazy loader — fires only once (first click), then detaches itself.
         // After an error a one-shot retry handler is installed instead, so
         // the next click re-arms the original loader.
+        /**
+         * Fetches `url` on first press, then detaches itself. On failure it
+         * installs a one-shot handler that re-arms it for the next press.
+         *
+         * @returns {void}
+         */
         function loadOnce() {
             button.removeEventListener('mousedown', loadOnce, false);
             const req = new XMLHttpRequest();
@@ -85052,6 +90031,11 @@ a { color: #1565c0; }`;
                 if (req.status === 200 && req.responseText) {
                     successCallback(JSON.parse(req.responseText));
                 } else {
+                    /**
+                     * Re-arms `loadOnce` for the next press after a failed fetch.
+                     *
+                     * @returns {void}
+                     */
                     function retrySetup() {
                         button.removeEventListener('mousedown', retrySetup, false);
                         button.addEventListener('mousedown', loadOnce, false);
@@ -87068,7 +92052,7 @@ a { color: #1565c0; }`;
         return Array.from(headerRow.children).findIndex(th => {
             const named = th.dataset && th.dataset.colName;
             if (named) return candidates.includes(named);
-            const txt = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+            const txt = th.textContent.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
             return candidates.includes(txt);
         });
     }
@@ -87478,7 +92462,9 @@ a { color: #1565c0; }`;
         // ── Plain text fallback (also used for multi-anchor cells) ────────────
         const _raw = clone.textContent
             .replace(/\s+/g, ' ')
-            .replace(/^[\u25b6\u2795\u26a0\ufe0f\u{1F300}-\u{1FAFF}\u2600-\u27BF]+/gu, '')
+            // U+FE0F leads the class so it is not read as part of "\u26a0\ufe0f"
+            // (eslint no-misleading-character-class).
+            .replace(/^[\ufe0f\u25b6\u2795\u26a0\u{1F300}-\u{1FAFF}\u2600-\u27BF]+/gu, '')
             .trim();
 
         // Suppress raw JSON/data strings injected by the script into hidden
@@ -87864,6 +92850,92 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * Renders a prose "Annotation" cell into the tooltip as rich HTML — the
+     * FULL text, whatever collapsed state the cell is in.
+     *
+     * `_artTooltipCellText()` is wrong for this cell in three ways: it
+     * flattens every `<br>`/paragraph into one line, it returns only the link
+     * text when the annotation holds exactly one link (its single-anchor
+     * shortcut), and a plain clone would keep the cell's collapsed state —
+     * the `.mb-text-clamp-inner` height clamp on the wrapper, and the inline
+     * `display:none` that `_rewireNestedTableH2Toggles()` puts on the content
+     * of every collapsed wiki `<h2>` sub-section inside the cell.
+     *
+     * So the wrapper's CHILDREN are cloned (never the wrapper itself), the
+     * script's own UI is removed, filter highlights are unwrapped to plain
+     * text, and every inline `display` is cleared. The card is widened to
+     * 600px; `_fitArtTooltipToViewport()` later caps the block's height and
+     * reveals the trailing "more in the cell" foot when it had to cut.
+     *
+     * @param {HTMLTableRowElement} row  Data row.
+     * @param {number}              ci   Column index of the Annotation cell.
+     * @param {HTMLDivElement}      tip  Tooltip div to append the block to.
+     * @returns {boolean}  true when an annotation block was appended.
+     */
+    function _artTooltipAnnotation(row, ci, tip) {
+        if (ci < 0 || ci >= row.cells.length) return false;
+        const cell = row.cells[ci];
+        const src = cell.querySelector(':scope > .mb-text-clamp-marker') || cell;
+
+        const block = document.createElement('div');
+        block.className = 'mb-tt-annotation';
+        src.childNodes.forEach(n => block.appendChild(n.cloneNode(true)));
+
+        block.querySelectorAll(
+            '.mb-cell-collapse-toggle,.mb-toggle-icon,[data-erg-btn],script,style,' +
+            _CLEAN_STRIP_SEL
+        ).forEach(el => el.remove());
+        block.querySelectorAll(_COLLAPSE_MATCH_SEL).forEach(el => el.replaceWith(...el.childNodes));
+        block.querySelectorAll('*').forEach(el => {
+            el.style.removeProperty('display');
+            el.removeAttribute('title');
+            el.removeAttribute('data-mb-tip');
+            el.classList.remove('mb-text-clamp-marker', 'mb-text-clamp-inner',
+                'mb-text-clamp-inner-ars', 'mb-text-clamp-expanded', 'mb-toggle-h2', 'mb-h2-processed');
+        });
+
+        if (!block.textContent.trim()) return false;
+
+        tip.style.maxWidth = '600px';
+        tip.appendChild(block);
+        const more = document.createElement('div');
+        more.className = 'mb-tt-foot mb-tt-annotation-more';
+        more.textContent = '… (more in the cell)';
+        tip.appendChild(more);
+        return true;
+    }
+
+    /**
+     * Keeps a just-shown artwork tooltip inside the viewport by shortening its
+     * `.mb-tt-annotation` block, the only part of the card that can be
+     * arbitrarily long. The card has `pointer-events:none` and cannot be
+     * scrolled, so anything past the bottom of the window would simply be
+     * unreadable. When the block had to be cut, its
+     * `.mb-tt-annotation-more` foot is shown.
+     *
+     * Must run after `tip.style.display = 'block'` (it measures) and before
+     * the caller reads `offsetHeight` to position the card. A no-op for a
+     * card without an annotation block.
+     *
+     * @param {HTMLDivElement} tip  The visible tooltip.
+     * @returns {void}
+     */
+    function _fitArtTooltipToViewport(tip) {
+        const block = tip.querySelector('.mb-tt-annotation');
+        if (!block) return;
+        const more = tip.querySelector('.mb-tt-annotation-more');
+        block.style.maxHeight = '';
+        if (more) more.style.display = '';
+        const limit = window.innerHeight - 12;
+        let over = tip.offsetHeight - limit;
+        if (over <= 0) return;
+        // Show the foot first so its own height is part of the budget.
+        if (more) more.style.display = 'block';
+        over = tip.offsetHeight - limit;
+        block.style.maxHeight = Math.max(0, block.offsetHeight - over) + 'px';
+    }
+
+    /**
      * Renders the rich bigbox/inline-thumbnail hover tooltip from the active page
      * definition's `features.tooltipColumns` spec, when one is configured.
      *
@@ -88082,6 +93154,10 @@ a { color: #1565c0; }`;
                     // (including MusicBrainz-collapsed ones) and renders them as
                     // "Name (role)" entries comma-separated on a single tooltip line.
                     _artTooltipArtistRoles(row, ci, tip);
+                } else if (_colName === 'Annotation') {
+                    // Rich rendering: the whole prose cell as HTML, uncollapsed,
+                    // in a wider card (see _artTooltipAnnotation).
+                    _artTooltipAnnotation(row, ci, tip);
                 } else if (_colName === 'Cancelled') {
                     // Special rendering for the synthetic Cancelled column:
                     //   - cell has no visible text (only the hidden sort-key "no") → silently omitted
@@ -89177,6 +94253,16 @@ a { color: #1565c0; }`;
         }
     }
 
+    /**
+     * Builds or rebuilds an artwork cell's image list: one `<li>` per image
+     * under `ul.mb-caa-art-ul`, behind the cell's ▶/▼ expand button. A
+     * rebuild replaces the image rows and keeps the cell expanded if it was.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {HTMLTableCellElement} artCell
+     * @param {Object[]} images - Archive image records for this entity.
+     * @returns {void}
+     */
     function _artBuildMultiRowArtCell(ctx, artCell, images) {
         // TEMP DEBUG (bug 2 investigation) — call counter and row lookup kept
         // unconditional (cheap, reused by the second TEMP DEBUG block below);
@@ -89575,6 +94661,13 @@ a { color: #1565c0; }`;
             // Single-use retry: clicking re-triggers _artLoadIcon with cache
             // busting so the browser fetches a fresh copy rather than replaying
             // the cached failure response.
+            /**
+             * One-shot click handler on a failed icon's ⚠ hint: reloads the icon with
+             * cache busting.
+             *
+             * @param {MouseEvent} e
+             * @returns {void}
+             */
             function _retryIconHandler(e) {
                 e.stopPropagation();
                 hintSpan.removeEventListener('click', _retryIconHandler);
@@ -89696,7 +94789,7 @@ a { color: #1565c0; }`;
 
         // ── Resolve count + images — from session cache, IDB, or network ────────
         let count;
-        let images = [];
+        let images;
         if (ctx.countCache.has(entityPath)) {
             // Tier 1: in-session Map — no network round-trip.
             count  = ctx.countCache.get(entityPath);
@@ -89978,6 +95071,1301 @@ a { color: #1565c0; }`;
         anchor.dataset[ctx.enrichedAttr] = '1';
     }
 
+    /**
+     * Resolves the archive record of ONE entity, without a table row: the
+     * three tiers of `_artEnrichIcon()` (session Map → IndexedDB → network)
+     * with the same bookkeeping, so both callers share one cache and agree on
+     * what a zero means.
+     *
+     * - 404/410 (`_ART_MISS_STATUSES`) is a fact about the entity: cached as 0
+     *   for the session AND persisted to IDB, never recorded as failed.
+     * - 429/5xx is a bad minute at the archive: cached as 0 for the session only
+     *   and recorded in `ctx.failedCache` (org/503-handling.org F5/F7).
+     * - A thrown request caches nothing and is recorded as failed, so the next
+     *   call retries it.
+     *
+     * Used by the release page's Cover art section
+     * (org/CAA-release-tracks-handling.org); `_artEnrichIcon()` keeps its own
+     * inline copy of these tiers for now — folding it onto this helper is a
+     * separate, mutation-checked step because that function is on the table
+     * render path.
+     *
+     * @param   {ArtCtx} ctx        `CAA_CTX` or `EAA_CTX`.
+     * @param   {string} entityPath e.g. `/release/<mbid>`.
+     * @returns {Promise<{state: 'ok'|'none'|'failed', images: Object[]}>}
+     */
+    async function _artFetchEntityImages(ctx, entityPath) {
+        if (ctx.countCache.has(entityPath)) {
+            const images = ctx.imagesCache.get(entityPath) || [];
+            if (images.length) return { state: 'ok', images };
+            return { state: ctx.failedCache.has(entityPath) ? 'failed' : 'none', images: [] };
+        }
+        if (Lib.settings.sa_art_idb_enable) {
+            try {
+                const idbMeta = await _artIdbGetMetadata(entityPath);
+                if (idbMeta !== null) {
+                    const images = Array.isArray(idbMeta.images) ? idbMeta.images : [];
+                    ctx.countCache.set(entityPath, images.length);
+                    ctx.imagesCache.set(entityPath, images);
+                    return { state: images.length ? 'ok' : 'none', images };
+                }
+            } catch (idbErr) {
+                Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: IDB metadata read error for ${entityPath}:`, idbErr);
+            }
+        }
+        try {
+            const resp = await fetch(ctx.apiHost + entityPath);
+            if (!resp.ok) {
+                const definitiveAbsence = _ART_MISS_STATUSES.includes(resp.status);
+                if (!definitiveAbsence) {
+                    Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: HTTP ${resp.status} for ${entityPath}`);
+                }
+                ctx.countCache.set(entityPath, 0);
+                ctx.imagesCache.set(entityPath, []);
+                if (definitiveAbsence) ctx.failedCache.delete(entityPath);
+                else ctx.failedCache.add(entityPath);
+                _artScheduleFailedBtnRefresh(ctx);
+                if (Lib.settings.sa_art_idb_enable && definitiveAbsence) {
+                    _artIdbPutMetadata(entityPath, 0, []);
+                }
+                return { state: definitiveAbsence ? 'none' : 'failed', images: [] };
+            }
+            const json = await resp.json();
+            const images = Array.isArray(json.images) ? json.images : [];
+            ctx.countCache.set(entityPath, images.length);
+            ctx.imagesCache.set(entityPath, images);
+            ctx.failedCache.delete(entityPath);
+            _artScheduleFailedBtnRefresh(ctx);
+            if (Lib.settings.sa_art_idb_enable) {
+                _artIdbPutMetadata(entityPath, images.length, images);
+            }
+            return { state: images.length ? 'ok' : 'none', images };
+        } catch (err) {
+            Lib.warn(ctx.key, `${ctx.key}FetchEntityImages: network error for ${entityPath}:`, err);
+            ctx.failedCache.add(entityPath);
+            _artScheduleFailedBtnRefresh(ctx);
+            return { state: 'failed', images: [] };
+        }
+    }
+
+    // ── Release page Cover art section (release-tracks) ─────────────────────
+    //
+    // org/CAA-release-tracks-handling.org, mockup R1. A collapsible h2
+    // "Cover art (N)" inserted before h2.tracklist by the release-tracks render,
+    // so it exists only after "Show all Tracks for Release" and becomes an
+    // ordinary page-level h2 through makeH2sCollapsible(). It is not a table:
+    // never cloned, never filtered, never counted by the global filter.
+
+    /**
+     * Reads N from the native "Cover art (N)" tab, which costs no request.
+     *
+     * @param   {ArtCtx} ctx `CAA_CTX` (tab link ends in `ctx.artSuffix`).
+     * @returns {?number} The count, or null when the tab is missing or unreadable.
+     */
+    function _releaseArtTabCount(ctx) {
+        const tab = document.querySelector(`ul.tabs a[href$="${ctx.artSuffix}"]`);
+        const m = tab && /\((\d+)\)/.exec(tab.textContent);
+        return m ? parseInt(m[1], 10) : null;
+    }
+
+    /**
+     * Injects the Cover art section's stylesheet once.
+     *
+     * @returns {void}
+     */
+    function _ensureReleaseArtStyle() {
+        if (document.getElementById('mb-release-art-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            .mb-release-art-count { font-weight: normal; }
+            .mb-release-art-sec { margin: 6px 0 16px; max-width: calc(100vw - 32px); }
+            .mb-release-art-status { color: #666; font-style: italic; margin: 4px 0; }
+            .mb-release-art-retry { margin-left: 6px; cursor: pointer; }
+            .mb-release-art-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 10px;
+            }
+            .mb-release-art-tile {
+                position: relative;
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+                min-width: 0;
+            }
+            .mb-release-art-tile a {
+                display: block;
+                aspect-ratio: 1;
+                overflow: hidden;
+                background: #f4f4f4;
+                border: 1px solid #ddd;
+                box-sizing: border-box;
+                font-size: 10px;
+                line-height: 1.2;
+                color: #666;
+            }
+            .mb-release-art-tile img {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+            .mb-release-art-tile figcaption { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
+            .mb-release-art-tile figcaption .mb-release-art-comment { display: block; color: #666; }
+            .mb-release-art-star {
+                position: absolute;
+                top: 4px;
+                left: 4px;
+                background: rgba(0, 0, 0, 0.66);
+                color: #ffd76a;
+                font: bold 11px/1 sans-serif;
+                padding: 3px 5px;
+                border-radius: 3px;
+            }
+            .mb-release-art-tools {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                margin: 2px 0 8px;
+            }
+            .mb-release-art-tools-gap { flex: 1 1 auto; }
+            .mb-release-art-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border: 1px solid #ccc;
+                border-radius: 999px;
+                padding: 1px 9px;
+                background: #fff;
+                color: #222;
+                font-size: 11px;
+                line-height: 1.5;
+                cursor: pointer;
+            }
+            .mb-release-art-chip b { font-variant-numeric: tabular-nums; }
+            .mb-release-art-chip[aria-pressed="true"] { border-color: #555; background: #e8e8e8; font-weight: bold; }
+            .mb-release-art-seg { display: inline-flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+            .mb-release-art-seg button {
+                border: 0;
+                background: #fff;
+                color: #222;
+                font-size: 11px;
+                padding: 2px 9px;
+                cursor: pointer;
+            }
+            .mb-release-art-seg button + button { border-left: 1px solid #ccc; }
+            .mb-release-art-seg button[aria-pressed="true"] { background: #e8e8e8; font-weight: bold; }
+            .mb-release-art-group + .mb-release-art-group { margin-top: 10px; }
+            .mb-release-art-group-hdr {
+                margin: 0 0 4px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+        `);
+        style.id = 'mb-release-art-style';
+    }
+
+    /**
+     * The tile's hover card as `.mb-tt-liner` HTML, for `data-mbtt` — the
+     * tooltip engine (`_initStatTooltip()`) copies it in on hover, positions
+     * and clamps it, and skips it on a tap (`_isTouchCompatMouseEvent()`), so
+     * the section adds no hover listener of its own. `#mb-stat-tooltip` is
+     * `white-space: pre-wrap`, so the string carries NO whitespace between
+     * tags. Same layout idiom as `_rgPreviewHtml()`.
+     *
+     * Everything comes from the archive record already in `CAA_CTX.imagesCache`;
+     * the preview is the 500 px thumbnail (`large` on older records).
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number}   index  The tile's image.
+     * @returns {string}
+     */
+    function _releaseArtTipHtml(images, index) {
+        const im = images[index];
+        const thumbs = im.thumbnails || {};
+        const preview = (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '')
+            .replace(/^http:/, '');
+        const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
+        const first = types[0];
+        const sameType = images.filter(x => (x.types || []).includes(first));
+        const pos = sameType.indexOf(im) + 1;
+        const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
+        const where = `${index + 1} of ${images.length}` +
+            (sameType.length > 1 ? ` · ${first} ${pos} of ${sameType.length}` : '') +
+            (im.approved === false ? ' · pending approval' : '');
+        const ids = [im.edit ? `edit #${im.edit}` : null, im.id ? `id ${im.id}` : null].filter(Boolean).join(' · ');
+        return `<div style="width:300px;max-width:100%;">` +
+            `<div class="mb-tt-title">${im.front ? '★ Main front' : _rgEsc(types.join(' / '))}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${types.map(pill).join('')}</div>` +
+            (im.comment ? `<div class="mb-tt-comment">“${_rgEsc(im.comment)}”</div>` : '') +
+            `<div style="margin-top:6px;width:280px;height:280px;max-width:100%;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;">` +
+            `<img src="${_rgEsc(preview)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
+            `<div class="mb-tt-rule"></div>` +
+            `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
+            (ids ? `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` : '') +
+            `<div class="mb-tt-foot">Click: viewer · Ctrl-click: 1200 px in a new tab</div>` +
+            `</div>`;
+    }
+
+    /**
+     * Builds one tile of the contact sheet.
+     *
+     * The ★ reads the archive's `front` flag, NOT `types.includes('Front')`:
+     * an image can be typed Front without being the main front
+     * (docs/claude/artwork-caa-eaa.md, summary panel). Until the viewer lands
+     * the thumbnail links to the 1200 px image in a new tab. The hover card is
+     * `data-mbtt` (see `_releaseArtTipHtml()`).
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number}   index  The tile's image, its position in archive order.
+     * @returns {HTMLElement}     `figure.mb-release-art-tile`.
+     */
+    function _releaseArtBuildTile(images, index) {
+        const imgData = images[index];
+        const thumbs = imgData.thumbnails || {};
+        const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
+            .replace(/^http:/, '');
+        const big = (thumbs['1200'] || thumbs.large || imgData.image || thumb).replace(/^http:/, '');
+        const types = Array.isArray(imgData.types) && imgData.types.length ? imgData.types : ['(no type)'];
+
+        const fig = document.createElement('figure');
+        fig.className = 'mb-release-art-tile';
+        fig.dataset.mbArtI = String(index);
+        fig.dataset.mbtt = _releaseArtTipHtml(images, index);
+
+        const a = document.createElement('a');
+        a.href = big;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        const img = document.createElement('img');
+        img.src = thumb;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.alt = types.join(' / ') + (imgData.comment ? ' · ' + imgData.comment : '');
+        a.appendChild(img);
+        fig.appendChild(a);
+
+        if (imgData.front) {
+            const star = document.createElement('span');
+            star.className = 'mb-release-art-star';
+            star.textContent = '★ main';
+            _setTip(star, 'The archive\'s main front image');
+            fig.appendChild(star);
+        }
+
+        const cap = document.createElement('figcaption');
+        const b = document.createElement('b');
+        b.className = 'mb-release-art-types';
+        b.textContent = types.join(' / ');
+        cap.appendChild(b);
+        if (imgData.approved === false) {
+            const pend = document.createElement('span');
+            pend.className = 'mb-release-art-pending';
+            pend.textContent = ' ⏳';
+            _setTip(pend, 'Pending approval in the Cover Art Archive');
+            cap.appendChild(pend);
+        }
+        if (imgData.comment) {
+            const c = document.createElement('span');
+            c.className = 'mb-release-art-comment';
+            c.textContent = imgData.comment;
+            cap.appendChild(c);
+        }
+        fig.appendChild(cap);
+        return fig;
+    }
+
+    /**
+     * The section's type list in first-appearance (archive) order, each with
+     * the number of images carrying it. An image with two types counts for
+     * both. Derived from the record rather than a fixed vocabulary, so it
+     * stays right for any type the archive adds (and for event art later).
+     *
+     * @param   {Object[]} images
+     * @returns {Array<{type: string, n: number}>}
+     */
+    function _releaseArtTypeCounts(images) {
+        const counts = new Map();
+        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {
+            counts.set(t, (counts.get(t) || 0) + 1);
+        }));
+        return Array.from(counts, ([type, n]) => ({ type, n }));
+    }
+
+    /**
+     * The remembered layout: `'grid'` or `'grouped'` (`MB_RELEASE_ART_LAYOUT_KEY`).
+     *
+     * @returns {'grid'|'grouped'}
+     */
+    function _releaseArtLayout() {
+        let v;
+        try { v = GM_getValue(MB_RELEASE_ART_LAYOUT_KEY, null); } catch (_) { v = null; }
+        return v === 'grouped' ? 'grouped' : 'grid';
+    }
+
+    /**
+     * (Re)builds the toolbar and the contact sheet of a loaded section from
+     * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
+     * Grid / By type switch (`data-mb-art-layout`), then the tiles — all of
+     * them, or only those carrying the chosen type, either as one grid in
+     * archive order or grouped under each image's FIRST type in
+     * first-appearance order. The chosen type lives on the section
+     * (`data-mb-art-active-type`, deliberately NOT the chips'
+     * `data-mb-art-filter`, which `closest()` would then match on the
+     * section itself), the layout in GM storage.
+     *
+     * @param   {HTMLElement} sec A section whose `data-mb-art-state` is `'ok'`.
+     * @returns {void}
+     */
+    function _releaseArtRenderSheet(sec) {
+        const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const filter = sec.dataset.mbArtActiveType || '';
+        const layout = _releaseArtLayout();
+        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group').forEach(n => n.remove());
+
+        const tools = document.createElement('div');
+        tools.className = 'mb-release-art-tools';
+        const chip = (type, n, label) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-release-art-chip';
+            b.dataset.mbArtFilter = type;
+            b.setAttribute('aria-pressed', String(filter === type));
+            const num = document.createElement('b');
+            num.textContent = String(n);
+            b.append(label + ' ', num);
+            return b;
+        };
+        tools.appendChild(chip('', images.length, 'All'));
+        _releaseArtTypeCounts(images).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
+        const gap = document.createElement('span');
+        gap.className = 'mb-release-art-tools-gap';
+        tools.appendChild(gap);
+        const seg = document.createElement('span');
+        seg.className = 'mb-release-art-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Layout');
+        [['grid', 'Grid'], ['grouped', 'By type']].forEach(([key, label]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.dataset.mbArtLayout = key;
+            b.setAttribute('aria-pressed', String(layout === key));
+            b.textContent = label;
+            seg.appendChild(b);
+        });
+        tools.appendChild(seg);
+        sec.appendChild(tools);
+
+        const shown = images.map((im, i) => i)
+            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+        const grid = () => {
+            const g = document.createElement('div');
+            g.className = 'mb-release-art-grid';
+            return g;
+        };
+        if (layout === 'grid') {
+            const g = grid();
+            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            sec.appendChild(g);
+            return;
+        }
+        const groups = new Map();
+        shown.forEach(i => {
+            const first = (images[i].types && images[i].types[0]) || '(no type)';
+            if (!groups.has(first)) groups.set(first, []);
+            groups.get(first).push(i);
+        });
+        groups.forEach((idx, type) => {
+            const box = document.createElement('div');
+            box.className = 'mb-release-art-group';
+            box.dataset.mbArtGroup = type;
+            const hdr = document.createElement('div');
+            hdr.className = 'mb-release-art-group-hdr';
+            hdr.textContent = `${type} × ${idx.length}`;
+            const g = grid();
+            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            box.append(hdr, g);
+            sec.appendChild(box);
+        });
+    }
+
+    /**
+     * The section's one click handler, delegated on the section (which is
+     * never cloned, so a listener on it survives every re-render): a type chip
+     * sets the filter, a layout button sets and remembers the layout.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _releaseArtOnClick(e) {
+        const sec = e.currentTarget;
+        // A thumbnail opens the viewer on a plain left click, stepping through
+        // the tiles currently shown, in their on-screen order (the chip filter
+        // and the By type grouping both apply). Ctrl/Cmd/Shift/middle click
+        // keep the link's own behaviour: the 1200 px image in a new tab.
+        const tileLink = e.target.closest('figure.mb-release-art-tile > a');
+        if (tileLink && sec.contains(tileLink)) {
+            if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+            e.preventDefault();
+            const indices = Array.from(sec.querySelectorAll('figure.mb-release-art-tile'))
+                .map(f => Number(f.dataset.mbArtI));
+            _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, indices,
+                Number(tileLink.parentElement.dataset.mbArtI), { opener: tileLink, title: _releaseArtTitle() });
+            return;
+        }
+        const chip = e.target.closest('[data-mb-art-filter]');
+        if (chip && sec.contains(chip)) {
+            sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
+            _releaseArtRenderSheet(sec);
+            return;
+        }
+        const lay = e.target.closest('[data-mb-art-layout]');
+        if (lay && sec.contains(lay)) {
+            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
+            _releaseArtRenderSheet(sec);
+        }
+    }
+
+    /**
+     * Fills the section from the archive record: a contact sheet, a "no
+     * artwork" note, or a failure note with a retry button. The retry button
+     * is wired directly: the section is never cloned, so a direct listener
+     * survives every re-render.
+     *
+     * @param   {ArtCtx}      ctx
+     * @param   {HTMLElement} h2  The section's `h2.mb-release-art-h2`.
+     * @param   {HTMLElement} sec The section's `div.mb-release-art-sec`.
+     * @returns {Promise<void>}
+     */
+    async function _releaseArtLoad(ctx, h2, sec) {
+        const entityPath = sec.dataset.mbArtEntity;
+        sec.dataset.mbArtState = 'loading';
+        sec.textContent = '';
+        const status = document.createElement('div');
+        status.className = 'mb-release-art-status';
+        status.textContent = 'Loading cover art…';
+        sec.appendChild(status);
+
+        const { state, images } = await _artFetchEntityImages(ctx, entityPath);
+        if (!sec.isConnected) return;
+        sec.dataset.mbArtState = state;
+        const countEl = h2.querySelector('.mb-release-art-count');
+        if (state === 'ok') {
+            if (countEl) countEl.textContent = ` (${images.length})`;
+            status.remove();
+            _releaseArtRenderSheet(sec);
+            return;
+        }
+        if (state === 'none') {
+            if (countEl) countEl.textContent = ' (0)';
+            status.textContent = 'The Cover Art Archive has no images for this release.';
+            return;
+        }
+        status.textContent = 'The Cover Art Archive could not be reached.';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'mb-release-art-retry';
+        retry.textContent = '⟳ Retry';
+        retry.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Drop the session zero first, or Tier 1 serves it straight back
+            // (docs/claude/artwork-caa-eaa.md, CAA/EAA retry).
+            ctx.countCache.delete(entityPath);
+            ctx.imagesCache.delete(entityPath);
+            ctx.failedCache.delete(entityPath);
+            _releaseArtLoad(ctx, h2, sec);
+        });
+        status.appendChild(retry);
+    }
+
+    /**
+     * Inserts the Cover art section before `h2.tracklist` and starts loading
+     * it. Called from the release-tracks render tail BEFORE
+     * `makeH2sCollapsible()`, which then makes the new h2 collapsible like any
+     * other; the caller opens it afterwards (the section starts uncollapsed).
+     *
+     * Does nothing (and makes no request) when the setting is off, the page is
+     * not release-tracks, the tab says "Cover art (0)", or there is no
+     * `h2.tracklist` to anchor on. Idempotent: a previous section is replaced.
+     *
+     * @returns {?HTMLElement} The new h2, or null when nothing was inserted.
+     */
+    function _releaseArtInsertSection() {
+        if (!Lib.settings.sa_enable_release_tracks_cover_art) return null;
+        if (activeDefinition?.type !== 'release-tracks') return null;
+        const m = /^\/release\/([a-f0-9-]{36})/.exec(location.pathname);
+        const anchorH2 = document.querySelector('h2.tracklist');
+        if (!m || !anchorH2) return null;
+
+        document.querySelectorAll('.mb-release-art-h2, .mb-release-art-sec').forEach(n => n.remove());
+        const ctx = CAA_CTX;
+        const tabCount = _releaseArtTabCount(ctx);
+        if (tabCount === 0) return null;
+        _ensureReleaseArtStyle();
+
+        const h2 = document.createElement('h2');
+        h2.className = 'mb-release-art-h2';
+        h2.append('Cover art');
+        const count = document.createElement('span');
+        count.className = 'mb-release-art-count';
+        count.textContent = tabCount === null ? '' : ` (${tabCount})`;
+        h2.appendChild(count);
+
+        const sec = document.createElement('div');
+        sec.className = 'mb-release-art-sec';
+        sec.dataset.mbArtEntity = '/release/' + m[1];
+        sec.addEventListener('click', _releaseArtOnClick);
+
+        anchorH2.before(h2, sec);
+        _releaseArtLoad(ctx, h2, sec);
+        _releaseArtInstallTabIntercept();
+        return h2;
+    }
+
+    /**
+     * The release's title for the viewer's bar.
+     *
+     * @returns {string}
+     */
+    function _releaseArtTitle() {
+        const h1 = document.querySelector('.releaseheader h1, #content h1');
+        return (h1 && h1.textContent.trim()) || 'Cover art';
+    }
+
+    let _releaseArtTabInterceptInstalled = false;
+
+    /**
+     * Installs, once per page, the R4 click interceptor on the native
+     * "Cover art (N)" tab. On `window` in the CAPTURE phase on purpose: after
+     * a render `initNavigationGuard()`'s anchor guard (document capture) asks
+     * "leave this page?" for any link to another path, and would do so before
+     * any handler further down could act. Stopping the event here means a
+     * plain click opens the viewer and never sees that confirm.
+     *
+     * @returns {void}
+     */
+    function _releaseArtInstallTabIntercept() {
+        if (_releaseArtTabInterceptInstalled) return;
+        _releaseArtTabInterceptInstalled = true;
+        window.addEventListener('click', _releaseArtOnTabClick, true);
+    }
+
+    /**
+     * A plain left click on the "Cover art (N)" tab opens the viewer in grid
+     * mode over the page instead of navigating. Ctrl/Cmd/Shift/Alt/middle
+     * clicks are left alone (open in a new tab, as before), and so is a click
+     * while the section has nothing loaded (still loading, no images, or the
+     * archive could not be reached) — then the tab navigates as it always did.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _releaseArtOnTabClick(e) {
+        if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.defaultPrevented) return;
+        const a = e.target instanceof Element && e.target.closest(`ul.tabs a[href$="${CAA_CTX.artSuffix}"]`);
+        if (!a) return;
+        const sec = document.querySelector('.mb-release-art-sec');
+        if (!sec || sec.dataset.mbArtState !== 'ok') return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        _artViewerOpen(CAA_CTX, sec.dataset.mbArtEntity, null, null,
+            { grid: true, opener: a, title: _releaseArtTitle() });
+    }
+
+    // ── Artwork viewer (R5) ─────────────────────────────────────────────────
+    //
+    // org/CAA-release-tracks-handling.org, mockup R5 (shared with the CAA/EAA
+    // column study's D1). A singleton full-screen overlay, `#mb-art-viewer`,
+    // driven by a ctx + entity path + list of image indices; it reads the
+    // archive record from `ctx.imagesCache` and makes no JSON request. While it
+    // is open:
+    //   • one window CAPTURE keydown listener takes every key first — the
+    //     viewer's own (← → Home End Z G I O Esc, unmodified) and Tab (kept
+    //     inside the overlay) — and stops every key from reaching the page, so
+    //     Ctrl+M mode, the Ctrl shortcuts, ?, / and Shift+Esc cannot act on the
+    //     page behind it, and initNavigationGuard()'s Tab trap cannot move focus
+    //     out of it;
+    //   • page scrolling is locked (documentElement overflow), restored on close;
+    //   • focus returns to the opener on close.
+    // z-index 2147483400: above every panel (the 📊 dropdown, the corner
+    // notice), below the .mb-tt-liner tooltips (2147483500).
+
+    let _artViewerState = null;
+
+    /**
+     * An image's thumbnail URL (250, or `small` on older records), protocol-relative.
+     *
+     * @param   {Object} im
+     * @returns {string}
+     */
+    function _artViewerThumbUrl(im) {
+        const t = im.thumbnails || {};
+        return (t['250'] || t.small || t['500'] || t.large || im.image || '').replace(/^http:/, '');
+    }
+
+    /**
+     * An image's large URL (1200, or `large` on older records), protocol-relative.
+     *
+     * @param   {Object} im
+     * @returns {string}
+     */
+    function _artViewerBigUrl(im) {
+        const t = im.thumbnails || {};
+        return (t['1200'] || t.large || im.image || _artViewerThumbUrl(im)).replace(/^http:/, '');
+    }
+
+    /**
+     * Loads an image fully and resolves with the URL to show: a `blob:` URL
+     * from the IndexedDB image cache when `sa_art_idb_enable` is on (the same
+     * rule every other artwork caller follows), else the URL itself once the
+     * browser has it.
+     *
+     * @param   {string} url
+     * @returns {Promise<string>}
+     */
+    function _artViewerLoad(url) {
+        if (Lib.settings.sa_art_idb_enable) {
+            return _artFetchCachedImage(url).then(r => r.objectUrl);
+        }
+        return new Promise((resolve, reject) => {
+            const pre = new Image();
+            pre.onload = () => resolve(url);
+            pre.onerror = () => reject(new Error('image failed: ' + url));
+            pre.src = url;
+        });
+    }
+
+    /**
+     * Injects the viewer's stylesheet once.
+     *
+     * @returns {void}
+     */
+    function _ensureArtViewerStyle() {
+        if (document.getElementById('mb-art-viewer-style')) return;
+        // GM_addStyle so this is exempt from page CSP style-src restrictions.
+        const style = GM_addStyle(`
+            #mb-art-viewer {
+                position: fixed;
+                inset: 0;
+                z-index: 2147483400;
+                background: #0d0e11;
+                color: #ebe7df;
+                display: grid;
+                grid-template-rows: auto minmax(0, 1fr) auto;
+                font: 13px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            }
+            #mb-art-viewer[hidden] { display: none; }
+            #mb-art-viewer .mb-artv-bar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+                padding: 8px 14px;
+                border-bottom: 1px solid #2b2e35;
+            }
+            #mb-art-viewer .mb-artv-title {
+                flex: 1 1 200px;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-weight: 600;
+                font-size: 15px;
+            }
+            #mb-art-viewer .mb-artv-pos { color: #9c978c; font-variant-numeric: tabular-nums; }
+            #mb-art-viewer .mb-artv-btn {
+                background: #17191e;
+                border: 1px solid #2b2e35;
+                color: #ebe7df;
+                border-radius: 5px;
+                padding: 3px 9px;
+                cursor: pointer;
+                font: inherit;
+                font-size: 12px;
+                text-decoration: none;
+            }
+            #mb-art-viewer .mb-artv-btn:hover,
+            #mb-art-viewer .mb-artv-btn:focus-visible { border-color: #f0a35e; outline: none; }
+            #mb-art-viewer .mb-artv-btn[aria-pressed="true"] { border-color: #f0a35e; color: #f0a35e; }
+            #mb-art-viewer .mb-artv-mid { display: grid; grid-template-columns: minmax(0, 1fr) 290px; min-height: 0; }
+            #mb-art-viewer .mb-artv-mid.mb-artv-noinfo { grid-template-columns: minmax(0, 1fr); }
+            #mb-art-viewer .mb-artv-mid.mb-artv-noinfo .mb-artv-info { display: none; }
+            #mb-art-viewer .mb-artv-stage {
+                position: relative;
+                overflow: hidden;
+                display: grid;
+                place-items: center;
+                min-height: 0;
+                cursor: zoom-in;
+                touch-action: pan-y;
+            }
+            #mb-art-viewer .mb-artv-stage.mb-artv-zoomed { cursor: zoom-out; }
+            #mb-art-viewer .mb-artv-img {
+                width: 100%;
+                height: 100%;
+                padding: 12px 56px;
+                box-sizing: border-box;
+                object-fit: contain;
+                transition: transform 0.12s ease-out;
+                user-select: none;
+            }
+            #mb-art-viewer .mb-artv-note {
+                position: absolute;
+                left: 12px;
+                bottom: 10px;
+                max-width: 70%;
+                color: #9c978c;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-nav {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 38px;
+                height: 54px;
+                background: rgba(23, 25, 30, 0.7);
+                border: 1px solid #2b2e35;
+                border-radius: 6px;
+                color: #ebe7df;
+                font-size: 20px;
+                cursor: pointer;
+            }
+            #mb-art-viewer .mb-artv-prev { left: 10px; }
+            #mb-art-viewer .mb-artv-next { right: 10px; }
+            #mb-art-viewer .mb-artv-info {
+                position: static;
+                overflow-y: auto;
+                border-radius: 0;
+                border-width: 0 0 0 1px;
+                box-shadow: none;
+                padding: 14px 16px;
+            }
+            #mb-art-viewer .mb-artv-info dl {
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 2px 10px;
+                margin: 0;
+                font-size: 12px;
+            }
+            #mb-art-viewer .mb-artv-info dt { color: #7a6d5c; }
+            #mb-art-viewer .mb-artv-info dd { margin: 0; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-info a { color: inherit; }
+            #mb-art-viewer .mb-artv-film {
+                display: flex;
+                gap: 5px;
+                overflow-x: auto;
+                padding: 8px 14px;
+                border-top: 1px solid #2b2e35;
+            }
+            #mb-art-viewer .mb-artv-film img,
+            #mb-art-viewer .mb-artv-grid img {
+                display: block;
+                object-fit: contain;
+                background: #17191e;
+                cursor: pointer;
+            }
+            #mb-art-viewer .mb-artv-film img {
+                flex: 0 0 56px;
+                width: 56px;
+                height: 56px;
+                opacity: 0.55;
+                border: 2px solid transparent;
+                box-sizing: border-box;
+            }
+            #mb-art-viewer .mb-artv-film img.mb-artv-cur { opacity: 1; border-color: #f0a35e; }
+            #mb-art-viewer .mb-artv-grid {
+                overflow-y: auto;
+                padding: 14px;
+                display: grid;
+                gap: 14px;
+                align-content: start;
+                min-height: 0;
+            }
+            #mb-art-viewer .mb-artv-grid-hdr {
+                font-size: 12px;
+                font-weight: 600;
+                color: #9c978c;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+            }
+            #mb-art-viewer .mb-artv-grid-row {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 10px;
+            }
+            #mb-art-viewer .mb-artv-grid figure { margin: 0; display: grid; gap: 4px; }
+            #mb-art-viewer .mb-artv-grid img { width: 100%; aspect-ratio: 1; }
+            #mb-art-viewer .mb-artv-grid figcaption { font-size: 11.5px; color: #9c978c; overflow-wrap: anywhere; }
+            #mb-art-viewer .mb-artv-keys { color: #9c978c; font-size: 11px; }
+            @media (max-width: 760px) {
+                #mb-art-viewer .mb-artv-mid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+                #mb-art-viewer .mb-artv-info { border-width: 1px 0 0; max-height: 36vh; }
+                #mb-art-viewer .mb-artv-img { padding: 8px 44px; }
+            }
+        `);
+        style.id = 'mb-art-viewer-style';
+    }
+
+    /**
+     * Opens the viewer (or re-targets it when already open).
+     *
+     * @param   {ArtCtx}    ctx        `CAA_CTX` or `EAA_CTX`.
+     * @param   {string}    entityPath Key into `ctx.imagesCache`, e.g. `/release/<mbid>`.
+     * @param   {?number[]} indices    Image indices to step through, in order;
+     *                                 null/empty = every image in archive order.
+     * @param   {?number}   start      The image to show first (falls back to the first of `indices`).
+     * @param   {Object}    [opts]
+     * @param   {boolean}   [opts.grid=false]   Start in grid mode (the tab click does).
+     * @param   {?Element}  [opts.opener=null]  Focus returns here on close.
+     * @param   {string}    [opts.title='']     Shown in the bar.
+     * @returns {void}
+     */
+    function _artViewerOpen(ctx, entityPath, indices, start, { grid = false, opener = null, title = '' } = {}) {
+        const images = ctx.imagesCache.get(entityPath) || [];
+        const list = (indices && indices.length ? indices : images.map((_, i) => i)).filter(i => images[i]);
+        if (!list.length) return;
+        _ensureArtViewerStyle();
+        let root = document.getElementById('mb-art-viewer');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'mb-art-viewer';
+            root.setAttribute('role', 'dialog');
+            root.setAttribute('aria-modal', 'true');
+            root.tabIndex = -1;
+            root.addEventListener('click', _artViewerOnClick);
+            root.addEventListener('mousemove', _artViewerOnMouseMove);
+            root.addEventListener('pointerdown', _artViewerOnPointerDown);
+            root.addEventListener('pointerup', _artViewerOnPointerUp);
+            document.body.appendChild(root);
+        }
+        root.setAttribute('aria-label', `${ctx.column} artwork viewer`);
+        const prevOverflow = _artViewerState ? _artViewerState.prevOverflow : document.documentElement.style.overflow;
+        _artViewerState = {
+            ctx, entityPath, images, list,
+            i: list.includes(start) ? start : list[0],
+            grid, gridStart: grid, info: true, zoom: false,
+            opener, title, prevOverflow,
+            swipeX: null, swipeAt: 0, gen: 0,
+        };
+        document.documentElement.style.overflow = 'hidden';
+        window.removeEventListener('keydown', _artViewerOnKey, true);
+        window.addEventListener('keydown', _artViewerOnKey, true);
+        root.hidden = false;
+        _artViewerRender();
+    }
+
+    /**
+     * Closes the viewer: removes its key listener, unlocks scrolling and
+     * returns focus to the opener.
+     *
+     * @returns {void}
+     */
+    function _artViewerClose() {
+        const st = _artViewerState;
+        if (!st) return;
+        _artViewerState = null;
+        window.removeEventListener('keydown', _artViewerOnKey, true);
+        const root = document.getElementById('mb-art-viewer');
+        if (root) {
+            root.hidden = true;
+            root.textContent = '';
+        }
+        document.documentElement.style.overflow = st.prevOverflow;
+        if (st.opener && st.opener.isConnected && typeof st.opener.focus === 'function') st.opener.focus();
+    }
+
+    /**
+     * Steps within the list, wrapping at both ends.
+     *
+     * @param   {number} d +1 or -1.
+     * @returns {void}
+     */
+    function _artViewerStep(d) {
+        const st = _artViewerState;
+        if (!st) return;
+        const k = st.list.indexOf(st.i);
+        st.i = st.list[(k + d + st.list.length) % st.list.length];
+        st.zoom = false;
+        _artViewerRender();
+    }
+
+    /**
+     * Small element helper for the viewer's markup.
+     *
+     * @param   {string} tag
+     * @param   {string} [cls]
+     * @param   {string} [text]
+     * @returns {HTMLElement}
+     */
+    function _artvEl(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined) n.textContent = text;
+        return n;
+    }
+
+    /**
+     * A viewer button.
+     *
+     * @param   {string}  action   `data-artv` value.
+     * @param   {string}  label
+     * @param   {?boolean} [pressed] Rendered as `aria-pressed` when given.
+     * @returns {HTMLButtonElement}
+     */
+    function _artvBtn(action, label, pressed) {
+        const b = _artvEl('button', 'mb-artv-btn', label);
+        b.type = 'button';
+        b.dataset.artv = action;
+        if (pressed !== undefined && pressed !== null) b.setAttribute('aria-pressed', String(pressed));
+        return b;
+    }
+
+    /**
+     * The info panel's content for one image, as `.mb-tt-liner` rows.
+     *
+     * @param   {Object} st The viewer state.
+     * @returns {HTMLElement}
+     */
+    function _artViewerInfo(st) {
+        const im = st.images[st.i];
+        const types = im.types && im.types.length ? im.types : ['(no type)'];
+        const sameType = st.images.filter(x => (x.types || []).includes(types[0]));
+        const panel = _artvEl('div', 'mb-artv-info mb-tt-liner');
+        panel.appendChild(_artvEl('div', 'mb-tt-title', im.front ? '★ Main front' : types.join(' / ')));
+        const pills = _artvEl('div', 'mb-tt-body');
+        pills.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;';
+        types.forEach(t => pills.appendChild(_artvEl('span', 'mb-tt-pill', t)));
+        panel.appendChild(pills);
+        panel.appendChild(im.comment ? _artvEl('div', 'mb-tt-comment', `“${im.comment}”`) : _artvEl('div', 'mb-tt-dim', 'No comment'));
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const dl = document.createElement('dl');
+        const row = (k, v) => {
+            dl.appendChild(_artvEl('dt', null, k));
+            const dd = document.createElement('dd');
+            if (v instanceof Node) dd.appendChild(v); else dd.textContent = v;
+            dl.appendChild(dd);
+        };
+        row('Position', `${st.i + 1} of ${st.images.length}` +
+            (sameType.length > 1 ? ` · ${types[0]} ${sameType.indexOf(im) + 1} of ${sameType.length}` : ''));
+        row('Main front', im.front ? 'yes' : 'no');
+        row('Main back', im.back ? 'yes' : 'no');
+        row('Status', im.approved === false ? 'pending approval' : 'approved');
+        if (im.edit) {
+            const a = _artvEl('a', null, `edit #${im.edit}`);
+            a.href = `/edit/${im.edit}`;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            row('Added in', a);
+        }
+        if (im.id) row('Archive id', String(im.id));
+        panel.appendChild(dl);
+        panel.appendChild(_artvEl('div', 'mb-tt-rule'));
+        const sizes = _artvEl('div', 'mb-tt-body', 'Sizes: ');
+        const t = im.thumbnails || {};
+        [['250', t['250'] || t.small], ['500', t['500'] || t.large], ['1200', t['1200']], ['original', im.image]]
+            .filter(([, u]) => u)
+            .forEach(([label, u], n) => {
+                if (n) sizes.append(' · ');
+                const a = _artvEl('a', null, label);
+                a.href = u.replace(/^http:/, '');
+                a.target = '_blank';
+                a.rel = 'noopener';
+                sizes.appendChild(a);
+            });
+        panel.appendChild(sizes);
+        panel.appendChild(_artvEl('div', 'mb-tt-foot', '← → step · Z zoom · G grid · I info · O original · Esc close'));
+        return panel;
+    }
+
+    /**
+     * Renders the viewer for its current state: the bar, then either the
+     * grid (grouped under each image's first type) or the stage, the info
+     * panel and the filmstrip. The large image replaces the thumbnail once it
+     * has loaded; `st.gen` drops a load that finishes after the user moved on.
+     *
+     * @returns {void}
+     */
+    function _artViewerRender() {
+        const st = _artViewerState;
+        const root = document.getElementById('mb-art-viewer');
+        if (!st || !root) return;
+        root.textContent = '';
+        const im = st.images[st.i];
+
+        const bar = _artvEl('div', 'mb-artv-bar');
+        bar.appendChild(_artvEl('span', 'mb-artv-title', st.title || `${st.ctx.column} artwork`));
+        bar.appendChild(_artvEl('span', 'mb-artv-pos',
+            st.grid ? `${st.list.length} image${st.list.length === 1 ? '' : 's'}` : `${st.list.indexOf(st.i) + 1} / ${st.list.length}`));
+        bar.appendChild(_artvBtn('grid', 'Grid (G)', st.grid));
+        if (!st.grid) bar.appendChild(_artvBtn('info', 'Info (I)', st.info));
+        const orig = _artvEl('a', 'mb-artv-btn', 'Original (O)');
+        orig.href = (im.image || _artViewerBigUrl(im)).replace(/^http:/, '');
+        orig.target = '_blank';
+        orig.rel = 'noopener';
+        bar.appendChild(orig);
+        const close = _artvBtn('close', 'Close (Esc)');
+        bar.appendChild(close);
+        root.appendChild(bar);
+
+        if (st.grid) {
+            const grid = _artvEl('div', 'mb-artv-grid');
+            const groups = new Map();
+            st.list.forEach(i => {
+                const first = (st.images[i].types && st.images[i].types[0]) || '(no type)';
+                if (!groups.has(first)) groups.set(first, []);
+                groups.get(first).push(i);
+            });
+            groups.forEach((idx, type) => {
+                grid.appendChild(_artvEl('div', 'mb-artv-grid-hdr', `${type} × ${idx.length}`));
+                const rowEl = _artvEl('div', 'mb-artv-grid-row');
+                idx.forEach(i => {
+                    const x = st.images[i];
+                    const fig = document.createElement('figure');
+                    const img = document.createElement('img');
+                    img.src = _artViewerThumbUrl(x);
+                    img.alt = (x.types || []).join(' / ');
+                    img.loading = 'lazy';
+                    img.dataset.artvGo = String(i);
+                    fig.append(img, _artvEl('figcaption', null,
+                        x.front ? '★ main front' : (x.comment || (x.types || []).join(' / '))));
+                    rowEl.appendChild(fig);
+                });
+                grid.appendChild(rowEl);
+            });
+            root.appendChild(grid);
+            root.appendChild(_artvEl('div', 'mb-artv-bar mb-artv-keys',
+                st.gridStart ? 'Click an image to view it · Esc close' : 'Click an image to view it · G or Esc back'));
+            close.focus({ preventScroll: true });
+            return;
+        }
+
+        const mid = _artvEl('div', 'mb-artv-mid' + (st.info ? '' : ' mb-artv-noinfo'));
+        const stage = _artvEl('div', 'mb-artv-stage' + (st.zoom ? ' mb-artv-zoomed' : ''));
+        stage.dataset.artv = 'stage';
+        const img = _artvEl('img', 'mb-artv-img');
+        img.alt = (im.types || []).join(' / ') + (im.comment ? ' · ' + im.comment : '');
+        img.draggable = false;
+        img.src = _artViewerThumbUrl(im);
+        img.dataset.artvSize = 'thumb';
+        if (st.zoom) img.style.transform = 'scale(2)';
+        stage.appendChild(img);
+        const note = _artvEl('div', 'mb-artv-note', 'Showing the thumbnail; loading the large image…');
+        stage.appendChild(note);
+        const prev = _artvBtn('prev', '‹');
+        prev.className = 'mb-artv-nav mb-artv-prev';
+        prev.setAttribute('aria-label', 'Previous image');
+        const next = _artvBtn('next', '›');
+        next.className = 'mb-artv-nav mb-artv-next';
+        next.setAttribute('aria-label', 'Next image');
+        stage.append(prev, next);
+        mid.append(stage, _artViewerInfo(st));
+        root.appendChild(mid);
+
+        const film = _artvEl('div', 'mb-artv-film');
+        st.list.forEach(i => {
+            const th = document.createElement('img');
+            th.src = _artViewerThumbUrl(st.images[i]);
+            th.alt = (st.images[i].types || []).join(' / ');
+            th.loading = 'lazy';
+            th.dataset.artvGo = String(i);
+            if (i === st.i) th.className = 'mb-artv-cur';
+            film.appendChild(th);
+        });
+        root.appendChild(film);
+        const cur = film.querySelector('.mb-artv-cur');
+        if (cur && typeof cur.scrollIntoView === 'function') cur.scrollIntoView({ block: 'nearest', inline: 'center' });
+
+        const gen = ++st.gen;
+        const bigUrl = _artViewerBigUrl(im);
+        _artViewerLoad(bigUrl).then(src => {
+            if (_artViewerState !== st || st.gen !== gen || !img.isConnected) return;
+            img.src = src;
+            img.dataset.artvSize = 'big';
+            note.textContent = '';
+        }).catch(() => {
+            if (_artViewerState !== st || st.gen !== gen || !note.isConnected) return;
+            note.textContent = 'Showing the thumbnail; the large image could not be loaded.';
+        });
+        // Preload the two neighbours so stepping is instant.
+        const k = st.list.indexOf(st.i);
+        [st.list[(k + 1) % st.list.length], st.list[(k - 1 + st.list.length) % st.list.length]]
+            .filter(j => j !== st.i)
+            .forEach(j => { _artViewerLoad(_artViewerBigUrl(st.images[j])).catch(() => {}); });
+        close.focus({ preventScroll: true });
+    }
+
+    /**
+     * Toggles 2× zoom without re-rendering (the loaded image stays).
+     *
+     * @returns {void}
+     */
+    function _artViewerToggleZoom() {
+        const st = _artViewerState;
+        const stage = document.querySelector('#mb-art-viewer .mb-artv-stage');
+        if (!st || !stage) return;
+        st.zoom = !st.zoom;
+        stage.classList.toggle('mb-artv-zoomed', st.zoom);
+        const img = stage.querySelector('.mb-artv-img');
+        if (img) {
+            img.style.transform = st.zoom ? 'scale(2)' : '';
+            if (!st.zoom) img.style.transformOrigin = '';
+        }
+    }
+
+    /**
+     * The viewer's key handler (window, capture phase, only while open).
+     * Every key is stopped from reaching the page; the viewer's own keys act
+     * only without Ctrl/Cmd/Alt, so a browser shortcut keeps its default.
+     *
+     * @param   {KeyboardEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnKey(e) {
+        const st = _artViewerState;
+        if (!st) return;
+        e.stopImmediatePropagation();
+        const root = document.getElementById('mb-art-viewer');
+        if (e.key === 'Tab') {
+            const focusables = root ? Array.from(root.querySelectorAll('button, a[href]')) : [];
+            if (focusables.length) {
+                const at = focusables.indexOf(document.activeElement);
+                const nextIdx = e.shiftKey
+                    ? (at <= 0 ? focusables.length - 1 : at - 1)
+                    : (at === -1 || at === focusables.length - 1 ? 0 : at + 1);
+                focusables[nextIdx].focus();
+            }
+            e.preventDefault();
+            return;
+        }
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        const k = e.key;
+        let handled = true;
+        if (k === 'Escape') {
+            if (st.grid && !st.gridStart) {
+                st.grid = false;
+                _artViewerRender();
+            } else {
+                _artViewerClose();
+            }
+        } else if (st.grid) {
+            if (k === 'g' || k === 'G') {
+                st.grid = false;
+                _artViewerRender();
+            } else {
+                handled = false;
+            }
+        } else if (k === 'ArrowRight') {
+            _artViewerStep(1);
+        } else if (k === 'ArrowLeft') {
+            _artViewerStep(-1);
+        } else if (k === 'Home' || k === 'End') {
+            st.i = k === 'Home' ? st.list[0] : st.list[st.list.length - 1];
+            st.zoom = false;
+            _artViewerRender();
+        } else if (k === 'z' || k === 'Z') {
+            _artViewerToggleZoom();
+        } else if (k === 'g' || k === 'G') {
+            st.grid = true;
+            _artViewerRender();
+        } else if (k === 'i' || k === 'I') {
+            st.info = !st.info;
+            _artViewerRender();
+        } else if (k === 'o' || k === 'O') {
+            const im = st.images[st.i];
+            window.open((im.image || _artViewerBigUrl(im)).replace(/^http:/, ''), '_blank', 'noopener');
+        } else {
+            handled = false;
+        }
+        if (handled) e.preventDefault();
+    }
+
+    /**
+     * Clicks inside the viewer (delegated on the overlay): a filmstrip or grid
+     * image jumps to it; the buttons act; a click on the stage toggles zoom.
+     * The Original link and the info panel's links are real links and open
+     * normally. The click a swipe ends with is ignored.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnClick(e) {
+        const st = _artViewerState;
+        if (!st) return;
+        if (performance.now() - st.swipeAt < 500) {
+            e.preventDefault();
+            return;
+        }
+        const go = e.target.closest('[data-artv-go]');
+        if (go) {
+            st.i = Number(go.dataset.artvGo);
+            st.grid = false;
+            st.zoom = false;
+            _artViewerRender();
+            return;
+        }
+        const b = e.target.closest('[data-artv]');
+        if (!b) return;
+        const action = b.dataset.artv;
+        if (action === 'close') _artViewerClose();
+        else if (action === 'grid') { st.grid = !st.grid; _artViewerRender(); }
+        else if (action === 'info') { st.info = !st.info; _artViewerRender(); }
+        else if (action === 'prev') _artViewerStep(-1);
+        else if (action === 'next') _artViewerStep(1);
+        else if (action === 'stage') _artViewerToggleZoom();
+    }
+
+    /**
+     * While zoomed, the image follows the mouse.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnMouseMove(e) {
+        const st = _artViewerState;
+        if (!st || !st.zoom) return;
+        const stage = e.target.closest('.mb-artv-stage');
+        const img = stage && stage.querySelector('.mb-artv-img');
+        if (!img) return;
+        const r = stage.getBoundingClientRect();
+        img.style.transformOrigin =
+            `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+    }
+
+    /**
+     * Touch swipe, start: remembers where a touch began on the stage.
+     *
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnPointerDown(e) {
+        const st = _artViewerState;
+        if (!st || e.pointerType !== 'touch' || !e.target.closest('.mb-artv-stage')) return;
+        st.swipeX = e.clientX;
+    }
+
+    /**
+     * Touch swipe, end: a horizontal move of more than 50 px steps (left =
+     * next), and the click that follows is swallowed.
+     *
+     * @param   {PointerEvent} e
+     * @returns {void}
+     */
+    function _artViewerOnPointerUp(e) {
+        const st = _artViewerState;
+        if (!st || st.swipeX === null) return;
+        const dx = e.clientX - st.swipeX;
+        st.swipeX = null;
+        if (Math.abs(dx) > 50 && !st.grid) {
+            st.swipeAt = performance.now();
+            _artViewerStep(dx < 0 ? 1 : -1);
+        }
+    }
+
 
     /**
      * Loads thumbnails into all artwork-icon spans in `table` that are wrapped in
@@ -90212,8 +96600,14 @@ a { color: #1565c0; }`;
         // elements in place, then recreates fresh h3/table pairs alongside them).
         table.parentNode.insertBefore(box, table);
 
+        // Indented like its table: renderGroupedTable() gives every sub-table
+        // the h3 bar's margin-left (1.5em), and a strip without it sat flush
+        // with the h2 while the bar above it and the table below were
+        // indented — pinned that way, too, by Sticky Page Headers, which pins
+        // the strip at its natural left (org/sticky-bugs.org, 2026-10-05).
         box.style.cssText       = 'display:' + (currentlyVisible ? 'flex' : 'none') +
-                                   '; flex-wrap:wrap; gap:4px; padding:4px 0 4px 0; min-height:0;';
+                                   '; flex-wrap:wrap; gap:4px; padding:4px 0 4px 0; min-height:0;' +
+                                   (table.style.marginLeft ? ' margin-left:' + table.style.marginLeft + ';' : '');
         box.dataset[ctx.visAttr] = currentlyVisible ? 'true' : 'false';
 
         // ── Discography-view guard ────────────────────────────────────────────
@@ -90359,33 +96753,11 @@ a { color: #1565c0; }`;
 
                     if (!firstImgUrl) firstImgUrl = imgurl;
 
-                    // ── Build wrapper tooltip text ─────────────────────────────
-                    // Start with the anchor's own text (e.g. "Greetings From Asbury Park, N.J.").
-                    // Then append the disambiguation comment from the enclosing <td>'s
-                    // <span class="comment"> (if present), including the opening '(' and
-                    // closing ')' characters, so the tooltip reads e.g.
-                    //   "Greetings From Asbury Park, N.J. (Pitman pressing)"
-                    // or for EAA events:
-                    //   "2025‐12‐14: The Stone Pony, Asbury Park, NJ, USA (Hungerthon Benefit)"
+                    // The anchor's own text (e.g. "Greetings From Asbury Park, N.J."):
+                    // the tooltip's name line and the image's alt text. The comment
+                    // line comes from _commentForTooltip below.
                     const _anchorText = a.textContent.trim();
-                    let _wrapperTitle = _anchorText;
                     const _td = a.closest('td');
-                    if (_td) {
-                        const _commentSpan = _td.querySelector('span.comment');
-                        if (_commentSpan) {
-                            // Extract visible text from the comment span.
-                            // MusicBrainz renders it as "(\n  <bdi>text</bdi>\n)" so
-                            // textContent gives "(\n  text\n)"; collapse whitespace and
-                            // ensure it is wrapped with exactly one "(" … ")".
-                            const _commentRaw = _commentSpan.textContent.trim();
-                            // The span's textContent typically starts with '(' and ends with ')'.
-                            // Normalise: strip outer parens if present, then re-wrap.
-                            const _commentInner = _commentRaw.replace(/^\(\s*/, '').replace(/\s*\)$/, '').trim();
-                            if (_commentInner) {
-                                _wrapperTitle += ' (' + _commentInner + ')';
-                            }
-                        }
-                    }
 
                     // Wrapper anchor mirrors jesus2099's inline-block anchor in bigbox
                     const wrapper = document.createElement('a');
@@ -90694,6 +97066,8 @@ a { color: #1565c0; }`;
                             const _tip = _ensureArtBigboxTooltip();
                             if (!_tip) return;
                             _tip.innerHTML = '';
+                            // Singleton card: undo a previous Annotation card's widening.
+                            _tip.style.maxWidth = '380px';
 
                             // ── Primary path: tooltipColumns-driven rendering ─────────────────────
                             // When the active page definition declares a tooltipColumns
@@ -90850,6 +97224,7 @@ a { color: #1565c0; }`;
                             const _r  = this.getBoundingClientRect();
                             const _vw = window.innerWidth, _vh = window.innerHeight;
                             _tip.style.display = 'block';
+                            _fitArtTooltipToViewport(_tip);
                             const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
                             let _x = _r.right + 8;
                             let _y = _r.top;
@@ -91892,11 +98267,16 @@ a { color: #1565c0; }`;
      * a large listing, so these controls would never appear on exactly the
      * pages that need them.
      *
+     * None at all on a single table without a global control row
+     * (`_failedRetrySharesTableSlot()`): the page-wide control already sits
+     * in that table's run and covers exactly its rows.
+     *
      * @param   {Object} ctx
      * @returns {void}
      */
     function _artRefreshPerTableFailedButtons(ctx) {
-        const entries = _artFailedPathsByTable(ctx);
+        const all = _artFailedPathsByTable(ctx);
+        const entries = _failedRetrySharesTableSlot(ctx.btnPrefix + '-global-retry', all.length) ? [] : all;
         const live = new Set();
         entries.forEach(({ table, paths }, i) => {
             const id = ctx.btnPrefix + '-retry-failed-' + i;
@@ -91990,6 +98370,13 @@ a { color: #1565c0; }`;
         _artRefreshPerTableFailedButtons(ctx);
     }
 
+    /**
+     * Shows the page-wide "retry failed artwork" button for `ctx` with the
+     * current failure count, or removes it when nothing failed.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @returns {void}
+     */
     function _artRefreshFailedRetryButton(ctx) {
         const id = ctx.btnPrefix + '-retry-failed';
         const existing = document.getElementById(id);
@@ -92055,6 +98442,15 @@ a { color: #1565c0; }`;
         });
     }
 
+    /**
+     * Reloads one sub-table's artwork from the network: takes its count off
+     * the global badge, clears its cached entries and rebuilds it.
+     *
+     * @param {Object} ctx - `CAA_CTX` or `EAA_CTX`.
+     * @param {HTMLTableElement} table
+     * @param {number} tableIndex - Its index among `table.tbl` elements.
+     * @returns {Promise<void>}
+     */
     async function _artRetryTable(ctx, table, tableIndex) {
         Lib.debug(ctx.key, `${ctx.key}RetryTable: starting forced reload for table ${tableIndex}`);
 
@@ -93177,6 +99573,8 @@ a { color: #1565c0; }`;
             const _tip = _ensureArtBigboxTooltip();
             if (!_tip) return;
             _tip.innerHTML = '';
+            // Singleton card: undo a previous Annotation card's widening.
+            _tip.style.maxWidth = '380px';
 
             const _rowEl = ph.closest('tr');
 
@@ -93318,6 +99716,7 @@ a { color: #1565c0; }`;
                 : ph.getBoundingClientRect();
             const _vw = window.innerWidth, _vh = window.innerHeight;
             _tip.style.display = 'block';
+            _fitArtTooltipToViewport(_tip);
             const _tw = _tip.offsetWidth, _th = _tip.offsetHeight;
             let _x = _anchorRect.right + 8;
             let _y = _anchorRect.top;
@@ -93718,7 +100117,6 @@ a { color: #1565c0; }`;
                     ? listItems.filter(li => !li.querySelector(phSelector))
                     : [td];
 
-                let anyInjected = false;
 
                 targets.forEach(container => {
                     const link = container.querySelector(ctx.inlineLinkSel);
@@ -93779,7 +100177,6 @@ a { color: #1565c0; }`;
                     }
 
                     injected++;
-                    anyInjected = true;
 
                     // ── Defer fetch through _caaQueue (concurrency-throttled) ───
                     // When IDB is enabled AND this is not a cache-busted retry, the
@@ -95985,6 +102382,17 @@ a { color: #1565c0; }`;
                 return _parseLiveTitle(text);
             },
             /**
+             * Runs the shipping `_setTip()`, so a spec can re-tip an element
+             * the way a refreshing control does, without waiting for one to.
+             *
+             * @param {Element} el
+             * @param {string} text
+             * @returns {string} `_setTip()`'s own result.
+             */
+            setTip(el, text) {
+                return _setTip(el, text);
+            },
+            /**
              * Runs the shipping `_parseEventName()` on one event name, for the
              * same reason as `parseLiveTitle()`.
              *
@@ -96052,7 +102460,7 @@ a { color: #1565c0; }`;
              *   itself applies to the "(cancelled)" marker in the cell.
              */
             getUniqDropSections(colName, tableIndex = null) {
-                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim();
+                const stripDecorations = (t) => t.replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim();
                 // Prefer th.dataset.colName (set by makeTableSortableUnified()
                 // for every header) over a re-derived textContent strip —
                 // mirrors openUniqDrop()'s own `_colHeaderName` resolution.
@@ -96739,6 +103147,31 @@ a { color: #1565c0; }`;
              */
             slFirstIsoDate(text) {
                 return _slFirstIsoDate(text);
+            },
+
+            /**
+             * Thin wrapper around `_jlParseItem()` — the jungleland.it list
+             * entry parser, exposed so a spec can pin title shapes the
+             * fixture happens not to contain.
+             *
+             * @param {string} text      A list entry's link text.
+             * @param {string} [section] The anchor heading above it ("1975", "others").
+             * @returns {{title: string, date: string, year: string}} The parsed fields.
+             */
+            jlParseItem(text, section) {
+                return _jlParseItem(text, section);
+            },
+
+            /**
+             * Thin wrapper around `_bsParseHead()` — splits a
+             * brucespringsteen.it record's first line ("1 7 in. (Germany)
+             * PROMO") into format, label/country and the promo flag.
+             *
+             * @param {string} text A record's first line.
+             * @returns {{format: string, party: string, promo: boolean}} The parts.
+             */
+            bsParseHead(text) {
+                return _bsParseHead(text);
             },
 
             /**

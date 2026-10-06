@@ -34,9 +34,15 @@ const USERSCRIPT_PATH = path.join(PROJECT_ROOT, 'ShowAllEntityData.user.js');
 // fixture tests keeps that suite genuinely network-free even once a fixture
 // test clicks a "Show all" button, rather than relying on no test happening
 // to trigger it.
+//
+// `sa_enable_release_tracks_cover_art` (default true) is the third: the
+// release page's "Cover art (N)" section fetches the archive record with plain
+// fetch() on every release-tracks render. Specs of that section turn it back
+// on and route coverartarchive.org themselves.
 const FIXTURE_SETTINGS_OVERRIDE = {
     sa_enable_caa_pics: false,
     sa_enable_relationships_column: false,
+    sa_enable_release_tracks_cover_art: false,
 };
 
 // `_migrateFrozenSettings()` repairs a GM profile that VZ_MBLibrary's old SAVE
@@ -75,6 +81,29 @@ const SETTINGS_MIGRATION_PRE_APPLIED = {
 // that mocks those keeps working; and a non-image request falls back to
 // whatever other route applies.
 const ARCHIVE_ORG_RE = /^https?:\/\/(?:[^/]+\.)?archive\.org\//;
+
+// The other subresource that reached the real network: every saved
+// MusicBrainz page carries `<script src="/static/scripts/supported-browser-check.js">`,
+// which resolves to musicbrainz.org itself (the rest of MusicBrainz's JS comes
+// from the static.metabrainz.org CDN). Under a parallel suite run that server
+// intermittently answers it with `200 text/html` — a page, not a script — and
+// Chromium reports the parse as an uncaught `Unexpected token '<'`. Any spec
+// that asserts "no page errors" then failed for a reason outside the
+// userscript: measured 2026-10-06 as 10 of 48 and 24 of 48 failed runs of
+// search-annotation-tooltip.spec.js, on main and on a branch alike
+// (DEBUG-NOTES.md).
+//
+// Answered locally with what the real script does in a supported browser —
+// it removes the hidden `#unsupported-browser` warning (fetched 2026-10-06:
+// eval a private async method, query `:has()`, then `msg.remove()`) — so the
+// DOM a spec sees is the DOM the real page ends up with. The header marks the
+// stub so tests/fixtures/harness-mb-static-script.spec.js can tell it apart
+// from the network. Another musicbrainz.org script in a future fixture goes
+// here too: tests/fixtures and tests/snapshots reference no other one today.
+const MB_BROWSER_CHECK_RE = /^https:\/\/musicbrainz\.org\/static\/scripts\/supported-browser-check\.js(?:\?.*)?$/;
+const MB_BROWSER_CHECK_STUB =
+    "var msg = document.getElementById('unsupported-browser');\n" +
+    'if (msg) msg.remove();\n';
 
 /**
  * Loads ShowAllEntityData.user.js onto `page`, matching the exact
@@ -141,6 +170,13 @@ async function loadUserscriptPage(page, { url, fixtureFile, testMode, settingsOv
         await page.route(ARCHIVE_ORG_RE, (route) => (route.request().resourceType() === 'image'
             ? route.abort('blockedbyclient')
             : route.fallback()));
+        // See MB_BROWSER_CHECK_RE: musicbrainz.org can answer it with HTML.
+        await page.route(MB_BROWSER_CHECK_RE, (route) => route.fulfill({
+            status: 200,
+            contentType: 'text/javascript; charset=utf-8',
+            headers: { 'x-sa-fixture-stub': 'supported-browser-check' },
+            body: MB_BROWSER_CHECK_STUB,
+        }));
     }
 
     if (process.env.PLAYWRIGHT_BLOCK_CDN) {
@@ -170,5 +206,5 @@ async function addRequiredLibs(page) {
 
 module.exports = {
     loadUserscriptPage, addRequiredLibs, USERSCRIPT_PATH, MB_LIBRARY_PATH, ARCHIVE_ORG_RE,
-    IRO_PATH, PAKO_PATH, CDN_RE,
+    IRO_PATH, PAKO_PATH, CDN_RE, FIXTURE_SETTINGS_OVERRIDE, SETTINGS_MIGRATION_PRE_APPLIED,
 };

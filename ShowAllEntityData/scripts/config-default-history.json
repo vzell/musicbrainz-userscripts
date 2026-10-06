@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "f70ae9206ab2d41cab256bcfb939c9dafcaf740e",
-    "revisions_walked": 732
+    "head": "058b93ed2b71e345260605c990a673c2a32e608a",
+    "revisions_walked": 767
   },
   "changes": [
     {
@@ -520,6 +520,8 @@
     "sa_findings_tint_eti_case": true,
     "sa_findings_tint_event_style": true,
     "sa_findings_tint_rec_date": true,
+    "sa_findings_tint_rec_event": true,
+    "sa_findings_tint_rg_title": true,
     "sa_findings_tint_event_state": true,
     "sa_findings_tint_title_mismatch": true,
     "sa_findings_tint_low_quality": true,
@@ -530,6 +532,7 @@
     "sa_findings_tint_live_credit": true,
     "sa_enable_release_tracks": true,
     "sa_enable_release_tracks_acoustid_column": false,
+    "sa_enable_release_tracks_cover_art": true,
     "sa_enable_release_tracks_isrc_column": false,
     "sa_enable_release_tracks_length_mismatch_flag": true,
     "sa_enable_release_tracks_video_medium_flag": true,
@@ -544,6 +547,11 @@
     "sa_enable_release_tracks_credit_role_columns": true,
     "sa_enable_release_tracks_instrument_vocal_columns": true,
     "sa_enable_release_tracks_live_date_check": true,
+    "sa_release_rg_link": true,
+    "sa_event_rg_tooltip": true,
+    "sa_event_rg_search_phrase": true,
+    "sa_event_rg_search_artist": true,
+    "sa_event_rg_search_hints": 5,
     "sa_enable_release_tracks_dynamic_ar_columns": true,
     "sa_enable_release_tracks_work_ar_columns": true,
     "sa_enable_ars_collapse": false,
@@ -616,6 +624,9 @@
     "sa_edits_color_diff_old": "#fbe3e4",
     "sa_edits_color_zebra_odd": "#ffffff",
     "sa_edits_color_zebra_even": "#f2f2f2",
-    "sa_enable_springsteenlyrics": false
+    "sa_enable_springsteenlyrics": false,
+    "sa_sl_compact_nav": false,
+    "sa_enable_jungleland": false,
+    "sa_enable_brucespringsteen": false
   }
 }

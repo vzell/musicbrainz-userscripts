@@ -72,7 +72,9 @@ until you open it.
 | `settings-and-config.md`                   | `configSchema`, `default:` changes, settings dialog, config export/import                                 | See the digest below; full text has the migration and workspace-export rules                                                                                                      |
 | `testing-playwright.md`                    | Writing/running specs, fixtures, live specs, harness helpers                                              | See the digest below; full text has the CAA/EAA and threshold-dialog traps                                                                                                        |
 | `performance-rules.md`                     | Anything on the filter/sort/render/artwork hot path, measurements                                         | See the digest below; full text has the baselines                                                                                                                                 |
-| `springsteenlyrics.md`                     | springsteenlyrics.com: `_isSlHost`, the `sl-*` pageTypes, `applySlCardsToTable()`, `_ensureSlStyle()`     | The opt-in gate exits before anything visible; the converter runs in THREE places (live, fetched, disk load); scope every lookup to `.project-detail`                             |
+| `springsteenlyrics.md`                     | springsteenlyrics.com: `_isSlHost`, the `sl-*` pageTypes, `applySlCardsToTable()`, `_ensureSlStyle()`     | The opt-in gate exits before anything visible; the converter runs in THREE places (live, fetched, disk load); find the list from its cards, never via `.project-detail`           |
+| `jungleland.md`                            | jungleland.it: `_isJlHost`, `_foreignHost`, `jl-list`, `applyJlListToTable()`, the shared table CSS       | Only list.htm as its own tab (a frame gate, no `@noframes`); `_foreignHost` names WHICH host; the table CSS is shared — extend its `:is()` list                                   |
+| `brucespringsteen.md`                      | brucespringsteen.it: `_isBsHost`, `bs-records` (two buttons), `applyBsRecordsToTable()`                   | Rows come from the FETCHED page (button params); the live page gets an empty table; own tab only; the server sends UTF-8                                                          |
 
 **Big files — grep, never read whole** (a whole read costs 10–250k tokens):
 `DEBUG-NOTES.md` (dated root-cause log, ~1 MB), `PERFORMANCE.org`,
@@ -175,6 +177,10 @@ shape:
         splitLocation: true,
         splitArea: true,
         extractMainColumn: 'Column name',
+
+        // Pagination:
+        pageParam: 'pg',              // query parameter naming the page (default 'page';
+                                      // springsteenlyrics.com's collection entry page uses 'pg')
 
         // Artwork:
         addCAA: true,
@@ -368,6 +374,8 @@ Before proposing a fix for a rendering or 'element not appearing' bug, first con
 | `#mb-col-mode-pop` / `.mb-uniq-ex-banner`                  | The one shared pop-up behind every compact `.mb-col-mode-btn`; the 📊 panel's banner when its column is in Exclude mode                                                                                                                                                                                                    |
 | `.mb-col-uniq-item`                                        | Unique-values dropdown row item                                                                                                                                                                                                                                                                                            |
 | `[data-mb-tip]`                                            | Marks a hover text as the script's own, so the engine shows it as a "Liner notes" card; stamped ONLY by `_setTip()` (or `data-mb-tip title="…"` in markup), never a bare `el.title =` (see docs/claude/toolbar-and-header-ui.md)                                                                                           |
+| `.mb-release-art-h2` / `.mb-release-art-sec`               | release-tracks "Cover art (N)" section above `h2.tracklist` — not a table, never cloned; tiles are `figure.mb-release-art-tile[data-mb-art-i]` with their hover card in `data-mbtt` (see docs/claude/artwork-caa-eaa.md)                                                                                                                       |
+| `#mb-art-viewer`                                           | The full-screen artwork viewer overlay (z-index 2147483400, under the tooltips); while open it owns every key through a window-capture listener (see docs/claude/artwork-caa-eaa.md)                                                                                                                                         |
 | `.mb-tt-liner`                                             | The one look of every floating tooltip (`#mb-stat-tooltip`, the cover-art card, the Relationships panels, the Ctrl+M overlay); rows use `.mb-tt-title`/`-body`/`-foot`/`-comment`/`-dim`/`-rule`/`-pill`/`-alert`, never inline colours                                                                                    |
 
 ## Things to check before any DOM-related fix
@@ -403,7 +411,7 @@ userscript reads that file.
   IIFE (TDZ). The config export's `workspace` block is declared only by
   `_CFG_WORKSPACE_GROUPS` — verbatim values, allowlist not sweep.
 - Only `applyVisibility()` may assign `display` to a settings row or header.
-- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces two
+- A fixture profile is not pristine (`FIXTURE_SETTINGS_OVERRIDE` forces three
   settings off).
 
 Full text: `docs/claude/settings-and-config.md`; design history:
@@ -472,8 +480,9 @@ The harness lives under `tests/`; how to run each suite and what it costs:
   `PAGETYPES-TESTING-REFERENCE.org` (coverage plan). Helpers:
   `tests/support/{customDialog,diskFixture,subtableTab,toolbarMenu,liveAssertions}.js`.
 - **`FIXTURE_SETTINGS_OVERRIDE`** (`tests/support/loadPage.js`) forces
-  `sa_enable_caa_pics` and `sa_enable_relationships_column` OFF — a "cannot
-  reproduce" means nothing until they are back on.
+  `sa_enable_caa_pics`, `sa_enable_relationships_column` and
+  `sa_enable_release_tracks_cover_art` OFF — a "cannot reproduce" means
+  nothing until they are back on.
 
 **Threshold dialogs will stall a test.** Four blocking plain-DOM overlays (not
 native `confirm()`, so `page.on('dialog')` never fires):

@@ -409,8 +409,13 @@ themselves:
   don't start with a date are ignored, so a studio album or `1984 Revisited`
   never counts. A trailing date part may be missing (`2008‐12`, `2008`), the
   year may be missing in front (`12‐07`), and an unknown part may be written
-  `??`. Switch the sections off with "Unique-Values Dropdown: Live Title
-  Info" in ⚙️ Settings.
+  `??`. A title may also name several dates, and each date is checked on its
+  own: more days of one month (`1978‐08‐21/22/23: Madison Square Garden, …`),
+  separate dates each with its own location (`1978‐08‐21: … / 1979‐01‐01:
+  …`), or separate dates sharing one location (`1989‐07‐04 / 1990‐04‐22:
+  Park West, Chicago, IL, USA`). Such a title is valid unless one of its
+  dates is impossible. Switch the sections off with "Unique-Values Dropdown:
+  Live Title Info" in ⚙️ Settings.
   - **Validity** — `✅ follows the live title convention` and `❌ impossible
     date` (month 13, day 42, 29 February in a non-leap year). On a release
     group's status sub-tables the status is added, e.g. `✅ follows the live
@@ -423,6 +428,8 @@ themselves:
     unknown part).
   - **🕗 Additional date info** — one flag plus one entry per text before the
     colon (`early show`, `late show`, …).
+  - **🗓️ Multiple dates** — titles with several days of one month, and titles
+    with several separate dates.
   - **📍 Location completeness** — how many `, `-separated parts the location
     after the colon has: `2 parts (Venue, City)`, `3 parts (Venue, City,
     Country)`, `4 parts (Venue, City, State, Country)` or `5+ parts`. Only
@@ -599,6 +606,7 @@ filter with a ✕ to remove it.
 | ⚠️     | Event name almost follows the event style guide                 | Event columns                               |
 | ⚠️     | Recording comment date uses a plain "-" instead of "‐"          | Name / Recording / Disambiguation           |
 | ⚠️     | Recording date and comment date differ in precision             | Release tracklist: Recording date           |
+| ⚠️     | Main-event track differs from the release group title           | Release tracklist: event columns            |
 | ⚠️     | No state code for a USA/Canada event location                   | Event-Country                               |
 | ⚠️     | Title in ALL UPPERCASE                                          | Title columns                               |
 | ⚠️     | Title truncated with "…"                                        | Title columns                               |
@@ -617,6 +625,8 @@ filter with a ✕ to remove it.
 | ❌    | Recording comment with an impossible date                       | Name / Recording / Disambiguation           |
 | ❌    | Recording comment almost in the live form                       | Name / Recording / Disambiguation           |
 | ❌    | Recording date differs from the comment date                    | Release tracklist: Recording date           |
+| ❌    | Recorded at event differs from the comment                      | Release tracklist: Recorded at event        |
+| ❌    | Recorded at place differs from the comment venue                | Release tracklist: Recorded at place        |
 | ❌    | Live credit date differs from the recording date                | Release tracklist: credit columns           |
 
 The tint of each newly highlighted problem has its own switch in ⚙️ Settings →
@@ -654,9 +664,20 @@ header needs.
 **Scrolling a wide table sideways** keeps the first (sticky) column and the page
 around it in place: the MusicBrainz top header, the entity
 header with its action bar, the tabs and every h2/h3 bar stay where they are
-instead of scrolling off to the left, and so does the content of any section
-you have expanded above the table, such as Credits or the Annotation
-(*Enable Sticky Page Headers* in 📌 Table stickiness). This only engages while the page really is wider than the window.
+instead of scrolling off to the left, and so does everything else on the page
+that is not a wide table: any section you have expanded, such as Credits, the
+Annotation or the Wikipedia extract; the text and forms above the table, such
+as an alias page's introduction or a search form; the "Loaded … Fetching …"
+status line; and the big cover-art strips above a table, which wrap to the
+window's width meanwhile
+(*Enable Sticky Page Headers* in 📌 Table stickiness). The sticky column then
+stops in line with the h2 or h3 bar above its table, not at the window's left
+edge, and nothing scrolls into the strip to its left. A column in front of it,
+such as "#" before "Title", stays at that line too, and the sticky column
+slides over it. A table that fits in the window, such as an artist's
+one-column "Artist credits" or a short sub-table next to wide ones, stays
+completely in place while the page scrolls, like the bars.
+This only engages while the page really is wider than the window.
 It stays off while the sidebar is expanded and columns are not auto-resized,
 because widening the page would push the sidebar off-screen. On a phone or
 tablet it is off unless you also tick *Sticky Page Headers on touch devices*
@@ -778,7 +799,8 @@ back to one request per row elsewhere.
 
 **Two retry buttons, and they mean different things.** `🔗⟳` reloads
 everything, for when you believe the data is stale. `⚠⟳ N` recovers only what
-failed. There is one of each per table and one page-wide. The failed count is
+failed. There is one of each per table and one page-wide; a single-table page
+shows only the page-wide `⚠⟳`, since it covers the same rows. The failed count is
 computed from the captured rows, not from what is on screen, so a filter cannot
 hide failures from it.
 
@@ -1010,6 +1032,8 @@ you automatically.
 | ⏱️ Resource timing                               | Cache-hint indicators and where they appear                                                                                                                                                                                                                           |
 | 🔤 Unicode picker                               | Enable, shortcut key, and the glyph table                                                                                                                                                                                                                             |
 | 🎸 springsteenlyrics.com                        | Switch on the springsteenlyrics.com collection and bootleg lists (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                            |
+| 🌴 jungleland.it                                | Switch on the jungleland.it bootleg artwork list (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                            |
+| 💿 brucespringsteen.it                          | Switch on the brucespringsteen.it record database (off by default); see [Page-specific behaviour](#page-specific-behaviour)                                                                                                                                           |
 
 </details>
 
@@ -1065,8 +1089,10 @@ an import brings your deletions back.
   **top CD stubs**, **ISRC**, **ISWC** and **privileged account** pages
 - **Account pages** (`/account/applications`)
 - Also works on the **musicbrainz.eu** mirror
-- **Not MusicBrainz:** the **springsteenlyrics.com** collection and bootleg
-  lists — off until you switch them on, see
+- **Not MusicBrainz:** the **springsteenlyrics.com** collection (every
+  category and the entry page) and bootleg lists, the **jungleland.it**
+  bootleg artwork list and the **brucespringsteen.it** record database —
+  each off until you switch it on, see
   [Page-specific behaviour](#page-specific-behaviour)
 
 </details>
@@ -1094,7 +1120,91 @@ recording's, because they are relationships of a different entity.
 
 Also available: **AcoustIDs** and **ISRCs** columns (both off by default), a
 raw **ARs** column, and a flag on live-recording credit dates that disagree with
-the recording date.
+the recording date (Recording engineer, Performer, Vocals, Instruments, Recorded
+at event, Recorded at place).
+
+**Cover art without leaving the page.** After **Tracks for Release**, a
+**Cover art (N)** section opens above the tracklist with every Cover Art
+Archive image of the release: its types, its comment, ★ on the archive's main
+front image (which is not necessarily every image typed Front), and ⏳ on an
+image still pending approval. Click its heading to collapse it like any other
+section. Hover a thumbnail for its card:
+types, comment, a larger preview, "6 of 16 · Liner 1 of 4", and the edit that
+added it. The chips above the sheet (**All 16**, **Front 1**, **Liner 4**, …)
+show only the images carrying that type — an image with two types counts for
+both — and **Grid / By type** groups the sheet under each image's first type.
+The layout is remembered, and travels with a config export.
+
+**The viewer.** Click a thumbnail to open it full screen; it steps through the
+thumbnails currently shown, in their order, so a chip or **By type** applies.
+Clicking the **Cover art (N)** tab itself opens the viewer on a grid of every
+image instead of leaving the page — Ctrl-click (or middle-click) the tab, or a
+thumbnail, to open the archive page or the image in a new tab as before. The
+thumbnail shows at once and the 1200 px image replaces it when it arrives; the
+panel on the right lists the types, comment, position, main front/back,
+approval, the edit that added it and links to every size. Keys: **← →** step
+(wrapping at the ends), **Home / End**, **Z** or a click zooms 2× (the image
+follows the mouse), **G** grid, **I** info panel, **O** original in a new tab,
+**Esc** closes (from a grid opened with G: back to the image). On a touch
+screen, tap to open and swipe sideways to step. While the viewer is open the
+page's own shortcuts are paused. It costs one request per render
+— none when the record is already cached from a CAA column, none when the tab
+says "Cover art (0)" — and the global filter never hides it. "No images" and
+"could not be reached" are told apart; the second offers **⟳ Retry**. Setting:
+*Show a "Cover art" section above the tracklist* (on by default).
+
+**Live recordings from more than one event.** Each track is matched to an
+event: its **Recorded at event**, else the event its recording comment names
+(`live, 1996‐04‐19: Saal 1, ICC Berlin, Berlin, Germany`), else its **Recording
+date**. A medium whose tracks come from two or more events gets a **🎪 N
+events** badge in its heading, after the ⏳ pending-edits badge; its tooltip
+lists each event with its number of tracks. The **Disambiguation** column's 📊
+dropdown then has an **Event info - Events on this medium** section, one entry
+per event, to filter to its tracks. Both count every track, also those a
+filter hides.
+
+**The release group and the main event.** On a release page the
+`(see all versions of this release, 5 available)` link names its release
+group: `(5 versions available in 1996‐04‐19: ICC Berlin, Saal 1, Berlin,
+Germany)`. The name is in the page already, so this costs nothing. Hovering
+it previews the release group: its cover, type and artist, and a table of its
+releases with this one marked ▸, loaded with one request on the first hover
+(a failed load is tried again on the next hover). Switch it off in ⚙️ Settings
+→ 💿 RELEASE TRACKLIST.
+
+When the release group title is a live title, it names the release's **main
+event**, by its date. If the tracks come from two or more dates, the **#**
+cell of every track from another event gets that event's own tint and a small
+chip, **E1**, **E2**, … numbered by date, so the events can be told apart with
+or without colour. Hovering the 🎪 badge shows the legend. Main-event tracks
+whose Disambiguation, **Recorded at event** or **Recorded at place** name the
+event or venue differently from the release group title get a ⚠️ warning,
+with both names in the tooltip (the venue is the first part of the title's
+location). When tracks carry live event data but the release group title is
+not a live title, a ⚠️ after the link explains why and suggests a title from
+the event with the most tracks; there is then no main event and no tint.
+
+**The release group of each track's event.** Hovering a live track's **#**
+cell shows a release group card. For the main event it is the release's own
+release group. For any other event, a search looks for a release group named
+exactly like the event: the Disambiguation without `live, ` and without a
+trailing `; …`. It runs once per event, only when you hover. A found group
+gets the same card as the header link. Otherwise the card says so and lists
+the closest titles the search returned. Alt+click the **#** cell to open the
+release group, or the search, on musicbrainz.org. In ⚙️ Settings → 💿 RELEASE
+TRACKLIST you can switch the card off, search the words instead of the exact
+phrase (like the website's search, with many more hits), drop the
+restriction to the release's artist, and set how many closest titles to show.
+
+**Event and place against the comment.** A **Recorded at event** cell is
+marked ❌ when none of its events is named like the recording comment without
+its event type: the comment `live, 1996‐04‐19: Saal 1, ICC Berlin, …` needs
+the event `1996‐04‐19: Saal 1, ICC Berlin, …`. A **Recorded at place** cell is
+marked ❌ when a place is not named like the venue, the first part of the
+comment's location: here `Saal 1`, so the places `Internationales Congress
+Centrum Berlin` and `Festhalle Frankfurt` (for `Festhalle, Frankfurt, …`) are
+flagged. The tooltip shows both names. Both appear in the ❌ ERROR menu; the
+tint can be switched off in ⚙️ Settings → ⚠️ Findings.
 
 **Video on a medium that cannot carry video.** When a recording marked as a
 video sits on a CD, a vinyl record, a cassette, an SACD or any other format
@@ -1224,24 +1334,120 @@ bootleg lists*. Settings are shared, so you can switch it on from a MusicBrainz
 page or from the Tampermonkey menu on springsteenlyrics.com itself. While it is
 off, the script leaves that site's pages untouched.
 
-Once on, every **collection list** (`collection.php?cmd=list…`) and every
-**bootleg list** (`bootlegs.php?cmd=list…`) — with any format,
-country, date, title or other filter you picked on the site — gets a heading
-with the usual toolbar and one action button: **Items** on a collection list,
-**Bootlegs** on a bootleg list. Pressing it fetches every page of that list
-(100 items each), turns the item cards into one table, and gives you the usual
-filters, sorting, column controls, export and Save/Load.
+Once on, every **collection list** (`collection.php?cmd=list…`, any
+category), the collection's **entry page** (`collection.php`, "Latest
+additions") and every **bootleg list** (`bootlegs.php?cmd=list…`) — with any
+format, country, date, title or other filter you picked on the site — gets a
+heading with the usual toolbar and one action button: **Items** on a
+collection list or the entry page, **Bootlegs** on a bootleg list. Pressing it
+fetches every page of that list (100 items each), turns the item cards into
+one table, and gives you the usual filters, sorting, column controls, export
+and Save/Load.
 
-**Known limitation:** on collection lists only the *Official albums* category
-works so far; the other collection categories are not yet supported. Bootleg
-lists work with any filter.
+The entry page holds the whole collection (over 5000 items in more than 50
+pages), so the usual "many pages" and "many rows" questions come up before it
+loads everything.
+
+When the table is wider than the window, **Title** stays in view as the
+sticky column, and — with *Enable Sticky Page Headers* (📌 Table stickiness,
+on by default) — everything above the table stays where it is while you
+scroll sideways: the site's header and breadcrumb, the toolbar, the category
+and filter buttons and the list's heading bar.
+
+**A compact category and filter bar** (off by default): ⚙️ Settings → *🎸
+springsteenlyrics.com* → *Compact category and filter bar on
+springsteenlyrics.com lists*. On a collection list the site's rows of
+category, format, country, album, year and copies buttons become one row of
+pull-down menus above the list: *Category: Official Albums ▾*, *Format: Any
+▾*, and so on. On a bootleg list the category buttons become a *Category* menu,
+and the four search forms become one search box (see below).
+
+The bar also works on the **bootleg main page** (`bootlegs.php`), which lists
+no items itself. There it offers *Category: Choose a list ▾*, with the era
+timeline, plus the search box and *Recent*. The page has nothing to load, so
+it gets no action button, and the toolbar keeps only ⚙️ and ❓. With the bar
+switched off, the script leaves that page alone.
+
+- Each menu offers exactly what that page's own buttons offer, and the current
+  choice has a ✓. The Category menu is grouped (Audio, Video and Print &
+  memorabilia for the collection; Live shows, Other audio and Video for the
+  bootlegs).
+- The Category menu shows each category's **exact number of items** once you
+  have opened that list with the bar on. It is read from the list's own
+  "Showing items … of N" line and kept from then on. A category you have not
+  opened yet shows no number; nothing is estimated.
+- On a bootleg list the Category menu starts with a **timeline of the
+  live-show eras** from 1967 on. Each bar spans its era's years, and its height
+  shows how many recordings there are per year. An era you have not opened yet
+  is drawn dashed with a "?". The current era is outlined, and clicking a bar
+  opens that era.
+- Long menus (Category, Country, Album) have a search box: type part of a
+  name, then Enter to go to the first match. The arrow keys move through the
+  list, and Escape closes it.
+- **Filters combine.** Choosing a country keeps the format you already chose,
+  and choosing another format replaces it. Every choice starts again at the
+  first page of the list. Changing the category keeps your filters, except the
+  album, which only belongs to *Official Albums*.
+- *Year* offers a from/to pair of years instead of the site's slider; press
+  *Apply*.
+- Each filter in use is shown as a chip after the menus. Its **×** removes just
+  that filter; *Clear all* removes them all.
+
+**The bootleg search box** stands in for the site's four forms (date, title,
+version, public info). The site searches one of them at a time, so the box
+does too. Pick the field with *Auto · Date · Title · Version · Public info*,
+type, and press Enter or *Search*.
+
+- *Auto* searches the date when what you typed is one, and titles otherwise.
+- Dates can be typed as `1975-08-15`, `15 Aug 1975`, `15 August 1975`,
+  `Aug 15, 1975` or `15.08.1975`. Slash dates such as `08/09/1975` are not read
+  as dates, because they mean different days in the US and in Europe.
+- A day that does not exist (`1975-02-30`) is pointed out, and *Search* stays
+  off.
+- The site finds **full dates only**: a month or a year (`1975-08`, `Aug 1975`,
+  `1975`) finds nothing there. The box says so and offers the era list that
+  covers it, where you can filter the *First date* column once the table is
+  loaded, or a title search for what you typed instead.
+- On a search's result page the box shows that search, so you can refine it.
+- *Recent* lists your last eight searches, newest first, wherever you started
+  them, including the site's own forms. *Forget these searches* empties it.
+
+**The Format menu is also the formats guide.** Its entries are grouped into
+Audio, Video and Print, and each has a second line with the guide's
+abbreviation and meaning, e.g. *Cassette tape*, then *MC · Music Cassette
+tape*. The search box matches those lines too, so typing `mc` finds the
+cassette. Formats the site's own guide leaves out (Flexi-disc, NT Cassette,
+Betamax, Betacam SP, U-matic, Blu-ray-R, Print) are explained as well, marked
+*(not in the site's guide)*. The site's "Formats guide" panel is hidden along
+with the format buttons.
+
+**Once the table is loaded**, *Country*, *Year*, *Copies* and *Format* filter
+the **loaded table** instead of reloading the page. They work like that
+column's 📊 pick: the table narrows at once, and the chip is marked 📊. The
+chip's **×** (or the column's own ✕) removes just that filter, and with only
+table filters active, *Clear all* clears them in place.
+
+- *Format* files an item under its **first** medium, as the site does:
+  "CD + 2xDVD" counts as a CD, and "VHS + CD" as a VHS.
+- *Album* and *Category* still open another list. Each menu says at the top
+  which kind it is.
+- A filter that the list was fetched with (for example *Country: USA* in the
+  address) can only be changed by reloading, because the table holds nothing
+  else.
+
+The site's own buttons and forms are only hidden, so switching the setting off
+brings them back. A choice that opens another list is an ordinary link:
+middle-click opens it in a new tab, and with a table loaded you are asked
+first, as usual.
 
 The columns come from what each card shows — no item page is opened:
 
 - **Collection:** Cover, Title, Version, Label, Cat. no., Format, Country,
   Release date, Original year, Copies. The site's *Label (Cat #)* and *Release
   date (Original year)* are split in two. *Copies* is 1 unless the card says
-  "I have N copies".
+  "I have N copies". Hovering a *Format* cell explains each medium in it from
+  the formats guide (e.g. "4xCD + 2xBlu-ray": CD ×4 and Blu-ray ×2), and names
+  the format the site files the item under, which is its first medium.
 - **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
   Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
   1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those
@@ -1251,6 +1457,79 @@ The columns come from what each card shows — no item page is opened:
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.
+
+</details>
+
+<details>
+<summary>jungleland.it bootleg artwork list</summary>
+
+Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+→ *🌴 jungleland.it* → *Enable on the jungleland.it bootleg artwork list*.
+Settings are shared, so you can switch it on from a MusicBrainz page or from
+the Tampermonkey menu on jungleland.it itself. While it is off, the script
+leaves that site's pages untouched.
+
+It works on the list page **opened in its own tab**:
+`https://www.jungleland.it/html/list.htm`. On the site's usual two-frame view
+(`artwork.htm`), the list is the narrow left frame, and the script leaves it
+as it is. To use the script, open the list address above on its own.
+
+Once on, the page gets a heading with the usual toolbar and one action
+button, **Bootlegs**. Pressing it turns the whole list into one table with
+three columns:
+
+- **Title:** the bootleg's title, without the date the site appends to it.
+  It links to that bootleg's artwork page, which opens in a new tab.
+- **Date:** that date as `1975-08-15`, so sorting it is chronological. It is
+  empty for the undated entries the site files under "Others".
+- **Year:** the date's year. Filter or pick from its 📊 list to see one year,
+  which is the job the site's "Choose the year" menu did. That menu is hidden
+  once the table is there.
+
+The list holds over 6,000 bootlegs, more than the default *Large Dataset
+Threshold* (5000 rows), so the "many rows" question comes up before the table
+is shown.
+Everything is on that one page; nothing is fetched.
+
+</details>
+
+<details>
+<summary>brucespringsteen.it record database</summary>
+
+Not a MusicBrainz page either, and **off until you switch it on**: ⚙️ Settings
+→ *💿 brucespringsteen.it* → *Enable on the brucespringsteen.it record
+database*. Settings are shared, so you can switch it on from a MusicBrainz
+page or from the Tampermonkey menu on brucespringsteen.it itself. While it is
+off, the script leaves that site's pages untouched.
+
+It works on the record list **opened in its own tab**. On the site's usual
+two-frame view (`Blegsdx.htm`), the list is the narrow left frame, and the
+script leaves it as it is. To use the script, open one of these addresses on
+its own. They are the two lists with every format ticked:
+
+- Unofficial:
+  `https://www.brucespringsteen.it/DB/records.aspx?tipe=-1,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0`
+- Official:
+  `https://www.brucespringsteen.it/DB/records.aspx?tipe=-2,0,1,2,3,4,5,6,7,8,9,10,11&sort=0&addon=0`
+
+Any other `records.aspx` list works too. The page gets a heading with the
+usual toolbar and two buttons, **Unofficial** and **Official**, and every
+format box of the site's own filter is ticked. Each button loads **every**
+record of its kind, all formats, whatever the page itself was showing, and
+turns them into one table:
+
+- **Unofficial:** Title, Matrix, Format, Label, Code, Notes.
+- **Official:** Title, Catalogue, Format, Country, Promo, Code, Notes.
+  *Promo* reads "yes" for a promo.
+
+*Format* is the site's own text ("2 CD-R", "1 7 in."). *Notes* is the italic
+line some records carry ("Picture disc", "Lower 'Bruce Springsteen' - Little
+Steven Mix"). The title links to the record's detail page, which opens in a
+new tab.
+
+To switch from one kind to the other, press the other button. The page
+reloads first, as it does whenever a second list is loaded, so press it once
+more after the reload.
 
 </details>
 

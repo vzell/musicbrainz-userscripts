@@ -126,7 +126,7 @@ function parseArgs(argv) {
             if (!table) throw new Error(`no table.tbl at index ${tableIndex}`);
             const ths = Array.from(table.querySelectorAll('thead tr:first-child th'));
             const names = ths.map((th, i) => th.dataset.colName
-                || (th.textContent || '').replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim()
+                || (th.textContent || '').replace(/[⇅▲▼📊▶◀▤⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim()
                 || `(col ${i})`);
             // What `columnIndex()`/`waitForColHeaderUniqCount()` will actually
             // match on: the STRIPPED textContent alone, with no
@@ -136,7 +136,7 @@ function parseArgs(argv) {
             // written from the `names` above would then name a column the
             // harness can never resolve.
             const strippedNames = ths.map((th) => (th.textContent || '')
-                .replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/g, '').trim());
+                .replace(/[⇅▲▼📊▶◀▤0-9⁰¹²³⁴⁵⁶⁷⁸⁹]/gu, '').trim());
             const rows = Array.from(table.querySelectorAll('tbody tr'));
 
             const cellText = (tr, i) => {

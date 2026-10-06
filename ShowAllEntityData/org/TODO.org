@@ -1210,38 +1210,64 @@ I get
 * DONE integrate springsteenlyrics.com
 
 
-* TODO add cover art to the 'release-tracks' PT
-
 * TODO fix my release-tracks special script
 
-* TODO add more functionality to the SP parser
+* DONE add more functionality to the SP parser
 
-* TODO highlight rows in bootlegs recordings not belonging to the main event and create UVD entries
+* DONE flaky under load: uvd-grouped-sections.spec.js:257 (UVD quick filter on a grouped topic)
 
-highlight rows (maybe the "#" column) in bootlegs recordings not belonging to the main event (drive by the RG name) and create UVD entries
-show RG info/name on RT PTs (maybe rich HTML)
+"quick filter matches the hidden prefix, opens what matches, hides the rest,
+and restores on clear" failed in 2 of 5 =npm run test:full= runs on 2026-10-04,
+on two different trees, always at the same assertion:
+=expect(date.collapsed).toBe(false)= right after =qf.fill('month')= (line 271).
+It passes 50/50 alone (=--repeat-each=5=), so only load brings it out.
 
-* TODO fixes to live bootleg releases
+Not the quick filter itself: its =input= handler (=renderItems()= +
+=_applySynBoxQuickFilter()=) is synchronous, and =openUniqDrop()= defers
+nothing. Suspected, NOT proven: =openDrop()= renders with
+=waitForRenderComplete(page, { waitForAutoResize: false })=, so the
+auto-resize pass may still be running when the test types. If that pass
+rebuilds the headers, it would close the dropdown, and =readDrop()= then reads
+the closed panel with the stored collapsed state. Check that first, e.g. by
+logging dropdown open/close around the fill on a loaded run, before changing
+the wait.
 
-@debug/bs-bootleg.releases - raw HTML of - https://musicbrainz.org/artist/70248960-cb53-4ea4-943a-edb18f7d336f
+*Done* in 9.99.1220. The suspicion above was WRONG, and so was a second one
+(the dropdown's close-on-scroll listener). Real cause: 150 ms after the final
+render, =startFetchingProcess()= focused the global filter unconditionally,
+so the test's typing landed in the global filter as ="🔍 month"=. The timer
+now leaves focus alone when another editable field has it. That was a user-facing
+bug too: typing into a 📊 quick filter, column filter or search box right
+after a render could jump to the global filter. Test:
+=tests/fixtures/autofocus-does-not-steal.spec.js=. Full write-up:
+=DEBUG-NOTES.md=, 2026-10-04, "the post-render auto-focus stole the typing".
+
+(The same runs also hit filter-autofocus.spec.js:18 once, a =page.goto=
+timeout before the userscript is injected: environmental. And
+colvis-clean-column-names.spec.js's label click outside the viewport, fixed on
+=fix/colvis-spec-viewport=.)
+
+* DONE "Annotation" search pages need richer HTML tooltips
+
+"Annotation" search pages
+e.g. https://musicbrainz.org/search?query=Barcode+and+other+i&type=annotation&limit=25&method=indexed need richer HTML
+tooltips when hovering over an image in the big picture image stripe
+
+1.)
+
+Currently whe only have the value of the "Name" column, see [Image #3]
+I additionally want the following columns, someting like
 
 #+begin_example
-<button id="mb-caa-toggle-btn-retry-failed"
-<button id="mb-caa-toggle-btn-retry-failed-0"
-
+                    tooltipColumns: [ 'Type', 'MB-Name', 'italic:Comment', 'Primary alias', '---', 'Annotation' ],
 #+end_example
 
-the native tooltip overlapping the rich HTML one after a while
+2.)
 
-UVD for multiple events per release
-UVD for multi day formats
-1978-10-11/12/13
-1978-10-11:... / 1978-10-12:...
+The value for the "Annotation" C should be the FULL uncollapsed value, even if the column(s) is/are currently collapsed
 
-https://musicbrainz.org/release/d390b4ff-38ab-4783-99ef-2c4d338e016b
+#+begin_example
+@debug/search-annotation-tooltip.html - full final rendered page of above URL, filtered by just one row
+#+end_example
 
 
-* TODO indent tables to its heading even when srolled to the far right -the sticky column get smoved to the very left browser window
-
-indent tables to its heading even when srolled to the far right -the sticky column get smoved to the very left browser
-window
