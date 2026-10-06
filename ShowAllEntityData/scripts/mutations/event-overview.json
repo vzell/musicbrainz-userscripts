@@ -134,8 +134,8 @@
     "why": "\"One table for all relationships\" must give a single table with Type and From.",
     "edits": [
       {
-        "find": "        if (Lib.settings.sa_event_overview_relationships_one_table) {",
-        "replace": "        if (false) {"
+        "find": "        } else if (Lib.settings.sa_event_overview_relationships_one_table) {",
+        "replace": "        } else if (false) {"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
@@ -173,8 +173,8 @@
     "why": "The declaration gives '#' its right-aligned, tabular-figure cells. Numeric SORTING does not depend on it: _sortColumnKind()'s name heuristic already treats any header containing '#' as numeric.",
     "edits": [
       {
-        "find": "                eventDetailsToTables: true,\n                groupByH3: true,\n                integerColumns: [ { sourceColumn: '#', align: 'R' } ]",
-        "replace": "                eventDetailsToTables: true,\n                groupByH3: true,\n                integerColumns: []"
+        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
+        "replace": "                integerColumns: [ { sourceColumn: 'Billing', align: 'R' } ]"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
@@ -186,12 +186,233 @@
     "why": "It would render nothing.",
     "edits": [
       {
-        "find": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n                Lib.settings.sa_event_overview_relationships &&\n",
+        "find": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&\n",
         "replace": "            match: (path) => Lib.settings.sa_enable_event_overview &&\n"
       }
     ],
     "spec": "tests/fixtures/event-overview.spec.js",
     "grep": "settings off: no button",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 button: the setlist alone does not count",
+    "why": "With relationships off and the setlist on, the button still has a use.",
+    "edits": [
+      {
+        "find": "                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&\n",
+        "replace": "                Lib.settings.sa_event_overview_relationships &&\n"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview.spec.js",
+    "grep": "settings off: no button",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 billing: '&' starts a new group too",
+    "why": "\"Bruce Springsteen & The E Street Band\" is one billing.",
+    "edits": [
+      {
+        "find": "                    if (k.text !== '&') group += 1;",
+        "replace": "                    group += 1;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "billing",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 'Billing' is not an integer column",
+    "why": "The declaration gives Billing its right-aligned, tabular cells.",
+    "edits": [
+      {
+        "find": "                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]",
+        "replace": "                integerColumns: [ { sourceColumn: '#', align: 'R' } ]"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "billing",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no part headers",
+    "why": "A comment after a blank line names the next part; without that every song lands in one part.",
+    "edits": [
+      {
+        "find": "                } else if (prevBlank) {",
+        "replace": "                } else if (false) {"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a note becomes a song row",
+    "why": "\"Scheduled: …\" describes the part; it must not be counted as a song.",
+    "edits": [
+      {
+        "find": "                    part.notes.push(k.text);",
+        "replace": "                    part.songs.push({ works: [], text: k.text });"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "note sits under its h3",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a medley keeps only its first work",
+    "why": "A medley line is one row listing every work it names.",
+    "edits": [
+      {
+        "find": "            song: s.works.length ? asList(s.works.map(a => [a.cloneNode(true)])) : s.text,",
+        "replace": "            song: s.works.length ? [s.works[0].cloneNode(true)] : s.text,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 'Also in' names the row's own part",
+    "why": "Only the OTHER parts that play a work of the line belong there.",
+    "edits": [
+      {
+        "find": "                .filter(n => n !== partName).join(', '),",
+        "replace": "                .join(', '),"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no recording cross-reference",
+    "why": "A song with a recording made at this event links it.",
+    "edits": [
+      {
+        "find": "            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))",
+        "replace": "            rec: []"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a medley is one row",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no intro on the table",
+    "why": "A part's notes are shown between its h3 and its table.",
+    "edits": [
+      {
+        "find": "        if (intro) table.dataset.mbIntroHtml = intro;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "note sits under its h3",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 disk: introHtml not saved",
+    "why": "A Load from Disk would lose the part's notes.",
+    "edits": [
+      {
+        "find": "                    introHtml: group.introHtml || null,",
+        "replace": "                    introHtml: null,"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "round trip keeps the note",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 disk: introHtml not restored",
+    "why": "Same, on the load side.",
+    "edits": [
+      {
+        "find": "                        _grpEntry.introHtml = group.introHtml;",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "round trip keeps the note",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 the native setlist stays",
+    "why": "The converted paragraph must not stay beside its tables.",
+    "edits": [
+      {
+        "find": "            setP.remove();\n",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 the native Setlist h2 stays",
+    "why": "An empty Setlist section would be left behind the tables.",
+    "edits": [
+      {
+        "find": "            if (setH2 && setH2 !== anchor) setH2.remove();",
+        "replace": ""
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "one table per part, aligned",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 setting ignored: setlist",
+    "why": "Off, the setlist stays as MusicBrainz shows it.",
+    "edits": [
+      {
+        "find": "        const setOn = !!Lib.settings.sa_event_overview_setlist;",
+        "replace": "        const setOn = true;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "setlist off: left native",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 setting ignored: setlist one table",
+    "why": "On, every song goes into one table with a Part column.",
+    "edits": [
+      {
+        "find": "                !!Lib.settings.sa_event_overview_setlist_one_table)",
+        "replace": "                false)"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "One table for the whole setlist",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 no anchor without relationship tables",
+    "why": "With relationships off, the setlist's own h2 anchors its tables.",
+    "edits": [
+      {
+        "find": "        const anchor = relBuilt ? relH2 : (setGroups.length ? (setH2 || relH2) : null);",
+        "replace": "        const anchor = relBuilt ? relH2 : null;"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "setlist off: left native",
+    "expect": "fail"
+  },
+  {
+    "name": "WIP.2 a song without a work link is dropped",
+    "why": "A plain-text song line is a row, not a comment.",
+    "edits": [
+      {
+        "find": "            return commentOnly ? { kind: 'comment', text } : { kind: 'song', works: [], text };",
+        "replace": "            return { kind: 'comment', text };"
+      }
+    ],
+    "spec": "tests/fixtures/event-overview-setlist.spec.js",
+    "grep": "a song without a work link",
     "expect": "fail"
   }
 ]

@@ -1078,7 +1078,8 @@ an import brings your deletions back.
   MusicBrainz's own h3-grouped sub-tables
 - **Release tracklists** (`/release/<mbid>`, and `/release/<mbid>/disc/<n>`) —
   the whole tracklist across every medium, consolidated
-- **Event pages** (`/event/<mbid>`) — the event's relationships as tables
+- **Event pages** (`/event/<mbid>`) — the event's relationships and setlist as
+  tables
 - **Collections** — your own, subscribed ones, and their entity sub-tabs
 - **Tags** — entity tag pages, user tag pages, and the most-popular-tags page
 - **Search results** — every entity type
@@ -1279,11 +1280,23 @@ series the event belongs to: its tour artists, its parent series, its links.
 Those describe the tour, not the event, so they get their own **Via <series>**
 table.
 
+**The setlist as tables.** After the relationships come **Setlist: Line-up**
+— every artist with how they are joined ("&", "with", "and") and a **Billing**
+number that moves on at every joining word but "&" — and one table per part
+of the setlist (**Setlist: Soundcheck**, **Setlist: Concert**, …; **Setlist:
+Songs** when the setlist has no parts). A part's notes ("Scheduled: 19:30 |
+Local Start Time 19:40 / End Time 22:29") sit under its heading. A medley line
+stays one row listing every work; **Also in** names the other parts that play
+the same work; **Recording** links the recording made at this event whose
+title is the line. A song without a work link is kept as text.
+
 Every part is a setting, in ⚙️ Settings → 🎫 EVENT PAGE: the page as a whole,
 *Relationships as tables*, *One table for all relationships* (off by default:
 one table with a **Type** and a **From** column instead of one per kind),
-and *Include the related series' own relationships* (off: that section stays
-as MusicBrainz shows it).
+*Include the related series' own relationships* (off: that section stays
+as MusicBrainz shows it), *Setlist as tables* and *One table for the whole
+setlist* (off by default: every song in **Setlist: All songs** with a **Part**
+column). With both table parts off the button is not offered.
 
 </details>
 

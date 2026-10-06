@@ -19330,3 +19330,27 @@ declaration gives the right-aligned, tabular cells; its mutation is pinned by
 
 **Results:** `event-overview.spec.js` 7/7; `event-overview.json` 15/15 caught;
 `user-ratings-*` specs unchanged.
+
+## 2026-10-06 — event-overview: the setlist as tables (branch feature/event-overview, WIP.2)
+
+**Parsed from the rendered paragraph, not the setlist syntax.** MusicBrainz
+renders `@ artist` / `* work` / `# comment` as `<strong>Artist: <a>`,
+`<a href="/work/…">` and `span.comment` lines in one `p.setlist`. A comment
+is a part header only right after a blank line, and a joining word ("&",
+"with", "and", …) only when the next line is an artist — the same `and`
+comment elsewhere is a note. A text line without a work link is kept as a
+song row.
+
+**One block, not two sections.** The setlist groups follow the relationship
+groups under `h2.relationships`, named "Setlist: …", because
+`renderGroupedTable()` re-inserts every group after the h2 before the first
+table. With relationships off the setlist's own h2 is the anchor.
+
+**Notes as group intros.** A part's notes ride `data-mb-intro-html` →
+`group.introHtml` (Structure K's mechanism). The disk round trip never stored
+`introHtml` — added, so privileged-accounts' intro survives a disk load too.
+
+**Results:** `event-overview-setlist.spec.js` 8/8, `event-overview.spec.js`
+7/7; `event-overview.json` 32/32 caught (two WIP.1 finds re-targeted after
+the restructure). Snapshot baseline `tests/snapshots/event-overview/`
+captured logged in, event art seeded off.

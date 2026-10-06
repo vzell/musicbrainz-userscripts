@@ -50,7 +50,9 @@ async function openEvent(page, { settings = {}, press = true } = {}) {
     await page.context().route('https://static.metabrainz.org/**', (route) => route.abort('blockedbyclient'));
     await loadUserscriptPage(page, {
         url: URL, fixtureFile: FIXTURE, testMode: true,
-        settingsOverride: { sa_enable_event_overview: true, ...settings },
+        // The setlist tables have their own spec (event-overview-setlist.spec.js);
+        // here they are off so the group list is the relationships' alone.
+        settingsOverride: { sa_enable_event_overview: true, sa_event_overview_setlist: false, ...settings },
     });
     await page.route('https://musicbrainz.org/event/**', (route) => route.fulfill({ path: FIXTURE, contentType: 'text/html' }));
     await page.route('https://eventartarchive.org/**', (route) => route.fulfill({ status: 404, body: '' }));
@@ -208,6 +210,8 @@ test.describe('pageType event-overview: relationships as tables (WIP.1)', () => 
         await openEvent(page, { settings: { sa_enable_event_overview: false }, press: false });
         expect(await page.locator(BUTTON).count()).toBe(0);
         await openEvent(page, { settings: { sa_event_overview_relationships: false }, press: false });
-        expect(await page.locator(BUTTON).count()).toBe(0);
+        expect(await page.locator(BUTTON).count(), 'relationships off, setlist off').toBe(0);
+        await openEvent(page, { settings: { sa_event_overview_relationships: false, sa_event_overview_setlist: true }, press: false });
+        expect(await page.locator(BUTTON).count(), 'the setlist alone still has a use').toBe(1);
     });
 });

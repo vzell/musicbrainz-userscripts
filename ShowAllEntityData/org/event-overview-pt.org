@@ -137,7 +137,7 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
         through Save/Load (a latent gap for user-ratings too).
   - [X] =tests/fixtures/event-overview.spec.js= (7), mutation list
         =scripts/mutations/event-overview.json= (15/15 caught).
-  - [ ] Snapshot baseline: after WIP.2, so the setlist tables are not drift.
+  - [X] Snapshot baseline: captured with WIP.2 (below).
 - Plan as written:
 - Settings group as in C, after the release-tracklist group; run
   =scripts/dump-config-defaults.py= and =scripts/dump-default-history.py=.
@@ -157,6 +157,20 @@ pass after (mutation-checked), HELP resync, =lint-summary.py --check=,
   =PAGETYPES-TESTING-REFERENCE.org= row, mutation list.
 
 *** TODO WIP.2 — the setlist as tables
+- 2026-10-06, implemented (WIP.2):
+  - [X] Inside =applyEventDetailsToTables()= (shared placement, and the
+        Recording column needs the parsed recordings), not a separate
+        =setlistToTables= feature: =_eventSetlistParse()= +
+        =_eventSetlistGroups()=. Groups "Setlist: Line-up", one per part
+        ("Songs" without headers), or "Setlist: All songs" (one-table
+        setting); notes via =data-mb-intro-html= → =group.introHtml=, now
+        carried through Save/Load.
+  - [X] Anchor: =h2.relationships= when relationship tables were built,
+        else the setlist's own h2. The match offers the button while either
+        table part is on.
+  - [X] =tests/fixtures/event-overview-setlist.spec.js= (8); mutation list
+        now 32/32 caught; snapshot baseline =tests/snapshots/event-overview/=.
+- Plan as written:
 - =setlistToTables= (=applySetlistToTables(def)=): =p.setlist= line by line
   → Line-up + one table per part (S1); stops at the paragraph's end.
 - Edge cases from the MusicBrainz setlist syntax: no part headers (one

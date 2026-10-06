@@ -2782,6 +2782,24 @@
                          'native section is left as it is.'
         },
 
+        sa_event_overview_setlist: {
+            label: 'Setlist as tables',
+            type: 'checkbox',
+            default: true,
+            description: 'Turns the "Setlist" into tables: the line-up, then one table per part ' +
+                         'of the setlist ("Soundcheck", "Concert", …) with its notes above it. A ' +
+                         'medley line stays one row listing its works; a song played in more than ' +
+                         'one part is marked; a song with a recording made at this event links it.'
+        },
+
+        sa_event_overview_setlist_one_table: {
+            label: 'One table for the whole setlist',
+            type: 'checkbox',
+            default: false,
+            description: 'Off (default): one table per part of the setlist. On: every song in ' +
+                         'one table with a "Part" column (the line-up keeps its own table).'
+        },
+
         // ============================================================
         // EXPAND RELEASE AND RELEASE GROUPS SECTION
         // Adapted from "MusicBrainz: Expand/collapse release groups"
@@ -12360,9 +12378,11 @@
      * @param   {string}   name    The group name (the h3 text).
      * @param   {string[]} cols    Column headers.
      * @param   {Array<Array<Node[]|string>>} rows Cells per row: nodes or plain text.
+     * @param   {string}   [intro] HTML shown between the h3 and the table
+     *          (`data-mb-intro-html` → `group.introHtml`).
      * @returns {DocumentFragment}
      */
-    function _eventBuildTable(doc, name, cols, rows) {
+    function _eventBuildTable(doc, name, cols, rows, intro) {
         const frag = doc.createDocumentFragment();
         const h3 = doc.createElement('h3');
         h3.textContent = name;
@@ -12370,6 +12390,8 @@
         table.className = 'tbl';
         table.dataset.mbEventTable = '1';
         table.dataset.mbColHeaders = JSON.stringify(cols);
+        // Shown between the h3 and its table (group.introHtml), like Structure K's.
+        if (intro) table.dataset.mbIntroHtml = intro;
         const thead = doc.createElement('thead');
         const hr = doc.createElement('tr');
         cols.forEach(c => {
@@ -12442,6 +12464,182 @@
         return { cols, cells };
     }
 
+    /** Joining words between line-up artists ("Bruce Springsteen & The E Street Band with …"). */
+    const _EVENT_SETLIST_JOINS = new Set(['&', 'and', 'with', '+', 'feat.', 'featuring', 'vs.', 'x']);
+
+    /**
+     * Parses the event page's `p.setlist` into a line-up and parts.
+     *
+     * MusicBrainz renders the setlist syntax (`@ artist`, `* work`, `# comment`)
+     * as one paragraph of `<br>`-separated lines:
+     *   - `<strong>Artist: <a>…</a></strong>` → an artist of the line-up;
+     *   - a `span.comment` holding only a joining word ("&", "with", "and", …)
+     *     when the next line is an artist → how that artist is joined. The
+     *     billing group (1, 2, …) moves on at every joining word but "&";
+     *   - a `span.comment` right after a blank line (or at the very start) →
+     *     a part header ("Soundcheck", "Concert");
+     *   - any other `span.comment` → a note of the current part (of the
+     *     line-up, before the first part);
+     *   - a line with `/work/` links → a song (several links: a medley/segue);
+     *   - any other text line → a song without a work link, kept as text,
+     *     never dropped.
+     * Songs before any header go to a part named "Songs".
+     *
+     * @param   {Element} p `p.setlist`.
+     * @returns {{lineup: Array<{anchor: ?Element, text: string, join: string, group: number, part: string}>,
+     *            parts: Array<{name: string, notes: string[], songs: Array<{works: Element[], text: string}>}>,
+     *            lineupNotes: string[]}}
+     */
+    function _eventSetlistParse(p) {
+        const kinds = _eventSplitAtBr(p).map(raw => {
+            const nodes = raw.filter(n => n.nodeType !== Node.COMMENT_NODE);
+            const text = nodes.map(n => n.textContent).join('').replace(/\s+/g, ' ').trim();
+            if (!text) return { kind: 'blank' };
+            const el = n => n.nodeType === Node.ELEMENT_NODE;
+            const strong = nodes.find(n => el(n) && n.tagName === 'STRONG');
+            if (strong && /^Artist:/.test(strong.textContent.trim())) {
+                return { kind: 'artist', anchor: strong.querySelector('a[href]'), text: strong.textContent.trim().replace(/^Artist:\s*/, '') };
+            }
+            const works = [];
+            nodes.forEach(n => {
+                if (!el(n)) return;
+                (n.tagName === 'A' ? [n] : Array.from(n.querySelectorAll('a[href]'))).forEach(a => {
+                    if (/\/work\/[0-9a-f-]{36}/.test(a.getAttribute('href') || '')) works.push(a);
+                });
+            });
+            if (works.length) return { kind: 'song', works, text };
+            const commentOnly = nodes.every(n => (n.nodeType === Node.TEXT_NODE && !n.textContent.trim()) ||
+                (el(n) && n.tagName === 'SPAN' && n.classList.contains('comment')));
+            return commentOnly ? { kind: 'comment', text } : { kind: 'song', works: [], text };
+        });
+        const lineup = [];
+        const parts = [];
+        const lineupNotes = [];
+        let group = 1;
+        let pendingJoin = '';
+        let part = null;
+        let prevBlank = true;
+        kinds.forEach((k, i) => {
+            if (k.kind === 'blank') { prevBlank = true; return; }
+            if (k.kind === 'comment') {
+                const next = kinds.slice(i + 1).find(x => x.kind !== 'blank');
+                if (_EVENT_SETLIST_JOINS.has(k.text.toLowerCase()) && next && next.kind === 'artist') {
+                    pendingJoin = k.text;
+                    if (k.text !== '&') group += 1;
+                } else if (prevBlank) {
+                    part = { name: k.text, notes: [], songs: [] };
+                    parts.push(part);
+                } else if (part) {
+                    part.notes.push(k.text);
+                } else {
+                    lineupNotes.push(k.text);
+                }
+            } else if (k.kind === 'artist') {
+                lineup.push({ anchor: k.anchor, text: k.text, join: pendingJoin, group, part: part ? part.name : '' });
+                pendingJoin = '';
+            } else {
+                if (!part) {
+                    part = { name: 'Songs', notes: [], songs: [] };
+                    parts.push(part);
+                }
+                part.songs.push(k);
+            }
+            prevBlank = false;
+        });
+        return { lineup, parts, lineupNotes };
+    }
+
+    /**
+     * The setlist's h3 + `table.tbl` groups: "Setlist: Line-up", then one per
+     * part ("Setlist: Concert", …) — or, with `oneTable`, every song in
+     * "Setlist: All songs" with a Part column. A part's notes go above its table
+     * (`data-mb-intro-html`). Song columns, each only when some row fills it:
+     * Medley (a line with several works), Also in (the other parts that play
+     * one of its works, by work MBID) and Recording (the event's "recording
+     * location for" recordings whose title is the line's text).
+     *
+     * @param   {Document} doc
+     * @param   {Object}   parsed     `_eventSetlistParse()`.
+     * @param   {Array<Object>} recordings The event's own recording rows (`_eventRelRowsFrom()`).
+     * @param   {boolean}  oneTable
+     * @returns {DocumentFragment[]}
+     */
+    function _eventSetlistGroups(doc, parsed, recordings, oneTable) {
+        const out = [];
+        const { lineup, parts, lineupNotes } = parsed;
+        const para = t => {
+            const p = doc.createElement('p');
+            p.textContent = t;
+            return p.outerHTML;
+        };
+        if (lineup.length) {
+            const withPart = lineup.some(a => a.part);
+            const cols = ['#', 'Artist', 'Joined by', 'Billing'];
+            if (withPart) cols.push('Part');
+            const cells = lineup.map((a, k) => {
+                const row = [String(k + 1), a.anchor ? [a.anchor.cloneNode(true)] : a.text, a.join, String(a.group)];
+                if (withPart) row.push(a.part);
+                return row;
+            });
+            out.push(_eventBuildTable(doc, 'Setlist: Line-up', cols, cells, lineupNotes.map(para).join('')));
+        }
+        if (!parts.length) return out;
+
+        const workId = a => ((a.getAttribute('href') || '').match(/\/work\/([0-9a-f-]{36})/) || [])[1] || '';
+        const partsOfWork = new Map();
+        parts.forEach(p => p.songs.forEach(s => s.works.forEach(a => {
+            const id = workId(a);
+            if (!partsOfWork.has(id)) partsOfWork.set(id, new Set());
+            partsOfWork.get(id).add(p.name);
+        })));
+        const norm = t => t.replace(/\s+/g, ' ').trim();
+        const recTitle = r => norm(r.main.map(n => n.textContent).join(''));
+        const asList = nodeLists => {
+            if (nodeLists.length === 1) return nodeLists[0];
+            const ul = doc.createElement('ul');
+            nodeLists.forEach(nodes => {
+                const li = doc.createElement('li');
+                nodes.forEach(n => li.appendChild(n));
+                ul.appendChild(li);
+            });
+            return [ul];
+        };
+        const songRow = (s, partName) => ({
+            song: s.works.length ? asList(s.works.map(a => [a.cloneNode(true)])) : s.text,
+            medley: s.works.length > 1 ? 'medley' : '',
+            also: Array.from(new Set(s.works.flatMap(a => Array.from(partsOfWork.get(workId(a)) || []))))
+                .filter(n => n !== partName).join(', '),
+            rec: recordings.filter(r => recTitle(r) === norm(s.text)).map(r => r.main.map(n => n.cloneNode(true)))
+        });
+        const table = (name, rows, withPart, intro) => {
+            const has = key => rows.some(r => r[key].length);
+            const cols = withPart ? ['Part', '#', 'Song'] : ['#', 'Song'];
+            if (has('medley')) cols.push('Medley');
+            if (has('also')) cols.push('Also in');
+            if (has('rec')) cols.push('Recording');
+            const cells = rows.map(r => {
+                const row = withPart ? [r.part, String(r.n), r.song] : [String(r.n), r.song];
+                if (has('medley')) row.push(r.medley);
+                if (has('also')) row.push(r.also);
+                if (has('rec')) row.push(r.rec.length ? asList(r.rec) : '');
+                return row;
+            });
+            return _eventBuildTable(doc, name, cols, cells, intro);
+        };
+        if (oneTable) {
+            const rows = parts.flatMap(p => p.songs.map((s, k) => ({ ...songRow(s, p.name), part: p.name, n: k + 1 })));
+            const intro = parts.filter(p => p.notes.length).map(p => para(`${p.name}: ${p.notes.join(' · ')}`)).join('');
+            out.push(table('Setlist: All songs', rows, true, intro));
+        } else {
+            parts.forEach(p => {
+                if (!p.songs.length) return;
+                const rows = p.songs.map((s, k) => ({ ...songRow(s, p.name), n: k + 1 }));
+                out.push(table(`Setlist: ${p.name}`, rows, false, p.notes.map(para).join('')));
+            });
+        }
+        return out;
+    }
+
     /**
      * Turns the event page's relationship lists into h3 + `table.tbl` groups
      * (pageType 'event-overview', `features.eventDetailsToTables`).
@@ -12461,20 +12659,32 @@
      * `#content`, which would strip the series names off a section left
      * native.
      *
-     * Idempotent (the anchor h2 is marked `data-mb-event-tables`). Does
-     * nothing with `sa_event_overview_relationships` off or without
-     * `h2.relationships`.
+     * The setlist (`sa_event_overview_setlist`) is converted here too —
+     * `_eventSetlistParse()` / `_eventSetlistGroups()` — because it shares
+     * the placement and needs the parsed recordings for its Recording
+     * column. Its groups follow the relationship groups, named "Setlist: …":
+     * `renderGroupedTable()` re-inserts every group as ONE block after the h2
+     * before the first table, so the setlist cannot keep a section of its
+     * own. The native "Setlist" h2 is removed with its paragraph, unless it
+     * is the anchor (relationships not converted, or the event has none).
+     *
+     * Idempotent (`#content` is marked `data-mb-event-tables`). Does nothing
+     * when neither part is switched on or neither exists on the page.
      *
      * @param {object}           def
      * @param {Document|Element} [docContext=document]
      * @returns {void}
      */
     function applyEventDetailsToTables(def, docContext = document) {
-        if (!def?.features?.eventDetailsToTables || !Lib.settings.sa_event_overview_relationships) return;
+        if (!def?.features?.eventDetailsToTables) return;
+        const relOn = !!Lib.settings.sa_event_overview_relationships;
+        const setOn = !!Lib.settings.sa_event_overview_setlist;
+        if (!relOn && !setOn) return;
         const root = docContext.getElementById ? docContext.getElementById('content') : docContext.querySelector('#content');
-        if (!root) return;
-        const relH2 = root.querySelector(':scope > h2.relationships, h2.relationships');
-        if (!relH2 || relH2.dataset.mbEventTables) return;
+        if (!root || root.dataset.mbEventTables) return;
+        const relH2 = root.querySelector('h2.relationships');
+        const setH2 = root.querySelector('h2.setlist');
+        const setP = root.querySelector('p.setlist');
         const doc = root.ownerDocument;
         const withSeries = !!Lib.settings.sa_event_overview_related_series;
         const ownNodes = _eventSectionNodes(relH2);
@@ -12483,7 +12693,7 @@
         const seriesH2 = root.querySelector('h2.related-series');
         const seriesNodes = _eventSectionNodes(seriesH2);
         const seriesGroups = [];
-        if (withSeries) {
+        if (relOn && withSeries) {
             let cur = null;
             seriesNodes.forEach(n => {
                 if (n.tagName === 'H3') {
@@ -12496,10 +12706,18 @@
             seriesGroups.forEach(g => { g.rows = _eventRelRowsFrom(g.nodes, g.name); });
         }
         const seriesRows = seriesGroups.flatMap(g => g.rows);
-        if (!own.length && !seriesRows.length) return;
+        const relBuilt = relOn && (own.length > 0 || seriesRows.length > 0);
+        const setGroups = setOn && setP
+            ? _eventSetlistGroups(doc, _eventSetlistParse(setP), own.filter(r => r.type === 'recording'),
+                !!Lib.settings.sa_event_overview_setlist_one_table)
+            : [];
+        const anchor = relBuilt ? relH2 : (setGroups.length ? (setH2 || relH2) : null);
+        if (!anchor) return;
 
         const frag = doc.createDocumentFragment();
-        if (Lib.settings.sa_event_overview_relationships_one_table) {
+        if (!relBuilt) {
+            // Relationship tables not built: nothing to add here.
+        } else if (Lib.settings.sa_event_overview_relationships_one_table) {
             const all = [...own, ...seriesRows];
             const { cols, cells } = _eventRelColumns(all, 'Target', true, seriesRows.length > 0);
             frag.appendChild(_eventBuildTable(doc, 'Relationships', cols, cells));
@@ -12518,8 +12736,10 @@
             });
         }
 
-        ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
-        if (withSeries && seriesH2) {
+        setGroups.forEach(g => frag.appendChild(g));
+
+        if (relBuilt) ownNodes.forEach(n => { if (n.matches('table.details') || n.querySelector('table.details')) n.remove(); });
+        if (relBuilt && withSeries && seriesH2) {
             seriesNodes.forEach(n => n.remove());
             seriesH2.remove();
         } else {
@@ -12531,9 +12751,14 @@
                 n.replaceWith(h4);
             });
         }
-        relH2.after(frag);
-        relH2.dataset.mbEventTables = '1';
-        Lib.debug('init', `applyEventDetailsToTables: ${own.length} own + ${seriesRows.length} series relationship row(s) → tables.`);
+        if (setGroups.length) {
+            setP.remove();
+            if (setH2 && setH2 !== anchor) setH2.remove();
+        }
+        anchor.after(frag);
+        root.dataset.mbEventTables = '1';
+        Lib.debug('init', `applyEventDetailsToTables: ${relBuilt ? own.length + seriesRows.length : 0} relationship row(s), ` +
+            `${setGroups.length} setlist table(s) → tables.`);
     }
 
     /**
@@ -22030,13 +22255,13 @@
         {
             type: 'event-overview',
             match: (path) => Lib.settings.sa_enable_event_overview &&
-                Lib.settings.sa_event_overview_relationships &&
+                (Lib.settings.sa_event_overview_relationships || Lib.settings.sa_event_overview_setlist) &&
                 path.match(/^\/event\/[a-f0-9-]{36}\/?$/),
             buttons: [ { label: 'Show all Relationships for Event', shortLabel: 'Relationships' } ],
             features: {
                 eventDetailsToTables: true,
                 groupByH3: true,
-                integerColumns: [ { sourceColumn: '#', align: 'R' } ]
+                integerColumns: [ { sourceColumn: '#', align: 'R' }, { sourceColumn: 'Billing', align: 'R' } ]
             },
             tableMode: 'multi',
             non_paginated: true
@@ -88441,6 +88666,9 @@ a { color: #1565c0; }`;
                     // without it a disk load builds every group's header row
                     // from the first group's, misaligning the rest.
                     colHeaders: group.colHeaders || null,
+                    // The paragraphs shown between a group's h3 and its table
+                    // (privileged-accounts' intro, an event setlist part's notes).
+                    introHtml: group.introHtml || null,
                     rows: group.rows.map(row => {
                         return Array.from(row.cells)
                             .filter(cell => !cell.classList.contains('mb-re-cell') &&
@@ -89028,6 +89256,9 @@ a { color: #1565c0; }`;
                     }
                     if (Array.isArray(group.colHeaders)) {
                         _grpEntry.colHeaders = group.colHeaders;
+                    }
+                    if (typeof group.introHtml === 'string' && group.introHtml) {
+                        _grpEntry.introHtml = group.introHtml;
                     }
                     groupedRows.push(_grpEntry);
                     loadedRowCount += reconstructedRows.length;

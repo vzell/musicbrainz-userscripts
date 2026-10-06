@@ -1,5 +1,29 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "🚀 Feature",
+        "items": [
+          "Event page: the setlist as tables, after the relationship tables. \"Setlist: Line-up\" lists every artist with how they are joined (\"&\", \"with\", \"and\") and a Billing number that moves on at every joining word but \"&\"; then one table per part of the setlist (\"Setlist: Soundcheck\", \"Setlist: Concert\", …; \"Setlist: Songs\" when there are no parts), each part's notes (\"Scheduled: 19:30 | …\") under its heading. A medley line stays one row listing every work; \"Also in\" names the other parts that play the same work; \"Recording\" links the recording made at this event whose title is the line; a song without a work link is kept as text. Two new settings: \"Setlist as tables\" (on) and \"One table for the whole setlist\" (off: every song in \"Setlist: All songs\" with a Part column). The button is offered while either table part is on."
+        ]
+      },
+      {
+        "label": "🔧 Refactor",
+        "items": [
+          "Save to Disk stores, and Load from Disk restores, the paragraphs shown between a group's heading and its table (group.introHtml) — a part's setlist notes here, and the privileged-accounts page's intro text, which a disk load used to drop."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New spec event-overview-setlist.spec.js (8 tests); event-overview.spec.js seeds the setlist off and covers the button with only the setlist on. scripts/mutations/event-overview.json grows to 32 planted defects, all caught. Snapshot baseline tests/snapshots/event-overview/ (event art seeded off) and its registry row."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-06",
     "sections": [
