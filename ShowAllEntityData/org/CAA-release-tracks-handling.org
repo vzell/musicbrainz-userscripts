@@ -319,15 +319,31 @@ CLOSED: [2026-10-06 Tue]
         "Cover art (0)" = no section, no request; setting off = nothing.
   - [ ] Spec: an IDB hit costs 0 requests (=tests/support/idbFixture.js=).
 
-*** TODO P2 — R1 contact sheet [2/6]
+*** DONE P2 — R1 contact sheet [6/6]
+CLOSED: [2026-10-06 Tue]
 - [X] Tiles: types, comment, ★ main front, ⏳ pending (landed with P1).
 - [X] Specs: 16 tiles in archive order; ★ only on the =front: true= image
       even when another image is also typed Front.
-- [ ] Type chips (filter); spec: chip "Medium" leaves 4.
-- [ ] Layout switch Grid / By type.
-- [ ] Liner-card hover through the tooltip engine; spec: hover shows types +
-      comment.
-- [ ] Touch shows no hover card (=*.mobile.spec.js=).
+- [X] Type chips (filter) — =_releaseArtTypeCounts()= (first-appearance
+      order, an image counts for every type it carries), filter by type
+      MEMBERSHIP; spec: chip "Medium" leaves 4, chip "Front" leaves 2.
+- [X] Layout switch Grid / By type (groups by FIRST type) —
+      =_releaseArtRenderSheet()=; remembered in GM key
+      =mb_sa_release_art_layout= (=MB_RELEASE_ART_LAYOUT_KEY=, declared above
+      =_CFG_WORKSPACE_GROUPS= because of the TDZ), workspace group
+      =releaseart=.
+- [X] Liner-card hover through the tooltip engine: =data-mbtt= on each tile
+      from =_releaseArtTipHtml()= (no whitespace between tags:
+      =#mb-stat-tooltip= is =pre-wrap=); no hover listener of our own.
+- [X] Touch shows no hover card (=release-tracks-cover-art.mobile.spec.js=).
+- Found while writing the mobile spec, fixed in the same branch: a 404
+  thumbnail renders as alt text and ignores =aspect-ratio=, so tiles collapsed
+  and spilled over each other (the link box is now the square and clips);
+  and the section's container can be far wider than the window (8418 px on
+  the medley fixture at phone width), so the sheet is capped at
+  =calc(100vw - 32px)=.
+- Branch =feature/release-cover-art-p2= (WIP.1); mutation list
+  =scripts/mutations/release-tracks-cover-art-p2.json= (8/8 caught).
 
 *** TODO P3 — R5 viewer (shared with D1)
 - =_artViewer*= singleton, opened by delegation with an image list + index;

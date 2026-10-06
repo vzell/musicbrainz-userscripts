@@ -108,8 +108,9 @@ stay deleted. Same pattern and same reason as `vz-mb-colvis-touched-*`.
 only thing that declares its keys.** `schema_version` 2 added `workspace`
 beside `settings`: the pinned filter list, per-pageType *and per-sub-table*
 column visibility, filter history, the two panel geometries, the 📊 dropdown's
-section collapse, the settings dialog's own size/column widths/section
-collapse, and `vz-lib-prefs`. `configSchema` is what types the `settings` half;
+section collapse, the release page Cover art layout
+(`mb_sa_release_art_layout`, a bare string), the settings dialog's own
+size/column widths/section collapse, and `vz-lib-prefs`. `configSchema` is what types the `settings` half;
 these keys have nothing, so that registry is read by BOTH the exporter and the
 importer — one list, twice — because the `settings` half's two loops skipped
 different entry types for three months when each had its own (F3).

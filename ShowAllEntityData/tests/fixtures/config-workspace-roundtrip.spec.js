@@ -83,6 +83,8 @@ const WORKSPACE = {
     'sa_uniq_dropdown_geometry': { 'series-releases': { Artist: { w: 600, h: 400 } } },
     // dropdown — object of booleans
     'mb_sa_uniq_section_collapse': { structure: true, entity_artist: false },
+    // releaseart — a bare string, the only one in the block
+    'mb_sa_release_art_layout': 'grouped',
     // dialog — objects written by VZ_MBLibrary into this script's storage
     [`${SCRIPT_ID}-modal-size`]: { width: 1100, height: 720 },
     [`${SCRIPT_ID}-col-widths`]: { col1: 640, col2: 180 },
@@ -375,6 +377,7 @@ test.describe('config file schema_version 2 — the workspace block', () => {
                 colvis: 2,          // the state and its -touched- companion
                 geometry: 3,
                 dropdown: 1,
+                releaseart: 1,
                 dialog: 4,
                 libprefs: 1,
                 seedledger: 1,

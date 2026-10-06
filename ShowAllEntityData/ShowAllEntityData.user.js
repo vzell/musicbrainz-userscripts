@@ -55397,6 +55397,16 @@ a { color: #1565c0; }`;
     const MB_UNIQ_SECTION_COLLAPSE_KEY = 'mb_sa_uniq_section_collapse';
 
     /**
+     * GM storage key for the release page Cover art section's layout
+     * (`_releaseArtInsertSection()`): the string `'grid'` or `'grouped'`
+     * ("By type"). A missing or unknown value means `'grid'`. Runtime UI
+     * state, not an `sa_` setting, so it is written directly and carried by
+     * the config export through `_CFG_WORKSPACE_GROUPS`. Declared here, above
+     * that registry, because a `const` read before its line is a TDZ error.
+     */
+    const MB_RELEASE_ART_LAYOUT_KEY = 'mb_sa_release_art_layout';
+
+    /**
      * Storage-shape version of `MB_UNIQ_SECTION_COLLAPSE_KEY`'s object, kept
      * under its `__v` property. Version 2 (grouped sections) gave a stored
      * `false` a meaning: "expanded on purpose, beats auto-collapse". Before
@@ -82179,6 +82189,11 @@ a { color: #1565c0; }`;
             keys: [MB_UNIQ_SECTION_COLLAPSE_KEY],
         },
         {
+            group: 'releaseart',
+            label: 'Release page Cover art layout',
+            keys: [MB_RELEASE_ART_LAYOUT_KEY],
+        },
+        {
             group: 'dialog',
             label: 'Settings dialog layout',
             // Written by VZ_MBLibrary, into THIS script's GM storage — a
@@ -95163,7 +95178,7 @@ a { color: #1565c0; }`;
         // GM_addStyle so this is exempt from page CSP style-src restrictions.
         const style = GM_addStyle(`
             .mb-release-art-count { font-weight: normal; }
-            .mb-release-art-sec { margin: 6px 0 16px; }
+            .mb-release-art-sec { margin: 6px 0 16px; max-width: calc(100vw - 32px); }
             .mb-release-art-status { color: #666; font-style: italic; margin: 4px 0; }
             .mb-release-art-retry { margin-left: 6px; cursor: pointer; }
             .mb-release-art-grid {
@@ -95179,14 +95194,22 @@ a { color: #1565c0; }`;
                 gap: 3px;
                 min-width: 0;
             }
-            .mb-release-art-tile a { display: block; line-height: 0; }
-            .mb-release-art-tile img {
-                width: 100%;
+            .mb-release-art-tile a {
+                display: block;
                 aspect-ratio: 1;
-                object-fit: contain;
+                overflow: hidden;
                 background: #f4f4f4;
                 border: 1px solid #ddd;
                 box-sizing: border-box;
+                font-size: 10px;
+                line-height: 1.2;
+                color: #666;
+            }
+            .mb-release-art-tile img {
+                display: block;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
             }
             .mb-release-art-tile figcaption { font-size: 11px; line-height: 1.3; overflow-wrap: anywhere; }
             .mb-release-art-tile figcaption .mb-release-art-comment { display: block; color: #666; }
@@ -95200,8 +95223,93 @@ a { color: #1565c0; }`;
                 padding: 3px 5px;
                 border-radius: 3px;
             }
+            .mb-release-art-tools {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                align-items: center;
+                margin: 2px 0 8px;
+            }
+            .mb-release-art-tools-gap { flex: 1 1 auto; }
+            .mb-release-art-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 4px;
+                border: 1px solid #ccc;
+                border-radius: 999px;
+                padding: 1px 9px;
+                background: #fff;
+                color: #222;
+                font-size: 11px;
+                line-height: 1.5;
+                cursor: pointer;
+            }
+            .mb-release-art-chip b { font-variant-numeric: tabular-nums; }
+            .mb-release-art-chip[aria-pressed="true"] { border-color: #555; background: #e8e8e8; font-weight: bold; }
+            .mb-release-art-seg { display: inline-flex; border: 1px solid #ccc; border-radius: 4px; overflow: hidden; }
+            .mb-release-art-seg button {
+                border: 0;
+                background: #fff;
+                color: #222;
+                font-size: 11px;
+                padding: 2px 9px;
+                cursor: pointer;
+            }
+            .mb-release-art-seg button + button { border-left: 1px solid #ccc; }
+            .mb-release-art-seg button[aria-pressed="true"] { background: #e8e8e8; font-weight: bold; }
+            .mb-release-art-group + .mb-release-art-group { margin-top: 10px; }
+            .mb-release-art-group-hdr {
+                margin: 0 0 4px;
+                font-size: 11px;
+                font-weight: bold;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
         `);
         style.id = 'mb-release-art-style';
+    }
+
+    /**
+     * The tile's hover card as `.mb-tt-liner` HTML, for `data-mbtt` — the
+     * tooltip engine (`_initStatTooltip()`) copies it in on hover, positions
+     * and clamps it, and skips it on a tap (`_isTouchCompatMouseEvent()`), so
+     * the section adds no hover listener of its own. `#mb-stat-tooltip` is
+     * `white-space: pre-wrap`, so the string carries NO whitespace between
+     * tags. Same layout idiom as `_rgPreviewHtml()`.
+     *
+     * Everything comes from the archive record already in `CAA_CTX.imagesCache`;
+     * the preview is the 500 px thumbnail (`large` on older records).
+     *
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number}   index  The tile's image.
+     * @returns {string}
+     */
+    function _releaseArtTipHtml(images, index) {
+        const im = images[index];
+        const thumbs = im.thumbnails || {};
+        const preview = (thumbs['500'] || thumbs.large || thumbs['250'] || thumbs.small || im.image || '')
+            .replace(/^http:/, '');
+        const types = Array.isArray(im.types) && im.types.length ? im.types : ['(no type)'];
+        const first = types[0];
+        const sameType = images.filter(x => (x.types || []).includes(first));
+        const pos = sameType.indexOf(im) + 1;
+        const pill = t => `<span class="mb-tt-pill">${_rgEsc(t)}</span>`;
+        const where = `${index + 1} of ${images.length}` +
+            (sameType.length > 1 ? ` · ${first} ${pos} of ${sameType.length}` : '') +
+            (im.approved === false ? ' · pending approval' : '');
+        const ids = [im.edit ? `edit #${im.edit}` : null, im.id ? `id ${im.id}` : null].filter(Boolean).join(' · ');
+        return `<div style="width:300px;max-width:100%;">` +
+            `<div class="mb-tt-title">${im.front ? '★ Main front' : _rgEsc(types.join(' / '))}</div>` +
+            `<div class="mb-tt-body" style="display:flex;gap:6px;flex-wrap:wrap;">${types.map(pill).join('')}</div>` +
+            (im.comment ? `<div class="mb-tt-comment">“${_rgEsc(im.comment)}”</div>` : '') +
+            `<div style="margin-top:6px;width:280px;height:280px;max-width:100%;background:#efe6d4;border:1px solid #d9cfbd;border-radius:2px;">` +
+            `<img src="${_rgEsc(preview)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>` +
+            `<div class="mb-tt-rule"></div>` +
+            `<div class="mb-tt-dim">${_rgEsc(where)}</div>` +
+            (ids ? `<div class="mb-tt-dim">${_rgEsc(ids)}</div>` : '') +
+            `<div class="mb-tt-foot">Click: open the 1200 px image</div>` +
+            `</div>`;
     }
 
     /**
@@ -95210,13 +95318,15 @@ a { color: #1565c0; }`;
      * The ★ reads the archive's `front` flag, NOT `types.includes('Front')`:
      * an image can be typed Front without being the main front
      * (docs/claude/artwork-caa-eaa.md, summary panel). Until the viewer lands
-     * the thumbnail links to the 1200 px image in a new tab.
+     * the thumbnail links to the 1200 px image in a new tab. The hover card is
+     * `data-mbtt` (see `_releaseArtTipHtml()`).
      *
-     * @param   {Object} imgData One entry of the archive record's `images`.
-     * @param   {number} index   Its position in archive order.
-     * @returns {HTMLElement}    `figure.mb-release-art-tile`.
+     * @param   {Object[]} images The release's archive images, in archive order.
+     * @param   {number}   index  The tile's image, its position in archive order.
+     * @returns {HTMLElement}     `figure.mb-release-art-tile`.
      */
-    function _releaseArtBuildTile(imgData, index) {
+    function _releaseArtBuildTile(images, index) {
+        const imgData = images[index];
         const thumbs = imgData.thumbnails || {};
         const thumb = (thumbs['250'] || thumbs.small || thumbs['500'] || thumbs.large || imgData.image || '')
             .replace(/^http:/, '');
@@ -95226,6 +95336,7 @@ a { color: #1565c0; }`;
         const fig = document.createElement('figure');
         fig.className = 'mb-release-art-tile';
         fig.dataset.mbArtI = String(index);
+        fig.dataset.mbtt = _releaseArtTipHtml(images, index);
 
         const a = document.createElement('a');
         a.href = big;
@@ -95270,6 +95381,143 @@ a { color: #1565c0; }`;
     }
 
     /**
+     * The section's type list in first-appearance (archive) order, each with
+     * the number of images carrying it. An image with two types counts for
+     * both. Derived from the record rather than a fixed vocabulary, so it
+     * stays right for any type the archive adds (and for event art later).
+     *
+     * @param   {Object[]} images
+     * @returns {Array<{type: string, n: number}>}
+     */
+    function _releaseArtTypeCounts(images) {
+        const counts = new Map();
+        images.forEach(im => (im.types && im.types.length ? im.types : ['(no type)']).forEach(t => {
+            counts.set(t, (counts.get(t) || 0) + 1);
+        }));
+        return Array.from(counts, ([type, n]) => ({ type, n }));
+    }
+
+    /**
+     * The remembered layout: `'grid'` or `'grouped'` (`MB_RELEASE_ART_LAYOUT_KEY`).
+     *
+     * @returns {'grid'|'grouped'}
+     */
+    function _releaseArtLayout() {
+        let v;
+        try { v = GM_getValue(MB_RELEASE_ART_LAYOUT_KEY, null); } catch (_) { v = null; }
+        return v === 'grouped' ? 'grouped' : 'grid';
+    }
+
+    /**
+     * (Re)builds the toolbar and the contact sheet of a loaded section from
+     * `CAA_CTX.imagesCache`: type chips (`data-mb-art-filter`, "" = all) and the
+     * Grid / By type switch (`data-mb-art-layout`), then the tiles — all of
+     * them, or only those carrying the chosen type, either as one grid in
+     * archive order or grouped under each image's FIRST type in
+     * first-appearance order. The chosen type lives on the section
+     * (`data-mb-art-active-type`, deliberately NOT the chips'
+     * `data-mb-art-filter`, which `closest()` would then match on the
+     * section itself), the layout in GM storage.
+     *
+     * @param   {HTMLElement} sec A section whose `data-mb-art-state` is `'ok'`.
+     * @returns {void}
+     */
+    function _releaseArtRenderSheet(sec) {
+        const images = CAA_CTX.imagesCache.get(sec.dataset.mbArtEntity) || [];
+        const filter = sec.dataset.mbArtActiveType || '';
+        const layout = _releaseArtLayout();
+        sec.querySelectorAll('.mb-release-art-tools, .mb-release-art-grid, .mb-release-art-group').forEach(n => n.remove());
+
+        const tools = document.createElement('div');
+        tools.className = 'mb-release-art-tools';
+        const chip = (type, n, label) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'mb-release-art-chip';
+            b.dataset.mbArtFilter = type;
+            b.setAttribute('aria-pressed', String(filter === type));
+            const num = document.createElement('b');
+            num.textContent = String(n);
+            b.append(label + ' ', num);
+            return b;
+        };
+        tools.appendChild(chip('', images.length, 'All'));
+        _releaseArtTypeCounts(images).forEach(({ type, n }) => tools.appendChild(chip(type, n, type)));
+        const gap = document.createElement('span');
+        gap.className = 'mb-release-art-tools-gap';
+        tools.appendChild(gap);
+        const seg = document.createElement('span');
+        seg.className = 'mb-release-art-seg';
+        seg.setAttribute('role', 'group');
+        seg.setAttribute('aria-label', 'Layout');
+        [['grid', 'Grid'], ['grouped', 'By type']].forEach(([key, label]) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.dataset.mbArtLayout = key;
+            b.setAttribute('aria-pressed', String(layout === key));
+            b.textContent = label;
+            seg.appendChild(b);
+        });
+        tools.appendChild(seg);
+        sec.appendChild(tools);
+
+        const shown = images.map((im, i) => i)
+            .filter(i => !filter || (images[i].types && images[i].types.length ? images[i].types : ['(no type)']).includes(filter));
+        const grid = () => {
+            const g = document.createElement('div');
+            g.className = 'mb-release-art-grid';
+            return g;
+        };
+        if (layout === 'grid') {
+            const g = grid();
+            shown.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            sec.appendChild(g);
+            return;
+        }
+        const groups = new Map();
+        shown.forEach(i => {
+            const first = (images[i].types && images[i].types[0]) || '(no type)';
+            if (!groups.has(first)) groups.set(first, []);
+            groups.get(first).push(i);
+        });
+        groups.forEach((idx, type) => {
+            const box = document.createElement('div');
+            box.className = 'mb-release-art-group';
+            box.dataset.mbArtGroup = type;
+            const hdr = document.createElement('div');
+            hdr.className = 'mb-release-art-group-hdr';
+            hdr.textContent = `${type} × ${idx.length}`;
+            const g = grid();
+            idx.forEach(i => g.appendChild(_releaseArtBuildTile(images, i)));
+            box.append(hdr, g);
+            sec.appendChild(box);
+        });
+    }
+
+    /**
+     * The section's one click handler, delegated on the section (which is
+     * never cloned, so a listener on it survives every re-render): a type chip
+     * sets the filter, a layout button sets and remembers the layout.
+     *
+     * @param   {MouseEvent} e
+     * @returns {void}
+     */
+    function _releaseArtOnClick(e) {
+        const sec = e.currentTarget;
+        const chip = e.target.closest('[data-mb-art-filter]');
+        if (chip && sec.contains(chip)) {
+            sec.dataset.mbArtActiveType = chip.dataset.mbArtFilter;
+            _releaseArtRenderSheet(sec);
+            return;
+        }
+        const lay = e.target.closest('[data-mb-art-layout]');
+        if (lay && sec.contains(lay)) {
+            try { GM_setValue(MB_RELEASE_ART_LAYOUT_KEY, lay.dataset.mbArtLayout); } catch (_) { /* storage blocked: still switch */ }
+            _releaseArtRenderSheet(sec);
+        }
+    }
+
+    /**
      * Fills the section from the archive record: a contact sheet, a "no
      * artwork" note, or a failure note with a retry button. The retry button
      * is wired directly: the section is never cloned, so a direct listener
@@ -95296,10 +95544,7 @@ a { color: #1565c0; }`;
         if (state === 'ok') {
             if (countEl) countEl.textContent = ` (${images.length})`;
             status.remove();
-            const grid = document.createElement('div');
-            grid.className = 'mb-release-art-grid';
-            images.forEach((im, i) => grid.appendChild(_releaseArtBuildTile(im, i)));
-            sec.appendChild(grid);
+            _releaseArtRenderSheet(sec);
             return;
         }
         if (state === 'none') {
@@ -95360,6 +95605,7 @@ a { color: #1565c0; }`;
         const sec = document.createElement('div');
         sec.className = 'mb-release-art-sec';
         sec.dataset.mbArtEntity = '/release/' + m[1];
+        sec.addEventListener('click', _releaseArtOnClick);
 
         anchorH2.before(h2, sec);
         _releaseArtLoad(ctx, h2, sec);
