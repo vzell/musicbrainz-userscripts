@@ -43,8 +43,24 @@ test('jungleland.it list: every entry becomes one row, decoded from windows-1252
 
     const headers = await page.evaluate(() => Array.from(document.querySelectorAll('table.tbl thead tr:first-child th'))
         .map((th) => th.dataset.colName || th.textContent.trim()));
-    expect(headers).toEqual(['Title', 'Date', 'Year']);
+    expect(headers).toEqual(['Title', 'Date', 'Year', 'Version', 'DD', 'MM', 'YYYY', 'Day', 'Month']);
     expect(await page.locator('table.tbl tbody tr').count()).toBe(announced);
+    // Across the whole real list: every row has a Version, every dated row
+    // is split and agrees with its Date, and no undated row is split.
+    const bad = await page.evaluate(() => {
+        const out = { version: [], split: [] };
+        const pad = (s) => s.padStart(2, '0');
+        document.querySelectorAll('table.tbl tbody tr').forEach((tr) => {
+            const c = Array.from(tr.cells).map((td) => td.textContent.trim());
+            const [title, date, , version, dd, mm, yyyy, day, month] = c;
+            if (!/^\d+$/.test(version)) out.version.push(title);
+            const split = date ? `${yyyy}-${pad(mm)}-${pad(dd)}` === date && !!day && !!month
+                : !(dd || mm || yyyy || day || month);
+            if (!split) out.split.push(`${title} | ${date}`);
+        });
+        return { version: out.version.slice(0, 10), split: out.split.slice(0, 10) };
+    });
+    expect(bad).toEqual({ version: [], split: [] });
     expect(await page.locator('a[target="inferioredx1"]').count()).toBe(0);
     const koeln = await page.evaluate(() => {
         const tr = Array.from(document.querySelectorAll('table.tbl tbody tr'))

@@ -1637,7 +1637,7 @@ as it is. To use the script, open the list address above on its own.
 
 Once on, the page gets a heading with the usual toolbar and one action
 button, **Bootlegs**. Pressing it turns the whole list into one table with
-three columns:
+these columns:
 
 - **Title:** the bootleg's title, without the date the site appends to it.
   It links to that bootleg's artwork page, which opens in a new tab.
@@ -1646,6 +1646,17 @@ three columns:
 - **Year:** the date's year. Filter or pick from its 📊 list to see one year,
   which is the job the site's "Choose the year" menu did. That menu is hidden
   once the table is there.
+- **Version:** which issue of that show the entry is: 1 for the first, 2
+  for the site's "(Version 2)", and so on. It is read from the entry's
+  link, so it is right even where the site has cut a long title off before
+  its "(Version N)". Sort by it, or pick *1* from its 📊 list to see one
+  entry per show.
+- **DD, MM, YYYY, Day, Month:** the Date split into its parts, the same
+  columns MusicBrainz event pages get, with the weekday and the month's
+  name. Use them to find, say, every show on a Saturday, or every August
+  show across the years. They are empty where Date is empty. On dated rows
+  YYYY repeats Year; Year alone also carries the year heading of an entry
+  the site files there without a date.
 
 The list holds over 6,000 bootlegs, more than the default *Large Dataset
 Threshold* (5000 rows), so the "many rows" question comes up before the table

@@ -4083,7 +4083,8 @@
             description: 'Off by default. When on, the script also runs on jungleland.it\'s ' +
                          'bootleg artwork list (html/list.htm) and offers a "Show all" button ' +
                          'that turns the long list of links into one filterable, sortable table ' +
-                         'with Title, Date and Year columns. It works only when list.htm is ' +
+                         'with Title, Date, Year and Version columns, plus the date split into ' +
+                         'day, month, year, weekday and month name. It works only when list.htm is ' +
                          'opened in its own tab: inside the site\'s two-frame view ' +
                          '(artwork.htm) the narrow left frame is left as it is. No item page is ' +
                          'fetched. When off, the script exits on that site before touching the ' +
@@ -11684,7 +11685,29 @@
      * Column headers of the jungleland.it table, in order.
      * @type {string[]}
      */
-    const _JL_HEADERS = ['Title', 'Date', 'Year'];
+    const _JL_HEADERS = ['Title', 'Date', 'Year', 'Version'];
+
+    /**
+     * Reads a jungleland.it entry's version number from its link.
+     *
+     * The site files the first issue of a show as `YYYYMMDD.htm` (a named
+     * "others" entry as `<name>.htm`) and each further issue as the same
+     * page name plus `_N`, whose title normally ends in a matching
+     * "(Version N)". The link is the reliable half: the site cuts long titles
+     * off ("… (Versi"), never the href. Checked against all 6,327 entries of
+     * the list on 2026-10-06: no "(Version N)" title disagrees with this
+     * rule (the one apparent exception, "(Version 2)  (Version 3)", is
+     * `_3`).
+     *
+     * @param {string} href The link's `href` attribute as written (relative, e.g. "19750205_2.htm").
+     * @returns {string} The version number as text: N for a `_N.htm` page, else '1'; '' without an `.htm` href.
+     */
+    function _jlVersionFromHref(href) {
+        const h = String(href || '');
+        if (!/\.htm$/i.test(h)) return '';
+        const m = h.match(/_(\d+)\.htm$/i);
+        return m ? String(parseInt(m[1], 10)) : '1';
+    }
 
     /**
      * Splits one jungleland.it list entry into its table fields.
@@ -11741,7 +11764,7 @@
     }
 
     /**
-     * Builds one table row (Title, Date, Year) for a jungleland.it entry.
+     * Builds one table row (Title, Date, Year, Version) for a jungleland.it entry.
      *
      * The Title cell links to the entry's artwork page by its resolved
      * absolute URL, in a new tab: standalone there is no `inferioredx1`
@@ -11762,7 +11785,7 @@
         link.textContent = title;
         titleTd.appendChild(link);
         tr.appendChild(titleTd);
-        [date, year].forEach(value => {
+        [date, year, _jlVersionFromHref(item.anchor.getAttribute('href'))].forEach(value => {
             const td = docContext.createElement('td');
             td.textContent = value;
             tr.appendChild(td);
@@ -22799,7 +22822,16 @@
             buttons: [ { label: 'Show all bootlegs of this list', shortLabel: 'Bootlegs' } ],
             features: {
                 jlListToTable: true,
-                integerColumns: [ { sourceColumn: 'Year', align: 'C' } ],
+                // The converter writes Date as ISO (or empty), so the
+                // MusicBrainz date splitter applies unchanged. Year stays: it
+                // also carries the heading's year for an undated entry.
+                columnExtractors: [
+                    { sourceColumn: 'Date', extractor: 'dateParts', syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] }
+                ],
+                integerColumns: [
+                    { sourceColumn: 'Year', align: 'C' }, { sourceColumn: 'Version', align: 'R' },
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -106990,6 +107022,17 @@ a { color: #1565c0; }`;
              */
             jlParseItem(text, section) {
                 return _jlParseItem(text, section);
+            },
+
+            /**
+             * Thin wrapper around `_jlVersionFromHref()` — reads a
+             * jungleland.it entry's version number from its link.
+             *
+             * @param {string} href The link's `href` attribute as written.
+             * @returns {string} The version number, or ''.
+             */
+            jlVersionFromHref(href) {
+                return _jlVersionFromHref(href);
             },
 
             /**

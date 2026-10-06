@@ -1,0 +1,20 @@
+[
+  {
+    "version": "WIP.1",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "jungleland.it bootleg list: a new Version column says which issue of a show each entry is (1 for the first, 2 for the site's \"(Version 2)\", …). It is read from the entry's link, so it is right even where the site has cut a long title off. The Date is now also split into DD, MM, YYYY, Day and Month, the same columns MusicBrainz event pages get, so you can filter for every Saturday show or every August show across the years."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "tests/fixtures/jl-list.spec.js and tests/live/jl-list.spec.js: the Date split, Version from the link (incl. a cut-off title and a named page), DD sorts numerically, _jlVersionFromHref shapes. scripts/mutations/jl-support.json: 4 new entries, two recorded as pass (the resolved-vs-written href, and DD's numeric order resting on the sort rather than integerColumns). docs/claude/jungleland.md and HELP updated."
+        ]
+      }
+    ]
+  }
+]
