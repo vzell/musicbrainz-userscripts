@@ -123,7 +123,7 @@ Columns (`_SL_HEADERS`):
 
 | sl-collection | sl-bootlegs |
 |---|---|
-| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Location, Format, Duration, Lossy, Artwork, Info file |
+| Cover, Title, Version, Label, Cat. no., Format, Country, Release date, Original year, Copies | Cover, Title, Label, Date, First date, Show, Location, Format, Duration, Lossy, Artwork, Info file (+ DD, MM, YYYY, Day, Month, Place, Locality, Region, Country from `columnExtractors`) |
 
 - **Label / Cat. no.** and **Release date / Original year** split the site's
   "Label (Cat #)" and "Release date (Original year)" at the LAST parenthesised
@@ -134,6 +134,47 @@ Columns (`_SL_HEADERS`):
   text ("16-17 Sep 1967", "16 Sep 1967, 30 Sep 1967", "Sep 1967",
   "30 Sep - 1 Oct 1967", "20 Sep 1969 (early show)") into ISO, so a text sort
   is chronological. Date keeps the site's text.
+- **Show**: `_slShowQualifier()` reads the parenthesised notes of the Date
+  text ("early show", "Today Show soundcheck"). Repeats collapse, and
+  different notes are comma-joined. The lyrics pages' Show column uses the
+  same reader.
+- **DD / MM / YYYY / Day / Month** (since 2026-10-06): the MusicBrainz
+  `dateParts` extractor, run on First date through `features.columnExtractors`.
+  Because First date is already ISO (or `YYYY-MM`, or `YYYY`), nothing
+  SL-specific is needed. The pipeline appends extracted columns at the END
+  of the row, not beside their source. That is how every MusicBrainz page
+  does it too.
+- **Place / Locality / Region / Country** (since 2026-10-06):
+  `ColumnDataExtractor.splitLocationText`. It is the plain-text sibling of
+  `splitLocation`, which cannot be used here because it routes
+  `/place/`/`/area/`/`.flag` LINKS and SL's Location is text.
+  `_parseLocationText()` reads one location from the end:
+  - The last part is a US state or Canadian province (Region, with its
+    Country filled in as `United States`/`Canada`), or else the Country.
+  - A state or province just before a Country is the Region.
+  - The next part back is the Locality, and the rest, comma-joined, is the
+    Place.
+  - A ONE-part location is a description and goes to Place ("Various
+    Location", "Studio / Live" on brucelegs).
+  - A parenthesised note is dropped ("USA (Early Show)").
+  - `USA`/`US`/`U.S.A.` read as `United States`
+    (`_LOCATION_TEXT_COUNTRY_ALIASES`).
+  - Several locations joined by ` - ` (the multi-show bootlegs) become
+    parallel `<ul><li>` lists, one item per location in every column. This
+    is the layout `splitLocation` uses for multi-row cells.
+
+  Survey of page 1 of all 21 bootleg categories (2,055 cards, 2026-10-06):
+
+  | Location shape | Cards |
+  |---|---|
+  | `Venue, City, ST` or `Venue, City, Country` | 1,763 |
+  | `–` | 243 |
+  | `City, ST` or `City, Country` | 27 |
+  | ` - ` joined | 20 |
+
+  In that sample, venue names contain `&` but never a comma. State codes and
+  names come from `_LOCATION_TEXT_REGION_CODES` plus the existing
+  `AREA_FLAG_REGION_SUBDIVISIONS`.
 - **Duration**: `integerColumns` `align: ':'`, which is what makes
   `_sortColumnKind()` sort it as a duration. The site's "–" (unknown) is written
   as MusicBrainz's **`?:??`**: `_buildSplitAlignWrap()` emits the separator even
@@ -467,7 +508,7 @@ leaves the other fixtures byte-identical.
 | Spec                                        | Pins                                                                                                                                                                                                                                                |
 |---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `tests/fixtures/sl-collection.spec.js`      | both pages in one table, exact headers, parsed fields (incl. a FETCHED-page card), item links, lazy thumbnails, Cat. no. text sort, Copies numeric sort, a column filter, zero MusicBrainz/CAA requests with CAA and Relationships switched back ON |
-| `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, `_slFirstIsoDate()` / `_slSplitTrailingParen()` shapes the fixtures lack                  |
+| `tests/fixtures/sl-bootlegs.spec.js`        | the bootleg columns and flags, `?:??`, Duration as a duration in both directions (an `H:MM:SS` value and unknowns pinned last), First date chronological, the DD…Month split agreeing with First date on every row, Show, Location split into Place/Locality/Region/Country (a multi-location card as aligned `<li>`s, every single-location row rebuilt from its parts), a Country filter, `_slFirstIsoDate()` / `_slShowQualifier()` / `splitLocationText` / `_slSplitTrailingParen()` shapes the fixtures lack |
 | `tests/fixtures/sl-host.spec.js`            | the gate off (page untouched, with the log line as proof the script ran), the gate on, the navigation guard, the Load from Disk round trip                                                                                                          |
 | `tests/fixtures/sl-collection-intro.spec.js` | the stray-`</div>` shape (asserted present first): entry page in two `pg=` pages, opened on `?pg=2`; sampler as one widget-less page; the `<h1>` reads the list heading                                                                          |
 | `tests/fixtures/sl-sticky-headers.spec.js`  | album, sampler, memorabilia: breadcrumb, `<h1>`, category buttons, list `<h2>` (and the year filter) keep their left edge and stay in the window; Title docks at the table's left. Each shape again with the compact bar on, the bar in place of the walls, plus a bootleg list (with `.col-md-12` CSS) |

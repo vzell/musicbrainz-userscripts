@@ -1,5 +1,23 @@
 [
   {
+    "version": "WIP.2",
+    "date": "2026-10-06",
+    "sections": [
+      {
+        "label": "✨ Improve",
+        "items": [
+          "springsteenlyrics.com bootleg lists: the date is now also split into DD, MM, YYYY, Day and Month, and the Location into Place, Locality, Region and Country — the same columns MusicBrainz event pages get. A US show's Country reads United States (the site writes only the state), so filtering by country works. A bootleg of several shows gets one line per show in each location column. A new Show column holds the note after a date, such as \"early show\" or \"soundcheck\"."
+        ]
+      },
+      {
+        "label": "📝 Docs",
+        "items": [
+          "New ColumnDataExtractor.splitLocationText (the plain-text sibling of splitLocation, reusable by any non-MusicBrainz site) and _slShowQualifier(). tests/fixtures/sl-bootlegs.spec.js: 4 new tests plus the new headers; tests/live/sl-lists.spec.js headers. scripts/mutations/sl-support.json: 8 new entries. docs/claude/springsteenlyrics.md and HELP updated."
+        ]
+      }
+    ]
+  },
+  {
     "version": "WIP.1",
     "date": "2026-10-06",
     "sections": [

@@ -5631,6 +5631,104 @@
         }
     }
 
+    /**
+     * Two-letter postal codes of the US states (plus DC) and the Canadian
+     * provinces and territories, for `_parseLocationText()`. The written-out
+     * names come from `AREA_FLAG_REGION_SUBDIVISIONS`; these are the short
+     * forms foreign sites write instead ("Asbury Park, NJ").
+     * @type {{code: Set<string>, country: string}[]}
+     */
+    const _LOCATION_TEXT_REGION_CODES = [
+        {
+            country: 'United States',
+            code: new Set(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN',
+                'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH',
+                'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
+                'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'])
+        },
+        {
+            country: 'Canada',
+            code: new Set(['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'ON', 'PE', 'QC', 'SK', 'NT', 'NU', 'YT'])
+        }
+    ];
+
+    /**
+     * Names the country a written region belongs to, when it is a US state or
+     * a Canadian province: a postal code ("NJ", "ON") or a written-out name
+     * ("New Jersey", "Ontario", "Washington DC").
+     *
+     * @param {string} part One comma-separated part of a location text.
+     * @returns {string} 'United States', 'Canada', or '' when it is neither.
+     */
+    function _locationTextRegionCountry(part) {
+        const p = String(part || '').trim();
+        if (!p) return '';
+        const byCode = _LOCATION_TEXT_REGION_CODES.find(e => e.code.has(p.replace(/\./g, '')));
+        if (byCode) return byCode.country;
+        const norm = (s) => s.toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
+        const n = norm(p);
+        if (AREA_FLAG_REGION_SUBDIVISIONS['united states'].some(s => norm(s) === n)) return 'United States';
+        if (AREA_FLAG_REGION_SUBDIVISIONS['canada'].some(s => norm(s) === n)) return 'Canada';
+        return '';
+    }
+
+    /**
+     * Spellings of a country that sites write but MusicBrainz names
+     * differently, mapped to MusicBrainz's name, so a Country column holds
+     * one value per country ("USA" on one card, a bare "NJ" — filled in as
+     * United States — on the next).
+     * @type {Object<string, string>}
+     */
+    const _LOCATION_TEXT_COUNTRY_ALIASES = {
+        'usa': 'United States', 'us': 'United States', 'u.s.a.': 'United States', 'u.s.': 'United States',
+        'united states of america': 'United States'
+    };
+
+    /**
+     * Splits ONE plain-text location, as non-MusicBrainz sites write it
+     * ("Paramount Theatre, Asbury Park, NJ", "Montreal, Canada"), into the
+     * four parts `splitLocation` produces from MusicBrainz links.
+     *
+     * Read from the end: the last part is a US state / Canadian province
+     * (Region, with its Country filled in, since the site never writes it)
+     * or else the Country, kept as written except for the spellings in
+     * `_LOCATION_TEXT_COUNTRY_ALIASES` ("USA" → "United States"). When it
+     * was a Country, a state or province just before it is the Region. The
+     * next part back is the Locality, and whatever is left in front,
+     * comma-joined, is the Place.
+     *
+     * A location of ONE part is a description, not a country ("Various
+     * Location", "Studio / Live" on springsteenlyrics.com's CD and vinyl
+     * bootlegs), so it goes to Place — unless it is a state or province.
+     * A parenthesised note ("USA (Early Show)") is not part of the
+     * location and is dropped; `_slShowQualifier()` reads it. "–" (the
+     * site's "unknown") or an empty text gives four empty parts.
+     *
+     * @param {string} text One location, without " - " joins.
+     * @returns {{place: string, locality: string, region: string, country: string}} The parts.
+     */
+    function _parseLocationText(text) {
+        const out = { place: '', locality: '', region: '', country: '' };
+        const t = String(text || '').replace(/\s*\([^()]*\)/g, '').replace(/\s+/g, ' ').trim();
+        if (!t || /^[-–—?]+$/.test(t)) return out;
+        const parts = t.split(/\s*,\s*/).filter(Boolean);
+        const last = parts.pop();
+        const lastRegionCountry = _locationTextRegionCountry(last);
+        if (lastRegionCountry) {
+            out.region = last;
+            out.country = lastRegionCountry;
+        } else if (parts.length === 0) {
+            out.place = last;
+            return out;
+        } else {
+            out.country = _LOCATION_TEXT_COUNTRY_ALIASES[last.toLowerCase()] || last;
+            if (parts.length && _locationTextRegionCountry(parts[parts.length - 1])) out.region = parts.pop();
+        }
+        if (parts.length) out.locality = parts.pop();
+        out.place = parts.join(', ');
+        return out;
+    }
+
     const ColumnDataExtractor = {
 
         /**
@@ -5836,6 +5934,45 @@
                 });
             }
             return [tdL, tdR, tdC];
+        },
+
+        /**
+         * splitLocationText — the plain-text sibling of `splitLocation`, for a
+         * Location cell written by a non-MusicBrainz site ("Paramount Theatre,
+         * Asbury Park, NJ"), where there are no `/place/`/`/area/` links to
+         * route. Each location is split by `_parseLocationText()`; output
+         * cells hold plain text.
+         *
+         * Several locations joined by " - " (springsteenlyrics.com's
+         * multi-show bootlegs: "The Matrix, San Francisco, CA - Newark State
+         * College, Union, NJ") become one `<li>` per location in every output
+         * cell — the same parallel-list layout `splitLocation` builds for a
+         * multi-row cell, so the four columns stay aligned. A list whose items
+         * are all empty is left out, so an empty column stays empty.
+         *
+         * Synthetic columns: ['Place', 'Locality', 'Region', 'Country']
+         */
+        splitLocationText(sourceCell) {
+            const tds = [0, 1, 2, 3].map(() => document.createElement('td'));
+            if (!sourceCell) return tds;
+            const locations = sourceCell.textContent.replace(/\s+/g, ' ').trim()
+                .split(/\s+-\s+/).map(_parseLocationText);
+            const keys = ['place', 'locality', 'region', 'country'];
+            if (locations.length === 1) {
+                keys.forEach((k, i) => { tds[i].textContent = locations[0][k]; });
+                return tds;
+            }
+            keys.forEach((k, i) => {
+                if (!locations.some(loc => loc[k])) return;
+                const ul = document.createElement('ul');
+                locations.forEach(loc => {
+                    const li = document.createElement('li');
+                    li.textContent = loc[k];
+                    ul.appendChild(li);
+                });
+                tds[i].appendChild(ul);
+            });
+            return tds;
         },
 
         /**
@@ -9261,8 +9398,30 @@
      */
     const _SL_HEADERS = {
         collection: ['Cover', 'Title', 'Version', 'Label', 'Cat. no.', 'Format', 'Country', 'Release date', 'Original year', 'Copies'],
-        bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file']
+        bootlegs:   ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file']
     };
+
+    /**
+     * Reads the show qualifier out of a springsteenlyrics.com date text: the
+     * content of its parenthesised groups, e.g. "27 Nov 1970 (early show)" →
+     * "early show", "30 Jul 2002 (Today Show soundcheck)" → "Today Show
+     * soundcheck". Repeats collapse ("15 Aug 1975 (early show), 17 Oct 1975
+     * (early show)" → "early show"); different ones are comma-joined in
+     * order. Shared by the bootleg Date and the lyrics version text, so both
+     * pages' Show columns hold the same values.
+     *
+     * @param {string} text A date text, or a lyrics version text.
+     * @returns {string} The qualifier(s), or '' when there is none.
+     */
+    function _slShowQualifier(text) {
+        const seen = [];
+        String(text || '').replace(/\(([^()]*)\)/g, (all, inner) => {
+            const q = inner.replace(/\s+/g, ' ').trim();
+            if (q && !seen.includes(q)) seen.push(q);
+            return all;
+        });
+        return seen.join(', ');
+    }
 
     /**
      * Full English month names, indexed 0-11, for `_slFirstIsoDate()`.
@@ -9536,6 +9695,7 @@
             textCell(_slCardSubtitle(body));
             textCell(fields['Date'] || '');
             textCell(_slFirstIsoDate(fields['Date']));
+            textCell(_slShowQualifier(fields['Date']));
             textCell(fields['Location'] || '');
             textCell(fields['Format'] || '');
             // The site writes "–" for an unknown duration. Use MusicBrainz's
@@ -22779,10 +22939,21 @@
             buttons: [ { label: 'Show all bootlegs of this list', shortLabel: 'Bootlegs' } ],
             features: {
                 slCardsToTable: 'bootlegs',
+                // The standard MusicBrainz splits, fed plain text: First date
+                // is ISO (_slFirstIsoDate()), so dateParts applies unchanged;
+                // Location is "Venue, City, ST|Country" text, so it gets the
+                // text sibling of splitLocation, with the same four columns.
+                columnExtractors: [
+                    { sourceColumn: 'First date', extractor: 'dateParts',         syntheticColumns: ['DD', 'MM', 'YYYY', 'Day', 'Month'] },
+                    { sourceColumn: 'Location',   extractor: 'splitLocationText', syntheticColumns: ['Place', 'Locality', 'Region', 'Country'] }
+                ],
                 // `align: ':'` is what makes _sortColumnKind() sort it as a
                 // duration (_parseDurationToMs() accepts minutes above 59, so
                 // "129:33.23" sorts after "61:58.22").
-                integerColumns: [ { sourceColumn: 'Duration', align: ':' } ],
+                integerColumns: [
+                    { sourceColumn: 'Duration', align: ':' },
+                    { sourceColumn: 'DD', align: 'R' }, { sourceColumn: 'MM', align: 'R' }, { sourceColumn: 'YYYY', align: 'C' }
+                ],
                 stickyColumn: 'Title'
             },
             tableMode: 'single'
@@ -62471,6 +62642,16 @@ a { color: #1565c0; }`;
                     return `Extracted from '${src}': the broader administrative area (county, state/province, or equivalent), split from the ${src} field. May contain multiple comma-joined levels.`;
                 if (colName === 'Country')
                     return `Extracted from '${src}': the country, split from the ${src} field.`;
+                break;
+            case 'splitLocationText':
+                if (colName === 'Place')
+                    return `Extracted from '${src}': the venue, everything before the city in the ${src} text — or the whole text when it is only a description ("Various Location").`;
+                if (colName === 'Locality')
+                    return `Extracted from '${src}': the city, the part before the state or country in the ${src} text.`;
+                if (colName === 'Region')
+                    return `Extracted from '${src}': the US state or Canadian province, as the site writes it ("NJ", "Ontario"). Empty elsewhere.`;
+                if (colName === 'Country')
+                    return `Extracted from '${src}': the country as the site writes it ("Italy", "England"), with "USA" written as United States. For a US state or Canadian province the site writes no country, so it is filled in as United States or Canada.`;
                 break;
             case 'splitArea':
                 if (colName.endsWith('ocality'))
@@ -107009,6 +107190,35 @@ a { color: #1565c0; }`;
              */
             slFirstIsoDate(text) {
                 return _slFirstIsoDate(text);
+            },
+
+            /**
+             * Thin wrapper around `_slShowQualifier()` — the springsteenlyrics.com
+             * Show column's reader ("(early show)" → "early show").
+             *
+             * @param {string} text - A date or lyrics version text.
+             * @returns {string} The qualifier(s), or `''`.
+             */
+            slShowQualifier(text) {
+                return _slShowQualifier(text);
+            },
+
+            /**
+             * Runs `ColumnDataExtractor.splitLocationText` on a one-cell text
+             * and returns each output cell as text, a multi-location cell as
+             * its `<li>` texts — so a spec can pin location shapes the
+             * fixtures happen not to contain.
+             *
+             * @param {string} text - A Location cell's text.
+             * @returns {Array<string|string[]>} Place, Locality, Region, Country.
+             */
+            splitLocationText(text) {
+                const td = document.createElement('td');
+                td.textContent = text;
+                return ColumnDataExtractor.splitLocationText(td).map(cell => {
+                    const lis = cell.querySelectorAll('li');
+                    return lis.length ? Array.from(lis, li => li.textContent) : cell.textContent;
+                });
             },
 
             /**

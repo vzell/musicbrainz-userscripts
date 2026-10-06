@@ -1609,12 +1609,24 @@ The columns come from what each card shows — no item page is opened:
   "I have N copies". Hovering a *Format* cell explains each medium in it from
   the formats guide (e.g. "4xCD + 2xBlu-ray": CD ×4 and Blu-ray ×2), and names
   the format the site files the item under, which is its first medium.
-- **Bootlegs:** Cover, Title, Label, Date, First date, Location, Format,
-  Duration, Lossy, Artwork, Info file. *Date* is the site's own text ("16-17 Sep
-  1967", "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those
-  dates as `1967-09-16`, so sorting it is chronological. *Duration* sorts as a
+- **Bootlegs:** Cover, Title, Label, Date, First date, Show, Location, Format,
+  Duration, Lossy, Artwork, Info file, then DD, MM, YYYY, Day, Month and Place,
+  Locality, Region, Country. *Date* is the site's own text ("16-17 Sep 1967",
+  "16 Sep 1967, 30 Sep 1967", …); *First date* is the first of those dates as
+  `1967-09-16`, so sorting it is chronological. *Show* holds the note in
+  brackets after a date ("early show", "soundcheck"). *Duration* sorts as a
   time, and an unknown one (the site's "–") shows as `?:??` and stays last.
   *Lossy*, *Artwork* and *Info file* read "yes" when the card carries that note.
+  - **DD … Month** split *First date* into day, month, year, weekday and
+    month name: the same columns MusicBrainz event pages get. A list with a
+    year only fills YYYY alone.
+  - **Place … Country** split *Location* the way MusicBrainz event pages
+    split theirs: "Paramount Theatre, Asbury Park, NJ" gives Paramount
+    Theatre / Asbury Park / NJ / United States. The site writes no country
+    after a US state or Canadian province, so it is filled in, and "USA" is
+    written as United States, so one country has one value to filter on.
+    Region holds a state or province only. A bootleg of several shows gets
+    one line per show in each of the four columns, in the same order.
 
 Cover and Title link to the item's own page on springsteenlyrics.com;
 following one asks first, as leaving any consolidated table does.

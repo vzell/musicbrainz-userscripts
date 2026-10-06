@@ -49,7 +49,8 @@ const LISTS = [
         name: 'bootlegs',
         url: 'https://springsteenlyrics.com/bootlegs.php?cmd=list&category=aud_live1967',
         button: 'Show all bootlegs of this list',
-        headers: ['Cover', 'Title', 'Label', 'Date', 'First date', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file'],
+        headers: ['Cover', 'Title', 'Label', 'Date', 'First date', 'Show', 'Location', 'Format', 'Duration', 'Lossy', 'Artwork', 'Info file',
+            'DD', 'MM', 'YYYY', 'Day', 'Month', 'Place', 'Locality', 'Region', 'Country'],
     },
 ];
 

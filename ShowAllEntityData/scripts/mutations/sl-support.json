@@ -327,5 +327,69 @@
     "spec": "tests/fixtures/sl-host.spec.js",
     "grep": "a reopened list renders in place",
     "expect": "fail"
+  },
+  {
+    "name": "bootleg First date is not fed to dateParts",
+    "why": "sl-bootlegs splits its ISO First date with the MusicBrainz dateParts extractor; an unknown extractor name leaves DD/MM/YYYY/Day/Month empty on every row.",
+    "edits": [{ "find": "{ sourceColumn: 'First date', extractor: 'dateParts',", "replace": "{ sourceColumn: 'First date', extractor: 'datePartsOff'," }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
+  },
+  {
+    "name": "bootleg Location is not split",
+    "why": "Without a resolvable source column the four Place/Locality/Region/Country columns are never appended.",
+    "edits": [{ "find": "{ sourceColumn: 'Location',   extractor: 'splitLocationText',", "replace": "{ sourceColumn: 'Locationx',  extractor: 'splitLocationText'," }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "a US state leaves Country empty",
+    "why": "The site never writes a country after a US state; without filling it in, a Country filter misses every US show.",
+    "edits": [{ "find": "            out.country = lastRegionCountry;\n", "replace": "" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "several locations stay one",
+    "why": "A multi-show bootleg's \" - \"-joined locations must become one <li> per location in every output column, aligned.",
+    "edits": [{ "find": ".split(/\\s+-\\s+/).map(_parseLocationText);", "replace": ".split(/\\s+-\\s+XX/).map(_parseLocationText);" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "Location is split into Place",
+    "expect": "fail"
+  },
+  {
+    "name": "Place keeps only the first part",
+    "why": "A venue name with a comma in it (\"Studio A, The Power Station\") is everything before the city, comma-joined.",
+    "edits": [{ "find": "        out.place = parts.join(', ');", "replace": "        out.place = parts[0] || '';" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "a one-part description becomes a Country",
+    "why": "\"Various Location\" / \"Studio / Live\" (brucelegs) are descriptions; taking the last part as Country would fill the Country column with them.",
+    "edits": [{ "find": "        } else if (parts.length === 0) {\n            out.place = last;\n            return out;\n        } else {", "replace": "        } else {" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "USA is kept as written",
+    "why": "One country, one Country value: \"USA\" must read as United States, which a bare state already fills in.",
+    "edits": [{ "find": "out.country = _LOCATION_TEXT_COUNTRY_ALIASES[last.toLowerCase()] || last;", "replace": "out.country = last;" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "splitLocationText reads every location shape",
+    "expect": "fail"
+  },
+  {
+    "name": "the bootleg Show column stays empty",
+    "why": "\"27 Nov 1970 (early show)\" must put \"early show\" in Show.",
+    "edits": [{ "find": "            textCell(_slShowQualifier(fields['Date']));\n", "replace": "            textCell('');\n" }],
+    "spec": "tests/fixtures/sl-bootlegs.spec.js",
+    "grep": "First date is split into DD",
+    "expect": "fail"
   }
 ]
