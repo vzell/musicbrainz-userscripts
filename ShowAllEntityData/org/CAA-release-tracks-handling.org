@@ -1,5 +1,4 @@
 * TODO add cover art to the 'release-tracks' PT
-
 ** Request (original)
 
 We already have a branch "design/caa-eaa-redesign" for the redesign of the CAA/EAA column on specific PTs.
@@ -98,16 +97,16 @@ Add the plan to this file, so that I can actually do the real implementation in 
 
 ** Mockup catalogue
 
-| ID | Placement                     | Mockup                                                                                                                        | Requests at page load | On demand                       | Verdict                     |
-|----+-------------------------------+-------------------------------------------------------------------------------------------------------------------------------+-----------------------+---------------------------------+-----------------------------|
-| R0 | today                         | Sidebar main front; the tab navigates away                                                                                    | 0                     | page change                     | reference                   |
-| R1 | new h2 "Cover art (16)"       | Collapsible section above "Tracklist": contact sheet (~104 px tiles), caption = types + comment, ★ main front, type chips filter, layout switch Grid / By type / Spreads | 0 (collapsed)         | 1 JSON (or 0 cached) + 16 lazy thumbs | *recommended*               |
-| R2 | filmstrip under the tabs      | One scrolling row of 72 px thumbs                                                                                             | 1 + 16                | -                               | *not* recommended           |
-| R3 | sidebar gallery               | 4-column grid under the sidebar front; hover swaps the big image and caption                                                  | 1 + 16                | -                               | optional                    |
-| R4 | tab opens in place            | Plain click on "Cover art (16)" opens R5 in grid mode; Ctrl/Cmd/middle-click still navigate; small "here" marker on the tab | 0                     | as R1                           | *recommended* add-on        |
-| R5 | viewer                        | Lightbox: progressive 250 → 1200, liner-card info panel, filmstrip, grid mode, zoom, keys                                     | 0                     | 1200 px per image viewed, ±1 preloaded | *recommended*, shared with D1 |
-| R6 | spreads / booklet             | Third R1 layout: pairs "… left"/"… right" comments of one type into an opened spread; Liner/Booklet pages paged two at a time | 0                     | as R1                           | later, optional             |
-| R7 | per-medium art                | Medium image as a 26 px thumb in each medium's h3; refuses when it cannot match (here: 4 Medium images, 3 media, no comments) | 1                     | -                               | later, only with explicit comments |
+| ID | Placement                | Mockup                                                                                                                                                                   | Requests at page load | On demand                              | Verdict                            |
+|----+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------+----------------------------------------+------------------------------------|
+| R0 | today                    | Sidebar main front; the tab navigates away                                                                                                                               |                     0 | page change                            | reference                          |
+| R1 | new h2 "Cover art (16)"  | Collapsible section above "Tracklist": contact sheet (~104 px tiles), caption = types + comment, ★ main front, type chips filter, layout switch Grid / By type / Spreads |         0 (collapsed) | 1 JSON (or 0 cached) + 16 lazy thumbs  | *recommended*                      |
+| R2 | filmstrip under the tabs | One scrolling row of 72 px thumbs                                                                                                                                        |                1 + 16 | -                                      | *not* recommended                  |
+| R3 | sidebar gallery          | 4-column grid under the sidebar front; hover swaps the big image and caption                                                                                             |                1 + 16 | -                                      | optional                           |
+| R4 | tab opens in place       | Plain click on "Cover art (16)" opens R5 in grid mode; Ctrl/Cmd/middle-click still navigate; small "here" marker on the tab                                              |                     0 | as R1                                  | *recommended* add-on               |
+| R5 | viewer                   | Lightbox: progressive 250 → 1200, liner-card info panel, filmstrip, grid mode, zoom, keys                                                                                |                     0 | 1200 px per image viewed, ±1 preloaded | *recommended*, shared with D1      |
+| R6 | spreads / booklet        | Third R1 layout: pairs "… left"/"… right" comments of one type into an opened spread; Liner/Booklet pages paged two at a time                                            |                     0 | as R1                                  | later, optional                    |
+| R7 | per-medium art           | Medium image as a 26 px thumb in each medium's h3; refuses when it cannot match (here: 4 Medium images, 3 media, no comments)                                            |                     1 | -                                      | later, only with explicit comments |
 
 R5's key map, as built in the mockup:
 - ← → step, wrapping at the ends; Home / End; touch: horizontal swipe
