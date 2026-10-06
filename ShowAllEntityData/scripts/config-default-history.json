@@ -2,8 +2,8 @@
   "_meta": {
     "generated_by": "scripts/dump-default-history.py",
     "source": "ShowAllEntityData/ShowAllEntityData.user.js",
-    "head": "b7295d6b17d961c853616a9f0e5136e473bee3eb",
-    "revisions_walked": 782
+    "head": "b88bc6b4588b02185f838f07cbf0d771d60ace30",
+    "revisions_walked": 789
   },
   "changes": [
     {
@@ -607,6 +607,9 @@
     "sa_caa_type_chips": true,
     "sa_caa_chip_types": "Front=F, Back=B, Spine=Sp, Medium=M, Booklet=Bk, Tray=T",
     "sa_eaa_chip_types": "Poster=P, Banner=Bn, Schedule=Sc, Setlist=Sl, Ticket=T",
+    "sa_caa_gallery": true,
+    "sa_caa_gallery_tile_size": 82,
+    "sa_caa_gallery_compare": true,
     "sa_art_idb_enable": true,
     "sa_art_idb_image_ttl_days": 30,
     "sa_art_idb_metadata_ttl_days": 30,
