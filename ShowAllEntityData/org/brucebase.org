@@ -1,6 +1,6 @@
-﻿* BruceBase
+﻿* TODO BruceBase
 
-Give the website https://brucebase.wikidot.com/status:songs-list the same treatment as what we've done with the
+Give the website https://brucebase.wikidot.com/stats:songs the same treatment as what we've done with the
 https://www.springsteenlyrics.com/lyrics.php website.
 
 1.)
